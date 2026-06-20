@@ -1,0 +1,9 @@
+# Desactivar el listado de directorios por seguridad
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirigir todo el tráfico hacia la carpeta publico/
+    RewriteRule ^((?!publico/).*)$ publico/$1 [L,NC]
+</IfModule>

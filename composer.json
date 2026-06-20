@@ -1,0 +1,15 @@
+{
+    "name": "cycsa/sistema",
+    "description": "Sistema de Gestión y Cotizaciones Cycsa",
+    "type": "project",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Cycsa\\": ""
+        },
+        "files": [
+            "ayudantes/funciones.php"
+        ]
+    },
+    "require": {}
+}
