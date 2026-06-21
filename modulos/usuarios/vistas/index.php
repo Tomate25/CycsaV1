@@ -7,7 +7,7 @@
     .badge-activo { background-color: #d4edda; color: #155724; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
     .badge-inactivo { background-color: #f8d7da; color: #721c24; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
     
-    .btn-accion { border: none; background: none; cursor: pointer; padding: 5px 10px; font-size: 16px; transition: color 0.2s; }
+    .btn-accion { border: none; background: none; cursor: pointer; padding: 5px 10px; font-size: 16px; transition: color 0.2s; text-decoration: none; display: inline-block; }
     .btn-editar { color: #103487; }
     .btn-editar:hover { color: #0a225c; }
     .btn-eliminar { color: #e31837; }
@@ -41,10 +41,10 @@
             <tbody>
                 <?php foreach ($usuarios as $usuario): ?>
                 <tr>
-                    <td style="color: #6c757d; font-weight: 500;">#<?= $usuario['id'] ?></td>
-                    <td style="font-weight: 600;"><?= $usuario['nombre'] ?></td>
-                    <td><?= $usuario['email'] ?></td>
-                    <td><?= $usuario['rol'] ?></td>
+                    <td style="color: #6c757d; font-weight: 500;">#<?= htmlspecialchars($usuario['id'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td style="font-weight: 600;"><?= htmlspecialchars($usuario['nombre'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars($usuario['email'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars($usuario['rol'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td>
                         <?php if ($usuario['activo'] == 1): ?>
                             <span class="badge-activo">Activo</span>
@@ -53,8 +53,8 @@
                         <?php endif; ?>
                     </td>
                     <td style="text-align: right;">
-                        <button class="btn-accion btn-editar" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-                        <button class="btn-accion btn-eliminar" title="Desactivar"><i class="fa-solid fa-trash"></i></button>
+                        <a href="/Cycsa/publico/usuarios/editar?id=<?= $usuario['id'] ?>" class="btn-accion btn-editar" title="Editar"><i class="fa-solid fa-pen-to-square"></i></a>
+                        <a href="/Cycsa/publico/usuarios/eliminar?id=<?= $usuario['id'] ?>" class="btn-accion btn-eliminar" title="Desactivar" onclick="return confirm('¿Estás seguro de que deseas desactivar a este usuario? Ya no podrá iniciar sesión.');"><i class="fa-solid fa-trash"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>

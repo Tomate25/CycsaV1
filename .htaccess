@@ -1,6 +1,16 @@
 # Desactivar el listado de directorios por seguridad
 Options -Indexes
 
+# Bloquear acceso a archivos ocultos (como .env)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Bloquear acceso a archivos de composer
+<FilesMatch "^(composer\.json|composer\.lock)$">
+    Require all denied
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     

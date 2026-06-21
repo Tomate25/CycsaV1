@@ -11,5 +11,8 @@
             "ayudantes/funciones.php"
         ]
     },
-    "require": {}
+    "require": {
+        "phpmailer/phpmailer": "^7.1",
+        "dompdf/dompdf": "^3.1"
+    }
 }

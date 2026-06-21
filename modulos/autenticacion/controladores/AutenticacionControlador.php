@@ -14,7 +14,7 @@ class AutenticacionControlador extends ControladorBase {
         if (isset($_SESSION['usuario_id'])) {
             $respuesta->redirigir('/Cycsa/publico/panel');
         }
-        $this->renderizar('autenticacion/vistas/login', ['titulo' => 'Iniciar Sesión - Cycsa']);
+        $this->renderizarSinLayout('autenticacion/vistas/login', ['titulo' => 'Iniciar Sesión - Cycsa']);
     }
 
     public function procesarLogin(Peticion $peticion, Respuesta $respuesta) {
@@ -27,6 +27,9 @@ class AutenticacionControlador extends ControladorBase {
 
         if ($usuario && password_verify($password, $usuario['password'])) {
             if ($usuario['activo'] == 1) {
+                // Prevenir Session Fixation regenerando el ID
+                session_regenerate_id(true);
+                
                 $_SESSION['usuario_id'] = $usuario['id'];
                 $_SESSION['usuario_nombre'] = $usuario['nombre'];
                 $_SESSION['usuario_rol'] = $usuario['id_rol'];
@@ -34,10 +37,16 @@ class AutenticacionControlador extends ControladorBase {
                 // 🚀 REDIRIGIR AL PANEL DE CONTROL
                 $respuesta->redirigir('/Cycsa/publico/panel');
             } else {
-                echo "<h3 style='color:red;'>Error: Tu cuenta está inactiva.</h3><a href='/Cycsa/publico/login'>Volver</a>";
+                $this->renderizarSinLayout('autenticacion/vistas/login', [
+                    'titulo' => 'Iniciar Sesión - Cycsa',
+                    'error' => 'Tu cuenta está inactiva.'
+                ]);
             }
         } else {
-            echo "<h3 style='color:red;'>Error: Credenciales incorrectas.</h3><a href='/Cycsa/publico/login'>Volver</a>";
+            $this->renderizarSinLayout('autenticacion/vistas/login', [
+                'titulo' => 'Iniciar Sesión - Cycsa',
+                'error' => 'Credenciales incorrectas.'
+            ]);
         }
     }
 

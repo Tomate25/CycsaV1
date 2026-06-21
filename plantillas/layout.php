@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $titulo ?? 'Cycsa ERP' ?></title>
     
-    <!-- Fuente Inter (estilo SaaS moderno) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Íconos Profesionales (FontAwesome) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -56,7 +54,9 @@
             color: white;
             border-bottom: 2px solid var(--cycsa-azul);
         }
-        .sidebar-header i { color: var(--cycsa-amarillo); font-size: 24px; margin-right: 10px; }
+        .sidebar-header .logo-img { max-height: 40px; margin-right: 10px; object-fit: contain; }
+        .sidebar.colapsado .sidebar-header { padding: 0; justify-content: center; }
+        .sidebar.colapsado .logo-img { margin-right: 0; max-height: 35px; }
         .logo-texto { font-size: 20px; font-weight: 700; letter-spacing: 1px; font-style: italic; }
 
         /* Menú y Categorías */
@@ -126,7 +126,7 @@
 
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <i class="fa-solid fa-bolt"></i>
+            <img src="/Cycsa/publico/img/logo.png" alt="Logo Cycsa" class="logo-img">
             <span class="logo-texto">CYCSA</span>
         </div>
         
@@ -142,6 +142,12 @@
             </li>
             
             <li class="menu-categoria">Módulos</li>
+            <li>
+                <a href="/Cycsa/publico/clientes" class="<?= strpos($rutaActual, '/clientes') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-address-book"></i>
+                    <span class="menu-texto">Clientes</span>
+                </a>
+            </li>
             <li>
                 <a href="/Cycsa/publico/cotizaciones" class="<?= strpos($rutaActual, '/cotizaciones') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
@@ -173,7 +179,7 @@
             
             <div class="user-info">
                 <div style="text-align: right;">
-                    <div style="font-weight: 600; font-size: 14px;"><?= $_SESSION['usuario_nombre'] ?? 'Usuario' ?></div>
+                    <div style="font-weight: 600; font-size: 14px;"><?= htmlspecialchars($_SESSION['usuario_nombre'] ?? 'Usuario', ENT_QUOTES, 'UTF-8') ?></div>
                     <span class="user-role"><?= ($_SESSION['usuario_rol'] ?? 0) == 1 ? 'Administrador' : 'Vendedor' ?></span>
                 </div>
                 <a href="/Cycsa/publico/logout" class="btn-salir" title="Cerrar Sesión">

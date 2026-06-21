@@ -66,6 +66,12 @@
     <div class="login-contenedor">
         <h2>Ingresar al Sistema</h2>
         
+        <?php if (isset($error)): ?>
+            <div style="background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; margin-bottom: 20px; text-align: center; border: 1px solid #ef9a9a;">
+                <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
+            </div>
+        <?php endif; ?>
+
         <form action="" method="POST">
             <div class="grupo-input">
                 <label for="email">Correo Electrónico</label>

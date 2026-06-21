@@ -33,12 +33,11 @@ class Conexion {
                     $config['options']
                 );
             } catch (PDOException $e) {
-                // En producción no debemos mostrar detalles internos de la base de datos
-                if (($_ENV['APP_ENV'] ?? 'produccion') === 'local') {
-                    die("Error de conexión crítica: " . $e->getMessage());
-                } else {
-                    die("Error temporal en el servidor de datos. Por favor, intente más tarde.");
-                }
+                // Registrar el error real en el archivo de logs del servidor
+                error_log("Error de conexión a DB: " . $e->getMessage());
+                
+                // Mostrar solo un mensaje genérico al usuario final
+                die("Error 500: Fallo interno de conexión. Por favor, intente más tarde.");
             }
         }
 

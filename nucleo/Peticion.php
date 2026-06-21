@@ -35,12 +35,12 @@ class Peticion {
         $datos = [];
         if ($this->esGet()) {
             foreach ($_GET as $clave => $valor) {
-                $datos[$clave] = filter_input(INPUT_GET, $clave, FILTER_SANITIZE_SPECIAL_CHARS);
+                $datos[$clave] = $valor; // Datos crudos, sin sanitización destructiva
             }
         }
         if ($this->esPost()) {
             foreach ($_POST as $clave => $valor) {
-                $datos[$clave] = filter_input(INPUT_POST, $clave, FILTER_SANITIZE_SPECIAL_CHARS);
+                $datos[$clave] = $valor; // Datos crudos, listos para bindParam en PDO
             }
         }
         return $datos;

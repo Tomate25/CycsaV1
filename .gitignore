@@ -1,0 +1,13 @@
+# Archivo de variables de entorno (contiene contraseñas)
+.env
+
+# Dependencias de Composer
+vendor/
+
+# Almacenamiento interno
+almacenamiento/logs/
+almacenamiento/cache/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
