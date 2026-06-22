@@ -7,6 +7,7 @@ use Cycsa\Nucleo\Peticion;
 use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\Cotizaciones\Modelos\CotizacionModelo;
 use Cycsa\Modulos\Clientes\Modelos\ClienteModelo;
+use Cycsa\Modulos\Productos\Modelos\ProductoModelo;
 
 class CotizacionesControlador extends ControladorBase {
     
@@ -16,6 +17,10 @@ class CotizacionesControlador extends ControladorBase {
 
     public function index(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            exit;
+        }
         $modelo = new CotizacionModelo();
         
         $busqueda = $_GET['q'] ?? '';
@@ -74,12 +79,26 @@ class CotizacionesControlador extends ControladorBase {
 
     public function crear(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            exit;
+        }
         if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        $this->renderizar('cotizaciones/vistas/crear', ['titulo' => 'Nueva Cotización', 'clientes' => (new ClienteModelo())->obtenerTodos()]);
+        $prodModelo = new ProductoModelo();
+        $this->renderizar('cotizaciones/vistas/crear', [
+            'titulo' => 'Nueva Cotización', 
+            'clientes' => (new ClienteModelo())->obtenerTodos(),
+            'productos' => $prodModelo->obtenerTodos(),
+            'categorias' => $prodModelo->obtenerCategorias()
+        ]);
     }
 
     public function guardar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            exit;
+        }
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) { $respuesta->redirigir('/Cycsa/publico/cotizaciones/crear'); return; }
@@ -94,24 +113,53 @@ class CotizacionesControlador extends ControladorBase {
 
     public function detalle(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            exit;
+        }
         $id = (int)($_GET['id'] ?? 0);
         $modelo = new CotizacionModelo();
         $cotizacion = $modelo->obtenerPorId($id);
         if (!$cotizacion) { $respuesta->redirigir('/Cycsa/publico/cotizaciones'); return; }
-        $this->renderizar('cotizaciones/vistas/detalle', ['titulo' => 'Detalle', 'cotizacion' => $cotizacion, 'detalles' => $modelo->obtenerDetalles($id)]);
+        
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        $this->renderizar('cotizaciones/vistas/detalle', [
+            'titulo' => 'Detalle', 
+            'cotizacion' => $cotizacion, 
+            'detalles' => $modelo->obtenerDetalles($id),
+            'versiones' => $modelo->obtenerVersiones($id)
+        ]);
     }
 
     public function editar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            exit;
+        }
         $id = (int)($_GET['id'] ?? 0);
         $modelo = new CotizacionModelo();
         $cot = $modelo->obtenerPorId($id);
         if ($cot['estado'] !== 'Observada') { $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id='.$id); return; }
-        $this->renderizar('cotizaciones/vistas/editar', ['cotizacion' => $cot, 'detalles' => $modelo->obtenerDetalles($id), 'clientes' => (new ClienteModelo())->obtenerTodos()]);
+        $prodModelo = new ProductoModelo();
+        $this->renderizar('cotizaciones/vistas/editar', [
+            'cotizacion' => $cot, 
+            'detalles' => $modelo->obtenerDetalles($id), 
+            'clientes' => (new ClienteModelo())->obtenerTodos(),
+            'productos' => $prodModelo->obtenerTodos(),
+            'categorias' => $prodModelo->obtenerCategorias()
+        ]);
     }
 
     public function actualizar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            exit;
+        }
         $datos = $peticion->obtenerDatos();
         $modelo = new CotizacionModelo();
         $cabecera = [ 'atencion_a' => trim($datos['atencion_a']), 'nombre_proyecto' => trim($datos['nombre_proyecto']), 'direccion_proyecto' => trim($datos['direccion_proyecto']), 'condicion_pago' => $datos['condicion_pago'], 'tiempo_entrega' => trim($datos['tiempo_entrega']), 'vigencia_oferta' => trim($datos['vigencia_oferta']), 'subtotal' => $datos['subtotal_general'], 'impuesto' => $datos['impuesto_general'], 'total' => $datos['total_general'] ];
@@ -120,6 +168,10 @@ class CotizacionesControlador extends ControladorBase {
 
     public function procesarRevision(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            exit;
+        }
         $datos = $peticion->obtenerDatos();
         $modelo = new CotizacionModelo();
         $id = (int)$datos['id'];
@@ -136,7 +188,7 @@ class CotizacionesControlador extends ControladorBase {
                 
                 $destinatario = !empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : 'abdiasl085@gmail.com';
                 $titulo_correo = "Cotización Oficial - CYCSA - " . $cotizacion['codigo'];
-                $urlDecision = "{$_ENV['APP_URL']}/cotizaciones/decision-cliente?id={$id}&token={$token}";
+                $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id={$id}&token={$token}";
                 
                 $mensaje = "
                 <html>
@@ -199,6 +251,10 @@ class CotizacionesControlador extends ControladorBase {
 
     public function enviarCliente(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            exit;
+        }
         
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
@@ -228,7 +284,7 @@ class CotizacionesControlador extends ControladorBase {
             $destinatario = !empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : 'abdiasl085@gmail.com';
             $titulo_correo = "Cotización Oficial - CYCSA - " . $cotizacion['codigo'];
             
-            $urlDecision = "{$_ENV['APP_URL']}/cotizaciones/decision-cliente?id={$id}&token={$token}";
+            $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id={$id}&token={$token}";
             
             $mensaje = "
             <html>
@@ -483,6 +539,10 @@ class CotizacionesControlador extends ControladorBase {
 
     public function enviarRevision(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            exit;
+        }
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
             $id = (int)($datos['id'] ?? 0);
@@ -506,8 +566,15 @@ class CotizacionesControlador extends ControladorBase {
         $detalles = [];
         for ($i = 0; $i < count($datos['ensayo_desc'] ?? []); $i++) {
             if (!empty(trim($datos['ensayo_desc'][$i]))) {
+                $id_prod = !empty($datos['ensayo_id_producto'][$i]) ? (int)$datos['ensayo_id_producto'][$i] : null;
                 $cant = (float)$datos['ensayo_cant'][$i]; $prec = (float)$datos['ensayo_precio'][$i];
-                $detalles[] = ['descripcion' => trim($datos['ensayo_desc'][$i]), 'cantidad' => $cant, 'precio' => $prec, 'subtotal' => $cant * $prec];
+                $detalles[] = [
+                    'id_producto' => $id_prod,
+                    'descripcion' => trim($datos['ensayo_desc'][$i]), 
+                    'cantidad' => $cant, 
+                    'precio' => $prec, 
+                    'subtotal' => $cant * $prec
+                ];
             }
         }
         return $detalles;

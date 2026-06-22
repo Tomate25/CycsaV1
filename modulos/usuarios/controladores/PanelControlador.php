@@ -17,6 +17,20 @@ class PanelControlador extends ControladorBase {
             return;
         }
         
+        // El vendedor no puede ver la vista general
+        if (($_SESSION['usuario_rol'] ?? 0) != 1) {
+            if (tienePermiso('cotizaciones', 'ver')) {
+                $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            } elseif (tienePermiso('clientes', 'ver')) {
+                $respuesta->redirigir('/Cycsa/publico/clientes');
+            } elseif (tienePermiso('productos', 'ver')) {
+                $respuesta->redirigir('/Cycsa/publico/productos');
+            } else {
+                $respuesta->redirigir('/Cycsa/publico/logout');
+            }
+            return;
+        }
+        
         $db = Conexion::obtenerInstancia();
         
         // 1. KPI metrics

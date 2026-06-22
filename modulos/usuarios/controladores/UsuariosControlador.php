@@ -58,27 +58,53 @@ class UsuariosControlador extends ControladorBase {
             $datos = $peticion->obtenerDatos();
             $modelo = new UsuarioModelo();
             
+            $email = isset($datos['email']) ? trim($datos['email']) : '';
+            $nombre = isset($datos['nombre']) ? trim($datos['nombre']) : '';
+            $password = isset($datos['password']) ? $datos['password'] : '';
+            $id_rol = isset($datos['id_rol']) ? (int)$datos['id_rol'] : 0;
+            
             // Validación CSRF
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
                 $this->renderizar('usuarios/vistas/crear', ['titulo' => 'Nuevo Usuario', 'roles' => $modelo->obtenerRoles(), 'error' => 'Token de seguridad inválido. Intenta de nuevo.']); return;
             }
             
             // Validación formato de email
-            if (!filter_var($datos['email'], FILTER_VALIDATE_EMAIL)) {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $this->renderizar('usuarios/vistas/crear', ['titulo' => 'Nuevo Usuario', 'roles' => $modelo->obtenerRoles(), 'error' => 'El correo electrónico no es válido.']); return;
             }
             
             // Validación longitud de contraseña
-            if (strlen(trim($datos['password'])) < 6) {
+            if (strlen(trim($password)) < 6) {
                 $this->renderizar('usuarios/vistas/crear', ['titulo' => 'Nuevo Usuario', 'roles' => $modelo->obtenerRoles(), 'error' => 'La contraseña debe tener al menos 6 caracteres.']); return;
             }
             
             // Verificación duplicados
-            if ($modelo->emailExiste($datos['email'])) {
+            if ($modelo->emailExiste($email)) {
                 $this->renderizar('usuarios/vistas/crear', ['titulo' => 'Nuevo Usuario', 'roles' => $modelo->obtenerRoles(), 'error' => 'Este correo electrónico ya está registrado.']); return;
             }
             
-            $modelo->guardarUsuario($datos['nombre'], $datos['email'], $datos['password'], $datos['id_rol']);
+            // Procesamiento de permisos
+            $permisosJson = null;
+            if ($id_rol == 2) {
+                $permisosInput = $datos['permisos'] ?? [];
+                $permisos = [
+                    'clientes' => [
+                        'ver' => isset($permisosInput['clientes']['ver']) ? 1 : 0,
+                        'crear_editar' => isset($permisosInput['clientes']['crear_editar']) ? 1 : 0
+                    ],
+                    'productos' => [
+                        'ver' => isset($permisosInput['productos']['ver']) ? 1 : 0,
+                        'crear_editar' => isset($permisosInput['productos']['crear_editar']) ? 1 : 0
+                    ],
+                    'cotizaciones' => [
+                        'ver' => isset($permisosInput['cotizaciones']['ver']) ? 1 : 0,
+                        'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0
+                    ]
+                ];
+                $permisosJson = json_encode($permisos);
+            }
+            
+            $modelo->guardarUsuario($nombre, $email, $password, $id_rol, $permisosJson);
             $respuesta->redirigir('/Cycsa/publico/usuarios');
             return;
         }
@@ -114,27 +140,65 @@ class UsuariosControlador extends ControladorBase {
         $datos = $peticion->obtenerDatos();
         $modelo = new UsuarioModelo();
 
+        $email = isset($datos['email']) ? trim($datos['email']) : '';
+        $nombre = isset($datos['nombre']) ? trim($datos['nombre']) : '';
+        $password = isset($datos['password']) ? $datos['password'] : '';
+        $id_rol = isset($datos['id_rol']) ? (int)$datos['id_rol'] : 0;
+        $activo = isset($datos['activo']) ? (int)$datos['activo'] : 1;
+
         // Validación CSRF
         if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
             $this->renderizar('usuarios/vistas/editar', ['titulo' => 'Editar Usuario', 'error' => 'Token CSRF inválido.', 'usuario' => $datos, 'roles' => $modelo->obtenerRoles()]); return;
         }
 
         // Validación formato de email
-        if (!filter_var($datos['email'], FILTER_VALIDATE_EMAIL)) {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->renderizar('usuarios/vistas/editar', ['titulo' => 'Editar Usuario', 'error' => 'El correo electrónico no es válido.', 'usuario' => $datos, 'roles' => $modelo->obtenerRoles()]); return;
         }
 
         // Si digitó una clave nueva, validamos la longitud
-        if (!empty(trim($datos['password'])) && strlen(trim($datos['password'])) < 6) {
+        if (!empty(trim($password)) && strlen(trim($password)) < 6) {
             $this->renderizar('usuarios/vistas/editar', ['titulo' => 'Editar Usuario', 'error' => 'La nueva contraseña debe tener al menos 6 caracteres.', 'usuario' => $datos, 'roles' => $modelo->obtenerRoles()]); return;
         }
         
         // Verificación duplicados (excluyendo el usuario actual)
-        if ($modelo->emailExiste($datos['email'], (int)$id)) {
+        if ($modelo->emailExiste($email, (int)$id)) {
             $this->renderizar('usuarios/vistas/editar', ['titulo' => 'Editar Usuario', 'error' => 'El correo ya pertenece a otro usuario.', 'usuario' => $datos, 'roles' => $modelo->obtenerRoles()]); return;
         }
 
-        $modelo->actualizar((int)$id, $datos);
+        // Procesamiento de permisos
+        $permisosJson = null;
+        if ($id_rol == 2) {
+            $permisosInput = $datos['permisos'] ?? [];
+            $permisos = [
+                'clientes' => [
+                    'ver' => isset($permisosInput['clientes']['ver']) ? 1 : 0,
+                    'crear_editar' => isset($permisosInput['clientes']['crear_editar']) ? 1 : 0
+                ],
+                'productos' => [
+                    'ver' => isset($permisosInput['productos']['ver']) ? 1 : 0,
+                    'crear_editar' => isset($permisosInput['productos']['crear_editar']) ? 1 : 0
+                ],
+                'cotizaciones' => [
+                    'ver' => isset($permisosInput['cotizaciones']['ver']) ? 1 : 0,
+                    'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0
+                ]
+            ];
+            $permisosJson = json_encode($permisos);
+        }
+
+        $datosActualizados = [
+            'nombre' => $nombre,
+            'email' => $email,
+            'id_rol' => $id_rol,
+            'activo' => $activo,
+            'permisos' => $permisosJson
+        ];
+        if (!empty(trim($password))) {
+            $datosActualizados['password'] = $password;
+        }
+
+        $modelo->actualizar((int)$id, $datosActualizados);
         $respuesta->redirigir('/Cycsa/publico/usuarios');
         return;
     }

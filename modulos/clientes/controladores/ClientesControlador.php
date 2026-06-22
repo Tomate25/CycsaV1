@@ -19,6 +19,10 @@ class ClientesControlador extends ControladorBase {
     // 🔍 INDEX CON BUSCADOR
     public function index(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('clientes', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            exit;
+        }
         
         $modelo = new ClienteModelo();
         // Capturamos lo que el usuario escribió en el buscador (si hay algo)
@@ -33,6 +37,10 @@ class ClientesControlador extends ControladorBase {
 
     public function crear(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('clientes', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/clientes');
+            exit;
+        }
         if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 
         $this->renderizar('clientes/vistas/crear', [
@@ -42,6 +50,10 @@ class ClientesControlador extends ControladorBase {
 
     public function guardar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('clientes', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/clientes');
+            exit;
+        }
         
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
@@ -70,6 +82,10 @@ class ClientesControlador extends ControladorBase {
     // ✏️ MOSTRAR FORMULARIO DE EDICIÓN
     public function editar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('clientes', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/clientes');
+            exit;
+        }
         
         $id = $_GET['id'] ?? null;
         if (!$id) { $respuesta->redirigir('/Cycsa/publico/clientes'); return; }
@@ -89,6 +105,10 @@ class ClientesControlador extends ControladorBase {
     // ✏️ GUARDAR LOS CAMBIOS DE EDICIÓN
     public function actualizar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('clientes', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/clientes');
+            exit;
+        }
         
         $id = $_GET['id'] ?? null;
         if (!$id || !$peticion->esPost()) { $respuesta->redirigir('/Cycsa/publico/clientes'); return; }

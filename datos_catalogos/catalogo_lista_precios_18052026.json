@@ -1,0 +1,950 @@
+[
+    {
+        "codigo": "CYCSA-001",
+        "producto": "Diseño de Mezcla de Suelo-Cemento",
+        "categoria": "N/A",
+        "precio": 7400.0
+    },
+    {
+        "codigo": "CYCSA-001-1",
+        "producto": "Diseño de mezcla de Lodocreto.",
+        "categoria": "N/A",
+        "precio": 7400.0
+    },
+    {
+        "codigo": "CYCSA-001-2",
+        "producto": "Diseño de mezcla de mortero.",
+        "categoria": "N/A",
+        "precio": 7400.0
+    },
+    {
+        "codigo": "CYCSA-002",
+        "producto": "Método de prueba estándar para la determinación de la dureza de la roca mediante el método del martillo de rebote",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-003",
+        "producto": "CYCSA-Método de prueba estándar para la relación de carga de california (CBR) de suelos compactados en laboratorio.",
+        "categoria": "N/A",
+        "precio": 2250.0
+    },
+    {
+        "codigo": "CYCSA-005",
+        "producto": "Métodos de prueba estándar para la densidad del suelo y los materiales rocosos in situ mediante el método de reemplazo de agua en un pozo de prueba compactación por reemplazo de agua.",
+        "categoria": "N/A",
+        "precio": 2250.0
+    },
+    {
+        "codigo": "CYCSA-006",
+        "producto": "CYCSA-PE-03- Determinación de los pesos unitarios seco sueltos y seco compacto de los agregados gruesos y finos.  ( PVSS y PVSC ).",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-007",
+        "producto": "Métodos de prueba estándar para índice de densidad mínimo y peso unitario de suelos y cálculo de densidad relativa (Densidad Mínima-Densidad Máxima)",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-010",
+        "producto": "CYCSA-Método de prueba estándar para partículas planas, partículas alargadas o partículas planas y alargadas en agregado grueso   (Alargamiento ó aplastamiento)",
+        "categoria": "N/A",
+        "precio": 1200.0
+    },
+    {
+        "codigo": "CYCSA-013",
+        "producto": "Método de prueba estándar para determinar el porcentaje de partículas fracturadas en agregado grueso (caras fracturadas)",
+        "categoria": "N/A",
+        "precio": 1150.0
+    },
+    {
+        "codigo": "CYCSA-014",
+        "producto": "CYCSA-Tracción indirecta en roca",
+        "categoria": "N/A",
+        "precio": 5550.0
+    },
+    {
+        "codigo": "CYCSA-015",
+        "producto": "Práctica estándar para pruebas de líquidos penetrantes para la industria general.",
+        "categoria": "N/A",
+        "precio": 2000.0
+    },
+    {
+        "codigo": "CYCSA-016",
+        "producto": "Ensayos de tensión en placas de acero",
+        "categoria": "N/A",
+        "precio": 7400.0
+    },
+    {
+        "codigo": "CYCSA-017",
+        "producto": "ENSAYOS DE ESPESOR DE PINTURA",
+        "categoria": "N/A",
+        "precio": 2000.0
+    },
+    {
+        "codigo": "CYCSA-018",
+        "producto": "Determinación de sales solubles (cloruros, sulfatos y sales totales)",
+        "categoria": "N/A",
+        "precio": 4300.0
+    },
+    {
+        "codigo": "CYCSA-019",
+        "producto": "Método de prueba estándar para grumos de arcilla y partículas desmezurable en agregados",
+        "categoria": "N/A",
+        "precio": 1900.0
+    },
+    {
+        "codigo": "CYCSA-020",
+        "producto": "CYCSA-Contenido de Cloruros solubles en agua",
+        "categoria": "N/A",
+        "precio": 7400.0
+    },
+    {
+        "codigo": "CYCSA-021",
+        "producto": "CYCSA-Contenido de sulfatos solubles en suelo o agua subterránea",
+        "categoria": "N/A",
+        "precio": 7400.0
+    },
+    {
+        "codigo": "CYCSA-022",
+        "producto": "Laboratorio para realizar Ensayos CYCSA-PE-27“Procedimiento para la Determinación de Temperatura en el concreto fresco”,  CYCSA-PE-09 \"Determinación del Revenimiento del Concreto\" y CYCSA-PE-07“Determinación de la resistencia del concreto” 4 cilindros.",
+        "categoria": "N/A",
+        "precio": 5550.0
+    },
+    {
+        "codigo": "CYCSA-022-3CILIDNROS",
+        "producto": "Laboratorio para realizar Ensayos, CYCSA-PE-27“Procedimiento para la Determinación de Temperatura en el concreto fresco”, CYCSA-PE-09 \"Determinación del Revenimiento del Concreto\" y CYCSA-PE-07“Determinación de la resistencia del concreto” 3 cilindros.",
+        "categoria": "N/A",
+        "precio": 4800.0
+    },
+    {
+        "codigo": "CYCSA-022-DIA",
+        "producto": "Laboratorio por día   CYCSA-PE-27“Procedimiento para la Determinación de Temperatura en el concreto fresco”, CYCSA-PE-09 \"Determinación del Revenimiento del Concreto\" y CYCSA-PE-07“Determinación de la resistencia del concreto” 12 cilindros .",
+        "categoria": "N/A",
+        "precio": 5550.0
+    },
+    {
+        "codigo": "CYCSA-023",
+        "producto": "Muestreo de ladrillos",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-024",
+        "producto": "Muestreo de agregados",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-025",
+        "producto": "Preparación de muestras (Suelo, Agregado, Adoquín, Bloque, Concreto)",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-026",
+        "producto": "Movilización",
+        "categoria": "N/A",
+        "precio": 0.0
+    },
+    {
+        "codigo": "CYCSA-026-1",
+        "producto": "Movilización Managua Urbano",
+        "categoria": "N/A",
+        "precio": 2300.0
+    },
+    {
+        "codigo": "CYCSA-026-10",
+        "producto": "Movilización hacia Santa Rosa.",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-026-11",
+        "producto": "Movilización hacia  El Sauce.",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-026-12",
+        "producto": "Movilización hacia Rivas",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-026-13",
+        "producto": "Movilización hacia Granada.",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-026-14",
+        "producto": "Movilización hacia  Pueblos Blancos",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-026-15",
+        "producto": "Movilización hacia  Masaya.",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-026-16",
+        "producto": "Movilización hacia Carazo.",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-026-17",
+        "producto": "Movilización hacia Puerto Morazán.",
+        "categoria": "N/A",
+        "precio": 5000.0
+    },
+    {
+        "codigo": "CYCSA-026-18",
+        "producto": "Movilización hacia Somotillo.",
+        "categoria": "N/A",
+        "precio": 5000.0
+    },
+    {
+        "codigo": "CYCSA-026-19",
+        "producto": "Movilización hacia Chontales",
+        "categoria": "N/A",
+        "precio": 5500.0
+    },
+    {
+        "codigo": "CYCSA-026-2",
+        "producto": "Movilización Chinandega-Urbano",
+        "categoria": "N/A",
+        "precio": 2300.0
+    },
+    {
+        "codigo": "CYCSA-026-20",
+        "producto": "Movilización hacia Matagalpa.",
+        "categoria": "N/A",
+        "precio": 5000.0
+    },
+    {
+        "codigo": "CYCSA-026-21",
+        "producto": "Movilización Jinotega.",
+        "categoria": "N/A",
+        "precio": 5000.0
+    },
+    {
+        "codigo": "CYCSA-026-22",
+        "producto": "Movilización hacia Nueva Segovia.",
+        "categoria": "N/A",
+        "precio": 5000.0
+    },
+    {
+        "codigo": "CYCSA-026-23",
+        "producto": "Movilización hacia Boaco",
+        "categoria": "N/A",
+        "precio": 5000.0
+    },
+    {
+        "codigo": "CYCSA-026-24",
+        "producto": "Movilización hacia San Carlos.",
+        "categoria": "N/A",
+        "precio": 11050.0
+    },
+    {
+        "codigo": "CYCSA-026-25",
+        "producto": "Movilización hacia  Bilwi.",
+        "categoria": "N/A",
+        "precio": 11050.0
+    },
+    {
+        "codigo": "CYCSA-026-26",
+        "producto": "Movilización hacia Wiwilí",
+        "categoria": "N/A",
+        "precio": 11050.0
+    },
+    {
+        "codigo": "CYCSA-026-27",
+        "producto": "Movilización hacia El Rama.",
+        "categoria": "N/A",
+        "precio": 11050.0
+    },
+    {
+        "codigo": "CYCSA-026-28",
+        "producto": "Movilización hacia Nueva Guinea",
+        "categoria": "N/A",
+        "precio": 11050.0
+    },
+    {
+        "codigo": "CYCSA-026-29",
+        "producto": "Movilización Tipitapa.",
+        "categoria": "N/A",
+        "precio": 3000.0
+    },
+    {
+        "codigo": "CYCSA-026-3",
+        "producto": "Movilización  sitio carretera Potosí Km 142",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-026-30",
+        "producto": "Movilización Waspam.",
+        "categoria": "N/A",
+        "precio": 44200.0
+    },
+    {
+        "codigo": "CYCSA-026-31",
+        "producto": "Movilización hacia Región del Autónoma Atlántico Norte (RAAN).",
+        "categoria": "N/A",
+        "precio": 44200.0
+    },
+    {
+        "codigo": "CYCSA-026-32",
+        "producto": "Movilización hacia Bonanza.",
+        "categoria": "N/A",
+        "precio": 44200.0
+    },
+    {
+        "codigo": "CYCSA-026-33",
+        "producto": "Movilización a Puerto Sandino.",
+        "categoria": "N/A",
+        "precio": 2250.0
+    },
+    {
+        "codigo": "CYCSA-026-34",
+        "producto": "Movilización hacia  Posoltega.",
+        "categoria": "N/A",
+        "precio": 1900.0
+    },
+    {
+        "codigo": "CYCSA-026-35",
+        "producto": "Movilización hacia Nandaime.",
+        "categoria": "N/A",
+        "precio": 3000.0
+    },
+    {
+        "codigo": "CYCSA-026-36",
+        "producto": "Movilización hacia Estelí (Urbano)",
+        "categoria": "N/A",
+        "precio": 5550.0
+    },
+    {
+        "codigo": "CYCSA-026-37",
+        "producto": "Movilización hacia mina El Limón.",
+        "categoria": "N/A",
+        "precio": 2500.0
+    },
+    {
+        "codigo": "CYCSA-026-38",
+        "producto": "Movilización hacia León.",
+        "categoria": "N/A",
+        "precio": 1300.0
+    },
+    {
+        "codigo": "CYCSA-026-39",
+        "producto": "Movilización hacia Peñas Blancas.",
+        "categoria": "N/A",
+        "precio": 18000.0
+    },
+    {
+        "codigo": "CYCSA-026-4",
+        "producto": "Movilización Km 139 carretera a Corinto",
+        "categoria": "N/A",
+        "precio": 2600.0
+    },
+    {
+        "codigo": "CYCSA-026-40",
+        "producto": "Movilización ciudad de Managua.",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-026-41",
+        "producto": "Movilización hacia Corinto.",
+        "categoria": "N/A",
+        "precio": 2600.0
+    },
+    {
+        "codigo": "CYCSA-026-5",
+        "producto": "Carretera León-San Isidro, San Jacinto Tizate.",
+        "categoria": "N/A",
+        "precio": 2000.0
+    },
+    {
+        "codigo": "CYCSA-026-6",
+        "producto": "Movilización Telica-León",
+        "categoria": "N/A",
+        "precio": 2000.0
+    },
+    {
+        "codigo": "CYCSA-026-7",
+        "producto": "Movilización hacia San Juan del Sur.",
+        "categoria": "N/A",
+        "precio": 11050.0
+    },
+    {
+        "codigo": "CYCSA-026-8",
+        "producto": "Movilización hacia Ocotal",
+        "categoria": "N/A",
+        "precio": 7200.0
+    },
+    {
+        "codigo": "CYCSA-026-9",
+        "producto": "Movilización hacia Achuapa.",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-026-EXONERADO",
+        "producto": "Movilización exonerada.",
+        "categoria": "N/A",
+        "precio": 0.0
+    },
+    {
+        "codigo": "CYCSA-027",
+        "producto": "Canon de arrendamientos.",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-028",
+        "producto": "Laboratorio por día,   ( Jornada  diurna ordinaria, no mayor a 8 horas , máximo de ensayos a realizar  6  ) CYCSA-PE-25 “Método estándar para la determinación de densidad in situ y contenido de agua (densímetro nuclear)”",
+        "categoria": "N/A",
+        "precio": 5900.0
+    },
+    {
+        "codigo": "CYCSA-028-PUNTUAL 3",
+        "producto": "Servicio de laboratorio puntual para realizar máximo 3 ensayos CYCSA-PE-25 “Método estándar para la determinación de densidad in situ y contenido de agua (densímetro nuclear)”",
+        "categoria": "N/A",
+        "precio": 4400.0
+    },
+    {
+        "codigo": "CYCSA-028-PUNTUAL 4",
+        "producto": "Servicio de laboratorio puntual para realizar máximo 4 ensayos  CYCSA-PE-25 “Método estándar para la determinación de densidad in situ y contenido de agua (densímetro nuclear)”",
+        "categoria": "N/A",
+        "precio": 5200.0
+    },
+    {
+        "codigo": "CYCSA-029",
+        "producto": "Servicio por mes para ensayo CYCSA-PE-25 “Método estándar para la determinación de densidad in situ y contenido de agua (densímetro nuclear)” Y CYCSA-PE-18 Determinación de las características de compactación del suelo por el método Proctor Estándar",
+        "categoria": "N/A",
+        "precio": 132500.0
+    },
+    {
+        "codigo": "CYCSA-030",
+        "producto": "Permeabilidad de Pared Flexible  (K)",
+        "categoria": "N/A",
+        "precio": 10500.0
+    },
+    {
+        "codigo": "CYCSA-031",
+        "producto": "Ensayo de Expansión (Exp).",
+        "categoria": "N/A",
+        "precio": 0.0
+    },
+    {
+        "codigo": "CYCSA-032",
+        "producto": "Toma de muestra,  vigueta de concreto.",
+        "categoria": "N/A",
+        "precio": 800.0
+    },
+    {
+        "codigo": "CYCSA-033",
+        "producto": "Toma de muestra ,  cilindro  de concreto.",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-034",
+        "producto": "Estudio Geológico",
+        "categoria": "N/A",
+        "precio": 0.0
+    },
+    {
+        "codigo": "CYCSA-035",
+        "producto": "Estudio Hidrogeológico.",
+        "categoria": "N/A",
+        "precio": 0.0
+    },
+    {
+        "codigo": "CYCSA-036",
+        "producto": "Sondeos manuales a un metro de profundidad ( Extracción de 2 muestras  0 a 50 cm y de  50cm a 100 cm)",
+        "categoria": "N/A",
+        "precio": 5550.0
+    },
+    {
+        "codigo": "CYCSA-037",
+        "producto": "Diseño de carpeta de rodamiento en asfalto y concreto.",
+        "categoria": "N/A",
+        "precio": 11100.0
+    },
+    {
+        "codigo": "CYCSA-038",
+        "producto": "Informe de  estudio geotécnico, conclusiones y recomendaciones.",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-039",
+        "producto": "Infiltración, ensayo de permeabilidad Lefranc + informe.",
+        "categoria": "N/A",
+        "precio": 7400.0
+    },
+    {
+        "codigo": "CYCSA-29-1",
+        "producto": "Servicio por mes para ensayo CYCSA-PE-25 “Método estándar para la determinación de densidad in situ y contenido de agua (densímetro nuclear)",
+        "categoria": "N/A",
+        "precio": 132500.0
+    },
+    {
+        "codigo": "CYCSA-GRANITO",
+        "producto": "Plancha de Granito.",
+        "categoria": "Sin categoría.",
+        "precio": 0.0
+    },
+    {
+        "codigo": "CYCSA-MO PROYECTOS",
+        "producto": "CYCSA-SERVICIO DE MANO DE OBRA",
+        "categoria": "N/A",
+        "precio": 0.0
+    },
+    {
+        "codigo": "CYCSA-MO PROYECTOS E",
+        "producto": "CYCSA-MO PROYECTOS E",
+        "categoria": "N/A",
+        "precio": 0.0
+    },
+    {
+        "codigo": "CYCSA-PE-01",
+        "producto": "CYCSA-PE-01  \"Determinación de la Humedad en  muestras de agregados\"",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-01-1",
+        "producto": "CYCSA-PE-07 Determinación de la resistencia  del concreto (Núcleos )",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-02",
+        "producto": "Método de prueba estándar para densidad relativa (gravedad específica) y absorción de agregado fino y gruesos (% de absorción)",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-02.",
+        "producto": "Método de prueba estándar para densidad relativa (gravedad específica) y absorción de agregado fino y gruesos (Gravedad GE, GE SSS, GE AP)",
+        "categoria": "N/A",
+        "precio": 2250.0
+    },
+    {
+        "codigo": "CYCSA-PE-02-R",
+        "producto": "Método de prueba estándar para densidad relativa (gravedad específica) y absorción de agregado  gruesos    (% de Absorción) en roca.",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-03..",
+        "producto": "CYCSA-PE-03- Determinación de los pesos unitarios seco sueltos y seco compacto  ( PVSC )",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-03 PVSS Y PVSC",
+        "producto": "CYCSA-PE-03- Determinación de los pesos unitarios seco sueltos y seco compacto de los  suelos  ( PVSS y PVSC ).",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-PE-03-PVSS",
+        "producto": "CYCSA-PE-03- Determinación de los pesos unitarios seco sueltos y seco compacto  ( PVSS )",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-04",
+        "producto": "CYCSA-PE-04 Determinación de la resistencia al desgaste, del agregado grueso de tamaño hasta de 37.5 mm (1½ pulg), por abrasión e impacto en la Máquina de Los Ángeles)  Abrasión de los ángeles",
+        "categoria": "N/A",
+        "precio": 3000.0
+    },
+    {
+        "codigo": "CYCSA-PE-05",
+        "producto": "CYCSA-PE-05- Determinación de materia orgánica en los agregados  (Colorimetría).",
+        "categoria": "N/A",
+        "precio": 950.0
+    },
+    {
+        "codigo": "CYCSA-PE-06",
+        "producto": "CYCSA-PE-06 -Determinación del Análisis Granulométrico de los Agregados  Gruesos y Finos.",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-06-1",
+        "producto": "Módulo de finura de los agregados gruesos y finos.",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-07",
+        "producto": "CYCSA-PE-07 Determinación de la resistencia  del concreto.",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-PE-07.",
+        "producto": "CYCSA-PE-07 Determinación de la resistencia  del concreto.       ( Recolecta de muestras  tomadas por el cliente  más informe de resultados ).",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-08",
+        "producto": "CYCSA-PE-08 Procedimiento para la Dosificación y Fabricación de Mezclas de Concreto (diseño)",
+        "categoria": "N/A",
+        "precio": 7400.0
+    },
+    {
+        "codigo": "CYCSA-PE-09",
+        "producto": "CYCSA-PE-09 \"Determinación del Revenimiento del Concreto\"",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-PE-10",
+        "producto": "CYCSA-PE-10 Procedimiento para la toma de muestras de Concreto.",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-PE-11",
+        "producto": "CYCSA-PE-11 Método de prueba estándar para la relación de rodamiento de california (C.B.R) de los suelos compactos en laboratorio",
+        "categoria": "N/A",
+        "precio": 2250.0
+    },
+    {
+        "codigo": "CYCSA-PE-11-1",
+        "producto": "Ensayo de DCP In situ mas informe de resultados. CYCSA- PE-16 \"Determinación del Análisis Granulométrico de  suelos\". CYCSA-PE-17 \" Determinación de los Límites de consistencia o de Atterberg de los suelos\" y CYCSA-PE-23 Clasificación SUCS.",
+        "categoria": "N/A",
+        "precio": 4800.0
+    },
+    {
+        "codigo": "CYCSA-PE-12",
+        "producto": "CYCSA-PE-12 Método de prueba estándar del número de rebote para concreto endurecido (Martillo Suizo)",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-PE-13",
+        "producto": "CYCSA-PE-13  \"Determinación del contenido de Humedad en muestras de suelos\"",
+        "categoria": "N/A",
+        "precio": 800.0
+    },
+    {
+        "codigo": "CYCSA-PE-14",
+        "producto": "CYCSA-PE-14-Métodos de prueba estándar para la gravedad específica de los sólidos del suelo por picnómetro de agua (Gravedad Especifica)",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-PE-16",
+        "producto": "CYCSA-PE-16 \"Determinación del Análisis Granulométrico de suelos\"",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-17",
+        "producto": "CYCSA-PE-17 \" Determinación de los  Límites de consistencia o de Atterberg de los suelos\"",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-PE-18",
+        "producto": "CYCSA-PE-18 Determinación de las características de compactación del suelo por el método Proctor Estándar y modificado.",
+        "categoria": "N/A",
+        "precio": 2600.0
+    },
+    {
+        "codigo": "CYCSA-PE-18-1",
+        "producto": "CYCSA-PE-18 Determinación de las características de compactación del suelo por el método Proctor Estándar.",
+        "categoria": "N/A",
+        "precio": 1300.0
+    },
+    {
+        "codigo": "CYCSA-PE-18-2",
+        "producto": "CYCSA-PE-18  Determinación de las características de compactación del suelo por el método proctor modificado",
+        "categoria": "N/A",
+        "precio": 1300.0
+    },
+    {
+        "codigo": "CYCSA-PE-19",
+        "producto": "CYCSA-PE-19 -Ferroscan",
+        "categoria": "N/A",
+        "precio": 22200.0
+    },
+    {
+        "codigo": "CYCSA-PE-20",
+        "producto": "CYCSA-PE-20 Método de prueba estándar para la densidad y el peso unitario del suelo in situ mediante el método del cono de arena.",
+        "categoria": "N/A",
+        "precio": 1300.0
+    },
+    {
+        "codigo": "CYCSA-PE-21",
+        "producto": "CYCSA-PE-21 Método de prueba estándar para prueba de penetración estándar (SPT) y muestreo de suelos de barril dividido   (D1586)   (Sondeos Generales SPT)",
+        "categoria": "N/A",
+        "precio": 3700.0
+    },
+    {
+        "codigo": "CYCSA-PE-23",
+        "producto": "CYCSA-PE-23 Práctica estándar para la clasificación de suelos con fines de ingeniería (Sistema Unificado de Clasificación de Suelos)  (SUCS)",
+        "categoria": "N/A",
+        "precio": 800.0
+    },
+    {
+        "codigo": "CYCSA-PE-23.",
+        "producto": "CYCSA-PE-23 Clasificación HBR.",
+        "categoria": "Servicios no acreditados.",
+        "precio": 20.0
+    },
+    {
+        "codigo": "CYCSA-PE-24",
+        "producto": "CYCSA-PE-24 Ensayo de porchet (Velocidad de  infiltración del agua en el  suelo. ( Excavación la realiza el cliente ).",
+        "categoria": "N/A",
+        "precio": 7400.0
+    },
+    {
+        "codigo": "CYCSA-PE-25.",
+        "producto": "CYCSA-PE-25 “Método estándar para la determinación  de densidad in situ y contenido de agua    ( densímetro nuclear)”",
+        "categoria": "N/A",
+        "precio": 1300.0
+    },
+    {
+        "codigo": "CYCSA-PE-25NA",
+        "producto": "CYCSA-PE-25 método estándar para la determinación de densidad insitu y contenido de agua (Densímetro Nuclear)",
+        "categoria": "N/A",
+        "precio": 1300.0
+    },
+    {
+        "codigo": "CYCSA-PE-27",
+        "producto": "CYCSA-PE-27 “Procedimiento para la Determinación de Temperatura en el concreto fresco”",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-PE-27.",
+        "producto": "CYCSA-PE-27 “Procedimiento para la Determinación de Temperatura en el concreto fresco” (Incluye informe de resultados ).",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-PE-27 Y 09.",
+        "producto": "Ensayos en concreto. CYCSA-PE-27-Procedimiento para la Determinación de Temperatura en el concreto fresco, CYCSA-PE-09  Determinación del Revenimiento del Concreto\"",
+        "categoria": "N/A",
+        "precio": 1200.0
+    },
+    {
+        "codigo": "CYCSA-PE-29",
+        "producto": "CYCSA-PE-29 Método de prueba estándar para medir el espesor de elementos de concreto utilizando núcleos de concreto perforados. ( Incluye extracción de muestra )",
+        "categoria": "N/A",
+        "precio": 4500.0
+    },
+    {
+        "codigo": "CYCSA-PE-29 +RESISTENCIA",
+        "producto": "CYCSA-PE-29 Método de prueba estándar para medir el espesor de elementos de concreto utilizando núcleos de concreto perforados. ( Incluye extracción de muestra )",
+        "categoria": "N/A",
+        "precio": 5100.0
+    },
+    {
+        "codigo": "CYCSA-PE-30",
+        "producto": "CYCSA-PE-30 \"Método de ensayo estándar para determinar el esfuerzo de flexión del concreto (utilizando una viga simple con carga en el tercer punto)\"",
+        "categoria": "N/A",
+        "precio": 800.0
+    },
+    {
+        "codigo": "CYCSA-PE-32",
+        "producto": "CYCSA-PE-32 \"Procedimiento para la determinación de la resistencia del Bloque y Adoquín\",",
+        "categoria": "N/A",
+        "precio": 2000.0
+    },
+    {
+        "codigo": "CYCSA-PE-33",
+        "producto": "CYCSA-PE-33 Preparación de muestras analíticas de suelos para ensayos.",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-35",
+        "producto": "Procedimiento contenido de aire del concreto recién mezclado mediante el método por presión",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-PE-36",
+        "producto": "Procedimiento contenido de aire del concreto recién mezclado mediante el método volumétrico",
+        "categoria": "N/A",
+        "precio": 1500.0
+    },
+    {
+        "codigo": "CYCSA-PE-37",
+        "producto": "Determinación del flujo de revenimiento del concreto autoconsolidante",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-38",
+        "producto": "Especificación estándar para barras de acero de baja aleación lisas y corrugadas para refuerzo de hormigón (Ensayos de Doblez Simple)",
+        "categoria": "N/A",
+        "precio": 2250.0
+    },
+    {
+        "codigo": "CYCSA-PE-39",
+        "producto": "CYCSA-PE-39-Determinación del valor de azul de metileno en agregados finos.",
+        "categoria": "N/A",
+        "precio": 1850.0
+    },
+    {
+        "codigo": "CYCSA-PE-40",
+        "producto": "CYCSA-PE-40 Métodos de prueba estándar para la resistencia a la compresión y los módulos elásticos de muestras de núcleos de roca intactos bajo diferentes estados de tensión y temperaturas  ( Compresión simple en roca. )",
+        "categoria": "N/A",
+        "precio": 2800.0
+    },
+    {
+        "codigo": "CYCSA-PE-41",
+        "producto": "CYCSA-PE-41 Método de prueba estándar para grumos de arcilla y partículas desmezurable en agregados.",
+        "categoria": "N/A",
+        "precio": 1900.0
+    },
+    {
+        "codigo": "CYCSA-PE-41-PH (-)",
+        "producto": "Sólidos Suspendidos Totales (MG/L), Sólidos Sediméntales (ML/L), aceites y grasas totales (MG/L), DBO (MG/L), DQO (MG/L), Nitrógeno Total (MG/L), Fósforo Total (MG/L), Coliformes Fecales y Totales",
+        "categoria": "N/A",
+        "precio": 12000.0
+    },
+    {
+        "codigo": "CYCSA-PE-42",
+        "producto": "CYCSA-PE-42 Método de prueba estándar para partículas planas, partículas alargadas o partículas planas y alargadas en agregado grueso   (Alargamiento ó aplastamiento)",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-PE-46",
+        "producto": "CYCSA-PE-46 Métodos de prueba estándar para la densidad del suelo y los materiales rocosos in situ mediante el método de reemplazo de agua en un pozo de prueba Compactación por reemplazo de agua",
+        "categoria": "N/A",
+        "precio": 2250.0
+    },
+    {
+        "codigo": "CYCSA-PE-47",
+        "producto": "CYCSA-PE-47 procedimiento de tinte penetrante para la  detección de defectos en la soldadura (ensayo no destructivo)",
+        "categoria": "N/A",
+        "precio": 2000.0
+    },
+    {
+        "codigo": "CYCSA-PE-49",
+        "producto": "CYCSA-PE-49 Método de prueba estándar para el uso del penetrómetro de cono dinámico en aplicaciones de pavimentos poco profundos(DCP)",
+        "categoria": "N/A",
+        "precio": 4800.0
+    },
+    {
+        "codigo": "CYCSA-PE-50",
+        "producto": "CYCSA-PE-50 Método de prueba estándar para el valor equivalente de arena de suelos y agregados finos (Equivalente de arena.)",
+        "categoria": "N/A",
+        "precio": 2250.0
+    },
+    {
+        "codigo": "CYCSA-PE-51",
+        "producto": "CYCSA-PE-51 Métodos de Prueba Estándar para Medición No Destructiva del Espesor de Película Seca de Recubrimientos No-Magnético Aplicado a una Base Ferrosa",
+        "categoria": "N/A",
+        "precio": 1900.0
+    },
+    {
+        "codigo": "CYCSA-PE-52",
+        "producto": "CYCSA-PE-52 Método de prueba estándar para la solidez de los agregados mediante el uso de sulfato de sodio o sulfato de magnesio. (Intemperísmo Acelerado agregado grueso Durabilidad de sulfato en magnesio)",
+        "categoria": "N/A",
+        "precio": 4500.0
+    },
+    {
+        "codigo": "CYCSA-PE-54",
+        "producto": "CYCSA-PE-54 Método de Prueba Estándar para Propiedades de Consolidados Unidimensionalmente de Suelo Usando Carga Incremental",
+        "categoria": "N/A",
+        "precio": 15000.0
+    },
+    {
+        "codigo": "CYCSA-PE-55",
+        "producto": "Método Prueba de Corte Directo de  Suelo en Consolidación Drenada Consolidada",
+        "categoria": "N/A",
+        "precio": 5500.0
+    },
+    {
+        "codigo": "CYCSA-PE-57",
+        "producto": "CYCSA-PE-57 Método de prueba estándar para la resistencia a la compresión de morteros de cemento hidráulico (utilizando muestras cúbicas de 50 mm [2 in])",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-PE-57-1",
+        "producto": "Toma de muestras de cubos de mortero  y ensayo Método de prueba estándar para la resistencia a la compresión de morteros de cemento hidráulico (utilizando muestras cúbicas de 50 mm [2 in]) muestras de 3 cubos cada una.",
+        "categoria": "N/A",
+        "precio": 4800.0
+    },
+    {
+        "codigo": "CYCSA-PE-58",
+        "producto": "CYCSA-PE-58 Métodos de prueba estándar para la resistencia a la compresión de cilindros de suelo-cemento moldeados.",
+        "categoria": "N/A",
+        "precio": 600.0
+    },
+    {
+        "codigo": "CYCSA-PE-59",
+        "producto": "CYCSA-PE-59 Determinación de la densidad, la absorción de agua y los vacíos en el concreto endurecido.",
+        "categoria": "N/A",
+        "precio": 900.0
+    },
+    {
+        "codigo": "CYCSA-PE-61",
+        "producto": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para  materiales metálicos. ( Muestra de varillas #3)",
+        "categoria": "N/A",
+        "precio": 4250.0
+    },
+    {
+        "codigo": "CYCSA-PE-61-1",
+        "producto": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #4 )",
+        "categoria": "N/A",
+        "precio": 4250.0
+    },
+    {
+        "codigo": "CYCSA-PE-61-2",
+        "producto": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #5 )",
+        "categoria": "N/A",
+        "precio": 4700.0
+    },
+    {
+        "codigo": "CYCSA-PE-61-3",
+        "producto": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #6 )",
+        "categoria": "N/A",
+        "precio": 4700.0
+    },
+    {
+        "codigo": "CYCSA-PE-61-4",
+        "producto": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #7 )",
+        "categoria": "N/A",
+        "precio": 6700.0
+    },
+    {
+        "codigo": "CYCSA-PE-61-5",
+        "producto": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #8 )",
+        "categoria": "N/A",
+        "precio": 6700.0
+    },
+    {
+        "codigo": "LAB-001",
+        "producto": "Servicio de Laboratorio  proyecto Sistema de Alcantarillado Sanitario Chinandega.",
+        "categoria": "N/A",
+        "precio": 106210.47
+    },
+    {
+        "codigo": "LAB-002",
+        "producto": "Servicio de Laboratorio proyecto Rehabilitación de Aeropuertos de la Costa Caribe Sur",
+        "categoria": "N/A",
+        "precio": 0.0
+    }
+]

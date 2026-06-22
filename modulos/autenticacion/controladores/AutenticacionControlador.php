@@ -33,6 +33,7 @@ class AutenticacionControlador extends ControladorBase {
                 $_SESSION['usuario_id'] = $usuario['id'];
                 $_SESSION['usuario_nombre'] = $usuario['nombre'];
                 $_SESSION['usuario_rol'] = $usuario['id_rol'];
+                $_SESSION['usuario_permisos'] = !empty($usuario['permisos']) ? json_decode($usuario['permisos'], true) : null;
                 
                 // 🚀 REDIRIGIR AL PANEL DE CONTROL
                 $respuesta->redirigir('/Cycsa/publico/panel');

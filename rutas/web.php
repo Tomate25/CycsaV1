@@ -6,6 +6,7 @@ use Cycsa\Modulos\Usuarios\Controladores\PanelControlador;
 use Cycsa\Modulos\Usuarios\Controladores\UsuariosControlador;
 use Cycsa\Modulos\Cotizaciones\Controladores\CotizacionesControlador;
 use Cycsa\Modulos\Clientes\Controladores\ClientesControlador;
+use Cycsa\Modulos\Productos\Controladores\ProductosControlador;
 
 
 $app = Aplicacion::$app;
@@ -34,6 +35,14 @@ $app->enrutador->post('/clientes/crear', [ClientesControlador::class, 'guardar']
 // ✏️ NUEVAS RUTAS DE EDICIÓN
 $app->enrutador->get('/clientes/editar', [ClientesControlador::class, 'editar']);
 $app->enrutador->post('/clientes/editar', [ClientesControlador::class, 'actualizar']);
+
+// Rutas de Productos / Ensayos
+$app->enrutador->get('/productos', [ProductosControlador::class, 'index']);
+$app->enrutador->get('/productos/crear', [ProductosControlador::class, 'crear']);
+$app->enrutador->post('/productos/crear', [ProductosControlador::class, 'guardar']);
+$app->enrutador->get('/productos/editar', [ProductosControlador::class, 'editar']);
+$app->enrutador->post('/productos/editar', [ProductosControlador::class, 'actualizar']);
+$app->enrutador->get('/productos/eliminar', [ProductosControlador::class, 'eliminar']);
 
 // Rutas de Cotizaciones
 $app->enrutador->get('/cotizaciones', [CotizacionesControlador::class, 'index']);

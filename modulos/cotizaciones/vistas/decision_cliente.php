@@ -7,6 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($titulo ?? 'Decisión de Cotización - CYCSA', ENT_QUOTES, 'UTF-8') ?></title>
+    <link rel="shortcut icon" href="/Cycsa/publico/img/logo.png" type="image/png">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

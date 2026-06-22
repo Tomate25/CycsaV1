@@ -1,0 +1,255 @@
+<?php
+
+namespace Cycsa\Modulos\Productos\Controladores;
+
+use Cycsa\Nucleo\ControladorBase;
+use Cycsa\Nucleo\Peticion;
+use Cycsa\Nucleo\Respuesta;
+use Cycsa\Modulos\Productos\Modelos\ProductoModelo;
+
+class ProductosControlador extends ControladorBase {
+    
+    // 🛡️ Verificar sesión activa
+    private function verificarSesion(Respuesta $respuesta): void {
+        if (!isset($_SESSION['usuario_id'])) {
+            $respuesta->redirigir('/Cycsa/publico/login');
+            exit;
+        }
+    }
+
+    // 🔍 INDEX CON BUSQUEDA Y FILTRADO POR CATEGORÍA
+    public function index(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            exit;
+        }
+        
+        $modelo = new ProductoModelo();
+        $busqueda = $_GET['q'] ?? '';
+        $categoria = $_GET['cat'] ?? '';
+
+        $this->renderizar('productos/vistas/index', [
+            'titulo' => 'Catálogo de Ensayos y Servicios - Cycsa',
+            'productos' => $modelo->obtenerTodos($busqueda, $categoria),
+            'categorias' => $modelo->obtenerCategorias(),
+            'busqueda' => $busqueda,
+            'categoria_actual' => $categoria
+        ]);
+    }
+
+    // ➕ FORMULARIO CREAR
+    public function crear(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            exit;
+        }
+        if (empty($_SESSION['csrf_token'])) { 
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); 
+        }
+
+        $modelo = new ProductoModelo();
+        $this->renderizar('productos/vistas/crear', [
+            'titulo' => 'Registrar Nuevo Ensayo / Servicio - Cycsa',
+            'categorias' => $modelo->obtenerCategorias()
+        ]);
+    }
+
+    // 💾 GUARDAR NUEVO PRODUCTO
+    public function guardar(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            exit;
+        }
+        
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $modelo = new ProductoModelo();
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $this->renderizar('productos/vistas/crear', [
+                    'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
+                    'error' => 'Error: Token CSRF inválido.', 
+                    'valores' => $datos,
+                    'categorias' => $modelo->obtenerCategorias()
+                ]); 
+                return;
+            }
+
+            // Validar campos requeridos
+            if (empty(trim($datos['ensayo_servicio']))) {
+                $this->renderizar('productos/vistas/crear', [
+                    'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
+                    'error' => 'La descripción o nombre del ensayo/servicio es obligatorio.', 
+                    'valores' => $datos,
+                    'categorias' => $modelo->obtenerCategorias()
+                ]); 
+                return;
+            }
+
+            // Validar precio
+            if (!isset($datos['precio']) || $datos['precio'] === '' || floatval($datos['precio']) < 0) {
+                $this->renderizar('productos/vistas/crear', [
+                    'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
+                    'error' => 'El precio debe ser un número mayor o igual a 0.', 
+                    'valores' => $datos,
+                    'categorias' => $modelo->obtenerCategorias()
+                ]); 
+                return;
+            }
+
+            // Validar duplicado de código de servicio (si se ingresó uno)
+            if (!empty($datos['codigo_servicio']) && $modelo->codigoExiste($datos['codigo_servicio'])) {
+                $this->renderizar('productos/vistas/crear', [
+                    'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
+                    'error' => 'El código de formato o servicio ya está registrado.', 
+                    'valores' => $datos,
+                    'categorias' => $modelo->obtenerCategorias()
+                ]); 
+                return;
+            }
+
+            if ($modelo->guardar($datos)) {
+                $respuesta->redirigir('/Cycsa/publico/productos');
+                return;
+            } else {
+                $this->renderizar('productos/vistas/crear', [
+                    'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
+                    'error' => 'Error al intentar guardar el registro en la base de datos.', 
+                    'valores' => $datos,
+                    'categorias' => $modelo->obtenerCategorias()
+                ]); 
+                return;
+            }
+        }
+    }
+
+    // ✏️ MOSTRAR FORMULARIO DE EDICIÓN
+    public function editar(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            exit;
+        }
+        
+        $id = $_GET['id'] ?? null;
+        if (!$id) { 
+            $respuesta->redirigir('/Cycsa/publico/productos'); 
+            return; 
+        }
+
+        $modelo = new ProductoModelo();
+        $producto = $modelo->obtenerPorId((int)$id);
+
+        if (!$producto) { 
+            $respuesta->redirigir('/Cycsa/publico/productos'); 
+            return; 
+        }
+        
+        if (empty($_SESSION['csrf_token'])) { 
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); 
+        }
+
+        $this->renderizar('productos/vistas/editar', [
+            'titulo' => 'Editar Ensayo / Servicio - Cycsa',
+            'producto' => $producto,
+            'categorias' => $modelo->obtenerCategorias()
+        ]);
+    }
+
+    // ✏️ GUARDAR EDICIÓN
+    public function actualizar(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            exit;
+        }
+        
+        $id = $_GET['id'] ?? null;
+        if (!$id || !$peticion->esPost()) { 
+            $respuesta->redirigir('/Cycsa/publico/productos'); 
+            return; 
+        }
+
+        $datos = $peticion->obtenerDatos();
+        $modelo = new ProductoModelo();
+
+        // CSRF
+        if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            $this->renderizar('productos/vistas/editar', [
+                'titulo' => 'Editar Ensayo / Servicio', 
+                'error' => 'Error: Token CSRF inválido.', 
+                'producto' => array_merge($datos, ['id' => $id]),
+                'categorias' => $modelo->obtenerCategorias()
+            ]); 
+            return;
+        }
+
+        // Validar campos requeridos
+        if (empty(trim($datos['ensayo_servicio']))) {
+            $this->renderizar('productos/vistas/editar', [
+                'titulo' => 'Editar Ensayo / Servicio', 
+                'error' => 'La descripción o nombre del ensayo/servicio es obligatorio.', 
+                'producto' => array_merge($datos, ['id' => $id]),
+                'categorias' => $modelo->obtenerCategorias()
+            ]); 
+            return;
+        }
+
+        // Validar precio
+        if (!isset($datos['precio']) || $datos['precio'] === '' || floatval($datos['precio']) < 0) {
+            $this->renderizar('productos/vistas/editar', [
+                'titulo' => 'Editar Ensayo / Servicio', 
+                'error' => 'El precio debe ser un número mayor o igual a 0.', 
+                'producto' => array_merge($datos, ['id' => $id]),
+                'categorias' => $modelo->obtenerCategorias()
+            ]); 
+            return;
+        }
+
+        // Validar duplicado de código de servicio
+        if (!empty($datos['codigo_servicio']) && $modelo->codigoExiste($datos['codigo_servicio'], (int)$id)) {
+            $this->renderizar('productos/vistas/editar', [
+                'titulo' => 'Editar Ensayo / Servicio', 
+                'error' => 'El código de formato o servicio ya pertenece a otro registro.', 
+                'producto' => array_merge($datos, ['id' => $id]),
+                'categorias' => $modelo->obtenerCategorias()
+            ]); 
+            return;
+        }
+
+        if ($modelo->actualizar((int)$id, $datos)) {
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            return;
+        } else {
+            $this->renderizar('productos/vistas/editar', [
+                'titulo' => 'Editar Ensayo / Servicio', 
+                'error' => 'Error al intentar actualizar el registro en la base de datos.', 
+                'producto' => array_merge($datos, ['id' => $id]),
+                'categorias' => $modelo->obtenerCategorias()
+            ]); 
+            return;
+        }
+    }
+
+    // 🗑️ DESACTIVAR PRODUCTO (SOFT DELETE / TOGGLE ACTIVO)
+    public function eliminar(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            exit;
+        }
+        
+        $id = $_GET['id'] ?? null;
+        if ($id) {
+            $modelo = new ProductoModelo();
+            $modelo->desactivar((int)$id);
+        }
+        
+        $respuesta->redirigir('/Cycsa/publico/productos');
+        return;
+    }
+}

@@ -14,13 +14,13 @@
 
 <div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
     
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+    <div class="header-flex">
         <div>
             <h2 style="margin: 0; color: #333; font-size: 20px;">Módulo de Clientes</h2>
             <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">Cartera de clientes y empresas registradas.</p>
         </div>
         
-        <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="actions-flex">
             <form method="GET" action="/Cycsa/publico/clientes" style="display: flex;">
                 <input type="text" name="q" placeholder="Buscar por nombre, RUC o email..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" style="padding: 8px 15px; border: 1px solid #ced4da; border-radius: 4px 0 0 4px; font-family: 'Inter', sans-serif; width: 250px; outline: none;">
                 <button type="submit" style="background: #e9ecef; border: 1px solid #ced4da; border-left: none; padding: 8px 15px; border-radius: 0 4px 4px 0; cursor: pointer; color: #495057;"><i class="fa-solid fa-magnifying-glass"></i></button>
@@ -29,9 +29,11 @@
                 <?php endif; ?>
             </form>
 
+            <?php if (tienePermiso('clientes', 'crear_editar')): ?>
             <a href="/Cycsa/publico/clientes/crear" style="background: var(--cycsa-azul); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: 'Inter', sans-serif; text-decoration: none; display: inline-block; transition: background 0.3s; margin-left: 10px;">
                 <i class="fa-solid fa-plus"></i> Registrar Cliente
             </a>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -45,7 +47,9 @@
                     <th>Correo Electrónico</th>
                     <th>Teléfono</th>
                     <th>Estado</th>
+                    <?php if (tienePermiso('clientes', 'crear_editar')): ?>
                     <th style="text-align: right;">Acciones</th>
+                    <?php endif; ?>
                 </tr>
             </thead>
             <tbody>
@@ -63,17 +67,19 @@
                             <span class="badge-inactivo">Inactivo</span>
                         <?php endif; ?>
                     </td>
+                    <?php if (tienePermiso('clientes', 'crear_editar')): ?>
                     <td style="text-align: right;">
                         <a href="/Cycsa/publico/clientes/editar?id=<?= $cliente['id'] ?>" class="btn-accion btn-editar" title="Editar">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </a>
                     </td>
+                    <?php endif; ?>
                 </tr>
                 <?php endforeach; ?>
                 
                 <?php if(empty($clientes)): ?>
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 30px; color: #6c757d;">No se encontraron clientes registrados.</td>
+                    <td colspan="<?= tienePermiso('clientes', 'crear_editar') ? 7 : 6 ?>" style="text-align: center; padding: 30px; color: #6c757d;">No se encontraron clientes registrados.</td>
                 </tr>
                 <?php endif; ?>
             </tbody>

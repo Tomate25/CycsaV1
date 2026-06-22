@@ -27,13 +27,13 @@
 
 <div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
     
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+    <div class="header-flex">
         <div>
             <h2 style="margin: 0; color: #333; font-size: 20px;">Gestión de Cotizaciones</h2>
             <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">Administra el ciclo de vida de las propuestas económicas.</p>
         </div>
         
-        <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="actions-flex">
             <form method="GET" action="/Cycsa/publico/cotizaciones" style="display: flex;">
                 <input type="hidden" name="tab" value="<?= htmlspecialchars($tabActual ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="text" name="q" placeholder="Buscar por código, cliente..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" style="padding: 8px 15px; border: 1px solid #ced4da; border-radius: 4px 0 0 4px; font-family: 'Inter', sans-serif; width: 260px; outline: none;">
@@ -43,9 +43,11 @@
                 <?php endif; ?>
             </form>
 
+            <?php if (tienePermiso('cotizaciones', 'crear_editar')): ?>
             <a href="/Cycsa/publico/cotizaciones/crear" style="background: var(--cycsa-azul); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: 'Inter', sans-serif; text-decoration: none; display: inline-block; transition: background 0.3s; margin-left: 10px;">
                 <i class="fa-solid fa-plus"></i> Nueva Cotización
             </a>
+            <?php endif; ?>
         </div>
     </div>
 

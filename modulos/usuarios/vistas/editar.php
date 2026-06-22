@@ -44,6 +44,83 @@
                 <?php endforeach; ?>
             </select>
         </div>
+        
+        <?php
+        $permisos = !empty($usuario['permisos']) ? json_decode($usuario['permisos'], true) : [];
+        $clientesVer = isset($permisos['clientes']['ver']) ? ($permisos['clientes']['ver'] == 1) : true;
+        $clientesCE = isset($permisos['clientes']['crear_editar']) ? ($permisos['clientes']['crear_editar'] == 1) : true;
+        $productosVer = isset($permisos['productos']['ver']) ? ($permisos['productos']['ver'] == 1) : true;
+        $productosCE = isset($permisos['productos']['crear_editar']) ? ($permisos['productos']['crear_editar'] == 1) : false;
+        $cotizacionesVer = isset($permisos['cotizaciones']['ver']) ? ($permisos['cotizaciones']['ver'] == 1) : true;
+        $cotizacionesCE = isset($permisos['cotizaciones']['crear_editar']) ? ($permisos['cotizaciones']['crear_editar'] == 1) : true;
+        ?>
+
+        <!-- 🛡️ SECCIÓN DINÁMICA DE PERMISOS -->
+        <div id="seccion-permisos" style="margin-bottom: 25px; border: 1px solid var(--border-light); padding: 20px; border-radius: 6px; background-color: #f8fafc; display: none;">
+            <h4 style="margin: 0 0 12px 0; color: var(--cycsa-azul); font-size: 14.5px; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-shield-halved"></i> Permisos del Vendedor
+            </h4>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 18px; line-height: 1.4;">Marca los módulos y las acciones específicas a las que este vendedor tendrá acceso en la aplicación.</p>
+            
+            <!-- Modulo: Clientes -->
+            <div style="margin-bottom: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 12px;">
+                <strong style="font-size: 13px; color: #334155; display: block; margin-bottom: 6px;">Módulo Clientes:</strong>
+                <div style="display: flex; gap: 20px;">
+                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[clientes][ver]" value="1" <?= $clientesVer ? 'checked' : '' ?> style="accent-color: var(--cycsa-azul);"> Ver Clientes (Acceso al módulo)
+                    </label>
+                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[clientes][crear_editar]" value="1" <?= $clientesCE ? 'checked' : '' ?> style="accent-color: var(--cycsa-azul);"> Registrar / Editar Clientes
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Modulo: Productos / Ensayos -->
+            <div style="margin-bottom: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 12px;">
+                <strong style="font-size: 13px; color: #334155; display: block; margin-bottom: 6px;">Módulo Productos / Ensayos (Catálogo):</strong>
+                <div style="display: flex; gap: 20px;">
+                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[productos][ver]" value="1" <?= $productosVer ? 'checked' : '' ?> style="accent-color: var(--cycsa-azul);"> Ver Productos (Catálogo)
+                    </label>
+                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[productos][crear_editar]" value="1" <?= $productosCE ? 'checked' : '' ?> style="accent-color: var(--cycsa-azul);"> Crear / Editar / Eliminar Ensayos
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Modulo: Cotizaciones -->
+            <div style="margin-bottom: 5px;">
+                <strong style="font-size: 13px; color: #334155; display: block; margin-bottom: 6px;">Módulo Cotizaciones:</strong>
+                <div style="display: flex; gap: 20px;">
+                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[cotizaciones][ver]" value="1" <?= $cotizacionesVer ? 'checked' : '' ?> style="accent-color: var(--cycsa-azul);"> Ver Cotizaciones
+                    </label>
+                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[cotizaciones][crear_editar]" value="1" <?= $cotizacionesCE ? 'checked' : '' ?> style="accent-color: var(--cycsa-azul);"> Crear / Editar / Aprobar
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const selectRol = document.querySelector('select[name="id_rol"]');
+                const seccionPermisos = document.getElementById('seccion-permisos');
+                
+                function togglePermisos() {
+                    if (selectRol.value == '2') { // 2 = Vendedor
+                        seccionPermisos.style.display = 'block';
+                    } else {
+                        seccionPermisos.style.display = 'none';
+                    }
+                }
+                
+                if (selectRol) {
+                    selectRol.addEventListener('change', togglePermisos);
+                    togglePermisos();
+                }
+            });
+        </script>
 
         <div style="margin-bottom: 30px;">
             <label style="display: block; margin-bottom: 8px; color: #495057; font-weight: 500; font-size: 14px;">Estado de la Cuenta</label>

@@ -61,18 +61,19 @@ class UsuarioModelo extends ModeloBase {
     }
 
     // 💾 GUARDAR NUEVO USUARIO
-    public function guardarUsuario($nombre, $email, $password, $id_rol) {
+    public function guardarUsuario($nombre, $email, $password, $id_rol, $permisos = null) {
         $hashSeguro = password_hash($password, PASSWORD_DEFAULT);
         
-        $sql = "INSERT INTO usuarios (nombre, email, password, id_rol, activo) 
-                VALUES (:nombre, :email, :password, :id_rol, 1)";
+        $sql = "INSERT INTO usuarios (nombre, email, password, id_rol, activo, permisos) 
+                VALUES (:nombre, :email, :password, :id_rol, 1, :permisos)";
                 
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
             'nombre' => $nombre,
             'email' => $email,
             'password' => $hashSeguro,
-            'id_rol' => $id_rol
+            'id_rol' => $id_rol,
+            'permisos' => $permisos
         ]);
     }
 
@@ -85,7 +86,8 @@ class UsuarioModelo extends ModeloBase {
                         email = :email, 
                         password = :password, 
                         id_rol = :id_rol, 
-                        activo = :activo 
+                        activo = :activo,
+                        permisos = :permisos
                     WHERE id = :id";
             $stmt = $this->db->prepare($sql);
             return $stmt->execute([
@@ -94,6 +96,7 @@ class UsuarioModelo extends ModeloBase {
                 'password' => $hashSeguro,
                 'id_rol'   => $datos['id_rol'],
                 'activo'   => $datos['activo'],
+                'permisos' => $datos['permisos'] ?? null,
                 'id'       => $id
             ]);
         } else {
@@ -101,7 +104,8 @@ class UsuarioModelo extends ModeloBase {
                     SET nombre = :nombre, 
                         email = :email, 
                         id_rol = :id_rol, 
-                        activo = :activo 
+                        activo = :activo,
+                        permisos = :permisos
                     WHERE id = :id";
             $stmt = $this->db->prepare($sql);
             return $stmt->execute([
@@ -109,6 +113,7 @@ class UsuarioModelo extends ModeloBase {
                 'email'  => trim($datos['email']),
                 'id_rol' => $datos['id_rol'],
                 'activo' => $datos['activo'],
+                'permisos' => $datos['permisos'] ?? null,
                 'id'     => $id
             ]);
         }

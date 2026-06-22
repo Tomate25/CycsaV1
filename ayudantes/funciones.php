@@ -88,6 +88,23 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         $precio = number_format($det['precio_unitario'], 2);
         $sub = number_format($det['subtotal'], 2);
 
+        $metaHtml = '';
+        if (!empty($det['codigo_servicio'])) {
+            $metaHtml .= "<span style=\"color:#475569; font-size:9px;\">Código: <strong>" . htmlspecialchars($det['codigo_servicio'], ENT_QUOTES, 'UTF-8') . "</strong></span>";
+        }
+        if (!empty($det['norma_astm'])) {
+            if ($metaHtml) $metaHtml .= " &bull; ";
+            $metaHtml .= "<span style=\"color:#475569; font-size:9px;\">Norma: <strong>" . htmlspecialchars($det['norma_astm'], ENT_QUOTES, 'UTF-8') . "</strong></span>";
+        }
+        if (!empty($det['formato_reporte'])) {
+            if ($metaHtml) $metaHtml .= " &bull; ";
+            $metaHtml .= "<span style=\"color:#475569; font-size:9px;\">Formato Reporte: <strong>" . htmlspecialchars($det['formato_reporte'], ENT_QUOTES, 'UTF-8') . "</strong></span>";
+        }
+        
+        if ($metaHtml) {
+            $desc = "<strong>{$desc}</strong><div style=\"margin-top: 3px; padding-top: 2px; border-top: 1px dashed #e2e8f0; font-size: 9px;\">{$metaHtml}</div>";
+        }
+
         $rowsHtml .= "
         <tr>
             <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px;\">{$desc}</td>
@@ -280,3 +297,48 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     return $dompdf->output();
 }
 
+/**
+ * Verifica si el usuario logueado tiene permiso para acceder a un módulo o realizar una acción.
+ */
+function tienePermiso(string $modulo, string $accion = 'ver'): bool {
+    if (!isset($_SESSION['usuario_rol'])) {
+        return false;
+    }
+    
+    // Administrador (Rol 1) siempre tiene acceso total
+    if ($_SESSION['usuario_rol'] == 1) {
+        return true;
+    }
+    
+    // Si no es Administrador ni Vendedor, denegar
+    if ($_SESSION['usuario_rol'] != 2) {
+        return false;
+    }
+    
+    // Gestión de usuarios es estrictamente para Administradores
+    if ($modulo === 'usuarios') {
+        return false;
+    }
+    
+    $permisos = $_SESSION['usuario_permisos'] ?? [];
+    if (is_string($permisos)) {
+        $permisos = json_decode($permisos, true);
+    }
+    
+    return isset($permisos[$modulo][$accion]) && ($permisos[$modulo][$accion] == 1 || $permisos[$modulo][$accion] === true);
+}
+
+/**
+ * Retorna la URL base del sitio de forma dinámica según el host actual.
+ */
+function obtenerBaseUrl(): string {
+    if (isset($_SERVER['HTTP_HOST'])) {
+        $protocolo = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $scriptPath = $_SERVER['SCRIPT_NAME'];
+        $dir = dirname($scriptPath);
+        $dir = str_replace('\\', '/', $dir);
+        $dir = rtrim($dir, '/');
+        return "{$protocolo}://{$_SERVER['HTTP_HOST']}{$dir}";
+    }
+    return $_ENV['APP_URL'] ?? 'http://localhost/Cycsa/publico';
+}

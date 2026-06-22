@@ -1,0 +1,2202 @@
+[
+    {
+        "no_item": "1",
+        "matriz_tipo": "Agregados",
+        "nombre": "Humedad en agregados, ASTM C566-25",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "Acreditado",
+        "norma": "ASTM C566-25",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "2",
+        "matriz_tipo": "Agregados",
+        "nombre": "Absorción de Agregado Grueso – ASTM C127-25",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "No acreditado",
+        "norma": "ASTM C127 -25\nASTM C128 -25",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "3",
+        "matriz_tipo": "Agregados",
+        "nombre": "Absorción de Agregado Fino – ASTM C128-25",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "No acreditado",
+        "norma": "ASTM C127 -25\nASTM C128 -25",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "4",
+        "matriz_tipo": "Agregados",
+        "nombre": "Gravedad Específica y Absorción de Agregado Grueso – ASTM C127-25",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "No acreditado",
+        "norma": "ASTM C127 -25\nASTM C128 -25",
+        "precio": 2250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "5",
+        "matriz_tipo": "Agregados",
+        "nombre": "Gravedad Específica y Absorción de Agregado Fino – ASTM C128-25",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "No acreditado",
+        "norma": "ASTM C127 -25\nASTM C128 -25",
+        "precio": 2250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "6",
+        "matriz_tipo": "Agregados",
+        "nombre": "Peso unitario PVSC, ASTM C29",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "No acreditado",
+        "norma": "ASTM C29 / C29M-23",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "7",
+        "matriz_tipo": "Agregados",
+        "nombre": "Peso unitario PVSS, ASTM C29",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "No acreditado",
+        "norma": "ASTM C29 / C29M-23",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "8",
+        "matriz_tipo": "Agregados",
+        "nombre": "Peso unitario PVSS, PVSC  ASTM C29",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "No acreditado",
+        "norma": "ASTM C29 / C29M-23",
+        "precio": 1500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "9",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Abrasión Los Ángeles, ASTM C131/C535",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "C131 / C131 M-20                          ASTM C535",
+        "precio": 3000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "10",
+        "matriz_tipo": "Agregados",
+        "nombre": "Materia Orgánica en Agregado Fino (Colorimetría) – ASTM C40/C40M-26",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "No acreditado",
+        "norma": "ASTM C140/C140M-26",
+        "precio": 950.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "11",
+        "matriz_tipo": "Agregados",
+        "nombre": "Granulometría agregados, ASTM C136/C117",
+        "codigo_servicio": "CYCSA-RT-FM-22-F",
+        "estatus": "Acreditado",
+        "norma": "ASTM C136 / C136M- 25                        ASTM C117-23",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "12",
+        "matriz_tipo": "Concreto",
+        "nombre": "Resistencia a Compresión del Concreto – ASTM C39/C39M-23",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "Acreditado",
+        "norma": "ASTM C39/C39M-23",
+        "precio": 600.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "13",
+        "matriz_tipo": "Concreto",
+        "nombre": "Diseño de Mezclas de Concreto – ACI 211",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "No acreditado",
+        "norma": "ACI 211",
+        "precio": 7400.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "14",
+        "matriz_tipo": "Concreto",
+        "nombre": "Revenimiento del Concreto – ASTM C143/C143M-26a",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "Acreditado",
+        "norma": "ASTM C143/C143M- 26a",
+        "precio": 600.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "15",
+        "matriz_tipo": "Concreto",
+        "nombre": "Muestreo de Concreto Fresco – ASTM C172",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "No acreditado",
+        "norma": "ASTM C172",
+        "precio": 600.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "16",
+        "matriz_tipo": "Suelo",
+        "nombre": "CBR de Suelos en Laboratorio – ASTM D1883-21",
+        "codigo_servicio": "CYCSA-RT-FM-22H",
+        "estatus": "No acreditado",
+        "norma": "ASTM D 1883-21",
+        "precio": 2250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "17",
+        "matriz_tipo": "Concreto",
+        "nombre": "Número de Rebote del Concreto (Esclerómetro) – ASTM C805/C805M-25",
+        "codigo_servicio": "CYCSA-RT-FM-22 D",
+        "estatus": "No acreditado",
+        "norma": "ASTM C805/ C805M-25",
+        "precio": 1500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "18",
+        "matriz_tipo": "Suelo",
+        "nombre": "Contenido de Humedad en Suelos – ASTM D2216-19",
+        "codigo_servicio": "CYCSA-RT-FM-22-F",
+        "estatus": "Acreditado",
+        "norma": "ASTM C 2216-19",
+        "precio": 800.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "19",
+        "matriz_tipo": "Suelo",
+        "nombre": "Gravedad Específica de Suelos (Picnómetro) – ASTM D854-23",
+        "codigo_servicio": "CYCSA-RT-FM-22G",
+        "estatus": "No acreditado",
+        "norma": "ASTM D854-23",
+        "precio": 1500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "20",
+        "matriz_tipo": "Suelo",
+        "nombre": "Granulometría de Suelos – ASTM D6913/D6913M-17 (2025)",
+        "codigo_servicio": "CYCSA-RT-FM-22F",
+        "estatus": "Acreditado",
+        "norma": "ASTM D6913/ D6913 M-17 (2025)",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "21",
+        "matriz_tipo": "Suelo",
+        "nombre": "Límites de Atterberg de Suelos – ASTM D4318-17e1",
+        "codigo_servicio": "CYCSA-RT-FM-22 F",
+        "estatus": "Acreditado",
+        "norma": "ASTM D4318-17e1",
+        "precio": 1500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "22",
+        "matriz_tipo": "Suelo",
+        "nombre": "Compactación de Suelos (Proctor Estándar) – ASTM D698-12 (Reapproved 2021)",
+        "codigo_servicio": "CYCSA-RT-FM-22 C",
+        "estatus": "Acreditado",
+        "norma": "ASTM D698-12\n(Reappoved 2021)",
+        "precio": 1300.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "23",
+        "matriz_tipo": "Suelo",
+        "nombre": "Compactación de Suelos (Proctor Modificado) – ASTM D698-12 (Reapproved 2021)",
+        "codigo_servicio": "CYCSA-RT-FM-22 C",
+        "estatus": "Acreditado",
+        "norma": "ASTM D1557-12\n(Reappoved 2021)",
+        "precio": 1300.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "24",
+        "matriz_tipo": "concreto",
+        "nombre": "Detección de Acero en Concreto (Ferroscan)",
+        "codigo_servicio": "No acreditado",
+        "estatus": "No acreditado",
+        "norma": "No acreditado",
+        "precio": 22200.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "25",
+        "matriz_tipo": "Suelo",
+        "nombre": "Densidad In Situ por Cono de Arena – ASTM D1556/D1556M-24",
+        "codigo_servicio": "CYCSA-RT-FM-22 B",
+        "estatus": "No acreditado",
+        "norma": "ASTM D 1556/ D1556M-24",
+        "precio": 1300.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "26",
+        "matriz_tipo": "Suelo",
+        "nombre": "SPT y Muestreo de Suelos (Barril y Shelby) – ASTM D1586/D1586M-18e1, ASTM D1587/D1587M-15",
+        "codigo_servicio": "CYCSA-RT-FM-22 C",
+        "estatus": "No acreditado",
+        "norma": "ASTM D1586 / D1586M -18e1\nASTM D1587 / D1587M-15",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "27",
+        "matriz_tipo": "Suelo",
+        "nombre": "Clasificación de Suelos (SUCS) – ASTM D2487-17",
+        "codigo_servicio": "CYCSA-RT-FM-22F",
+        "estatus": "No acreditado",
+        "norma": "ASTM D 2487 -17",
+        "precio": 800.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "28",
+        "matriz_tipo": "Suelo",
+        "nombre": "Ensayo de Infiltración en Suelos (Porchet)",
+        "codigo_servicio": "CYCSA-RT-FM-22A",
+        "estatus": "No acreditado",
+        "norma": "No acreditado",
+        "precio": 7400.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "29",
+        "matriz_tipo": "Suelo",
+        "nombre": "Densidad y Humedad In Situ (Densímetro Nuclear) – ASTM D6938-23",
+        "codigo_servicio": "CYCSA-RT-FM-22 B",
+        "estatus": "Acreditado",
+        "norma": "ASTM D6938-23",
+        "precio": 1300.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "30",
+        "matriz_tipo": "Concreto",
+        "nombre": "Temperatura del Concreto Fresco – ASTM C1064/C1064M-23",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "Acreditado",
+        "norma": "ASTM C1064M/C1064M-23",
+        "precio": 600.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "31",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Espesor de Concreto mediante Núcleos – ASTM C174/C174M, ASTM C42, ASTM C39",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM C 174/C174M                         ASTM C39       ASTM C42",
+        "precio": 4500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "32",
+        "matriz_tipo": "Concreto",
+        "nombre": "Resistencia a Flexión del Concreto (Tercer Punto) – ASTM C78/C78M-22",
+        "codigo_servicio": "CYCSA-RT-FM-22-E",
+        "estatus": "Acreditado",
+        "norma": "ASTM C78/C78M-22",
+        "precio": 800.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "33",
+        "matriz_tipo": "Concreto",
+        "nombre": "Resistencia de Bloques– ASTM C140/C140M-24",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "Acreditado",
+        "norma": "ASTM-C140/C140M-24",
+        "precio": 2000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "34",
+        "matriz_tipo": "Concreto",
+        "nombre": "Resistencia de Adoquines– ASTM C140/C140M-24",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "Acreditado",
+        "norma": "ASTM-C140/C140M-23",
+        "precio": 2000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "35",
+        "matriz_tipo": "Concreto",
+        "nombre": "Preparación de Muestras de Suelos – ASTM D421",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM-D421",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "36",
+        "matriz_tipo": "Concreto",
+        "nombre": "Contenido de Aire en Concreto Fresco (Presión) – ASTM C231/C231M-14",
+        "codigo_servicio": "No acreditado",
+        "estatus": "No acreditado",
+        "norma": "ASTM C231/C231M-14",
+        "precio": 1500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "37",
+        "matriz_tipo": "Concreto",
+        "nombre": "Contenido de Aire en Concreto Fresco (Volumétrico) – ASTM C173/C173M",
+        "codigo_servicio": "No acreditado",
+        "estatus": "No acreditado",
+        "norma": "ASTM C173/C173M",
+        "precio": 1500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "38",
+        "matriz_tipo": "Concreto",
+        "nombre": "Flujo de Revenimiento del Concreto Autoconsolidante – ASTM C1611/C1611M-21",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "No acreditado",
+        "norma": "ASTM C1611/C1611M-21",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "39",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Doblado de Barras de Refuerzo – ASTM A706/A706M-22a, ASTM A615/A615M-22",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "A706 / A706 M-22a\nA615 / A615 M-22",
+        "precio": 2250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "40",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Valor de Azul de Metileno en Agregados Finos – AASHTO T 330",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "(Norma de referencia AASHTO T 330)",
+        "precio": 1850.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "41",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Compresión Uniaxial en Roca – ASTM D7012-23",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM D7012-23",
+        "precio": 2800.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "42",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Grumos de Arcilla en Agregados – ASTM C142/C142M-25",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "C142 / C142 M-25",
+        "precio": 1900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "43",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Partículas Planas y Alargadas en Agregado Grueso – ASTM D4791-23",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM D4791-23",
+        "precio": 600.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "44",
+        "matriz_tipo": "Suelo",
+        "nombre": "Densidad In Situ por Reemplazo de Agua – ASTM D5030/D5030M-21, ENTP 339.183-2002",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM D5030 M-21\nENTP 339.183-2002",
+        "precio": 2250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "45",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Líquidos Penetrantes en Soldadura – ASTM E165/E165M-23",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "E165/E165M−23",
+        "precio": 2000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "46",
+        "matriz_tipo": null,
+        "nombre": "Determinación de la permeabilidad in situ por método Lefranc (NF P 94-132)",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 7400.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "47",
+        "matriz_tipo": "Suelo",
+        "nombre": "Penetrómetro de Cono Dinámico (DCP) – ASTM D6951/D6951M-18 (2023)",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "D6951/D6951M-18 (2023)",
+        "precio": 4800.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "48",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Equivalente de Arena en Suelos y Agregados Finos – ASTM D2419-22",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "No acreditado",
+        "norma": "ASTM D-2419-22",
+        "precio": 2250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "49",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Espesor de Película Seca en Recubrimientos No Magnéticos sobre Base Ferrosa – ASTM D1186-01",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM D1186-01",
+        "precio": 2250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "50",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Solidez de Agregados (Sulfato de Sodio o Magnesio) – ASTM C88/C88M-24",
+        "codigo_servicio": "CYCSA-RT-FM-22-F",
+        "estatus": "No acreditado",
+        "norma": "ASTM C88 / C88M -24",
+        "precio": 4500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "51",
+        "matriz_tipo": "suelo",
+        "nombre": "Corte Directo en Suelos (Consolidado Drenado) – ASTM D3080/D3080M-23",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM D2435/ D2435M-11",
+        "precio": 15000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "52",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Corte Directo en Suelos (Consolidado Drenado) – ASTM D3080/D3080M-23",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM D3080/ D3080M-23",
+        "precio": 5500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "53",
+        "matriz_tipo": "mortero",
+        "nombre": "Resistencia a Compresión de Morteros – ASTM C109/C109M-24",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM C109/C109 M- 24",
+        "precio": 600.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "54",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Resistencia a Compresión de Suelo-Cemento – ASTM D1633-17",
+        "codigo_servicio": "CYCSA-RT-FM-22 A",
+        "estatus": "No acreditado",
+        "norma": "ASTM D1633-17",
+        "precio": 600.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "55",
+        "matriz_tipo": "Concreto",
+        "nombre": "Densidad, Absorción y Vacíos en Concreto Endurecido – ASTM C642",
+        "codigo_servicio": "N/A",
+        "estatus": "No acreditado",
+        "norma": "ASTM C642",
+        "precio": 900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "56",
+        "matriz_tipo": null,
+        "nombre": "Tracción de materiales metálicos (  Muestra de varilla #3) \nASTM E8/E8M (ref. ASTM A370)",
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 4250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "57",
+        "matriz_tipo": null,
+        "nombre": "Tracción de materiales metálicos (  Muestra de varilla #4) \nASTM E8/E8M (ref. ASTM A370)",
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 4250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "58",
+        "matriz_tipo": null,
+        "nombre": "Tracción de materiales metálicos (  Muestra de varilla #5) \nASTM E8/E8M (ref. ASTM A370)",
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 4700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "59",
+        "matriz_tipo": null,
+        "nombre": "Tracción de materiales metálicos (  Muestra de varilla #6) \nASTM E8/E8M (ref. ASTM A370)",
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 4700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "60",
+        "matriz_tipo": null,
+        "nombre": "Tracción de materiales metálicos (  Muestra de varilla #7) \nASTM E8/E8M (ref. ASTM A370)",
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 6700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "61",
+        "matriz_tipo": null,
+        "nombre": "Tracción de materiales metálicos (  Muestra de varilla #8) \nASTM E8/E8M (ref. ASTM A370)",
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 6700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "62",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización Managua Urbano",
+        "codigo_servicio": "CYCSA-026-1",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2300.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "63",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Santa Rosa.",
+        "codigo_servicio": "CYCSA-026-10",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "64",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia  El Sauce.",
+        "codigo_servicio": "CYCSA-026-11",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "65",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Rivas",
+        "codigo_servicio": "CYCSA-026-12",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "66",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Granada.",
+        "codigo_servicio": "CYCSA-026-13",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "67",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia  Pueblos Blancos",
+        "codigo_servicio": "CYCSA-026-14",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "68",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia  Masaya.",
+        "codigo_servicio": "CYCSA-026-15",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "69",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Carazo.",
+        "codigo_servicio": "CYCSA-026-16",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "70",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Puerto Morazán.",
+        "codigo_servicio": "CYCSA-026-17",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "71",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Somotillo.",
+        "codigo_servicio": "CYCSA-026-18",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "72",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Chontales",
+        "codigo_servicio": "CYCSA-026-19",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "73",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización Chinandega-Urbano",
+        "codigo_servicio": "CYCSA-026-2",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2300.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "74",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Matagalpa.",
+        "codigo_servicio": "CYCSA-026-20",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "75",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización Jinotega.",
+        "codigo_servicio": "CYCSA-026-21",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "76",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Nueva Segovia.",
+        "codigo_servicio": "CYCSA-026-22",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "77",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Boaco",
+        "codigo_servicio": "CYCSA-026-23",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "78",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia San Carlos.",
+        "codigo_servicio": "CYCSA-026-24",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 11050.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "79",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia  Bilwi.",
+        "codigo_servicio": "CYCSA-026-25",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 11050.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "80",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Wiwilí",
+        "codigo_servicio": "CYCSA-026-26",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 11050.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "81",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia El Rama.",
+        "codigo_servicio": "CYCSA-026-27",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 11050.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "82",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Nueva Guinea",
+        "codigo_servicio": "CYCSA-026-28",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 11050.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "83",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización Tipitapa.",
+        "codigo_servicio": "CYCSA-026-29",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "84",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización  sitio carretera Potosí Km 142",
+        "codigo_servicio": "CYCSA-026-3",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "85",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización Waspam.",
+        "codigo_servicio": "CYCSA-026-30",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 44200.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "86",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Región del Autónoma Atlántico Norte (RAAN).",
+        "codigo_servicio": "CYCSA-026-31",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 44200.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "87",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Bonanza.",
+        "codigo_servicio": "CYCSA-026-32",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 44200.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "88",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización a Puerto Sandino.",
+        "codigo_servicio": "CYCSA-026-33",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2250.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "89",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia  Posoltega.",
+        "codigo_servicio": "CYCSA-026-34",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1900.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "90",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Nandaime.",
+        "codigo_servicio": "CYCSA-026-35",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "91",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Estelí (Urbano)",
+        "codigo_servicio": "CYCSA-026-36",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5550.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "92",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia mina El Limón.",
+        "codigo_servicio": "CYCSA-026-37",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "93",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia León.",
+        "codigo_servicio": "CYCSA-026-38",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1300.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "94",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Peñas Blancas.",
+        "codigo_servicio": "CYCSA-026-39",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 18000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "95",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización Km 139 carretera a Corinto",
+        "codigo_servicio": "CYCSA-026-4",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2600.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "96",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización ciudad de Managua.",
+        "codigo_servicio": "CYCSA-026-40",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1500.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "97",
+        "matriz_tipo": "Movilización",
+        "nombre": "Movilización hacia Corinto.",
+        "codigo_servicio": "CYCSA-026-41",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2600.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "98",
+        "matriz_tipo": "Movilización",
+        "nombre": "Carretera León-San Isidro, San Jacinto Tizate.",
+        "codigo_servicio": "CYCSA-026-5",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "99",
+        "matriz_tipo": "Concreto",
+        "nombre": "Movilización Telica-León",
+        "codigo_servicio": "CYCSA-026-6",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2000.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "100",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Movilización hacia San Juan del Sur.",
+        "codigo_servicio": "CYCSA-026-7",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 11050.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "101",
+        "matriz_tipo": "Suelo",
+        "nombre": "Movilización hacia Ocotal",
+        "codigo_servicio": "CYCSA-026-8",
+        "estatus": "No acreditado",
+        "norma": "ASTM D558 / D558M - 19                       ASTM D1633-17",
+        "precio": 7200.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "102",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": "Movilización hacia Achuapa.",
+        "codigo_servicio": "CYCSA-026-9",
+        "estatus": "No acreditado",
+        "norma": "A706 / A706 M-25\nA615 / A615 M-25",
+        "precio": 3700.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "103",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": null,
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 0.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "104",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": null,
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 0.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "105",
+        "matriz_tipo": "Barro",
+        "nombre": null,
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 0.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "106",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": null,
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 0.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "107",
+        "matriz_tipo": "Suelo",
+        "nombre": null,
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 0.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "108",
+        "matriz_tipo": "Suelo",
+        "nombre": null,
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 0.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "109",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": null,
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 0.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "110",
+        "matriz_tipo": "Suelos",
+        "nombre": null,
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 0.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "111",
+        "matriz_tipo": "Otros ensayos",
+        "nombre": null,
+        "codigo_servicio": null,
+        "estatus": "No acreditado",
+        "norma": null,
+        "precio": 0.0,
+        "origen": "CYCSA RG-LI-05"
+    },
+    {
+        "no_item": "CYCSA-001",
+        "matriz_tipo": "N/A",
+        "nombre": "Diseño de Mezcla de Suelo-Cemento",
+        "codigo_servicio": "CYCSA-001",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 7400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-001-1",
+        "matriz_tipo": "N/A",
+        "nombre": "Diseño de mezcla de Lodocreto.",
+        "codigo_servicio": "CYCSA-001-1",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 7400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-001-2",
+        "matriz_tipo": "N/A",
+        "nombre": "Diseño de mezcla de mortero.",
+        "codigo_servicio": "CYCSA-001-2",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 7400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-002",
+        "matriz_tipo": "N/A",
+        "nombre": "Método de prueba estándar para la determinación de la dureza de la roca mediante el método del martillo de rebote",
+        "codigo_servicio": "CYCSA-002",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-003",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-Método de prueba estándar para la relación de carga de california (CBR) de suelos compactados en laboratorio.",
+        "codigo_servicio": "CYCSA-003",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2250.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-005",
+        "matriz_tipo": "N/A",
+        "nombre": "Métodos de prueba estándar para la densidad del suelo y los materiales rocosos in situ mediante el método de reemplazo de agua en un pozo de prueba compactación por reemplazo de agua.",
+        "codigo_servicio": "CYCSA-005",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2250.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-006",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-03- Determinación de los pesos unitarios seco sueltos y seco compacto de los agregados gruesos y finos.  ( PVSS y PVSC ).",
+        "codigo_servicio": "CYCSA-006",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-007",
+        "matriz_tipo": "N/A",
+        "nombre": "Métodos de prueba estándar para índice de densidad mínimo y peso unitario de suelos y cálculo de densidad relativa (Densidad Mínima-Densidad Máxima)",
+        "codigo_servicio": "CYCSA-007",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-010",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-Método de prueba estándar para partículas planas, partículas alargadas o partículas planas y alargadas en agregado grueso   (Alargamiento ó aplastamiento)",
+        "codigo_servicio": "CYCSA-010",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1200.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-013",
+        "matriz_tipo": "N/A",
+        "nombre": "Método de prueba estándar para determinar el porcentaje de partículas fracturadas en agregado grueso (caras fracturadas)",
+        "codigo_servicio": "CYCSA-013",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1150.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-014",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-Tracción indirecta en roca",
+        "codigo_servicio": "CYCSA-014",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5550.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-015",
+        "matriz_tipo": "N/A",
+        "nombre": "Práctica estándar para pruebas de líquidos penetrantes para la industria general.",
+        "codigo_servicio": "CYCSA-015",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2000.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-016",
+        "matriz_tipo": "N/A",
+        "nombre": "Ensayos de tensión en placas de acero",
+        "codigo_servicio": "CYCSA-016",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 7400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-017",
+        "matriz_tipo": "N/A",
+        "nombre": "ENSAYOS DE ESPESOR DE PINTURA",
+        "codigo_servicio": "CYCSA-017",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2000.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-018",
+        "matriz_tipo": "N/A",
+        "nombre": "Determinación de sales solubles (cloruros, sulfatos y sales totales)",
+        "codigo_servicio": "CYCSA-018",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4300.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-019",
+        "matriz_tipo": "N/A",
+        "nombre": "Método de prueba estándar para grumos de arcilla y partículas desmezurable en agregados",
+        "codigo_servicio": "CYCSA-019",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-020",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-Contenido de Cloruros solubles en agua",
+        "codigo_servicio": "CYCSA-020",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 7400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-021",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-Contenido de sulfatos solubles en suelo o agua subterránea",
+        "codigo_servicio": "CYCSA-021",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 7400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-022",
+        "matriz_tipo": "N/A",
+        "nombre": "Laboratorio para realizar Ensayos CYCSA-PE-27“Procedimiento para la Determinación de Temperatura en el concreto fresco”,  CYCSA-PE-09 \"Determinación del Revenimiento del Concreto\" y CYCSA-PE-07“Determinación de la resistencia del concreto” 4 cilindros.",
+        "codigo_servicio": "CYCSA-022",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5550.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-022-3CILIDNROS",
+        "matriz_tipo": "N/A",
+        "nombre": "Laboratorio para realizar Ensayos, CYCSA-PE-27“Procedimiento para la Determinación de Temperatura en el concreto fresco”, CYCSA-PE-09 \"Determinación del Revenimiento del Concreto\" y CYCSA-PE-07“Determinación de la resistencia del concreto” 3 cilindros.",
+        "codigo_servicio": "CYCSA-022-3CILIDNROS",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4800.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-022-DIA",
+        "matriz_tipo": "N/A",
+        "nombre": "Laboratorio por día   CYCSA-PE-27“Procedimiento para la Determinación de Temperatura en el concreto fresco”, CYCSA-PE-09 \"Determinación del Revenimiento del Concreto\" y CYCSA-PE-07“Determinación de la resistencia del concreto” 12 cilindros .",
+        "codigo_servicio": "CYCSA-022-DIA",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5550.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-023",
+        "matriz_tipo": "N/A",
+        "nombre": "Muestreo de ladrillos",
+        "codigo_servicio": "CYCSA-023",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-024",
+        "matriz_tipo": "N/A",
+        "nombre": "Muestreo de agregados",
+        "codigo_servicio": "CYCSA-024",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-025",
+        "matriz_tipo": "N/A",
+        "nombre": "Preparación de muestras (Suelo, Agregado, Adoquín, Bloque, Concreto)",
+        "codigo_servicio": "CYCSA-025",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-026-EXONERADO",
+        "matriz_tipo": "N/A",
+        "nombre": "Movilización exonerada.",
+        "codigo_servicio": "CYCSA-026-EXONERADO",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 0.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-027",
+        "matriz_tipo": "N/A",
+        "nombre": "Canon de arrendamientos.",
+        "codigo_servicio": "CYCSA-027",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-028",
+        "matriz_tipo": "N/A",
+        "nombre": "Laboratorio por día,   ( Jornada  diurna ordinaria, no mayor a 8 horas , máximo de ensayos a realizar  6  ) CYCSA-PE-25 “Método estándar para la determinación de densidad in situ y contenido de agua (densímetro nuclear)”",
+        "codigo_servicio": "CYCSA-028",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-028-PUNTUAL 3",
+        "matriz_tipo": "N/A",
+        "nombre": "Servicio de laboratorio puntual para realizar máximo 3 ensayos CYCSA-PE-25 “Método estándar para la determinación de densidad in situ y contenido de agua (densímetro nuclear)”",
+        "codigo_servicio": "CYCSA-028-PUNTUAL 3",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-028-PUNTUAL 4",
+        "matriz_tipo": "N/A",
+        "nombre": "Servicio de laboratorio puntual para realizar máximo 4 ensayos  CYCSA-PE-25 “Método estándar para la determinación de densidad in situ y contenido de agua (densímetro nuclear)”",
+        "codigo_servicio": "CYCSA-028-PUNTUAL 4",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5200.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-029",
+        "matriz_tipo": "N/A",
+        "nombre": "Servicio por mes para ensayo CYCSA-PE-25 “Método estándar para la determinación de densidad in situ y contenido de agua (densímetro nuclear)” Y CYCSA-PE-18 Determinación de las características de compactación del suelo por el método Proctor Estándar",
+        "codigo_servicio": "CYCSA-029",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 132500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-030",
+        "matriz_tipo": "N/A",
+        "nombre": "Permeabilidad de Pared Flexible  (K)",
+        "codigo_servicio": "CYCSA-030",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 10500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-031",
+        "matriz_tipo": "N/A",
+        "nombre": "Ensayo de Expansión (Exp).",
+        "codigo_servicio": "CYCSA-031",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 0.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-032",
+        "matriz_tipo": "N/A",
+        "nombre": "Toma de muestra,  vigueta de concreto.",
+        "codigo_servicio": "CYCSA-032",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 800.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-033",
+        "matriz_tipo": "N/A",
+        "nombre": "Toma de muestra ,  cilindro  de concreto.",
+        "codigo_servicio": "CYCSA-033",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-034",
+        "matriz_tipo": "N/A",
+        "nombre": "Estudio Geológico",
+        "codigo_servicio": "CYCSA-034",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 0.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-035",
+        "matriz_tipo": "N/A",
+        "nombre": "Estudio Hidrogeológico.",
+        "codigo_servicio": "CYCSA-035",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 0.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-036",
+        "matriz_tipo": "N/A",
+        "nombre": "Sondeos manuales a un metro de profundidad ( Extracción de 2 muestras  0 a 50 cm y de  50cm a 100 cm)",
+        "codigo_servicio": "CYCSA-036",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5550.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-037",
+        "matriz_tipo": "N/A",
+        "nombre": "Diseño de carpeta de rodamiento en asfalto y concreto.",
+        "codigo_servicio": "CYCSA-037",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 11100.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-038",
+        "matriz_tipo": "N/A",
+        "nombre": "Informe de  estudio geotécnico, conclusiones y recomendaciones.",
+        "codigo_servicio": "CYCSA-038",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-039",
+        "matriz_tipo": "N/A",
+        "nombre": "Infiltración, ensayo de permeabilidad Lefranc + informe.",
+        "codigo_servicio": "CYCSA-039",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 7400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-GRANITO",
+        "matriz_tipo": "Sin categoría.",
+        "nombre": "Plancha de Granito.",
+        "codigo_servicio": "CYCSA-GRANITO",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 0.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-MO PROYECTOS",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-SERVICIO DE MANO DE OBRA",
+        "codigo_servicio": "CYCSA-MO PROYECTOS",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 0.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-MO PROYECTOS E",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-MO PROYECTOS E",
+        "codigo_servicio": "CYCSA-MO PROYECTOS E",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 0.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-01",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-01  \"Determinación de la Humedad en  muestras de agregados\"",
+        "codigo_servicio": "CYCSA-PE-01",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-01-1",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-07 Determinación de la resistencia  del concreto (Núcleos )",
+        "codigo_servicio": "CYCSA-PE-01-1",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-02",
+        "matriz_tipo": "N/A",
+        "nombre": "Método de prueba estándar para densidad relativa (gravedad específica) y absorción de agregado fino y gruesos (% de absorción)",
+        "codigo_servicio": "CYCSA-PE-02",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-02.",
+        "matriz_tipo": "N/A",
+        "nombre": "Método de prueba estándar para densidad relativa (gravedad específica) y absorción de agregado fino y gruesos (Gravedad GE, GE SSS, GE AP)",
+        "codigo_servicio": "CYCSA-PE-02.",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2250.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-02-R",
+        "matriz_tipo": "N/A",
+        "nombre": "Método de prueba estándar para densidad relativa (gravedad específica) y absorción de agregado  gruesos    (% de Absorción) en roca.",
+        "codigo_servicio": "CYCSA-PE-02-R",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-03..",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-03- Determinación de los pesos unitarios seco sueltos y seco compacto  ( PVSC )",
+        "codigo_servicio": "CYCSA-PE-03..",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-03 PVSS Y PVSC",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-03- Determinación de los pesos unitarios seco sueltos y seco compacto de los  suelos  ( PVSS y PVSC ).",
+        "codigo_servicio": "CYCSA-PE-03 PVSS Y PVSC",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-03-PVSS",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-03- Determinación de los pesos unitarios seco sueltos y seco compacto  ( PVSS )",
+        "codigo_servicio": "CYCSA-PE-03-PVSS",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-04",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-04 Determinación de la resistencia al desgaste, del agregado grueso de tamaño hasta de 37.5 mm (1½ pulg), por abrasión e impacto en la Máquina de Los Ángeles)  Abrasión de los ángeles",
+        "codigo_servicio": "CYCSA-PE-04",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3000.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-05",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-05- Determinación de materia orgánica en los agregados  (Colorimetría).",
+        "codigo_servicio": "CYCSA-PE-05",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 950.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-06",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-06 -Determinación del Análisis Granulométrico de los Agregados  Gruesos y Finos.",
+        "codigo_servicio": "CYCSA-PE-06",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-06-1",
+        "matriz_tipo": "N/A",
+        "nombre": "Módulo de finura de los agregados gruesos y finos.",
+        "codigo_servicio": "CYCSA-PE-06-1",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-07",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-07 Determinación de la resistencia  del concreto.",
+        "codigo_servicio": "CYCSA-PE-07",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-08",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-08 Procedimiento para la Dosificación y Fabricación de Mezclas de Concreto (diseño)",
+        "codigo_servicio": "CYCSA-PE-08",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 7400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-10",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-10 Procedimiento para la toma de muestras de Concreto.",
+        "codigo_servicio": "CYCSA-PE-10",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-11",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-11 Método de prueba estándar para la relación de rodamiento de california (C.B.R) de los suelos compactos en laboratorio",
+        "codigo_servicio": "CYCSA-PE-11",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2250.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-11-1",
+        "matriz_tipo": "N/A",
+        "nombre": "Ensayo de DCP In situ mas informe de resultados. CYCSA- PE-16 \"Determinación del Análisis Granulométrico de  suelos\". CYCSA-PE-17 \" Determinación de los Límites de consistencia o de Atterberg de los suelos\" y CYCSA-PE-23 Clasificación SUCS.",
+        "codigo_servicio": "CYCSA-PE-11-1",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4800.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-12",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-12 Método de prueba estándar del número de rebote para concreto endurecido (Martillo Suizo)",
+        "codigo_servicio": "CYCSA-PE-12",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-13",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-13  \"Determinación del contenido de Humedad en muestras de suelos\"",
+        "codigo_servicio": "CYCSA-PE-13",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 800.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-14",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-14-Métodos de prueba estándar para la gravedad específica de los sólidos del suelo por picnómetro de agua (Gravedad Especifica)",
+        "codigo_servicio": "CYCSA-PE-14",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-16",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-16 \"Determinación del Análisis Granulométrico de suelos\"",
+        "codigo_servicio": "CYCSA-PE-16",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-18",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-18 Determinación de las características de compactación del suelo por el método Proctor Estándar y modificado.",
+        "codigo_servicio": "CYCSA-PE-18",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-18-1",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-18 Determinación de las características de compactación del suelo por el método Proctor Estándar.",
+        "codigo_servicio": "CYCSA-PE-18-1",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1300.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-18-2",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-18  Determinación de las características de compactación del suelo por el método proctor modificado",
+        "codigo_servicio": "CYCSA-PE-18-2",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1300.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-19",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-19 -Ferroscan",
+        "codigo_servicio": "CYCSA-PE-19",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 22200.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-20",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-20 Método de prueba estándar para la densidad y el peso unitario del suelo in situ mediante el método del cono de arena.",
+        "codigo_servicio": "CYCSA-PE-20",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1300.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-21",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-21 Método de prueba estándar para prueba de penetración estándar (SPT) y muestreo de suelos de barril dividido   (D1586)   (Sondeos Generales SPT)",
+        "codigo_servicio": "CYCSA-PE-21",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 3700.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-23",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-23 Práctica estándar para la clasificación de suelos con fines de ingeniería (Sistema Unificado de Clasificación de Suelos)  (SUCS)",
+        "codigo_servicio": "CYCSA-PE-23",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 800.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-23.",
+        "matriz_tipo": "Servicios no acreditados.",
+        "nombre": "CYCSA-PE-23 Clasificación HBR.",
+        "codigo_servicio": "CYCSA-PE-23.",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 20.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-24",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-24 Ensayo de porchet (Velocidad de  infiltración del agua en el  suelo. ( Excavación la realiza el cliente ).",
+        "codigo_servicio": "CYCSA-PE-24",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 7400.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-25.",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-25 “Método estándar para la determinación  de densidad in situ y contenido de agua    ( densímetro nuclear)”",
+        "codigo_servicio": "CYCSA-PE-25.",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1300.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-25NA",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-25 método estándar para la determinación de densidad insitu y contenido de agua (Densímetro Nuclear)",
+        "codigo_servicio": "CYCSA-PE-25NA",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1300.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-27",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-27 “Procedimiento para la Determinación de Temperatura en el concreto fresco”",
+        "codigo_servicio": "CYCSA-PE-27",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-27 Y 09.",
+        "matriz_tipo": "N/A",
+        "nombre": "Ensayos en concreto. CYCSA-PE-27-Procedimiento para la Determinación de Temperatura en el concreto fresco, CYCSA-PE-09  Determinación del Revenimiento del Concreto\"",
+        "codigo_servicio": "CYCSA-PE-27 Y 09.",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1200.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-29",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-29 Método de prueba estándar para medir el espesor de elementos de concreto utilizando núcleos de concreto perforados. ( Incluye extracción de muestra )",
+        "codigo_servicio": "CYCSA-PE-29",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-30",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-30 \"Método de ensayo estándar para determinar el esfuerzo de flexión del concreto (utilizando una viga simple con carga en el tercer punto)\"",
+        "codigo_servicio": "CYCSA-PE-30",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 800.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-32",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-32 \"Procedimiento para la determinación de la resistencia del Bloque y Adoquín\",",
+        "codigo_servicio": "CYCSA-PE-32",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2000.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-33",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-33 Preparación de muestras analíticas de suelos para ensayos.",
+        "codigo_servicio": "CYCSA-PE-33",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-35",
+        "matriz_tipo": "N/A",
+        "nombre": "Procedimiento contenido de aire del concreto recién mezclado mediante el método por presión",
+        "codigo_servicio": "CYCSA-PE-35",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-36",
+        "matriz_tipo": "N/A",
+        "nombre": "Procedimiento contenido de aire del concreto recién mezclado mediante el método volumétrico",
+        "codigo_servicio": "CYCSA-PE-36",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-37",
+        "matriz_tipo": "N/A",
+        "nombre": "Determinación del flujo de revenimiento del concreto autoconsolidante",
+        "codigo_servicio": "CYCSA-PE-37",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-38",
+        "matriz_tipo": "N/A",
+        "nombre": "Especificación estándar para barras de acero de baja aleación lisas y corrugadas para refuerzo de hormigón (Ensayos de Doblez Simple)",
+        "codigo_servicio": "CYCSA-PE-38",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2250.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-39",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-39-Determinación del valor de azul de metileno en agregados finos.",
+        "codigo_servicio": "CYCSA-PE-39",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1850.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-40",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-40 Métodos de prueba estándar para la resistencia a la compresión y los módulos elásticos de muestras de núcleos de roca intactos bajo diferentes estados de tensión y temperaturas  ( Compresión simple en roca. )",
+        "codigo_servicio": "CYCSA-PE-40",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2800.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-41-PH (-)",
+        "matriz_tipo": "N/A",
+        "nombre": "Sólidos Suspendidos Totales (MG/L), Sólidos Sediméntales (ML/L), aceites y grasas totales (MG/L), DBO (MG/L), DQO (MG/L), Nitrógeno Total (MG/L), Fósforo Total (MG/L), Coliformes Fecales y Totales",
+        "codigo_servicio": "CYCSA-PE-41-PH (-)",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 12000.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-42",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-42 Método de prueba estándar para partículas planas, partículas alargadas o partículas planas y alargadas en agregado grueso   (Alargamiento ó aplastamiento)",
+        "codigo_servicio": "CYCSA-PE-42",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-46",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-46 Métodos de prueba estándar para la densidad del suelo y los materiales rocosos in situ mediante el método de reemplazo de agua en un pozo de prueba Compactación por reemplazo de agua",
+        "codigo_servicio": "CYCSA-PE-46",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2250.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-47",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-47 procedimiento de tinte penetrante para la  detección de defectos en la soldadura (ensayo no destructivo)",
+        "codigo_servicio": "CYCSA-PE-47",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2000.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-49",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-49 Método de prueba estándar para el uso del penetrómetro de cono dinámico en aplicaciones de pavimentos poco profundos(DCP)",
+        "codigo_servicio": "CYCSA-PE-49",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4800.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-50",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-50 Método de prueba estándar para el valor equivalente de arena de suelos y agregados finos (Equivalente de arena.)",
+        "codigo_servicio": "CYCSA-PE-50",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 2250.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-51",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-51 Métodos de Prueba Estándar para Medición No Destructiva del Espesor de Película Seca de Recubrimientos No-Magnético Aplicado a una Base Ferrosa",
+        "codigo_servicio": "CYCSA-PE-51",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 1900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-52",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-52 Método de prueba estándar para la solidez de los agregados mediante el uso de sulfato de sodio o sulfato de magnesio. (Intemperísmo Acelerado agregado grueso Durabilidad de sulfato en magnesio)",
+        "codigo_servicio": "CYCSA-PE-52",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-54",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-54 Método de Prueba Estándar para Propiedades de Consolidados Unidimensionalmente de Suelo Usando Carga Incremental",
+        "codigo_servicio": "CYCSA-PE-54",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 15000.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-55",
+        "matriz_tipo": "N/A",
+        "nombre": "Método Prueba de Corte Directo de  Suelo en Consolidación Drenada Consolidada",
+        "codigo_servicio": "CYCSA-PE-55",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 5500.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-57",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-57 Método de prueba estándar para la resistencia a la compresión de morteros de cemento hidráulico (utilizando muestras cúbicas de 50 mm [2 in])",
+        "codigo_servicio": "CYCSA-PE-57",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-57-1",
+        "matriz_tipo": "N/A",
+        "nombre": "Toma de muestras de cubos de mortero  y ensayo Método de prueba estándar para la resistencia a la compresión de morteros de cemento hidráulico (utilizando muestras cúbicas de 50 mm [2 in]) muestras de 3 cubos cada una.",
+        "codigo_servicio": "CYCSA-PE-57-1",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4800.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-58",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-58 Métodos de prueba estándar para la resistencia a la compresión de cilindros de suelo-cemento moldeados.",
+        "codigo_servicio": "CYCSA-PE-58",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 600.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-59",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-59 Determinación de la densidad, la absorción de agua y los vacíos en el concreto endurecido.",
+        "codigo_servicio": "CYCSA-PE-59",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 900.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-61",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para  materiales metálicos. ( Muestra de varillas #3)",
+        "codigo_servicio": "CYCSA-PE-61",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4250.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-61-1",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #4 )",
+        "codigo_servicio": "CYCSA-PE-61-1",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4250.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-61-2",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #5 )",
+        "codigo_servicio": "CYCSA-PE-61-2",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4700.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-61-3",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #6 )",
+        "codigo_servicio": "CYCSA-PE-61-3",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 4700.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-61-4",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #7 )",
+        "codigo_servicio": "CYCSA-PE-61-4",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 6700.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "CYCSA-PE-61-5",
+        "matriz_tipo": "N/A",
+        "nombre": "CYCSA-PE-61 Métodos de pruebas estándar de tensión para materiales metálicos. ( Muestra de varillas #8 )",
+        "codigo_servicio": "CYCSA-PE-61-5",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 6700.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "LAB-001",
+        "matriz_tipo": "N/A",
+        "nombre": "Servicio de Laboratorio  proyecto Sistema de Alcantarillado Sanitario Chinandega.",
+        "codigo_servicio": "LAB-001",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 106210.47,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    },
+    {
+        "no_item": "LAB-002",
+        "matriz_tipo": "N/A",
+        "nombre": "Servicio de Laboratorio proyecto Rehabilitación de Aeropuertos de la Costa Caribe Sur",
+        "codigo_servicio": "LAB-002",
+        "estatus": "No acreditado",
+        "norma": "N/A",
+        "precio": 0.0,
+        "origen": "CYCSA-LISTA DE PRECIOS 18052026"
+    }
+]
