@@ -85,7 +85,7 @@ class UsuariosControlador extends ControladorBase {
             
             // Procesamiento de permisos
             $permisosJson = null;
-            if ($id_rol == 2) {
+            if ($id_rol != 1) {
                 $permisosInput = $datos['permisos'] ?? [];
                 $permisos = [
                     'clientes' => [
@@ -98,13 +98,32 @@ class UsuariosControlador extends ControladorBase {
                     ],
                     'cotizaciones' => [
                         'ver' => isset($permisosInput['cotizaciones']['ver']) ? 1 : 0,
-                        'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0
+                        'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0,
+                        'aprobar' => isset($permisosInput['cotizaciones']['aprobar']) ? 1 : 0
+                    ],
+                    'inventario' => [
+                        'ver' => isset($permisosInput['inventario']['ver']) ? 1 : 0,
+                        'crear_editar' => isset($permisosInput['inventario']['crear_editar']) ? 1 : 0
+                    ],
+                    'compras' => [
+                        'ver' => isset($permisosInput['compras']['ver']) ? 1 : 0,
+                        'crear_editar' => isset($permisosInput['compras']['crear_editar']) ? 1 : 0
+                    ],
+                    'contabilidad' => [
+                        'ver' => isset($permisosInput['contabilidad']['ver']) ? 1 : 0
+                    ],
+                    'laboratorio' => [
+                        'ver' => isset($permisosInput['laboratorio']['ver']) ? 1 : 0,
+                        'crear_editar' => isset($permisosInput['laboratorio']['crear_editar']) ? 1 : 0
                     ]
                 ];
                 $permisosJson = json_encode($permisos);
             }
             
             $modelo->guardarUsuario($nombre, $email, $password, $id_rol, $permisosJson);
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $lastId = $db->lastInsertId();
+            registrarBitacora('usuarios', 'crear', 'Creado usuario: ' . $nombre . ' (correo: ' . $email . ')', $lastId);
             $respuesta->redirigir('/Cycsa/publico/usuarios');
             return;
         }
@@ -168,7 +187,7 @@ class UsuariosControlador extends ControladorBase {
 
         // Procesamiento de permisos
         $permisosJson = null;
-        if ($id_rol == 2) {
+        if ($id_rol != 1) {
             $permisosInput = $datos['permisos'] ?? [];
             $permisos = [
                 'clientes' => [
@@ -181,7 +200,23 @@ class UsuariosControlador extends ControladorBase {
                 ],
                 'cotizaciones' => [
                     'ver' => isset($permisosInput['cotizaciones']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0
+                    'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0,
+                    'aprobar' => isset($permisosInput['cotizaciones']['aprobar']) ? 1 : 0
+                ],
+                'inventario' => [
+                    'ver' => isset($permisosInput['inventario']['ver']) ? 1 : 0,
+                    'crear_editar' => isset($permisosInput['inventario']['crear_editar']) ? 1 : 0
+                ],
+                'compras' => [
+                    'ver' => isset($permisosInput['compras']['ver']) ? 1 : 0,
+                    'crear_editar' => isset($permisosInput['compras']['crear_editar']) ? 1 : 0
+                ],
+                'contabilidad' => [
+                    'ver' => isset($permisosInput['contabilidad']['ver']) ? 1 : 0
+                ],
+                'laboratorio' => [
+                    'ver' => isset($permisosInput['laboratorio']['ver']) ? 1 : 0,
+                    'crear_editar' => isset($permisosInput['laboratorio']['crear_editar']) ? 1 : 0
                 ]
             ];
             $permisosJson = json_encode($permisos);
@@ -199,6 +234,7 @@ class UsuariosControlador extends ControladorBase {
         }
 
         $modelo->actualizar((int)$id, $datosActualizados);
+        registrarBitacora('usuarios', 'editar', 'Actualizado usuario: ' . $nombre . ' (correo: ' . $email . ')', (int)$id);
         $respuesta->redirigir('/Cycsa/publico/usuarios');
         return;
     }
@@ -210,7 +246,11 @@ class UsuariosControlador extends ControladorBase {
         $id = $_GET['id'] ?? null;
         if ($id) {
             $modelo = new UsuarioModelo();
+            $usuario = $modelo->obtenerPorId((int)$id);
             $modelo->desactivar((int)$id);
+            if ($usuario) {
+                registrarBitacora('usuarios', 'desactivar', 'Desactivado/Eliminado usuario: ' . $usuario['nombre'] . ' (correo: ' . $usuario['email'] . ')', (int)$id);
+            }
         }
         
         $respuesta->redirigir('/Cycsa/publico/usuarios');

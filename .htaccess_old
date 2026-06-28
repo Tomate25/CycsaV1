@@ -1,0 +1,21 @@
+# Desactivar el listado de directorios por seguridad (Comentado para compatibilidad con Bluehost)
+# Options -Indexes
+
+# Bloquear acceso a archivos ocultos (como .env)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Bloquear acceso a archivos de composer
+<FilesMatch "^(composer\.json|composer\.lock)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Prevenir bucles de redirección internos en Apache
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    # Redirigir todo el tráfico hacia la carpeta publico/ (excluyendo scripts de diagnóstico y permisos)
+    RewriteRule ^((?!publico/|prueba\.php|fix_permissions\.php).*)$ publico/$1 [L,NC]
+</IfModule>

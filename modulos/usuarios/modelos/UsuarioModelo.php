@@ -46,7 +46,7 @@ class UsuarioModelo extends ModeloBase {
 
     // 📋 OBTENER ROLES
     public function obtenerRoles() {
-        $sql = "SELECT id, nombre FROM roles ORDER BY id ASC";
+        $sql = "SELECT id, nombre, permisos FROM roles ORDER BY id ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

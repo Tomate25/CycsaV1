@@ -9,19 +9,22 @@ class ProductoModelo extends ModeloBase {
     
     // 🔍 OBTENER TODOS LOS PRODUCTOS CON BUSCADOR Y FILTRO DE CATEGORÍA
     public function obtenerTodos(string $busqueda = '', string $categoria = '', int $soloActivos = 1): array {
-        $sql = "SELECT * FROM productos WHERE 1=1";
+        $sql = "SELECT p.*, f.codigo_formato AS formato_reporte 
+                FROM productos p 
+                LEFT JOIN formatos_ensayos f ON p.formato_id = f.id 
+                WHERE 1=1";
         $params = [];
         
         if ($soloActivos) {
-            $sql .= " AND activo = 1";
+            $sql .= " AND p.activo = 1";
         }
         
         if ($busqueda !== '') {
-            $sql .= " AND (nombre_comercial LIKE :q1 
-                        OR ensayo_servicio LIKE :q2 
-                        OR codigo_servicio LIKE :q3 
-                        OR norma_astm LIKE :q4 
-                        OR tipo_muestra LIKE :q5)";
+            $sql .= " AND (p.nombre_comercial LIKE :q1 
+                        OR p.ensayo_servicio LIKE :q2 
+                        OR p.codigo_servicio LIKE :q3 
+                        OR p.norma_astm LIKE :q4 
+                        OR p.tipo_muestra LIKE :q5)";
             $termino = '%' . trim($busqueda) . '%';
             $params['q1'] = $termino;
             $params['q2'] = $termino;
@@ -31,12 +34,12 @@ class ProductoModelo extends ModeloBase {
         }
         
         if ($categoria !== '') {
-            $sql .= " AND matriz_tipo = :categoria";
+            $sql .= " AND p.matriz_tipo = :categoria";
             $params['categoria'] = $categoria;
         }
         
         // Ordenamos por número de ítem de forma numérica/alfabética
-        $sql .= " ORDER BY ABS(no_item) ASC, id ASC";
+        $sql .= " ORDER BY ABS(p.no_item) ASC, p.id ASC";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -53,7 +56,10 @@ class ProductoModelo extends ModeloBase {
     
     // ✏️ OBTENER UN SOLO PRODUCTO POR SU ID
     public function obtenerPorId(int $id) {
-        $sql = "SELECT * FROM productos WHERE id = :id";
+        $sql = "SELECT p.*, f.codigo_formato AS formato_reporte 
+                FROM productos p 
+                LEFT JOIN formatos_ensayos f ON p.formato_id = f.id 
+                WHERE p.id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);

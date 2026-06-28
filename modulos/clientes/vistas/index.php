@@ -41,7 +41,6 @@
         <table class="tabla-cycsa">
             <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Nombre / Razón Social</th>
                     <th>Identificación</th>
                     <th>Correo Electrónico</th>
@@ -55,7 +54,6 @@
             <tbody>
                 <?php foreach ($clientes as $cliente): ?>
                 <tr>
-                    <td style="color: #6c757d; font-weight: 500;">#<?= htmlspecialchars($cliente['id'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td style="font-weight: 600;"><?= htmlspecialchars($cliente['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($cliente['identificacion'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($cliente['email'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
@@ -79,7 +77,7 @@
                 
                 <?php if(empty($clientes)): ?>
                 <tr>
-                    <td colspan="<?= tienePermiso('clientes', 'crear_editar') ? 7 : 6 ?>" style="text-align: center; padding: 30px; color: #6c757d;">No se encontraron clientes registrados.</td>
+                    <td colspan="<?= tienePermiso('clientes', 'crear_editar') ? 6 : 5 ?>" style="text-align: center; padding: 30px; color: #6c757d;">No se encontraron clientes registrados.</td>
                 </tr>
                 <?php endif; ?>
             </tbody>

@@ -406,6 +406,22 @@
                 </a>
             </li>
             <?php endif; ?>
+            <?php if (tienePermiso('operaciones', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/operaciones" class="<?= strpos($rutaActual, '/operaciones') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-gears"></i>
+                    <span class="menu-texto">Operaciones</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('contabilidad', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/contabilidad/cuentas" class="<?= strpos($rutaActual, '/contabilidad') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-calculator"></i>
+                    <span class="menu-texto">Contabilidad</span>
+                </a>
+            </li>
+            <?php endif; ?>
             <?php if (tienePermiso('usuarios', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/usuarios" class="<?= strpos($rutaActual, '/usuarios') !== false ? 'activo' : '' ?>">
@@ -414,14 +430,24 @@
                 </a>
             </li>
             <?php endif; ?>
-            
-            <li class="menu-categoria">Ajustes</li>
+            <?php if (($_SESSION['usuario_rol'] ?? 0) == 1): ?>
             <li>
-                <a href="#" onclick="alert('⚙️ Módulo en producción. ¡Estará disponible pronto!'); return false;">
-                    <i class="fa-solid fa-gear"></i>
-                    <span class="menu-texto">Configuración</span>
+                <a href="/Cycsa/publico/panel/bitacora" class="<?= strpos($rutaActual, '/panel/bitacora') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-receipt"></i>
+                    <span class="menu-texto">Bitácora</span>
                 </a>
             </li>
+            <?php endif; ?>
+            
+            <?php if (($_SESSION['usuario_rol'] ?? 0) == 1): ?>
+            <li class="menu-categoria">Ajustes</li>
+            <li>
+                <a href="/Cycsa/publico/configuracion" class="<?= strpos($rutaActual, '/configuracion') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-gears"></i>
+                    <span class="menu-texto">Condiciones Comerciales</span>
+                </a>
+            </li>
+            <?php endif; ?>
         </ul>
     </aside>
 
@@ -482,6 +508,18 @@
                     }
                 }
             });
+
+            // 🔒 Verificar cada 5 segundos si otra sesión activa cerró la nuestra en segundo plano (con cache-busting y JSON)
+            setInterval(() => {
+                fetch('<?= obtenerBaseUrl() ?>/verificar-sesion-activa?_t=' + Date.now())
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.status === 'kicked') {
+                            window.location.href = '<?= obtenerBaseUrl() ?>/login';
+                        }
+                    })
+                    .catch(err => console.error("Error de conexión al validar sesión única:", err));
+            }, 5000);
         });
     </script>
 </body>

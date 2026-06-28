@@ -144,4 +144,84 @@ class PanelControlador extends ControladorBase {
             'recientes' => $recientes
         ]);
     }
+
+    public function bitacora(Peticion $peticion, Respuesta $respuesta) {
+        // 🔒 BARRERA DE SEGURIDAD: Solo Administradores (rol 1)
+        if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_rol'] ?? 0) != 1) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            return;
+        }
+        
+        $db = Conexion::obtenerInstancia();
+        
+        // Obtener filtros de la URL
+        $busqueda = $_GET['q'] ?? '';
+        $modulo_sel = $_GET['modulo'] ?? '';
+        $usuario_sel = $_GET['usuario'] ?? '';
+        
+        // Construir la consulta con filtros
+        $sql = "SELECT b.* 
+                FROM bitacora b
+                WHERE 1=1";
+        
+        $params = [];
+        
+        if (!empty($busqueda)) {
+            $sql .= " AND (b.descripcion LIKE :q OR b.usuario_nombre LIKE :q OR b.accion LIKE :q OR b.ip LIKE :q)";
+            $params['q'] = '%' . trim($busqueda) . '%';
+        }
+        
+        if (!empty($modulo_sel)) {
+            $sql .= " AND b.modulo = :modulo";
+            $params['modulo'] = $modulo_sel;
+        }
+        
+        if (!empty($usuario_sel)) {
+            $sql .= " AND b.id_usuario = :usuario";
+            $params['usuario'] = (int)$usuario_sel;
+        }
+        
+        $sql .= " ORDER BY b.id DESC LIMIT 300";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Obtener lista de módulos únicos para el filtro
+        $stmtMod = $db->query("SELECT DISTINCT modulo FROM bitacora ORDER BY modulo ASC");
+        $modulos = $stmtMod->fetchAll(PDO::FETCH_COLUMN);
+        
+        // Obtener lista de usuarios para el filtro
+        $stmtUsr = $db->query("SELECT id, nombre FROM usuarios ORDER BY nombre ASC");
+        $usuarios = $stmtUsr->fetchAll(PDO::FETCH_ASSOC);
+
+        // Calcular estadísticas rápidas para la bitacora
+        $totalLogsStmt = $db->query("SELECT COUNT(*) FROM bitacora");
+        $total_logs = (int) $totalLogsStmt->fetchColumn();
+        
+        $hoyStmt = $db->query("SELECT COUNT(*) FROM bitacora WHERE DATE(fecha_creacion) = CURDATE()");
+        $logs_hoy = (int) $hoyStmt->fetchColumn();
+
+        $usuariosActivosStmt = $db->query("SELECT COUNT(DISTINCT id_usuario) FROM bitacora WHERE id_usuario IS NOT NULL");
+        $usuarios_activos = (int) $usuariosActivosStmt->fetchColumn();
+
+        $alertasStmt = $db->query("SELECT COUNT(*) FROM bitacora WHERE accion LIKE '%rechazar%' OR accion LIKE '%devolver%' OR accion LIKE '%observar%'");
+        $criticos = (int) $alertasStmt->fetchColumn();
+        
+        $this->renderizar('usuarios/vistas/bitacora', [
+            'titulo' => 'Bitácora de Auditoría - Cycsa',
+            'logs' => $logs,
+            'modulos_disponibles' => $modulos,
+            'usuarios_disponibles' => $usuarios,
+            'busqueda' => $busqueda,
+            'modulo_seleccionado' => $modulo_sel,
+            'usuario_seleccionado' => $usuario_sel,
+            'stats' => [
+                'total' => $total_logs,
+                'hoy' => $logs_hoy,
+                'usuarios_activos' => $usuarios_activos,
+                'criticos' => $criticos
+            ]
+        ]);
+    }
 }

@@ -8,6 +8,19 @@ class Respuesta {
     }
 
     public function redirigir(string $url): void {
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $basePath = dirname($scriptName);
+        $basePath = str_replace('\\', '/', $basePath);
+        $basePath = rtrim($basePath, '/');
+        if ($basePath === '/') {
+            $basePath = '';
+        }
+        
+        // Si la URL redirige a /Cycsa/publico, la adaptamos al base path real
+        if (strpos($url, '/Cycsa/publico') === 0) {
+            $url = $basePath . substr($url, 14);
+        }
+        
         header('Location: ' . $url);
         exit;
     }

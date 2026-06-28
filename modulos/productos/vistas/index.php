@@ -155,27 +155,29 @@ $precioPromedio = $conPrecio > 0 ? $sumaPrecios / $conPrecio : 0;
             <table class="tabla-premium">
                 <thead>
                     <tr>
-                        <th style="width: 5%; text-align: center;">No.</th>
                         <th style="width: 10%;">Código Servicio</th>
-                        <th style="width: 35%;">Ensayo y/o Servicio</th>
-                        <th style="width: 15%;">Matriz / Tipo</th>
-                        <th style="width: 12%;">Estatus</th>
-                        <th style="width: 13%; text-align: right;">Precio</th>
+                        <th style="width: 20%;">Nombre Comercial</th>
+                        <th style="width: 20%;">Ensayo / Servicio Técnico</th>
+                        <th style="width: 10%;">Matriz / Tipo</th>
+                        <th style="width: 10%;">Estatus</th>
+                        <th style="width: 12%;">Tiempo Entrega/Obs</th>
+                        <th style="width: 10%; text-align: right;">Precio</th>
                         <?php if (tienePermiso('productos', 'crear_editar')): ?>
-                        <th style="width: 10%; text-align: center;">Acciones</th>
+                        <th style="width: 8%; text-align: center;">Acciones</th>
                         <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($productos as $p): ?>
                         <tr>
-                            <td style="text-align: center; font-weight: 600; color: #718096;"><?= htmlspecialchars($p['no_item'] ?? $p['id'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td style="font-family: monospace; font-weight: bold; color: #2d3748;">
                                 <?= htmlspecialchars($p['codigo_servicio'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?>
                             </td>
+                            <td style="font-weight: 600; color: #2d3748;">
+                                <?= htmlspecialchars($p['nombre_comercial'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?>
+                            </td>
                             <td>
-                                <div style="font-weight: 600; color: #2d3748;"><?= htmlspecialchars($p['nombre_comercial'] ?? $p['ensayo_servicio'], ENT_QUOTES, 'UTF-8') ?></div>
-                                <span class="text-muted-small"><?= htmlspecialchars($p['ensayo_servicio'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <div><?= htmlspecialchars($p['ensayo_servicio'], ENT_QUOTES, 'UTF-8') ?></div>
                                 <?php if (!empty($p['norma_astm'])): ?>
                                     <span class="text-muted-small" style="color: var(--cycsa-azul);"><i class="fa-solid fa-scroll"></i> Norma: <?= htmlspecialchars($p['norma_astm'], ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php endif; ?>
@@ -190,6 +192,9 @@ $precioPromedio = $conPrecio > 0 ? $sumaPrecios / $conPrecio : 0;
                                 <?php else: ?>
                                     <span class="badge-no-acred">No Acreditado</span>
                                 <?php endif; ?>
+                            </td>
+                            <td>
+                                <span style="font-size: 13px; color: #4a5568;"><?= htmlspecialchars($p['observaciones'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></span>
                             </td>
                             <td style="text-align: right; font-weight: 700; color: #2d3748; font-size: 15px;">
                                 C$ <?= number_format($p['precio'], 2) ?>

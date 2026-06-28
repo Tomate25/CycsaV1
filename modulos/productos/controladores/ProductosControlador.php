@@ -113,6 +113,9 @@ class ProductosControlador extends ControladorBase {
             }
 
             if ($modelo->guardar($datos)) {
+                $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                $lastId = $db->lastInsertId();
+                registrarBitacora('productos', 'crear', 'Creado producto/servicio: ' . $datos['nombre_comercial'] . ' (' . ($datos['codigo_servicio'] ?? 'S/C') . ')', $lastId);
                 $respuesta->redirigir('/Cycsa/publico/productos');
                 return;
             } else {
@@ -222,6 +225,7 @@ class ProductosControlador extends ControladorBase {
         }
 
         if ($modelo->actualizar((int)$id, $datos)) {
+            registrarBitacora('productos', 'editar', 'Actualizado producto/servicio: ' . $datos['nombre_comercial'] . ' (' . ($datos['codigo_servicio'] ?? 'S/C') . ')', (int)$id);
             $respuesta->redirigir('/Cycsa/publico/productos');
             return;
         } else {
@@ -246,7 +250,11 @@ class ProductosControlador extends ControladorBase {
         $id = $_GET['id'] ?? null;
         if ($id) {
             $modelo = new ProductoModelo();
+            $producto = $modelo->obtenerPorId((int)$id);
             $modelo->desactivar((int)$id);
+            if ($producto) {
+                registrarBitacora('productos', 'desactivar', 'Desactivado producto/servicio: ' . $producto['nombre_comercial'] . ' (' . ($producto['codigo_servicio'] ?? 'S/C') . ')', (int)$id);
+            }
         }
         
         $respuesta->redirigir('/Cycsa/publico/productos');

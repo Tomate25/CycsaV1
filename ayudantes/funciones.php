@@ -100,6 +100,10 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
             if ($metaHtml) $metaHtml .= " &bull; ";
             $metaHtml .= "<span style=\"color:#475569; font-size:9px;\">Formato Reporte: <strong>" . htmlspecialchars($det['formato_reporte'], ENT_QUOTES, 'UTF-8') . "</strong></span>";
         }
+        if (!empty($det['observaciones'])) {
+            if ($metaHtml) $metaHtml .= " &bull; ";
+            $metaHtml .= "<span style=\"color:#475569; font-size:9px;\">Tiempo Entrega: <strong>" . htmlspecialchars($det['observaciones'], ENT_QUOTES, 'UTF-8') . "</strong></span>";
+        }
         
         if ($metaHtml) {
             $desc = "<strong>{$desc}</strong><div style=\"margin-top: 3px; padding-top: 2px; border-top: 1px dashed #e2e8f0; font-size: 9px;\">{$metaHtml}</div>";
@@ -310,11 +314,6 @@ function tienePermiso(string $modulo, string $accion = 'ver'): bool {
         return true;
     }
     
-    // Si no es Administrador ni Vendedor, denegar
-    if ($_SESSION['usuario_rol'] != 2) {
-        return false;
-    }
-    
     // Gestión de usuarios es estrictamente para Administradores
     if ($modulo === 'usuarios') {
         return false;
@@ -332,13 +331,49 @@ function tienePermiso(string $modulo, string $accion = 'ver'): bool {
  * Retorna la URL base del sitio de forma dinámica según el host actual.
  */
 function obtenerBaseUrl(): string {
-    if (isset($_SERVER['HTTP_HOST'])) {
-        $protocolo = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? null;
+    if ($host) {
+        $protocolo = 'http';
+        if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
+            (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) {
+            $protocolo = 'https';
+        }
         $scriptPath = $_SERVER['SCRIPT_NAME'];
         $dir = dirname($scriptPath);
         $dir = str_replace('\\', '/', $dir);
         $dir = rtrim($dir, '/');
-        return "{$protocolo}://{$_SERVER['HTTP_HOST']}{$dir}";
+        return "{$protocolo}://{$host}{$dir}";
     }
     return $_ENV['APP_URL'] ?? 'http://localhost/Cycsa/publico';
 }
+
+/**
+ * Registra una acción de auditoría en la tabla `bitacora`.
+ */
+function registrarBitacora(string $modulo, string $accion, string $descripcion, ?int $id_referencia = null): bool {
+    try {
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        
+        $id_usuario = $_SESSION['usuario_id'] ?? null;
+        $usuario_nombre = $_SESSION['usuario_nombre'] ?? 'Sistema / Cliente';
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        
+        $sql = "INSERT INTO bitacora (id_usuario, usuario_nombre, modulo, accion, descripcion, id_referencia, ip) 
+                VALUES (:id_usuario, :usuario_nombre, :modulo, :accion, :descripcion, :id_referencia, :ip)";
+        
+        $stmt = $db->prepare($sql);
+        return $stmt->execute([
+            'id_usuario' => $id_usuario,
+            'usuario_nombre' => $usuario_nombre,
+            'modulo' => $modulo,
+            'accion' => $accion,
+            'descripcion' => $descripcion,
+            'id_referencia' => $id_referencia,
+            'ip' => $ip
+        ]);
+    } catch (\Exception $e) {
+        error_log("Error en bitácora: " . $e->getMessage());
+        return false;
+    }
+}
+

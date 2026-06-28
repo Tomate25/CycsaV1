@@ -15,6 +15,17 @@
 </style>
 
 <div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+    
+    <!-- 🗂️ PESTAÑAS DE NAVEGACIÓN DE GESTIÓN -->
+    <div style="display: flex; gap: 20px; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; margin-bottom: 25px;">
+        <a href="/Cycsa/publico/usuarios" style="text-decoration: none; color: #103487; font-weight: 600; font-size: 14.5px; border-bottom: 2px solid #103487; padding-bottom: 10px; margin-bottom: -11px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-users"></i> Usuarios
+        </a>
+        <a href="/Cycsa/publico/roles" style="text-decoration: none; color: #6c757d; font-weight: 500; font-size: 14.5px; padding-bottom: 10px; margin-bottom: -11px; display: flex; align-items: center; gap: 6px; transition: color 0.2s;">
+            <i class="fa-solid fa-shield-halved"></i> Roles y Permisos
+        </a>
+    </div>
+
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <div>
             <h2 style="margin: 0; color: #333; font-size: 20px;">Gestión de Usuarios</h2>
@@ -30,7 +41,6 @@
         <table class="tabla-cycsa">
             <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Nombre</th>
                     <th>Correo Electrónico</th>
                     <th>Rol</th>
@@ -41,7 +51,6 @@
             <tbody>
                 <?php foreach ($usuarios as $usuario): ?>
                 <tr>
-                    <td style="color: #6c757d; font-weight: 500;">#<?= htmlspecialchars($usuario['id'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td style="font-weight: 600;"><?= htmlspecialchars($usuario['nombre'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($usuario['email'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($usuario['rol'], ENT_QUOTES, 'UTF-8') ?></td>
@@ -61,7 +70,7 @@
                 
                 <?php if(empty($usuarios)): ?>
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 30px; color: #6c757d;">No hay usuarios registrados en el sistema.</td>
+                    <td colspan="5" style="text-align: center; padding: 30px; color: #6c757d;">No hay usuarios registrados en el sistema.</td>
                 </tr>
                 <?php endif; ?>
             </tbody>

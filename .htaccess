@@ -1,19 +1,36 @@
-# Desactivar el listado de directorios por seguridad
-Options -Indexes
+# Desactivar el listado de directorios por seguridad (Comentado para compatibilidad con Bluehost)
+# Options -Indexes
 
-# Bloquear acceso a archivos ocultos (como .env)
+# Bloquear acceso a archivos ocultos (como .env) con soporte híbrido Apache 2.2/2.4
 <FilesMatch "^\.">
-    Require all denied
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 # Bloquear acceso a archivos de composer
 <FilesMatch "^(composer\.json|composer\.lock)$">
-    Require all denied
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Redirigir todo el tráfico hacia la carpeta publico/
-    RewriteRule ^((?!publico/).*)$ publico/$1 [L,NC]
+    # Evitar bucles de redirección si ya estamos en publico/ o si se accede a un script de diagnóstico
+    RewriteCond %{REQUEST_URI} !/publico/
+    RewriteCond %{REQUEST_URI} !/prueba\.php$
+    RewriteCond %{REQUEST_URI} !/fix_permissions\.php$
+    
+    # Redirigir el tráfico hacia la carpeta publico/ de forma compatible con subcarpetas
+    RewriteRule ^(.*)$ publico/$1 [L]
 </IfModule>

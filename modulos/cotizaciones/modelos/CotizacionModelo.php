@@ -43,7 +43,12 @@ class CotizacionModelo extends ModeloBase {
     }
 
     public function obtenerDetalles(int $id_cotizacion): array {
-        $sql = "SELECT cd.*, p.codigo_servicio, p.norma_astm, p.tipo_muestra, f.codigo_formato AS formato_reporte
+        $sql = "SELECT cd.id, cd.id_cotizacion, cd.id_producto, cd.descripcion_ensayo, cd.cantidad, cd.precio_unitario, cd.subtotal,
+                       COALESCE(cd.codigo_servicio, p.codigo_servicio) AS codigo_servicio,
+                       COALESCE(cd.norma_astm, p.norma_astm) AS norma_astm,
+                       COALESCE(cd.formato_reporte, f.codigo_formato) AS formato_reporte,
+                       COALESCE(cd.observaciones, p.observaciones) AS observaciones,
+                       p.tipo_muestra
                 FROM cotizacion_detalles cd
                 LEFT JOIN productos p ON cd.id_producto = p.id
                 LEFT JOIN formatos_ensayos f ON p.formato_id = f.id
@@ -63,9 +68,23 @@ class CotizacionModelo extends ModeloBase {
     }
 
     public function actualizarEstado(int $id, string $estado, int $id_revisor, string $motivo = null, string $token = null): bool {
-        $sql = "UPDATE cotizaciones SET estado = :estado, id_usuario_revisor = :revisor, motivo_observacion = :motivo, token_seguridad = :token WHERE id = :id";
+        // Consultar el estado actual y motivo_rechazo_cliente para saber si amerita incremento de versión
+        $sqlCheck = "SELECT version, motivo_rechazo_cliente FROM cotizaciones WHERE id = :id";
+        $stmtCheck = $this->db->prepare($sqlCheck);
+        $stmtCheck->execute(['id' => $id]);
+        $cot = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        $sql = "UPDATE cotizaciones SET estado = :estado, id_usuario_revisor = :revisor, motivo_observacion = :motivo, token_seguridad = :token";
+        
+        $params = ['estado' => $estado, 'revisor' => $id_revisor, 'motivo' => $motivo, 'token' => $token, 'id' => $id];
+        
+        if ($estado === 'Enviada al Cliente' && $cot && !empty($cot['motivo_rechazo_cliente'])) {
+            $sql .= ", version = version + 1, motivo_rechazo_cliente = NULL";
+        }
+        
+        $sql .= " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
-        return $stmt->execute(['estado' => $estado, 'revisor' => $id_revisor, 'motivo' => $motivo, 'token' => $token, 'id' => $id]);
+        return $stmt->execute($params);
     }
 
     public function registrarDecisionCliente(int $id, string $estado, ?string $motivo = null): bool {
@@ -78,51 +97,27 @@ class CotizacionModelo extends ModeloBase {
     public function guardarCotizacionCompleta(array $cabecera, array $detalles): bool {
         try {
             $this->db->beginTransaction();
-            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, subtotal, impuesto, total, estado) VALUES (:codigo, :id_cliente, :id_usuario_creador, :atencion_a, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :subtotal, :impuesto, :total, 'Borrador')";
+            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, subtotal, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :id_usuario_creador, :atencion_a, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :subtotal, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute($cabecera);
             $idCotizacion = $this->db->lastInsertId();
 
-            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :cantidad, :precio, :subtotal)";
+            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, codigo_servicio, norma_astm, formato_reporte, observaciones, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :cantidad, :precio, :subtotal)";
             $stmtDetalle = $this->db->prepare($sqlDetalle);
             foreach ($detalles as $detalle) {
-                $detalle['id_cotizacion'] = $idCotizacion;
-                $stmtDetalle->execute($detalle);
+                $stmtDetalle->execute([
+                    'id_cotizacion' => $idCotizacion,
+                    'id_producto' => $detalle['id_producto'],
+                    'descripcion' => $detalle['descripcion'],
+                    'codigo_servicio' => $detalle['codigo_servicio'] ?? null,
+                    'norma_astm' => $detalle['norma_astm'] ?? null,
+                    'formato_reporte' => $detalle['formato_reporte'] ?? null,
+                    'observaciones' => $detalle['observaciones'] ?? null,
+                    'cantidad' => $detalle['cantidad'],
+                    'precio' => $detalle['precio'],
+                    'subtotal' => $detalle['subtotal']
+                ]);
             }
-
-            // Guardar instantánea (Versión 1)
-            $verStmt = $this->db->prepare("SELECT * FROM cotizaciones WHERE id = :id");
-            $verStmt->execute(['id' => $idCotizacion]);
-            $cot = $verStmt->fetch(PDO::FETCH_ASSOC);
-
-            $snapshot = [
-                'atencion_a' => $cot['atencion_a'],
-                'nombre_proyecto' => $cot['nombre_proyecto'],
-                'direccion_proyecto' => $cot['direccion_proyecto'],
-                'prioridad' => $cot['prioridad'],
-                'fecha_limite' => $cot['fecha_limite'],
-                'condicion_pago' => $cot['condicion_pago'],
-                'tiempo_entrega' => $cot['tiempo_entrega'],
-                'vigencia_oferta' => $cot['vigencia_oferta'],
-                'subtotal' => $cot['subtotal'],
-                'impuesto' => $cot['impuesto'],
-                'total' => $cot['total'],
-                'detalles' => []
-            ];
-            foreach ($detalles as $d) {
-                $snapshot['detalles'][] = [
-                    'id_producto' => $d['id_producto'],
-                    'descripcion_ensayo' => $d['descripcion'],
-                    'cantidad' => $d['cantidad'],
-                    'precio_unitario' => $d['precio'],
-                    'subtotal' => $d['subtotal']
-                ];
-            }
-            $insStmt = $this->db->prepare("INSERT INTO cotizacion_versiones (id_cotizacion, version, datos_json, motivo_cambio) VALUES (:id_cotizacion, 1, :datos_json, 'Creación de cotización')");
-            $insStmt->execute([
-                'id_cotizacion' => $idCotizacion,
-                'datos_json' => json_encode($snapshot)
-            ]);
 
             $this->db->commit();
             return true;
@@ -133,57 +128,190 @@ class CotizacionModelo extends ModeloBase {
     public function actualizarCotizacionCompleta(int $id, array $cabecera, array $detalles): bool {
         try {
             $this->db->beginTransaction();
-            $sqlCabecera = "UPDATE cotizaciones SET version = version + 1, estado = 'En Revision', atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, subtotal = :subtotal, impuesto = :impuesto, total = :total WHERE id = :id";
-            $stmtCabecera = $this->db->prepare($sqlCabecera);
-            $cabecera['id'] = $id;
-            $stmtCabecera->execute($cabecera);
 
-            $this->db->prepare("DELETE FROM cotizacion_detalles WHERE id_cotizacion = :id")->execute(['id' => $id]);
-            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :cantidad, :precio, :subtotal)";
+            // 1. Obtener la cotización actual antes de sobrescribirla
+            $oldStmt = $this->db->prepare("SELECT * FROM cotizaciones WHERE id = :id");
+            $oldStmt->execute(['id' => $id]);
+            $oldCot = $oldStmt->fetch(PDO::FETCH_ASSOC);
+
+            // 2. Si el estado actual es 'Rechazada por Cliente', guardamos la versión histórica (versión anterior)
+            $token = $oldCot['token_seguridad'] ?? null;
+            $nuevoEstado = 'En Revision';
+            $nuevaVersion = $oldCot['version'] ?? 0;
+            $motivoRechazo = $oldCot['motivo_rechazo_cliente'] ?? null;
+
+            if ($oldCot && $oldCot['estado'] === 'Rechazada por Cliente') {
+                $detStmt = $this->db->prepare("SELECT * FROM cotizacion_detalles WHERE id_cotizacion = :id");
+                $detStmt->execute(['id' => $id]);
+                $oldDets = $detStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $snapshot = [
+                    'atencion_a' => $oldCot['atencion_a'],
+                    'nombre_proyecto' => $oldCot['nombre_proyecto'],
+                    'direccion_proyecto' => $oldCot['direccion_proyecto'],
+                    'prioridad' => $oldCot['prioridad'],
+                    'fecha_limite' => $oldCot['fecha_limite'],
+                    'condicion_pago' => $oldCot['condicion_pago'],
+                    'tiempo_entrega' => $oldCot['tiempo_entrega'],
+                    'vigencia_oferta' => $oldCot['vigencia_oferta'],
+                    'subtotal' => $oldCot['subtotal'],
+                    'impuesto' => $oldCot['impuesto'],
+                    'total' => $oldCot['total'],
+                    'fecha_entrega' => $oldCot['fecha_entrega'] ?? null,
+                    'fecha_seguimiento' => $oldCot['fecha_seguimiento'] ?? null,
+                    'detalles' => []
+                ];
+                foreach ($oldDets as $d) {
+                    $snapshot['detalles'][] = [
+                        'id_producto' => $d['id_producto'],
+                        'descripcion_ensayo' => $d['descripcion_ensayo'],
+                        'codigo_servicio' => $d['codigo_servicio'] ?? null,
+                        'norma_astm' => $d['norma_astm'] ?? null,
+                        'formato_reporte' => $d['formato_reporte'] ?? null,
+                        'observaciones' => $d['observaciones'] ?? null,
+                        'cantidad' => $d['cantidad'],
+                        'precio_unitario' => $d['precio_unitario'],
+                        'subtotal' => $d['subtotal']
+                    ];
+                }
+
+                $insStmt = $this->db->prepare("INSERT INTO cotizacion_versiones (id_cotizacion, version, datos_json, motivo_cambio) VALUES (:id_cotizacion, :version, :datos_json, :motivo)");
+                $motivoCambio = 'Devuelta por cliente: ' . ($oldCot['motivo_rechazo_cliente'] ?? 'Rechazo');
+                $insStmt->execute([
+                    'id_cotizacion' => $id,
+                    'version' => $oldCot['version'],
+                    'datos_json' => json_encode($snapshot),
+                    'motivo' => $motivoCambio
+                ]);
+
+                // Si el cliente la rechazó, al corregirla se envía directamente al cliente de nuevo
+                $nuevaVersion = $oldCot['version'] + 1;
+                $nuevoEstado = 'Enviada al Cliente';
+                $token = bin2hex(random_bytes(32));
+                $motivoRechazo = null; // Se limpia la observación/motivo de rechazo de la versión vieja
+            }
+
+            // 3. Sobrescribir los datos de la cotización actual
+            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, subtotal = :subtotal, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
+            $stmtCabecera = $this->db->prepare($sqlCabecera);
+            $stmtCabecera->execute(array_merge($cabecera, [
+                'id' => $id,
+                'estado' => $nuevoEstado,
+                'version' => $nuevaVersion,
+                'token' => $token,
+                'motivo_rechazo' => $motivoRechazo
+            ]));
+
+            // 4. Eliminar los detalles antiguos para guardar los corregidos
+            $delStmt = $this->db->prepare("DELETE FROM cotizacion_detalles WHERE id_cotizacion = :id");
+            $delStmt->execute(['id' => $id]);
+
+            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, codigo_servicio, norma_astm, formato_reporte, observaciones, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :cantidad, :precio, :subtotal)";
             $stmtDetalle = $this->db->prepare($sqlDetalle);
             foreach ($detalles as $detalle) {
-                $detalle['id_cotizacion'] = $id;
-                $stmtDetalle->execute($detalle);
+                $stmtDetalle->execute([
+                    'id_cotizacion' => $id,
+                    'id_producto' => $detalle['id_producto'],
+                    'descripcion' => $detalle['descripcion'],
+                    'codigo_servicio' => $detalle['codigo_servicio'] ?? null,
+                    'norma_astm' => $detalle['norma_astm'] ?? null,
+                    'formato_reporte' => $detalle['formato_reporte'] ?? null,
+                    'observaciones' => $detalle['observaciones'] ?? null,
+                    'cantidad' => $detalle['cantidad'],
+                    'precio' => $detalle['precio'],
+                    'subtotal' => $detalle['subtotal']
+                ]);
             }
-
-            // Guardar instantánea de la nueva versión
-            $verStmt = $this->db->prepare("SELECT * FROM cotizaciones WHERE id = :id");
-            $verStmt->execute(['id' => $id]);
-            $cot = $verStmt->fetch(PDO::FETCH_ASSOC);
-
-            $snapshot = [
-                'atencion_a' => $cot['atencion_a'],
-                'nombre_proyecto' => $cot['nombre_proyecto'],
-                'direccion_proyecto' => $cot['direccion_proyecto'],
-                'prioridad' => $cot['prioridad'],
-                'fecha_limite' => $cot['fecha_limite'],
-                'condicion_pago' => $cot['condicion_pago'],
-                'tiempo_entrega' => $cot['tiempo_entrega'],
-                'vigencia_oferta' => $cot['vigencia_oferta'],
-                'subtotal' => $cot['subtotal'],
-                'impuesto' => $cot['impuesto'],
-                'total' => $cot['total'],
-                'detalles' => []
-            ];
-            foreach ($detalles as $d) {
-                $snapshot['detalles'][] = [
-                    'id_producto' => $d['id_producto'],
-                    'descripcion_ensayo' => $d['descripcion'],
-                    'cantidad' => $d['cantidad'],
-                    'precio_unitario' => $d['precio'],
-                    'subtotal' => $d['subtotal']
-                ];
-            }
-            $insStmt = $this->db->prepare("INSERT INTO cotizacion_versiones (id_cotizacion, version, datos_json, motivo_cambio) VALUES (:id_cotizacion, :version, :datos_json, 'Corrección de cotización')");
-            $insStmt->execute([
-                'id_cotizacion' => $id,
-                'version' => $cot['version'],
-                'datos_json' => json_encode($snapshot)
-            ]);
 
             $this->db->commit();
             return true;
         } catch (Exception $e) { $this->db->rollBack(); return false; }
+    }
+
+    // Re-enviar una cotización rechazada por el cliente (creando una nueva versión sin cambios manuales en la edición)
+    public function volverEnviarRechazada(int $id): bool {
+        try {
+            $this->db->beginTransaction();
+
+            // 1. Obtener la cotización actual
+            $oldStmt = $this->db->prepare("SELECT * FROM cotizaciones WHERE id = :id");
+            $oldStmt->execute(['id' => $id]);
+            $oldCot = $oldStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$oldCot || $oldCot['estado'] !== 'Rechazada por Cliente') {
+                $this->db->rollBack();
+                return false;
+            }
+
+            // 2. Obtener detalles de la cotización actual
+            $detStmt = $this->db->prepare("SELECT * FROM cotizacion_detalles WHERE id_cotizacion = :id");
+            $detStmt->execute(['id' => $id]);
+            $oldDets = $detStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 3. Crear el snapshot de la versión que el cliente rechazó
+            $snapshot = [
+                'atencion_a' => $oldCot['atencion_a'],
+                'nombre_proyecto' => $oldCot['nombre_proyecto'],
+                'direccion_proyecto' => $oldCot['direccion_proyecto'],
+                'prioridad' => $oldCot['prioridad'],
+                'fecha_limite' => $oldCot['fecha_limite'],
+                'condicion_pago' => $oldCot['condicion_pago'],
+                'tiempo_entrega' => $oldCot['tiempo_entrega'],
+                'vigencia_oferta' => $oldCot['vigencia_oferta'],
+                'subtotal' => $oldCot['subtotal'],
+                'impuesto' => $oldCot['impuesto'],
+                'total' => $oldCot['total'],
+                'fecha_entrega' => $oldCot['fecha_entrega'] ?? null,
+                'fecha_seguimiento' => $oldCot['fecha_seguimiento'] ?? null,
+                'detalles' => []
+            ];
+            foreach ($oldDets as $d) {
+                $snapshot['detalles'][] = [
+                    'id_producto' => $d['id_producto'],
+                    'descripcion_ensayo' => $d['descripcion_ensayo'],
+                    'codigo_servicio' => $d['codigo_servicio'] ?? null,
+                    'norma_astm' => $d['norma_astm'] ?? null,
+                    'formato_reporte' => $d['formato_reporte'] ?? null,
+                    'observaciones' => $d['observaciones'] ?? null,
+                    'cantidad' => $d['cantidad'],
+                    'precio_unitario' => $d['precio_unitario'],
+                    'subtotal' => $d['subtotal']
+                ];
+            }
+
+            // 4. Guardar en cotizacion_versiones
+            $insStmt = $this->db->prepare("INSERT INTO cotizacion_versiones (id_cotizacion, version, datos_json, motivo_cambio) VALUES (:id_cotizacion, :version, :datos_json, :motivo)");
+            $motivoCambio = 'Devuelta por cliente: ' . ($oldCot['motivo_rechazo_cliente'] ?? 'Rechazo');
+            $insStmt->execute([
+                'id_cotizacion' => $id,
+                'version' => $oldCot['version'],
+                'datos_json' => json_encode($snapshot),
+                'motivo' => $motivoCambio
+            ]);
+
+            // 5. Actualizar la cotización actual a 'Enviada al Cliente', incrementando la versión y limpiando rechazo
+            $nuevaVersion = $oldCot['version'] + 1;
+            $nuevoToken = bin2hex(random_bytes(32));
+
+            $sqlUpd = "UPDATE cotizaciones 
+                       SET estado = 'Enviada al Cliente', 
+                           version = :version, 
+                           token_seguridad = :token, 
+                           motivo_rechazo_cliente = NULL 
+                       WHERE id = :id";
+            $updStmt = $this->db->prepare($sqlUpd);
+            $updStmt->execute([
+                'version' => $nuevaVersion,
+                'token' => $nuevoToken,
+                'id' => $id
+            ]);
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return false;
+        }
     }
 
     // Obtener historial de versiones

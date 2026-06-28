@@ -43,6 +43,20 @@
     .modal-tabla tr:hover { background-color: #f7fafc; }
     .modal-footer { display: flex; justify-content: flex-end; gap: 15px; border-top: 1px solid #edf2f7; padding-top: 15px; }
     .modal-tabla tr.selected-row { background-color: #e6f6ff !important; }
+    
+    /* Estilos AJAX Cliente */
+    .cliente-ajax-wrapper { position: relative; }
+    .cliente-item-card { padding: 10px 15px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s ease; border-bottom: 1px solid #f1f5f9; }
+    .cliente-item-card:last-child { border-bottom: none; }
+    .cliente-item-card:hover { background-color: #f8fafc; }
+    .cliente-avatar-mini { width: 32px; height: 32px; border-radius: 50%; background: #e0f2fe; color: #0369a1; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0; transition: all 0.2s; }
+    .cliente-item-card:hover .cliente-avatar-mini { background: var(--cycsa-azul); color: white; }
+    .cliente-info-mini { display: flex; flex-direction: column; min-width: 0; }
+    .cliente-nombre-mini { font-weight: 600; color: #1e293b; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cliente-ruc-mini { font-size: 11px; color: #64748b; margin-top: 1px; }
+    .cliente-no-results { padding: 12px 15px; color: #94a3b8; font-size: 13.5px; text-align: center; }
+    #cliente-clear:hover { color: #dc3545 !important; }
+    #btn-cambiar-cliente:hover { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
 </style>
 
 <div style="margin-bottom: 20px;">
@@ -58,12 +72,29 @@
         <div class="grid-2">
             <div class="form-group">
                 <label class="form-label">Cliente *</label>
-                <select name="id_cliente" class="form-control" required>
-                    <option value="">Seleccione un cliente de la base de datos...</option>
-                    <?php foreach ($clientes as $cli): ?>
-                        <option value="<?= $cli['id'] ?>"><?= htmlspecialchars($cli['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($cli['identificacion'], ENT_QUOTES, 'UTF-8') ?>)</option>
-                    <?php endforeach; ?>
-                </select>
+                <div class="cliente-ajax-wrapper">
+                    <!-- Contenedor del Buscador -->
+                    <div id="cliente-search-container" style="position: relative; cursor: pointer;" onclick="abrirModalClientes()">
+                        <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" id="cliente-search-placeholder" class="form-control" placeholder="Haga clic aquí para buscar cliente..." readonly style="cursor: pointer; padding-left: 40px; background: white;" required>
+                    </div>
+                    
+                    <!-- Tarjeta de Cliente Seleccionado (Layout Premium) -->
+                    <div id="cliente-seleccionado-card" style="display: none; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 18px; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border-left: 4px solid var(--cycsa-azul);">
+                        <div style="display: flex; align-items: center; gap: 15px; min-width: 0;">
+                            <div id="cliente-card-avatar" style="width: 38px; height: 38px; border-radius: 50%; background: var(--cycsa-azul); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;">CL</div>
+                            <div style="min-width: 0;">
+                                <div id="cliente-card-nombre" style="font-weight: 700; color: #1e293b; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nombre Cliente</div>
+                                <div id="cliente-card-ruc" style="font-size: 11.5px; color: #64748b; margin-top: 2px;"><i class="fa-solid fa-id-card"></i> RUC: 123456</div>
+                            </div>
+                        </div>
+                        <button type="button" id="btn-cambiar-cliente" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                            <i class="fa-solid fa-arrows-rotate"></i> Cambiar
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="id_cliente" id="id_cliente" value="" required>
+                </div>
             </div>
             
             <div class="form-group">
@@ -93,25 +124,30 @@
                 <label class="form-label">Condición de Pago *</label>
                 <select name="condicion_pago" class="form-control" required>
                     <option value="">Seleccionar...</option>
-                    <option value="100% por adelantado">100% por adelantado</option>
-                    <option value="50% anticipo 50% contra entrega">50% anticipo 50% contra entrega</option>
-                    <option value="40% anticipo 60% contra entrega">40% anticipo 60% contra entrega</option>
-                    <option value="60% anticipo 40% contra entrega">60% anticipo 40% contra entrega</option>
-                    <option value="100% contra entrega">100% contra entrega</option>
-                    <option value="Tramite de pago 7 días">Tramite de pago 7 días</option>
-                    <option value="Tramite de pago 15 días">Tramite de pago 15 días</option>
-                    <option value="Tramite de pago 30 días">Tramite de pago 30 días</option>
+                    <?php foreach ($condiciones_pago as $item): ?>
+                        <option value="<?= htmlspecialchars($item['valor'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($item['valor'], ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Tiempo de Entrega *</label>
-                <input type="text" name="tiempo_entrega" class="form-control" required placeholder="Ej: 5 a 7 días hábiles">
+                <input type="text" name="tiempo_entrega" class="form-control" required placeholder="Ej: 5 a 7 días hábiles" list="tiempos-entrega-datalist">
+                <datalist id="tiempos-entrega-datalist">
+                    <?php foreach ($tiempos_entrega as $item): ?>
+                        <option value="<?= htmlspecialchars($item['valor'], ENT_QUOTES, 'UTF-8') ?>">
+                    <?php endforeach; ?>
+                </datalist>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Vigencia de la Oferta *</label>
-                <input type="text" name="vigencia_oferta" class="form-control" required placeholder="Ej: 15 días calendario" value="15 días calendario">
+                <input type="text" name="vigencia_oferta" class="form-control" required placeholder="Ej: 15 días calendario" value="15 días calendario" list="vigencias-oferta-datalist">
+                <datalist id="vigencias-oferta-datalist">
+                    <?php foreach ($vigencias_oferta as $item): ?>
+                        <option value="<?= htmlspecialchars($item['valor'], ENT_QUOTES, 'UTF-8') ?>">
+                    <?php endforeach; ?>
+                </datalist>
             </div>
         </div>
         
@@ -129,6 +165,17 @@
                 <input type="date" name="fecha_limite" class="form-control">
             </div>
         </div>
+
+        <div class="grid-2" style="margin-top: 10px;">
+            <div class="form-group">
+                <label class="form-label">Fecha de Entrega (Operaciones)</label>
+                <input type="date" name="fecha_entrega" class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Fecha de Seguimiento (Operaciones)</label>
+                <input type="date" name="fecha_seguimiento" class="form-control">
+            </div>
+        </div>
     </div>
 
     <div class="seccion-form">
@@ -137,18 +184,39 @@
         <table class="tabla-detalles" id="tabla-ensayos">
             <thead>
                 <tr>
-                    <th style="width: 50%;">Descripción del Ensayo</th>
-                    <th style="width: 15%;">Cantidad</th>
-                    <th style="width: 20%;">Precio Unit. (C$)</th>
+                    <th style="width: 10%;">Código</th>
+                    <th style="width: 24%;">Nombre Comercial / Descripción</th>
+                    <th style="width: 10%;">Norma ASTM</th>
+                    <th style="width: 10%;">Formato Reporte</th>
+                    <th style="width: 14%;">Tiempo Entrega/Obs</th>
+                    <th style="width: 8%;">Cantidad</th>
+                    <th style="width: 10%;">Precio Unit. (C$)</th>
                     <th style="width: 10%;">Subtotal</th>
-                    <th style="width: 5%; text-align: center;"><i class="fa-solid fa-trash"></i></th>
+                    <th style="width: 4%; text-align: center;"><i class="fa-solid fa-trash"></i></th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>
+                        <input type="text" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01">
+                    </td>
+                    <td>
                         <input type="hidden" name="ensayo_id_producto[]" value="" class="prod-id-input">
-                        <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Ej: Resistencia a la compresión cilindros" list="productos-datalist" onchange="completarPrecio(this)">
+                        <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." list="productos-datalist" onchange="completarPrecio(this)">
+                        <div style="margin-top: 3px; font-size: 10px;">
+                            <span class="badge-tipo-row" style="font-weight: bold; padding: 1px 4px; border-radius: 3px; background: #fef3c7; color: #d97706; transition: all 0.2s;">
+                                <i class="fa-solid fa-pen-fancy"></i> Campo Libre
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <input type="text" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
+                    </td>
+                    <td>
+                        <input type="text" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
+                    </td>
+                    <td>
+                        <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega...">
                     </td>
                     <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="0.01" min="0.01" value="1" required oninput="calcularFila(this)"></td>
                     <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="0.00" required oninput="calcularFila(this)"></td>
@@ -160,11 +228,11 @@
             </tbody>
         </table>
 
-        <button type="button" onclick="agregarFila()" style="background: #e9ecef; border: 1px solid #ced4da; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: 600; color: #495057; transition: background 0.2s;">
-            <i class="fa-solid fa-plus"></i> Fila Vacía
-        </button>
-        <button type="button" onclick="abrirModalCatalogo()" style="background: var(--cycsa-azul); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; transition: background 0.2s; margin-left: 10px; box-shadow: 0 4px 6px rgba(16, 52, 135, 0.15);">
+        <button type="button" onclick="abrirModalCatalogo()" style="background: var(--cycsa-azul); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; transition: all 0.2s; box-shadow: 0 4px 6px rgba(16, 52, 135, 0.15); display: inline-flex; align-items: center; gap: 8px;">
             <i class="fa-solid fa-magnifying-glass"></i> Buscar en Catálogo (221 Items)
+        </button>
+        <button type="button" onclick="agregarFilaPersonalizada()" style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; color: #475569; font-family: 'Inter', sans-serif; transition: all 0.2s; margin-left: 10px; display: inline-flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-pen-fancy"></i> + Ensayo Personalizado (Campo Libre)
         </button>
 
         <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
@@ -234,17 +302,113 @@
 </form>
 
 <script>
+    // Gestión del Modal de Clientes y Selección Premium
+    function abrirModalClientes() {
+        document.getElementById('modal-clientes').style.display = 'flex';
+        document.getElementById('modal-cliente-search-input').focus();
+    }
+
+    function cerrarModalClientes() {
+        document.getElementById('modal-clientes').style.display = 'none';
+        document.getElementById('modal-cliente-search-input').value = '';
+        filtrarClientesModal();
+    }
+
+    function filtrarClientesModal() {
+        const query = document.getElementById('modal-cliente-search-input').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('#modal-tabla-clientes tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.getAttribute('data-text') || '';
+            if (text.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function seleccionarClienteDesdeModal(id, nombre, ruc) {
+        const idInput = document.getElementById('id_cliente');
+        const searchContainer = document.getElementById('cliente-search-container');
+        const selectedCard = document.getElementById('cliente-seleccionado-card');
+        const cardNombre = document.getElementById('cliente-card-nombre');
+        const cardRuc = document.getElementById('cliente-card-ruc');
+        const cardAvatar = document.getElementById('cliente-card-avatar');
+
+        function getInitials(name) {
+            return name
+                .split(' ')
+                .filter(n => n.length > 0)
+                .map(n => n[0])
+                .join('')
+                .substring(0, 2)
+                .toUpperCase();
+        }
+
+        idInput.value = id;
+        cardNombre.textContent = nombre;
+        cardRuc.innerHTML = `<i class="fa-solid fa-id-card"></i> RUC/ID: ${ruc}`;
+        cardAvatar.textContent = getInitials(nombre);
+        
+        searchContainer.style.display = 'none';
+        selectedCard.style.display = 'flex';
+        
+        cerrarModalClientes();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnCambiar = document.getElementById('btn-cambiar-cliente');
+        const idInput = document.getElementById('id_cliente');
+        const searchContainer = document.getElementById('cliente-search-container');
+        const selectedCard = document.getElementById('cliente-seleccionado-card');
+
+        btnCambiar.addEventListener('click', function() {
+            idInput.value = '';
+            selectedCard.style.display = 'none';
+            searchContainer.style.display = 'block';
+        });
+    });
+
     // Formateador de moneda nicaragüense (C$)
     const formatoMoneda = new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO' });
 
-    function agregarFila() {
+    function toggleTechDetails(link) {
+        const fieldsDiv = link.closest('td').querySelector('.technical-details-fields');
+        if (fieldsDiv.style.display === 'none') {
+            fieldsDiv.style.display = 'block';
+            link.innerHTML = '<i class="fa-solid fa-circle-chevron-up"></i> Ocultar info técnica';
+        } else {
+            fieldsDiv.style.display = 'none';
+            link.innerHTML = '<i class="fa-solid fa-circle-info"></i> Info técnica adicional (Opcional)';
+        }
+    }
+
+    function agregarFila(expandTechDetails = false) {
         const tbody = document.querySelector('#tabla-ensayos tbody');
         const nuevaFila = document.createElement('tr');
         
         nuevaFila.innerHTML = `
             <td>
+                <input type="text" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01">
+            </td>
+            <td>
                 <input type="hidden" name="ensayo_id_producto[]" value="" class="prod-id-input">
-                <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Descripción del ensayo" list="productos-datalist" onchange="completarPrecio(this)">
+                <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." list="productos-datalist" onchange="completarPrecio(this)">
+                <div style="margin-top: 3px; font-size: 10px;">
+                    <span class="badge-tipo-row" style="font-weight: bold; padding: 1px 4px; border-radius: 3px; background: #fef3c7; color: #d97706; transition: all 0.2s;">
+                        <i class="fa-solid fa-pen-fancy"></i> Campo Libre
+                    </span>
+                </div>
+            </td>
+            <td>
+                <input type="text" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
+            </td>
+            <td>
+                <input type="text" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
+            </td>
+            <td>
+                <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega...">
             </td>
             <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="0.01" min="0.01" value="1" required oninput="calcularFila(this)"></td>
             <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="0.00" required oninput="calcularFila(this)"></td>
@@ -255,6 +419,17 @@
         `;
         tbody.appendChild(nuevaFila);
         actualizarBotonesRemover();
+
+        if (expandTechDetails) {
+            setTimeout(() => {
+                const descInput = nuevaFila.querySelector('input[name="ensayo_desc[]"]');
+                if (descInput) descInput.focus();
+            }, 50);
+        }
+    }
+
+    function agregarFilaPersonalizada() {
+        agregarFila(true);
     }
 
     function eliminarFila(boton) {
@@ -321,20 +496,60 @@
         const fila = input.closest('tr');
         const valor = input.value.trim();
         const datalist = document.getElementById('productos-datalist');
-        const opcion = Array.from(datalist.options).find(opt => opt.value === valor);
+        const opcion = Array.from(datalist.options).find(opt => 
+            opt.value === valor || 
+            opt.textContent.trim() === valor || 
+            opt.getAttribute('label') === valor
+        );
         
+        const idInput = fila.querySelector('.prod-id-input');
+        const codigoInput = fila.querySelector('.spec-codigo');
+        const normaInput = fila.querySelector('.spec-norma');
+        const formatoInput = fila.querySelector('.spec-formato');
+        const obsInput = fila.querySelector('.spec-obs');
+        const fieldsDiv = fila.querySelector('.technical-details-fields');
+        const toggleLink = fila.querySelector('.technical-details-toggle a');
+        const badge = fila.querySelector('.badge-tipo-row');
+
         if (opcion) {
             const idProd = opcion.getAttribute('data-id') || '';
-            const idInput = fila.querySelector('.prod-id-input');
             if (idInput) idInput.value = idProd;
             
             const precio = parseFloat(opcion.getAttribute('data-precio')) || 0;
             const precioInput = fila.querySelector('.precio-input');
             precioInput.value = precio.toFixed(2);
+            
+            // Reemplazar la descripción con el nombre comercial del producto seleccionado
+            input.value = opcion.value;
+            
+            // Auto-rellenar info técnica
+            const codigo = opcion.getAttribute('data-codigo') || '';
+            const norma = opcion.getAttribute('data-norma') || '';
+            const formato = opcion.getAttribute('data-formato') || '';
+            const obs = opcion.getAttribute('data-obs') || '';
+            
+            if (codigoInput) codigoInput.value = codigo;
+            if (normaInput) normaInput.value = norma;
+            if (formatoInput) formatoInput.value = formato;
+            if (obsInput) obsInput.value = obs;
+            
+            // Cambiar el badge a Catálogo
+            if (badge) {
+                badge.style.background = '#e0f2fe';
+                badge.style.color = '#0369a1';
+                badge.innerHTML = '<i class="fa-solid fa-book"></i> Catálogo';
+            }
+            
             calcularFila(precioInput);
         } else {
-            const idInput = fila.querySelector('.prod-id-input');
             if (idInput) idInput.value = '';
+            
+            // Cambiar el badge a Campo Libre
+            if (badge) {
+                badge.style.background = '#fef3c7';
+                badge.style.color = '#d97706';
+                badge.innerHTML = '<i class="fa-solid fa-pen-fancy"></i> Campo Libre';
+            }
         }
     }
 
@@ -420,7 +635,7 @@
             .replace(/'/g, "&#039;");
     }
 
-    function agregarFilaConDatos(descripcion, precio, idProducto = '') {
+    function agregarFilaConDatos(descripcion, precio, idProducto = '', codigo = '', norma = '', formato = '', obs = '') {
         const tbody = document.querySelector('#tabla-ensayos tbody');
         
         // Si solo hay una fila y está vacía, la sobrescribimos
@@ -429,20 +644,63 @@
             const idInput = filas[0].querySelector('.prod-id-input');
             const descInput = filas[0].querySelector('input[name="ensayo_desc[]"]');
             const precioInput = filas[0].querySelector('input[name="ensayo_precio[]"]');
+            const codigoInput = filas[0].querySelector('.spec-codigo');
+            const normaInput = filas[0].querySelector('.spec-norma');
+            const formatoInput = filas[0].querySelector('.spec-formato');
+            const obsInput = filas[0].querySelector('.spec-obs');
+            const badge = filas[0].querySelector('.badge-tipo-row');
+
             if (descInput && descInput.value.trim() === "" && (parseFloat(precioInput.value) || 0) === 0) {
                 if (idInput) idInput.value = idProducto;
                 descInput.value = descripcion;
                 precioInput.value = precio.toFixed(2);
+                
+                if (codigoInput) codigoInput.value = codigo;
+                if (normaInput) normaInput.value = norma;
+                if (formatoInput) formatoInput.value = formato;
+                if (obsInput) obsInput.value = obs;
+                
+                if (badge) {
+                    if (idProducto) {
+                        badge.style.background = '#e0f2fe';
+                        badge.style.color = '#0369a1';
+                        badge.innerHTML = '<i class="fa-solid fa-book"></i> Catálogo';
+                    } else {
+                        badge.style.background = '#fef3c7';
+                        badge.style.color = '#d97706';
+                        badge.innerHTML = '<i class="fa-solid fa-pen-fancy"></i> Campo Libre';
+                    }
+                }
+                
                 calcularFila(precioInput);
                 return;
             }
         }
         
         const nuevaFila = document.createElement('tr');
+        const hasTechInfo = (codigo || norma || formato);
+        const isCatalogo = idProducto !== '';
         nuevaFila.innerHTML = `
             <td>
+                <input type="text" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01" value="${escapeHtml(codigo)}">
+            </td>
+            <td>
                 <input type="hidden" name="ensayo_id_producto[]" value="${escapeHtml(idProducto.toString())}" class="prod-id-input">
-                <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Descripción del ensayo" list="productos-datalist" onchange="completarPrecio(this)" value="${escapeHtml(descripcion)}">
+                <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." list="productos-datalist" onchange="completarPrecio(this)" value="${escapeHtml(descripcion)}">
+                <div style="margin-top: 3px; font-size: 10px;">
+                    <span class="badge-tipo-row" style="font-weight: bold; padding: 1px 4px; border-radius: 3px; background: ${isCatalogo ? '#e0f2fe' : '#fef3c7'}; color: ${isCatalogo ? '#0369a1' : '#d97706'}; transition: all 0.2s;">
+                        ${isCatalogo ? '<i class="fa-solid fa-book"></i> Catálogo' : '<i class="fa-solid fa-pen-fancy"></i> Campo Libre'}
+                    </span>
+                </div>
+            </td>
+            <td>
+                <input type="text" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39" value="${escapeHtml(norma)}">
+            </td>
+            <td>
+                <input type="text" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01" value="${escapeHtml(formato)}">
+            </td>
+            <td>
+                <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega..." value="${escapeHtml(obs)}">
             </td>
             <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="0.01" min="0.01" value="1" required oninput="calcularFila(this)"></td>
             <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="${precio.toFixed(2)}" required oninput="calcularFila(this)"></td>
@@ -470,7 +728,11 @@
             const id = cb.getAttribute('data-id') || '';
             const nombre = cb.getAttribute('data-nombre');
             const precio = parseFloat(cb.getAttribute('data-precio')) || 0;
-            agregarFilaConDatos(nombre, precio, id);
+            const codigo = cb.getAttribute('data-codigo') || '';
+            const norma = cb.getAttribute('data-norma') || '';
+            const formato = cb.getAttribute('data-formato') || '';
+            const obs = cb.getAttribute('data-obs') || '';
+            agregarFilaConDatos(nombre, precio, id, codigo, norma, formato, obs);
             cb.checked = false; // reset
         });
         
@@ -483,12 +745,26 @@
 <datalist id="productos-datalist">
     <?php foreach ($productos as $prod): ?>
         <?php 
-        $nombre = !empty($prod['nombre_comercial']) ? $prod['nombre_comercial'] : $prod['ensayo_servicio'];
-        if (!empty($prod['codigo_servicio'])) {
-            $nombre = $prod['codigo_servicio'] . ' - ' . $nombre;
+        $nombre_comercial_solo = !empty($prod['nombre_comercial']) ? $prod['nombre_comercial'] : $prod['ensayo_servicio'];
+        
+        // Determinar código inteligente (procedimiento o servicio) y formato de reporte
+        $codigo_opcion = !empty($prod['procedimiento_muestreo']) ? $prod['procedimiento_muestreo'] : ($prod['codigo_servicio'] ?? '');
+        $formato_opcion = (!empty($prod['codigo_servicio']) && strpos($prod['codigo_servicio'], 'CYCSA-RT-') !== false) ? $prod['codigo_servicio'] : ($prod['formato_reporte'] ?? '');
+        
+        $nombre = $nombre_comercial_solo;
+        if (!empty($codigo_opcion)) {
+            $nombre = $codigo_opcion . ' - ' . $nombre;
         }
         ?>
-        <option value="<?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?>" data-precio="<?= $prod['precio'] ?>" data-id="<?= $prod['id'] ?>">
+        <option value="<?= htmlspecialchars($nombre_comercial_solo, ENT_QUOTES, 'UTF-8') ?>" 
+                data-precio="<?= $prod['precio'] ?>" 
+                data-id="<?= $prod['id'] ?>"
+                data-codigo="<?= htmlspecialchars($codigo_opcion, ENT_QUOTES, 'UTF-8') ?>"
+                data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                data-formato="<?= htmlspecialchars($formato_opcion, ENT_QUOTES, 'UTF-8') ?>"
+                data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+            <?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?>
+        </option>
     <?php endforeach; ?>
 </datalist>
 
@@ -523,18 +799,22 @@
                     <?php foreach ($productos as $prod): ?>
                         <?php 
                         $nombre_completo = !empty($prod['nombre_comercial']) ? $prod['nombre_comercial'] : $prod['ensayo_servicio'];
-                        $busqueda_val = strtolower($nombre_completo . ' ' . ($prod['codigo_servicio'] ?? '') . ' ' . ($prod['norma_astm'] ?? '') . ' ' . ($prod['matriz_tipo'] ?? ''));
+                        
+                        $codigo_opcion = !empty($prod['procedimiento_muestreo']) ? $prod['procedimiento_muestreo'] : ($prod['codigo_servicio'] ?? '');
+                        $formato_opcion = (!empty($prod['codigo_servicio']) && strpos($prod['codigo_servicio'], 'CYCSA-RT-') !== false) ? $prod['codigo_servicio'] : ($prod['formato_reporte'] ?? '');
+                        
+                        $busqueda_val = strtolower($nombre_completo . ' ' . $codigo_opcion . ' ' . $formato_opcion . ' ' . ($prod['norma_astm'] ?? '') . ' ' . ($prod['matriz_tipo'] ?? ''));
                         
                         $nombre_opcion = $nombre_completo;
-                        if (!empty($prod['codigo_servicio'])) {
-                            $nombre_opcion = $prod['codigo_servicio'] . ' - ' . $nombre_completo;
+                        if (!empty($codigo_opcion)) {
+                            $nombre_opcion = $codigo_opcion . ' - ' . $nombre_completo;
                         }
                         ?>
                         <tr style="cursor: pointer;" onclick="toggleFilaCheck(this, event)" data-text="<?= htmlspecialchars($busqueda_val, ENT_QUOTES, 'UTF-8') ?>" data-cat="<?= htmlspecialchars(strtolower($prod['matriz_tipo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                             <td style="text-align: center;">
-                                <input type="checkbox" class="modal-prod-checkbox" data-id="<?= $prod['id'] ?>" data-nombre="<?= htmlspecialchars($nombre_opcion, ENT_QUOTES, 'UTF-8') ?>" data-precio="<?= $prod['precio'] ?>" onchange="actualizarContadorModal()">
+                                <input type="checkbox" class="modal-prod-checkbox" data-id="<?= $prod['id'] ?>" data-nombre="<?= htmlspecialchars($nombre_completo, ENT_QUOTES, 'UTF-8') ?>" data-precio="<?= $prod['precio'] ?>" data-codigo="<?= htmlspecialchars($codigo_opcion, ENT_QUOTES, 'UTF-8') ?>" data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-formato="<?= htmlspecialchars($formato_opcion, ENT_QUOTES, 'UTF-8') ?>" data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>" onchange="actualizarContadorModal()">
                             </td>
-                            <td style="font-family: monospace; font-weight: bold; color: #2d3748;"><?= htmlspecialchars($prod['codigo_servicio'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+                            <td style="font-family: monospace; font-weight: bold; color: #2d3748;"><?= htmlspecialchars($codigo_opcion !== '' ? $codigo_opcion : 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
                             <td>
                                 <strong style="color: #2d3748;"><?= htmlspecialchars($nombre_completo, ENT_QUOTES, 'UTF-8') ?></strong>
                                 <?php if (!empty($prod['norma_astm'])): ?>
@@ -551,6 +831,59 @@
         <div class="modal-footer">
             <button type="button" class="form-control" style="background: #f8f9fa; border: 1px solid #ddd; padding: 10px 20px; border-radius: 4px; color: #4a5568; font-size: 14px; font-weight: 600; width: auto; cursor: pointer;" onclick="cerrarModalCatalogo()">Cancelar</button>
             <button type="button" id="modal-btn-add" class="btn-premium-azul" style="padding: 10px 20px; font-size: 14px;" onclick="agregarSeleccionados()">Añadir Seleccionados (0)</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE BÚSQUEDA Y SELECCIÓN DE CLIENTES -->
+<div class="modal-premium-bg" id="modal-clientes" style="display:none;">
+    <div class="modal-premium-content" style="max-width: 750px;">
+        <div class="modal-header">
+            <h4 class="modal-title"><i class="fa-solid fa-address-book"></i> Buscar y Seleccionar Cliente</h4>
+            <button type="button" class="modal-close" onclick="cerrarModalClientes()">&times;</button>
+        </div>
+        <div class="modal-search-wrapper" style="position: relative;">
+            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+            <input type="text" id="modal-cliente-search-input" class="form-control" placeholder="Buscar por nombre, RUC, correo o teléfono..." style="padding-left: 40px;" oninput="filtrarClientesModal()">
+        </div>
+        <div class="modal-tabla-container" style="margin-top: 15px;">
+            <table class="modal-tabla" id="modal-tabla-clientes">
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">Nombre / Razón Social</th>
+                        <th style="width: 25%;">Identificación (RUC)</th>
+                        <th style="width: 25%;">Contacto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($clientes as $cli): ?>
+                        <?php if (($cli['activo'] ?? 1) == 1): ?>
+                            <?php 
+                            $busqueda_val = strtolower($cli['nombre_razon_social'] . ' ' . ($cli['identificacion'] ?? '') . ' ' . ($cli['email'] ?? '') . ' ' . ($cli['telefono'] ?? ''));
+                            ?>
+                            <tr style="cursor: pointer;" onclick="seleccionarClienteDesdeModal(<?= $cli['id'] ?>, '<?= htmlspecialchars($cli['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars($cli['identificacion'] ?? 'Sin RUC', ENT_QUOTES, 'UTF-8') ?>')" data-text="<?= htmlspecialchars($busqueda_val, ENT_QUOTES, 'UTF-8') ?>">
+                                <td>
+                                    <strong style="color: #2d3748;"><?= htmlspecialchars($cli['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                </td>
+                                <td style="font-family: monospace; font-weight: bold; color: #4a5568;">
+                                    <?= htmlspecialchars($cli['identificacion'] ?? 'Sin RUC', ENT_QUOTES, 'UTF-8') ?>
+                                </td>
+                                <td style="font-size: 12px; color: #718096;">
+                                    <?php if (!empty($cli['email'])): ?>
+                                        <div><i class="fa-regular fa-envelope"></i> <?= htmlspecialchars($cli['email'], ENT_QUOTES, 'UTF-8') ?></div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($cli['telefono'])): ?>
+                                        <div style="margin-top: 2px;"><i class="fa-solid fa-phone"></i> <?= htmlspecialchars($cli['telefono'], ENT_QUOTES, 'UTF-8') ?></div>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="form-control" style="background: #f8f9fa; border: 1px solid #ddd; padding: 10px 20px; border-radius: 4px; color: #4a5568; font-size: 14px; font-weight: 600; width: auto; cursor: pointer;" onclick="cerrarModalClientes()">Cerrar</button>
         </div>
     </div>
 </div>

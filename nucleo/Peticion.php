@@ -9,15 +9,31 @@ class Peticion {
 
     public function obtenerRuta(): string {
         $ruta = $_SERVER['REQUEST_URI'] ?? '/';
-        $posicionDirectorio = strpos($ruta, '/publico');
         
-        if ($posicionDirectorio !== false) {
-            $ruta = substr($ruta, $posicionDirectorio + 8); // 8 es la longitud de '/publico'
-        }
-        
+        // 1. Quitar parámetros GET (todo a partir del ?)
         $posicionInterrogacion = strpos($ruta, '?');
         if ($posicionInterrogacion !== false) {
             $ruta = substr($ruta, 0, $posicionInterrogacion);
+        }
+        
+        // 2. Obtener el directorio del script actual (ej: /Cycsa/publico o /sistema/publico)
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $scriptDir = str_replace('\\', '/', dirname($scriptName));
+        $scriptDir = rtrim($scriptDir, '/');
+        
+        // 3. Resolver la ruta según el contexto de despliegue
+        $posicionPublico = strpos($ruta, '/publico');
+        if ($posicionPublico !== false) {
+            // Caso A: "/publico" está en la URL (ej: localhost) -> recortamos todo hasta /publico
+            $ruta = substr($ruta, $posicionPublico + 8);
+        } else {
+            // Caso B: "/publico" fue ocultado (ej: Bluehost con .htaccess en subcarpeta)
+            // Obtenemos la raíz del proyecto en la URL (ej: /Cycsa o /sistema o /portal)
+            $proyectoRaizUrl = str_replace('/publico', '', $scriptDir);
+            
+            if ($proyectoRaizUrl !== '' && strpos($ruta, $proyectoRaizUrl) === 0) {
+                $ruta = substr($ruta, strlen($proyectoRaizUrl));
+            }
         }
         
         return $ruta === '' ? '/' : $ruta;

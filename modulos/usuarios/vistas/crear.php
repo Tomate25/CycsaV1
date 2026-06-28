@@ -42,47 +42,155 @@
         </div>
         
         <!-- 🛡️ SECCIÓN DINÁMICA DE PERMISOS -->
-        <div id="seccion-permisos" style="margin-bottom: 25px; border: 1px solid var(--border-light); padding: 20px; border-radius: 6px; background-color: #f8fafc; display: none;">
-            <h4 style="margin: 0 0 12px 0; color: var(--cycsa-azul); font-size: 14.5px; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-shield-halved"></i> Permisos del Vendedor
+        <div id="seccion-permisos" style="margin-bottom: 25px; border: 1px solid #e2e8f0; padding: 20px; border-radius: 6px; background-color: #f8fafc; display: none;">
+            <h4 style="margin: 0 0 12px 0; color: #103487; font-size: 14.5px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-shield-halved"></i> Configuración de Permisos
             </h4>
-            <p style="font-size: 12px; color: #64748b; margin-bottom: 18px; line-height: 1.4;">Marca los módulos y las acciones específicas a las que este vendedor tendrá acceso en la aplicación.</p>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 18px; line-height: 1.4;">Marca los módulos y las acciones específicas a las que este usuario tendrá acceso en la aplicación. Los permisos se pre-cargan automáticamente según el rol seleccionado.</p>
             
             <!-- Modulo: Clientes -->
-            <div style="margin-bottom: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 12px;">
-                <strong style="font-size: 13px; color: #334155; display: block; margin-bottom: 6px;">Módulo Clientes:</strong>
-                <div style="display: flex; gap: 20px;">
-                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
-                        <input type="checkbox" name="permisos[clientes][ver]" value="1" checked style="accent-color: var(--cycsa-azul);"> Ver Clientes (Acceso al módulo)
+            <div style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+                <strong style="font-size: 13.5px; color: #1e293b; display: block; margin-bottom: 10px;"><i class="fa-solid fa-users"></i> Módulo Clientes:</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-left: 5px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[clientes][ver]" value="1" checked style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Visualizar Clientes</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite buscar, filtrar y consultar la lista general de clientes registrados en el sistema.</span>
+                        </div>
                     </label>
-                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
-                        <input type="checkbox" name="permisos[clientes][crear_editar]" value="1" checked style="accent-color: var(--cycsa-azul);"> Registrar / Editar Clientes
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[clientes][crear_editar]" value="1" checked style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Registrar / Editar Clientes</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite dar de alta nuevos clientes y modificar sus fichas de información fiscal o de contacto.</span>
+                        </div>
                     </label>
                 </div>
             </div>
             
             <!-- Modulo: Productos / Ensayos -->
-            <div style="margin-bottom: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 12px;">
-                <strong style="font-size: 13px; color: #334155; display: block; margin-bottom: 6px;">Módulo Productos / Ensayos (Catálogo):</strong>
-                <div style="display: flex; gap: 20px;">
-                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
-                        <input type="checkbox" name="permisos[productos][ver]" value="1" checked style="accent-color: var(--cycsa-azul);"> Ver Productos (Catálogo)
+            <div style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+                <strong style="font-size: 13.5px; color: #1e293b; display: block; margin-bottom: 10px;"><i class="fa-solid fa-flask-vial"></i> Módulo Productos / Catálogo de Ensayos:</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-left: 5px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[productos][ver]" value="1" checked style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Ver Catálogo General</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Habilita la consulta de la lista de ensayos y servicios disponibles con sus normas y códigos.</span>
+                        </div>
                     </label>
-                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
-                        <input type="checkbox" name="permisos[productos][crear_editar]" value="1" style="accent-color: var(--cycsa-azul);"> Crear / Editar / Eliminar Ensayos
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[productos][crear_editar]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Crear / Editar / Eliminar Ensayos</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite agregar nuevos ensayos al catálogo, editar sus precios, normas ASTM y parámetros técnicos.</span>
+                        </div>
                     </label>
                 </div>
             </div>
             
             <!-- Modulo: Cotizaciones -->
-            <div style="margin-bottom: 5px;">
-                <strong style="font-size: 13px; color: #334155; display: block; margin-bottom: 6px;">Módulo Cotizaciones:</strong>
-                <div style="display: flex; gap: 20px;">
-                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
-                        <input type="checkbox" name="permisos[cotizaciones][ver]" value="1" checked style="accent-color: var(--cycsa-azul);"> Ver Cotizaciones
+            <div style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+                <strong style="font-size: 13.5px; color: #1e293b; display: block; margin-bottom: 10px;"><i class="fa-solid fa-file-invoice-dollar"></i> Módulo Cotizaciones:</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-left: 5px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[cotizaciones][ver]" value="1" checked style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Ver Cotizaciones</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Habilita el acceso de lectura al listado histórico de cotizaciones de la empresa.</span>
+                        </div>
                     </label>
-                    <label style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
-                        <input type="checkbox" name="permisos[cotizaciones][crear_editar]" value="1" checked style="accent-color: var(--cycsa-azul);"> Crear / Editar / Aprobar
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[cotizaciones][crear_editar]" value="1" checked style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Crear / Editar Cotizaciones</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite elaborar cotizaciones, configurar sus ensayos, agregar descuentos y enviar propuestas a revisión.</span>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[cotizaciones][aprobar]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Supervisar / Aprobar Cotizaciones</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Faculta la revisión formal de cotizaciones comerciales para aprobarlas, rechazarlas o solicitar correcciones.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Modulo: Inventario -->
+            <div style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+                <strong style="font-size: 13.5px; color: #1e293b; display: block; margin-bottom: 10px;"><i class="fa-solid fa-boxes-stacked"></i> Módulo Inventario:</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-left: 5px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[inventario][ver]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Ver Existencias / Stock</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite consultar el inventario de materiales, reactivos y consumibles en las diferentes bodegas.</span>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[inventario][crear_editar]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Registrar Movimientos y Bodegas</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite asentar entradas, salidas, ajustes de inventario y aprobar transferencias físicas entre bodegas.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Modulo: Compras -->
+            <div style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+                <strong style="font-size: 13.5px; color: #1e293b; display: block; margin-bottom: 10px;"><i class="fa-solid fa-cart-shopping"></i> Módulo Compras:</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-left: 5px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[compras][ver]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Consultar Compras</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Acceso para ver el registro histórico de solicitudes y órdenes de compra con proveedores.</span>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[compras][crear_editar]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Crear y Generar Órdenes de Compra</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite confeccionar nuevas solicitudes de compra, revisar costos y tramitar la firma/aprobación final de órdenes.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Modulo: Contabilidad -->
+            <div style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+                <strong style="font-size: 13.5px; color: #1e293b; display: block; margin-bottom: 10px;"><i class="fa-solid fa-calculator"></i> Módulo Contabilidad:</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-left: 5px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[contabilidad][ver]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Ver Informes Contables</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Acceso para visualizar reportes financieros, flujos de caja, conciliación de saldos e informes contables.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Modulo: Laboratorio -->
+            <div style="margin-bottom: 5px;">
+                <strong style="font-size: 13.5px; color: #1e293b; display: block; margin-bottom: 10px;"><i class="fa-solid fa-microscope"></i> Módulo Laboratorio (Ensayos):</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-left: 5px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[laboratorio][ver]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Ver Muestras y Ensayos</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Habilita el seguimiento al estado y avance de las muestras ingresadas en el laboratorio para control de calidad.</span>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[laboratorio][crear_editar]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Cargar Resultados y Generar Informes</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Autoriza a los analistas de calidad a ingresar los datos medidos y generar los informes oficiales de resultados de ensayos.</span>
+                        </div>
                     </label>
                 </div>
             </div>
@@ -93,16 +201,54 @@
                 const selectRol = document.querySelector('select[name="id_rol"]');
                 const seccionPermisos = document.getElementById('seccion-permisos');
                 
+                // Mapear los permisos por defecto de cada rol
+                const rolesPermisos = <?= json_encode(array_column($roles, 'permisos', 'id')) ?>;
+                
                 function togglePermisos() {
-                    if (selectRol.value == '2') { // 2 = Vendedor
+                    // Mostrar permisos si hay rol seleccionado y NO es Administrador (ID = 1)
+                    if (selectRol.value !== '' && selectRol.value != '1') {
                         seccionPermisos.style.display = 'block';
                     } else {
                         seccionPermisos.style.display = 'none';
                     }
                 }
                 
+                function cargarPermisosRol() {
+                    const idRol = selectRol.value;
+                    if (!idRol || idRol == '1') return;
+                    
+                    let permisos = {};
+                    const rawPermisos = rolesPermisos[idRol];
+                    if (rawPermisos) {
+                        try {
+                            permisos = typeof rawPermisos === 'string' ? JSON.parse(rawPermisos) : rawPermisos;
+                        } catch (e) {
+                            console.error("Error al parsear permisos del rol:", e);
+                            return;
+                        }
+                    }
+                    
+                    const checkboxes = seccionPermisos.querySelectorAll('input[type="checkbox"]');
+                    checkboxes.forEach(cb => {
+                        const name = cb.name; // Ej: "permisos[clientes][ver]"
+                        const match = name.match(/permisos\[([^\]]+)\]\[([^\]]+)\]/);
+                        if (match) {
+                            const modulo = match[1];
+                            const accion = match[2];
+                            if (permisos && permisos[modulo] && permisos[modulo][accion] !== undefined) {
+                                cb.checked = (permisos[modulo][accion] == 1 || permisos[modulo][accion] === true);
+                            } else {
+                                cb.checked = false;
+                            }
+                        }
+                    });
+                }
+                
                 if (selectRol) {
-                    selectRol.addEventListener('change', togglePermisos);
+                    selectRol.addEventListener('change', function() {
+                        togglePermisos();
+                        cargarPermisosRol();
+                    });
                     togglePermisos();
                 }
             });

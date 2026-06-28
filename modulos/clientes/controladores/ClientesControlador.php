@@ -73,6 +73,9 @@ class ClientesControlador extends ControladorBase {
             }
 
             if ($modelo->guardar($datos)) {
+                $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                $lastId = $db->lastInsertId();
+                registrarBitacora('clientes', 'crear', 'Creado cliente: ' . $datos['nombre_razon_social'], $lastId);
                 $respuesta->redirigir('/Cycsa/publico/clientes');
                 return;
             }
@@ -132,8 +135,30 @@ class ClientesControlador extends ControladorBase {
         }
 
         if ($modelo->actualizar((int)$id, $datos)) {
+            registrarBitacora('clientes', 'editar', 'Actualizado cliente: ' . $datos['nombre_razon_social'], (int)$id);
             $respuesta->redirigir('/Cycsa/publico/clientes');
             return;
         }
+    }
+
+    // 🔍 BUSCAR CLIENTES VÍA AJAX (Para autocompletado en cotizaciones)
+    public function buscarAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        
+        $busqueda = $_GET['q'] ?? '';
+        $modelo = new ClienteModelo();
+        $clientes = $modelo->obtenerTodos($busqueda);
+        
+        $resultados = [];
+        foreach ($clientes as $cli) {
+            if ($cli['activo'] == 1) {
+                $resultados[] = [
+                    'id' => $cli['id'],
+                    'nombre' => $cli['nombre_razon_social'],
+                    'identificacion' => $cli['identificacion'] ?? 'Sin RUC'
+                ];
+            }
+        }
+        $respuesta->enviarJson($resultados);
     }
 }

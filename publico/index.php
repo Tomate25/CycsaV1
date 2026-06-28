@@ -1,6 +1,18 @@
 <?php
 // publico/index.php
 
+// 🌐 Reescribir dinámicamente las rutas hardcodeadas en las vistas para compatibilidad con cualquier carpeta
+ob_start(function($buffer) {
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    $basePath = dirname($scriptName);
+    $basePath = str_replace('\\', '/', $basePath);
+    $basePath = rtrim($basePath, '/');
+    if ($basePath === '/') {
+        $basePath = '';
+    }
+    return str_replace('/Cycsa/publico', $basePath, $buffer);
+});
+
 // 1. Cargar el Autoloader de Composer
 require_once __DIR__ . '/../vendor/autoload.php';
 
