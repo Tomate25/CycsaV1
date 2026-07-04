@@ -181,6 +181,9 @@ $precioPromedio = $conPrecio > 0 ? $sumaPrecios / $conPrecio : 0;
                                 <?php if (!empty($p['norma_astm'])): ?>
                                     <span class="text-muted-small" style="color: var(--cycsa-azul);"><i class="fa-solid fa-scroll"></i> Norma: <?= htmlspecialchars($p['norma_astm'], ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php endif; ?>
+                                <?php if (!empty($p['formato_nombre'])): ?>
+                                    <span class="text-muted-small" style="color: #0f9f90;"><i class="fa-solid fa-file-pdf"></i> Reporte: <?= htmlspecialchars($p['formato_nombre'], ENT_QUOTES, 'UTF-8') ?> [<?= htmlspecialchars($p['formato_reporte'], ENT_QUOTES, 'UTF-8') ?>]</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="badge-category"><?= htmlspecialchars($p['matriz_tipo'] ?? 'Otros', ENT_QUOTES, 'UTF-8') ?></span>
@@ -194,7 +197,19 @@ $precioPromedio = $conPrecio > 0 ? $sumaPrecios / $conPrecio : 0;
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <span style="font-size: 13px; color: #4a5568;"><?= htmlspecialchars($p['observaciones'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php if (!empty($p['observaciones'])): ?>
+                                    <div style="font-size: 13px; color: #2d3748; font-weight: 500;">
+                                        <i class="fa-solid fa-clock"></i> <?= htmlspecialchars($p['observaciones'], ENT_QUOTES, 'UTF-8') ?>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($p['condiciones_muestra'])): ?>
+                                    <div style="font-size: 11px; color: #718096; margin-top: 4px; line-height: 1.3;">
+                                        <strong>Muestra:</strong> <?= htmlspecialchars($p['condiciones_muestra'], ENT_QUOTES, 'UTF-8') ?>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (empty($p['observaciones']) && empty($p['condiciones_muestra'])): ?>
+                                    <span style="color: #a0aec0;">N/A</span>
+                                <?php endif; ?>
                             </td>
                             <td style="text-align: right; font-weight: 700; color: #2d3748; font-size: 15px;">
                                 C$ <?= number_format($p['precio'], 2) ?>

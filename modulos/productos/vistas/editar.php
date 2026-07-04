@@ -31,7 +31,7 @@
         
         <div class="grid-3">
             <div class="form-group">
-                <label class="form-label">No. de Ítem (Excel)</label>
+                <label class="form-label">No. de Ítem</label>
                 <input type="text" name="no_item" class="form-control" placeholder="Ej: 15" value="<?= htmlspecialchars($producto['no_item'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
             
@@ -121,6 +121,21 @@
                     <option value="1" <?= (int)$producto['activo'] === 1 ? 'selected' : '' ?>>Activo (Visible en Catálogo)</option>
                     <option value="0" <?= (int)$producto['activo'] === 0 ? 'selected' : '' ?>>Inactivo (Oculto)</option>
                 </select>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group" style="grid-column: span 2;">
+                <label class="form-label">Formato de Reporte de Ensayo Relacionado (Calidad PDF)</label>
+                <select name="formato_id" class="form-control" style="background-color: white;">
+                    <option value="">-- Sin Formato Específico (No imprime reporte) --</option>
+                    <?php foreach ($formatos as $f): ?>
+                        <option value="<?= $f['id'] ?>" <?= (isset($producto['formato_id']) && (int)$producto['formato_id'] === (int)$f['id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($f['nombre'], ENT_QUOTES, 'UTF-8') ?> - [<?= htmlspecialchars($f['codigo_formato'], ENT_QUOTES, 'UTF-8') ?>]
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="text-muted-small" style="color: var(--cycsa-azul); margin-top: 5px;"><i class="fa-solid fa-circle-info"></i> Selecciona cuál de los 21 formatos de ensayo oficiales corresponde a este producto para su posterior impresión en PDF.</span>
             </div>
         </div>
 

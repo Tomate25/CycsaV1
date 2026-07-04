@@ -52,7 +52,8 @@ class ProductosControlador extends ControladorBase {
         $modelo = new ProductoModelo();
         $this->renderizar('productos/vistas/crear', [
             'titulo' => 'Registrar Nuevo Ensayo / Servicio - Cycsa',
-            'categorias' => $modelo->obtenerCategorias()
+            'categorias' => $modelo->obtenerCategorias(),
+            'formatos' => $modelo->obtenerFormatos()
         ]);
     }
 
@@ -74,7 +75,8 @@ class ProductosControlador extends ControladorBase {
                     'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
                     'error' => 'Error: Token CSRF inválido.', 
                     'valores' => $datos,
-                    'categorias' => $modelo->obtenerCategorias()
+                    'categorias' => $modelo->obtenerCategorias(),
+                    'formatos' => $modelo->obtenerFormatos()
                 ]); 
                 return;
             }
@@ -85,7 +87,8 @@ class ProductosControlador extends ControladorBase {
                     'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
                     'error' => 'La descripción o nombre del ensayo/servicio es obligatorio.', 
                     'valores' => $datos,
-                    'categorias' => $modelo->obtenerCategorias()
+                    'categorias' => $modelo->obtenerCategorias(),
+                    'formatos' => $modelo->obtenerFormatos()
                 ]); 
                 return;
             }
@@ -96,18 +99,8 @@ class ProductosControlador extends ControladorBase {
                     'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
                     'error' => 'El precio debe ser un número mayor o igual a 0.', 
                     'valores' => $datos,
-                    'categorias' => $modelo->obtenerCategorias()
-                ]); 
-                return;
-            }
-
-            // Validar duplicado de código de servicio (si se ingresó uno)
-            if (!empty($datos['codigo_servicio']) && $modelo->codigoExiste($datos['codigo_servicio'])) {
-                $this->renderizar('productos/vistas/crear', [
-                    'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
-                    'error' => 'El código de formato o servicio ya está registrado.', 
-                    'valores' => $datos,
-                    'categorias' => $modelo->obtenerCategorias()
+                    'categorias' => $modelo->obtenerCategorias(),
+                    'formatos' => $modelo->obtenerFormatos()
                 ]); 
                 return;
             }
@@ -123,7 +116,8 @@ class ProductosControlador extends ControladorBase {
                     'titulo' => 'Registrar Nuevo Ensayo / Servicio', 
                     'error' => 'Error al intentar guardar el registro en la base de datos.', 
                     'valores' => $datos,
-                    'categorias' => $modelo->obtenerCategorias()
+                    'categorias' => $modelo->obtenerCategorias(),
+                    'formatos' => $modelo->obtenerFormatos()
                 ]); 
                 return;
             }
@@ -159,7 +153,8 @@ class ProductosControlador extends ControladorBase {
         $this->renderizar('productos/vistas/editar', [
             'titulo' => 'Editar Ensayo / Servicio - Cycsa',
             'producto' => $producto,
-            'categorias' => $modelo->obtenerCategorias()
+            'categorias' => $modelo->obtenerCategorias(),
+            'formatos' => $modelo->obtenerFormatos()
         ]);
     }
 
@@ -186,7 +181,8 @@ class ProductosControlador extends ControladorBase {
                 'titulo' => 'Editar Ensayo / Servicio', 
                 'error' => 'Error: Token CSRF inválido.', 
                 'producto' => array_merge($datos, ['id' => $id]),
-                'categorias' => $modelo->obtenerCategorias()
+                'categorias' => $modelo->obtenerCategorias(),
+                'formatos' => $modelo->obtenerFormatos()
             ]); 
             return;
         }
@@ -197,7 +193,8 @@ class ProductosControlador extends ControladorBase {
                 'titulo' => 'Editar Ensayo / Servicio', 
                 'error' => 'La descripción o nombre del ensayo/servicio es obligatorio.', 
                 'producto' => array_merge($datos, ['id' => $id]),
-                'categorias' => $modelo->obtenerCategorias()
+                'categorias' => $modelo->obtenerCategorias(),
+                'formatos' => $modelo->obtenerFormatos()
             ]); 
             return;
         }
@@ -208,18 +205,8 @@ class ProductosControlador extends ControladorBase {
                 'titulo' => 'Editar Ensayo / Servicio', 
                 'error' => 'El precio debe ser un número mayor o igual a 0.', 
                 'producto' => array_merge($datos, ['id' => $id]),
-                'categorias' => $modelo->obtenerCategorias()
-            ]); 
-            return;
-        }
-
-        // Validar duplicado de código de servicio
-        if (!empty($datos['codigo_servicio']) && $modelo->codigoExiste($datos['codigo_servicio'], (int)$id)) {
-            $this->renderizar('productos/vistas/editar', [
-                'titulo' => 'Editar Ensayo / Servicio', 
-                'error' => 'El código de formato o servicio ya pertenece a otro registro.', 
-                'producto' => array_merge($datos, ['id' => $id]),
-                'categorias' => $modelo->obtenerCategorias()
+                'categorias' => $modelo->obtenerCategorias(),
+                'formatos' => $modelo->obtenerFormatos()
             ]); 
             return;
         }
@@ -233,7 +220,8 @@ class ProductosControlador extends ControladorBase {
                 'titulo' => 'Editar Ensayo / Servicio', 
                 'error' => 'Error al intentar actualizar el registro en la base de datos.', 
                 'producto' => array_merge($datos, ['id' => $id]),
-                'categorias' => $modelo->obtenerCategorias()
+                'categorias' => $modelo->obtenerCategorias(),
+                'formatos' => $modelo->obtenerFormatos()
             ]); 
             return;
         }

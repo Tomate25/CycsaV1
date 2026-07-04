@@ -155,7 +155,35 @@
                         <input type="checkbox" name="permisos[contabilidad][ver]" value="1" style="accent-color: #103487; margin-top: 3px;">
                         <div>
                             <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Ver Informes Contables</span>
-                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Acceso para visualizar reportes financieros, flujos de caja, conciliación de saldos e informes contables.</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Acceso para visualizar el catálogo de cuentas, balance general, estado de resultados y registro diario.</span>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[contabilidad][crear_editar]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Gestionar Contabilidad y Asientos</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite registrar asientos manuales, conciliar bancos, editar catálogo y sincronizar diario.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Modulo: Operaciones -->
+            <div style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+                <strong style="font-size: 13.5px; color: #1e293b; display: block; margin-bottom: 10px;"><i class="fa-solid fa-calendar-days"></i> Módulo Operaciones (Calendario):</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-left: 5px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[operaciones][ver]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Ver Calendario de Ensayos</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite consultar la programación mensual y cronograma de ensayos de laboratorio.</span>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="permisos[operaciones][crear_editar]" value="1" style="accent-color: #103487; margin-top: 3px;">
+                        <div>
+                            <span style="font-size: 13px; font-weight: 600; color: #334155; display: block;">Gestionar y Re-agendar Ensayos</span>
+                            <span style="font-size: 11px; color: #64748b; display: block; line-height: 1.3;">Permite modificar las fechas del cronograma de ensayos y dar aprobaciones operativas.</span>
                         </div>
                     </label>
                 </div>

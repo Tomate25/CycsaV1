@@ -545,6 +545,6 @@
             "install-path": "../thecodingmachine/safe"
         }
     ],
-    "dev": true,
+    "dev": false,
     "dev-package-names": []
 }

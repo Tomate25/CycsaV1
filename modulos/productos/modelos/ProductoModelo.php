@@ -9,7 +9,7 @@ class ProductoModelo extends ModeloBase {
     
     // 🔍 OBTENER TODOS LOS PRODUCTOS CON BUSCADOR Y FILTRO DE CATEGORÍA
     public function obtenerTodos(string $busqueda = '', string $categoria = '', int $soloActivos = 1): array {
-        $sql = "SELECT p.*, f.codigo_formato AS formato_reporte 
+        $sql = "SELECT p.*, f.codigo_formato AS formato_reporte, f.nombre AS formato_nombre 
                 FROM productos p 
                 LEFT JOIN formatos_ensayos f ON p.formato_id = f.id 
                 WHERE 1=1";
@@ -54,9 +54,17 @@ class ProductoModelo extends ModeloBase {
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
     
+    // 📋 OBTENER TODOS LOS FORMATOS DE ENSAYO DISPONIBLES
+    public function obtenerFormatos(): array {
+        $sql = "SELECT id, nombre, codigo_formato, archivo_markdown FROM formatos_ensayos ORDER BY nombre ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
     // ✏️ OBTENER UN SOLO PRODUCTO POR SU ID
     public function obtenerPorId(int $id) {
-        $sql = "SELECT p.*, f.codigo_formato AS formato_reporte 
+        $sql = "SELECT p.*, f.codigo_formato AS formato_reporte, f.nombre AS formato_nombre 
                 FROM productos p 
                 LEFT JOIN formatos_ensayos f ON p.formato_id = f.id 
                 WHERE p.id = :id";

@@ -184,11 +184,8 @@
         <table class="tabla-detalles" id="tabla-ensayos">
             <thead>
                 <tr>
-                    <th style="width: 10%;">Código</th>
-                    <th style="width: 24%;">Nombre Comercial / Descripción</th>
-                    <th style="width: 10%;">Norma ASTM</th>
-                    <th style="width: 10%;">Formato Reporte</th>
-                    <th style="width: 14%;">Tiempo Entrega/Obs</th>
+                    <th style="width: 48%;">Nombre Comercial / Descripción</th>
+                    <th style="width: 20%;">Tiempo Entrega/Obs</th>
                     <th style="width: 8%;">Cantidad</th>
                     <th style="width: 10%;">Precio Unit. (C$)</th>
                     <th style="width: 10%;">Subtotal</th>
@@ -198,9 +195,9 @@
             <tbody>
                 <tr>
                     <td>
-                        <input type="text" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01">
-                    </td>
-                    <td>
+                        <input type="hidden" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01">
+                        <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
+                        <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
                         <input type="hidden" name="ensayo_id_producto[]" value="" class="prod-id-input">
                         <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." list="productos-datalist" onchange="completarPrecio(this)">
                         <div style="margin-top: 3px; font-size: 10px;">
@@ -208,12 +205,6 @@
                                 <i class="fa-solid fa-pen-fancy"></i> Campo Libre
                             </span>
                         </div>
-                    </td>
-                    <td>
-                        <input type="text" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
-                    </td>
-                    <td>
-                        <input type="text" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
                     </td>
                     <td>
                         <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega...">
@@ -241,6 +232,25 @@
                     <span>Subtotal:</span>
                     <span id="txt-subtotal">C$ 0.00</span>
                 </div>
+                <div class="fila-total" style="align-items: center; justify-content: space-between;">
+                    <span>Descuento:</span>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <input type="number" id="input-descuento-val" step="0.01" min="0" value="0.00" style="width: 80px; text-align: right; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 6px; font-family: inherit; font-size: 14px; font-weight: 500; color: #1e293b;">
+                        <select id="input-descuento-tipo" style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 4px; font-family: inherit; font-size: 13px; background: white; font-weight: 600; color: #475569; cursor: pointer;">
+                            <option value="monto">C$</option>
+                            <option value="porcentaje">%</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="fila-total" style="align-items: center; justify-content: flex-end; gap: 8px;">
+                    <label style="font-size: 13px; font-weight: 500; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" name="exonerado" id="chk-exonerado" value="1"> ¿Exonerado de IVA?
+                    </label>
+                </div>
+                <div id="wrapper-exoneracion" class="fila-total" style="display: none; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px;">
+                    <span style="font-size: 12px; color: #475569; font-weight: 500;">N° Exoneración:</span>
+                    <input type="text" name="exoneracion_no" id="input-exoneracion-no" placeholder="Código / Aval" style="width: 120px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 6px; font-family: inherit; font-size: 13px; color: #1e293b;">
+                </div>
                 <div class="fila-total">
                     <span>IVA (15%):</span>
                     <span id="txt-iva">C$ 0.00</span>
@@ -250,9 +260,10 @@
                     <span id="txt-total">C$ 0.00</span>
                 </div>
                 
-                <input type="hidden" name="subtotal_general" id="input-subtotal" value="0">
-                <input type="hidden" name="impuesto_general" id="input-iva" value="0">
-                <input type="hidden" name="total_general" id="input-total" value="0">
+                <input type="hidden" name="subtotal_general" id="input-subtotal" value="0.00">
+                <input type="hidden" name="descuento" id="input-descuento-final" value="0.00">
+                <input type="hidden" name="impuesto_general" id="input-iva" value="0.00">
+                <input type="hidden" name="total_general" id="input-total" value="0.00">
             </div>
         </div>
     </div>
@@ -291,6 +302,17 @@
                 Añade: "Mínimo para programar muestreo C$4,400.00 más movilización. Programación 2 días de anticipación."
             </span>
         </label>
+
+        <div style="margin-top: 15px;">
+            <label class="form-label" style="font-weight: 600; margin-bottom: 6px; display: block;"><i class="fa-solid fa-address-book"></i> Contactos del Proyecto (Se mostrarán en el PDF)</label>
+            <textarea name="contactos" class="form-control" rows="8" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; font-family: inherit; font-size: 13px; resize: vertical;">-Contacto 1: Ing. Noel Hernández +505 8732 4134
+-Correo: jhernandez@incostas.com
+-Contacto 2: Ing. Cristhian Sánchez -Cel: 505 7615 1706 csanchez@incostas.com
+-Contacto 3: Ingrid Martínez imartinez@incostas.com
+-Contacto 4: Flor Rocha frocha@incostas.com
+-Contacto 5: Francisco García fgarcia@incostas.com
+-Contacto 6: Bryan Espinoza bespinoza@incostas.com</textarea>
+        </div>
     </div>
 
     <div style="display: flex; gap: 15px; justify-content: flex-end; margin-bottom: 50px;">
@@ -368,6 +390,50 @@
             selectedCard.style.display = 'none';
             searchContainer.style.display = 'block';
         });
+
+        // Event listeners para descuentos y exoneración de IVA
+        const inputDesc = document.getElementById('input-descuento-val');
+        const inputDescTipo = document.getElementById('input-descuento-tipo');
+        if (inputDesc) {
+            inputDesc.addEventListener('focus', function() {
+                if (parseFloat(this.value) === 0) {
+                    this.value = '';
+                }
+            });
+            inputDesc.addEventListener('blur', function() {
+                if (this.value.trim() === '') {
+                    this.value = '0.00';
+                } else {
+                    this.value = parseFloat(this.value).toFixed(2);
+                }
+            });
+            inputDesc.addEventListener('input', function() {
+                calcularTotalesGenerales();
+            });
+        }
+        if (inputDescTipo) {
+            inputDescTipo.addEventListener('change', function() {
+                calcularTotalesGenerales();
+            });
+        }
+
+        const chkExonerado = document.getElementById('chk-exonerado');
+        const wrapperEx = document.getElementById('wrapper-exoneracion');
+        const inputEx = document.getElementById('input-exoneracion-no');
+        if (chkExonerado && wrapperEx && inputEx) {
+            chkExonerado.addEventListener('change', function() {
+                if (this.checked) {
+                    wrapperEx.style.display = 'flex';
+                    inputEx.setAttribute('required', 'required');
+                    inputEx.focus(); // Focus automatically!
+                } else {
+                    wrapperEx.style.display = 'none';
+                    inputEx.removeAttribute('required');
+                    inputEx.value = '';
+                }
+                calcularTotalesGenerales();
+            });
+        }
     });
 
     // Formateador de moneda nicaragüense (C$)
@@ -390,9 +456,9 @@
         
         nuevaFila.innerHTML = `
             <td>
-                <input type="text" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01">
-            </td>
-            <td>
+                <input type="hidden" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01">
+                <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
+                <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
                 <input type="hidden" name="ensayo_id_producto[]" value="" class="prod-id-input">
                 <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." list="productos-datalist" onchange="completarPrecio(this)">
                 <div style="margin-top: 3px; font-size: 10px;">
@@ -400,12 +466,6 @@
                         <i class="fa-solid fa-pen-fancy"></i> Campo Libre
                     </span>
                 </div>
-            </td>
-            <td>
-                <input type="text" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
-            </td>
-            <td>
-                <input type="text" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
             </td>
             <td>
                 <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega...">
@@ -433,24 +493,50 @@
     }
 
     function eliminarFila(boton) {
-        const fila = boton.closest('tr');
-        fila.remove();
+        const tbody = document.querySelector('#tabla-ensayos tbody');
+        const filas = tbody.querySelectorAll('tr');
+        if (filas.length === 1) {
+            // Si es la única fila, reseteamos todos sus valores
+            const fila = filas[0];
+            const idInput = fila.querySelector('.prod-id-input');
+            const descInput = fila.querySelector('input[name="ensayo_desc[]"]');
+            const precioInput = fila.querySelector('input[name="ensayo_precio[]"]');
+            const cantInput = fila.querySelector('.cant-input');
+            const codigoInput = fila.querySelector('.spec-codigo');
+            const normaInput = fila.querySelector('.spec-norma');
+            const formatoInput = fila.querySelector('.spec-formato');
+            const obsInput = fila.querySelector('.spec-obs');
+            const subtotalTexto = fila.querySelector('.subtotal-texto');
+            const badge = fila.querySelector('.badge-tipo-row');
+
+            if (idInput) idInput.value = '';
+            if (descInput) descInput.value = '';
+            if (precioInput) precioInput.value = '0.00';
+            if (cantInput) cantInput.value = '1';
+            if (codigoInput) codigoInput.value = '';
+            if (normaInput) normaInput.value = '';
+            if (formatoInput) formatoInput.value = '';
+            if (obsInput) obsInput.value = '';
+            if (subtotalTexto) subtotalTexto.textContent = 'C$ 0.00';
+            if (badge) {
+                badge.style.background = '#fef3c7';
+                badge.style.color = '#d97706';
+                badge.innerHTML = '<i class="fa-solid fa-pen-fancy"></i> Campo Libre';
+            }
+        } else {
+            const fila = boton.closest('tr');
+            fila.remove();
+        }
         actualizarBotonesRemover();
         calcularTotalesGenerales(); // Recalcular todo al borrar
     }
 
     function actualizarBotonesRemover() {
         const botones = document.querySelectorAll('.btn-remover');
-        // Si solo hay 1 fila, deshabilitar el botón de borrar
-        if (botones.length === 1) {
-            botones[0].disabled = true;
-            botones[0].style.opacity = '0.3';
-        } else {
-            botones.forEach(btn => {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-            });
-        }
+        botones.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        });
     }
 
     function calcularFila(input) {
@@ -477,9 +563,26 @@
             subtotalGeneral += (cant * precio);
         });
 
-        // Impuesto (15% IVA estándar)
-        const iva = subtotalGeneral * 0.15;
-        const totalFinal = subtotalGeneral + iva;
+        // Obtener descuento
+        const descInput = document.getElementById('input-descuento-val');
+        const descTipo = document.getElementById('input-descuento-tipo').value;
+        const descValor = parseFloat(descInput.value) || 0;
+        let descuentoCalculado = 0;
+
+        if (descTipo === 'porcentaje') {
+            descuentoCalculado = subtotalGeneral * (descValor / 100);
+        } else {
+            descuentoCalculado = descValor;
+        }
+
+        // Asegurar que el descuento no supere el subtotal
+        descuentoCalculado = Math.min(subtotalGeneral, descuentoCalculado);
+        const netoSubtotal = Math.max(0, subtotalGeneral - descuentoCalculado);
+
+        // Impuesto (15% IVA estándar si no es exonerado)
+        const exonerado = document.getElementById('chk-exonerado').checked;
+        const iva = exonerado ? 0.00 : netoSubtotal * 0.15;
+        const totalFinal = netoSubtotal + iva;
 
         // Mostrar en pantalla (Visual)
         document.getElementById('txt-subtotal').textContent = formatoMoneda.format(subtotalGeneral).replace('NIO', 'C$');
@@ -488,27 +591,38 @@
 
         // Guardar en campos ocultos para mandarlos por POST a PHP
         document.getElementById('input-subtotal').value = subtotalGeneral.toFixed(2);
+        document.getElementById('input-descuento-final').value = descuentoCalculado.toFixed(2);
         document.getElementById('input-iva').value = iva.toFixed(2);
         document.getElementById('input-total').value = totalFinal.toFixed(2);
+    }
+
+    function normalizarTexto(txt) {
+        if (!txt) return '';
+        return txt.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+            .replace(/[–—−-]/g, '-') // Normalizar guiones
+            .replace(/\s+/g, ' ') // Normalizar espacios
+            .trim();
     }
 
     function completarPrecio(input) {
         const fila = input.closest('tr');
         const valor = input.value.trim();
         const datalist = document.getElementById('productos-datalist');
-        const opcion = Array.from(datalist.options).find(opt => 
-            opt.value === valor || 
-            opt.textContent.trim() === valor || 
-            opt.getAttribute('label') === valor
-        );
+        
+        const valorNorm = normalizarTexto(valor);
+        const opcion = Array.from(datalist.options).find(opt => {
+            const valNorm = normalizarTexto(opt.value);
+            const textNorm = normalizarTexto(opt.textContent);
+            const labelNorm = normalizarTexto(opt.getAttribute('label') || '');
+            return valNorm === valorNorm || textNorm === valorNorm || labelNorm === valorNorm;
+        });
         
         const idInput = fila.querySelector('.prod-id-input');
         const codigoInput = fila.querySelector('.spec-codigo');
         const normaInput = fila.querySelector('.spec-norma');
         const formatoInput = fila.querySelector('.spec-formato');
         const obsInput = fila.querySelector('.spec-obs');
-        const fieldsDiv = fila.querySelector('.technical-details-fields');
-        const toggleLink = fila.querySelector('.technical-details-toggle a');
         const badge = fila.querySelector('.badge-tipo-row');
 
         if (opcion) {
@@ -682,9 +796,9 @@
         const isCatalogo = idProducto !== '';
         nuevaFila.innerHTML = `
             <td>
-                <input type="text" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01" value="${escapeHtml(codigo)}">
-            </td>
-            <td>
+                <input type="hidden" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01" value="${escapeHtml(codigo)}">
+                <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39" value="${escapeHtml(norma)}">
+                <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01" value="${escapeHtml(formato)}">
                 <input type="hidden" name="ensayo_id_producto[]" value="${escapeHtml(idProducto.toString())}" class="prod-id-input">
                 <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." list="productos-datalist" onchange="completarPrecio(this)" value="${escapeHtml(descripcion)}">
                 <div style="margin-top: 3px; font-size: 10px;">
@@ -692,12 +806,6 @@
                         ${isCatalogo ? '<i class="fa-solid fa-book"></i> Catálogo' : '<i class="fa-solid fa-pen-fancy"></i> Campo Libre'}
                     </span>
                 </div>
-            </td>
-            <td>
-                <input type="text" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39" value="${escapeHtml(norma)}">
-            </td>
-            <td>
-                <input type="text" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01" value="${escapeHtml(formato)}">
             </td>
             <td>
                 <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega..." value="${escapeHtml(obs)}">
@@ -747,8 +855,8 @@
         <?php 
         $nombre_comercial_solo = !empty($prod['nombre_comercial']) ? $prod['nombre_comercial'] : $prod['ensayo_servicio'];
         
-        // Determinar código inteligente (procedimiento o servicio) y formato de reporte
-        $codigo_opcion = !empty($prod['procedimiento_muestreo']) ? $prod['procedimiento_muestreo'] : ($prod['codigo_servicio'] ?? '');
+        // Determinar código inteligente (sólo servicio) y formato de reporte
+        $codigo_opcion = $prod['codigo_servicio'] ?? '';
         $formato_opcion = (!empty($prod['codigo_servicio']) && strpos($prod['codigo_servicio'], 'CYCSA-RT-') !== false) ? $prod['codigo_servicio'] : ($prod['formato_reporte'] ?? '');
         
         $nombre = $nombre_comercial_solo;
@@ -800,7 +908,7 @@
                         <?php 
                         $nombre_completo = !empty($prod['nombre_comercial']) ? $prod['nombre_comercial'] : $prod['ensayo_servicio'];
                         
-                        $codigo_opcion = !empty($prod['procedimiento_muestreo']) ? $prod['procedimiento_muestreo'] : ($prod['codigo_servicio'] ?? '');
+                        $codigo_opcion = $prod['codigo_servicio'] ?? '';
                         $formato_opcion = (!empty($prod['codigo_servicio']) && strpos($prod['codigo_servicio'], 'CYCSA-RT-') !== false) ? $prod['codigo_servicio'] : ($prod['formato_reporte'] ?? '');
                         
                         $busqueda_val = strtolower($nombre_completo . ' ' . $codigo_opcion . ' ' . $formato_opcion . ' ' . ($prod['norma_astm'] ?? '') . ' ' . ($prod['matriz_tipo'] ?? ''));

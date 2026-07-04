@@ -410,7 +410,15 @@
             <li>
                 <a href="/Cycsa/publico/operaciones" class="<?= strpos($rutaActual, '/operaciones') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-gears"></i>
-                    <span class="menu-texto">Operaciones</span>
+                    <span class="menu-texto">Operaciones LIMS</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 2, 3])): ?>
+            <li>
+                <a href="/Cycsa/publico/laboratorio" class="<?= strpos($rutaActual, '/laboratorio') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-flask-vial"></i>
+                    <span class="menu-texto">Laboratorio</span>
                 </a>
             </li>
             <?php endif; ?>

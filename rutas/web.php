@@ -10,6 +10,7 @@ use Cycsa\Modulos\Clientes\Controladores\ClientesControlador;
 use Cycsa\Modulos\Productos\Controladores\ProductosControlador;
 use Cycsa\Modulos\Contabilidad\Controladores\ContabilidadControlador;
 use Cycsa\Modulos\Operaciones\Controladores\OperacionesControlador;
+use Cycsa\Modulos\Operaciones\Controladores\LaboratorioControlador;
 
 
 
@@ -79,6 +80,9 @@ $app->enrutador->post('/cotizaciones/editar', [CotizacionesControlador::class, '
 $app->enrutador->post('/cotizaciones/enviar', [CotizacionesControlador::class, 'enviarCliente']);
 $app->enrutador->post('/cotizaciones/enviar-revision', [CotizacionesControlador::class, 'enviarRevision']);
 $app->enrutador->post('/cotizaciones/decision-administrativa', [CotizacionesControlador::class, 'procesarDecisionAdministrativa']);
+$app->enrutador->get('/cotizaciones/imprimir', [CotizacionesControlador::class, 'imprimir']);
+$app->enrutador->post('/cotizaciones/guardar-resultados-item', [CotizacionesControlador::class, 'guardarResultadosItem']);
+$app->enrutador->get('/cotizaciones/imprimir-reporte-item', [CotizacionesControlador::class, 'imprimirReporteItem']);
 
 // Rutas Públicas de Decisión de Cliente
 $app->enrutador->get('/cotizaciones/decision-cliente', [CotizacionesControlador::class, 'decisionCliente']);
@@ -99,13 +103,29 @@ $app->enrutador->post('/contabilidad/pagar-cxp', [ContabilidadControlador::class
 $app->enrutador->get('/contabilidad/bancos', [ContabilidadControlador::class, 'bancos']);
 $app->enrutador->post('/contabilidad/guardar-banco', [ContabilidadControlador::class, 'guardarBanco']);
 $app->enrutador->post('/contabilidad/guardar-transaccion', [ContabilidadControlador::class, 'guardarTransaccion']);
+$app->enrutador->get('/contabilidad/diario', [ContabilidadControlador::class, 'diario']);
+$app->enrutador->post('/contabilidad/guardar-partida', [ContabilidadControlador::class, 'guardarPartida']);
+$app->enrutador->post('/contabilidad/sincronizar-diario', [ContabilidadControlador::class, 'sincronizarDiario']);
+$app->enrutador->get('/contabilidad/balance', [ContabilidadControlador::class, 'balance']);
+$app->enrutador->get('/contabilidad/resultados', [ContabilidadControlador::class, 'resultados']);
 
 // Rutas del Módulo de Operaciones
 $app->enrutador->get('/operaciones', [OperacionesControlador::class, 'index']);
-$app->enrutador->post('/operaciones/guardar', [OperacionesControlador::class, 'guardar']);
+$app->enrutador->post('/operaciones/crear-os', [OperacionesControlador::class, 'crearOS']);
+$app->enrutador->get('/operaciones/recepcion', [OperacionesControlador::class, 'recepcionForm']);
+$app->enrutador->post('/operaciones/guardar-recepcion', [OperacionesControlador::class, 'guardarRecepcion']);
+$app->enrutador->get('/operaciones/detalle-lote', [OperacionesControlador::class, 'detalleLote']);
+$app->enrutador->post('/operaciones/guardar-ruptura', [OperacionesControlador::class, 'guardarRuptura']);
 $app->enrutador->get('/operaciones/detalle-ajax', [OperacionesControlador::class, 'detalleAjax']);
 $app->enrutador->get('/operaciones/calendario', [OperacionesControlador::class, 'calendario']);
+$app->enrutador->post('/operaciones/generar-informe', [OperacionesControlador::class, 'generarInforme']);
+$app->enrutador->post('/operaciones/cambiar-estado-informe', [OperacionesControlador::class, 'cambiarEstadoInforme']);
+$app->enrutador->get('/informes/descargar', [OperacionesControlador::class, 'descargarInforme']);
 
+// Módulo de Laboratorio Aislado (Operación Ciega total ISO 17025)
+$app->enrutador->get('/laboratorio', [LaboratorioControlador::class, 'index']);
+$app->enrutador->get('/laboratorio/detalle-muestra', [LaboratorioControlador::class, 'detalleMuestra']);
+$app->enrutador->post('/laboratorio/guardar-ruptura', [LaboratorioControlador::class, 'guardarRuptura']);
 
 // Redirección de Raíz
 $app->enrutador->get('/', function($peticion, $respuesta) {

@@ -70,7 +70,6 @@ class Aplicacion {
         $this->enrutador = new Enrutador($this->peticion, $this->respuesta);
     }
 
-    // Función que lee el archivo .env y lo guarda en $_ENV
     // Función que lee los archivos .env y los guarda en $_ENV
     private function cargarEntorno(): void {
         $rutaEnv = __DIR__ . '/../.env';
@@ -82,6 +81,7 @@ class Aplicacion {
             $cargado = true;
         }
 
+        // .env.local sobreescribe .env si existe (para desarrollo local)
         if (file_exists($rutaEnvLocal)) {
             $this->cargarArchivoEnv($rutaEnvLocal);
             $cargado = true;

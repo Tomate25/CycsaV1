@@ -109,7 +109,29 @@ class CotizacionesControlador extends ControladorBase {
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) { $respuesta->redirigir('/Cycsa/publico/cotizaciones/crear'); return; }
             $modelo = new CotizacionModelo();
             $notasJson = isset($datos['notas']) ? json_encode($datos['notas']) : null;
-            $cabecera = [ 'codigo' => $modelo->generarCodigoUnico(), 'id_cliente' => $datos['id_cliente'], 'id_usuario_creador' => $_SESSION['usuario_id'], 'atencion_a' => trim($datos['atencion_a']), 'nombre_proyecto' => trim($datos['nombre_proyecto']), 'direccion_proyecto' => trim($datos['direccion_proyecto']), 'prioridad' => $datos['prioridad'] ?? 'Normal', 'fecha_limite' => !empty($datos['fecha_limite']) ? $datos['fecha_limite'] : null, 'condicion_pago' => $datos['condicion_pago'], 'tiempo_entrega' => trim($datos['tiempo_entrega']), 'vigencia_oferta' => trim($datos['vigencia_oferta']), 'configuracion_notas' => $notasJson, 'subtotal' => $datos['subtotal_general'], 'impuesto' => $datos['impuesto_general'], 'total' => $datos['total_general'], 'fecha_entrega' => !empty($datos['fecha_entrega']) ? $datos['fecha_entrega'] : null, 'fecha_seguimiento' => !empty($datos['fecha_seguimiento']) ? $datos['fecha_seguimiento'] : null ];
+            $cabecera = [
+                'codigo' => $modelo->generarCodigoUnico(),
+                'id_cliente' => $datos['id_cliente'],
+                'id_usuario_creador' => $_SESSION['usuario_id'],
+                'atencion_a' => trim($datos['atencion_a']),
+                'nombre_proyecto' => trim($datos['nombre_proyecto']),
+                'direccion_proyecto' => trim($datos['direccion_proyecto']),
+                'prioridad' => $datos['prioridad'] ?? 'Normal',
+                'fecha_limite' => !empty($datos['fecha_limite']) ? $datos['fecha_limite'] : null,
+                'condicion_pago' => $datos['condicion_pago'],
+                'tiempo_entrega' => trim($datos['tiempo_entrega']),
+                'vigencia_oferta' => trim($datos['vigencia_oferta']),
+                'configuracion_notas' => $notasJson,
+                'contactos' => isset($datos['contactos']) ? trim($datos['contactos']) : null,
+                'subtotal' => (float)$datos['subtotal_general'],
+                'descuento' => isset($datos['descuento']) ? (float)$datos['descuento'] : 0.00,
+                'exonerado' => isset($datos['exonerado']) ? (int)$datos['exonerado'] : 0,
+                'exoneracion_no' => !empty($datos['exoneracion_no']) ? trim($datos['exoneracion_no']) : null,
+                'impuesto' => (float)$datos['impuesto_general'],
+                'total' => (float)$datos['total_general'],
+                'fecha_entrega' => !empty($datos['fecha_entrega']) ? $datos['fecha_entrega'] : null,
+                'fecha_seguimiento' => !empty($datos['fecha_seguimiento']) ? $datos['fecha_seguimiento'] : null
+            ];
             $detalles = $this->procesarDetalles($datos);
             if ($modelo->guardarCotizacionCompleta($cabecera, $detalles)) {
                 registrarBitacora('cotizaciones', 'crear', 'Creada cotización borrador: ' . $cabecera['codigo']);
@@ -135,11 +157,15 @@ class CotizacionesControlador extends ControladorBase {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
+        $modeloContabilidad = new \Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo();
+        $bancos = $modeloContabilidad->obtenerCuentasBancarias();
+
         $this->renderizar('cotizaciones/vistas/detalle', [
             'titulo' => 'Detalle', 
             'cotizacion' => $cotizacion, 
             'detalles' => $modelo->obtenerDetalles($id),
-            'versiones' => $modelo->obtenerVersiones($id)
+            'versiones' => $modelo->obtenerVersiones($id),
+            'bancos' => $bancos
         ]);
     }
 
@@ -181,7 +207,26 @@ class CotizacionesControlador extends ControladorBase {
         $cotizacionPrev = $modelo->obtenerPorId($id);
         $eraRechazada = ($cotizacionPrev && $cotizacionPrev['estado'] === 'Rechazada por Cliente');
 
-        $cabecera = [ 'id_cliente' => $datos['id_cliente'], 'atencion_a' => trim($datos['atencion_a']), 'nombre_proyecto' => trim($datos['nombre_proyecto']), 'direccion_proyecto' => trim($datos['direccion_proyecto']), 'condicion_pago' => $datos['condicion_pago'], 'tiempo_entrega' => trim($datos['tiempo_entrega']), 'vigencia_oferta' => trim($datos['vigencia_oferta']), 'subtotal' => $datos['subtotal_general'], 'impuesto' => $datos['impuesto_general'], 'total' => $datos['total_general'], 'fecha_entrega' => !empty($datos['fecha_entrega']) ? $datos['fecha_entrega'] : null, 'fecha_seguimiento' => !empty($datos['fecha_seguimiento']) ? $datos['fecha_seguimiento'] : null ];
+        $notasJson = isset($datos['notas']) ? json_encode($datos['notas']) : null;
+        $cabecera = [
+            'id_cliente' => $datos['id_cliente'],
+            'atencion_a' => trim($datos['atencion_a']),
+            'nombre_proyecto' => trim($datos['nombre_proyecto']),
+            'direccion_proyecto' => trim($datos['direccion_proyecto']),
+            'condicion_pago' => $datos['condicion_pago'],
+            'tiempo_entrega' => trim($datos['tiempo_entrega']),
+            'vigencia_oferta' => trim($datos['vigencia_oferta']),
+            'configuracion_notas' => $notasJson,
+            'contactos' => isset($datos['contactos']) ? trim($datos['contactos']) : null,
+            'subtotal' => (float)$datos['subtotal_general'],
+            'descuento' => isset($datos['descuento']) ? (float)$datos['descuento'] : 0.00,
+            'exonerado' => isset($datos['exonerado']) ? (int)$datos['exonerado'] : 0,
+            'exoneracion_no' => !empty($datos['exoneracion_no']) ? trim($datos['exoneracion_no']) : null,
+            'impuesto' => (float)$datos['impuesto_general'],
+            'total' => (float)$datos['total_general'],
+            'fecha_entrega' => !empty($datos['fecha_entrega']) ? $datos['fecha_entrega'] : null,
+            'fecha_seguimiento' => !empty($datos['fecha_seguimiento']) ? $datos['fecha_seguimiento'] : null
+        ];
         if ($modelo->actualizarCotizacionCompleta($id, $cabecera, $this->procesarDetalles($datos))) {
             $cot = $modelo->obtenerPorId($id);
 
@@ -484,6 +529,9 @@ class CotizacionesControlador extends ControladorBase {
             return;
         }
         
+        $modeloContabilidad = new \Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo();
+        $bancos = $modeloContabilidad->obtenerCuentasBancarias();
+
         // Si el estado ya es 'Aprobada por Cliente' o 'Rechazada por Cliente'
         if ($cotizacion['estado'] === 'Aprobada por Cliente' || $cotizacion['estado'] === 'Rechazada por Cliente') {
             $detalles = $modelo->obtenerDetalles($id);
@@ -492,7 +540,8 @@ class CotizacionesControlador extends ControladorBase {
                 'cotizacion' => $cotizacion,
                 'detalles' => $detalles,
                 'soloLectura' => true,
-                'token' => $token
+                'token' => $token,
+                'bancos' => $bancos
             ]);
             return;
         }
@@ -510,7 +559,8 @@ class CotizacionesControlador extends ControladorBase {
             'detalles' => $detalles,
             'soloLectura' => false,
             'csrf_token' => $_SESSION['client_csrf_token'],
-            'token' => $token
+            'token' => $token,
+            'bancos' => $bancos
         ]);
     }
 
@@ -556,11 +606,24 @@ class CotizacionesControlador extends ControladorBase {
             // 3. Ejecutar Acción
             $nuevoEstado = '';
             $motivo = null;
+            $metodo_pago = $datos['metodo_pago'] ?? null;
+            $id_banco_cuenta = !empty($datos['id_banco_cuenta']) ? (int)$datos['id_banco_cuenta'] : null;
+            $referencia_pago = !empty($datos['referencia_pago']) ? trim($datos['referencia_pago']) : null;
+            $porcentaje_pago_inmediato = isset($datos['porcentaje_pago_inmediato']) ? (float)$datos['porcentaje_pago_inmediato'] : 100.00;
+            $monto_pago_inmediato = isset($datos['monto_pago_inmediato']) ? (float)$datos['monto_pago_inmediato'] : 0.00;
+            $monto_credito = isset($datos['monto_credito']) ? (float)$datos['monto_credito'] : 0.00;
+            $efectivo_recibido = !empty($datos['efectivo_recibido']) ? (float)$datos['efectivo_recibido'] : null;
+            $efectivo_vuelto = !empty($datos['efectivo_vuelto']) ? (float)$datos['efectivo_vuelto'] : null;
+            $dias_credito = !empty($datos['dias_credito']) ? (int)$datos['dias_credito'] : 30;
+
             if ($accion === 'aceptar') {
                 $nuevoEstado = 'Aprobada por Cliente';
             } elseif ($accion === 'rechazar') {
                 $nuevoEstado = 'Rechazada por Cliente';
                 if (empty($motivo_rechazo)) {
+                    $modeloContabilidad = new \Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo();
+                    $bancos = $modeloContabilidad->obtenerCuentasBancarias();
+                    
                     $this->renderizarSinLayout('cotizaciones/vistas/decision_cliente', [
                         'titulo' => 'Error - CYCSA',
                         'cotizacion' => $cotizacion,
@@ -568,6 +631,7 @@ class CotizacionesControlador extends ControladorBase {
                         'soloLectura' => false,
                         'csrf_token' => $_SESSION['client_csrf_token'],
                         'token' => $token,
+                        'bancos' => $bancos,
                         'error' => 'Debe especificar el motivo del rechazo para poder procesar la solicitud.'
                     ]);
                     return;
@@ -578,7 +642,20 @@ class CotizacionesControlador extends ControladorBase {
                 die("Acción no válida.");
             }
             
-            $exito = $modelo->registrarDecisionCliente($id, $nuevoEstado, $motivo);
+            $exito = $modelo->registrarDecisionCliente(
+                $id, 
+                $nuevoEstado, 
+                $motivo, 
+                $metodo_pago, 
+                $id_banco_cuenta, 
+                $referencia_pago,
+                $porcentaje_pago_inmediato,
+                $monto_pago_inmediato,
+                $monto_credito,
+                $efectivo_recibido,
+                $efectivo_vuelto,
+                $dias_credito
+            );
             
             if ($exito) {
                 // Registrar en la bitácora de base de datos
@@ -719,6 +796,16 @@ class CotizacionesControlador extends ControladorBase {
 
             $nuevoEstado = '';
             $motivo = null;
+            $metodo_pago = $datos['metodo_pago'] ?? null;
+            $id_banco_cuenta = !empty($datos['id_banco_cuenta']) ? (int)$datos['id_banco_cuenta'] : null;
+            $referencia_pago = !empty($datos['referencia_pago']) ? trim($datos['referencia_pago']) : null;
+            $porcentaje_pago_inmediato = isset($datos['porcentaje_pago_inmediato']) ? (float)$datos['porcentaje_pago_inmediato'] : 100.00;
+            $monto_pago_inmediato = isset($datos['monto_pago_inmediato']) ? (float)$datos['monto_pago_inmediato'] : 0.00;
+            $monto_credito = isset($datos['monto_credito']) ? (float)$datos['monto_credito'] : 0.00;
+            $efectivo_recibido = !empty($datos['efectivo_recibido']) ? (float)$datos['efectivo_recibido'] : null;
+            $efectivo_vuelto = !empty($datos['efectivo_vuelto']) ? (float)$datos['efectivo_vuelto'] : null;
+            $dias_credito = !empty($datos['dias_credito']) ? (int)$datos['dias_credito'] : 30;
+
             if ($accion === 'aceptar') {
                 $nuevoEstado = 'Aprobada por Cliente';
             } elseif ($accion === 'rechazar') {
@@ -734,7 +821,20 @@ class CotizacionesControlador extends ControladorBase {
                 die("Acción no válida.");
             }
 
-            $exito = $modelo->registrarDecisionCliente($id, $nuevoEstado, $motivo);
+            $exito = $modelo->registrarDecisionCliente(
+                $id, 
+                $nuevoEstado, 
+                $motivo, 
+                $metodo_pago, 
+                $id_banco_cuenta, 
+                $referencia_pago,
+                $porcentaje_pago_inmediato,
+                $monto_pago_inmediato,
+                $monto_credito,
+                $efectivo_recibido,
+                $efectivo_vuelto,
+                $dias_credito
+            );
 
             if ($exito) {
                 // Registrar en la bitácora de base de datos
@@ -787,6 +887,36 @@ class CotizacionesControlador extends ControladorBase {
         $respuesta->enviarJson($logs);
     }
 
+    public function imprimir(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            exit;
+        }
+        $id = (int)($_GET['id'] ?? 0);
+        $completo = (int)($_GET['completo'] ?? 0);
+
+        $modelo = new CotizacionModelo();
+        $cotizacion = $modelo->obtenerPorId($id);
+        if (!$cotizacion) { 
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones'); 
+            return; 
+        }
+        
+        $detalles = $modelo->obtenerDetalles($id);
+        
+        if ($completo === 1) {
+            $pdfContenido = generarCotizacionCompletaPDF($cotizacion, $detalles);
+        } else {
+            $pdfContenido = generarCotizacionPDF($cotizacion, $detalles);
+        }
+        
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="Cotizacion_' . $cotizacion['codigo'] . ($completo ? '_Completa' : '') . '.pdf"');
+        echo $pdfContenido;
+        exit;
+    }
+
     private function procesarDetalles($datos): array {
         $detalles = [];
         for ($i = 0; $i < count($datos['ensayo_desc'] ?? []); $i++) {
@@ -807,5 +937,101 @@ class CotizacionesControlador extends ControladorBase {
             }
         }
         return $detalles;
+    }
+
+    public function guardarResultadosItem(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            exit;
+        }
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $id_detalle = (int)($datos['id_detalle'] ?? 0);
+            $id_cotizacion = (int)($datos['id_cotizacion'] ?? 0);
+            $resultados_json = $datos['resultados_json'] ?? '';
+
+            $redir = !empty($datos['redireccionar_a']) ? $datos['redireccionar_a'] : '/Cycsa/publico/cotizaciones/detalle?id=' . $id_cotizacion;
+
+            if ($id_detalle <= 0) {
+                $_SESSION['error'] = 'Detalle inválido.';
+                $respuesta->redirigir($redir);
+                return;
+            }
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir($redir);
+                return;
+            }
+
+            // Update database
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmt = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+            $exito = $stmt->execute(['json' => $resultados_json, 'id' => $id_detalle]);
+
+            if ($exito) {
+                $_SESSION['exito'] = 'Resultados de ensayo guardados exitosamente.';
+            } else {
+                $_SESSION['error'] = 'Error al guardar los resultados de ensayo.';
+            }
+
+            $respuesta->redirigir($redir);
+        }
+    }
+
+    public function imprimirReporteItem(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            exit;
+        }
+
+        $id_detalle = (int)($_GET['id_detalle'] ?? 0);
+        if ($id_detalle <= 0) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            return;
+        }
+
+        $modelo = new CotizacionModelo();
+        $detalle = $modelo->obtenerDetallePorId($id_detalle);
+        if (!$detalle) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            return;
+        }
+
+        $cotizacion = $modelo->obtenerPorId((int)$detalle['id_cotizacion']);
+        if (!$cotizacion) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            return;
+        }
+
+        // Get format columns
+        $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+        if (empty($columnas)) {
+            $columnas = ["Código laboratorio", "Nombre muestra", "Resultado"];
+        }
+
+        // Parse saved rows
+        $filas = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+
+        $pdfContenido = generarReporteEnsayoPDF($cotizacion, $detalle, $columnas, $filas);
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="Reporte_' . str_replace(' ', '_', $detalle['formato_nombre']) . '_' . $cotizacion['codigo'] . '.pdf"');
+        echo $pdfContenido;
+        exit;
+    }
+
+    private function obtenerColumnasFormato(?string $archivo_markdown): array {
+        if (empty($archivo_markdown)) return [];
+        $rutaJson = __DIR__ . '/../../../datos_ensayos_markdown/formatos_schema.json';
+        if (file_exists($rutaJson)) {
+            $data = json_decode(file_get_contents($rutaJson), true);
+            return $data[$archivo_markdown]['columns'] ?? [];
+        }
+        return [];
     }
 }

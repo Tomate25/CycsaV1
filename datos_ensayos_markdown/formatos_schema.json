@@ -1,0 +1,300 @@
+{
+  "compactacion_densimetro_nuclear.md": {
+    "document_code": "CYCSA-RT-FM-22 B V1-R2",
+    "sample_type": "Suelo ( Material del sitio Colector ZZZ)",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Capa (N°)",
+      "Espesor (cm)",
+      "Profundidad (cm)",
+      "P.V.S Max (kg/m³)",
+      "Humedad Óptima ((% )(P/P))",
+      "P.V.S.Sitio (kg/cm²)",
+      "Humedad Sitio ((%) (P/P))",
+      "Humedad Sitio (kg/m³)",
+      "Compactación ((%) (P/P))",
+      "Fecha de muestreo"
+    ]
+  },
+  "ensayos_varios.md": {
+    "document_code": "CYCSA-RT-FM-22 G V1R2",
+    "sample_type": "Agregados - Arena",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Color",
+      "PVSS (kg/m³)",
+      "PVSC (kg/m³)",
+      "Módulo de finura ((%) (P/P))",
+      "Humedad Natural ((%) (P/P))",
+      "Absorción ((%)(P/P))",
+      "Gravedad Específica.",
+      "Gravedad Específica (SSS)",
+      "Gravedad Específica Aparente"
+    ]
+  },
+  "formato_de_compactacion_por_cono_de_arena.md": {
+    "document_code": "CYCSA-RT-FM-22 B V1R2",
+    "sample_type": "Suelo",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Capa (N°)",
+      "Espesor (cm)",
+      "Profundidad (cm)",
+      "P.V.S Max (kg/m³)",
+      "Humedad Óptima ((% )(P/P))",
+      "P.V.S.Sitio (kg/m³)",
+      "Humedad sitio ((%) (P/P))",
+      "Humedad Sitio (kg/m³)",
+      "Compactación ((%) (P/P))",
+      "Fecha de muestreo"
+    ]
+  },
+  "formato_de_compactacion_por_reemplazo_de_agua_no_acreditado.md": {
+    "document_code": "CYCSA-RT-FM-22 B V1R2",
+    "sample_type": "Suelo",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Capa (N°)",
+      "Espesor (cm)",
+      "Profundidad (cm)",
+      "P.V.S Max (kg/m³)",
+      "Humedad Óptima (( %)(P/P))",
+      "P.V.S.Sitio (kg/m³)",
+      "Humedad sitio ((%) (P/P))",
+      "Humedad Sitio (kg/m³)",
+      "Compactación ((%) (P/P))",
+      "Fecha de muestreo"
+    ]
+  },
+  "formato_de_equivalente_de_arena.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1-R2",
+    "sample_type": "Arena",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Equivalente de arena. ((%)(P/P))"
+    ]
+  },
+  "formato_de_granulometria_de_suelo.md": {
+    "document_code": "CYCSA-RT-FM-22 F V1-R2",
+    "sample_type": "Suelo",
+    "columns": [
+      "Descripción",
+      "Unidad",
+      "Método de ensayo",
+      "Resultado"
+    ]
+  },
+  "formato_de_lodo_concreto.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1-R2",
+    "sample_type": "Lodo concreto",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Área (cm²)",
+      "Carga (kg)",
+      "Peso Volumétrico (kg/m³)",
+      "Diseño (kg/cm²)",
+      "R. compresión. (kg/cm²)",
+      "Fecha de Fabricación",
+      "Fecha de Ensayo",
+      "Edad (Días)"
+    ]
+  },
+  "formato_de_particulas_desmezurables.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Agregados - Arena",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Terrones de arcilla. ((%)(P/P))"
+    ]
+  },
+  "formato_de_resistencia_de_a_la_flexion.md": {
+    "document_code": "CYCSA-RT-FM-22 E V1R2",
+    "sample_type": "Vigueta",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Ancho Promedio (in)",
+      "Espesor Promedio (in)",
+      "Longitud de Apoyo (in)",
+      "Reven. (in)",
+      "Reven. (cm)",
+      "Temp. (°C)",
+      "Carga (lb)",
+      "Peso volumétrico (kg/m³)",
+      "Diseño MR (kg/cm²)",
+      "Resistencia a la flexión. (kg/cm²)",
+      "Fecha de Fabricación",
+      "Fecha de Ensayo",
+      "Edad (Días)"
+    ]
+  },
+  "formato_de_resistencia_de_bloques.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Bloques",
+    "columns": [
+      "Descripción",
+      "Método de ensayo",
+      "Unidad",
+      "Resultado",
+      "Min",
+      "Max"
+    ]
+  },
+  "formato_de_reveniemiento_y_temperatura.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Cilindros de Concreto",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Reven. (in)",
+      "Reven. (cm)",
+      "Temp. (°C)",
+      "Diseño de concreto (lb/in²)",
+      "Fecha de Fabricación",
+      "Fecha de Finalización"
+    ]
+  },
+  "formato_de_suelo_cemento.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Agregados",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Color"
+    ]
+  },
+  "granulomnetria_de_agregados.md": {
+    "document_code": "CYCSA-RT-FM-22 F V1R2",
+    "sample_type": "Agregados 3/4\"",
+    "columns": [
+      "Descripción",
+      "Unidad",
+      "Resultado",
+      "Método de ensayo",
+      "Min",
+      "Max"
+    ]
+  },
+  "pesos_volumetricos.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Suelo",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra"
+    ]
+  },
+  "proctor_estandar.md": {
+    "document_code": "CYCSA-RT-FM-22 C V1R2",
+    "sample_type": "Suelo",
+    "columns": []
+  },
+  "resistencia_de_adoquines.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Adoquines",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Área (in²)",
+      "Carga (lb)",
+      "Peso Volumétrico (kg/m³)",
+      "Diseño (lb/in²)",
+      "R. Compresión (lb/in²)",
+      "R. Compresión. (kg/cm²)",
+      "Absorción ((%)(P/P))",
+      "Fecha de Fabricación",
+      "Fecha de Ensayo",
+      "Edad (Días)"
+    ]
+  },
+  "resistencia_de_concreto.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Cilindros de Concreto",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Área (in²)",
+      "Reven. (in)",
+      "Reven. (cm)",
+      "Temp. (°C)",
+      "Carga (lb)",
+      "Peso Volumétrico (kg/m³)",
+      "Diseño de concreto (lb/in²)",
+      "R. Compresión (lb/in²)",
+      "R. Compresión (kg/cm²)",
+      "Fecha de Fabricación",
+      "Fecha de Ensayo",
+      "Edad (Días)"
+    ]
+  },
+  "resistencia_de_ladrillo.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Ladrillo de Barro",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Área (cm²)",
+      "Carga (kg)",
+      "Peso Volumétrico (kg/m³)",
+      "R. a la compresión (kg/cm²)",
+      "Fecha de Fabricación",
+      "Fecha de Ensayo",
+      "Edad (Días)"
+    ]
+  },
+  "resistencia_de_martillo_suizo.md": {
+    "document_code": "CYCSA-RT-FM-22 D V1R2",
+    "sample_type": "Concreto",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Diseño de Concreto (lb/in²)",
+      "Forma de Prueba",
+      "Promedio de Rebotes (N°)",
+      "Estimación R. compresión (lb/in²)",
+      "Estimación R. compresión (kg/cm²)",
+      "Fecha de Fabricación",
+      "Edad (Días)"
+    ]
+  },
+  "resistencia_de_mortero.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Mortero",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Área (in²)",
+      "Carga (lb)",
+      "Peso Volumétrico (kg/m³)",
+      "Diseño de Mortero (lb/in²)",
+      "R. Compresión (lb/in²)",
+      "R. Compresión. (kg/cm²)",
+      "Fecha de Fabricación",
+      "Fecha de Ensayo",
+      "Edad (Días)"
+    ]
+  },
+  "resistencia_de_nucleo_de_concreto.md": {
+    "document_code": "CYCSA-RT-FM-22 A V1R2",
+    "sample_type": "Núcleo de Concreto",
+    "columns": [
+      "Código laboratorio",
+      "Nombre muestra",
+      "Área (in²)",
+      "Carga (lb)",
+      "Peso Volumétrico (kg/m³)",
+      "Diseño de concreto (lb/in²)",
+      "R. Compresión (lb/in²)",
+      "R. Compresión (kg/cm²)",
+      "Fecha de Fabricación",
+      "Fecha de Ruptura",
+      "Edad (Días)"
+    ]
+  }
+}

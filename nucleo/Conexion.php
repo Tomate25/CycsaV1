@@ -36,8 +36,12 @@ class Conexion {
                 // Registrar el error real en el archivo de logs del servidor
                 error_log("Error de conexión a DB: " . $e->getMessage());
                 
-                // Mostrar solo un mensaje genérico al usuario final
-                die("Error 500: Fallo interno de conexión. Por favor, intente más tarde.");
+                // Error genérico en producción (detalle solo en log)
+                $esLocal = ($_ENV['APP_ENV'] ?? 'produccion') === 'local';
+                if ($esLocal) {
+                    die("Error 500: Fallo interno de conexión. Detalle: " . $e->getMessage());
+                }
+                die("Error 500: Fallo interno de conexión.");
             }
         }
 

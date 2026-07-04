@@ -1,5 +1,5 @@
 <?php
-// Operations Calendar View
+// Operations Calendar View - LIMS Ruptures Schedule
 $nombresMeses = [
     1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
     5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
@@ -29,42 +29,68 @@ if ($nextMes > 12) {
     .grid-calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
     .dia-semana { background-color: #f1f5f9; text-align: center; font-weight: 700; padding: 10px 0; border-radius: 4px; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
     
-    .dia-celda { background-color: white; border: 1px solid #e2e8f0; border-radius: 8px; min-height: 110px; padding: 8px; display: flex; flex-direction: column; gap: 5px; position: relative; transition: all 0.2s; }
-    .dia-celda:hover { border-color: #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-    .dia-vacio { background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; min-height: 110px; }
+    .dia-celda { background-color: white; border: 1px solid #e2e8f0; border-radius: 8px; min-height: 130px; padding: 10px; display: flex; flex-direction: column; gap: 8px; position: relative; transition: all 0.2s ease; justify-content: flex-start; align-items: stretch; }
+    .dia-celda:hover { border-color: #3b82f6; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1), 0 4px 6px -4px rgba(59, 130, 246, 0.1); transform: translateY(-2px); z-index: 2; }
+    .dia-fin-semana { background-color: #f8fafc; }
+    .dia-vacio { background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; min-height: 130px; }
     
-    .dia-numero { font-weight: 700; font-size: 14px; color: #64748b; margin-bottom: 4px; display: inline-block; width: 24px; height: 24px; text-align: center; line-height: 24px; border-radius: 50%; }
-    .dia-hoy { background-color: var(--cycsa-azul); color: white; }
+    .dia-numero { font-weight: 700; font-size: 13px; color: #64748b; margin-bottom: 2px; display: inline-block; width: 24px; height: 24px; text-align: center; line-height: 24px; border-radius: 50%; }
+    .dia-hoy { background-color: var(--cycsa-azul); color: white; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3); }
     
-    .event-tag { font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid; transition: transform 0.1s; }
-    .event-tag:hover { transform: scale(1.02); }
-    .event-entrega { background-color: #f0fdf4; color: #166534; border-left-color: #22c55e; border: 1px solid #bbf7d0; }
-    .event-seguimiento { background-color: #eff6ff; color: #1e40af; border-left-color: #3b82f6; border: 1px solid #bfdbfe; }
+    .event-tag { font-family: 'Inter', sans-serif; font-size: 11px; padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 1px solid; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.02); text-decoration: none; }
+    .event-tag:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08); }
+    .event-ruptura { background-color: #fef2f2; color: #991b1b; border-color: #fecaca; border-left: 4px solid #ef4444; }
+    .event-ruptura:hover { background-color: #fee2e2; border-color: #fca5a5; }
+
+    .event-completado { background-color: #f0fdf4; color: #166534; border-color: #bbf7d0; border-left: 4px solid #22c55e; }
+    .event-completado:hover { background-color: #dcfce7; border-color: #86efac; }
     
-    .modal-premium { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
-    .modal-premium-content { background-color: #fff; margin: 4% auto; padding: 30px; border: 1px solid #e2e8f0; width: 48%; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
-    .btn-cerrar { background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; }
-    .btn-cerrar:hover { color: #475569; }
-    .form-control { padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; outline: none; }
+    .event-code { font-weight: 700; font-size: 10.5px; display: flex; align-items: center; gap: 4px; }
+    .event-lote { font-weight: 600; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .event-details { color: #64748b; font-size: 10px; }
     
-    .tabla-detalle-items { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
-    .tabla-detalle-items th { background-color: #f8fafc; color: #475569; padding: 10px; font-weight: 600; border-bottom: 2px solid #e2e8f0; text-align: left; }
-    .tabla-detalle-items td { padding: 10px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+    .event-status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .status-Programado { background-color: #f59e0b; }
+    .status-Completado { background-color: #10b981; }
+
+    .calendario-legend { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; background: #fff; padding: 12px 18px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-weight: 500; color: #475569; }
 </style>
 
 <div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
     
     <div class="header-flex" style="margin-bottom: 20px;">
         <div>
-            <h2 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700;">Calendario Operativo</h2>
-            <p style="color: #64748b; margin-top: 5px; font-size: 14px;">Calendario mensual de despachos, entregas y seguimientos de proyectos.</p>
+            <h2 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700;">Calendario de Rupturas LIMS</h2>
+            <p style="color: #64748b; margin-top: 5px; font-size: 14px;">Muestra las rupturas de cilindros programadas según la fecha de moldeo y la edad del ensayo.</p>
         </div>
     </div>
 
     <!-- Pestañas secundarias -->
     <div class="tabs-container" style="display: flex; gap: 10px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 25px;">
         <a href="/Cycsa/publico/operaciones" class="tab-link" style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 14px; background-color: #f1f5f9; color: #475569; transition: background 0.2s;"><i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> Lista de Operaciones</a>
-        <a href="/Cycsa/publico/operaciones/calendario" class="tab-link" style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; background-color: var(--cycsa-azul); color: white;"><i class="fa-solid fa-calendar-days" style="margin-right: 6px;"></i> Calendario de Entregas</a>
+        <a href="/Cycsa/publico/operaciones/calendario" class="tab-link" style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; background-color: var(--cycsa-azul); color: white;"><i class="fa-solid fa-calendar-days" style="margin-right: 6px;"></i> Calendario de Rupturas</a>
+    </div>
+
+    <!-- Leyenda de colores y estados -->
+    <div class="calendario-legend">
+        <div class="legend-item">
+            <span style="display: inline-block; width: 12px; height: 12px; background-color: #fef2f2; border: 1px solid #fecaca; border-left: 3px solid #ef4444; border-radius: 3px;"></span>
+            <span>Ruptura Programada</span>
+        </div>
+        <div class="legend-item">
+            <span style="display: inline-block; width: 12px; height: 12px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 3px solid #22c55e; border-radius: 3px;"></span>
+            <span>Ruptura Completada</span>
+        </div>
+        <div style="width: 1px; background: #e2e8f0; align-self: stretch; margin: 0 5px;"></div>
+        <div class="legend-item">
+            <span class="event-status-dot status-Programado"></span>
+            <span>Programado</span>
+        </div>
+        <div class="legend-item">
+            <span class="event-status-dot status-Completado"></span>
+            <span>Completado</span>
+        </div>
     </div>
 
     <!-- Cabecera del Calendario (Navegación de Meses) -->
@@ -85,15 +111,15 @@ if ($nextMes > 12) {
     <!-- Grid del Calendario -->
     <div class="grid-calendario">
         <!-- Días de la semana -->
-        <div class="dia-semana">Domingo</div>
+        <div class="dia-semana" style="color: #ef4444;">Domingo</div>
         <div class="dia-semana">Lunes</div>
         <div class="dia-semana">Martes</div>
         <div class="dia-semana">Miércoles</div>
         <div class="dia-semana">Jueves</div>
         <div class="dia-semana">Viernes</div>
-        <div class="dia-semana">Sábado</div>
+        <div class="dia-semana" style="color: #ef4444;">Sábado</div>
 
-        <!-- Celdas vacías al inicio -->
+        <!-- Días vacíos al inicio -->
         <?php for ($i = 0; $i < $primerDiaSemana; $i++): ?>
             <div class="dia-vacio"></div>
         <?php endfor; ?>
@@ -107,32 +133,42 @@ if ($nextMes > 12) {
         for ($dia = 1; $dia <= $ultimoDia; $dia++): 
             $esHoy = ($dia === $hoyDia && $mes === $hoyMes && $anio === $hoyAnio);
             $eventos = $eventosPorDia[$dia] ?? [];
+            $w = (int)date('w', strtotime(sprintf('%04d-%02d-%02d', $anio, $mes, $dia)));
+            $esFinSemana = ($w === 0 || $w === 6);
         ?>
-            <div class="dia-celda">
-                <div>
+            <div class="dia-celda <?= $esFinSemana ? 'dia-fin-semana' : '' ?>">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span class="dia-numero <?= $esHoy ? 'dia-hoy' : '' ?>">
                         <?= $dia ?>
                     </span>
+                    <?php if (count($eventos) > 0): ?>
+                        <span style="font-size: 10px; font-weight: 600; color: #475569; background: #e2e8f0; padding: 2px 6px; border-radius: 10px;" title="Cilindros programados hoy">
+                            <?= count($eventos) ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
                 
                 <!-- Eventos del día -->
-                <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto;">
+                <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
                     <?php foreach ($eventos as $ev): 
-                        $tagClass = $ev['tipo_evento'] === 'entrega' ? 'event-entrega' : 'event-seguimiento';
-                        $icon = $ev['tipo_evento'] === 'entrega' ? 'fa-truck' : 'fa-calendar-check';
-                        $prefijo = $ev['tipo_evento'] === 'entrega' ? 'ENTREGA:' : 'SEGUIM.:';
+                        $completado = $ev['estado'] === 'Completado';
+                        $tagClass = $completado ? 'event-completado' : 'event-ruptura';
+                        $statusClass = 'status-' . $ev['estado'];
                     ?>
-                        <div class="event-tag <?= $tagClass ?>" onclick="verDetalleOperaciones(<?= $ev['id_cotizacion'] ?>)" title="<?= $prefijo ?> <?= htmlspecialchars($ev['cot_codigo'] . ' - ' . $ev['nombre_proyecto'], ENT_QUOTES, 'UTF-8') ?>">
-                            <i class="fa-solid <?= $icon ?>"></i> 
-                            <span style="font-weight: 700;"><?= htmlspecialchars($ev['cot_codigo'], ENT_QUOTES, 'UTF-8') ?></span> 
-                            <span><?= htmlspecialchars($ev['nombre_proyecto'], ENT_QUOTES, 'UTF-8') ?></span>
-                        </div>
+                        <a href="/Cycsa/publico/operaciones/detalle-lote?id_lote=<?= $ev['id_ensayo'] ?>" class="event-tag <?= $tagClass ?>" title="Ensaye a los <?= $ev['edad_dias'] ?> días del lote <?= htmlspecialchars($ev['nombre_lote'], ENT_QUOTES, 'UTF-8') ?>">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <span class="event-code"><i class="fa-solid fa-hammer"></i> <?= htmlspecialchars($ev['codigo_muestra'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="event-status-dot <?= $statusClass ?>" title="Estado: <?= htmlspecialchars($ev['estado'], ENT_QUOTES, 'UTF-8') ?>"></span>
+                            </div>
+                            <div class="event-lote"><?= htmlspecialchars($ev['nombre_lote'], ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="event-details">Cilindro <strong><?= htmlspecialchars($ev['identificador_especimen'], ENT_QUOTES, 'UTF-8') ?></strong> a los <strong><?= $ev['edad_dias'] ?>d</strong></div>
+                        </a>
                     <?php endforeach; ?>
                 </div>
             </div>
         <?php endfor; ?>
 
-        <!-- Celdas vacías al final para completar la fila de 7 columnas -->
+        <!-- Celdas vacías al final -->
         <?php 
         $totalCeldas = $primerDiaSemana + $ultimoDia;
         $celdasRestantes = (7 - ($totalCeldas % 7)) % 7;
@@ -142,143 +178,3 @@ if ($nextMes > 12) {
         <?php endfor; ?>
     </div>
 </div>
-
-<!-- MODAL VER DETALLES SIN PRECIOS -->
-<div id="modalDetalle" class="modal-premium">
-    <div class="modal-premium-content" style="width: 48%; max-height: 85vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 19px; font-weight: 700;">Detalles de la Operación</h3>
-            <button onclick="cerrarDetalleModal()" class="btn-cerrar">&times;</button>
-        </div>
-        
-        <!-- Banner informativo de exclusión de precios -->
-        <div style="background-color: #f0fdfa; border: 1px solid #5eead4; color: #0f766e; padding: 10px 15px; border-radius: 6px; font-size: 13px; font-weight: 500; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-shield-halved"></i> <strong>Vista de Operaciones:</strong> Información comercial y precios omitidos.
-        </div>
-
-        <div id="detalle_contenido" style="font-size: 13.5px; line-height: 1.5; color: #334155;">
-            <!-- Cargado vía AJAX -->
-            <div style="text-align: center; padding: 40px; color: #94a3b8;">
-                <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px;"></i><br><br>
-                Cargando información...
-            </div>
-        </div>
-
-        <div style="display: flex; justify-content: flex-end; margin-top: 25px;">
-            <button type="button" onclick="cerrarDetalleModal()" class="form-control" style="cursor: pointer; background: #f1f5f9; border: 1px solid #cbd5e1; font-weight: 600; color: #475569; width: 120px; text-align: center; padding: 8px 0;">Cerrar</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    const detModal = document.getElementById('modalDetalle');
-
-    function verDetalleOperaciones(idCot) {
-        detModal.style.display = 'block';
-        document.getElementById('detalle_contenido').innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #94a3b8;">
-                <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px;"></i><br><br>
-                Cargando información...
-            </div>
-        `;
-
-        fetch('/Cycsa/publico/operaciones/detalle-ajax?id=' + idCot)
-            .then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    document.getElementById('detalle_contenido').innerHTML = `<div style="color:red; text-align:center; padding:20px;">${data.error}</div>`;
-                    return;
-                }
-
-                const cot = data.cotizacion;
-                const items = data.detalles;
-
-                let html = `
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                        <div>
-                            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Código Cotización</div>
-                            <strong>${cot.cot_codigo}</strong>
-                        </div>
-                        <div>
-                            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Cliente</div>
-                            <strong>${cot.cliente_nombre}</strong>
-                        </div>
-                        <div>
-                            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Proyecto</div>
-                            <strong>${cot.nombre_proyecto}</strong>
-                        </div>
-                        <div>
-                            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Atención A</div>
-                            <strong>${cot.atencion_a ? cot.atencion_a : '—'}</strong>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 20px;">
-                        <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Dirección del Proyecto</div>
-                        <div style="background-color: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 4px;">
-                            ${cot.direccion_proyecto}
-                        </div>
-                    </div>
-
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 8px;">
-                        <div>
-                            <strong>Condiciones de Pago:</strong><br>
-                            <span style="color:#475569;">${cot.condicion_pago}</span>
-                        </div>
-                        <div>
-                            <strong>Tiempo de Entrega:</strong><br>
-                            <span style="color:#475569;">${cot.tiempo_entrega ? cot.tiempo_entrega : '—'}</span>
-                        </div>
-                    </div>
-
-                    <h4 style="margin-top: 25px; margin-bottom: 10px; font-family:'Outfit'; color:#0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 6px;">Materiales y Ensayos a Procesar</h4>
-                    <table class="tabla-detalle-items">
-                        <thead>
-                            <tr>
-                                <th style="width:100px;">Código</th>
-                                <th>Ensayo / Servicio</th>
-                                <th style="width:120px;">Norma / ASTM</th>
-                                <th style="width:80px; text-align:right;">Cantidad</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                items.forEach(it => {
-                    html += `
-                        <tr>
-                            <td style="font-family:monospace;">${it.codigo_servicio ? it.codigo_servicio : '—'}</td>
-                            <td style="font-weight:500;">${it.descripcion_ensayo}</td>
-                            <td style="color:#64748b;">${it.norma_astm ? it.norma_astm : 'N/A'}</td>
-                            <td style="text-align:right; font-weight:600;">${Number(it.cantidad).toFixed(0)}</td>
-                        </tr>
-                    `;
-                });
-
-                html += `
-                        </tbody>
-                    </table>
-
-                    ${cot.notas_operativas ? `
-                    <div style="margin-top: 25px; background: #fffbeb; border: 1px solid #fef3c7; padding: 15px; border-radius: 8px; color: #b45309;">
-                        <strong><i class="fa-solid fa-triangle-exclamation"></i> Notas e Instrucciones de Operación:</strong>
-                        <p style="margin-top: 6px; font-size: 13px;">${cot.notas_operativas}</p>
-                    </div>
-                    ` : ''}
-                `;
-
-                document.getElementById('detalle_contenido').innerHTML = html;
-            })
-            .catch(err => {
-                document.getElementById('detalle_contenido').innerHTML = `<div style="color:red; text-align:center; padding:20px;">Error al obtener detalles: ${err}</div>`;
-            });
-    }
-
-    function cerrarDetalleModal() {
-        detModal.style.display = 'none';
-    }
-
-    window.addEventListener('click', (e) => {
-        if (e.target === detModal) cerrarDetalleModal();
-    });
-</script>

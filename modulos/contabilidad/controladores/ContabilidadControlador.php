@@ -372,4 +372,131 @@ class ContabilidadControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/contabilidad/bancos' . ($datos['id_banco_cuenta'] ? '?banco_id=' . $datos['id_banco_cuenta'] : ''));
         }
     }
+
+    // ==========================================
+    // 5. Diario Contable (Registro Diario)
+    // ==========================================
+
+    public function diario(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $modelo = new ContabilidadModelo();
+        $busqueda = $_GET['q'] ?? '';
+
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        // Obtener partidas y sus detalles
+        $asientosRaw = $modelo->obtenerAsientos($busqueda);
+        $asientos = [];
+        foreach ($asientosRaw as $as) {
+            $as['detalles'] = $modelo->obtenerAsientoDetalles($as['id']);
+            $as['referencia_origen'] = $modelo->obtenerReferenciaOrigen($as['origen'], $as['origen_id']);
+            $as['banco_afectado'] = $modelo->obtenerBancoAfectado($as['id']);
+            $asientos[] = $as;
+        }
+
+        $this->renderizar('contabilidad/vistas/diario', [
+            'titulo' => 'Registro Diario Contable - Cycsa',
+            'asientos' => $asientos,
+            'cuentasDetalle' => $modelo->obtenerCuentasDetalle(),
+            'busqueda' => $busqueda,
+            'exito' => $_SESSION['exito'] ?? null,
+            'error' => $_SESSION['error'] ?? null
+        ]);
+
+        unset($_SESSION['exito'], $_SESSION['error']);
+    }
+
+    public function guardarPartida(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $modelo = new ContabilidadModelo();
+
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/contabilidad/diario');
+                return;
+            }
+
+            if ($modelo->guardarAsientoManual($datos)) {
+                registrarBitacora('contabilidad', 'crear_asiento', 'Registrado asiento contable manual');
+                $_SESSION['exito'] = 'Asiento contable registrado exitosamente.';
+            } else {
+                $_SESSION['error'] = 'Error al registrar el asiento. Verifique que las cuentas cuadren (Debe = Haber) y los campos obligatorios estén llenos.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/contabilidad/diario');
+        }
+    }
+
+    public function sincronizarDiario(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        $modelo = new ContabilidadModelo();
+        if ($modelo->reconstruirDiario()) {
+            registrarBitacora('contabilidad', 'sincronizar_diario', 'Diario contable reconstruido y sincronizado');
+            $_SESSION['exito'] = 'Diario contable sincronizado e integrado con éxito con todos los módulos de bancos, CXC y CXP.';
+        } else {
+            $_SESSION['error'] = 'Error al sincronizar el diario contable.';
+        }
+
+        $respuesta->redirigir('/Cycsa/publico/contabilidad/diario');
+    }
+
+    // ==========================================
+    // 6. Balance General
+    // ==========================================
+
+    public function balance(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $modelo = new ContabilidadModelo();
+        $fechaHasta = $_GET['fecha_hasta'] ?? date('Y-m-d');
+
+        $saldos = $modelo->obtenerSaldosCuentas($fechaHasta);
+
+        $this->renderizar('contabilidad/vistas/balance', [
+            'titulo' => 'Balance General - Cycsa',
+            'saldos' => $saldos,
+            'fechaHasta' => $fechaHasta,
+            'exito' => $_SESSION['exito'] ?? null,
+            'error' => $_SESSION['error'] ?? null
+        ]);
+
+        unset($_SESSION['exito'], $_SESSION['error']);
+    }
+
+    // ==========================================
+    // 7. Estado de Resultados
+    // ==========================================
+
+    public function resultados(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $modelo = new ContabilidadModelo();
+        $fechaDesde = $_GET['fecha_desde'] ?? date('Y-m-01');
+        $fechaHasta = $_GET['fecha_hasta'] ?? date('Y-m-d');
+
+        $saldos = $modelo->obtenerSaldosIngresosEgresos($fechaDesde, $fechaHasta);
+
+        $this->renderizar('contabilidad/vistas/resultados', [
+            'titulo' => 'Estado de Resultados - Cycsa',
+            'saldos' => $saldos,
+            'fechaDesde' => $fechaDesde,
+            'fechaHasta' => $fechaHasta,
+            'exito' => $_SESSION['exito'] ?? null,
+            'error' => $_SESSION['error'] ?? null
+        ]);
+
+        unset($_SESSION['exito'], $_SESSION['error']);
+    }
 }

@@ -1,5 +1,6 @@
-# Archivo de variables de entorno (contiene contraseñas)
+# Archivos de variables de entorno (contienen contraseñas)
 .env
+.env.local
 
 # Dependencias de Composer
 vendor/
