@@ -39,13 +39,16 @@ class ContabilidadControlador extends ControladorBase {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
+        $bitacora_logs = obtenerBitacoraModulo('contabilidad');
+
         $this->renderizar('contabilidad/vistas/cuentas', [
             'titulo' => 'Catálogo de Cuentas Contables - Cycsa',
             'cuentas' => $modelo->obtenerCuentas($busqueda),
             'cuentasMayor' => $modelo->obtenerCuentasMayor(),
             'busqueda' => $busqueda,
             'exito' => $_SESSION['exito'] ?? null,
-            'error' => $_SESSION['error'] ?? null
+            'error' => $_SESSION['error'] ?? null,
+            'bitacora_logs' => $bitacora_logs
         ]);
 
         unset($_SESSION['exito'], $_SESSION['error']);

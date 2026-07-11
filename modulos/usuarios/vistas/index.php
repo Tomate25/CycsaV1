@@ -77,3 +77,8 @@
         </table>
     </div>
 </div>
+
+<?php
+$bitacora_modulo_nombre = 'Usuarios';
+include __DIR__ . '/../../../plantillas/parciales/bitacora_modulo.php';
+?>

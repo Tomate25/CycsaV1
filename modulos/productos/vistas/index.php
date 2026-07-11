@@ -232,3 +232,9 @@ $precioPromedio = $conPrecio > 0 ? $sumaPrecios / $conPrecio : 0;
         <?php endif; ?>
     </div>
 </div>
+
+
+<?php
+$bitacora_modulo_nombre = 'Catálogo de Ensayos';
+include __DIR__ . '/../../../plantillas/parciales/bitacora_modulo.php';
+?>

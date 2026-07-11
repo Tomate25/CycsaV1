@@ -62,4 +62,61 @@ class ConfiguracionModelo extends ModeloBase {
         $stmt = $this->db->prepare($sql);
         return $stmt->execute(['id' => $id]);
     }
+
+    // --- Gestión de Técnicos ---
+    public function obtenerTecnicos(): array {
+        $sql = "SELECT id, nombre, activo, fecha_registro FROM tecnicos ORDER BY nombre ASC";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function agregarTecnico(string $nombre): bool {
+        $sql = "INSERT INTO tecnicos (nombre) VALUES (:nombre)";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['nombre' => trim($nombre)]);
+    }
+
+    public function eliminarTecnico(int $id): bool {
+        $sql = "DELETE FROM tecnicos WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['id' => $id]);
+    }
+
+    // --- Gestión de Vehículos ---
+    public function obtenerVehiculos(): array {
+        $sql = "SELECT id, placa, marca, modelo, activo, fecha_registro FROM vehiculos ORDER BY placa ASC";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function agregarVehiculo(string $placa, string $marca, string $modelo): bool {
+        $sql = "INSERT INTO vehiculos (placa, marca, modelo) VALUES (:placa, :marca, :modelo)";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'placa' => strtoupper(trim($placa)),
+            'marca' => trim($marca),
+            'modelo' => trim($modelo)
+        ]);
+    }
+
+    public function eliminarVehiculo(int $id): bool {
+        $sql = "DELETE FROM vehiculos WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['id' => $id]);
+    }
+
+    public function actualizarTecnico(int $id, string $nombre): bool {
+        $sql = "UPDATE tecnicos SET nombre = :nombre WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['nombre' => trim($nombre), 'id' => $id]);
+    }
+
+    public function actualizarVehiculo(int $id, string $placa, string $marca, string $modelo): bool {
+        $sql = "UPDATE vehiculos SET placa = :placa, marca = :marca, modelo = :modelo WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'placa' => strtoupper(trim($placa)),
+            'marca' => trim($marca),
+            'modelo' => trim($modelo),
+            'id' => $id
+        ]);
+    }
 }

@@ -12,7 +12,19 @@ class ClientesControlador extends ControladorBase {
     private function verificarSesion(Respuesta $respuesta): void {
         if (!isset($_SESSION['usuario_id'])) {
             $respuesta->redirigir('/Cycsa/publico/login');
-            exit; // Usamos exit para asegurar que el script muere
+            exit;
+        }
+    }
+
+    // Obtener la lista de cuentas de detalle del catálogo contable para los autocompletados
+    private function obtenerCuentasContables(): array {
+        try {
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmt = $db->query("SELECT codigo, nombre FROM cuentas_contables WHERE tipo = 'DETALLE' AND activo = 1 ORDER BY codigo ASC");
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            error_log("Error al obtener catálogo de cuentas en Clientes: " . $e->getMessage());
+            return [];
         }
     }
 
@@ -25,29 +37,36 @@ class ClientesControlador extends ControladorBase {
         }
         
         $modelo = new ClienteModelo();
-        // Capturamos lo que el usuario escribió en el buscador (si hay algo)
         $busqueda = $_GET['q'] ?? ''; 
+
+        $bitacora_logs = obtenerBitacoraModulo('clientes');
 
         $this->renderizar('clientes/vistas/index', [
             'titulo' => 'Módulo de Clientes - Cycsa',
             'clientes' => $modelo->obtenerTodos($busqueda),
-            'busqueda' => $busqueda
+            'busqueda' => $busqueda,
+            'bitacora_logs' => $bitacora_logs
         ]);
     }
 
+    // ➕ FORMULARIO DE CREACIÓN
     public function crear(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('clientes', 'crear_editar')) {
             $respuesta->redirigir('/Cycsa/publico/clientes');
             exit;
         }
-        if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
+        if (empty($_SESSION['csrf_token'])) { 
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); 
+        }
 
         $this->renderizar('clientes/vistas/crear', [
-            'titulo' => 'Registrar Cliente - Cycsa'
+            'titulo' => 'Registrar Cliente - Cycsa',
+            'cuentas_contables' => $this->obtenerCuentasContables()
         ]);
     }
 
+    // 💾 GUARDAR NUEVO CLIENTE
     public function guardar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('clientes', 'crear_editar')) {
@@ -60,29 +79,79 @@ class ClientesControlador extends ControladorBase {
             $modelo = new ClienteModelo();
 
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-                $this->renderizar('clientes/vistas/crear', ['titulo' => 'Registrar Cliente', 'error' => 'Error: Token CSRF inválido.', 'valores' => $datos]); return;
+                $this->renderizar('clientes/vistas/crear', [
+                    'titulo' => 'Registrar Cliente', 
+                    'error' => 'Error: Token CSRF inválido.', 
+                    'valores' => $datos,
+                    'cuentas_contables' => $this->obtenerCuentasContables()
+                ]); 
+                return;
             }
-            if (empty(trim($datos['nombre_razon_social']))) {
-                $this->renderizar('clientes/vistas/crear', ['titulo' => 'Registrar Cliente', 'error' => 'El nombre o razón social es obligatorio.', 'valores' => $datos]); return;
+            if (empty(trim($datos['nombre_cliente']))) {
+                $this->renderizar('clientes/vistas/crear', [
+                    'titulo' => 'Registrar Cliente', 
+                    'error' => 'El nombre del cliente es obligatorio.', 
+                    'valores' => $datos,
+                    'cuentas_contables' => $this->obtenerCuentasContables()
+                ]); 
+                return;
             }
             if (!empty($datos['email']) && $modelo->emailExiste($datos['email'])) {
-                $this->renderizar('clientes/vistas/crear', ['titulo' => 'Registrar Cliente', 'error' => 'El correo electrónico ya está registrado.', 'valores' => $datos]); return;
+                $this->renderizar('clientes/vistas/crear', [
+                    'titulo' => 'Registrar Cliente', 
+                    'error' => 'El correo electrónico ya está registrado.', 
+                    'valores' => $datos,
+                    'cuentas_contables' => $this->obtenerCuentasContables()
+                ]); 
+                return;
             }
-            if (!empty($datos['identificacion']) && $modelo->identificacionExiste($datos['identificacion'])) {
-                $this->renderizar('clientes/vistas/crear', ['titulo' => 'Registrar Cliente', 'error' => 'La identificación ya está registrada.', 'valores' => $datos]); return;
+
+            // Identificación fiscal principal (RUC o Cédula)
+            $identificacion = '';
+            if (!empty($datos['numero_ruc'])) {
+                $identificacion = trim($datos['numero_ruc']);
+            } elseif (!empty($datos['numero_cedula'])) {
+                $identificacion = trim($datos['numero_cedula']);
+            }
+
+            if (!empty($identificacion) && $modelo->identificacionExiste($identificacion)) {
+                $this->renderizar('clientes/vistas/crear', [
+                    'titulo' => 'Registrar Cliente', 
+                    'error' => 'La identificación fiscal (RUC/Cédula) ya está registrada.', 
+                    'valores' => $datos,
+                    'cuentas_contables' => $this->obtenerCuentasContables()
+                ]); 
+                return;
             }
 
             if ($modelo->guardar($datos)) {
                 $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
                 $lastId = $db->lastInsertId();
-                registrarBitacora('clientes', 'crear', 'Creado cliente: ' . $datos['nombre_razon_social'], $lastId);
+                
+                // Formar nombre para la bitácora
+                $nombre_razon_social = trim($datos['nombre_cliente']);
+                if (($datos['tipo_cliente'] ?? '') === 'Natural') {
+                    $parts = [trim($datos['nombre_cliente'])];
+                    if (!empty($datos['primer_apellido'])) $parts[] = trim($datos['primer_apellido']);
+                    if (!empty($datos['segundo_apellido'])) $parts[] = trim($datos['segundo_apellido']);
+                    $nombre_razon_social = implode(' ', $parts);
+                }
+
+                registrarBitacora('clientes', 'crear', 'Creado cliente: ' . $nombre_razon_social, $lastId);
                 $respuesta->redirigir('/Cycsa/publico/clientes');
                 return;
+            } else {
+                $this->renderizar('clientes/vistas/crear', [
+                    'titulo' => 'Registrar Cliente', 
+                    'error' => 'Error al guardar en la base de datos.', 
+                    'valores' => $datos,
+                    'cuentas_contables' => $this->obtenerCuentasContables()
+                ]);
             }
         }
     }
 
-    // ✏️ MOSTRAR FORMULARIO DE EDICIÓN
+    // ✏️ FORMULARIO DE EDICIÓN
     public function editar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('clientes', 'crear_editar')) {
@@ -91,17 +160,26 @@ class ClientesControlador extends ControladorBase {
         }
         
         $id = $_GET['id'] ?? null;
-        if (!$id) { $respuesta->redirigir('/Cycsa/publico/clientes'); return; }
+        if (!$id) { 
+            $respuesta->redirigir('/Cycsa/publico/clientes'); 
+            return; 
+        }
 
         $modelo = new ClienteModelo();
         $cliente = $modelo->obtenerPorId((int)$id);
 
-        if (!$cliente) { $respuesta->redirigir('/Cycsa/publico/clientes'); return; }
-        if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
+        if (!$cliente) { 
+            $respuesta->redirigir('/Cycsa/publico/clientes'); 
+            return; 
+        }
+        if (empty($_SESSION['csrf_token'])) { 
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); 
+        }
 
         $this->renderizar('clientes/vistas/editar', [
             'titulo' => 'Editar Cliente - Cycsa',
-            'cliente' => $cliente
+            'cliente' => $cliente,
+            'cuentas_contables' => $this->obtenerCuentasContables()
         ]);
     }
 
@@ -114,30 +192,81 @@ class ClientesControlador extends ControladorBase {
         }
         
         $id = $_GET['id'] ?? null;
-        if (!$id || !$peticion->esPost()) { $respuesta->redirigir('/Cycsa/publico/clientes'); return; }
+        if (!$id || !$peticion->esPost()) { 
+            $respuesta->redirigir('/Cycsa/publico/clientes'); 
+            return; 
+        }
 
         $datos = $peticion->obtenerDatos();
         $modelo = new ClienteModelo();
 
         if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            $this->renderizar('clientes/vistas/editar', ['titulo' => 'Editar Cliente', 'error' => 'Error: Token CSRF inválido.', 'cliente' => $datos]); return;
+            $this->renderizar('clientes/vistas/editar', [
+                'titulo' => 'Editar Cliente', 
+                'error' => 'Error: Token CSRF inválido.', 
+                'cliente' => $datos,
+                'cuentas_contables' => $this->obtenerCuentasContables()
+            ]); 
+            return;
         }
-        if (empty(trim($datos['nombre_razon_social']))) {
-            $this->renderizar('clientes/vistas/editar', ['titulo' => 'Editar Cliente', 'error' => 'El nombre es obligatorio.', 'cliente' => $datos]); return;
+        if (empty(trim($datos['nombre_cliente']))) {
+            $this->renderizar('clientes/vistas/editar', [
+                'titulo' => 'Editar Cliente', 
+                'error' => 'El nombre del cliente es obligatorio.', 
+                'cliente' => $datos,
+                'cuentas_contables' => $this->obtenerCuentasContables()
+            ]); 
+            return;
         }
         
-        // Verificamos duplicados PERO excluimos el ID del cliente actual
         if (!empty($datos['email']) && $modelo->emailExiste($datos['email'], (int)$id)) {
-            $this->renderizar('clientes/vistas/editar', ['titulo' => 'Editar Cliente', 'error' => 'Este correo ya pertenece a otro cliente.', 'cliente' => $datos]); return;
+            $this->renderizar('clientes/vistas/editar', [
+                'titulo' => 'Editar Cliente', 
+                'error' => 'Este correo ya pertenece a otro cliente.', 
+                'cliente' => $datos,
+                'cuentas_contables' => $this->obtenerCuentasContables()
+            ]); 
+            return;
         }
-        if (!empty($datos['identificacion']) && $modelo->identificacionExiste($datos['identificacion'], (int)$id)) {
-            $this->renderizar('clientes/vistas/editar', ['titulo' => 'Editar Cliente', 'error' => 'Esta identificación ya pertenece a otro cliente.', 'cliente' => $datos]); return;
+
+        // Identificación fiscal principal (RUC o Cédula)
+        $identificacion = '';
+        if (!empty($datos['numero_ruc'])) {
+            $identificacion = trim($datos['numero_ruc']);
+        } elseif (!empty($datos['numero_cedula'])) {
+            $identificacion = trim($datos['numero_cedula']);
+        }
+
+        if (!empty($identificacion) && $modelo->identificacionExiste($identificacion, (int)$id)) {
+            $this->renderizar('clientes/vistas/editar', [
+                'titulo' => 'Editar Cliente', 
+                'error' => 'Esta identificación fiscal ya pertenece a otro cliente.', 
+                'cliente' => $datos,
+                'cuentas_contables' => $this->obtenerCuentasContables()
+            ]); 
+            return;
         }
 
         if ($modelo->actualizar((int)$id, $datos)) {
-            registrarBitacora('clientes', 'editar', 'Actualizado cliente: ' . $datos['nombre_razon_social'], (int)$id);
+            // Formar nombre para la bitácora
+            $nombre_razon_social = trim($datos['nombre_cliente']);
+            if (($datos['tipo_cliente'] ?? '') === 'Natural') {
+                $parts = [trim($datos['nombre_cliente'])];
+                if (!empty($datos['primer_apellido'])) $parts[] = trim($datos['primer_apellido']);
+                if (!empty($datos['segundo_apellido'])) $parts[] = trim($datos['segundo_apellido']);
+                $nombre_razon_social = implode(' ', $parts);
+            }
+
+            registrarBitacora('clientes', 'editar', 'Actualizado cliente: ' . $nombre_razon_social, (int)$id);
             $respuesta->redirigir('/Cycsa/publico/clientes');
             return;
+        } else {
+            $this->renderizar('clientes/vistas/editar', [
+                'titulo' => 'Editar Cliente', 
+                'error' => 'Error al guardar los cambios en la base de datos.', 
+                'cliente' => $datos,
+                'cuentas_contables' => $this->obtenerCuentasContables()
+            ]);
         }
     }
 

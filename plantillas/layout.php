@@ -414,7 +414,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 2, 3])): ?>
+            <?php if (tienePermiso('laboratorio', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/laboratorio" class="<?= strpos($rutaActual, '/laboratorio') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-flask-vial"></i>
@@ -438,15 +438,8 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (($_SESSION['usuario_rol'] ?? 0) == 1): ?>
-            <li>
-                <a href="/Cycsa/publico/panel/bitacora" class="<?= strpos($rutaActual, '/panel/bitacora') !== false ? 'activo' : '' ?>">
-                    <i class="fa-solid fa-receipt"></i>
-                    <span class="menu-texto">Bitácora</span>
-                </a>
-            </li>
-            <?php endif; ?>
             
+
             <?php if (($_SESSION['usuario_rol'] ?? 0) == 1): ?>
             <li class="menu-categoria">Ajustes</li>
             <li>
@@ -528,6 +521,31 @@
                     })
                     .catch(err => console.error("Error de conexión al validar sesión única:", err));
             }, 5000);
+
+            // 🛑 Protección universal contra doble clic / doble envío de formularios (Bancos, CXC, Diario, LIMS, etc.)
+            document.addEventListener('submit', function(e) {
+                const form = e.target;
+                if (form.tagName === 'FORM') {
+                    if (form.checkValidity && !form.checkValidity()) {
+                        return;
+                    }
+                    setTimeout(() => {
+                        if (!e.defaultPrevented) {
+                            const btn = form.querySelector('button[type="submit"], input[type="submit"]');
+                            if (btn) {
+                                btn.disabled = true;
+                                if (btn.tagName === 'BUTTON') {
+                                    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Procesando...';
+                                } else {
+                                    btn.value = 'Procesando...';
+                                }
+                                btn.style.opacity = '0.7';
+                                btn.style.cursor = 'not-allowed';
+                            }
+                        }
+                    }, 10);
+                }
+            }, true);
         });
     </script>
 </body>

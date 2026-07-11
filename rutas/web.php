@@ -58,7 +58,14 @@ $app->enrutador->get('/clientes/buscar-ajax', [ClientesControlador::class, 'busc
 // Rutas de Configuración Comercial (Solo Admin)
 $app->enrutador->get('/configuracion', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'index']);
 $app->enrutador->post('/configuracion/agregar-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'agregarAjax']);
+$app->enrutador->post('/configuracion/actualizar-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'actualizarAjax']);
 $app->enrutador->post('/configuracion/eliminar-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'eliminarAjax']);
+$app->enrutador->post('/configuracion/agregar-tecnico-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'agregarTecnicoAjax']);
+$app->enrutador->post('/configuracion/actualizar-tecnico-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'actualizarTecnicoAjax']);
+$app->enrutador->post('/configuracion/eliminar-tecnico-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'eliminarTecnicoAjax']);
+$app->enrutador->post('/configuracion/agregar-vehiculo-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'agregarVehiculoAjax']);
+$app->enrutador->post('/configuracion/actualizar-vehiculo-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'actualizarVehiculoAjax']);
+$app->enrutador->post('/configuracion/eliminar-vehiculo-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'eliminarVehiculoAjax']);
 
 // Rutas de Productos / Ensayos
 $app->enrutador->get('/productos', [ProductosControlador::class, 'index']);
@@ -121,6 +128,16 @@ $app->enrutador->get('/operaciones/calendario', [OperacionesControlador::class, 
 $app->enrutador->post('/operaciones/generar-informe', [OperacionesControlador::class, 'generarInforme']);
 $app->enrutador->post('/operaciones/cambiar-estado-informe', [OperacionesControlador::class, 'cambiarEstadoInforme']);
 $app->enrutador->get('/informes/descargar', [OperacionesControlador::class, 'descargarInforme']);
+$app->enrutador->post('/operaciones/actualizar-estado', [OperacionesControlador::class, 'actualizarEstado']);
+$app->enrutador->post('/operaciones/programar-muestreo', [OperacionesControlador::class, 'procesarProgramarMuestreo']);
+$app->enrutador->post('/operaciones/guardar-hoja-campo', [OperacionesControlador::class, 'guardarHojaCampo']);
+$app->enrutador->get('/operaciones/hoja-solicitud', [OperacionesControlador::class, 'hojaSolicitudForm']);
+$app->enrutador->get('/operaciones/hoja-solicitud-datos', [OperacionesControlador::class, 'hojaSolicitudDatosAjax']);
+$app->enrutador->get('/operaciones/descargar-solicitud', [OperacionesControlador::class, 'descargarSolicitudPDF']);
+$app->enrutador->post('/operaciones/guardar-hoja-solicitud', [OperacionesControlador::class, 'guardarHojaSolicitud']);
+$app->enrutador->post('/operaciones/emitir-solicitud', [OperacionesControlador::class, 'emitirSolicitud']);
+$app->enrutador->post('/operaciones/enviar-revision-resultados', [OperacionesControlador::class, 'enviarRevisionResultados']);
+$app->enrutador->post('/operaciones/procesar-revision-resultados', [OperacionesControlador::class, 'procesarRevisionResultados']);
 
 // Módulo de Laboratorio Aislado (Operación Ciega total ISO 17025)
 $app->enrutador->get('/laboratorio', [LaboratorioControlador::class, 'index']);

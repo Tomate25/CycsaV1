@@ -264,3 +264,8 @@
         });
     });
 </script>
+
+<?php
+$bitacora_modulo_nombre = 'Contabilidad';
+include __DIR__ . '/../../../plantillas/parciales/bitacora_modulo.php';
+?>

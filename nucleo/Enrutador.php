@@ -29,7 +29,8 @@ class Enrutador {
         // Si la ruta no existe, devolvemos un error 404
         if ($callback === false) {
             $this->respuesta->establecerCodigoEstado(404);
-            return "Error 404: La página que buscas no existe.";
+            error_log("404 Error: Metodo=" . $metodo . ", Ruta=" . $ruta . ", Original URI=" . ($_SERVER['REQUEST_URI'] ?? ''));
+            return "Error 404: La página que buscas no existe. (Ruta: " . htmlspecialchars($ruta) . ")";
         }
 
         // Si el callback es un arreglo (ej. [Controlador::class, 'metodo'])

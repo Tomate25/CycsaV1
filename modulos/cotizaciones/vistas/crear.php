@@ -23,9 +23,76 @@
     .leyenda-texto { font-size: 13px; color: #495057; line-height: 1.5; cursor: pointer; }
     .leyenda-titulo { font-weight: 600; color: #333; display: block; margin-bottom: 4px; }
     
-    .caja-totales { background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; width: 300px; margin-left: auto; }
-    .fila-total { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 15px; color: #495057; }
-    .fila-total.gran-total { font-size: 20px; font-weight: 700; color: var(--cycsa-azul); border-top: 2px solid #dee2e6; padding-top: 10px; margin-top: 10px; margin-bottom: 0; }
+    .caja-totales { background: white; padding: 22px; border-radius: 12px; border: 1px solid #e2e8f0; width: 320px; margin-left: auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.025); }
+    .fila-total { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14.5px; color: #334155; }
+    .fila-total.gran-total { font-size: 19px; font-weight: 700; color: var(--cycsa-azul); border-top: 2px solid #e2e8f0; padding-top: 14px; margin-top: 14px; margin-bottom: 0; }
+
+    /* Switch Toggle Slider */
+    .switch-toggle {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 22px;
+    }
+    .switch-toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider-toggle {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e1;
+        transition: .3s;
+        border-radius: 22px;
+    }
+    .slider-toggle:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .3s;
+        border-radius: 50%;
+    }
+    .switch-toggle input:checked + .slider-toggle {
+        background-color: var(--cycsa-azul);
+    }
+    .switch-toggle input:checked + .slider-toggle:before {
+        transform: translateX(22px);
+    }
+
+    /* Moneda Toggle buttons */
+    .moneda-toggle-group {
+        display: flex;
+        background: #f1f5f9;
+        padding: 3px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+    }
+    .btn-toggle-moneda {
+        border: none;
+        background: none;
+        padding: 5px 12px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #64748b;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-toggle-moneda.active {
+        background: white;
+        color: var(--cycsa-azul);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
 
     /* Modal Estilos Premium */
     .modal-premium-bg { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); justify-content: center; align-items: center; }
@@ -187,8 +254,8 @@
                     <th style="width: 48%;">Nombre Comercial / Descripción</th>
                     <th style="width: 20%;">Tiempo Entrega/Obs</th>
                     <th style="width: 8%;">Cantidad</th>
-                    <th style="width: 10%;">Precio Unit. (C$)</th>
-                    <th style="width: 10%;">Subtotal</th>
+                    <th style="width: 10%;" id="th-precio-header">Precio Unit. (C$)</th>
+                    <th style="width: 10%;" id="th-subtotal-header">Subtotal (C$)</th>
                     <th style="width: 4%; text-align: center;"><i class="fa-solid fa-trash"></i></th>
                 </tr>
             </thead>
@@ -227,34 +294,58 @@
         </button>
 
         <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+            <input type="hidden" name="tipo_moneda" id="input-tipo-moneda" value="1">
             <div class="caja-totales">
-                <div class="fila-total">
-                    <span>Subtotal:</span>
-                    <span id="txt-subtotal">C$ 0.00</span>
+                
+                <!-- Moneda Toggle -->
+                <div class="fila-total" style="align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 12px;">
+                    <span style="font-weight: 600; color: #475569; font-size: 13.5px;">Moneda de Cotización</span>
+                    <div class="moneda-toggle-group">
+                        <button type="button" class="btn-toggle-moneda active" data-value="1" onclick="cambiarMoneda(1)">C$</button>
+                        <button type="button" class="btn-toggle-moneda" data-value="2" onclick="cambiarMoneda(2)">$</button>
+                    </div>
                 </div>
-                <div class="fila-total" style="align-items: center; justify-content: space-between;">
-                    <span>Descuento:</span>
-                    <div style="display: flex; gap: 4px; align-items: center;">
-                        <input type="number" id="input-descuento-val" step="0.01" min="0" value="0.00" style="width: 80px; text-align: right; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 6px; font-family: inherit; font-size: 14px; font-weight: 500; color: #1e293b;">
-                        <select id="input-descuento-tipo" style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 4px; font-family: inherit; font-size: 13px; background: white; font-weight: 600; color: #475569; cursor: pointer;">
+
+                <!-- Subtotal -->
+                <div class="fila-total" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14.5px; color: #334155;">
+                    <span style="font-weight: 500;">Subtotal:</span>
+                    <span id="txt-subtotal" style="font-weight: 600; color: #0f172a;">C$ 0.00</span>
+                </div>
+
+                <!-- Descuento -->
+                <div class="fila-total" style="align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 12px;">
+                    <span style="font-weight: 500; color: #334155; font-size: 14.5px;">Descuento:</span>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <input type="number" id="input-descuento-val" step="0.01" min="0" value="0.00" style="width: 80px; text-align: right; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 13.5px; font-weight: 500; color: #1e293b;">
+                        <select id="input-descuento-tipo" style="width: 70px; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; background-color: white;">
                             <option value="monto">C$</option>
                             <option value="porcentaje">%</option>
                         </select>
                     </div>
                 </div>
-                <div class="fila-total" style="align-items: center; justify-content: flex-end; gap: 8px;">
-                    <label style="font-size: 13px; font-weight: 500; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
-                        <input type="checkbox" name="exonerado" id="chk-exonerado" value="1"> ¿Exonerado de IVA?
+
+                <!-- Exonerado Toggle -->
+                <div class="fila-total" style="align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 12px;">
+                    <span style="font-weight: 500; color: #334155; font-size: 14.5px;">¿Exonerado de IVA?</span>
+                    <label class="switch-toggle">
+                        <input type="checkbox" name="exonerado" id="chk-exonerado" value="1">
+                        <span class="slider-toggle"></span>
                     </label>
                 </div>
-                <div id="wrapper-exoneracion" class="fila-total" style="display: none; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px;">
-                    <span style="font-size: 12px; color: #475569; font-weight: 500;">N° Exoneración:</span>
-                    <input type="text" name="exoneracion_no" id="input-exoneracion-no" placeholder="Código / Aval" style="width: 120px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 6px; font-family: inherit; font-size: 13px; color: #1e293b;">
+
+                <!-- N° Exoneración -->
+                <div id="wrapper-exoneracion" class="fila-total" style="display: none; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 12px;">
+                    <span style="font-weight: 500; color: #475569; font-size: 12.5px;">N° Exoneración:</span>
+                    <input type="text" name="exoneracion_no" id="input-exoneracion-no" placeholder="Código / Aval" style="width: 140px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 13px; color: #1e293b;">
                 </div>
-                <div class="fila-total">
-                    <span>IVA (15%):</span>
-                    <span id="txt-iva">C$ 0.00</span>
+
+                <!-- IVA -->
+                <div class="fila-total" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14.5px; color: #334155;">
+                    <span style="font-weight: 500;">IVA (15%):</span>
+                    <span id="txt-iva" style="font-weight: 600; color: #0f172a;">C$ 0.00</span>
                 </div>
+
+                <!-- TOTAL -->
                 <div class="fila-total gran-total">
                     <span>TOTAL:</span>
                     <span id="txt-total">C$ 0.00</span>
@@ -305,13 +396,7 @@
 
         <div style="margin-top: 15px;">
             <label class="form-label" style="font-weight: 600; margin-bottom: 6px; display: block;"><i class="fa-solid fa-address-book"></i> Contactos del Proyecto (Se mostrarán en el PDF)</label>
-            <textarea name="contactos" class="form-control" rows="8" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; font-family: inherit; font-size: 13px; resize: vertical;">-Contacto 1: Ing. Noel Hernández +505 8732 4134
--Correo: jhernandez@incostas.com
--Contacto 2: Ing. Cristhian Sánchez -Cel: 505 7615 1706 csanchez@incostas.com
--Contacto 3: Ingrid Martínez imartinez@incostas.com
--Contacto 4: Flor Rocha frocha@incostas.com
--Contacto 5: Francisco García fgarcia@incostas.com
--Contacto 6: Bryan Espinoza bespinoza@incostas.com</textarea>
+            <textarea name="contactos" class="form-control" rows="8" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; font-family: inherit; font-size: 13px; resize: vertical;"></textarea>
         </div>
     </div>
 
@@ -350,7 +435,7 @@
         });
     }
 
-    function seleccionarClienteDesdeModal(id, nombre, ruc) {
+    function seleccionarClienteDesdeModal(id, nombre, ruc, moneda, exonerado, descAuto, porcentajeDesc) {
         const idInput = document.getElementById('id_cliente');
         const searchContainer = document.getElementById('cliente-search-container');
         const selectedCard = document.getElementById('cliente-seleccionado-card');
@@ -375,9 +460,41 @@
         
         searchContainer.style.display = 'none';
         selectedCard.style.display = 'flex';
+
+        // Auto-seleccionar Moneda asignada al cliente
+        cambiarMoneda(moneda || 1);
+
+        // Auto-seleccionar Exoneración de IVA si el cliente está exonerado
+        const chkExonerado = document.getElementById('chk-exonerado');
+        if (chkExonerado) {
+            chkExonerado.checked = (exonerado === 1);
+            // Disparar evento change para recalcular e invocar efectos de la vista
+            const eventChange = new Event('change');
+            chkExonerado.dispatchEvent(eventChange);
+        }
+
+        // Auto-aplicar Descuento si está activado
+        const inputDescVal = document.getElementById('input-descuento-val');
+        const inputDescTipo = document.getElementById('input-descuento-tipo');
+        if (inputDescVal && inputDescTipo) {
+            if (descAuto === 1 && porcentajeDesc > 0) {
+                inputDescTipo.value = 'porcentaje';
+                inputDescVal.value = parseFloat(porcentajeDesc).toFixed(2);
+            } else {
+                inputDescVal.value = '0.00';
+                inputDescTipo.value = 'monto';
+            }
+            // Disparar evento input para recalcular
+            const eventInput = new Event('input');
+            inputDescVal.dispatchEvent(eventInput);
+        }
+
+        // Recalcular totales
+        calcularTotalesGenerales();
         
         cerrarModalClientes();
     }
+
 
     document.addEventListener('DOMContentLoaded', function() {
         const btnCambiar = document.getElementById('btn-cambiar-cliente');
@@ -436,8 +553,58 @@
         }
     });
 
-    // Formateador de moneda nicaragüense (C$)
+    // Formateador de moneda nicaragüense (C$) e Internacional ($)
     const formatoMoneda = new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO' });
+    function formatearMonto(monto) {
+        const tipoMoneda = parseInt(document.getElementById('input-tipo-moneda').value || '1');
+        if (tipoMoneda === 2) {
+            const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+            return formatter.format(monto).replace('USD', '$');
+        } else {
+            return formatoMoneda.format(monto).replace('NIO', 'C$');
+        }
+    }
+
+    function cambiarMoneda(tipo) {
+        document.getElementById('input-tipo-moneda').value = tipo;
+        
+        // Actualizar clase activa en los botones de moneda
+        document.querySelectorAll('.btn-toggle-moneda').forEach(btn => {
+            if (parseInt(btn.getAttribute('data-value')) === tipo) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Cambiar leyenda de la opción fija de descuento
+        const discountSelect = document.getElementById('input-descuento-tipo');
+        if (discountSelect) {
+            const fixedOption = discountSelect.querySelector('option[value="monto"]');
+            if (fixedOption) {
+                fixedOption.textContent = (tipo === 2) ? '$' : 'C$';
+            }
+        }
+
+        // Cambiar símbolos de las columnas
+        const symbol = (tipo === 2) ? '$' : 'C$';
+        const thPrecio = document.getElementById('th-precio-header');
+        if (thPrecio) thPrecio.textContent = `Precio Unit. (${symbol})`;
+        const thSubtotal = document.getElementById('th-subtotal-header');
+        if (thSubtotal) thSubtotal.textContent = `Subtotal (${symbol})`;
+        
+        // Recalcular todos los subtotales de fila existentes
+        const filas = document.querySelectorAll('#tabla-ensayos tbody tr');
+        filas.forEach(fila => {
+            const precioInput = fila.querySelector('.precio-input');
+            if (precioInput) {
+                calcularFila(precioInput);
+            }
+        });
+        
+        // Recalcular totales generales
+        calcularTotalesGenerales();
+    }
 
     function toggleTechDetails(link) {
         const fieldsDiv = link.closest('td').querySelector('.technical-details-fields');
@@ -546,7 +713,7 @@
         const subtotal = cant * precio;
         
         // Mostrar el subtotal en la fila actual
-        fila.querySelector('.subtotal-texto').textContent = formatoMoneda.format(subtotal).replace('NIO', 'C$');
+        fila.querySelector('.subtotal-texto').textContent = formatearMonto(subtotal);
         
         // Actualizar la caja fuerte final
         calcularTotalesGenerales();
@@ -585,9 +752,9 @@
         const totalFinal = netoSubtotal + iva;
 
         // Mostrar en pantalla (Visual)
-        document.getElementById('txt-subtotal').textContent = formatoMoneda.format(subtotalGeneral).replace('NIO', 'C$');
-        document.getElementById('txt-iva').textContent = formatoMoneda.format(iva).replace('NIO', 'C$');
-        document.getElementById('txt-total').textContent = formatoMoneda.format(totalFinal).replace('NIO', 'C$');
+        document.getElementById('txt-subtotal').textContent = formatearMonto(subtotalGeneral);
+        document.getElementById('txt-iva').textContent = formatearMonto(iva);
+        document.getElementById('txt-total').textContent = formatearMonto(totalFinal);
 
         // Guardar en campos ocultos para mandarlos por POST a PHP
         document.getElementById('input-subtotal').value = subtotalGeneral.toFixed(2);
@@ -812,7 +979,7 @@
             </td>
             <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="0.01" min="0.01" value="1" required oninput="calcularFila(this)"></td>
             <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="${precio.toFixed(2)}" required oninput="calcularFila(this)"></td>
-            <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">C$ ${formatoMoneda.format(precio).replace('NIO', 'C$')}</td>
+            <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">${formatearMonto(precio)}</td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" class="btn-remover" onclick="eliminarFila(this)"><i class="fa-solid fa-xmark"></i></button>
             </td>
@@ -969,7 +1136,7 @@
                             <?php 
                             $busqueda_val = strtolower($cli['nombre_razon_social'] . ' ' . ($cli['identificacion'] ?? '') . ' ' . ($cli['email'] ?? '') . ' ' . ($cli['telefono'] ?? ''));
                             ?>
-                            <tr style="cursor: pointer;" onclick="seleccionarClienteDesdeModal(<?= $cli['id'] ?>, '<?= htmlspecialchars($cli['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars($cli['identificacion'] ?? 'Sin RUC', ENT_QUOTES, 'UTF-8') ?>')" data-text="<?= htmlspecialchars($busqueda_val, ENT_QUOTES, 'UTF-8') ?>">
+                            <tr style="cursor: pointer;" onclick="seleccionarClienteDesdeModal(<?= $cli['id'] ?>, '<?= htmlspecialchars($cli['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars($cli['identificacion'] ?? 'Sin RUC', ENT_QUOTES, 'UTF-8') ?>', <?= (int)($cli['exonerado_impuestos'] ?? 0) ?>, <?= (int)($cli['descuento_automatico'] ?? 0) ?>, <?= (float)($cli['porcentaje_descuento'] ?? 0.00) ?>)" data-text="<?= htmlspecialchars($busqueda_val, ENT_QUOTES, 'UTF-8') ?>">
                                 <td>
                                     <strong style="color: #2d3748;"><?= htmlspecialchars($cli['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?></strong>
                                 </td>

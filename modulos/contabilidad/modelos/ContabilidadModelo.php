@@ -136,12 +136,33 @@ class ContabilidadModelo extends ModeloBase {
 
             $cxcId = (int)$this->db->lastInsertId();
             $cxcAcc = !empty($datos['id_cuenta_contable']) ? (int)$datos['id_cuenta_contable'] : null;
-            if (!$cxcAcc) {
-                // Find standard 103 account
-                $stmtF = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo LIKE '103%' LIMIT 1");
-                $stmtF->execute();
-                $cxcAcc = (int)($stmtF->fetchColumn() ?: 4);
+            
+            // Buscar la cuenta contable de cobro asignada al cliente
+            if (!$cxcAcc && !empty($datos['id_cliente'])) {
+                $stmtCl = $this->db->prepare("SELECT cuenta_cxc FROM clientes WHERE id = :id");
+                $stmtCl->execute(['id' => $datos['id_cliente']]);
+                $cuentaCxcStr = $stmtCl->fetchColumn();
+                if ($cuentaCxcStr) {
+                    $parts = explode(' / ', $cuentaCxcStr);
+                    $codigo = trim($parts[0]);
+                    if (!empty($codigo)) {
+                        $stmtCta = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = :codigo LIMIT 1");
+                        $stmtCta->execute(['codigo' => $codigo]);
+                        $cxcAccVal = $stmtCta->fetchColumn();
+                        if ($cxcAccVal) {
+                            $cxcAcc = (int)$cxcAccVal;
+                        }
+                    }
+                }
             }
+
+            if (!$cxcAcc) {
+                // Encontrar la cuenta estándar 10102 o 103 de cobro
+                $stmtF = $this->db->prepare("SELECT id FROM cuentas_contables WHERE (codigo LIKE '10102%' OR codigo LIKE '103%') AND tipo = 'DETALLE' ORDER BY codigo ASC LIMIT 1");
+                $stmtF->execute();
+                $cxcAcc = (int)($stmtF->fetchColumn() ?: 13);
+            }
+
 
             // Register Journal Entry (Debit Client / Credit Sales Revenue 4010104)
             $this->registrarAsientoContable(
@@ -241,9 +262,9 @@ class ContabilidadModelo extends ModeloBase {
             // Credit: Client Account ($cxc['id_cuenta_contable'])
             $cxcAcc = $cxc['id_cuenta_contable'];
             if (!$cxcAcc) {
-                $stmtF = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo LIKE '103%' LIMIT 1");
+                $stmtF = $this->db->prepare("SELECT id FROM cuentas_contables WHERE (codigo LIKE '10102%' OR codigo LIKE '103%') AND tipo = 'DETALLE' ORDER BY codigo ASC LIMIT 1");
                 $stmtF->execute();
-                $cxcAcc = (int)($stmtF->fetchColumn() ?: 4);
+                $cxcAcc = (int)($stmtF->fetchColumn() ?: 13);
             }
 
             $this->registrarAsientoContable(
@@ -841,7 +862,7 @@ class ContabilidadModelo extends ModeloBase {
                 return $id ? (int)$id : 4; // Caja Principal por defecto si no hay nada
             };
 
-            $cxcDefaultAcc = $findAccount('103', 'CLIENTES');
+            $cxcDefaultAcc = $findAccount('10102', 'CLIENTES');
             $cxpDefaultAcc = $findAccount('201', 'PROVEEDORES');
             $incomeDefaultAcc = 206; // PROYECTOS GRABADOS
             $expenseDefaultAcc = 221; // MATERIALES DE CONSTRUCCION

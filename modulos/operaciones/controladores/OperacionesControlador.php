@@ -30,7 +30,7 @@ class OperacionesControlador extends ControladorBase {
     public function index(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         
-        if (($_SESSION['usuario_rol'] ?? 0) == 3) {
+        if (($_SESSION['usuario_rol'] ?? 0) == 6) {
             $respuesta->redirigir('/Cycsa/publico/laboratorio');
             return;
         }
@@ -50,18 +50,21 @@ class OperacionesControlador extends ControladorBase {
         
         foreach ($ordenesActivas as &$o) {
             $o['items'] = $modelo->obtenerItemsOS((int)$o['id']);
+            $o['hoja_solicitud'] = $modelo->obtenerHojaSolicitudPorOS((int)$o['id']);
         }
         
-        $recepciones = $modelo->obtenerRecepciones($busqueda);
+        $bitacora_logs = obtenerBitacoraModulo('operaciones');
 
         $this->renderizar('operaciones/vistas/index', [
             'titulo' => 'Operaciones LIMS - Cycsa',
             'cotizaciones' => $cotizacionesParaOS,
             'ordenes' => $ordenesActivas,
-            'recepciones' => $recepciones,
             'busqueda' => $busqueda,
+            'tecnicos' => $modelo->obtenerTecnicosActivos(),
+            'vehiculos' => $modelo->obtenerVehiculosActivos(),
             'exito' => $_SESSION['exito'] ?? null,
-            'error' => $_SESSION['error'] ?? null
+            'error' => $_SESSION['error'] ?? null,
+            'bitacora_logs' => $bitacora_logs
         ]);
 
         unset($_SESSION['exito'], $_SESSION['error']);
@@ -134,6 +137,25 @@ class OperacionesControlador extends ControladorBase {
 
         // Obtener los detalles de la cotización para saber qué servicios/ensayos de compresión se cobraron
         $servicios = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
+        
+        // Obtener los ítems de la O/S para saber cuáles ya tienen recepción registrada
+        $itemsOS = $modelo->obtenerItemsOS($idOS);
+        
+        // Mapear el estado de recepción a cada servicio
+        foreach ($servicios as &$s) {
+            $s['ya_recibido'] = false;
+            $s['codigo_muestra'] = null;
+            foreach ($itemsOS as $item) {
+                if ((int)$item['id_detalle'] === (int)$s['id'] && !empty($item['codigo_muestra'])) {
+                    $s['ya_recibido'] = true;
+                    $s['codigo_muestra'] = $item['codigo_muestra'];
+                    break;
+                }
+            }
+        }
+        unset($s);
+
+        $hojaSolicitud = $modelo->obtenerHojaSolicitudPorOS($idOS);
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -144,6 +166,7 @@ class OperacionesControlador extends ControladorBase {
             'os' => $os,
             'servicios' => $servicios,
             'idDetalle' => $idDetalle,
+            'hoja_solicitud' => $hojaSolicitud,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
         ]);
@@ -233,7 +256,7 @@ class OperacionesControlador extends ControladorBase {
         
         $idLote = (int)($_GET['id_lote'] ?? 0);
         
-        if (($_SESSION['usuario_rol'] ?? 0) == 3) {
+        if (($_SESSION['usuario_rol'] ?? 0) == 6) {
             $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?id_lote=' . $idLote);
             return;
         }
@@ -251,7 +274,7 @@ class OperacionesControlador extends ControladorBase {
         // Obtener datos del lote, recepción, cliente y O/S
         // El Técnico de Laboratorio NO debe ver la información del cliente.
         // Aplicamos la política ciega de visibilidad.
-        $esTecnico = ($_SESSION['usuario_rol'] ?? 0) == 3; // Suponiendo rol 3 = Técnico
+        $esTecnico = ($_SESSION['usuario_rol'] ?? 0) == 6; // Rol 6 = Técnico/Laboratorio
 
         $sqlLote = "SELECT lm.*, rm.codigo_muestra, rm.codigo_campo, rm.fecha_recepcion, os.codigo_os, os.id_cotizacion,
                            cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
@@ -320,7 +343,13 @@ class OperacionesControlador extends ControladorBase {
             $datos = $peticion->obtenerDatos();
             $modelo = new OperacionModelo();
 
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                if ($isAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido.']);
+                    return;
+                }
                 $_SESSION['error'] = 'Token CSRF inválido.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
@@ -330,15 +359,38 @@ class OperacionesControlador extends ControladorBase {
             $idLote = (int)($datos['id_lote'] ?? 0);
 
             if ($idEnsayo <= 0) {
+                if ($isAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'ID de ensayo inválido.']);
+                    return;
+                }
                 $_SESSION['error'] = 'ID de ensayo inválido.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
             }
 
-            if ($modelo->guardarResultadoRuptura($idEnsayo, $datos)) {
-                $_SESSION['exito'] = 'Resultado de ensaye cargado correctamente. Se ejecutó la validación contra la norma estándar.';
+            $resultado = $modelo->guardarResultadoRuptura($idEnsayo, $datos);
+
+            if ($resultado['exito']) {
+                $statusAjax = $resultado['alerta_regresion'] ? 'warning' : 'success';
+                if ($isAjax) {
+                    $respuesta->enviarJson([
+                        'status' => $statusAjax, 
+                        'message' => $resultado['mensaje'],
+                        'alerta_regresion' => $resultado['alerta_regresion']
+                    ]);
+                    return;
+                }
+                if ($resultado['alerta_regresion']) {
+                    $_SESSION['exito'] = '⚠️ ' . $resultado['mensaje'];
+                } else {
+                    $_SESSION['exito'] = $resultado['mensaje'];
+                }
             } else {
-                $_SESSION['error'] = 'Error al registrar el resultado de ensaye.';
+                if ($isAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => $resultado['mensaje']]);
+                    return;
+                }
+                $_SESSION['error'] = $resultado['mensaje'];
             }
 
             $respuesta->redirigir('/Cycsa/publico/operaciones/detalle-lote?id_lote=' . $idLote);
@@ -402,15 +454,111 @@ class OperacionesControlador extends ControladorBase {
             if (empty($columnas)) {
                 $columnas = ["Código laboratorio", "Nombre muestra", "Resultado"];
             }
-            $filas = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+            
+            $filas = [];
+            $archivoMd = $detalle['archivo_markdown'];
+            
+            // Determinar si es un ensayo basado en especímenes/roturas (si tiene especímenes en la base de datos)
+            $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_lote = :id_lote");
+            $stmtCount->execute(['id_lote' => $idLote]);
+            $esEnsayoEdades = ((int)$stmtCount->fetchColumn() > 0);
 
-            // Generación real del PDF
-            require_once __DIR__ . '/../../../ayudantes/funciones.php';
-            $pdfContenido = generarReporteEnsayoPDF($cotizacion, $detalle, $columnas, $filas);
+            if ($esEnsayoEdades) {
+                // Obtener datos del lote y recepción
+                $stmtLote = $db->prepare("SELECT lm.*, rm.codigo_muestra, rm.codigo_campo 
+                                          FROM lotes_muestras lm
+                                          JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                                          WHERE lm.id = :id_lote");
+                $stmtLote->execute(['id_lote' => $idLote]);
+                $loteData = $stmtLote->fetch(PDO::FETCH_ASSOC);
+
+                // Obtener especímenes del lote
+                $sqlEsp = "SELECT * FROM ensayo_edades WHERE id_lote = :id_lote";
+                $paramsEsp = ['id_lote' => $idLote];
+                
+                // Si el informe es parcial y se especificó una edad
+                $edadFiltro = (int)($datos['edad_filtro'] ?? 0);
+                if ($tipoInforme === 'Parcial' && $edadFiltro > 0) {
+                    $sqlEsp .= " AND edad_dias = :edad";
+                    $paramsEsp['edad'] = $edadFiltro;
+                }
+                
+                $sqlEsp .= " ORDER BY edad_dias ASC, identificador_especimen ASC";
+                $stmtEsp = $db->prepare($sqlEsp);
+                $stmtEsp->execute($paramsEsp);
+                $especimenesList = $stmtEsp->fetchAll(PDO::FETCH_ASSOC);
+
+                // Mapear especímenes a las columnas del formato
+                foreach ($especimenesList as $esp) {
+                    $fila = [];
+                    foreach ($columnas as $col) {
+                        $colLower = mb_strtolower(trim($col));
+                        $val = '';
+                        
+                        if (strpos($colLower, 'código') !== false || strpos($colLower, 'codigo') !== false) {
+                            $val = $loteData['codigo_muestra'] ?? '';
+                        } elseif (strpos($colLower, 'nombre muestra') !== false || strpos($colLower, 'elemento') !== false || strpos($colLower, 'descripción') !== false || strpos($colLower, 'descripcion') !== false) {
+                            $val = ($loteData['nombre_lote'] ?? '') . ' (' . ($esp['identificador_especimen'] ?? '') . ')';
+                        } elseif (strpos($colLower, 'cilindro') !== false || strpos($colLower, 'especímen') !== false || strpos($colLower, 'especimen') !== false) {
+                            $val = $esp['identificador_especimen'] ?? '';
+                        } elseif (strpos($colLower, 'edad') !== false) {
+                            $val = ($esp['edad_dias'] ?? '0') . ' días';
+                        } elseif (strpos($colLower, 'fecha de fabricación') !== false || strpos($colLower, 'fabricacion') !== false || strpos($colLower, 'moldeo') !== false) {
+                            $val = !empty($loteData['fecha_moldeo']) ? date('d/m/Y', strtotime($loteData['fecha_moldeo'])) : '';
+                        } elseif (strpos($colLower, 'fecha programada') !== false || strpos($colLower, 'programada') !== false) {
+                            $val = !empty($esp['fecha_programada']) ? date('d/m/Y', strtotime($esp['fecha_programada'])) : '—';
+                        } elseif (strpos($colLower, 'fecha de ensayo') !== false || strpos($colLower, 'fecha de ruptura') !== false || strpos($colLower, 'ruptura') !== false || strpos($colLower, 'fecha ensaye') !== false || strpos($colLower, 'fecha de ensaye') !== false || strpos($colLower, 'ensaye real') !== false) {
+                            $val = !empty($esp['fecha_ensaye_real']) ? date('d/m/Y', strtotime($esp['fecha_ensaye_real'])) : '—';
+                        } elseif (strpos($colLower, 'carga') !== false) {
+                            $val = $esp['carga_lbs'] ? number_format($esp['carga_lbs'], 1) : '—';
+                        } elseif (strpos($colLower, 'área') !== false || strpos($colLower, 'area') !== false) {
+                            $val = $esp['area_in2'] ? number_format($esp['area_in2'], 3) : '—';
+                        } elseif (strpos($colLower, 'compresión (lb/in²)') !== false || strpos($colLower, 'compresión (psi)') !== false || strpos($colLower, 'psi') !== false || strpos($colLower, 'r. compresión') !== false || strpos($colLower, 'esfuerzo psi') !== false) {
+                            $val = $esp['resistencia_psi'] ? number_format($esp['resistencia_psi'], 0) : '—';
+                        } elseif (strpos($colLower, 'compresión (kg/cm²)') !== false || strpos($colLower, 'kg/cm²') !== false || strpos($colLower, 'resistencia.') !== false || strpos($colLower, 'compresión.') !== false || strpos($colLower, 'esfuerzo kg') !== false) {
+                            $val = $esp['resistencia_kgcm2'] ? number_format($esp['resistencia_kgcm2'], 1) : '—';
+                        } elseif (strpos($colLower, '%') !== false || strpos($colLower, 'porcentaje') !== false) {
+                            $val = $esp['porcentaje_diseno'] ? number_format($esp['porcentaje_diseno'], 1) . '%' : '—';
+                        } elseif (strpos($colLower, 'diseño') !== false || strpos($colLower, 'diseno') !== false) {
+                            $val = $loteData['diseno_resistencia'] ?? '';
+                        } elseif (strpos($colLower, 'reven.') !== false || strpos($colLower, 'slump') !== false) {
+                            if (strpos($colLower, 'in') !== false) {
+                                $val = $loteData['revenimiento_in'] ? $loteData['revenimiento_in'] . ' in' : '—';
+                            } else {
+                                $val = $loteData['revenimiento_cm'] ? $loteData['revenimiento_cm'] . ' cm' : '—';
+                            }
+                        } elseif (strpos($colLower, 'temp') !== false) {
+                            $val = $loteData['temperatura_c'] ? $loteData['temperatura_c'] . ' °C' : '—';
+                        } elseif (strpos($colLower, 'estado') !== false || strpos($colLower, 'cumple') !== false || strpos($colLower, 'alerta') !== false) {
+                            if (($esp['estado'] ?? '') === 'Completado') {
+                                $val = ($esp['cumple_norma'] ?? 0) ? 'Cumple' : 'Alerta';
+                            } else {
+                                $val = 'Pendiente';
+                            }
+                        }
+                        
+                        $fila[$col] = $val;
+                    }
+                    $filas[] = $fila;
+                }
+            } else {
+                $filas = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+            }
 
             // Versionado
-            $stmtVer = $db->prepare("SELECT MAX(version) FROM informes_control WHERE id_lote = :id_lote AND tipo_informe = :tipo_informe");
-            $stmtVer->execute(['id_lote' => $idLote, 'tipo_informe' => $tipoInforme]);
+            $edadFiltro = (int)($datos['edad_filtro'] ?? 0);
+            $edadEvaluadaDb = ($tipoInforme === 'Parcial' && $edadFiltro > 0) ? $edadFiltro : null;
+
+            $sqlVer = "SELECT MAX(version) FROM informes_control WHERE id_lote = :id_lote AND tipo_informe = :tipo_informe";
+            $paramsVer = ['id_lote' => $idLote, 'tipo_informe' => $tipoInforme];
+            if ($edadEvaluadaDb !== null) {
+                $sqlVer .= " AND edad_evaluada = :edad";
+                $paramsVer['edad'] = $edadEvaluadaDb;
+            } else {
+                $sqlVer .= " AND edad_evaluada IS NULL";
+            }
+            $stmtVer = $db->prepare($sqlVer);
+            $stmtVer->execute($paramsVer);
             $maxVersion = $stmtVer->fetchColumn();
             
             $version = ($maxVersion === null) ? 0 : (int)$maxVersion + 1;
@@ -418,8 +566,17 @@ class OperacionesControlador extends ControladorBase {
 
             // Determinar código base
             if ($version > 0) {
-                $stmtBase = $db->prepare("SELECT codigo_informe FROM informes_control WHERE id_lote = :id_lote AND tipo_informe = :tipo_informe ORDER BY version ASC LIMIT 1");
-                $stmtBase->execute(['id_lote' => $idLote, 'tipo_informe' => $tipoInforme]);
+                $sqlBase = "SELECT codigo_informe FROM informes_control WHERE id_lote = :id_lote AND tipo_informe = :tipo_informe";
+                $paramsBase = ['id_lote' => $idLote, 'tipo_informe' => $tipoInforme];
+                if ($edadEvaluadaDb !== null) {
+                    $sqlBase .= " AND edad_evaluada = :edad";
+                    $paramsBase['edad'] = $edadEvaluadaDb;
+                } else {
+                    $sqlBase .= " AND edad_evaluada IS NULL";
+                }
+                $sqlBase .= " ORDER BY version ASC LIMIT 1";
+                $stmtBase = $db->prepare($sqlBase);
+                $stmtBase->execute($paramsBase);
                 $codigoInforme = $stmtBase->fetchColumn();
             } else {
                 $stmtSec = $db->prepare("SELECT COUNT(DISTINCT codigo_informe) FROM informes_control WHERE YEAR(fecha_generacion) = :anio");
@@ -429,6 +586,10 @@ class OperacionesControlador extends ControladorBase {
             }
 
             $codigoCompleto = sprintf("%s-%02d", $codigoInforme, $version);
+
+            // Generación real del PDF
+            require_once __DIR__ . '/../../../ayudantes/funciones.php';
+            $pdfContenido = generarReporteEnsayoPDF($cotizacion, $detalle, $columnas, $filas, $codigoCompleto, $version);
 
             // Guardar archivo PDF en disco
             $rutaCarpeta = __DIR__ . '/../../../almacenamiento/informes';
@@ -442,7 +603,7 @@ class OperacionesControlador extends ControladorBase {
             // Guardar registro en base de datos
             $modelo = new OperacionModelo();
             $rutaRelativa = 'almacenamiento/informes/' . $nombrePdf;
-            $exitoId = $modelo->registrarInforme($idLote, $codigoInforme, $version, $codigoCompleto, $tipoInforme, $motivoReemplazo, $rutaRelativa);
+            $exitoId = $modelo->registrarInforme($idLote, $codigoInforme, $version, $codigoCompleto, $tipoInforme, $edadEvaluadaDb, $motivoReemplazo, $rutaRelativa);
 
             if ($exitoId) {
                 $_SESSION['exito'] = "Informe $codigoCompleto generado y versionado correctamente en PDF.";
@@ -450,7 +611,8 @@ class OperacionesControlador extends ControladorBase {
                 $_SESSION['error'] = 'Error al registrar el informe generado.';
             }
 
-            $respuesta->redirigir('/Cycsa/publico/operaciones/detalle-lote?id_lote=' . $idLote);
+            $redir = $datos['redireccionar_a'] ?? '/Cycsa/publico/operaciones/detalle-lote?id_lote=' . $idLote;
+            $respuesta->redirigir($redir);
         }
     }
 
@@ -489,7 +651,8 @@ class OperacionesControlador extends ControladorBase {
                 $_SESSION['error'] = 'Error al actualizar el estado de aprobación del informe.';
             }
 
-            $respuesta->redirigir('/Cycsa/publico/operaciones/detalle-lote?id_lote=' . $idLote);
+            $redir = $datos['redireccionar_a'] ?? '/Cycsa/publico/operaciones/detalle-lote?id_lote=' . $idLote;
+            $respuesta->redirigir($redir);
         }
     }
 
@@ -550,5 +713,510 @@ class OperacionesControlador extends ControladorBase {
             return $data[$archivo_markdown]['columns'] ?? [];
         }
         return [];
+    }
+
+    public function actualizarEstado(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+            $estado = $datos['estado'] ?? '';
+            $motivo = !empty($datos['motivo_observacion']) ? $datos['motivo_observacion'] : null;
+            $requiere = isset($datos['requiere_muestreo']) ? (int)$datos['requiere_muestreo'] : null;
+
+            if ($idOS <= 0 || empty($estado)) {
+                $_SESSION['error'] = 'Parámetros inválidos para cambiar el estado.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // Validar que solo un Supervisor (Rol 3) o Administrador (Rol 1) realice aprobaciones/observaciones
+            if (in_array($estado, ['Estado 3: Ingreso Directo', 'Estado 3A: Programacion Muestreo', 'Estado 2: Observada'])) {
+                if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])) {
+                    $_SESSION['error'] = 'No tiene permisos de supervisor para cambiar el estado de la Orden de Servicio.';
+                    $respuesta->redirigir('/Cycsa/publico/operaciones');
+                    return;
+                }
+            }
+
+            $modelo = new OperacionModelo();
+            if ($modelo->actualizarEstadoOS($idOS, $estado, $motivo, $requiere)) {
+                registrarBitacora('operaciones', 'cambiar_estado', 'Orden de Servicio ID ' . $idOS . ' cambiada al estado: ' . $estado);
+                $_SESSION['exito'] = 'Estado de la orden de servicio actualizado exitosamente.';
+            } else {
+                $_SESSION['error'] = 'Error al actualizar el estado de la orden de servicio.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    public function procesarProgramarMuestreo(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+            $fecha = $datos['fecha_muestreo'] ?? '';
+            $hora = $datos['hora_muestreo'] ?? '';
+            $tecnico = $datos['tecnico_muestreo'] ?? '';
+            $vehiculo = $datos['vehiculo_muestreo'] ?? '';
+
+            if ($idOS <= 0 || empty($fecha) || empty($tecnico)) {
+                $_SESSION['error'] = 'Debe indicar al menos la fecha y técnico asignado.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $modelo = new OperacionModelo();
+            if ($modelo->programarMuestreo($idOS, $fecha, $hora, $tecnico, $vehiculo)) {
+                registrarBitacora('operaciones', 'programar_muestreo', 'Muestreo programado para O/S ID ' . $idOS);
+                $_SESSION['exito'] = 'Programación de muestreo en campo guardada y estado actualizado.';
+            } else {
+                $_SESSION['error'] = 'Error al programar el muestreo.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    public function guardarHojaCampo(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+            $codigo = $datos['hoja_campo_codigo'] ?? '';
+            $operador = $datos['hoja_campo_operador'] ?? '';
+            $notas = $datos['hoja_campo_notas'] ?? '';
+
+            if ($idOS <= 0 || empty($codigo) || empty($operador)) {
+                $_SESSION['error'] = 'Debe indicar el código de hoja de campo y operador.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $modelo = new OperacionModelo();
+            if ($modelo->registrarHojaCampo($idOS, $codigo, $operador, $notas)) {
+                registrarBitacora('operaciones', 'hoja_campo', 'Hoja de Campo registrada (CYCSA-RT-FM-07) para O/S ID ' . $idOS);
+                $_SESSION['exito'] = 'Hoja de Campo CYCSA-RT-FM-07 guardada. Iniciado período obligatorio de 24 horas.';
+            } else {
+                $_SESSION['error'] = 'Error al guardar la hoja de campo.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    public function hojaSolicitudForm(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        $idOS = (int)($_GET['id_os'] ?? 0);
+        if ($idOS <= 0) {
+            $_SESSION['error'] = 'Orden de Servicio inválida.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $modelo = new OperacionModelo();
+        $os = $modelo->obtenerOSPorId($idOS);
+        if (!$os) {
+            $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        
+        // Obtener cliente y proyecto predeterminados de la O/S si es nueva hoja
+        if (!$hoja) {
+            $hoja = [
+                'id_os' => $idOS,
+                'nombre_empresa_o_cliente' => $os['cliente_nombre'],
+                'direccion_proyecto' => $os['direccion_proyecto'],
+                'telefono' => $os['cliente_telefono'],
+                'correo_electronico' => '',
+                'nombre_persona_entrega_muestra' => '',
+                'naturaleza_muestra' => 'Concreto',
+                'procedencia_punto_muestreo' => '',
+                'nombre_persona_toma_muestra' => $os['tecnico_muestreo'] ?? '',
+                'fecha_hora_toma_muestra' => !empty($os['fecha_muestreo']) ? $os['fecha_muestreo'] . ' ' . ($os['hora_muestreo'] ?: '08:00:00') : '',
+                'muestras_json' => '[]',
+                'req_resistencia_concreto' => 1,
+                'req_resistencia_adoquin' => 0,
+                'req_resistencia_bloques' => 0,
+                'req_otros_concreto' => '',
+                'req_granulometria' => 0,
+                'req_limites_atterberg' => 0,
+                'req_humedad' => 0,
+                'req_resistencia_corte' => 0,
+                'req_clasificacion_sucs_hr' => 0,
+                'req_proctor_sm' => 0,
+                'req_infiltracion' => 0,
+                'req_cbr' => 0,
+                'req_densidad' => 0,
+                'req_otros_suelo' => '',
+                'req_otros_materiales' => 0,
+                'descripcion_otros_analisis' => '',
+                'analisis_adicionales' => '',
+                'observaciones' => '',
+                'nombre_recibe_cycsa' => '',
+                'firma_recibe_cycsa' => 0,
+                'firma_cliente' => 0,
+                'fecha_hora_llegada_laboratorio' => date('Y-m-d H:i')
+            ];
+        }
+
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        $this->renderizar('operaciones/vistas/hoja_solicitud_form', [
+            'titulo' => 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13',
+            'os' => $os,
+            'hoja' => $hoja
+        ]);
+    }
+
+    public function guardarHojaSolicitud(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+
+            if ($idOS <= 0) {
+                $_SESSION['error'] = 'Orden de Servicio inválida.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $modelo = new OperacionModelo();
+            
+            // Procesar tabla dinámica de especímenes
+            $identMuestras = [];
+            $mNombres = $datos['m_nombre'] ?? [];
+            $mDescripciones = $datos['m_desc'] ?? [];
+            $mInfos = $datos['m_info'] ?? [];
+            
+            for ($i = 0; $i < count($mNombres); $i++) {
+                $nom = trim($mNombres[$i]);
+                if (empty($nom)) continue;
+                $identMuestras[] = [
+                    'nombre_muestra' => $nom,
+                    'descripcion' => trim($mDescripciones[$i] ?? ''),
+                    'info_importante' => trim($mInfos[$i] ?? '')
+                ];
+            }
+            $datos['identificacion_muestras_json'] = json_encode($identMuestras);
+
+            if ($modelo->guardarHojaSolicitud($datos)) {
+                // Generar PDF y guardarlo en almacenamiento/solicitudes/
+                $os = $modelo->obtenerOSPorId($idOS);
+                $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+                
+                require_once __DIR__ . '/../../../ayudantes/funciones.php';
+                $pdfContenido = generarHojaSolicitudPDF($hoja, $os);
+                
+                $dirPdf = __DIR__ . '/../../../almacenamiento/solicitudes';
+                if (!file_exists($dirPdf)) {
+                    mkdir($dirPdf, 0777, true);
+                }
+                $nombrePdf = "CYCSA-RT-FM-13-" . $os['codigo_os'] . ".pdf";
+                file_put_contents($dirPdf . '/' . $nombrePdf, $pdfContenido);
+
+                registrarBitacora('operaciones', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada y PDF generado para O/S ID ' . $idOS);
+                $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 guardada exitosamente y PDF generado. Estado de la O/S actualizado.';
+            } else {
+                $_SESSION['error'] = 'Error al registrar la Hoja de Solicitud.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    public function emitirSolicitud(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+
+            if ($idOS <= 0) {
+                $_SESSION['error'] = 'Orden de Servicio inválida.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $modelo = new OperacionModelo();
+            if ($modelo->actualizarEstadoOS($idOS, 'Estado 6: Ejecucion Ensayos')) {
+                registrarBitacora('operaciones', 'emitir_solicitud', 'Solicitud emitida a técnicos para O/S ID ' . $idOS);
+                $_SESSION['exito'] = 'Solicitud emitida a técnicos de laboratorio. Las muestras están disponibles para ejecución de ensayos.';
+            } else {
+                $_SESSION['error'] = 'Error al emitir la solicitud.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    public function enviarRevisionResultados(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+
+            if ($idOS <= 0) {
+                $_SESSION['error'] = 'Orden de Servicio inválida.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $modelo = new OperacionModelo();
+            if ($modelo->actualizarEstadoOS($idOS, 'Estado 7: Revision Resultados')) {
+                registrarBitacora('operaciones', 'enviar_revision_resultados', 'Resultados de ensayos enviados a revisión para O/S ID ' . $idOS);
+                $_SESSION['exito'] = 'Resultados enviados a revisión de calidad por el supervisor.';
+            } else {
+                $_SESSION['error'] = 'Error al enviar a revisión.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    public function procesarRevisionResultados(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])) {
+                $_SESSION['error'] = 'No tiene permisos de supervisor para realizar la revisión de calidad de resultados.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+            $decision = $datos['decision'] ?? '';
+            $motivo = !empty($datos['motivo_observacion']) ? $datos['motivo_observacion'] : null;
+
+            if ($idOS <= 0 || !in_array($decision, ['Aprobar', 'Rechazar'])) {
+                $_SESSION['error'] = 'Decisión inválida para la revisión de resultados.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $modelo = new OperacionModelo();
+            
+            if ($decision === 'Aprobar') {
+                $exito = $modelo->actualizarEstadoOS($idOS, 'Finalizado', null);
+                if ($exito) {
+                    registrarBitacora('operaciones', 'finalizar_os', 'Orden de Servicio ID ' . $idOS . ' aprobada y finalizada.');
+                    $_SESSION['exito'] = 'Resultados de ensayos aprobados y orden de servicio marcada como Finalizada.';
+                }
+            } else {
+                if (empty($motivo)) {
+                    $_SESSION['error'] = 'Debe indicar un motivo de rechazo si observa los resultados.';
+                    $respuesta->redirigir('/Cycsa/publico/operaciones');
+                    return;
+                }
+                $exito = $modelo->actualizarEstadoOS($idOS, 'Estado 6: Ejecucion Ensayos', $motivo);
+                if ($exito) {
+                    registrarBitacora('operaciones', 'observar_resultados', 'Resultados de O/S ID ' . $idOS . ' observados: ' . $motivo);
+                    $_SESSION['exito'] = 'Resultados rechazados y devueltos a ejecución de ensayos con la respectiva observación.';
+                }
+            }
+
+            if (!$exito) {
+                $_SESSION['error'] = 'Error al procesar la revisión de resultados.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    public function descargarSolicitudPDF(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        
+        $idOS = (int)($_GET['id_os'] ?? 0);
+        if ($idOS <= 0) {
+            $_SESSION['error'] = 'Orden de Servicio inválida.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $modelo = new OperacionModelo();
+        $os = $modelo->obtenerOSPorId($idOS);
+        if (!$os) {
+            $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $nombrePdf = "CYCSA-RT-FM-13-" . $os['codigo_os'] . ".pdf";
+        $rutaPdf = __DIR__ . '/../../../almacenamiento/solicitudes/' . $nombrePdf;
+
+        if (file_exists($rutaPdf)) {
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="' . basename($rutaPdf) . '"');
+            readfile($rutaPdf);
+            exit;
+        } else {
+            // Si el archivo no existe físicamente pero los datos están en BD, lo generamos al vuelo
+            $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+            if ($hoja) {
+                require_once __DIR__ . '/../../../ayudantes/funciones.php';
+                $pdfContenido = generarHojaSolicitudPDF($hoja, $os);
+                
+                // Guardarlo en almacenamiento para futuras descargas
+                $dirPdf = dirname($rutaPdf);
+                if (!file_exists($dirPdf)) {
+                    mkdir($dirPdf, 0777, true);
+                }
+                file_put_contents($rutaPdf, $pdfContenido);
+                
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: inline; filename="' . $nombrePdf . '"');
+                echo $pdfContenido;
+                exit;
+            }
+            
+            $_SESSION['error'] = 'El PDF de la solicitud no ha sido generado y no se pudo crear.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    public function hojaSolicitudDatosAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        
+        $idOS = (int)($_GET['id_os'] ?? 0);
+        if ($idOS <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio inválida.']);
+            return;
+        }
+
+        $modelo = new OperacionModelo();
+        $os = $modelo->obtenerOSPorId($idOS);
+        if (!$os) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio no encontrada.']);
+            return;
+        }
+
+        $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        
+        // Si no existe, creamos los valores predeterminados
+        if (!$hoja) {
+            $numCorrelativo = $modelo->obtenerSiguienteNumeroHojaSolicitud((int)$os['id_cotizacion']);
+            $codigoDoc = "CYCSA-RT-FM-" . sprintf("%02d", $numCorrelativo);
+            
+            $hoja = [
+                'id_os' => $idOS,
+                'codigo_documento' => $codigoDoc,
+                'nombre_empresa_o_cliente' => $os['cliente_nombre'],
+                'direccion_proyecto' => $os['direccion_proyecto'],
+                'telefono' => $os['cliente_telefono'],
+                'correo_electronico' => '',
+                'nombre_persona_entrega_muestra' => '',
+                'naturaleza_muestra' => 'Concreto',
+                'procedencia_punto_muestreo' => '',
+                'nombre_persona_toma_muestra' => $os['tecnico_muestreo'] ?? '',
+                'fecha_hora_toma_muestra' => !empty($os['fecha_muestreo']) ? $os['fecha_muestreo'] . ' ' . ($os['hora_muestreo'] ?: '08:00:00') : '',
+                'muestras_json' => '[]',
+                'req_resistencia_concreto' => 1,
+                'req_resistencia_adoquin' => 0,
+                'req_resistencia_bloques' => 0,
+                'req_otros_concreto' => '',
+                'req_granulometria' => 0,
+                'req_limites_atterberg' => 0,
+                'req_humedad' => 0,
+                'req_resistencia_corte' => 0,
+                'req_clasificacion_sucs_hr' => 0,
+                'req_proctor_sm' => 0,
+                'req_infiltracion' => 0,
+                'req_cbr' => 0,
+                'req_densidad' => 0,
+                'req_otros_suelo' => '',
+                'req_otros_materiales' => 0,
+                'descripcion_otros_analisis' => '',
+                'analisis_adicionales' => '',
+                'observaciones' => '',
+                'nombre_recibe_cycsa' => '',
+                'firma_recibe_cycsa' => 0,
+                'firma_cliente' => 0,
+                'fecha_hora_llegada_laboratorio' => date('Y-m-d H:i')
+            ];
+        } else {
+            // Asegurarse de formatear fechas para inputs datetime-local
+            if (!empty($hoja['fecha_hora_llegada_laboratorio'])) {
+                $hoja['fecha_hora_llegada_laboratorio'] = date('Y-m-d\TH:i', strtotime($hoja['fecha_hora_llegada_laboratorio']));
+            }
+            if (!empty($hoja['fecha_hora_toma_muestra'])) {
+                $hoja['fecha_hora_toma_muestra'] = date('Y-m-d\TH:i', strtotime($hoja['fecha_hora_toma_muestra']));
+            }
+        }
+
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'os' => $os,
+            'hoja' => $hoja
+        ]);
     }
 }

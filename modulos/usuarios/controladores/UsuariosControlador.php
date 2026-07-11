@@ -28,10 +28,13 @@ class UsuariosControlador extends ControladorBase {
         $modelo = new UsuarioModelo();
         $busqueda = $_GET['q'] ?? ''; // Capturamos la búsqueda
         
+        $bitacora_logs = obtenerBitacoraModulo('usuarios');
+
         $this->renderizar('usuarios/vistas/index', [
             'titulo' => 'Gestión de Usuarios - Cycsa',
             'usuarios' => $modelo->obtenerTodos($busqueda),
-            'busqueda' => $busqueda
+            'busqueda' => $busqueda,
+            'bitacora_logs' => $bitacora_logs
         ]);
     }
 

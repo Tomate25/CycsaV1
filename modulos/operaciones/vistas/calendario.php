@@ -45,6 +45,12 @@ if ($nextMes > 12) {
     .event-completado { background-color: #f0fdf4; color: #166534; border-color: #bbf7d0; border-left: 4px solid #22c55e; }
     .event-completado:hover { background-color: #dcfce7; border-color: #86efac; }
     
+    .event-muestreo-programado { background-color: #eff6ff; color: #1e40af; border-color: #bfdbfe; border-left: 4px solid #3b82f6; }
+    .event-muestreo-programado:hover { background-color: #dbeafe; border-color: #93c5fd; }
+    
+    .event-muestreo-ejecutado { background-color: #faf5ff; color: #6b21a8; border-color: #e9d5ff; border-left: 4px solid #a855f7; }
+    .event-muestreo-ejecutado:hover { background-color: #f3e8ff; border-color: #d8b4fe; }
+    
     .event-code { font-weight: 700; font-size: 10.5px; display: flex; align-items: center; gap: 4px; }
     .event-lote { font-weight: 600; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .event-details { color: #64748b; font-size: 10px; }
@@ -61,15 +67,15 @@ if ($nextMes > 12) {
     
     <div class="header-flex" style="margin-bottom: 20px;">
         <div>
-            <h2 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700;">Calendario de Rupturas LIMS</h2>
-            <p style="color: #64748b; margin-top: 5px; font-size: 14px;">Muestra las rupturas de cilindros programadas según la fecha de moldeo y la edad del ensayo.</p>
+            <h2 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700;">Calendario de Operaciones (Muestreos y Rupturas)</h2>
+            <p style="color: #64748b; margin-top: 5px; font-size: 14px;">Muestra las rupturas de cilindros y programaciones de muestreos en campo para la fecha indicada.</p>
         </div>
     </div>
 
     <!-- Pestañas secundarias -->
     <div class="tabs-container" style="display: flex; gap: 10px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 25px;">
         <a href="/Cycsa/publico/operaciones" class="tab-link" style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 14px; background-color: #f1f5f9; color: #475569; transition: background 0.2s;"><i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> Lista de Operaciones</a>
-        <a href="/Cycsa/publico/operaciones/calendario" class="tab-link" style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; background-color: var(--cycsa-azul); color: white;"><i class="fa-solid fa-calendar-days" style="margin-right: 6px;"></i> Calendario de Rupturas</a>
+        <a href="/Cycsa/publico/operaciones/calendario" class="tab-link" style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; background-color: var(--cycsa-azul); color: white;"><i class="fa-solid fa-calendar-days" style="margin-right: 6px;"></i> Calendario de Operaciones</a>
     </div>
 
     <!-- Leyenda de colores y estados -->
@@ -81,6 +87,15 @@ if ($nextMes > 12) {
         <div class="legend-item">
             <span style="display: inline-block; width: 12px; height: 12px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 3px solid #22c55e; border-radius: 3px;"></span>
             <span>Ruptura Completada</span>
+        </div>
+        <div style="width: 1px; background: #e2e8f0; align-self: stretch; margin: 0 5px;"></div>
+        <div class="legend-item">
+            <span style="display: inline-block; width: 12px; height: 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-left: 3px solid #3b82f6; border-radius: 3px;"></span>
+            <span>Muestreo Programado</span>
+        </div>
+        <div class="legend-item">
+            <span style="display: inline-block; width: 12px; height: 12px; background-color: #faf5ff; border: 1px solid #e9d5ff; border-left: 3px solid #a855f7; border-radius: 3px;"></span>
+            <span>Muestreo Ejecutado</span>
         </div>
         <div style="width: 1px; background: #e2e8f0; align-self: stretch; margin: 0 5px;"></div>
         <div class="legend-item">
@@ -150,19 +165,42 @@ if ($nextMes > 12) {
                 
                 <!-- Eventos del día -->
                 <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
-                    <?php foreach ($eventos as $ev): 
-                        $completado = $ev['estado'] === 'Completado';
-                        $tagClass = $completado ? 'event-completado' : 'event-ruptura';
-                        $statusClass = 'status-' . $ev['estado'];
-                    ?>
-                        <a href="/Cycsa/publico/operaciones/detalle-lote?id_lote=<?= $ev['id_ensayo'] ?>" class="event-tag <?= $tagClass ?>" title="Ensaye a los <?= $ev['edad_dias'] ?> días del lote <?= htmlspecialchars($ev['nombre_lote'], ENT_QUOTES, 'UTF-8') ?>">
-                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                <span class="event-code"><i class="fa-solid fa-hammer"></i> <?= htmlspecialchars($ev['codigo_muestra'], ENT_QUOTES, 'UTF-8') ?></span>
-                                <span class="event-status-dot <?= $statusClass ?>" title="Estado: <?= htmlspecialchars($ev['estado'], ENT_QUOTES, 'UTF-8') ?>"></span>
-                            </div>
-                            <div class="event-lote"><?= htmlspecialchars($ev['nombre_lote'], ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="event-details">Cilindro <strong><?= htmlspecialchars($ev['identificador_especimen'], ENT_QUOTES, 'UTF-8') ?></strong> a los <strong><?= $ev['edad_dias'] ?>d</strong></div>
-                        </a>
+                    <?php foreach ($eventos as $ev): ?>
+                        <?php if ($ev['tipo_evento'] === 'ruptura'): 
+                            $completado = $ev['estado'] === 'Completado';
+                            $tagClass = $completado ? 'event-completado' : 'event-ruptura';
+                            $statusClass = 'status-' . $ev['estado'];
+                        ?>
+                            <a href="/Cycsa/publico/operaciones/detalle-lote?id_lote=<?= $ev['id_ensayo'] ?>" class="event-tag <?= $tagClass ?>" title="Ensaye a los <?= $ev['edad_dias'] ?> días del lote <?= htmlspecialchars($ev['nombre_lote'], ENT_QUOTES, 'UTF-8') ?>">
+                                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <span class="event-code"><i class="fa-solid fa-hammer"></i> <?= htmlspecialchars($ev['codigo_muestra'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="event-status-dot <?= $statusClass ?>" title="Estado: <?= htmlspecialchars($ev['estado'], ENT_QUOTES, 'UTF-8') ?>"></span>
+                                </div>
+                                <div class="event-lote"><?= htmlspecialchars($ev['nombre_lote'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <div class="event-details">Cilindro <strong><?= htmlspecialchars($ev['identificador_especimen'], ENT_QUOTES, 'UTF-8') ?></strong> a los <strong><?= $ev['edad_dias'] ?>d</strong></div>
+                            </a>
+                        <?php else: 
+                            // Evento de Muestreo de Campo
+                            $ejecutado = !in_array($ev['estado'], [
+                                'Estado 1: Recepcion', 
+                                'Estado 2: Revision', 
+                                'Estado 2: Observada', 
+                                'Estado 3: Ingreso Directo', 
+                                'Estado 3A: Programacion Muestreo',
+                                'Estado 3B: Ejecucion Muestreo'
+                            ]);
+                            $tagClass = $ejecutado ? 'event-muestreo-ejecutado' : 'event-muestreo-programado';
+                            $statusLabel = $ejecutado ? 'Ejecutado' : 'Pendiente';
+                        ?>
+                            <a href="/Cycsa/publico/operaciones" class="event-tag <?= $tagClass ?>" title="Muestreo Programado de la O/S: <?= htmlspecialchars($ev['codigo_os'], ENT_QUOTES, 'UTF-8') ?>">
+                                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <span class="event-code" style="color: inherit;"><i class="fa-solid fa-truck-pickup"></i> Muestreo: <?= htmlspecialchars($ev['codigo_os'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span style="font-size: 8px; font-weight: 700; text-transform: uppercase; background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 4px;"><?= $statusLabel ?></span>
+                                </div>
+                                <div class="event-lote" style="color: inherit; font-size:10px;"><i class="fa-solid fa-user-gear"></i> Téc: <?= htmlspecialchars($ev['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <div class="event-details" style="color: inherit; font-weight: 500;"><i class="fa-solid fa-clock"></i> Hora: <?= date('h:i A', strtotime($ev['hora_muestreo'])) ?> &bull; Veh: <?= htmlspecialchars($ev['vehiculo_muestreo'], ENT_QUOTES, 'UTF-8') ?></div>
+                            </a>
+                        <?php endif; ?>
                     <?php endforeach; ?>
                 </div>
             </div>

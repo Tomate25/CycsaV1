@@ -17,6 +17,112 @@
     .btn-add:hover { background-color: #dbeafe; }
     .btn-del { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
     .btn-del:hover { background-color: #fee2e2; }
+
+    /* Custom Search Select Premium */
+    .custom-select-wrapper { position: relative; width: 100%; }
+    .custom-select-trigger {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        color: #1e293b;
+        cursor: pointer;
+        transition: all 0.2s;
+        min-height: 42px;
+        box-sizing: border-box;
+    }
+    .custom-select-trigger:hover {
+        border-color: var(--cycsa-azul);
+    }
+    .custom-select-trigger:focus, .custom-select-trigger.active {
+        border-color: var(--cycsa-azul);
+        box-shadow: 0 0 0 3px rgba(16, 52, 135, 0.1);
+        outline: none;
+    }
+    .custom-select-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        margin-top: 5px;
+        display: none;
+        overflow: hidden;
+        animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .custom-select-search-box {
+        padding: 8px;
+        border-bottom: 1px solid #f1f5f9;
+        background: #f8fafc;
+    }
+    .custom-select-search {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 13px;
+        outline: none;
+        box-sizing: border-box;
+    }
+    .custom-select-search:focus {
+        border-color: var(--cycsa-azul);
+    }
+    .custom-select-options-list {
+        max-height: 240px;
+        overflow-y: auto;
+        padding: 4px 0;
+    }
+    .custom-select-option {
+        padding: 10px 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 13.5px;
+        color: #334155;
+        transition: all 0.15s;
+        border-bottom: 1px solid #f8fafc;
+    }
+    .custom-select-option:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+    .custom-select-option.selected {
+        background: #eff6ff;
+        color: var(--cycsa-azul);
+        font-weight: 600;
+    }
+    .custom-select-option.disabled {
+        background: #f8fafc;
+        color: #94a3b8;
+        cursor: not-allowed;
+        font-style: italic;
+    }
+    .custom-select-option.disabled:hover {
+        background: #f8fafc;
+    }
+    .custom-select-badge {
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .badge-available { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-locked { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
 </style>
 
 <div class="header-flex" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
@@ -56,7 +162,15 @@
             </div>
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Entregado Por (Nombre cliente/chofer)</label>
-                <input type="text" name="entregado_por" placeholder="Nombre completo" class="form-control">
+                <?php
+                $valorDefectoEntregado = '';
+                if (!empty($os['tecnico_muestreo'])) {
+                    $valorDefectoEntregado = $os['tecnico_muestreo'];
+                } elseif (!empty($hoja_solicitud['nombre_persona_entrega_muestra'])) {
+                    $valorDefectoEntregado = $hoja_solicitud['nombre_persona_entrega_muestra'];
+                }
+                ?>
+                <input type="text" name="entregado_por" placeholder="Nombre completo" class="form-control" value="<?= htmlspecialchars($valorDefectoEntregado, ENT_QUOTES, 'UTF-8') ?>">
             </div>
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Fecha/Hora Recepción</label>
@@ -111,8 +225,16 @@
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Servicio Cotizado Asociado</label>
                 <select name="id_detalle_cotizacion" id="id_detalle_cotizacion" required class="form-control" style="background-color: white;" onchange="toggleEdadesSection()">
                     <option value="">-- Seleccione el servicio facturado --</option>
-                    <?php foreach ($servicios as $s): ?>
-                        <option value="<?= $s['id'] ?>" data-formato-id="<?= $s['formato_id'] ?>" <?= ($s['id'] == ($idDetalle ?? 0)) ? 'selected' : '' ?>><?= htmlspecialchars($s['codigo_servicio'] ? $s['codigo_servicio'] . ' - ' : '', ENT_QUOTES, 'UTF-8') ?><?= htmlspecialchars($s['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php foreach ($servicios as $s): 
+                        $yaRecibido = (!empty($s['ya_recibido']) && $s['id'] != ($idDetalle ?? 0));
+                        $lblExtra = $yaRecibido ? ' (YA EN LAB - ' . $s['codigo_muestra'] . ')' : '';
+                    ?>
+                        <option value="<?= $s['id'] ?>" 
+                                data-formato-id="<?= $s['formato_id'] ?>" 
+                                <?= ($s['id'] == ($idDetalle ?? 0)) ? 'selected' : '' ?>
+                                <?= $yaRecibido ? 'disabled style="color: #94a3b8; background-color: #f1f5f9;"' : '' ?>>
+                            <?= htmlspecialchars($s['codigo_servicio'] ? $s['codigo_servicio'] . ' - ' : '', ENT_QUOTES, 'UTF-8') ?><?= htmlspecialchars($s['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?><?= $lblExtra ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -180,38 +302,35 @@
         const formatoId = selectedOption ? selectedOption.getAttribute('data-formato-id') : '';
         
         const agesSection = document.getElementById('seccion-edades-rotura');
-        const specsSection = document.getElementById('seccion-especificaciones-lote');
         
-        // Formato ID 17 = Resistencia de Concreto, 9 = Flexión, 20 = Mortero, 21 = Núcleo
-        const esConcreto = (formatoId === '17' || formatoId === '9' || formatoId === '20' || formatoId === '21');
+        // Formato ID 17 = Resistencia de Concreto, 9 = Flexión, 20 = Mortero, 21 = Núcleo, 10 = Bloques, 16 = Adoquines, 18 = Ladrillo, 19 = Esclerómetro
+        const esConcreto = (formatoId === '17' || formatoId === '9' || formatoId === '20' || formatoId === '21' || formatoId === '10' || formatoId === '16' || formatoId === '18' || formatoId === '19');
+        
+        // Mantener la sección siempre visible en pantalla para evitar bloqueos
+        agesSection.style.display = 'block';
         
         if (esConcreto) {
-            agesSection.style.display = 'block';
+            // Especificaciones de concreto requeridas
+            document.getElementById('input_nombre_lote').required = true;
+            document.getElementById('input_fecha_moldeo').required = true;
+            document.getElementById('input_diseno_resistencia').required = true;
             
             // Habilitar campos requeridos en edades
             agesSection.querySelectorAll('input').forEach(i => {
                 i.disabled = false;
                 i.required = true;
             });
-            
-            // Especificaciones de concreto requeridas
-            document.getElementById('input_nombre_lote').required = true;
-            document.getElementById('input_fecha_moldeo').required = true;
-            document.getElementById('input_diseno_resistencia').required = true;
         } else {
-            // Es otro ensayo (ej: Proctor) que no usa cilindros ni rotura de edades
-            agesSection.style.display = 'none';
-            
-            // Deshabilitar campos para que no se envíen
-            agesSection.querySelectorAll('input').forEach(i => {
-                i.disabled = true;
-                i.required = false;
-            });
-            
-            // Especificaciones no requeridas
+            // Especificaciones opcionales para otros ensayos
             document.getElementById('input_nombre_lote').required = false;
             document.getElementById('input_fecha_moldeo').required = false;
             document.getElementById('input_diseno_resistencia').required = false;
+            
+            // Dejar campos como opcionales pero activos si el usuario desea usarlos
+            agesSection.querySelectorAll('input').forEach(i => {
+                i.disabled = false;
+                i.required = false;
+            });
         }
     }
 
@@ -242,5 +361,151 @@
     // Inicializar al cargar para el valor preseleccionado
     document.addEventListener('DOMContentLoaded', () => {
         toggleEdadesSection();
+        
+        // --- CUSTOM SELECT PREMIUM CON BUSCADOR ---
+        const select = document.getElementById('id_detalle_cotizacion');
+        if (!select) return;
+
+        // Ocultar select original
+        select.style.display = 'none';
+
+        // Crear contenedor principal
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-select-wrapper';
+        
+        // Crear disparador (botón visible)
+        const trigger = document.createElement('div');
+        trigger.className = 'custom-select-trigger';
+        trigger.tabIndex = 0;
+        trigger.innerHTML = '<span class="trigger-label" style="font-weight: 500;">-- Seleccione el servicio facturado --</span> <i class="fa-solid fa-chevron-down" style="font-size: 11px; color: #64748b;"></i>';
+        
+        // Crear dropdown contenedor
+        const dropdown = document.createElement('div');
+        dropdown.className = 'custom-select-dropdown';
+        
+        // Crear caja de búsqueda
+        const searchBox = document.createElement('div');
+        searchBox.className = 'custom-select-search-box';
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Buscar servicio o norma (ej: Concreto, ASTM)...';
+        searchInput.className = 'custom-select-search';
+        searchBox.appendChild(searchInput);
+        dropdown.appendChild(searchBox);
+        
+        // Lista de opciones
+        const optionsList = document.createElement('div');
+        optionsList.className = 'custom-select-options-list';
+        dropdown.appendChild(optionsList);
+        
+        wrapper.appendChild(trigger);
+        wrapper.appendChild(dropdown);
+        select.parentNode.insertBefore(wrapper, select);
+
+        // Rellenar opciones personalizadas
+        const originalOptions = Array.from(select.options);
+        
+        originalOptions.forEach((opt, idx) => {
+            if (idx === 0) return; // Omitir el placeholder inicial
+            
+            const isOptDisabled = opt.disabled;
+            const formatoId = opt.getAttribute('data-formato-id');
+            const labelText = opt.text;
+            const isSelected = opt.selected;
+            
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'custom-select-option';
+            if (isOptDisabled) optionDiv.classList.add('disabled');
+            if (isSelected) {
+                optionDiv.classList.add('selected');
+                trigger.querySelector('.trigger-label').innerText = labelText;
+                trigger.querySelector('.trigger-label').style.fontWeight = '600';
+            }
+            
+            optionDiv.dataset.value = opt.value;
+            optionDiv.dataset.formatoId = formatoId;
+            
+            let badgeHtml = '';
+            if (isOptDisabled) {
+                badgeHtml = '<span class="custom-select-badge badge-locked"><i class="fa-solid fa-lock"></i> Recibido</span>';
+            } else {
+                badgeHtml = '<span class="custom-select-badge badge-available"><i class="fa-solid fa-circle-check"></i> Disponible</span>';
+            }
+            
+            optionDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-flask" style="color: var(--cycsa-azul); font-size: 12.5px;"></i>
+                    <span style="font-weight: 500;">${labelText}</span>
+                </div>
+                ${badgeHtml}
+            `;
+            
+            optionDiv.addEventListener('click', (e) => {
+                if (isOptDisabled) return;
+                
+                // Desmarcar anteriores y marcar actual
+                optionsList.querySelectorAll('.custom-select-option').forEach(o => o.classList.remove('selected'));
+                optionDiv.classList.add('selected');
+                
+                // Sincronizar select original y disparar evento de cambio
+                select.value = opt.value;
+                select.dispatchEvent(new Event('change'));
+                
+                // Actualizar disparador visual
+                trigger.querySelector('.trigger-label').innerText = labelText;
+                trigger.querySelector('.trigger-label').style.fontWeight = '600';
+                
+                // Cerrar
+                dropdown.style.display = 'none';
+                trigger.classList.remove('active');
+            });
+            
+            optionsList.appendChild(optionDiv);
+        });
+
+        // Evento toggle al presionar disparador
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = dropdown.style.display === 'block';
+            
+            // Cerrar otros dropdowns si hubieran
+            dropdown.style.display = isOpen ? 'none' : 'block';
+            trigger.classList.toggle('active', !isOpen);
+            
+            if (!isOpen) {
+                searchInput.value = '';
+                optionsList.querySelectorAll('.custom-select-option').forEach(o => o.style.display = 'flex');
+                setTimeout(() => searchInput.focus(), 50);
+            }
+        });
+
+        // Soporte para navegación de teclado en el trigger
+        trigger.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                trigger.click();
+            }
+        });
+
+        // Filtrado en tiempo real (Buscador AJAX-like)
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase().trim();
+            optionsList.querySelectorAll('.custom-select-option').forEach(optionDiv => {
+                const text = optionDiv.innerText.toLowerCase();
+                if (text.includes(query)) {
+                    optionDiv.style.display = 'flex';
+                } else {
+                    optionDiv.style.display = 'none';
+                }
+            });
+        });
+
+        // Cerrar al hacer clic fuera del control
+        window.addEventListener('click', (e) => {
+            if (!wrapper.contains(e.target)) {
+                dropdown.style.display = 'none';
+                trigger.classList.remove('active');
+            }
+        });
     });
 </script>

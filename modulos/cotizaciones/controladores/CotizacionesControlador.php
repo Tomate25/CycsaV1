@@ -70,11 +70,14 @@ class CotizacionesControlador extends ControladorBase {
             }
         }
         
+        $bitacora_logs = obtenerBitacoraModulo('cotizaciones');
+
         $this->renderizar('cotizaciones/vistas/index', [
             'titulo' => 'Cotizaciones - Cycsa',
             'cotizaciones' => $cotizaciones,
             'busqueda' => $busqueda,
-            'tabActual' => $tab
+            'tabActual' => $tab,
+            'bitacora_logs' => $bitacora_logs
         ]);
     }
 
@@ -112,6 +115,7 @@ class CotizacionesControlador extends ControladorBase {
             $cabecera = [
                 'codigo' => $modelo->generarCodigoUnico(),
                 'id_cliente' => $datos['id_cliente'],
+                'tipo_moneda' => isset($datos['tipo_moneda']) ? (int)$datos['tipo_moneda'] : 1,
                 'id_usuario_creador' => $_SESSION['usuario_id'],
                 'atencion_a' => trim($datos['atencion_a']),
                 'nombre_proyecto' => trim($datos['nombre_proyecto']),
@@ -121,7 +125,7 @@ class CotizacionesControlador extends ControladorBase {
                 'condicion_pago' => $datos['condicion_pago'],
                 'tiempo_entrega' => trim($datos['tiempo_entrega']),
                 'vigencia_oferta' => trim($datos['vigencia_oferta']),
-                'configuracion_notas' => $notasJson,
+                'configuracion_notas' => $notesJson ?? $notasJson,
                 'contactos' => isset($datos['contactos']) ? trim($datos['contactos']) : null,
                 'subtotal' => (float)$datos['subtotal_general'],
                 'descuento' => isset($datos['descuento']) ? (float)$datos['descuento'] : 0.00,
@@ -210,6 +214,7 @@ class CotizacionesControlador extends ControladorBase {
         $notasJson = isset($datos['notas']) ? json_encode($datos['notas']) : null;
         $cabecera = [
             'id_cliente' => $datos['id_cliente'],
+            'tipo_moneda' => isset($datos['tipo_moneda']) ? (int)$datos['tipo_moneda'] : 1,
             'atencion_a' => trim($datos['atencion_a']),
             'nombre_proyecto' => trim($datos['nombre_proyecto']),
             'direccion_proyecto' => trim($datos['direccion_proyecto']),
@@ -238,7 +243,7 @@ class CotizacionesControlador extends ControladorBase {
                 $detalles = $modelo->obtenerDetalles($id);
                 $pdfContenido = generarCotizacionPDF($cot, $detalles);
 
-                $destinatario = !empty($cot['cliente_email']) ? $cot['cliente_email'] : 'abdiasl085@gmail.com';
+                $destinatario = !empty($cot['cliente_email']) ? $cot['cliente_email'] : '';
                 $titulo_correo = "Cotización Oficial Corregida - CYCSA - " . $cot['codigo'];
                 $token = $cot['token_seguridad'];
                 $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id={$id}&token={$token}";
@@ -282,17 +287,29 @@ class CotizacionesControlador extends ControladorBase {
                     ]
                 ];
 
-                enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
+                if (!empty($destinatario)) {
+                    enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
 
-                // Registro local en logs
-                $rutaLog = __DIR__ . '/../../../almacenamiento/logs/emails.log';
-                if (!file_exists(dirname($rutaLog))) {
-                    @mkdir(dirname($rutaLog), 0777, true);
+                    // Registro local en logs
+                    $rutaLog = __DIR__ . '/../../../almacenamiento/logs/emails.log';
+                    if (!file_exists(dirname($rutaLog))) {
+                        @mkdir(dirname($rutaLog), 0777, true);
+                    }
+                    $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización CORREGIDA Y RE-ENVIADA. Destinatario: {$destinatario} | Cotización: {$cot['codigo']} | Versión: {$cot['version']} | Monto: C$ " . number_format($cot['total'], 2) . "\n";
+                    @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
+
+                    $_SESSION['envio_exitoso'] = "¡Cotización corregida (V" . $cot['version'] . ") enviada automáticamente al cliente!";
+                } else {
+                    // Registro local en logs
+                    $rutaLog = __DIR__ . '/../../../almacenamiento/logs/emails.log';
+                    if (!file_exists(dirname($rutaLog))) {
+                        @mkdir(dirname($rutaLog), 0777, true);
+                    }
+                    $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización CORREGIDA (Entrega Manual - Sin correo). Cotización: {$cot['codigo']} | Versión: {$cot['version']} | Monto: C$ " . number_format($cot['total'], 2) . "\n";
+                    @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
+
+                    $_SESSION['envio_exitoso'] = "¡Cotización corregida (V" . $cot['version'] . ") guardada (Cliente sin correo registrado)!";
                 }
-                $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización CORREGIDA Y RE-ENVIADA. Destinatario: {$destinatario} | Cotización: {$cot['codigo']} | Versión: {$cot['version']} | Monto: C$ " . number_format($cot['total'], 2) . "\n";
-                @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
-
-                $_SESSION['envio_exitoso'] = "¡Cotización corregida (V" . $cot['version'] . ") enviada automáticamente al cliente!";
             } else {
                 registrarBitacora('cotizaciones', 'editar', 'Modificada/Corregida cotización: ' . $cot['codigo'] . ' (estado: En Revision)', $id);
             }
@@ -321,7 +338,7 @@ class CotizacionesControlador extends ControladorBase {
                 $detalles = $modelo->obtenerDetalles($id);
                 $pdfContenido = generarCotizacionPDF($cotizacion, $detalles);
                 
-                $destinatario = !empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : 'abdiasl085@gmail.com';
+                $destinatario = !empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : '';
                 $titulo_correo = "Cotización Oficial - CYCSA - " . $cotizacion['codigo'];
                 $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id={$id}&token={$token}";
                 
@@ -367,15 +384,25 @@ class CotizacionesControlador extends ControladorBase {
                     ]
                 ];
                 
-                enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
-                
-                // Registro local en logs de desarrollo
-                $rutaLog = __DIR__ . '/../../../almacenamiento/logs/emails.log';
-                if (!file_exists(dirname($rutaLog))) {
-                    @mkdir(dirname($rutaLog), 0777, true);
+                if (!empty($destinatario)) {
+                    enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
+                    
+                    // Registro local en logs de desarrollo
+                    $rutaLog = __DIR__ . '/../../../almacenamiento/logs/emails.log';
+                    if (!file_exists(dirname($rutaLog))) {
+                        @mkdir(dirname($rutaLog), 0777, true);
+                    }
+                    $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización ENVIADA al Cliente (Aprobación). Destinatario: {$destinatario} | Cotización: {$cotizacion['codigo']} | Monto: C$ " . number_format($cotizacion['total'], 2) . "\n";
+                    @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
+                } else {
+                    // Registro local en logs de desarrollo
+                    $rutaLog = __DIR__ . '/../../../almacenamiento/logs/emails.log';
+                    if (!file_exists(dirname($rutaLog))) {
+                        @mkdir(dirname($rutaLog), 0777, true);
+                    }
+                    $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización Aprobada por Gerencia (Entrega Manual - Sin correo). Cotización: {$cotizacion['codigo']} | Monto: C$ " . number_format($cotizacion['total'], 2) . "\n";
+                    @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
                 }
-                $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización ENVIADA al Cliente (Aprobación). Destinatario: {$destinatario} | Cotización: {$cotizacion['codigo']} | Monto: C$ " . number_format($cotizacion['total'], 2) . "\n";
-                @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
             }
         } elseif ($datos['accion'] === 'observar') {
             $modelo->actualizarEstado($id, 'Observada', $_SESSION['usuario_id'], $datos['motivo_observacion'], null);
@@ -431,7 +458,7 @@ class CotizacionesControlador extends ControladorBase {
             $detalles = $modelo->obtenerDetalles($id);
             $pdfContenido = generarCotizacionPDF($cotizacion, $detalles);
             
-            $destinatario = !empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : 'abdiasl085@gmail.com';
+            $destinatario = !empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : '';
             $titulo_correo = "Cotización Oficial - CYCSA - " . $cotizacion['codigo'];
             if ($cotizacion['version'] > 0) {
                 $titulo_correo .= " (V" . $cotizacion['version'] . ")";
@@ -488,24 +515,42 @@ class CotizacionesControlador extends ControladorBase {
                 ]
             ];
             
-            // Envío real mediante PHPMailer con adjunto PDF
-            enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
-            
-            if ($esRechazada) {
-                registrarBitacora('cotizaciones', 'volver_enviar_rechazada', 'Re-enviada cotización al cliente (Nueva Versión: ' . $cotizacion['version'] . '): ' . $cotizacion['codigo'], $id);
-                $_SESSION['envio_exitoso'] = "¡Cotización re-enviada con éxito al cliente (Versión " . $cotizacion['version'] . ")!";
+            if (!empty($destinatario)) {
+                // Envío real mediante PHPMailer con adjunto PDF
+                enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
+                
+                if ($esRechazada) {
+                    registrarBitacora('cotizaciones', 'volver_enviar_rechazada', 'Re-enviada cotización al cliente (Nueva Versión: ' . $cotizacion['version'] . '): ' . $cotizacion['codigo'], $id);
+                    $_SESSION['envio_exitoso'] = "¡Cotización re-enviada con éxito al cliente (Versión " . $cotizacion['version'] . ")!";
+                } else {
+                    registrarBitacora('cotizaciones', 'enviar_cliente', 'Enviada cotización al cliente: ' . $cotizacion['codigo'] . ' (correo: ' . $destinatario . ')', $id);
+                    $_SESSION['envio_exitoso'] = "¡Cotización enviada con éxito al correo del cliente ({$destinatario})!";
+                }
+                
+                // Registro local
+                $rutaLog = __DIR__ . '/../../../almacenamiento/logs/emails.log';
+                if (!file_exists(dirname($rutaLog))) {
+                    @mkdir(dirname($rutaLog), 0777, true);
+                }
+                $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización ENVIADA al Cliente. Destinatario: {$destinatario} | Cotización: {$cotizacion['codigo']} | Versión: {$cotizacion['version']} | Monto: C$ " . number_format($cotizacion['total'], 2) . "\n";
+                @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
             } else {
-                registrarBitacora('cotizaciones', 'enviar_cliente', 'Enviada cotización al cliente: ' . $cotizacion['codigo'] . ' (correo: ' . $destinatario . ')', $id);
-                $_SESSION['envio_exitoso'] = "¡Cotización enviada con éxito al correo del cliente ({$destinatario})!";
+                if ($esRechazada) {
+                    registrarBitacora('cotizaciones', 'volver_enviar_rechazada', 'Re-enviada cotización al cliente (Entrega Manual - Sin correo): ' . $cotizacion['codigo'], $id);
+                    $_SESSION['envio_exitoso'] = "¡Cotización marcada como re-enviada para Entrega Manual (Sin correo registrado)!";
+                } else {
+                    registrarBitacora('cotizaciones', 'enviar_cliente', 'Marcada cotización como enviada (Entrega Manual - Sin correo): ' . $cotizacion['codigo'], $id);
+                    $_SESSION['envio_exitoso'] = "¡Cotización marcada como Enviada para Entrega Manual (Sin correo registrado)!";
+                }
+                
+                // Registro local
+                $rutaLog = __DIR__ . '/../../../almacenamiento/logs/emails.log';
+                if (!file_exists(dirname($rutaLog))) {
+                    @mkdir(dirname($rutaLog), 0777, true);
+                }
+                $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización Marcada como Enviada (Entrega Manual - Sin correo). Cotización: {$cotizacion['codigo']} | Versión: {$cotizacion['version']} | Monto: C$ " . number_format($cotizacion['total'], 2) . "\n";
+                @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
             }
-            
-            // Registro local
-            $rutaLog = __DIR__ . '/../../../almacenamiento/logs/emails.log';
-            if (!file_exists(dirname($rutaLog))) {
-                @mkdir(dirname($rutaLog), 0777, true);
-            }
-            $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización ENVIADA al Cliente. Destinatario: {$destinatario} | Cotización: {$cotizacion['codigo']} | Versión: {$cotizacion['version']} | Monto: C$ " . number_format($cotizacion['total'], 2) . "\n";
-            @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
             
             $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . $id);
             return;
@@ -676,7 +721,7 @@ class CotizacionesControlador extends ControladorBase {
                 @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
                 
                 // 5. Enviar correo de notificación al creador de la cotización
-                $destinatarioCreador = !empty($cotizacion['creador_email']) ? $cotizacion['creador_email'] : 'abdiasl085@gmail.com';
+                $destinatarioCreador = !empty($cotizacion['creador_email']) ? $cotizacion['creador_email'] : '';
                 $tituloNotificacion = "Decisión del Cliente: Cotización " . $cotizacion['codigo'] . " - " . $nuevoEstado;
                 $motivoHtml = '';
                 if ($accion === 'rechazar') {
@@ -724,7 +769,9 @@ class CotizacionesControlador extends ControladorBase {
                 </html>
                 ";
                 
-                enviarCorreo($destinatarioCreador, $tituloNotificacion, $mensajeCreador);
+                if (!empty($destinatarioCreador)) {
+                    enviarCorreo($destinatarioCreador, $tituloNotificacion, $mensajeCreador);
+                }
                 
                 // 6. Renderizar pantalla de confirmación exitosa
                 $this->renderizarSinLayout('cotizaciones/vistas/decision_cliente', [
@@ -1015,7 +1062,83 @@ class CotizacionesControlador extends ControladorBase {
         }
 
         // Parse saved rows
-        $filas = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_detalle_cotizacion = :id_detalle");
+        $stmtCount->execute(['id_detalle' => $id_detalle]);
+        $esEnsayoEdades = ((int)$stmtCount->fetchColumn() > 0);
+
+        if ($esEnsayoEdades) {
+            $stmtLoteId = $db->prepare("SELECT id_lote FROM ensayo_edades WHERE id_detalle_cotizacion = :id_detalle LIMIT 1");
+            $stmtLoteId->execute(['id_detalle' => $id_detalle]);
+            $idLote = (int)$stmtLoteId->fetchColumn();
+
+            $stmtLote = $db->prepare("SELECT lm.*, rm.codigo_muestra, rm.codigo_campo 
+                                      FROM lotes_muestras lm
+                                      JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                                      WHERE lm.id = :id_lote");
+            $stmtLote->execute(['id_lote' => $idLote]);
+            $loteData = $stmtLote->fetch(PDO::FETCH_ASSOC);
+
+            $stmtEsp = $db->prepare("SELECT * FROM ensayo_edades WHERE id_detalle_cotizacion = :id_detalle ORDER BY edad_dias ASC, identificador_especimen ASC");
+            $stmtEsp->execute(['id_detalle' => $id_detalle]);
+            $especimenesList = $stmtEsp->fetchAll(PDO::FETCH_ASSOC);
+
+            $filas = [];
+            foreach ($especimenesList as $esp) {
+                $fila = [];
+                foreach ($columnas as $col) {
+                    $colLower = mb_strtolower(trim($col));
+                    $val = '';
+                    
+                    if (strpos($colLower, 'código') !== false || strpos($colLower, 'codigo') !== false) {
+                        $val = $loteData['codigo_muestra'] ?? '';
+                    } elseif (strpos($colLower, 'nombre muestra') !== false || strpos($colLower, 'elemento') !== false || strpos($colLower, 'descripción') !== false || strpos($colLower, 'descripcion') !== false) {
+                        $val = ($loteData['nombre_lote'] ?? '') . ' (' . ($esp['identificador_especimen'] ?? '') . ')';
+                    } elseif (strpos($colLower, 'cilindro') !== false || strpos($colLower, 'especímen') !== false || strpos($colLower, 'especimen') !== false) {
+                        $val = $esp['identificador_especimen'] ?? '';
+                    } elseif (strpos($colLower, 'edad') !== false) {
+                        $val = ($esp['edad_dias'] ?? '0') . ' días';
+                    } elseif (strpos($colLower, 'fecha de fabricación') !== false || strpos($colLower, 'fabricacion') !== false || strpos($colLower, 'moldeo') !== false) {
+                        $val = !empty($loteData['fecha_moldeo']) ? date('d/m/Y', strtotime($loteData['fecha_moldeo'])) : '';
+                    } elseif (strpos($colLower, 'fecha programada') !== false || strpos($colLower, 'programada') !== false) {
+                        $val = !empty($esp['fecha_programada']) ? date('d/m/Y', strtotime($esp['fecha_programada'])) : '—';
+                    } elseif (strpos($colLower, 'fecha de ensayo') !== false || strpos($colLower, 'fecha de ruptura') !== false || strpos($colLower, 'ruptura') !== false || strpos($colLower, 'fecha ensaye') !== false || strpos($colLower, 'fecha de ensaye') !== false || strpos($colLower, 'ensaye real') !== false) {
+                        $val = !empty($esp['fecha_ensaye_real']) ? date('d/m/Y', strtotime($esp['fecha_ensaye_real'])) : '—';
+                    } elseif (strpos($colLower, 'carga') !== false) {
+                        $val = $esp['carga_lbs'] ? number_format($esp['carga_lbs'], 1) : '—';
+                    } elseif (strpos($colLower, 'área') !== false || strpos($colLower, 'area') !== false) {
+                        $val = $esp['area_in2'] ? number_format($esp['area_in2'], 3) : '—';
+                    } elseif (strpos($colLower, 'compresión (lb/in²)') !== false || strpos($colLower, 'compresión (psi)') !== false || strpos($colLower, 'psi') !== false || strpos($colLower, 'r. compresión') !== false || strpos($colLower, 'esfuerzo psi') !== false) {
+                        $val = $esp['resistencia_psi'] ? number_format($esp['resistencia_psi'], 0) : '—';
+                    } elseif (strpos($colLower, 'compresión (kg/cm²)') !== false || strpos($colLower, 'kg/cm²') !== false || strpos($colLower, 'resistencia.') !== false || strpos($colLower, 'compresión.') !== false || strpos($colLower, 'esfuerzo kg') !== false) {
+                        $val = $esp['resistencia_kgcm2'] ? number_format($esp['resistencia_kgcm2'], 1) : '—';
+                    } elseif (strpos($colLower, '%') !== false || strpos($colLower, 'porcentaje') !== false) {
+                        $val = $esp['porcentaje_diseno'] ? number_format($esp['porcentaje_diseno'], 1) . '%' : '—';
+                    } elseif (strpos($colLower, 'diseño') !== false || strpos($colLower, 'diseno') !== false) {
+                        $val = $loteData['diseno_resistencia'] ?? '';
+                    } elseif (strpos($colLower, 'reven.') !== false || strpos($colLower, 'slump') !== false) {
+                        if (strpos($colLower, 'in') !== false) {
+                            $val = $loteData['revenimiento_in'] ? $loteData['revenimiento_in'] . ' in' : '—';
+                        } else {
+                            $val = $loteData['revenimiento_cm'] ? $loteData['revenimiento_cm'] . ' cm' : '—';
+                        }
+                    } elseif (strpos($colLower, 'temp') !== false) {
+                        $val = $loteData['temperatura_c'] ? $loteData['temperatura_c'] . ' °C' : '—';
+                    } elseif (strpos($colLower, 'estado') !== false || strpos($colLower, 'cumple') !== false || strpos($colLower, 'alerta') !== false) {
+                        if (($esp['estado'] ?? '') === 'Completado') {
+                            $val = ($esp['cumple_norma'] ?? 0) ? 'Cumple' : 'Alerta';
+                        } else {
+                            $val = 'Pendiente';
+                        }
+                    }
+                    
+                    $fila[$col] = $val;
+                }
+                $filas[] = $fila;
+            }
+        } else {
+            $filas = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+        }
 
         $pdfContenido = generarReporteEnsayoPDF($cotizacion, $detalle, $columnas, $filas);
 

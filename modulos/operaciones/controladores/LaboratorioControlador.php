@@ -20,11 +20,19 @@ class LaboratorioControlador extends ControladorBase {
         }
     }
 
+    private function verificarPermiso(Respuesta $respuesta, string $accion = 'ver'): void {
+        if (!tienePermiso('laboratorio', $accion)) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            exit;
+        }
+    }
+
     /**
      * Dashboard del laboratorio: listado de muestras activas y rupturas programadas (vista 100% ciega).
      */
     public function index(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
 
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
 
@@ -39,10 +47,12 @@ class LaboratorioControlador extends ControladorBase {
 
         // 2. Obtener rupturas programadas para los próximos 7 días (ciego)
         $sqlProximas = "SELECT ee.id, ee.identificador_especimen, ee.edad_dias, ee.fecha_programada,
-                               rm.codigo_muestra, rm.codigo_campo, lm.id AS id_lote
+                               rm.codigo_muestra, rm.codigo_campo, lm.id AS id_lote,
+                               cd.descripcion_ensayo AS nombre_ensayo
                         FROM ensayo_edades ee
                         JOIN lotes_muestras lm ON ee.id_lote = lm.id
                         JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                        LEFT JOIN cotizacion_detalles cd ON ee.id_detalle_cotizacion = cd.id
                         WHERE ee.estado IN ('Programado', 'Listo para Ensaye')
                           AND ee.edad_dias > 0
                           AND ee.fecha_programada BETWEEN CURRENT_DATE - INTERVAL 2 DAY AND CURRENT_DATE + INTERVAL 7 DAY
@@ -50,10 +60,24 @@ class LaboratorioControlador extends ControladorBase {
         $stmtProx = $db->query($sqlProximas);
         $rupturasProgramadas = $stmtProx->fetchAll(PDO::FETCH_ASSOC);
 
+        // 3. Obtener rupturas para el calendario (rango de 60 días antes y después)
+        $sqlCalendario = "SELECT ee.id, ee.identificador_especimen, ee.edad_dias, ee.fecha_programada,
+                                 ee.estado, rm.codigo_muestra, rm.codigo_campo, lm.id AS id_lote,
+                                 cd.descripcion_ensayo AS nombre_ensayo
+                          FROM ensayo_edades ee
+                          JOIN lotes_muestras lm ON ee.id_lote = lm.id
+                          JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                          LEFT JOIN cotizacion_detalles cd ON ee.id_detalle_cotizacion = cd.id
+                          WHERE ee.fecha_programada BETWEEN CURRENT_DATE - INTERVAL 60 DAY AND CURRENT_DATE + INTERVAL 60 DAY
+                          ORDER BY ee.fecha_programada ASC";
+        $stmtCal = $db->query($sqlCalendario);
+        $eventosCalendario = $stmtCal->fetchAll(PDO::FETCH_ASSOC);
+
         $this->renderizar('operaciones/vistas/laboratorio_dashboard', [
             'titulo' => 'Portal de Laboratorio LIMS (Operación Ciega)',
             'muestras' => $muestras,
             'rupturas' => $rupturasProgramadas,
+            'eventosCalendario' => $eventosCalendario,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
         ]);
@@ -65,6 +89,7 @@ class LaboratorioControlador extends ControladorBase {
      */
     public function detalleMuestra(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
 
         $idLote = (int)($_GET['id_lote'] ?? 0);
         if ($idLote <= 0) {
@@ -93,6 +118,7 @@ class LaboratorioControlador extends ControladorBase {
         // 2. Obtener especímenes del lote
         $modelo = new OperacionModelo();
         $especimenes = $modelo->obtenerDetallesLote($idLote);
+        $historial = $modelo->obtenerHistorialInformes($idLote);
 
         // 3. Obtener ensayos cotizados relacionados (ciego)
         $sqlItems = "SELECT cd.id, cd.descripcion_ensayo, cd.norma_astm, fe.archivo_markdown, 
@@ -120,6 +146,7 @@ class LaboratorioControlador extends ControladorBase {
             'titulo' => 'Hoja de Trabajo Ciega - Muestra ' . $lote['codigo_muestra'],
             'lote' => $lote,
             'especimenes' => $especimenes,
+            'historial' => $historial,
             'itemsOS' => $itemsOS,
             'formatosSchemaJson' => $formatosSchemaJson,
             'exito' => $_SESSION['exito'] ?? null,
@@ -133,6 +160,7 @@ class LaboratorioControlador extends ControladorBase {
      */
     public function guardarRuptura(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
 
         if ($peticion->esPost()) {
             $datos = $peticion->obtainData();
@@ -158,12 +186,15 @@ class LaboratorioControlador extends ControladorBase {
             }
 
             $modelo = new OperacionModelo();
-            $exito = $modelo->guardarRuptura($idEnsayo, $carga, $area);
+            $resultado = $modelo->guardarResultadoRuptura($idEnsayo, [
+                'carga_lbs' => $carga,
+                'area_in2' => $area
+            ]);
 
-            if ($exito) {
-                $_SESSION['exito'] = 'Resultado de ruptura guardado exitosamente.';
+            if ($resultado['exito']) {
+                $_SESSION['exito'] = $resultado['mensaje'];
             } else {
-                $_SESSION['error'] = 'Error al guardar los datos de ruptura.';
+                $_SESSION['error'] = $resultado['mensaje'];
             }
 
             $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?id_lote=' . $idLote);

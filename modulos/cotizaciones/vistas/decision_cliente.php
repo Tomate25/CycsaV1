@@ -831,110 +831,14 @@
                                     </div>
                                 </div>
 
-                                <!-- MODAL DE CONFIRMACIÓN Y PAGO PARA APROBACIÓN -->
+                                <!-- MODAL DE CONFIRMACIÓN PARA APROBACIÓN -->
                                 <div class="modal" id="confirm-modal">
-                                    <div class="modal-content" style="max-width: 500px;">
-                                        <div class="modal-title" style="margin-bottom: 5px;">Confirmar Aprobación y Pago</div>
-                                        <div class="modal-desc" style="margin-bottom: 15px;">Seleccione el esquema y método de pago para formalizar esta cotización.</div>
-                                        
-                                        <!-- ESQUEMA DE PAGO SELECTION -->
-                                        <div style="text-align: left; margin-bottom: 15px;">
-                                            <label style="font-weight: 700; font-size: 13px; color: #334155; display: block; margin-bottom: 8px;">Esquema de Facturación / Pago:</label>
-                                            <div class="scheme-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                                                <label class="scheme-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                                    <input type="radio" name="porcentaje_pago_inmediato" value="100" checked onclick="actualizarEsquemaPago(100)" style="display: none;">
-                                                    <div style="font-weight: 700; font-size: 14px; color: #1e293b;">100% Contado</div>
-                                                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Pago Inmediato</div>
-                                                </label>
-                                                <label class="scheme-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                                    <input type="radio" name="porcentaje_pago_inmediato" value="50" onclick="actualizarEsquemaPago(50)" style="display: none;">
-                                                    <div style="font-weight: 700; font-size: 14px; color: #1e293b;">50% / 50%</div>
-                                                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Anticipo + Crédito</div>
-                                                </label>
-                                                <label class="scheme-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                                    <input type="radio" name="porcentaje_pago_inmediato" value="0" onclick="actualizarEsquemaPago(0)" style="display: none;">
-                                                    <div style="font-weight: 700; font-size: 14px; color: #1e293b;">100% Crédito</div>
-                                                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">CxC a cobrar</div>
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <!-- MONTOS DETALLADOS RESUMEN -->
-                                        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 13px; text-align: left; margin-bottom: 15px;">
-                                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                                <span style="color: #64748b; font-weight: 500;">Monto Pago Inmediato:</span>
-                                                <strong id="lbl_monto_pago_inmediato" style="color: #0f172a;">C$ 0.00</strong>
-                                            </div>
-                                            <div style="display: flex; justify-content: space-between;">
-                                                <span style="color: #64748b; font-weight: 500;">Monto a Crédito (CxC):</span>
-                                                <strong id="lbl_monto_credito" style="color: #2563eb;">C$ 0.00</strong>
-                                            </div>
-                                            <!-- Hidden fields to submit to controller -->
-                                            <input type="hidden" name="monto_pago_inmediato" id="val_monto_pago_inmediato" value="0.00">
-                                            <input type="hidden" name="monto_credito" id="val_monto_credito" value="0.00">
-                                        </div>
-
-                                        <!-- SECCIÓN DE MÉTODO DE PAGO INMEDIATO (Solo si porcentaje > 0) -->
-                                        <div id="immediate-payment-section" style="text-align: left; margin-bottom: 15px;">
-                                            <label style="font-weight: 700; font-size: 13px; color: #334155; display: block; margin-bottom: 8px;">Método de Pago Inmediato:</label>
-                                            <div class="payment-methods-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                                                <label class="payment-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 12px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                                    <input type="radio" name="metodo_pago" value="Efectivo" checked onclick="togglePaymentFields('Efectivo')" style="display: none;">
-                                                    <div style="font-size: 20px; margin-bottom: 5px;">💵</div>
-                                                    <div style="font-weight: 700; font-size: 13px; color: #1e293b;">Efectivo</div>
-                                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Caja Chica</div>
-                                                </label>
-                                                <label class="payment-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 12px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                                    <input type="radio" name="metodo_pago" value="Banco" onclick="togglePaymentFields('Banco')" style="display: none;">
-                                                    <div style="font-size: 20px; margin-bottom: 5px;">🏦</div>
-                                                    <div style="font-weight: 700; font-size: 13px; color: #1e293b;">Banco</div>
-                                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Transferencia</div>
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <!-- EFECTIVO RECIBIDO Y CAMBIO (Solo si método pago es Efectivo) -->
-                                        <div id="cash-payment-fields" style="text-align: left; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                                <div>
-                                                    <label style="font-weight: 600; font-size: 12px; color: #166534; display: block; margin-bottom: 4px;">Recibido (Con cuánto paga):</label>
-                                                    <input type="number" name="efectivo_recibido" id="efectivo_recibido" step="0.01" min="0" placeholder="0.00" oninput="calcularVuelto()" class="form-control" style="width:100%; box-sizing:border-box;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-weight: 600; font-size: 12px; color: #166534; display: block; margin-bottom: 4px;">Vuelto (Cambio):</label>
-                                                    <input type="number" name="efectivo_vuelto" id="efectivo_vuelto" readonly placeholder="0.00" class="form-control" style="width:100%; box-sizing:border-box; background: #f8fafc; color: #64748b;">
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- BANCO DETALLES (Solo si método pago es Banco) -->
-                                        <div id="bank-payment-fields" style="display: none; text-align: left; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                                            <div style="margin-bottom: 12px;">
-                                                <label style="font-weight: 600; font-size: 12px; color: #334155; display: block; margin-bottom: 4px;">Depositar en Cuenta Bancaria:</label>
-                                                <select name="id_banco_cuenta" id="id_banco_cuenta" class="form-control" style="width:100%; box-sizing:border-box;">
-                                                    <option value="">-- Seleccionar Banco --</option>
-                                                    <?php if (isset($bancos)): foreach ($bancos as $b): ?>
-                                                        <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['banco_nombre'] . ' - Cta: ' . $b['numero_cuenta'] . ' (' . $b['moneda'] . ')', ENT_QUOTES, 'UTF-8') ?></option>
-                                                    <?php endforeach; endif; ?>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label style="font-weight: 600; font-size: 12px; color: #334155; display: block; margin-bottom: 4px;">N° de Transferencia / Voucher:</label>
-                                                <input type="text" name="referencia_pago" id="referencia_pago" placeholder="Ej: Voucher, Referencia" class="form-control" style="width:100%; box-sizing:border-box;">
-                                            </div>
-                                        </div>
-
-                                        <!-- CRÉDITO CONDICIONES (Solo si monto_credito > 0) -->
-                                        <div id="credit-payment-fields" style="display: none; text-align: left; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                                            <div>
-                                                <label style="font-weight: 600; font-size: 12px; color: #1e40af; display: block; margin-bottom: 4px;">Plazo del Crédito (Días de vencimiento):</label>
-                                                <input type="number" name="dias_credito" id="dias_credito" value="30" min="1" max="365" class="form-control" style="width:100%; box-sizing:border-box;">
-                                            </div>
-                                        </div>
-
-                                        <div class="modal-actions" style="margin-top: 20px;">
+                                    <div class="modal-content" style="max-width: 450px;">
+                                        <div class="modal-title" style="margin-bottom: 10px; color: var(--primary);">Confirmar Aprobación</div>
+                                        <div class="modal-desc" style="margin-bottom: 25px; color: var(--text-muted);">¿Está seguro de que desea aceptar esta propuesta formalmente? Al confirmar, se generará de manera automática una Orden de Servicio y se iniciará el proceso técnico en nuestro laboratorio.</div>
+                                        <div class="modal-actions" style="display: flex; gap: 15px; justify-content: center;">
                                             <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModal()">Cancelar</button>
-                                            <button type="button" class="btn btn-success btn-sm" onclick="enviarAprobacion()">Confirmar y Aprobar</button>
+                                            <button type="button" class="btn btn-success btn-sm" onclick="enviarAprobacionDirecta()">Confirmar y Aprobar</button>
                                         </div>
                                     </div>
                                 </div>
@@ -947,170 +851,15 @@
     </div>
 
     <script>
-        const COTIZACION_TOTAL = <?= (float)$cotizacion['total'] ?>;
-
         function confirmarAprobacion() {
             document.getElementById('confirm-modal').classList.add('active');
-            // Inicializar montos
-            actualizarEsquemaPago(100);
         }
 
         function cerrarModal() {
             document.getElementById('confirm-modal').classList.remove('active');
         }
 
-        function actualizarEsquemaPago(porcentaje) {
-            const valPago = (COTIZACION_TOTAL * (porcentaje / 100)).toFixed(2);
-            const valCredito = (COTIZACION_TOTAL - valPago).toFixed(2);
-            
-            document.getElementById('val_monto_pago_inmediato').value = valPago;
-            document.getElementById('val_monto_credito').value = valCredito;
-            
-            document.getElementById('lbl_monto_pago_inmediato').innerText = 'C$ ' + Number(valPago).toLocaleString('es-NI', {minimumFractionDigits: 2});
-            document.getElementById('lbl_monto_credito').innerText = 'C$ ' + Number(valCredito).toLocaleString('es-NI', {minimumFractionDigits: 2});
-            
-            // Toggle sections
-            const immediateSec = document.getElementById('immediate-payment-section');
-            const cashSec = document.getElementById('cash-payment-fields');
-            const bankSec = document.getElementById('bank-payment-fields');
-            const creditSec = document.getElementById('credit-payment-fields');
-            
-            if (porcentaje > 0) {
-                immediateSec.style.display = 'block';
-                // Obtener el valor activo seleccionado de metodo_pago
-                const selectedRadio = document.querySelector('input[name="metodo_pago"]:checked');
-                const activeMethod = selectedRadio ? selectedRadio.value : 'Efectivo';
-                togglePaymentFields(activeMethod);
-            } else {
-                immediateSec.style.display = 'none';
-                cashSec.style.display = 'none';
-                bankSec.style.display = 'none';
-            }
-            
-            if (parseFloat(valCredito) > 0) {
-                creditSec.style.display = 'block';
-            } else {
-                creditSec.style.display = 'none';
-            }
-
-            // Estilizar tarjetas de esquema
-            const schemeCards = document.querySelectorAll('.scheme-card');
-            schemeCards.forEach(card => {
-                const radio = card.querySelector('input[type="radio"]');
-                if (radio && radio.value === String(porcentaje)) {
-                    radio.checked = true;
-                    card.style.borderColor = 'var(--primary)';
-                    card.style.backgroundColor = 'var(--primary-light)';
-                } else {
-                    card.style.borderColor = '#cbd5e1';
-                    card.style.backgroundColor = '#ffffff';
-                }
-            });
-            
-            calcularVuelto();
-        }
-
-        function togglePaymentFields(method) {
-            const cashSec = document.getElementById('cash-payment-fields');
-            const bankSec = document.getElementById('bank-payment-fields');
-            const select = document.getElementById('id_banco_cuenta');
-            const input = document.getElementById('referencia_pago');
-            
-            const valPago = parseFloat(document.getElementById('val_monto_pago_inmediato').value);
-            
-            if (valPago > 0 && method === 'Banco') {
-                bankSec.style.display = 'block';
-                cashSec.style.display = 'none';
-                select.required = true;
-                input.required = true;
-            } else if (valPago > 0 && method === 'Efectivo') {
-                bankSec.style.display = 'none';
-                cashSec.style.display = 'block';
-                select.required = false;
-                input.required = false;
-            } else {
-                bankSec.style.display = 'none';
-                cashSec.style.display = 'none';
-                select.required = false;
-                input.required = false;
-            }
-
-            // Estilizar tarjetas de metodo
-            const paymentCards = document.querySelectorAll('.payment-card');
-            paymentCards.forEach(card => {
-                const radio = card.querySelector('input[type="radio"]');
-                if (radio && radio.value === method) {
-                    radio.checked = true;
-                    card.style.borderColor = 'var(--primary)';
-                    card.style.backgroundColor = 'var(--primary-light)';
-                } else {
-                    card.style.borderColor = '#cbd5e1';
-                    card.style.backgroundColor = '#ffffff';
-                }
-            });
-            
-            calcularVuelto();
-        }
-
-        function calcularVuelto() {
-            const valPago = parseFloat(document.getElementById('val_monto_pago_inmediato').value);
-            const inputRecibido = document.getElementById('efectivo_recibido');
-            const inputVuelto = document.getElementById('efectivo_vuelto');
-            
-            if (isNaN(valPago) || valPago <= 0) {
-                inputRecibido.value = '';
-                inputVuelto.value = '';
-                return;
-            }
-            
-            const recibido = parseFloat(inputRecibido.value);
-            if (isNaN(recibido) || recibido < valPago) {
-                inputVuelto.value = '0.00';
-            } else {
-                inputVuelto.value = (recibido - valPago).toFixed(2);
-            }
-        }
-
-        function enviarAprobacion() {
-            const valPago = parseFloat(document.getElementById('val_monto_pago_inmediato').value);
-            if (valPago > 0) {
-                const activeRadio = document.querySelector('input[name="metodo_pago"]:checked');
-                const method = activeRadio ? activeRadio.value : 'Efectivo';
-                
-                if (method === 'Banco') {
-                    const select = document.getElementById('id_banco_cuenta');
-                    const input = document.getElementById('referencia_pago');
-                    if (select.value === '') {
-                        alert('Por favor, seleccione el banco de destino.');
-                        select.focus();
-                        return;
-                    }
-                    if (input.value.trim() === '') {
-                        alert('Por favor, ingrese el número de referencia o voucher.');
-                        input.focus();
-                        return;
-                    }
-                } else if (method === 'Efectivo') {
-                    const recibido = parseFloat(document.getElementById('efectivo_recibido').value);
-                    if (isNaN(recibido) || recibido < valPago) {
-                        const valPagoFormat = Number(valPago).toLocaleString('es-NI', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                        alert('Por favor, ingrese un monto recibido en efectivo válido e igual o mayor al total del pago inmediato (C$ ' + valPagoFormat + ').');
-                        document.getElementById('efectivo_recibido').focus();
-                        return;
-                    }
-                }
-            }
-            
-            const valCredito = parseFloat(document.getElementById('val_monto_credito').value);
-            if (valCredito > 0) {
-                const dias = parseInt(document.getElementById('dias_credito').value);
-                if (isNaN(dias) || dias < 1) {
-                    alert('Por favor, ingrese un plazo de crédito válido.');
-                    document.getElementById('dias_credito').focus();
-                    return;
-                }
-            }
-
+        function enviarAprobacionDirecta() {
             cerrarModal();
             document.getElementById('form-accion').value = 'aceptar';
             document.getElementById('decision-form').submit();

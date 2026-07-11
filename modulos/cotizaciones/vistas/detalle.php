@@ -130,7 +130,6 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                     <th>Cant.</th>
                     <th>Precio Unit.</th>
                     <th>Subtotal</th>
-                    <th style="text-align: center; width: 260px;">Acciones de Calidad</th>
                 </tr>
             </thead>
             <tbody>
@@ -162,26 +161,6 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                     <td><?= $detalle['cantidad'] ?></td>
                     <td>C$ <?= number_format($detalle['precio_unitario'], 2, '.', ',') ?></td>
                     <td>C$ <?= number_format($detalle['subtotal'], 2, '.', ',') ?></td>
-                    <td style="text-align: center;">
-                        <?php if (!empty($detalle['formato_reporte'])): ?>
-                            <div style="display: inline-flex; gap: 8px;">
-                                <button type="button" 
-                                        class="btn-capturar-resultados"
-                                        data-id="<?= $detalle['id'] ?>"
-                                        data-ensayo="<?= htmlspecialchars($detalle['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?>"
-                                        data-markdown="<?= htmlspecialchars($detalle['archivo_markdown'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                                        data-resultados="<?= htmlspecialchars($detalle['resultados_json'] ?: '[]', ENT_QUOTES, 'UTF-8') ?>"
-                                        style="background-color: var(--cycsa-azul); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
-                                    <i class="fa-solid fa-list-check"></i> Capturar
-                                </button>
-                                <a href="/Cycsa/publico/cotizaciones/imprimir-reporte-item?id_detalle=<?= $detalle['id'] ?>" target="_blank" style="background-color: #10b981; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif; box-shadow: 0 1px 2px rgba(16, 185, 129, 0.1);">
-                                    <i class="fa-solid fa-print"></i> Reporte
-                                </a>
-                            </div>
-                        <?php else: ?>
-                            <span style="color: #94a3b8; font-size: 11px; font-style: italic;">Sin formato técnico</span>
-                        <?php endif; ?>
-                    </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -248,31 +227,51 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     <?php endif; ?>
 
     <?php if (tienePermiso('cotizaciones', 'crear_editar') && $cotizacion['estado'] == 'Aprobada Internamente'): ?>
-        <div style="background: #ecfdf5; border: 1px solid #6ee7b7; padding: 20px; border-radius: 8px; margin-top: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <?php $tieneEmail = !empty($cotizacion['cliente_email']); ?>
+        <div style="background: <?= $tieneEmail ? '#ecfdf5' : '#fffbeb' ?>; border: 1px solid <?= $tieneEmail ? '#6ee7b7' : '#fde68a' ?>; padding: 20px; border-radius: 8px; margin-top: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <div>
-                <h3 style="margin: 0 0 5px 0; color: #047857;"><i class="fa-solid fa-circle-check"></i> Cotización Aprobada</h3>
-                <p style="margin: 0; font-size: 14px; color: #065f46;">Lista para ser enviada de manera formal al correo del cliente (<?= htmlspecialchars($cotizacion['cliente_email'] ?: 'abdiasl085@gmail.com', ENT_QUOTES, 'UTF-8') ?>).</p>
+                <h3 style="margin: 0 0 5px 0; color: <?= $tieneEmail ? '#047857' : '#b45309' ?>;"><i class="fa-solid <?= $tieneEmail ? 'fa-circle-check' : 'fa-triangle-exclamation' ?>"></i> <?= $tieneEmail ? 'Cotización Aprobada' : 'Cliente sin Correo Registrado' ?></h3>
+                <p style="margin: 0; font-size: 14px; color: <?= $tieneEmail ? '#065f46' : '#78350f' ?>;">
+                    <?php if ($tieneEmail): ?>
+                        Lista para ser enviada de manera formal al correo del cliente (<?= htmlspecialchars($cotizacion['cliente_email'], ENT_QUOTES, 'UTF-8') ?>).
+                    <?php else: ?>
+                        Esta cotización puede ser entregada en físico. Al continuar, se registrará el envío manual en el sistema.
+                    <?php endif; ?>
+                </p>
             </div>
             <form action="/Cycsa/publico/cotizaciones/enviar" method="POST" style="margin: 0;">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
-                <button type="submit" style="background: #059669; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-paper-plane"></i> Enviar al Cliente</button>
+                <?php if ($tieneEmail): ?>
+                    <button type="submit" style="background: #059669; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-paper-plane"></i> Enviar al Cliente</button>
+                <?php else: ?>
+                    <button type="submit" style="background: #d97706; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-hand-holding-hand"></i> Registrar Envío Manual</button>
+                <?php endif; ?>
             </form>
         </div>
     <?php endif; ?>
 
     <?php if (tienePermiso('cotizaciones', 'crear_editar') && in_array($cotizacion['estado'], ['Enviada al Cliente', 'Aprobada por Cliente'])): ?>
+        <?php $tieneEmail = !empty($cotizacion['cliente_email']); ?>
         <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin-top: 30px; display: flex; flex-direction: column; gap: 15px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; width: 100%;">
                 <div>
                     <h3 style="margin: 0 0 5px 0; color: #1e3a8a;"><i class="fa-solid fa-paper-plane"></i> Cotización Enviada</h3>
-                    <p style="margin: 0; font-size: 14px; color: #1e40af;">Esta cotización ya fue enviada formalmente al cliente (<?= htmlspecialchars($cotizacion['cliente_email'] ?: 'abdiasl085@gmail.com', ENT_QUOTES, 'UTF-8') ?>).</p>
+                    <p style="margin: 0; font-size: 14px; color: #1e40af;">
+                        <?php if ($tieneEmail): ?>
+                            Esta cotización ya fue enviada formalmente al cliente (<?= htmlspecialchars($cotizacion['cliente_email'], ENT_QUOTES, 'UTF-8') ?>).
+                        <?php else: ?>
+                            Esta cotización fue registrada como enviada de forma física/manual (El cliente no tiene correo registrado).
+                        <?php endif; ?>
+                    </p>
                 </div>
-                <form action="/Cycsa/publico/cotizaciones/enviar" method="POST" style="margin: 0;" onsubmit="return confirm('¿Deseas volver a enviar el correo al cliente?');">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                    <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
-                    <button type="submit" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-arrows-rotate"></i> Re-enviar Correo</button>
-                </form>
+                <?php if ($tieneEmail): ?>
+                    <form action="/Cycsa/publico/cotizaciones/enviar" method="POST" style="margin: 0;" onsubmit="return confirm('¿Deseas volver a enviar el correo al cliente?');">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
+                        <button type="submit" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-arrows-rotate"></i> Re-enviar Correo</button>
+                    </form>
+                <?php endif; ?>
             </div>
             
             <?php if ($cotizacion['estado'] == 'Enviada al Cliente'): ?>
@@ -297,113 +296,19 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                             <button type="button" id="btn-admin-cancelar" onclick="cancelarRechazoAdmin()" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; display: none;">Cancelar</button>
                         </div>
 
-                        <!-- MODAL DE CONFIRMACIÓN Y PAGO ADMINISTRATIVO -->
+                        <!-- MODAL DE CONFIRMACIÓN ADMINISTRATIVO -->
                         <div id="modalAdminAprobar" class="modal-premium">
-                            <div class="modal-premium-content" style="width: 480px;">
+                            <div class="modal-premium-content" style="width: 450px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                                    <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;">Aprobar en nombre del Cliente</h3>
+                                    <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;">Confirmar Aprobación</h3>
                                     <button type="button" onclick="cerrarAdminAprobarModal()" class="btn-cerrar">&times;</button>
                                 </div>
                                 
-                                <p style="color: #64748b; font-size: 13px; margin-bottom: 15px;">Seleccione el esquema y método de pago acordado para esta cotización:</p>
+                                <p style="color: #64748b; font-size: 13.5px; margin-bottom: 25px;">¿Está seguro de que desea aprobar esta cotización en nombre del cliente? Al confirmar, se creará la Orden de Servicio automáticamente y comenzará el flujo operativo en el laboratorio.</p>
                                 
-                                <!-- ESQUEMA DE PAGO SELECTION -->
-                                <div style="text-align: left; margin-bottom: 15px;">
-                                    <label style="font-weight: 700; font-size: 13px; color: #334155; display: block; margin-bottom: 8px;">Esquema de Facturación / Pago:</label>
-                                    <div class="scheme-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                                        <label class="admin-scheme-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                            <input type="radio" name="porcentaje_pago_inmediato" value="100" checked onclick="actualizarEsquemaPagoAdmin(100)" style="display: none;">
-                                            <div style="font-weight: 700; font-size: 14px; color: #1e293b;">100% Contado</div>
-                                            <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Pago Inmediato</div>
-                                        </label>
-                                        <label class="admin-scheme-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                            <input type="radio" name="porcentaje_pago_inmediato" value="50" onclick="actualizarEsquemaPagoAdmin(50)" style="display: none;">
-                                            <div style="font-weight: 700; font-size: 14px; color: #1e293b;">50% / 50%</div>
-                                            <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Anticipo + Crédito</div>
-                                        </label>
-                                        <label class="admin-scheme-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                            <input type="radio" name="porcentaje_pago_inmediato" value="0" onclick="actualizarEsquemaPagoAdmin(0)" style="display: none;">
-                                            <div style="font-weight: 700; font-size: 14px; color: #1e293b;">100% Crédito</div>
-                                            <div style="font-size: 10px; color: #64748b; margin-top: 2px;">CxC a cobrar</div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- MONTOS DETALLADOS RESUMEN -->
-                                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 13px; text-align: left; margin-bottom: 15px;">
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                        <span style="color: #64748b; font-weight: 500;">Monto Pago Inmediato:</span>
-                                        <strong id="admin_lbl_monto_pago_inmediato" style="color: #0f172a;">C$ 0.00</strong>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between;">
-                                        <span style="color: #64748b; font-weight: 500;">Monto a Crédito (CxC):</span>
-                                        <strong id="admin_lbl_monto_credito" style="color: #2563eb;">C$ 0.00</strong>
-                                    </div>
-                                    <input type="hidden" name="monto_pago_inmediato" id="admin_val_monto_pago_inmediato" value="0.00">
-                                    <input type="hidden" name="monto_credito" id="admin_val_monto_credito" value="0.00">
-                                </div>
-
-                                <!-- SECCIÓN DE MÉTODO DE PAGO INMEDIATO (Solo si porcentaje > 0) -->
-                                <div id="admin-immediate-payment-section" style="text-align: left; margin-bottom: 15px;">
-                                    <label style="font-weight: 700; font-size: 13px; color: #334155; display: block; margin-bottom: 8px;">Método de Pago Inmediato:</label>
-                                    <div class="payment-methods-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                                        <label class="admin-payment-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 12px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                            <input type="radio" name="metodo_pago" value="Efectivo" checked onclick="toggleAdminPaymentFields('Efectivo')" style="display: none;">
-                                            <div style="font-size: 20px; margin-bottom: 5px;">💵</div>
-                                            <div style="font-weight: 700; font-size: 13px; color: #1e293b;">Efectivo</div>
-                                            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Caja Chica</div>
-                                        </label>
-                                        <label class="admin-payment-card" style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 12px; cursor: pointer; text-align: center; display: block; transition: all 0.2s; background: white;">
-                                            <input type="radio" name="metodo_pago" value="Banco" onclick="toggleAdminPaymentFields('Banco')" style="display: none;">
-                                            <div style="font-size: 20px; margin-bottom: 5px;">🏦</div>
-                                            <div style="font-weight: 700; font-size: 13px; color: #1e293b;">Banco</div>
-                                            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Transferencia</div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- EFECTIVO RECIBIDO Y CAMBIO (Solo si método pago es Efectivo) -->
-                                <div id="admin-cash-payment-fields" style="text-align: left; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                        <div class="form-group" style="margin-bottom: 0;">
-                                            <label style="font-weight: 600; font-size: 12px; color: #166534; display: block; margin-bottom: 4px;">Recibido (Con cuánto paga):</label>
-                                            <input type="number" name="efectivo_recibido" id="admin_efectivo_recibido" step="0.01" min="0" placeholder="0.00" oninput="calcularVueltoAdmin()" class="form-control" style="width:100%; box-sizing:border-box;">
-                                        </div>
-                                        <div class="form-group" style="margin-bottom: 0;">
-                                            <label style="font-weight: 600; font-size: 12px; color: #166534; display: block; margin-bottom: 4px;">Vuelto (Cambio):</label>
-                                            <input type="number" name="efectivo_vuelto" id="admin_efectivo_vuelto" readonly placeholder="0.00" class="form-control" style="width:100%; box-sizing:border-box; background: #f8fafc; color: #64748b;">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- BANCO DETALLES (Solo si método pago es Banco) -->
-                                <div id="admin-bank-fields" style="display: none; text-align: left; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                                    <div class="form-group" style="margin-bottom: 12px;">
-                                        <label style="font-weight: 600; font-size: 12px; color: #334155; display: block; margin-bottom: 4px;">Depositar en Cuenta Bancaria:</label>
-                                        <select name="id_banco_cuenta" id="admin_id_banco_cuenta" class="form-control" style="width:100%; box-sizing:border-box; background-color: white;">
-                                            <option value="">-- Seleccionar Banco --</option>
-                                            <?php if (isset($bancos)): foreach ($bancos as $b): ?>
-                                                <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['banco_nombre'] . ' - Cta: ' . $b['numero_cuenta'] . ' (' . $b['moneda'] . ')', ENT_QUOTES, 'UTF-8') ?></option>
-                                            <?php endforeach; endif; ?>
-                                        </select>
-                                    </div>
-                                    <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-weight: 600; font-size: 12px; color: #334155; display: block; margin-bottom: 4px;">N° de Transferencia / Voucher:</label>
-                                        <input type="text" name="referencia_pago" id="admin_referencia_pago" placeholder="Ej: Voucher, Referencia" class="form-control" style="width:100%; box-sizing:border-box;">
-                                    </div>
-                                </div>
-
-                                <!-- CRÉDITO CONDICIONES (Solo si monto_credito > 0) -->
-                                <div id="admin-credit-payment-fields" style="display: none; text-align: left; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                                    <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-weight: 600; font-size: 12px; color: #1e40af; display: block; margin-bottom: 4px;">Plazo del Crédito (Días de vencimiento):</label>
-                                        <input type="number" name="dias_credito" id="admin_dias_credito" value="30" min="1" max="365" class="form-control" style="width:100%; box-sizing:border-box;">
-                                    </div>
-                                </div>
-
                                 <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
                                     <button type="button" onclick="cerrarAdminAprobarModal()" class="form-control" style="cursor: pointer; background: #fff; border: 1px solid #cbd5e1; font-weight: 600; color: #64748b; width: auto; padding: 8px 16px; margin: 0;">Cancelar</button>
-                                    <button type="button" onclick="enviarAprobacionAdmin()" class="form-control" style="cursor: pointer; background: #10b981; border: 1px solid #10b981; color: white; font-weight: 600; width: auto; padding: 8px 20px; margin: 0;">Confirmar y Registrar</button>
+                                    <button type="button" onclick="enviarAprobacionAdminDirecta()" class="form-control" style="cursor: pointer; background: #10b981; border: 1px solid #10b981; color: white; font-weight: 600; width: auto; padding: 8px 20px; margin: 0;">Confirmar y Aprobar</button>
                                 </div>
                             </div>
                         </div>
@@ -622,167 +527,15 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         document.getElementById('btn-admin-cancelar').style.display = 'none';
     }
 
-    const COTIZACION_TOTAL = <?= (float)$cotizacion['total'] ?>;
-
-    function toggleAdminPaymentFields(method) {
-        const cashSec = document.getElementById('admin-cash-payment-fields');
-        const bankSec = document.getElementById('admin-bank-fields');
-        const select = document.getElementById('admin_id_banco_cuenta');
-        const input = document.getElementById('admin_referencia_pago');
-        
-        const valPago = parseFloat(document.getElementById('admin_val_monto_pago_inmediato').value);
-        
-        if (valPago > 0 && method === 'Banco') {
-            bankSec.style.display = 'block';
-            cashSec.style.display = 'none';
-            select.required = true;
-            input.required = true;
-        } else if (valPago > 0 && method === 'Efectivo') {
-            bankSec.style.display = 'none';
-            cashSec.style.display = 'block';
-            select.required = false;
-            input.required = false;
-        } else {
-            bankSec.style.display = 'none';
-            cashSec.style.display = 'none';
-            select.required = false;
-            input.required = false;
-        }
-
-        // Estilizar tarjetas
-        const paymentCards = document.querySelectorAll('.admin-payment-card');
-        paymentCards.forEach(card => {
-            const radio = card.querySelector('input[type="radio"]');
-            if (radio && radio.value === method) {
-                radio.checked = true;
-                card.style.borderColor = 'var(--cycsa-azul)';
-                card.style.backgroundColor = '#f1f5f9';
-            } else {
-                card.style.borderColor = '#cbd5e1';
-                card.style.backgroundColor = '#ffffff';
-            }
-        });
-        
-        calcularVueltoAdmin();
-    }
-
     function abrirAdminAprobarModal() {
         document.getElementById('modalAdminAprobar').style.display = 'block';
-        actualizarEsquemaPagoAdmin(100);
     }
 
     function cerrarAdminAprobarModal() {
         document.getElementById('modalAdminAprobar').style.display = 'none';
     }
 
-    function actualizarEsquemaPagoAdmin(porcentaje) {
-        const valPago = (COTIZACION_TOTAL * (porcentaje / 100)).toFixed(2);
-        const valCredito = (COTIZACION_TOTAL - valPago).toFixed(2);
-        
-        document.getElementById('admin_val_monto_pago_inmediato').value = valPago;
-        document.getElementById('admin_val_monto_credito').value = valCredito;
-        
-        document.getElementById('admin_lbl_monto_pago_inmediato').innerText = 'C$ ' + Number(valPago).toLocaleString('es-NI', {minimumFractionDigits: 2});
-        document.getElementById('admin_lbl_monto_credito').innerText = 'C$ ' + Number(valCredito).toLocaleString('es-NI', {minimumFractionDigits: 2});
-        
-        const immediateSec = document.getElementById('admin-immediate-payment-section');
-        const cashSec = document.getElementById('admin-cash-payment-fields');
-        const bankSec = document.getElementById('admin-bank-fields');
-        const creditSec = document.getElementById('admin-credit-payment-fields');
-        
-        if (porcentaje > 0) {
-            immediateSec.style.display = 'block';
-            const selectedRadio = document.querySelector('input[name="metodo_pago"]:checked');
-            const activeMethod = selectedRadio ? selectedRadio.value : 'Efectivo';
-            toggleAdminPaymentFields(activeMethod);
-        } else {
-            immediateSec.style.display = 'none';
-            cashSec.style.display = 'none';
-            bankSec.style.display = 'none';
-        }
-        
-        if (parseFloat(valCredito) > 0) {
-            creditSec.style.display = 'block';
-        } else {
-            creditSec.style.display = 'none';
-        }
-
-        // Estilizar esquema
-        const schemeCards = document.querySelectorAll('.admin-scheme-card');
-        schemeCards.forEach(card => {
-            const radio = card.querySelector('input[type="radio"]');
-            if (radio && radio.value === String(porcentaje)) {
-                radio.checked = true;
-                card.style.borderColor = 'var(--cycsa-azul)';
-                card.style.backgroundColor = '#f1f5f9';
-            } else {
-                card.style.borderColor = '#cbd5e1';
-                card.style.backgroundColor = '#ffffff';
-            }
-        });
-        
-        calcularVueltoAdmin();
-    }
-
-    function calcularVueltoAdmin() {
-        const valPago = parseFloat(document.getElementById('admin_val_monto_pago_inmediato').value);
-        const inputRecibido = document.getElementById('admin_efectivo_recibido');
-        const inputVuelto = document.getElementById('admin_efectivo_vuelto');
-        
-        if (isNaN(valPago) || valPago <= 0) {
-            inputRecibido.value = '';
-            inputVuelto.value = '';
-            return;
-        }
-        
-        const recibido = parseFloat(inputRecibido.value);
-        if (isNaN(recibido) || recibido < valPago) {
-            inputVuelto.value = '0.00';
-        } else {
-            inputVuelto.value = (recibido - valPago).toFixed(2);
-        }
-    }
-
-    function enviarAprobacionAdmin() {
-        const valPago = parseFloat(document.getElementById('admin_val_monto_pago_inmediato').value);
-        if (valPago > 0) {
-            const activeRadio = document.querySelector('input[name="metodo_pago"]:checked');
-            const method = activeRadio ? activeRadio.value : 'Efectivo';
-            
-            if (method === 'Banco') {
-                const select = document.getElementById('admin_id_banco_cuenta');
-                const input = document.getElementById('admin_referencia_pago');
-                if (select.value === '') {
-                    alert('Por favor, seleccione el banco de destino.');
-                    select.focus();
-                    return;
-                }
-                if (input.value.trim() === '') {
-                    alert('Por favor, ingrese el número de referencia o voucher.');
-                    input.focus();
-                    return;
-                }
-            } else if (method === 'Efectivo') {
-                const recibido = parseFloat(document.getElementById('admin_efectivo_recibido').value);
-                if (isNaN(recibido) || recibido < valPago) {
-                    const valPagoFormat = Number(valPago).toLocaleString('es-NI', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    alert('Por favor, ingrese un monto recibido en efectivo válido e igual o mayor al total del pago inmediato (C$ ' + valPagoFormat + ').');
-                    document.getElementById('admin_efectivo_recibido').focus();
-                    return;
-                }
-            }
-        }
-        
-        const valCredito = parseFloat(document.getElementById('admin_val_monto_credito').value);
-        if (valCredito > 0) {
-            const dias = parseInt(document.getElementById('admin_dias_credito').value);
-            if (isNaN(dias) || dias < 1) {
-                alert('Por favor, ingrese un plazo de crédito válido.');
-                document.getElementById('admin_dias_credito').focus();
-                return;
-            }
-        }
-
+    function enviarAprobacionAdminDirecta() {
         cerrarAdminAprobarModal();
         document.getElementById('admin-accion').value = 'aceptar';
         document.getElementById('form-admin-decision').submit();
@@ -869,176 +622,6 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         const modalAdminAprobar = document.getElementById('modalAdminAprobar');
         if (modalAdminAprobar && e.target === modalAdminAprobar) {
             cerrarAdminAprobarModal();
-        }
-    });
-</script>
-
-<!-- Modal de Captura de Resultados de Ensayo -->
-<div id="modalResultadosEnsayo" class="modal-premium" style="display: none;">
-    <div class="modal-premium-content" style="width: 90%; max-width: 950px; margin: 5% auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
-            <h3 id="modal-titulo-ensayo" style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;">Capturar Resultados de Ensayo</h3>
-            <button type="button" onclick="cerrarModalResultados()" class="btn-cerrar">&times;</button>
-        </div>
-        
-        <form id="formResultadosEnsayo" method="POST" action="/Cycsa/publico/cotizaciones/guardar-resultados-item" onsubmit="prepararEnvioResultados(event)">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-            <input type="hidden" name="id_detalle" id="modal-id-detalle" value="">
-            <input type="hidden" name="id_cotizacion" value="<?= $cotizacion['id'] ?>">
-            <input type="hidden" name="resultados_json" id="modal-resultados-json" value="">
-            
-            <p style="color: #64748b; font-size: 13px; margin-bottom: 15px;">Ingrese los valores medidos para cada una de las columnas del reporte de laboratorio. Deje las filas vacías si no requiere usarlas.</p>
-            
-            <div style="overflow-x: auto; width: 100%; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 20px;">
-                <table class="tabla-visual" style="margin-bottom: 0;" id="tabla-captura-resultados">
-                    <thead id="tabla-captura-header">
-                        <!-- Columnas dinámicas -->
-                    </thead>
-                    <tbody id="tabla-captura-body">
-                        <!-- Filas de inputs dinámicos -->
-                    </tbody>
-                </table>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" onclick="cerrarModalResultados()" class="form-control" style="cursor: pointer; background: #fff; border: 1px solid #cbd5e1; font-weight: 600; color: #64748b; width: auto; padding: 10px 20px;">Cancelar</button>
-                <button type="submit" class="form-control" style="cursor: pointer; background: #10b981; border: 1px solid #10b981; color: white; font-weight: 600; width: auto; padding: 10px 24px;">Guardar Resultados</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-    const FORMATOS_SCHEMA = <?= $formatosSchemaJson ?>;
-    const modalResultados = document.getElementById('modalResultadosEnsayo');
-    let columnasActuales = [];
-
-    function abrirModalResultados(idDetalle, nombreEnsayo, archivoMarkdown, resultadosJson) {
-        document.getElementById('modal-id-detalle').value = idDetalle;
-        document.getElementById('modal-titulo-ensayo').innerText = 'Capturar Resultados: ' + nombreEnsayo;
-        
-        const schema = FORMATOS_SCHEMA[archivoMarkdown] || { columns: [] };
-        columnasActuales = schema.columns;
-        
-        if (columnasActuales.length === 0) {
-            columnasActuales = ["Código laboratorio", "Nombre muestra", "Resultado"];
-        }
-
-        // Render header
-        const headerRow = document.createElement('tr');
-        columnasActuales.forEach(col => {
-            const th = document.createElement('th');
-            th.innerText = col;
-            th.style.padding = '8px';
-            th.style.fontSize = '11px';
-            th.style.backgroundColor = '#f8fafc';
-            th.style.color = '#475569';
-            th.style.fontWeight = '700';
-            headerRow.appendChild(th);
-        });
-        const headerContainer = document.getElementById('tabla-captura-header');
-        headerContainer.innerHTML = '';
-        headerContainer.appendChild(headerRow);
-
-        // Parse existing rows or generate 5 empty rows
-        let filasExistentes = [];
-        try {
-            if (typeof resultadosJson === 'string') {
-                filasExistentes = JSON.parse(resultadosJson);
-            } else if (Array.isArray(resultadosJson)) {
-                filasExistentes = resultadosJson;
-            }
-        } catch (e) {
-            filasExistentes = [];
-        }
-
-        if (!Array.isArray(filasExistentes)) filasExistentes = [];
-
-        // Build 5 rows of inputs
-        const bodyContainer = document.getElementById('tabla-captura-body');
-        bodyContainer.innerHTML = '';
-        
-        for (let r = 0; r < 5; r++) {
-            const rowData = filasExistentes[r] || {};
-            const tr = document.createElement('tr');
-            
-            columnasActuales.forEach(col => {
-                const td = document.createElement('td');
-                td.style.padding = '4px 6px';
-                
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'form-control';
-                input.style.width = '100%';
-                input.style.padding = '6px 10px';
-                input.style.fontSize = '12px';
-                input.style.boxSizing = 'border-box';
-                input.style.borderRadius = '4px';
-                input.style.border = '1px solid #cbd5e1';
-                input.value = rowData[col] || '';
-                input.dataset.col = col;
-                
-                td.appendChild(input);
-                tr.appendChild(td);
-            });
-            bodyContainer.appendChild(tr);
-        }
-
-        modalResultados.style.display = 'block';
-    }
-
-    function cerrarModalResultados() {
-        modalResultados.style.display = 'none';
-    }
-
-    function prepararEnvioResultados(event) {
-        const rows = [];
-        const trs = document.getElementById('tabla-captura-body').querySelectorAll('tr');
-        
-        trs.forEach(tr => {
-            const inputs = tr.querySelectorAll('input');
-            let hasValue = false;
-            const rowObj = {};
-            
-            inputs.forEach(input => {
-                const val = input.value.trim();
-                const col = input.dataset.col;
-                rowObj[col] = val;
-                if (val !== '') {
-                    hasValue = true;
-                }
-            });
-            
-            if (hasValue) {
-                rows.push(rowObj);
-            }
-        });
-
-        document.getElementById('modal-resultados-json').value = JSON.stringify(rows);
-    }
-
-    function inicializarBotonesResultados() {
-        const capturarButtons = document.querySelectorAll('.btn-capturar-resultados');
-        capturarButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const idDetalle = this.dataset.id;
-                const nombreEnsayo = this.dataset.ensayo;
-                const archivoMarkdown = this.dataset.markdown;
-                const resultadosJson = this.dataset.resultados;
-                abrirModalResultados(idDetalle, nombreEnsayo, archivoMarkdown, resultadosJson);
-            });
-        });
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', inicializarBotonesResultados);
-    } else {
-        inicializarBotonesResultados();
-    }
-
-    window.addEventListener('click', (e) => {
-        if (e.target === modalResultados) {
-            cerrarModalResultados();
         }
     });
 </script>

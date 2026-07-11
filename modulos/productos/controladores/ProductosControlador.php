@@ -29,12 +29,15 @@ class ProductosControlador extends ControladorBase {
         $busqueda = $_GET['q'] ?? '';
         $categoria = $_GET['cat'] ?? '';
 
+        $bitacora_logs = obtenerBitacoraModulo('productos');
+
         $this->renderizar('productos/vistas/index', [
             'titulo' => 'Catálogo de Ensayos y Servicios - Cycsa',
             'productos' => $modelo->obtenerTodos($busqueda, $categoria),
             'categorias' => $modelo->obtenerCategorias(),
             'busqueda' => $busqueda,
-            'categoria_actual' => $categoria
+            'categoria_actual' => $categoria,
+            'bitacora_logs' => $bitacora_logs
         ]);
     }
 

@@ -115,6 +115,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     }
 
     $fecha = date('d/m/Y', strtotime($cotizacion['fecha_creacion']));
+    $simboloMoneda = ((int)($cotizacion['tipo_moneda'] ?? 1) === 2) ? '$' : 'C$';
     $subtotal = number_format($cotizacion['subtotal'], 2, '.', ',');
     $impuesto = number_format($cotizacion['impuesto'], 2, '.', ',');
     $total = number_format($cotizacion['total'], 2, '.', ',');
@@ -126,7 +127,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         $descuentoHtml = "
         <tr>
             <td style=\"text-align: right; color: #dc2626; padding: 4px 8px; font-size: 11px;\">Descuento:</td>
-            <td style=\"text-align: right; font-weight: bold; color: #dc2626; padding: 4px 8px; font-size: 11px;\">-C$ {$descuentoVal}</td>
+            <td style=\"text-align: right; font-weight: bold; color: #dc2626; padding: 4px 8px; font-size: 11px;\">-{$simboloMoneda} {$descuentoVal}</td>
         </tr>";
     }
 
@@ -162,8 +163,8 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
             <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10px; font-family: monospace; text-align: center; color: #334155; font-weight: bold;\">{$codigoServicio}</td>
             <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px;\">{$desc}</td>
             <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px; text-align: right;\">{$cant}</td>
-            <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px; text-align: right;\">C$ {$precio}</td>
-            <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px; text-align: right; font-weight: bold;\">C$ {$sub}</td>
+            <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px; text-align: right;\">{$simboloMoneda} {$precio}</td>
+            <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px; text-align: right; font-weight: bold;\">{$simboloMoneda} {$sub}</td>
         </tr>";
     }
 
@@ -331,16 +332,16 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
                     <table class=\"totals-table\" style=\"width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;\">
                         <tr>
                             <td style=\"text-align: right; color: #64748b; padding: 4px 8px; font-size: 11px;\">Subtotal:</td>
-                            <td style=\"text-align: right; font-weight: bold; width: 110px; padding: 4px 8px; font-size: 11px;\">C$ {$subtotal}</td>
+                            <td style=\"text-align: right; font-weight: bold; width: 110px; padding: 4px 8px; font-size: 11px;\">{$simboloMoneda} {$subtotal}</td>
                         </tr>
                         {$descuentoHtml}
                         <tr>
                             <td style=\"text-align: right; color: #64748b; padding: 4px 8px; font-size: 11px;\">{$ivaLabel}</td>
-                            <td style=\"text-align: right; font-weight: bold; padding: 4px 8px; font-size: 11px;\">C$ {$impuesto}</td>
+                            <td style=\"text-align: right; font-weight: bold; padding: 4px 8px; font-size: 11px;\">{$simboloMoneda} {$impuesto}</td>
                         </tr>
                         <tr style=\"background: #e6eefc; border-top: 1px solid #cbd5e1;\">
                             <td style=\"text-align: right; color: #103487; font-weight: bold; padding: 6px 8px;\">TOTAL:</td>
-                            <td style=\"text-align: right; color: #103487; font-weight: bold; padding: 6px 8px;\">C$ {$total}</td>
+                            <td style=\"text-align: right; color: #103487; font-weight: bold; padding: 6px 8px;\">{$simboloMoneda} {$total}</td>
                         </tr>
                     </table>
                 </td>
@@ -471,9 +472,27 @@ function registrarBitacora(string $modulo, string $accion, string $descripcion, 
 }
 
 /**
+ * Obtiene los registros de bitácora filtrados por módulo.
+ */
+function obtenerBitacoraModulo(string $modulo, int $limite = 50): array {
+    try {
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $sql = "SELECT * FROM bitacora WHERE modulo = :modulo ORDER BY id DESC LIMIT :limite";
+        $stmt = $db->prepare($sql);
+        $stmt->bindValue(':modulo', $modulo, \PDO::PARAM_STR);
+        $stmt->bindValue(':limite', $limite, \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    } catch (\Exception $e) {
+        error_log('Error al obtener bitácora del módulo: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
  * Genera el reporte de ensayo PDF para un producto/ensayo específico usando Dompdf.
  */
-function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $columnas, array $filas): string {
+function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $columnas, array $filas, string $codigoReporte = '', $version = null): string {
     $options = new Options();
     $options->set('isHtml5ParserEnabled', true);
     $options->set('isRemoteEnabled', false);
@@ -581,6 +600,7 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
                 <td style=\"width: 40%; text-align: right; vertical-align: top;\">
                     <span style=\"font-size: 12px; font-weight: bold; color: #103487;\">" . strtoupper($nombreFormato) . "</span><br>
                     <span style=\"font-size: 11px; font-weight: bold; color: #1e293b; margin: 2px 0; display: block;\">{$codigoFormato}</span>
+                    " . (!empty($codigoReporte) ? "<span style=\"font-size: 10px; font-weight: bold; color: #ef4444; display: block; margin-top: 4px;\">Informe No: " . htmlspecialchars($codigoReporte, ENT_QUOTES, 'UTF-8') . "</span>" : "") . "
                 </td>
             </tr>
         </table>
@@ -1091,3 +1111,223 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
     return $dompdf->output();
 }
 
+/**
+ * Genera el archivo PDF de la Hoja de Solicitud de Servicio CYCSA-RT-FM-13 usando Dompdf.
+ */
+function generarHojaSolicitudPDF(array $hoja, array $os): string {
+    $options = new \Dompdf\Options();
+    $options->set('isHtml5ParserEnabled', true);
+    $options->set('isRemoteEnabled', false);
+    $dompdf = new \Dompdf\Dompdf($options);
+
+    $logoPath = __DIR__ . '/../publico/img/logo_cycsa.jpg';
+    $logoBase64 = '';
+    if (file_exists($logoPath)) {
+        $logoBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath));
+    }
+
+    $logoHtml = '';
+    if (!empty($logoBase64)) {
+        $logoHtml = '<img src="' . $logoBase64 . '" style="height: 38px; float: left; margin-right: 15px;">';
+    } else {
+        $logoHtml = '<span style="font-size: 24px; font-weight: bold; color: #103487; float: left; margin-right: 15px;">CYCSA</span>';
+    }
+
+    $identificacionMuestras = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
+    
+    $identRows = '';
+    foreach ($identificacionMuestras as $m) {
+        $identRows .= '
+        <tr>
+            <td style="border: 1px solid #cbd5e1; padding: 6px; font-size: 11px;">' . htmlspecialchars($m['nombre_muestra'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+            <td style="border: 1px solid #cbd5e1; padding: 6px; font-size: 11px;">' . htmlspecialchars($m['descripcion'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+            <td style="border: 1px solid #cbd5e1; padding: 6px; font-size: 11px;">' . htmlspecialchars($m['info_importante'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+        </tr>';
+    }
+    if (empty($identRows)) {
+        $identRows = '<tr><td colspan="3" style="border: 1px solid #cbd5e1; padding: 10px; font-size: 11px; text-align: center; color: #64748b;">No se especificaron especímenes individuales</td></tr>';
+    }
+
+    // Nature mapping
+    $naturalezaChecked = explode(',', $hoja['naturaleza_muestra'] ?? '');
+    $naturalezaHtml = '';
+    foreach (['Concreto', 'Bloques', 'Suelo', 'Adoquines', 'Agregados', 'Otros'] as $n) {
+        $checked = in_array($n, $naturalezaChecked) ? '[X]' : '[ ]';
+        $naturalezaHtml .= '<span style="margin-right: 15px; font-size: 11px;"><strong>' . $checked . '</strong> ' . $n . '</span>';
+    }
+
+    // Parameters lists
+    $concretoParams = [];
+    if (!empty($hoja['req_resistencia_concreto'])) $concretoParams[] = 'Resistencia de conc';
+    if (!empty($hoja['req_resistencia_adoquin'])) $concretoParams[] = 'Resistencia de adoquin';
+    if (!empty($hoja['req_resistencia_bloques'])) $concretoParams[] = 'Resistencia bloques';
+    if (!empty($hoja['req_otros_concreto'])) $concretoParams[] = 'Otros: ' . htmlspecialchars($hoja['req_otros_concreto'], ENT_QUOTES, 'UTF-8');
+    
+    $suelosParams = [];
+    if (!empty($hoja['req_granulometria'])) $suelosParams[] = 'Granulometría';
+    if (!empty($hoja['req_limites_atterberg'])) $suelosParams[] = 'Límites de atterberg';
+    if (!empty($hoja['req_humedad'])) $suelosParams[] = 'Humedad';
+    if (!empty($hoja['req_resistencia_corte'])) $suelosParams[] = 'Resistencia al corte';
+    if (!empty($hoja['req_clasificacion_sucs_hr'])) $suelosParams[] = 'Clasificación SUCS/HR';
+    if (!empty($hoja['req_proctor_sm'])) $suelosParams[] = 'PROCTOR S/M';
+    if (!empty($hoja['req_infiltracion'])) $suelosParams[] = 'Infiltración';
+    if (!empty($hoja['req_cbr'])) $suelosParams[] = 'CBR';
+    if (!empty($hoja['req_densidad'])) $suelosParams[] = 'Densidad';
+    if (!empty($hoja['req_otros_suelo'])) $suelosParams[] = 'Otros: ' . htmlspecialchars($hoja['req_otros_suelo'], ENT_QUOTES, 'UTF-8');
+
+    $otrosParams = [];
+    if (!empty($hoja['req_otros_materiales'])) $otrosParams[] = 'Otro';
+    if (!empty($hoja['descripcion_otros_analisis'])) $otrosParams[] = 'Análisis necesario: ' . htmlspecialchars($hoja['descripcion_otros_analisis'], ENT_QUOTES, 'UTF-8');
+
+    $paramsList = [];
+    if (!empty($concretoParams)) $paramsList[] = '<strong>Muestra de Concreto, Adoquines, Bloques:</strong> ' . implode(', ', $concretoParams);
+    if (!empty($suelosParams)) $paramsList[] = '<strong>Muestras de Suelo:</strong> ' . implode(', ', $suelosParams);
+    if (!empty($otrosParams)) $paramsList[] = '<strong>Otros Materiales:</strong> ' . implode(', ', $otrosParams);
+
+    $paramsText = '';
+    foreach ($paramsList as $pl) {
+        $paramsText .= '<div style="margin-bottom: 5px; font-size: 11px;">' . $pl . '</div>';
+    }
+    if (empty($paramsText)) {
+        $paramsText = '<div style="font-size: 11px; color: #64748b; font-style: italic;">Ninguno seleccionado</div>';
+    }
+
+    $fechaLlegada = !empty($hoja['fecha_hora_llegada_laboratorio']) ? date('d/m/Y H:i', strtotime($hoja['fecha_hora_llegada_laboratorio'])) : '—';
+    $fechaToma = !empty($hoja['fecha_hora_toma_muestra']) ? date('d/m/Y H:i', strtotime($hoja['fecha_hora_toma_muestra'])) : '—';
+
+    $html = '
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body { font-family: "Helvetica", "Arial", sans-serif; color: #1e293b; margin: 0; padding: 0.5cm; }
+            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .header-table td { vertical-align: middle; }
+            .title-doc { font-size: 15px; font-weight: bold; color: #103487; text-align: right; }
+            .code-doc { font-size: 11px; color: #64748b; text-align: right; margin-top: 3px; font-weight: bold; }
+            .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #103487; background: #e6eefc; padding: 6px 10px; margin-top: 15px; margin-bottom: 8px; border-left: 3px solid #103487; }
+            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            .info-table td { padding: 4px 6px; font-size: 11px; }
+            .info-label { font-weight: bold; color: #475569; width: 160px; }
+            .info-value { color: #0f172a; border-bottom: 1px solid #cbd5e1; }
+            .spec-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .spec-table th { background: #f1f5f9; color: #475569; font-weight: bold; padding: 6px; font-size: 10px; text-transform: uppercase; border: 1px solid #cbd5e1; text-align: left; }
+            .footer-table { width: 100%; border-collapse: collapse; margin-top: 35px; }
+            .signature-box { border-top: 1px solid #cbd5e1; width: 80%; margin: 0 auto; text-align: center; padding-top: 5px; font-size: 10px; }
+        </style>
+    </head>
+    <body>
+        <table class="header-table">
+            <tr>
+                <td>
+                    ' . $logoHtml . '
+                    <div style="font-size: 14px; font-weight: bold; color: #1e293b; margin-top: 2px;">CYCSA S.A.</div>
+                    <div style="font-size: 8px; color: #64748b; text-transform: uppercase;">Laboratorio de Control de Calidad</div>
+                </td>
+                <td style="text-align: right;">
+                    <div class="title-doc">HOJA DE SOLICITUD DE SERVICIO</div>
+                    <div class="code-doc">Código: ' . htmlspecialchars($hoja['codigo_documento'] ?? 'CYCSA-RT-FM-13', ENT_QUOTES, 'UTF-8') . '</div>
+                    <div style="font-size: 11px; font-weight: bold; color: #475569; margin-top: 5px;">Orden de Servicio: ' . htmlspecialchars($os['codigo_os'], ENT_QUOTES, 'UTF-8') . '</div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="section-title">1. Control Interno y Llegada</div>
+        <table class="info-table">
+            <tr>
+                <td class="info-label">Fecha/Hora Llegada Lab:</td>
+                <td class="info-value">' . $fechaLlegada . '</td>
+            </tr>
+        </table>
+
+        <div class="section-title">2. Datos del Cliente (Solicitante)</div>
+        <table class="info-table">
+            <tr>
+                <td class="info-label">Nombre Empresa/Cliente:</td>
+                <td class="info-value" colspan="3">' . htmlspecialchars($hoja['nombre_empresa_o_cliente'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+            </tr>
+            <tr>
+                <td class="info-label">Dirección Proyecto:</td>
+                <td class="info-value" colspan="3">' . htmlspecialchars($hoja['direccion_proyecto'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+            </tr>
+            <tr>
+                <td class="info-label">Teléfono:</td>
+                <td class="info-value">' . htmlspecialchars($hoja['telefono'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+                <td class="info-label" style="padding-left: 15px;">Correo Electrónico:</td>
+                <td class="info-value">' . htmlspecialchars($hoja['correo_electronico'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+            </tr>
+            <tr>
+                <td class="info-label">Entrega Muestra Por:</td>
+                <td class="info-value" colspan="3">' . htmlspecialchars($hoja['nombre_persona_entrega_muestra'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+            </tr>
+        </table>
+
+        <div class="section-title">3. Datos de la Muestra (Información de Origen)</div>
+        <div style="margin-bottom: 8px;">
+            <span style="font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Naturaleza de la Muestra:</span>
+            ' . $naturalezaHtml . '
+        </div>
+        <table class="info-table">
+            <tr>
+                <td class="info-label">Procedencia/Pto Muestreo:</td>
+                <td class="info-value" colspan="3">' . htmlspecialchars($hoja['procedencia_punto_muestreo'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+            </tr>
+            <tr>
+                <td class="info-label">Nombre Persona Toma Muestra:</td>
+                <td class="info-value">' . htmlspecialchars($hoja['nombre_persona_toma_muestra'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+                <td class="info-label" style="padding-left: 15px;">Fecha/Hora Toma Muestra:</td>
+                <td class="info-value">' . $fechaToma . '</td>
+            </tr>
+        </table>
+
+        <div class="section-title">4. Identificación Propia de la Muestra</div>
+        <table class="spec-table">
+            <thead>
+                <tr>
+                    <th style="width: 30%;">Nombre / Identificador</th>
+                    <th style="width: 40%;">Descripción Física</th>
+                    <th style="width: 30%;">Información Adicional / Novedades</th>
+                </tr>
+            </thead>
+            <tbody>
+                ' . $identRows . '
+            </tbody>
+        </table>
+
+        <div class="section-title">5. Parámetros de Ensayo Solicitados</div>
+        <div style="padding: 5px 8px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fafafb;">
+            ' . $paramsText . '
+        </div>
+
+        <div class="section-title">6. Análisis Adicionales y Observaciones</div>
+        <div style="font-size: 11px; margin-bottom: 10px; line-height: 1.4;">
+            <strong>Análisis Adicionales:</strong> ' . nl2br(htmlspecialchars($hoja['analisis_adicionales'] ?? 'Ninguno.', ENT_QUOTES, 'UTF-8')) . '
+        </div>
+        <div style="font-size: 11px; margin-bottom: 15px; line-height: 1.4;">
+            <strong>Observaciones Generales:</strong> ' . nl2br(htmlspecialchars($hoja['observaciones'] ?? 'Ninguna.', ENT_QUOTES, 'UTF-8')) . '
+        </div>
+
+        <table class="footer-table">
+            <tr>
+                <td style="width: 50%;">
+                    <div class="signature-box">
+                        <strong>' . ($hoja['firma_cliente'] ? 'Firmado' : 'Pendiente de Firma') . '</strong><br>
+                        Firma del Cliente
+                    </div>
+                </td>
+                <td style="width: 50%;">
+                    <div class="signature-box">
+                        <strong>' . htmlspecialchars($hoja['nombre_recibe_cycsa'] ?: 'Pendiente', ENT_QUOTES, 'UTF-8') . '</strong><br>
+                        Persona de CYCSA que Recibe la Muestra
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>';
+
+    $dompdf->loadHtml($html);
+    $dompdf->render();
+    return $dompdf->output();
+}

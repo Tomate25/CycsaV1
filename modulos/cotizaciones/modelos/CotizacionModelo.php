@@ -102,188 +102,38 @@ class CotizacionModelo extends ModeloBase {
         try {
             $this->db->beginTransaction();
 
-            // 1. Actualizar el estado de la cotización, incluyendo método de pago, banco y referencia
+            // 1. Actualizar el estado de la cotización
             $sql = "UPDATE cotizaciones 
                     SET estado = :estado, 
                         motivo_rechazo_cliente = :motivo, 
-                        metodo_pago = :metodo_pago,
-                        id_banco_cuenta = :id_banco_cuenta,
-                        referencia_pago = :referencia_pago,
-                        porcentaje_pago_inmediato = :porcentaje_pago_inmediato,
-                        monto_pago_inmediato = :monto_pago_inmediato,
-                        monto_credito = :monto_credito,
-                        efectivo_recibido = :efectivo_recibido,
-                        efectivo_vuelto = :efectivo_vuelto,
-                        dias_credito = :dias_credito,
                         fecha_actualizacion = NOW() 
                     WHERE id = :id";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 'estado' => $estado, 
                 'motivo' => $motivo, 
-                'metodo_pago' => $metodoPago,
-                'id_banco_cuenta' => $idBancoCuenta,
-                'referencia_pago' => $referenciaPago,
-                'porcentaje_pago_inmediato' => $porcentajePagoInmediato,
-                'monto_pago_inmediato' => $montoPagoInmediato,
-                'monto_credito' => $montoCredito,
-                'efectivo_recibido' => $efectivoRecibido,
-                'efectivo_vuelto' => $efectivoVuelto,
-                'dias_credito' => $diasCredito,
                 'id' => $id
             ]);
 
-            // 2. Si el estado es 'Aprobada por Cliente', procesar la integración financiera!
+            // 2. Si el estado es 'Aprobada por Cliente', crear Orden de Servicio automáticamente
             if ($estado === 'Aprobada por Cliente') {
-                // Obtener datos de la cotización y del cliente
-                $stmtCot = $this->db->prepare("
-                    SELECT c.*, cl.nombre_razon_social AS cliente_nombre 
-                    FROM cotizaciones c
-                    JOIN clientes cl ON c.id_cliente = cl.id
-                    WHERE c.id = :id
-                ");
-                $stmtCot->execute(['id' => $id]);
-                $cot = $stmtCot->fetch(PDO::FETCH_ASSOC);
+                // Verificar si ya existe una O/S para esta cotización
+                $stmtCheck = $this->db->prepare("SELECT id FROM ordenes_servicio WHERE id_cotizacion = :id_cot");
+                $stmtCheck->execute(['id_cot' => $id]);
+                if (!$stmtCheck->fetch()) {
+                    $anio = (int)date('Y');
+                    $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM ordenes_servicio WHERE YEAR(fecha_emision) = :anio");
+                    $stmtCount->execute(['anio' => $anio]);
+                    $consecutivo = (int)$stmtCount->fetchColumn() + 1;
+                    $codigoOS = sprintf("OS-%d-%04d", $anio, $consecutivo);
 
-                if ($cot) {
-                    $fechaHoy = date('Y-m-d');
-                    
-                    $contabilidadModelo = new \Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo();
-                    // Encontrar cuenta contable para cliente (CXC) por si se necesita
-                    $stmtF = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo LIKE '103%' LIMIT 1");
-                    $stmtF->execute();
-                    $cxcAccId = (int)($stmtF->fetchColumn() ?: 4);
-
-                    $bancoAccId = null;
-                    $txId = null;
-                    $cxcId = null;
-
-                    // A. Procesar la parte de pago inmediato (Efectivo o Banco) para registrar transacciones y saldos
-                    if ($montoPagoInmediato > 0.00) {
-                        $targetBancoId = ($metodoPago === 'Banco') ? $idBancoCuenta : 4; // 4 = Caja Principal
-                        $stmtBco = $this->db->prepare("SELECT * FROM bancos_cuentas WHERE id = :id");
-                        $stmtBco->execute(['id' => $targetBancoId]);
-                        $banco = $stmtBco->fetch(PDO::FETCH_ASSOC);
-                        
-                        if ($banco) {
-                            $bancoAccId = (int)$banco['id_cuenta_contable'];
-                            $nuevoSaldo = (float)$banco['saldo_actual'] + $montoPagoInmediato;
-                            
-                            // Actualizar el saldo actual del banco/caja
-                            $updBco = $this->db->prepare("UPDATE bancos_cuentas SET saldo_actual = :saldo WHERE id = :id");
-                            $updBco->execute(['saldo' => $nuevoSaldo, 'id' => $targetBancoId]);
-                            
-                            // Registrar la transacción en bancos_transacciones
-                            $insTx = $this->db->prepare("
-                                INSERT INTO bancos_transacciones (id_banco_cuenta, tipo_transaccion, numero_documento, beneficiario, monto, fecha, estado, descripcion)
-                                VALUES (:id_banco_cuenta, 'DEPOSITO', :numero_documento, :beneficiario, :monto, :fecha, 'Cobrado', :descripcion)
-                            ");
-                            $insTx->execute([
-                                'id_banco_cuenta' => $targetBancoId,
-                                'numero_documento' => ($metodoPago === 'Banco' && $referenciaPago) ? $referenciaPago : (($metodoPago === 'Banco' ? 'REF-' : 'EFEC-') . $cot['codigo']),
-                                'beneficiario' => $cot['cliente_nombre'],
-                                'monto' => $montoPagoInmediato,
-                                'fecha' => $fechaHoy,
-                                'descripcion' => 'Pago de Cotización ' . $cot['codigo']
-                            ]);
-                            $txId = (int)$this->db->lastInsertId();
-                        }
-                    }
-
-                    // B. Procesar la parte de crédito (si es mayor a 0)
-                    if ($montoCredito > 0.00) {
-                        $insCxc = $this->db->prepare("
-                            INSERT INTO cuentas_por_cobrar (id_cliente, id_cuenta_contable, factura_numero, monto, saldo, estado, fecha_emision, fecha_vencimiento, notas)
-                            VALUES (:id_cliente, :id_cuenta_contable, :factura_numero, :monto, :saldo, 'Pendiente', :fecha_emision, :fecha_vencimiento, :notes)
-                        ");
-                        $fechaVenc = date('Y-m-d', strtotime('+' . $diasCredito . ' days'));
-                        $insCxc->execute([
-                            'id_cliente' => $cot['id_cliente'],
-                            'id_cuenta_contable' => $cxcAccId,
-                            'factura_numero' => $cot['codigo'],
-                            'monto' => $montoCredito,
-                            'saldo' => $montoCredito,
-                            'fecha_emision' => $fechaHoy,
-                            'fecha_vencimiento' => $fechaVenc,
-                            'notes' => 'Saldo de crédito para Cotización ' . $cot['codigo']
-                        ]);
-                        $cxcId = (int)$this->db->lastInsertId();
-                    }
-
-                    // C. Registrar Asiento Contable Único y Balanceado de la Venta
-                    $lineasAsiento = [];
-                    
-                    // DEBITOS
-                    if ($montoPagoInmediato > 0.00 && $bancoAccId) {
-                        $lineasAsiento[] = [
-                            'id_cuenta_contable' => $bancoAccId,
-                            'debe' => $montoPagoInmediato,
-                            'haber' => 0.0
-                        ];
-                    }
-                    if ($montoCredito > 0.00) {
-                        $lineasAsiento[] = [
-                            'id_cuenta_contable' => $cxcAccId,
-                            'debe' => $montoCredito,
-                            'haber' => 0.0
-                        ];
-                    }
-                    
-                    // CREDITOS
-                    // Ingresos por Servicios de Ensayos (Cuenta 206)
-                    $netRevenue = (float)$cot['subtotal'] - (float)$cot['descuento'];
-                    $lineasAsiento[] = [
-                        'id_cuenta_contable' => 206,
-                        'debe' => 0.0,
-                        'haber' => $netRevenue
-                    ];
-                    
-                    // IVA por pagar (Cuenta 154) si no es exonerado y hay impuesto
-                    $ivaMonto = 0.00;
-                    if ((float)$cot['impuesto'] > 0.00 && !(int)$cot['exonerado']) {
-                        $ivaMonto = (float)$cot['impuesto'];
-                        $lineasAsiento[] = [
-                            'id_cuenta_contable' => 154,
-                            'debe' => 0.0,
-                            'haber' => $ivaMonto
-                        ];
-                    }
-                    
-                    // Validar cuadre exacto debido a redondeos
-                    $sumDebitos = $montoPagoInmediato + $montoCredito;
-                    $sumCreditos = $netRevenue + $ivaMonto;
-                    $diferencia = $sumDebitos - $sumCreditos;
-                    
-                    if (abs($diferencia) > 0.00 && abs($diferencia) <= 0.05) {
-                        // Ajustar la diferencia en la cuenta de ingresos
-                        foreach ($lineasAsiento as &$la) {
-                            if ($la['id_cuenta_contable'] === 206) {
-                                $la['haber'] += $diferencia;
-                                break;
-                            }
-                        }
-                    }
-
-                    // Determinar origen del asiento
-                    $asientoOrigen = 'BANCO_TX';
-                    $asientoOrigenId = $txId;
-                    if ($montoCredito > 0.00) {
-                        $asientoOrigen = 'CXC';
-                        $asientoOrigenId = $cxcId;
-                    }
-                    
-                    $conceptoAsiento = 'Registro de Venta Factura N° ' . $cot['codigo'] . ' - Cliente: ' . $cot['cliente_nombre'];
-                    if ((int)$cot['exonerado'] && !empty($cot['exoneracion_no'])) {
-                        $conceptoAsiento .= ' (Exonerado IVA, Aval: ' . $cot['exoneracion_no'] . ')';
-                    }
-
-                    $contabilidadModelo->registrarAsientoContable(
-                        $fechaHoy,
-                        $conceptoAsiento,
-                        $asientoOrigen,
-                        $asientoOrigenId,
-                        $lineasAsiento
-                    );
+                    $sqlOS = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, tipo_contrato, fecha_emision, estado) 
+                              VALUES (:codigo_os, :id_cotizacion, 'Puntual', CURRENT_DATE, 'Estado 1: Recepcion')";
+                    $stmtOS = $this->db->prepare($sqlOS);
+                    $stmtOS->execute([
+                        'codigo_os' => $codigoOS,
+                        'id_cotizacion' => $id
+                    ]);
                 }
             }
 
@@ -300,7 +150,7 @@ class CotizacionModelo extends ModeloBase {
     public function guardarCotizacionCompleta(array $cabecera, array $detalles): bool {
         try {
             $this->db->beginTransaction();
-            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, contactos, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :id_usuario_creador, :atencion_a, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :contactos, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
+            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, tipo_moneda, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, contactos, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :tipo_moneda, :id_usuario_creador, :atencion_a, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :contactos, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute($cabecera);
             $idCotizacion = $this->db->lastInsertId();
@@ -395,7 +245,7 @@ class CotizacionModelo extends ModeloBase {
             }
 
             // 3. Sobrescribir los datos de la cotización actual
-            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
+            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, tipo_moneda = :tipo_moneda, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute(array_merge($cabecera, [
                 'id' => $id,

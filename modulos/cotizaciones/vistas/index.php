@@ -118,3 +118,7 @@
         </table>
     </div>
 </div>
+<?php
+$bitacora_modulo_nombre = 'Cotizaciones';
+include __DIR__ . '/../../../plantillas/parciales/bitacora_modulo.php';
+?>
