@@ -312,7 +312,7 @@
         <div class="kpi-card kpi-2" onclick="window.location.href='/Cycsa/publico/cotizaciones?tab=aprobadas'">
             <div class="kpi-info">
                 <span class="kpi-title">Aprobado Cliente</span>
-                <span class="kpi-value" style="font-size: 20px; margin-top: 3px; font-weight: 800;">C$ <?= number_format($kpis['total_monto_aprobado'], 2) ?></span>
+                <span class="kpi-value" style="font-size: 20px; margin-top: 3px; font-weight: 800;">C$ <?= number_format($kpis['total_monto_aprobado'], 2, '.', ',') ?></span>
                 <span class="kpi-subtitle">Monto en cartera activa</span>
             </div>
             <div class="kpi-icon-wrapper">
@@ -469,7 +469,7 @@
                             <td class="code-span"><?= htmlspecialchars($rec['codigo'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td style="font-weight: 600;"><?= htmlspecialchars($rec['cliente'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td style="color: #64748b;"><?= date('d/m/Y h:i A', strtotime($rec['fecha_creacion'])) ?></td>
-                            <td style="font-weight: 700; color: #0f172a;">C$ <?= number_format($rec['total'], 2) ?></td>
+                            <td style="font-weight: 700; color: #0f172a;">C$ <?= number_format($rec['total'], 2, '.', ',') ?></td>
                             <td>
                                 <?php 
                                     $claseBadge = 'badge-borrador';

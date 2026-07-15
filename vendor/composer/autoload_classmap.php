@@ -17,6 +17,7 @@ return array(
     'Cycsa\\Modulos\\Contabilidad\\Modelos\\ContabilidadModelo' => $baseDir . '/modulos/contabilidad/modelos/ContabilidadModelo.php',
     'Cycsa\\Modulos\\Cotizaciones\\Controladores\\CotizacionesControlador' => $baseDir . '/modulos/cotizaciones/controladores/CotizacionesControlador.php',
     'Cycsa\\Modulos\\Cotizaciones\\Modelos\\CotizacionModelo' => $baseDir . '/modulos/cotizaciones/modelos/CotizacionModelo.php',
+    'Cycsa\\Modulos\\Operaciones\\Controladores\\LaboratorioControlador' => $baseDir . '/modulos/operaciones/controladores/LaboratorioControlador.php',
     'Cycsa\\Modulos\\Operaciones\\Controladores\\OperacionesControlador' => $baseDir . '/modulos/operaciones/controladores/OperacionesControlador.php',
     'Cycsa\\Modulos\\Operaciones\\Modelos\\OperacionModelo' => $baseDir . '/modulos/operaciones/modelos/OperacionModelo.php',
     'Cycsa\\Modulos\\Productos\\Controladores\\ProductosControlador' => $baseDir . '/modulos/productos/controladores/ProductosControlador.php',

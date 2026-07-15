@@ -87,7 +87,7 @@
                 <tr>
                     <td style="font-weight: 700; color: #103487;"><?= htmlspecialchars($cot['codigo'], ENT_QUOTES, 'UTF-8') ?> <span style="font-size: 11px; color: #888;">(v<?= $cot['version'] ?>)</span></td>
                     <td style="font-weight: 500;"><?= htmlspecialchars($cot['cliente'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td style="font-weight: 600;">C$ <?= number_format($cot['total'], 2) ?></td>
+                    <td style="font-weight: 600;">C$ <?= number_format($cot['total'], 2, '.', ',') ?></td>
                     <td>
                         <?php 
                             // Asignar color según la máquina de estados

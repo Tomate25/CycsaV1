@@ -11,6 +11,9 @@ class Aplicacion {
     public function __construct() {
         self::$app = $this;
         
+        // 0. Configurar la zona horaria oficial de Nicaragua
+        date_default_timezone_set('America/Managua');
+        
         // 1. Iniciamos las sesiones con configuración de seguridad para producción
         $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
         session_start([

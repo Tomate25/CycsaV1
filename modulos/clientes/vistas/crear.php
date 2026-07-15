@@ -212,13 +212,7 @@
                     <i class="fa-solid fa-chevron-down" style="color: #64748b; font-size: 12px;"></i>
                 </div>
             </div>
-            <div class="form-group">
-                <label>Tipo de Moneda *</label>
-                <select name="tipo_moneda" class="form-control">
-                    <option value="1" <?= ($valores['tipo_moneda'] ?? '') == 1 ? 'selected' : '' ?>>Córdobas (C$)</option>
-                    <option value="2" <?= ($valores['tipo_moneda'] ?? '') == 2 ? 'selected' : '' ?>>Dólares ($)</option>
-                </select>
-            </div>
+            <input type="hidden" name="tipo_moneda" value="1">
         </div>
 
         <div class="form-grid-3" style="margin-bottom: 20px;">

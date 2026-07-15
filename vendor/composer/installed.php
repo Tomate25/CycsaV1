@@ -3,7 +3,7 @@
         'name' => 'cycsa/sistema',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'cf555122513d098d55060e7ec3d7b957027b9279',
+        'reference' => 'e50de9386d81c1fc97f131fa4888124704d85a97',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'cycsa/sistema' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'cf555122513d098d55060e7ec3d7b957027b9279',
+            'reference' => 'e50de9386d81c1fc97f131fa4888124704d85a97',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -271,6 +271,26 @@
                             <?php endif; ?>
                         </td>
                         <td style="text-align: right; white-space: nowrap; vertical-align: middle;">
+                            <!-- BOTÓN DE FACTURACIÓN / CXC (Según diagrama de flujo) -->
+                            <?php 
+                            $cxcInfo = $cxcMap[$o['cot_codigo']] ?? null;
+                            if ($cxcInfo): 
+                            ?>
+                                <a href="/Cycsa/publico/contabilidad/cxc?q=<?= urlencode($o['cot_codigo']) ?>" 
+                                   class="btn-accion btn-detalle" 
+                                   style="background-color: #10b981; color: white; border: 1px solid #10b981; padding: 7px 12px; font-size:12.5px; font-weight:600; text-decoration:none; display:inline-block; margin-right: 5px; border-radius: 4px;" 
+                                   title="Ver estado de pago de la factura en contabilidad">
+                                    <i class="fa-solid fa-circle-check"></i> Facturado (<?= $cxcInfo['estado'] ?>)
+                                </a>
+                            <?php else: ?>
+                                <a href="/Cycsa/publico/contabilidad/cxc?prefill_cli=<?= $o['cliente_id'] ?>&prefill_fact=<?= urlencode($o['cot_codigo']) ?>&prefill_monto=<?= $o['cot_total'] ?>&prefill_notes=<?= urlencode('Facturación de Orden de Servicio ' . $o['codigo_os'] . ' - Proyecto: ' . $o['nombre_proyecto']) ?>" 
+                                   class="btn-accion btn-os" 
+                                   style="background-color: #f59e0b; color: white; border: 1px solid #f59e0b; padding: 7px 12px; font-size:12.5px; font-weight:600; text-decoration:none; display:inline-block; margin-right: 5px; border-radius: 4px;" 
+                                   title="Registrar factura en cuentas por cobrar para iniciar proceso de cobro">
+                                    <i class="fa-solid fa-file-invoice-dollar"></i> Facturar CXC
+                                </a>
+                            <?php endif; ?>
+
                             <!-- BOTONES DE ACCIÓN SEGÚN ESTADO -->
                             <form method="POST" action="/Cycsa/publico/operaciones/actualizar-estado" style="display:inline;">
                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -1090,8 +1110,11 @@
                     muestras = [];
                 }
                 
+                siguienteConsecutivoMuestra = data.siguiente_consecutivo;
+                anioActualMuestra = data.anio_actual;
+
                 if (muestras.length === 0) {
-                    agregarFilaMuestraModal('Muestra 1', 'Cilindros de concreto', 'Estándar');
+                    agregarFilaMuestraModal('', 'Cilindros de concreto', 'Estándar');
                 } else {
                     muestras.forEach(m => {
                         agregarFilaMuestraModal(m.nombre_muestra, m.descripcion, m.info_importante);
@@ -1112,14 +1135,27 @@
         modHS.style.display = 'none';
     }
 
+    let siguienteConsecutivoMuestra = 1;
+    let anioActualMuestra = new Date().getFullYear();
+
     function agregarFilaMuestraModal(nombre = '', desc = '', info = '') {
+        if (nombre === '') {
+            nombre = 'MC-' + String(siguienteConsecutivoMuestra).padStart(3, '0') + '-' + anioActualMuestra;
+            siguienteConsecutivoMuestra++;
+        }
+        if (desc === '') {
+            desc = 'Cilindros de concreto';
+        }
+        if (info === '') {
+            info = 'Estándar';
+        }
         const tbody = document.getElementById('hs-tbody-muestras');
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td style="padding:6px;"><input type="text" name="m_nombre[]" required class="form-control" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:6px 10px;" value="${nombre}"></td>
+            <td style="padding:6px;"><input type="text" name="m_nombre[]" readonly class="form-control" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:6px 10px; background:#f1f5f9; cursor:not-allowed;" value="${nombre}"></td>
             <td style="padding:6px;"><input type="text" name="m_desc[]" required class="form-control" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:6px 10px;" value="${desc}"></td>
             <td style="padding:6px;"><input type="text" name="m_info[]" class="form-control" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:6px 10px;" value="${info}"></td>
-            <td style="width:40px; text-align:center; padding:6px;"><button type="button" class="btn-accion btn-danger" style="padding:4px 8px; font-size:11px; cursor:pointer;" onclick="eliminarFilaMuestraModal(this)">&times;</button></td>
+            <td style="width:40px; text-align:center; padding:6px;"><button type="button" class="btn-action btn-danger" style="padding:4px 8px; font-size:11px; cursor:pointer;" onclick="eliminarFilaMuestraModal(this)">&times;</button></td>
         `;
         tbody.appendChild(tr);
     }

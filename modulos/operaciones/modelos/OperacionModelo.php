@@ -63,7 +63,8 @@ class OperacionModelo extends ModeloBase {
      */
     public function obtenerOSActivas(string $busqueda = ''): array {
         $sql = "SELECT os.*,
-                       cot.codigo AS cot_codigo, cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre
+                       cot.codigo AS cot_codigo, cot.nombre_proyecto, cot.total AS cot_total,
+                       cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id";
@@ -149,6 +150,9 @@ class OperacionModelo extends ModeloBase {
             $fechaRecepcion = $datos['fecha_recepcion'] ?? date('Y-m-d H:i:s');
             
             $anio = (int)date('Y', strtotime($fechaRecepcion));
+
+            // ADQUIRIR CANDADO DE CONCURRENCIA PARA RECEPCION DE MUESTRAS
+            $this->db->prepare("SELECT GET_LOCK('lock_recepcion_muestras', 10)")->execute();
 
             // Calcular correlativo secuencial anual (1 a 1000)
             $stmtSec = $this->db->prepare("SELECT MAX(correlativo_anual) FROM recepcion_muestras WHERE anio = :anio");
@@ -271,9 +275,15 @@ class OperacionModelo extends ModeloBase {
                      ->execute(['nuevo_estado' => $nuevoEstadoOS, 'id_os' => $idOS]);
 
             $this->db->commit();
+            try {
+                $this->db->prepare("SELECT RELEASE_LOCK('lock_recepcion_muestras')")->execute();
+            } catch (Exception $lex) {}
             return true;
         } catch (Exception $e) {
             $this->db->rollBack();
+            try {
+                $this->db->prepare("SELECT RELEASE_LOCK('lock_recepcion_muestras')")->execute();
+            } catch (Exception $lex) {}
             error_log("Error al registrar recepción LIMS: " . $e->getMessage());
             return false;
         }
@@ -711,6 +721,27 @@ class OperacionModelo extends ModeloBase {
             // Check if exists
             $existing = $this->obtenerHojaSolicitudPorOS($idOS);
             
+            $lockAcquired = false;
+            if (!$existing) {
+                // Adquirir candado para insertar nueva hoja de solicitud
+                $this->db->prepare("SELECT GET_LOCK('lock_hojas_solicitud', 10)")->execute();
+                $lockAcquired = true;
+                
+                $anioActual = (int)date('Y');
+                $siguienteConsecutivo = $this->obtenerSiguienteConsecutivoMuestra($anioActual);
+                
+                $muestras = json_decode($muestrasJson, true) ?: [];
+                foreach ($muestras as &$m) {
+                    $nombre = trim($m['nombre_muestra'] ?? '');
+                    if (empty($nombre) || preg_match('/^MC-\d+-\d+$/', $nombre) || strpos($nombre, 'Muestra') === 0) {
+                        $m['nombre_muestra'] = 'MC-' . sprintf("%03d", $siguienteConsecutivo) . '-' . $anioActual;
+                        $siguienteConsecutivo++;
+                    }
+                }
+                unset($m);
+                $muestrasJson = json_encode($muestras);
+            }
+
             if ($existing) {
                 $sql = "UPDATE hojas_solicitud SET 
                             fecha_hora_llegada_laboratorio = :f_llegada,
@@ -803,8 +834,16 @@ class OperacionModelo extends ModeloBase {
                 'f_cliente' => $firmaCliente
             ]);
 
+            if ($lockAcquired) {
+                $this->db->prepare("SELECT RELEASE_LOCK('lock_hojas_solicitud')")->execute();
+            }
             return true;
         } catch (Exception $e) {
+            if (isset($lockAcquired) && $lockAcquired) {
+                try {
+                    $this->db->prepare("SELECT RELEASE_LOCK('lock_hojas_solicitud')")->execute();
+                } catch (Exception $lex) {}
+            }
             error_log("Error en guardarHojaSolicitud: " . $e->getMessage());
             return false;
         }
@@ -828,6 +867,33 @@ class OperacionModelo extends ModeloBase {
 
     public function obtenerVehiculosActivos(): array {
         return $this->db->query("SELECT * FROM vehiculos WHERE activo = 1 ORDER BY placa ASC")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Obtiene el siguiente consecutivo para el nombre de muestra (MC-XXX-AÑO) en un año determinado.
+     */
+    public function obtenerSiguienteConsecutivoMuestra(int $anio): int {
+        $sql = "SELECT muestras_json FROM hojas_solicitud WHERE YEAR(fecha_creacion) = :anio";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['anio' => $anio]);
+        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        $maxConsecutivo = 0;
+        foreach ($rows as $row) {
+            $arr = json_decode($row, true);
+            if (is_array($arr)) {
+                foreach ($arr as $item) {
+                    $nombre = $item['nombre_muestra'] ?? '';
+                    if (preg_match('/MC-(\d+)-' . $anio . '/', $nombre, $matches)) {
+                        $num = (int)$matches[1];
+                        if ($num > $maxConsecutivo) {
+                            $maxConsecutivo = $num;
+                        }
+                    }
+                }
+            }
+        }
+        return $maxConsecutivo + 1;
     }
 }
 

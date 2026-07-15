@@ -103,21 +103,21 @@ foreach ($cxpList as $item) {
             <div class="kpi-icon" style="background-color: #fce7f3; color: #be185d;"><i class="fa-solid fa-file-contract"></i></div>
             <div>
                 <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Registrado</div>
-                <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px;">C$ <?= number_format($totalRegistrado, 2) ?></div>
+                <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px;">C$ <?= number_format($totalRegistrado, 2, '.', ',') ?></div>
             </div>
         </div>
         <div class="kpi-card">
             <div class="kpi-icon" style="background-color: #fee2e2; color: #b91c1c;"><i class="fa-solid fa-triangle-exclamation"></i></div>
             <div>
                 <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Saldo por Pagar</div>
-                <div style="font-size: 20px; font-weight: 700; color: #b91c1c; margin-top: 4px;">C$ <?= number_format($totalPendiente, 2) ?></div>
+                <div style="font-size: 20px; font-weight: 700; color: #b91c1c; margin-top: 4px;">C$ <?= number_format($totalPendiente, 2, '.', ',') ?></div>
             </div>
         </div>
         <div class="kpi-card">
             <div class="kpi-icon" style="background-color: #dcfce7; color: #15803d;"><i class="fa-solid fa-handshake"></i></div>
             <div>
                 <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Monto Pagado</div>
-                <div style="font-size: 20px; font-weight: 700; color: #15803d; margin-top: 4px;">C$ <?= number_format($totalPagado, 2) ?></div>
+                <div style="font-size: 20px; font-weight: 700; color: #15803d; margin-top: 4px;">C$ <?= number_format($totalPagado, 2, '.', ',') ?></div>
             </div>
         </div>
     </div>
@@ -153,9 +153,9 @@ foreach ($cxpList as $item) {
                     <td style="font-size: 13px; color: #475569;">
                         <?= $cxp['cuenta_codigo'] ? htmlspecialchars($cxp['cuenta_codigo'] . ' - ' . $cxp['cuenta_nombre'], ENT_QUOTES, 'UTF-8') : '—' ?>
                     </td>
-                    <td style="font-weight: 600;">C$ <?= number_format($cxp['monto'], 2) ?></td>
+                    <td style="font-weight: 600;">C$ <?= number_format($cxp['monto'], 2, '.', ',') ?></td>
                     <td style="font-weight: 600; color: <?= $cxp['saldo'] > 0 ? '#b91c1c' : '#15803d' ?>;">
-                        C$ <?= number_format($cxp['saldo'], 2) ?>
+                        C$ <?= number_format($cxp['saldo'], 2, '.', ',') ?>
                     </td>
                     <td>
                         <span class="badge-estado <?= $estClass ?>"><?= htmlspecialchars($cxp['estado'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -216,12 +216,13 @@ foreach ($cxpList as $item) {
 
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Cuenta Contable Asociada</label>
-                <select name="id_cuenta_contable" class="form-control" style="background-color: white;">
-                    <option value="">-- Seleccionar Cuenta Detalle --</option>
-                    <?php foreach ($cuentasDetalle as $cta): ?>
-                        <option value="<?= $cta['id'] ?>"><?= htmlspecialchars($cta['codigo'] . ' - ' . $cta['nombre'], ENT_QUOTES, 'UTF-8') ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <input type="hidden" name="id_cuenta_contable" id="hidden_id_cuenta_contable" value="">
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="display_cuenta_contable" class="form-control" placeholder="Ninguna cuenta seleccionada" readonly style="background:#f1f5f9; cursor:pointer;" onclick="abrirModalSeleccionCuenta()">
+                    <button type="button" class="btn-premium-azul" style="padding: 0 16px; font-size: 13px; width: auto; font-weight: 600; cursor: pointer; white-space: nowrap; border-radius: 6px;" onclick="abrirModalSeleccionCuenta()">
+                        <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                    </button>
+                </div>
             </div>
 
             <div class="grid-2">
@@ -246,6 +247,38 @@ foreach ($cxpList as $item) {
                 <button type="submit" class="form-control" style="cursor: pointer; background: var(--cycsa-azul); border: 1px solid var(--cycsa-azul); color: white; font-weight: 600; padding: 10px 24px;">Guardar CXP</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- MODAL SELECCIONAR CUENTA CONTABLE -->
+<div id="modalSeleccionCuenta" class="modal-premium" style="display: none; z-index: 2000;">
+    <div class="modal-premium-content" style="max-width: 750px; margin-top: 50px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700;">Seleccionar Cuenta Contable</h3>
+            <button type="button" onclick="cerrarModalSeleccionCuenta()" class="btn-cerrar" style="border:none; background:none; font-size:22px; cursor:pointer; color:#64748b;">&times;</button>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <input type="text" id="buscar_cuenta_input" class="form-control" placeholder="Buscar cuenta por código o nombre..." style="width: 100%; box-sizing: border-box; padding: 12px 15px; font-size: 14px;">
+        </div>
+        
+        <div style="max-height: 400px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: white;">
+            <table class="tabla-cycsa" style="margin: 0; font-size: 13.5px; width: 100%;">
+                <thead>
+                    <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                        <th style="padding: 12px; text-align: left; color: #475569; font-weight: 700;">Código de Cuenta</th>
+                        <th style="padding: 12px; text-align: left; color: #475569; font-weight: 700;">Nombre de la Cuenta</th>
+                    </tr>
+                </thead>
+                <tbody id="lista_cuentas_tbody">
+                    <!-- Filas filtradas dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="text-align: right; margin-top: 15px;">
+            <button type="button" class="form-control" style="background: #f1f5f9; border: 1px solid #cbd5e1; width: auto; display: inline-block; padding: 8px 16px; cursor: pointer; color: #475569; font-weight: 600;" onclick="cerrarModalSeleccionCuenta()">Cerrar</button>
+        </div>
     </div>
 </div>
 
@@ -282,7 +315,7 @@ foreach ($cxpList as $item) {
                 <select name="id_banco_cuenta" required class="form-control" style="background-color: white;">
                     <option value="">-- Seleccionar Banco --</option>
                     <?php foreach ($bancos as $bco): ?>
-                        <option value="<?= $bco['id'] ?>"><?= htmlspecialchars($bco['banco_nombre'] . ' - Cta: ' . $bco['numero_cuenta'] . ' (' . $bco['moneda'] . ') - Saldo: ' . number_format($bco['saldo_actual'], 2), ENT_QUOTES, 'UTF-8') ?></option>
+                        <option value="<?= $bco['id'] ?>"><?= htmlspecialchars($bco['banco_nombre'] . ' - Cta: ' . $bco['numero_cuenta'] . ' (' . $bco['moneda'] . ') - Saldo: ' . number_format($bco['saldo_actual'], 2, '.', ','), ENT_QUOTES, 'UTF-8') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -339,6 +372,72 @@ foreach ($cxpList as $item) {
             if (e.target === modalCxp) {
                 cerrarModal();
             }
+        });
+
+        // Searchable Account Autocomplete component
+        window.cuentasContables = [
+            <?php foreach ($cuentasDetalle as $cta): ?>
+            { id: <?= $cta['id'] ?>, codigo: <?= json_encode($cta['codigo']) ?>, nombre: <?= json_encode($cta['nombre']) ?> },
+            <?php endforeach; ?>
+        ];
+
+        window.abrirModalSeleccionCuenta = function() {
+            document.getElementById('modalSeleccionCuenta').style.display = 'block';
+            document.getElementById('buscar_cuenta_input').value = '';
+            renderSeleccionCuentas('');
+            setTimeout(() => {
+                document.getElementById('buscar_cuenta_input').focus();
+            }, 100);
+        };
+
+        window.cerrarModalSeleccionCuenta = function() {
+            document.getElementById('modalSeleccionCuenta').style.display = 'none';
+        };
+
+        window.seleccionarCuenta = function(id, codigo, nombre) {
+            document.getElementById('hidden_id_cuenta_contable').value = id;
+            document.getElementById('display_cuenta_contable').value = codigo + ' - ' + nombre;
+            cerrarModalSeleccionCuenta();
+        };
+
+        window.renderSeleccionCuentas = function(filtro = '') {
+            const tbody = document.getElementById('lista_cuentas_tbody');
+            tbody.innerHTML = '';
+            const q = filtro.toLowerCase().trim();
+            
+            const filtered = cuentasContables.filter(c => 
+                c.codigo.toLowerCase().includes(q) || 
+                c.nombre.toLowerCase().includes(q)
+            );
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; padding: 20px; color: #64748b; font-style: italic;">No se encontraron cuentas contables</td></tr>`;
+                return;
+            }
+            
+            filtered.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.title = 'Haga clic para seleccionar esta cuenta';
+                tr.addEventListener('mouseenter', () => {
+                    tr.style.backgroundColor = '#f8fafc';
+                });
+                tr.addEventListener('mouseleave', () => {
+                    tr.style.backgroundColor = '';
+                });
+                tr.addEventListener('click', () => {
+                    seleccionarCuenta(c.id, c.codigo, c.nombre);
+                });
+                tr.innerHTML = `
+                    <td style="padding: 12px; font-family: monospace; font-weight: 700; color: var(--cycsa-azul); font-size: 14px;">${c.codigo}</td>
+                    <td style="padding: 12px; font-weight: 600; color: #334155; font-size: 14px;">${c.nombre}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        document.getElementById('buscar_cuenta_input').addEventListener('input', (e) => {
+            renderSeleccionCuentas(e.target.value);
         });
     });
 

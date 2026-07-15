@@ -122,12 +122,18 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
 
     $descuentoMonto = (float)($cotizacion['descuento'] ?? 0);
     $descuentoHtml = '';
+    $netoMonto = (float)$cotizacion['subtotal'] - $descuentoMonto;
+    $neto = number_format($netoMonto, 2, '.', ',');
     if ($descuentoMonto > 0) {
         $descuentoVal = number_format($descuentoMonto, 2, '.', ',');
         $descuentoHtml = "
         <tr>
-            <td style=\"text-align: right; color: #dc2626; padding: 4px 8px; font-size: 11px;\">Descuento:</td>
+            <td style=\"text-align: right; color: #dc2626; padding: 4px 8px; font-size: 11px;\">Monto Descontado:</td>
             <td style=\"text-align: right; font-weight: bold; color: #dc2626; padding: 4px 8px; font-size: 11px;\">-{$simboloMoneda} {$descuentoVal}</td>
+        </tr>
+        <tr>
+            <td style=\"text-align: right; color: #334155; padding: 4px 8px; font-size: 11px; font-weight: 600;\">Precio con Descuento:</td>
+            <td style=\"text-align: right; font-weight: bold; color: #0f172a; padding: 4px 8px; font-size: 11px;\">{$simboloMoneda} {$neto}</td>
         </tr>";
     }
 
@@ -331,7 +337,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
                 <td style=\"width: 40%; vertical-align: top;\">
                     <table class=\"totals-table\" style=\"width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;\">
                         <tr>
-                            <td style=\"text-align: right; color: #64748b; padding: 4px 8px; font-size: 11px;\">Subtotal:</td>
+                            <td style=\"text-align: right; color: #64748b; padding: 4px 8px; font-size: 11px;\">Precio Base (Subtotal):</td>
                             <td style=\"text-align: right; font-weight: bold; width: 110px; padding: 4px 8px; font-size: 11px;\">{$simboloMoneda} {$subtotal}</td>
                         </tr>
                         {$descuentoHtml}
@@ -697,9 +703,9 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
     $dompdf = new Dompdf($options);
 
     $fecha = date('d/m/Y', strtotime($cotizacion['fecha_creacion']));
-    $subtotal = number_format($cotizacion['subtotal'], 2);
-    $impuesto = number_format($cotizacion['impuesto'], 2);
-    $total = number_format($cotizacion['total'], 2);
+    $subtotal = number_format($cotizacion['subtotal'], 2, '.', ',');
+    $impuesto = number_format($cotizacion['impuesto'], 2, '.', ',');
+    $total = number_format($cotizacion['total'], 2, '.', ',');
 
     $qrPath = __DIR__ . '/../publico/img/qr_terminos.png';
     $qrBase64 = '';
@@ -709,12 +715,18 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
 
     $descuentoMonto = (float)($cotizacion['descuento'] ?? 0);
     $descuentoHtml = '';
+    $netoMonto = (float)$cotizacion['subtotal'] - $descuentoMonto;
+    $neto = number_format($netoMonto, 2, '.', ',');
     if ($descuentoMonto > 0) {
         $descuentoVal = number_format($descuentoMonto, 2, '.', ',');
         $descuentoHtml = "
         <tr>
-            <td style=\"padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #dc2626;\">Descuento:</td>
+            <td style=\"padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #dc2626;\">Monto Descontado:</td>
             <td style=\"padding: 6px 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #dc2626;\">-C$ {$descuentoVal}</td>
+        </tr>
+        <tr>
+            <td style=\"padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #334155; font-weight: 600;\">Precio con Descuento:</td>
+            <td style=\"padding: 6px 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #0f172a;\">C$ {$neto}</td>
         </tr>";
     }
 
@@ -728,9 +740,9 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
     foreach ($detalles as $det) {
         $descText = htmlspecialchars($det['descripcion_ensayo'] ?? '', ENT_QUOTES, 'UTF-8');
         $codigoServicio = !empty($det['codigo_servicio']) ? htmlspecialchars($det['codigo_servicio'], ENT_QUOTES, 'UTF-8') : 'N/A';
-        $cant = number_format($det['cantidad'], 2);
-        $precio = number_format($det['precio_unitario'], 2);
-        $sub = number_format($det['subtotal'], 2);
+        $cant = number_format($det['cantidad'], 2, '.', ',');
+        $precio = number_format($det['precio_unitario'], 2, '.', ',');
+        $sub = number_format($det['subtotal'], 2, '.', ',');
 
         $metaHtml = '';
         if (!empty($det['observaciones'])) {
@@ -928,7 +940,7 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
                 <td style=\"width: 40%; vertical-align: top;\">
                     <table style=\"width: 100%; border-collapse: collapse; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px;\">
                         <tr>
-                            <td style=\"padding: 6px 10px; border-bottom: 1px solid #e2e8f0;\">Subtotal:</td>
+                            <td style=\"padding: 6px 10px; border-bottom: 1px solid #e2e8f0;\">Precio Base (Subtotal):</td>
                             <td style=\"padding: 6px 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold;\">C$ {$subtotal}</td>
                         </tr>
                         {$descuentoHtml}

@@ -336,14 +336,16 @@
                     <?php
                     $identMuestras = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
                     if (empty($identMuestras)) {
-                        $identMuestras[] = ['nombre_muestra' => 'Muestra 1', 'descripcion' => 'Cilindros de concreto', 'info_importante' => 'Estándar'];
+                        $nombreDefecto = 'MC-' . sprintf("%03d", $siguienteConsecutivo) . '-' . $anioActual;
+                        $identMuestras[] = ['nombre_muestra' => $nombreDefecto, 'descripcion' => 'Cilindros de concreto', 'info_importante' => 'Estándar'];
+                        $siguienteConsecutivo++;
                     }
                     foreach ($identMuestras as $idx => $m):
                     ?>
                     <tr>
-                        <td><input type="text" name="m_nombre[]" required class="form-control" style="width:100%; box-sizing:border-box;" value="<?= htmlspecialchars($m['nombre_muestra'] ?? '', ENT_QUOTES, 'UTF-8') ?>"></td>
-                        <td><input type="text" name="m_desc[]" required class="form-control" style="width:100%; box-sizing:border-box;" value="<?= htmlspecialchars($m['descripcion'] ?? '', ENT_QUOTES, 'UTF-8') ?>"></td>
-                        <td><input type="text" name="m_info[]" class="form-control" style="width:100%; box-sizing:border-box;" value="<?= htmlspecialchars($m['info_importante'] ?? '', ENT_QUOTES, 'UTF-8') ?>"></td>
+                        <td><input type="text" name="m_nombre[]" readonly class="form-control" style="width:100%; box-sizing:border-box; background:#f1f5f9; cursor:not-allowed;" value="<?= htmlspecialchars($m['nombre_muestra'] ?? '', ENT_QUOTES, 'UTF-8') ?>"></td>
+                        <td><input type="text" name="m_desc[]" required class="form-control" style="width:100%; box-sizing:border-box;" value="<?= htmlspecialchars($m['descripcion'] ?: 'Cilindros de concreto', ENT_QUOTES, 'UTF-8') ?>"></td>
+                        <td><input type="text" name="m_info[]" class="form-control" style="width:100%; box-sizing:border-box;" value="<?= htmlspecialchars($m['info_importante'] ?: 'Estándar', ENT_QUOTES, 'UTF-8') ?>"></td>
                         <td style="text-align: center;"><button type="button" class="btn-action btn-secondary btn-mini" style="background:#fee2e2; color:#b91c1c; border-color:#fecaca;" onclick="eliminarFilaMuestra(this)"><i class="fa-solid fa-trash"></i></button></td>
                     </tr>
                     <?php endforeach; ?>
@@ -480,13 +482,19 @@
 </div>
 
 <script>
+    let siguienteConsecutivoMuestra = <?= $siguienteConsecutivo ?>;
+    const anioActualMuestra = <?= $anioActual ?>;
+
     function agregarFilaMuestra() {
         const tbody = document.getElementById('tbody-muestras-dinamica');
         const tr = document.createElement('tr');
+        const nextCode = 'MC-' + String(siguienteConsecutivoMuestra).padStart(3, '0') + '-' + anioActualMuestra;
+        siguienteConsecutivoMuestra++;
+
         tr.innerHTML = `
-            <td><input type="text" name="m_nombre[]" required class="form-control" style="width:100%; box-sizing:border-box;"></td>
-            <td><input type="text" name="m_desc[]" required class="form-control" style="width:100%; box-sizing:border-box;"></td>
-            <td><input type="text" name="m_info[]" class="form-control" style="width:100%; box-sizing:border-box;"></td>
+            <td><input type="text" name="m_nombre[]" readonly class="form-control" style="width:100%; box-sizing:border-box; background:#f1f5f9; cursor:not-allowed;" value="${nextCode}"></td>
+            <td><input type="text" name="m_desc[]" required class="form-control" style="width:100%; box-sizing:border-box;" value="Cilindros de concreto"></td>
+            <td><input type="text" name="m_info[]" class="form-control" style="width:100%; box-sizing:border-box;" value="Estándar"></td>
             <td style="text-align: center;"><button type="button" class="btn-action btn-secondary btn-mini" style="background:#fee2e2; color:#b91c1c; border-color:#fecaca;" onclick="eliminarFilaMuestra(this)"><i class="fa-solid fa-trash"></i></button></td>
         `;
         tbody.appendChild(tr);

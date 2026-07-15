@@ -6,6 +6,7 @@ use Cycsa\Nucleo\ControladorBase;
 use Cycsa\Nucleo\Peticion;
 use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\Operaciones\Modelos\OperacionModelo;
+use Cycsa\Nucleo\Conexion;
 use PDO;
 
 class OperacionesControlador extends ControladorBase {
@@ -47,6 +48,13 @@ class OperacionesControlador extends ControladorBase {
         // Obtener cotizaciones aprobadas listas para generar O/S, y las O/S activas
         $cotizacionesParaOS = $modelo->obtenerCotizacionesParaOS($busqueda);
         $ordenesActivas = $modelo->obtenerOSActivas($busqueda);
+        $db = Conexion::obtenerInstancia();
+        $stmtCxcCodes = $db->query("SELECT factura_numero, estado, saldo FROM cuentas_por_cobrar");
+        $cxcRecords = $stmtCxcCodes->fetchAll(PDO::FETCH_ASSOC);
+        $cxcMap = [];
+        foreach ($cxcRecords as $r) {
+            $cxcMap[$r['factura_numero']] = $r;
+        }
         
         foreach ($ordenesActivas as &$o) {
             $o['items'] = $modelo->obtenerItemsOS((int)$o['id']);
@@ -62,6 +70,7 @@ class OperacionesControlador extends ControladorBase {
             'busqueda' => $busqueda,
             'tecnicos' => $modelo->obtenerTecnicosActivos(),
             'vehiculos' => $modelo->obtenerVehiculosActivos(),
+            'cxcMap' => $cxcMap,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null,
             'bitacora_logs' => $bitacora_logs
@@ -854,6 +863,9 @@ class OperacionesControlador extends ControladorBase {
 
         $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
         
+        $anioActual = (int)date('Y');
+        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra($anioActual);
+
         // Obtener cliente y proyecto predeterminados de la O/S si es nueva hoja
         if (!$hoja) {
             $hoja = [
@@ -900,7 +912,9 @@ class OperacionesControlador extends ControladorBase {
         $this->renderizar('operaciones/vistas/hoja_solicitud_form', [
             'titulo' => 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13',
             'os' => $os,
-            'hoja' => $hoja
+            'hoja' => $hoja,
+            'siguienteConsecutivo' => $siguienteConsecutivo,
+            'anioActual' => $anioActual
         ]);
     }
 
@@ -1213,10 +1227,15 @@ class OperacionesControlador extends ControladorBase {
             }
         }
 
+        $anioActual = (int)date('Y');
+        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra($anioActual);
+
         $respuesta->enviarJson([
             'status' => 'success',
             'os' => $os,
-            'hoja' => $hoja
+            'hoja' => $hoja,
+            'siguiente_consecutivo' => $siguienteConsecutivo,
+            'anio_actual' => $anioActual
         ]);
     }
 }

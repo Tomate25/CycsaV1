@@ -63,10 +63,12 @@ class LaboratorioControlador extends ControladorBase {
         // 3. Obtener rupturas para el calendario (rango de 60 días antes y después)
         $sqlCalendario = "SELECT ee.id, ee.identificador_especimen, ee.edad_dias, ee.fecha_programada,
                                  ee.estado, rm.codigo_muestra, rm.codigo_campo, lm.id AS id_lote,
-                                 cd.descripcion_ensayo AS nombre_ensayo
+                                 cd.descripcion_ensayo AS nombre_ensayo,
+                                 os.codigo_os
                           FROM ensayo_edades ee
                           JOIN lotes_muestras lm ON ee.id_lote = lm.id
                           JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                          JOIN ordenes_servicio os ON rm.id_os = os.id
                           LEFT JOIN cotizacion_detalles cd ON ee.id_detalle_cotizacion = cd.id
                           WHERE ee.fecha_programada BETWEEN CURRENT_DATE - INTERVAL 60 DAY AND CURRENT_DATE + INTERVAL 60 DAY
                           ORDER BY ee.fecha_programada ASC";

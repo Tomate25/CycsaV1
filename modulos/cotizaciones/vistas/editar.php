@@ -273,7 +273,7 @@
                     </td>
                     <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="0.01" min="0.01" value="<?= $det['cantidad'] ?>" required oninput="calcularFila(this)"></td>
                     <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="<?= $det['precio_unitario'] ?>" required oninput="calcularFila(this)"></td>
-                    <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">C$ <?= number_format($det['subtotal'], 2) ?></td>
+                    <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">C$ <?= number_format($det['subtotal'], 2, '.', ',') ?></td>
                     <td style="text-align: center; vertical-align: middle;">
                         <button type="button" class="btn-remover" onclick="eliminarFila(this)"><i class="fa-solid fa-xmark"></i></button>
                     </td>
@@ -290,26 +290,17 @@
         </button>
 
         <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
-            <input type="hidden" name="tipo_moneda" id="input-tipo-moneda" value="<?= (int)($cotizacion['tipo_moneda'] ?? 1) ?>">
+            <input type="hidden" name="tipo_moneda" id="input-tipo-moneda" value="1">
             <div class="caja-totales">
-                
-                <!-- Moneda Toggle -->
-                <div class="fila-total" style="align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 12px;">
-                    <span style="font-weight: 600; color: #475569; font-size: 13.5px;">Moneda de Cotización</span>
-                    <div class="moneda-toggle-group">
-                        <button type="button" class="btn-toggle-moneda <?= ($cotizacion['tipo_moneda'] ?? 1) == 1 ? 'active' : '' ?>" data-value="1" onclick="cambiarMoneda(1)">C$</button>
-                        <button type="button" class="btn-toggle-moneda <?= ($cotizacion['tipo_moneda'] ?? 1) == 2 ? 'active' : '' ?>" data-value="2" onclick="cambiarMoneda(2)">$</button>
-                    </div>
-                </div>
 
-                <!-- Subtotal -->
+                <!-- Subtotal (Precio Base) -->
                 <div class="fila-total" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14.5px; color: #334155;">
-                    <span style="font-weight: 500;">Subtotal:</span>
+                    <span style="font-weight: 500;">Precio Base (Subtotal):</span>
                     <span id="txt-subtotal" style="font-weight: 600; color: #0f172a;">C$ 0.00</span>
                 </div>
 
                 <!-- Descuento -->
-                <div class="fila-total" style="align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 12px;">
+                <div class="fila-total" style="align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0;">
                     <span style="font-weight: 500; color: #334155; font-size: 14.5px;">Descuento:</span>
                     <div style="display: flex; gap: 6px; align-items: center;">
                         <input type="number" id="input-descuento-val" step="0.01" min="0" value="<?= number_format($cotizacion['descuento'] ?? 0, 2, '.', '') ?>" style="width: 80px; text-align: right; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 13.5px; font-weight: 500; color: #1e293b;">
@@ -318,6 +309,18 @@
                             <option value="porcentaje">%</option>
                         </select>
                     </div>
+                </div>
+
+                <!-- Descuento Calculado (Monto restado) -->
+                <div class="fila-total" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13.5px; color: #dc2626;">
+                    <span style="font-weight: 500;">Monto Descontado:</span>
+                    <span id="txt-descuento-calculado" style="font-weight: 600;">-C$ 0.00</span>
+                </div>
+
+                <!-- Precio con Descuento -->
+                <div class="fila-total" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14.5px; color: #334155; background-color: #f8fafc; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <span style="font-weight: 600;">Precio con Descuento:</span>
+                    <span id="txt-neto" style="font-weight: 700; color: #0f172a;">C$ 0.00</span>
                 </div>
 
                 <!-- Exonerado Toggle -->
@@ -545,6 +548,7 @@
     }
 
     function cambiarMoneda(tipo) {
+        tipo = 1; // Forzar siempre C$ (Córdobas)
         document.getElementById('input-tipo-moneda').value = tipo;
         
         // Actualizar clase activa en los botones de moneda
@@ -721,6 +725,8 @@
 
         // Mostrar en pantalla (Visual)
         document.getElementById('txt-subtotal').textContent = formatearMonto(subtotalGeneral);
+        document.getElementById('txt-descuento-calculado').textContent = '- ' + formatearMonto(descuentoCalculado);
+        document.getElementById('txt-neto').textContent = formatearMonto(netoSubtotal);
         document.getElementById('txt-iva').textContent = formatearMonto(iva);
         document.getElementById('txt-total').textContent = formatearMonto(totalFinal);
 
@@ -1069,7 +1075,7 @@
                                 <?php endif; ?>
                             </td>
                             <td><span style="background: #ebf8ff; color: #2b6cb0; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; display: inline-block;"><?= htmlspecialchars($prod['matriz_tipo'] ?? 'Otros', ENT_QUOTES, 'UTF-8') ?></span></td>
-                            <td style="text-align: right; font-weight: bold; color: #2d3748;">C$ <?= number_format($prod['precio'], 2) ?></td>
+                            <td style="text-align: right; font-weight: bold; color: #2d3748;">C$ <?= number_format($prod['precio'], 2, '.', ',') ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

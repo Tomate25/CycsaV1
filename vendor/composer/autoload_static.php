@@ -251,6 +251,7 @@ class ComposerStaticInit2223d5faa89572047860b9e08ef683f2
         'Cycsa\\Modulos\\Contabilidad\\Modelos\\ContabilidadModelo' => __DIR__ . '/../..' . '/modulos/contabilidad/modelos/ContabilidadModelo.php',
         'Cycsa\\Modulos\\Cotizaciones\\Controladores\\CotizacionesControlador' => __DIR__ . '/../..' . '/modulos/cotizaciones/controladores/CotizacionesControlador.php',
         'Cycsa\\Modulos\\Cotizaciones\\Modelos\\CotizacionModelo' => __DIR__ . '/../..' . '/modulos/cotizaciones/modelos/CotizacionModelo.php',
+        'Cycsa\\Modulos\\Operaciones\\Controladores\\LaboratorioControlador' => __DIR__ . '/../..' . '/modulos/operaciones/controladores/LaboratorioControlador.php',
         'Cycsa\\Modulos\\Operaciones\\Controladores\\OperacionesControlador' => __DIR__ . '/../..' . '/modulos/operaciones/controladores/OperacionesControlador.php',
         'Cycsa\\Modulos\\Operaciones\\Modelos\\OperacionModelo' => __DIR__ . '/../..' . '/modulos/operaciones/modelos/OperacionModelo.php',
         'Cycsa\\Modulos\\Productos\\Controladores\\ProductosControlador' => __DIR__ . '/../..' . '/modulos/productos/controladores/ProductosControlador.php',
