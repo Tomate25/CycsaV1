@@ -169,3 +169,4 @@ class ProductoModelo extends ModeloBase {
         return $stmt->execute(['id' => $id]);
     }
 }
+
