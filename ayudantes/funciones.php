@@ -496,6 +496,182 @@ function obtenerBitacoraModulo(string $modulo, int $limite = 50): array {
 }
 
 /**
+ * Genera un gráfico de curva granulométrica en formato SVG vectorial nativo (escala semilogarítmica).
+ */
+function generarGraficoGranulometriaSVG(array $filas): string {
+    $aperturas = [
+        "2\"" => 50.0, "1 1/2\"" => 37.5, "1\"" => 25.0, "3/4\"" => 19.0, "1/2\"" => 12.5, "3/8\"" => 9.5,
+        "No. 4" => 4.75, "No. 8" => 2.36, "No. 10" => 2.0, "No. 16" => 1.18, "No. 20" => 0.85, "No. 30" => 0.60,
+        "No. 40" => 0.42, "No. 50" => 0.30, "No. 60" => 0.25, "No. 80" => 0.18, "No. 100" => 0.15, "No. 140" => 0.11,
+        "No. 200" => 0.075
+    ];
+
+    $width = 540;
+    $height = 260;
+    $marginLeft = 50;
+    $marginRight = 20;
+    $marginTop = 20;
+    $marginBottom = 40;
+
+    $plotWidth = $width - $marginLeft - $marginRight;
+    $plotHeight = $height - $marginTop - $marginBottom;
+
+    $logMin = -2; // 0.01 mm
+    $logMax = 2;  // 100 mm
+    $logRange = $logMax - $logMin;
+
+    // Grid lines for Y-axis (Porcentaje que pasa, 0% to 100%, every 10%)
+    $svgGridY = '';
+    for ($i = 0; $i <= 100; $i += 10) {
+        $y = $marginTop + (1 - $i / 100) * $plotHeight;
+        $svgGridY .= "<line x1=\"$marginLeft\" y1=\"$y\" x2=\"" . ($width - $marginRight) . "\" y2=\"$y\" stroke=\"#e2e8f0\" stroke-width=\"1\" />";
+        $svgGridY .= "<text x=\"" . ($marginLeft - 8) . "\" y=\"" . ($y + 3) . "\" font-size=\"8\" text-anchor=\"end\" fill=\"#64748b\">$i%</text>";
+    }
+
+    // Grid lines for X-axis (Logarithmic, 0.01 to 100)
+    $svgGridX = '';
+    $labels = [0.01 => '0.01', 0.1 => '0.1', 1 => '1', 10 => '10', 100 => '100'];
+    
+    // Major cycles
+    for ($c = $logMin; $c <= $logMax; $c++) {
+        $val = pow(10, $c);
+        $xPercent = ($c - $logMin) / $logRange;
+        $x = $marginLeft + $xPercent * $plotWidth;
+        
+        $svgGridX .= "<line x1=\"$x\" y1=\"$marginTop\" x2=\"$x\" y2=\"" . ($height - $marginBottom) . "\" stroke=\"#cbd5e1\" stroke-width=\"1.5\" />";
+        
+        if (isset($labels[$val])) {
+            $svgGridX .= "<text x=\"$x\" y=\"" . ($height - $marginBottom + 12) . "\" font-size=\"8\" text-anchor=\"middle\" fill=\"#64748b\">" . $labels[$val] . " mm</text>";
+        }
+        
+        // Sub-grid lines (2 to 9)
+        if ($c < $logMax) {
+            for ($s = 2; $s <= 9; $s++) {
+                $subVal = $s * $val;
+                $logSub = log10($subVal);
+                $subXPercent = ($logSub - $logMin) / $logRange;
+                $subX = $marginLeft + $subXPercent * $plotWidth;
+                $svgGridX .= "<line x1=\"$subX\" y1=\"$marginTop\" x2=\"$subX\" y2=\"" . ($height - $marginBottom) . "\" stroke=\"#f1f5f9\" stroke-width=\"0.8\" />";
+            }
+        }
+    }
+
+    // Parse data points
+    $pointsSample = [];
+    $pointsMin = [];
+    $pointsMax = [];
+
+    foreach ($filas as $fila) {
+        // Find keys using case-insensitive lookup
+        $mallaKey = '';
+        foreach ($fila as $k => $v) {
+            if (mb_strtolower(trim($k)) === 'malla') {
+                $mallaKey = $k;
+                break;
+            }
+        }
+        if (empty($mallaKey)) continue;
+
+        $mallaVal = trim($fila[$mallaKey]);
+        if (isset($aperturas[$mallaVal])) {
+            $apertureSize = $aperturas[$mallaVal];
+            $logAperture = log10($apertureSize);
+            $xPercent = ($logAperture - $logMin) / $logRange;
+            $x = $marginLeft + $xPercent * $plotWidth;
+
+            // Sample % que pasa
+            $qpKey = '';
+            foreach ($fila as $k => $v) {
+                $kLower = mb_strtolower(trim($k));
+                if (strpos($kLower, 'pasa') !== false || strpos($kLower, 'resultado') !== false) {
+                    $qpKey = $k;
+                    break;
+                }
+            }
+            if ($qpKey && $fila[$qpKey] !== '' && $fila[$qpKey] !== null && $fila[$qpKey] !== '—') {
+                $qpVal = floatval($fila[$qpKey]);
+                $yPercent = $qpVal / 100;
+                $y = $marginTop + (1 - $yPercent) * $plotHeight;
+                $pointsSample[] = "$x,$y";
+            }
+
+            // Min limit
+            $minKey = '';
+            foreach ($fila as $k => $v) {
+                $kLower = mb_strtolower(trim($k));
+                if (strpos($kLower, 'mín') !== false || strpos($kLower, 'min') !== false) {
+                    $minKey = $k;
+                    break;
+                }
+            }
+            if ($minKey && $fila[$minKey] !== '' && $fila[$minKey] !== null && $fila[$minKey] !== '—') {
+                $minVal = floatval($fila[$minKey]);
+                $yPercent = $minVal / 100;
+                $y = $marginTop + (1 - $yPercent) * $plotHeight;
+                $pointsMin[] = "$x,$y";
+            }
+
+            // Max limit
+            $maxKey = '';
+            foreach ($fila as $k => $v) {
+                $kLower = mb_strtolower(trim($k));
+                if (strpos($kLower, 'máx') !== false || strpos($kLower, 'max') !== false) {
+                    $maxKey = $k;
+                    break;
+                }
+            }
+            if ($maxKey && $fila[$maxKey] !== '' && $fila[$maxKey] !== null && $fila[$maxKey] !== '—') {
+                $maxVal = floatval($fila[$maxKey]);
+                $yPercent = $maxVal / 100;
+                $y = $marginTop + (1 - $yPercent) * $plotHeight;
+                $pointsMax[] = "$x,$y";
+            }
+        }
+    }
+
+    $pathsSvg = '';
+
+    // Draw Min limit line (Red dashed)
+    if (count($pointsMin) > 1) {
+        $pathsSvg .= "<polyline points=\"" . implode(' ', $pointsMin) . "\" fill=\"none\" stroke=\"#ef4444\" stroke-width=\"1.5\" stroke-dasharray=\"3,3\" />";
+    }
+    // Draw Max limit line (Red dashed)
+    if (count($pointsMax) > 1) {
+        $pathsSvg .= "<polyline points=\"" . implode(' ', $pointsMax) . "\" fill=\"none\" stroke=\"#ef4444\" stroke-width=\"1.5\" stroke-dasharray=\"3,3\" />";
+    }
+    // Draw Sample line (Blue solid thicker)
+    if (count($pointsSample) > 1) {
+        $pathsSvg .= "<polyline points=\"" . implode(' ', $pointsSample) . "\" fill=\"none\" stroke=\"#1e40af\" stroke-width=\"2.5\" />";
+        // Draw points markers
+        foreach ($pointsSample as $pt) {
+            list($px, $py) = explode(',', $pt);
+            $pathsSvg .= "<circle cx=\"$px\" cy=\"$py\" r=\"3\" fill=\"#1e40af\" />";
+        }
+    }
+
+    return "
+    <svg width=\"$width\" height=\"$height\" viewBox=\"0 0 $width $height\" style=\"display: block; margin: 10px auto; background-color: #ffffff;\">
+        <!-- Axes background -->
+        <rect x=\"$marginLeft\" y=\"$marginTop\" width=\"$plotWidth\" height=\"$plotHeight\" fill=\"none\" stroke=\"#1e293b\" stroke-width=\"1.5\" />
+        <!-- Grid lines -->
+        $svgGridY
+        $svgGridX
+        <!-- Paths -->
+        $pathsSvg
+        <!-- Legend -->
+        <g transform=\"translate(" . ($marginLeft + 10) . ", " . ($height - 15) . ")\">
+            <line x1=\"0\" y1=\"5\" x2=\"15\" y2=\"5\" stroke=\"#1e40af\" stroke-width=\"2.5\" />
+            <circle cx=\"7.5\" cy=\"5\" r=\"2.5\" fill=\"#1e40af\" />
+            <text x=\"20\" y=\"8\" font-size=\"8\" fill=\"#1e293b\" font-weight=\"bold\">Muestra</text>
+            
+            <line x1=\"80\" y1=\"5\" x2=\"95\" y2=\"5\" stroke=\"#ef4444\" stroke-width=\"1.5\" stroke-dasharray=\"3,3\" />
+            <text x=\"100\" y=\"8\" font-size=\"8\" fill=\"#ef4444\" font-weight=\"bold\">Límites especificados</text>
+        </g>
+    </svg>
+    ";
+}
+
+/**
  * Genera el reporte de ensayo PDF para un producto/ensayo específico usando Dompdf.
  */
 function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $columnas, array $filas, string $codigoReporte = '', $version = null): string {
@@ -531,8 +707,25 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
     }
 
     $bodyStyle = "margin: 0; padding: 1.5cm;";
+    $headerClass = '';
+    $headerStyle = 'width: 100%; border-bottom: 2px solid #103487; padding-bottom: 8px; margin-bottom: 12px; border-collapse: collapse;';
     if (extension_loaded('gd') && !empty($bgBase64)) {
-        $bodyStyle = "margin: 0; padding: 2.8cm 2.0cm 2.0cm 2.0cm; background-image: url('{$bgBase64}'); background-size: 100% 100%; background-repeat: no-repeat;";
+        $bodyStyle = "margin: 0; padding: 5.2cm 2.0cm 2.0cm 2.0cm; background-image: url('{$bgBase64}'); background-size: 100% 100%; background-repeat: no-repeat;";
+        $headerClass = 'class="header-absolute"';
+        $headerStyle = 'border-collapse: collapse; width: 45%;';
+    }
+
+    $graficoHtml = '';
+    $archivoMarkdown = $detalle['archivo_markdown'] ?? '';
+    $esGranulometriaReport = (strpos($archivoMarkdown, 'granulometria') !== false || strpos($archivoMarkdown, 'granulomnetria') !== false);
+    if ($esGranulometriaReport) {
+        $graficoHtml = "
+        <div style=\"page-break-before: always; text-align: center; padding-top: 10px;\">
+            <h4 style=\"margin-top: 0; color: #1e293b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #103487; padding-bottom: 4px; display: inline-block;\">Curva de Distribución Granulométrica</h4>
+            <div style=\"margin: 15px auto;\">
+                " . generarGraficoGranulometriaSVG($filas) . "
+            </div>
+        </div>";
     }
 
     $fechaMuestreo = $cotizacion['fecha_creacion'] ? date('d/m/Y', strtotime($cotizacion['fecha_creacion'])) : date('d/m/Y');
@@ -543,7 +736,7 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
     // Header table columns rendering - Standard font-size for Landscape!
     $theadHtml = '';
     foreach ($columnas as $col) {
-        $theadHtml .= "<th style=\"border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; font-size: 9.5px; color: #475569; text-transform: uppercase; font-weight: bold;\">" . htmlspecialchars($col, ENT_QUOTES, 'UTF-8') . "</th>";
+        $theadHtml .= "<th style=\"border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; font-size: 8.5px; color: #475569; text-transform: uppercase; font-weight: bold;\">" . htmlspecialchars($col, ENT_QUOTES, 'UTF-8') . "</th>";
     }
 
     // Body rows rendering
@@ -552,7 +745,7 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
         for ($i = 0; $i < 5; $i++) {
             $tbodyHtml .= "<tr>";
             foreach ($columnas as $col) {
-                $tbodyHtml .= "<td style=\"border: 1px solid #cbd5e1; padding: 8px 8px; height: 18px;\">&nbsp;</td>";
+                $tbodyHtml .= "<td style=\"border: 1px solid #cbd5e1; padding: 5px 6px; height: 14px;\">&nbsp;</td>";
             }
             $tbodyHtml .= "</tr>";
         }
@@ -561,7 +754,7 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
             $tbodyHtml .= "<tr>";
             foreach ($columnas as $col) {
                 $val = $fila[$col] ?? '';
-                $tbodyHtml .= "<td style=\"border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 9.5px;\">" . htmlspecialchars($val, ENT_QUOTES, 'UTF-8') . "</td>";
+                $tbodyHtml .= "<td style=\"border: 1px solid #cbd5e1; padding: 4px 6px; font-size: 8.5px;\">" . htmlspecialchars($val, ENT_QUOTES, 'UTF-8') . "</td>";
             }
             $tbodyHtml .= "</tr>";
         }
@@ -594,16 +787,23 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
                 font-size: 9.5px;
                 {$bodyStyle}
             }
+            .header-absolute {
+                position: absolute;
+                top: 1.2cm;
+                right: 2.0cm;
+                width: 45%;
+                text-align: right;
+            }
         </style>
     </head>
     <body>
         <!-- Header -->
-        <table style=\"width: 100%; border-bottom: 2px solid #103487; padding-bottom: 8px; margin-bottom: 12px; border-collapse: collapse;\">
+        <table {$headerClass} style=\"{$headerStyle}\">
             <tr>
                 <td style=\"width: 60%; vertical-align: top;\">
                     {$logoHtml}
                 </td>
-                <td style=\"width: 40%; text-align: right; vertical-align: top;\">
+                <td style=\"text-align: right; vertical-align: top;\">
                     <span style=\"font-size: 12px; font-weight: bold; color: #103487;\">" . strtoupper($nombreFormato) . "</span><br>
                     <span style=\"font-size: 11px; font-weight: bold; color: #1e293b; margin: 2px 0; display: block;\">{$codigoFormato}</span>
                     " . (!empty($codigoReporte) ? "<span style=\"font-size: 10px; font-weight: bold; color: #ef4444; display: block; margin-top: 4px;\">Informe No: " . htmlspecialchars($codigoReporte, ENT_QUOTES, 'UTF-8') . "</span>" : "") . "
@@ -660,6 +860,8 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
                 {$tbodyHtml}
             </tbody>
         </table>
+
+        {$graficoHtml}
 
         <!-- Footer terms -->
         <div style=\"font-size: 8px; color: #64748b; line-height: 1.3; margin-top: 15px; border-top: 1px solid #cbd5e1; padding-top: 6px;\">

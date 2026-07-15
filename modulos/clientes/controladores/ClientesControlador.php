@@ -191,14 +191,21 @@ class ClientesControlador extends ControladorBase {
             exit;
         }
         
-        $id = $_GET['id'] ?? null;
+        $datos = $peticion->obtenerDatos();
+        $id = $datos['id'] ?? $_GET['id'] ?? null;
+        
         if (!$id || !$peticion->esPost()) { 
             $respuesta->redirigir('/Cycsa/publico/clientes'); 
             return; 
         }
 
-        $datos = $peticion->obtenerDatos();
         $modelo = new ClienteModelo();
+        $currentCliente = $modelo->obtenerPorId((int)$id);
+        
+        if (!$currentCliente) {
+            $respuesta->redirigir('/Cycsa/publico/clientes');
+            return;
+        }
 
         if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
             $this->renderizar('clientes/vistas/editar', [
@@ -219,7 +226,10 @@ class ClientesControlador extends ControladorBase {
             return;
         }
         
-        if (!empty($datos['email']) && $modelo->emailExiste($datos['email'], (int)$id)) {
+        // Verificar duplicado de email solo si cambió
+        $emailNuevo = trim($datos['email'] ?? '');
+        $emailOriginal = trim($currentCliente['email'] ?? '');
+        if ($emailNuevo !== '' && $emailNuevo !== $emailOriginal && $modelo->emailExiste($emailNuevo, (int)$id)) {
             $this->renderizar('clientes/vistas/editar', [
                 'titulo' => 'Editar Cliente', 
                 'error' => 'Este correo ya pertenece a otro cliente.', 
@@ -236,8 +246,11 @@ class ClientesControlador extends ControladorBase {
         } elseif (!empty($datos['numero_cedula'])) {
             $identificacion = trim($datos['numero_cedula']);
         }
+        
+        $identOriginal = trim($currentCliente['identificacion'] ?? '');
 
-        if (!empty($identificacion) && $modelo->identificacionExiste($identificacion, (int)$id)) {
+        // Verificar duplicado de identificación fiscal solo si cambió
+        if ($identificacion !== '' && $identificacion !== $identOriginal && $modelo->identificacionExiste($identificacion, (int)$id)) {
             $this->renderizar('clientes/vistas/editar', [
                 'titulo' => 'Editar Cliente', 
                 'error' => 'Esta identificación fiscal ya pertenece a otro cliente.', 

@@ -887,34 +887,44 @@ class ContabilidadModelo extends ModeloBase {
                 }
             }
 
-            // 3. Facturación / Invoices de CXC
+            // 3. Facturación / Invoices de CXC (Separando IVA 15%)
             $cxcList = $this->db->query("SELECT id, id_cuenta_contable, factura_numero, monto, fecha_emision FROM cuentas_por_cobrar")->fetchAll(PDO::FETCH_ASSOC);
             foreach ($cxcList as $cxc) {
                 $debitAcc = $cxc['id_cuenta_contable'] ?: $cxcDefaultAcc;
+                $total = (float)$cxc['monto'];
+                $subtotal = round($total / 1.15, 2);
+                $iva = round($total - $subtotal, 2);
+                
                 $this->registrarAsientoContable(
                     $cxc['fecha_emision'],
                     "Registro de Venta / Factura N° " . $cxc['factura_numero'],
                     'CXC',
                     $cxc['id'],
                     [
-                        ['id_cuenta_contable' => $debitAcc, 'debe' => $cxc['monto'], 'haber' => 0.0],
-                        ['id_cuenta_contable' => $incomeDefaultAcc, 'debe' => 0.0, 'haber' => $cxc['monto']]
+                        ['id_cuenta_contable' => $debitAcc, 'debe' => $total, 'haber' => 0.0],
+                        ['id_cuenta_contable' => $incomeDefaultAcc, 'debe' => 0.0, 'haber' => $subtotal],
+                        ['id_cuenta_contable' => 154, 'debe' => 0.0, 'haber' => $iva] // 2010508 - IVA POR PAGAR
                     ]
                 );
             }
 
-            // 4. Invoices de Gastos / CXP
+            // 4. Invoices de Gastos / CXP (Separando IVA 15%)
             $cxpList = $this->db->query("SELECT id, id_cuenta_contable, proveedor_nombre, factura_numero, monto, fecha_emision FROM cuentas_por_pagar")->fetchAll(PDO::FETCH_ASSOC);
             foreach ($cxpList as $cxp) {
                 $debitAcc = $cxp['id_cuenta_contable'] ?: $expenseDefaultAcc;
+                $total = (float)$cxp['monto'];
+                $subtotal = round($total / 1.15, 2);
+                $iva = round($total - $subtotal, 2);
+                
                 $this->registrarAsientoContable(
                     $cxp['fecha_emision'],
                     "Registro de Gasto / Factura N° " . $cxp['factura_numero'] . " - " . $cxp['proveedor_nombre'],
                     'CXP',
                     $cxp['id'],
                     [
-                        ['id_cuenta_contable' => $debitAcc, 'debe' => $cxp['monto'], 'haber' => 0.0],
-                        ['id_cuenta_contable' => $cxpDefaultAcc, 'debe' => 0.0, 'haber' => $cxp['monto']]
+                        ['id_cuenta_contable' => $debitAcc, 'debe' => $subtotal, 'haber' => 0.0],
+                        ['id_cuenta_contable' => 82, 'debe' => $iva, 'haber' => 0.0], // 1010601 - IVA 15% ACREDITABLE
+                        ['id_cuenta_contable' => $cxpDefaultAcc, 'debe' => 0.0, 'haber' => $total]
                     ]
                 );
             }

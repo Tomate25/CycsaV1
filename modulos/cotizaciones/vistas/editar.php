@@ -271,7 +271,7 @@
                     <td>
                         <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega..." value="<?= htmlspecialchars($det['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </td>
-                    <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="0.01" min="0.01" value="<?= $det['cantidad'] ?>" required oninput="calcularFila(this)"></td>
+                    <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="<?= $det['cantidad'] ?>" required oninput="calcularFila(this)"></td>
                     <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="<?= $det['precio_unitario'] ?>" required oninput="calcularFila(this)"></td>
                     <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">C$ <?= number_format($det['subtotal'], 2, '.', ',') ?></td>
                     <td style="text-align: center; vertical-align: middle;">
@@ -609,7 +609,7 @@
             <td>
                 <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega...">
             </td>
-            <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="0.01" min="0.01" value="1" required oninput="calcularFila(this)"></td>
+            <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)"></td>
             <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="0.00" required oninput="calcularFila(this)"></td>
             <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">C$ 0.00</td>
             <td style="text-align: center; vertical-align: middle;">
@@ -949,7 +949,7 @@
             <td>
                 <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega..." value="${escapeHtml(obs)}">
             </td>
-            <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="0.01" min="0.01" value="1" required oninput="calcularFila(this)"></td>
+            <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)"></td>
             <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="${precio.toFixed(2)}" required oninput="calcularFila(this)"></td>
             <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">${formatearMonto(precio)}</td>
             <td style="text-align: center; vertical-align: middle;">

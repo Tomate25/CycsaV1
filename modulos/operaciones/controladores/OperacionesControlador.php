@@ -467,13 +467,25 @@ class OperacionesControlador extends ControladorBase {
             $filas = [];
             $archivoMd = $detalle['archivo_markdown'];
             
-            // Determinar si es un ensayo basado en especímenes/roturas (si tiene especímenes en la base de datos)
-            $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_lote = :id_lote");
+        // Determinar si es un ensayo basado en especímenes/roturas (si tiene especímenes reales en la base de datos)
+            $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_lote = :id_lote AND identificador_especimen != 'Muestra' AND edad_dias > 0");
             $stmtCount->execute(['id_lote' => $idLote]);
             $esEnsayoEdades = ((int)$stmtCount->fetchColumn() > 0);
 
-            if ($esEnsayoEdades) {
-                // Obtener datos del lote y recepción
+             if ($esEnsayoEdades) {
+                 $columnas = [
+                     "Cilindro",
+                     "Edad Evaluada",
+                     "Fecha Programada",
+                     "Fecha de Ensayo",
+                     "Carga Última (Lbs)",
+                     "Área Transversal (in²)",
+                     "Esfuerzo PSI",
+                     "Esfuerzo Kg/cm²",
+                     "% Diseño",
+                     "Estado / Alerta"
+                 ];
+                 // Obtener datos del lote y recepción
                 $stmtLote = $db->prepare("SELECT lm.*, rm.codigo_muestra, rm.codigo_campo 
                                           FROM lotes_muestras lm
                                           JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id

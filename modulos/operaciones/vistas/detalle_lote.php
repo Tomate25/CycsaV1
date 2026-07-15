@@ -209,6 +209,7 @@
             <thead>
                 <tr>
                     <th>Cilindro</th>
+                    <th>Especificación / Ensayo</th>
                     <th>Edad (Días)</th>
                     <th>Fecha Programada</th>
                     <th>Fecha Ensaye</th>
@@ -228,6 +229,7 @@
                 ?>
                 <tr style="<?= $esAlerta ? 'background-color: #fdf2f2;' : '' ?>">
                     <td style="font-weight: 700; font-family: monospace; color: var(--cycsa-azul);"><?= htmlspecialchars($e['identificador_especimen'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td style="font-weight: 600; color: var(--color-slate-800);"><?= htmlspecialchars($e['nombre_ensayo'] ?? 'Resistencia del Concreto', ENT_QUOTES, 'UTF-8') ?></td>
                     <td style="font-weight: 600;"><?= htmlspecialchars($e['edad_dias'], ENT_QUOTES, 'UTF-8') ?>d</td>
                     <td><?= htmlspecialchars($e['fecha_programada'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= $e['fecha_ensaye_real'] ? htmlspecialchars($e['fecha_ensaye_real'], ENT_QUOTES, 'UTF-8') : '—' ?></td>
@@ -249,11 +251,11 @@
                     </td>
                     <td style="text-align: right; white-space: nowrap;">
                         <?php if ($est == 'Programado' || $est == 'Listo para Ensaye'): ?>
-                            <button class="btn-accion btn-recepcion" onclick="abrirRupturaModal(<?= $e['id'] ?>, '<?= $e['identificador_especimen'] ?>', <?= $e['edad_dias'] ?>)">
+                            <button class="btn-accion btn-recepcion" onclick="abrirRupturaModal(<?= $e['id'] ?>, '<?= $e['identificador_especimen'] ?>', <?= $e['edad_dias'] ?>, '', '28.274', '<?= htmlspecialchars($e['nombre_ensayo'] ?? '', ENT_QUOTES, 'UTF-8') ?>')">
                                 <i class="fa-solid fa-hammer"></i> Romper
                             </button>
                         <?php else: ?>
-                            <button class="btn-accion btn-detalle" onclick="abrirRupturaModal(<?= $e['id'] ?>, '<?= $e['identificador_especimen'] ?>', <?= $e['edad_dias'] ?>, '<?= $e['carga_lbs'] ?>', '<?= $e['area_in2'] ?>')" title="Editar resultado">
+                            <button class="btn-accion btn-detalle" onclick="abrirRupturaModal(<?= $e['id'] ?>, '<?= $e['identificador_especimen'] ?>', <?= $e['edad_dias'] ?>, '<?= $e['carga_lbs'] ?>', '<?= $e['area_in2'] ?>', '<?= htmlspecialchars($e['nombre_ensayo'] ?? '', ENT_QUOTES, 'UTF-8') ?>')" title="Editar resultado">
                                 <i class="fa-solid fa-edit"></i> Editar
                             </button>
                         <?php endif; ?>
@@ -354,7 +356,7 @@
 <div id="modalRuptura" class="modal-premium">
     <div class="modal-premium-content" style="width: 35%;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0; color: var(--color-slate-900); font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700;">Ingreso de Cargas: Cilindro <span id="lbl_especimen" style="color:var(--cycsa-azul);"></span></h3>
+            <h3 style="margin: 0; color: var(--color-slate-900); font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700;">Ingreso de Cargas: Cilindro <span id="lbl_especimen" style="color:var(--cycsa-azul);"></span> <span id="lbl_especimen_ensayo" style="color:#64748b; font-size:12.5px; font-weight:500; display:block; margin-top:4px;"></span></h3>
             <button onclick="cerrarRupturaModal()" class="btn-cerrar">&times;</button>
         </div>
         
@@ -401,6 +403,30 @@
             
             <p style="color: var(--color-slate-600); font-size: 13.5px; margin-bottom: 15px;">Ingrese los valores correspondientes en la matriz del ensayo de laboratorio. Deje celdas vacías si no requiere usarlas.</p>
             
+            <div id="container-limites-material" style="display:none; margin-bottom:15px; background-color: #f8fafc; border: 1px solid var(--color-slate-200); padding: 12px; border-radius: 6px; display: flex; align-items: center; gap: 10px;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155; margin: 0;">Aplicar Límites por Tipo de Material Geotécnico:</label>
+                <select id="select-limites-material" class="form-control" style="background-color:white; width: auto; display:inline-block;" onchange="aplicarLimitesMaterial(this.value)">
+                    <option value="">-- Seleccionar material --</option>
+                    <option value="Arena colchon">Arena colchón</option>
+                    <option value="Material Cero">Material Cero</option>
+                    <option value="Material 1 1/2">Material 1 1/2"</option>
+                    <option value="Material 1">Material 1"</option>
+                    <option value="Material 3/4">Material 3/4"</option>
+                    <option value="Material 1/2">Material 1/2"</option>
+                    <option value="Material 3/8">Material 3/8"</option>
+                    <option value="Suelo">Suelo</option>
+                    <option value="Selecto">Selecto</option>
+                    <option value="Selecto relleno tipo 1">Selecto relleno tipo 1</option>
+                    <option value="Selecto relleno tipo 2">Selecto relleno tipo 2</option>
+                    <option value="Mezcla relleno 1-2">Mezcla relleno 1-2</option>
+                    <option value="Selecto Base A">Selecto Base A</option>
+                    <option value="Selecto Base B">Selecto Base B</option>
+                    <option value="Selecto Base C">Selecto Base C</option>
+                    <option value="Selecto Base D">Selecto Base D</option>
+                    <option value="Sub base A-1">Sub base A-1</option>
+                </select>
+            </div>
+            
             <div style="overflow-x: auto; width: 100%; border: 1px solid var(--color-slate-200); border-radius: 10px; margin-bottom: 20px;">
                 <table class="tabla-rupturas" style="margin-top: 0; margin-bottom: 0;" id="tabla-captura-resultados">
                     <thead id="tabla-captura-header">
@@ -412,9 +438,12 @@
                 </table>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" onclick="cerrarModalResultados()" class="form-control" style="cursor: pointer; background: #fff; border: 1px solid var(--color-slate-300); font-weight: 600; color: var(--color-slate-600); width: auto; padding: 10px 20px;">Cancelar</button>
-                <button type="submit" class="form-control" style="cursor: pointer; background: var(--cycsa-azul); border: 1px solid var(--cycsa-azul); color: white; font-weight: 600; width: auto; padding: 10px 24px;">Guardar Resultados</button>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" class="form-control" style="cursor: pointer; background: #f8fafc; border: 1px solid var(--color-slate-300); font-weight: 600; color: var(--color-slate-600); width: auto; padding: 10px 20px; display: inline-flex; align-items: center; gap: 6px;" onclick="agregarFilaResultados()"><i class="fa-solid fa-plus"></i> Agregar Fila</button>
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" onclick="cerrarModalResultados()" class="form-control" style="cursor: pointer; background: #fff; border: 1px solid var(--color-slate-300); font-weight: 600; color: var(--color-slate-600); width: auto; padding: 10px 20px;">Cancelar</button>
+                    <button type="submit" class="form-control" style="cursor: pointer; background: var(--cycsa-azul); border: 1px solid var(--cycsa-azul); color: white; font-weight: 600; width: auto; padding: 10px 24px;">Guardar Resultados</button>
+                </div>
             </div>
         </form>
     </div>
@@ -488,11 +517,21 @@
     const FORMATOS_SCHEMA = <?= $formatosSchemaJson ?>;
     let columnasActuales = [];
 
-    function abrirRupturaModal(idEnsayo, espName, edad, carga = '', area = '28.274') {
+    function abrirRupturaModal(idEnsayo, espName, edad, carga = '', area = '28.274', nombreEnsayo = '') {
         document.getElementById('rup_id_ensayo').value = idEnsayo;
         document.getElementById('lbl_especimen').innerText = espName + ' (' + edad + ' días)';
         document.getElementById('rup_carga').value = carga;
         document.getElementById('rup_area').value = area;
+        
+        const ensayoSpan = document.getElementById('lbl_especimen_ensayo');
+        if (ensayoSpan) {
+            if (nombreEnsayo) {
+                ensayoSpan.innerText = 'Ensayo: ' + nombreEnsayo;
+                ensayoSpan.style.display = 'block';
+            } else {
+                ensayoSpan.style.display = 'none';
+            }
+        }
         
         // Reset status message
         const msgDiv = document.getElementById('ruptura-status-message');
@@ -567,6 +606,260 @@
         });
     }
 
+    const DEFAULT_ROWS_BY_FORMAT = {
+        "formato_de_granulometria_de_suelo.md": [
+            { "Malla": "2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1 1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/4\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/8\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 4", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 8", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 10", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 16", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 20", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 30", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 40", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 50", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 60", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 80", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 100", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 140", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 200", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Fondo", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Pérdida lavado", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Suma", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Límite Líquido", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Límite Plástico", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "I.P", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" }
+        ],
+        "granulomnetria_de_agregados.md": [
+            { "Malla": "2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1 1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/4\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/8\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 4", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 8", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 10", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 16", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 20", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 30", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 40", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 50", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 60", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 80", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 100", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 140", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 200", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Fondo", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Pérdida lavado", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Suma", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Límite Líquido", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Límite Plástico", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "I.P", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" }
+        ]
+    };
+
+    const LIMITS_DB = {
+        "Arena colchon": {
+            "min": { "3/8\"": 100, "No. 4": 100, "No. 10": 85, "No. 200": 0 },
+            "max": { "No. 200": 3 }
+        },
+        "Material Cero": {
+            "min": { "1 1/2\"": 100, "1\"": 90, "3/4\"": 35, "1/2\"": 20, "3/8\"": 10, "No. 4": 0, "No. 8": 80, "No. 16": 50, "No. 30": 25, "No. 50": 5, "No. 100": 0, "No. 200": 0 },
+            "max": { "1\"": 100, "3/4\"": 70, "1/2\"": 50, "3/8\"": 30, "No. 4": 100, "No. 8": 100, "No. 16": 85, "No. 30": 60, "No. 50": 30, "No. 100": 10, "No. 200": 5 }
+        },
+        "Material 1 1/2": {
+            "min": { "2\"": 100, "1 1/2\"": 71, "1\"": 75, "3/4\"": 38, "1/2\"": 53, "3/8\"": 30, "No. 4": 25, "No. 10": 15, "No. 40": 8, "No. 200": 2 },
+            "max": { "2\"": 100, "1\"": 100, "3/4\"": 100, "1/2\"": 77.5, "3/8\"": 55, "No. 4": 5, "No. 8": 0, "No. 200": 0 }
+        },
+        "Material 1": {
+            "min": { "1\"": 100, "3/4\"": 90, "1/2\"": 55, "3/8\"": 40, "No. 4": 25, "No. 10": 15, "No. 40": 8, "No. 200": 2 },
+            "max": { "1\"": 100, "3/4\"": 100, "1/2\"": 100, "3/8\"": 55, "No. 4": 10, "No. 8": 5, "No. 200": 0 }
+        },
+        "Material 3/4": {
+            "min": { "3/4\"": 100, "1/2\"": 90, "3/8\"": 85, "No. 4": 0, "No. 8": 0, "No. 10": 0, "No. 16": 0, "No. 200": 0 },
+            "max": { "3/4\"": 100, "1/2\"": 100, "3/8\"": 70, "No. 4": 15, "No. 8": 5, "No. 16": 0 }
+        },
+        "Material 1/2": {
+            "min": { "1/2\"": 100, "3/8\"": 100, "No. 4": 10, "No. 8": 0, "No. 16": 0, "No. 200": 0 },
+            "max": { "1/2\"": 100, "3/8\"": 100, "No. 4": 30, "No. 8": 10, "No. 16": 0 }
+        },
+        "Material 3/8": {
+            "min": { "3/8\"": 100, "No. 4": 100, "No. 10": 100, "No. 16": 100, "No. 30": 100, "No. 40": 100, "No. 50": 100, "No. 60": 100, "No. 80": 100, "No. 100": 100, "No. 140": 100, "No. 200": 100 },
+            "max": { "3/8\"": 100, "No. 4": 100, "No. 10": 100, "No. 16": 100, "No. 30": 100, "No. 40": 100, "No. 50": 100, "No. 60": 100, "No. 80": 100, "No. 100": 100, "No. 140": 100, "No. 200": 100 }
+        },
+        "Suelo": {
+            "min": { "2\"": 100, "No. 4": 12, "No. 10": 7, "No. 40": 4, "No. 200": 0 },
+            "max": { "2\"": 100, "No. 4": 40, "No. 10": 29, "No. 40": 21, "No. 200": 16 }
+        },
+        "Selecto": {
+            "min": { "1\"": 75, "1/2\"": 50, "No. 4": 30, "No. 10": 20, "No. 40": 10, "No. 200": 0 },
+            "max": { "1\"": 95, "1/2\"": 80, "No. 4": 65, "No. 10": 50, "No. 40": 35, "No. 200": 16 }
+        },
+        "Selecto relleno tipo 1": {
+            "min": { "2\"": 100, "1\"": 75, "No. 4": 90, "No. 10": 75, "No. 40": 50, "No. 200": 0 },
+            "max": { "2\"": 100, "1\"": 100, "No. 4": 100, "No. 10": 90, "No. 40": 65, "No. 200": 35 }
+        },
+        "Selecto relleno tipo 2": {
+            "min": { "2\"": 100, "1\"": 65, "No. 4": 50, "No. 10": 30, "No. 40": 23, "No. 200": 0 },
+            "max": { "2\"": 100, "1\"": 90, "No. 4": 80, "No. 10": 63, "No. 40": 46, "No. 200": 20 }
+        },
+        "Mezcla relleno 1-2": {
+            "min": { "2\"": 97, "No. 4": 25, "No. 10": 15, "No. 40": 8, "No. 200": 2 },
+            "max": { "2\"": 100, "No. 4": 55, "No. 10": 40, "No. 40": 20, "No. 200": 8 }
+        },
+        "Selecto Base A": {
+            "min": { "No. 4": 30, "No. 10": 20, "No. 40": 15, "No. 200": 5 },
+            "max": { "No. 4": 60, "No. 10": 45, "No. 40": 30, "No. 200": 15 }
+        },
+        "Selecto Base B": {
+            "min": { "No. 4": 35, "No. 10": 25, "No. 40": 15, "No. 200": 5 },
+            "max": { "No. 4": 65, "No. 10": 50, "No. 40": 30, "No. 200": 15 }
+        },
+        "Selecto Base C": {
+            "min": { "No. 4": 50, "No. 10": 40, "No. 40": 25, "No. 200": 8 },
+            "max": { "No. 4": 85, "No. 10": 70, "No. 40": 45, "No. 200": 15 }
+        },
+        "Selecto Base D": {
+            "min": { "No. 4": 28, "No. 10": 22, "No. 200": 5 },
+            "max": { "No. 4": 40, "No. 10": 52, "No. 200": 20 }
+        },
+        "Sub base A-1": {
+            "min": { "2\"": 100, "1\"": 65, "No. 4": 28, "No. 10": 22, "No. 200": 5 },
+            "max": { "2\"": 100, "1\"": 79, "No. 4": 40, "No. 10": 52, "No. 200": 20 }
+        }
+    };
+
+    function aplicarLimitesMaterial(matName) {
+        if (!matName) return;
+        const limits = LIMITS_DB[matName];
+        if (!limits) return;
+        
+        const rows = document.querySelectorAll('#tabla-captura-body tr');
+        rows.forEach(tr => {
+            const descInput = tr.querySelector('input[data-col="Malla"]');
+            const minInput = tr.querySelector('input[data-col="Límite Mín"]');
+            const maxInput = tr.querySelector('input[data-col="Límite Máx"]');
+            if (descInput && minInput && maxInput) {
+                const malla = descInput.value.trim();
+                const minVal = limits.min[malla] !== undefined ? limits.min[malla] : '';
+                const maxVal = limits.max[malla] !== undefined ? limits.max[malla] : '';
+                minInput.value = minVal;
+                maxInput.value = maxVal;
+            }
+        });
+    }
+
+    function recalculateGranulometria() {
+        const rows = document.querySelectorAll('#tabla-captura-body tr');
+        let totalSuma = 0;
+        let rowsArray = [];
+        
+        rows.forEach(tr => {
+            const rowData = {};
+            const inputs = tr.querySelectorAll('input');
+            inputs.forEach(input => {
+                rowData[input.dataset.col] = input;
+            });
+            rowsArray.push(rowData);
+        });
+        
+        // Sum weights
+        rowsArray.forEach(row => {
+            const malla = row['Malla'] ? row['Malla'].value.trim() : '';
+            if (malla && !['Suma', 'Límite Líquido', 'Límite Plástico', 'I.P'].includes(malla)) {
+                const wInput = row['P. Retenido parcial (gr)'];
+                if (wInput) {
+                    const w = parseFloat(wInput.value) || 0;
+                    totalSuma += w;
+                }
+            }
+        });
+        
+        // Suma row
+        const sumaRow = rowsArray.find(r => r['Malla'] && r['Malla'].value.trim() === 'Suma');
+        if (sumaRow && sumaRow['P. Retenido parcial (gr)']) {
+            sumaRow['P. Retenido parcial (gr)'].value = totalSuma > 0 ? totalSuma.toFixed(4) : '';
+            if (sumaRow['% Retenido parcial']) sumaRow['% Retenido parcial'].value = totalSuma > 0 ? '100.00' : '';
+            if (sumaRow['% Acumulativo']) sumaRow['% Acumulativo'].value = totalSuma > 0 ? '100.00' : '';
+            if (sumaRow['% que pasa la malla']) sumaRow['% que pasa la malla'].value = totalSuma > 0 ? '0.00' : '';
+        }
+        
+        // Sieve percentages
+        let accumPercent = 0;
+        rowsArray.forEach(row => {
+            const malla = row['Malla'] ? row['Malla'].value.trim() : '';
+            if (malla && !['Suma', 'Límite Líquido', 'Límite Plástico', 'I.P'].includes(malla)) {
+                const wInput = row['P. Retenido parcial (gr)'];
+                const rpInput = row['% Retenido parcial'];
+                const acInput = row['% Acumulativo'];
+                const qpInput = row['% que pasa la malla'];
+                
+                if (wInput && wInput.value !== '') {
+                    const w = parseFloat(wInput.value) || 0;
+                    const percent = totalSuma > 0 ? (w / totalSuma) * 100 : 0;
+                    if (rpInput) rpInput.value = percent.toFixed(2);
+                    
+                    accumPercent += percent;
+                    if (acInput) acInput.value = accumPercent.toFixed(2);
+                    if (qpInput) qpInput.value = Math.max(0, 100 - accumPercent).toFixed(2);
+                } else {
+                    if (rpInput) rpInput.value = '';
+                    if (acInput) acInput.value = '';
+                    if (qpInput) qpInput.value = '';
+                }
+            }
+        });
+        
+        // IP calculation
+        const llRow = rowsArray.find(r => r['Malla'] && r['Malla'].value.trim() === 'Límite Líquido');
+        const lpRow = rowsArray.find(r => r['Malla'] && r['Malla'].value.trim() === 'Límite Plástico');
+        const ipRow = rowsArray.find(r => r['Malla'] && r['Malla'].value.trim() === 'I.P');
+        
+        if (llRow && lpRow && ipRow) {
+            const llVal = parseFloat(llRow['% que pasa la malla'] ? llRow['% que pasa la malla'].value : 0) || 0;
+            const lpVal = parseFloat(lpRow['% que pasa la malla'] ? lpRow['% que pasa la malla'].value : 0) || 0;
+            const ipVal = Math.max(0, llVal - lpVal);
+            if (ipRow['% que pasa la malla']) {
+                ipRow['% que pasa la malla'].value = (llVal > 0 || lpVal > 0) ? ipVal.toFixed(2) : '';
+            }
+        }
+    }
+
+    function recalculateIP() {
+        // Obsoleted but kept for legacy views
+    }
+
+    function agregarFilaResultados() {
+        const bodyContainer = document.getElementById('tabla-captura-body');
+        const tr = document.createElement('tr');
+        
+        columnasActuales.forEach(col => {
+            const td = document.createElement('td');
+            td.style.padding = '8px';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control';
+            input.style.width = '100%';
+            input.style.padding = '8px 12px';
+            input.style.fontSize = '13.5px';
+            input.style.boxSizing = 'border-box';
+            input.style.borderRadius = '6px';
+            input.style.border = '1px solid var(--color-slate-300)';
+            input.value = '';
+            input.dataset.col = col;
+            
+            td.appendChild(input);
+            tr.appendChild(td);
+        });
+        bodyContainer.appendChild(tr);
+    }
+
     function abrirModalResultados(idDetalle, nombreEnsayo, archivoMarkdown, resultadosJson) {
         document.getElementById('modal-id-detalle').value = idDetalle;
         document.getElementById('modal-titulo-ensayo').innerText = 'Capturar Resultados: ' + nombreEnsayo;
@@ -594,7 +887,7 @@
         headerContainer.innerHTML = '';
         headerContainer.appendChild(headerRow);
 
-        // Parse existing rows or generate 5 empty rows
+        // Parse existing rows
         let filasExistentes = [];
         try {
             if (typeof resultadosJson === 'string') {
@@ -608,12 +901,27 @@
 
         if (!Array.isArray(filasExistentes)) filasExistentes = [];
 
-        // Build 5 rows of inputs
+        // Determine default rows if empty
+        const defaultRows = DEFAULT_ROWS_BY_FORMAT[archivoMarkdown] || [];
+        const totalRowsToShow = Math.max(filasExistentes.length, defaultRows.length, 5);
+
+        // Show/hide limits select dropdown
+        const divLimites = document.getElementById('container-limites-material');
+        if (divLimites) {
+            if (archivoMarkdown.includes('granulometria') || archivoMarkdown.includes('granulomnetria')) {
+                divLimites.style.display = 'flex';
+                document.getElementById('select-limites-material').value = '';
+            } else {
+                divLimites.style.display = 'none';
+            }
+        }
+
+        // Build rows of inputs
         const bodyContainer = document.getElementById('tabla-captura-body');
         bodyContainer.innerHTML = '';
         
-        for (let r = 0; r < 5; r++) {
-            const rowData = filasExistentes[r] || {};
+        for (let r = 0; r < totalRowsToShow; r++) {
+            const rowData = filasExistentes[r] || defaultRows[r] || {};
             const tr = document.createElement('tr');
             
             columnasActuales.forEach(col => {
@@ -632,10 +940,77 @@
                 input.value = rowData[col] || '';
                 input.dataset.col = col;
                 
+                // Formato granulometría
+                const isGranulometria = (archivoMarkdown.includes('granulometria') || archivoMarkdown.includes('granulomnetria'));
+                if (isGranulometria) {
+                    const mallaName = rowData['Malla'] || '';
+                    if (col === 'Malla') {
+                        input.readOnly = true;
+                        input.style.backgroundColor = '#f8fafc';
+                        input.style.fontWeight = 'bold';
+                    }
+                    
+                    if (['% Retenido parcial', '% Acumulativo'].includes(col)) {
+                        input.readOnly = true;
+                        input.style.backgroundColor = '#f1f5f9';
+                    }
+                    
+                    if (col === '% que pasa la malla') {
+                        if (['Límite Líquido', 'Límite Plástico'].includes(mallaName)) {
+                            // Editable para LL y LP
+                            input.style.fontWeight = 'bold';
+                            input.addEventListener('input', recalculateGranulometria);
+                        } else if (mallaName === 'I.P') {
+                            input.readOnly = true;
+                            input.style.backgroundColor = '#e2e8f0';
+                            input.style.fontWeight = 'bold';
+                        } else {
+                            // Calculado
+                            input.readOnly = true;
+                            input.style.backgroundColor = '#f1f5f9';
+                        }
+                    }
+                    
+                    if (col === 'P. Retenido parcial (gr)') {
+                        if (['Límite Líquido', 'Límite Plástico', 'I.P'].includes(mallaName)) {
+                            input.readOnly = true;
+                            input.style.backgroundColor = '#f1f5f9';
+                            input.value = '—';
+                        } else if (mallaName === 'Suma') {
+                            input.readOnly = true;
+                            input.style.backgroundColor = '#e2e8f0';
+                            input.style.fontWeight = 'bold';
+                        } else {
+                            input.addEventListener('input', recalculateGranulometria);
+                        }
+                    }
+                }
+                
                 td.appendChild(input);
                 tr.appendChild(td);
             });
             bodyContainer.appendChild(tr);
+        }
+
+        // Bind auto-calculations on input changes (Legacy/fallback formats)
+        const isGranulometria = (archivoMarkdown.includes('granulometria') || archivoMarkdown.includes('granulomnetria'));
+        if (!isGranulometria) {
+            bodyContainer.querySelectorAll('tr').forEach(tr => {
+                const descInput = tr.querySelector('input[data-col="Descripción"]');
+                const resInput = tr.querySelector('input[data-col="Resultado"]');
+                if (descInput && resInput) {
+                    const descVal = descInput.value.trim().toLowerCase();
+                    if (descVal === 'i.p' || descVal === 'ip') {
+                        resInput.readOnly = true;
+                        resInput.style.backgroundColor = '#f1f5f9';
+                        resInput.style.fontWeight = 'bold';
+                    } else if (descVal === 'límite líquido' || descVal === 'límite liquido' || descVal === 'límite liquido.' || descVal === 'límite plástico' || descVal === 'límite plastico' || descVal === 'límite plástico.') {
+                        resInput.addEventListener('input', recalculateIP);
+                    }
+                }
+            });
+        } else {
+            recalculateGranulometria();
         }
 
         modalResultados.style.display = 'block';

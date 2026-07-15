@@ -1063,11 +1063,23 @@ class CotizacionesControlador extends ControladorBase {
 
         // Parse saved rows
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-        $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_detalle_cotizacion = :id_detalle");
+        $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_detalle_cotizacion = :id_detalle AND identificador_especimen != 'Muestra' AND edad_dias > 0");
         $stmtCount->execute(['id_detalle' => $id_detalle]);
         $esEnsayoEdades = ((int)$stmtCount->fetchColumn() > 0);
 
         if ($esEnsayoEdades) {
+            $columnas = [
+                "Cilindro",
+                "Edad Evaluada",
+                "Fecha Programada",
+                "Fecha de Ensayo",
+                "Carga Última (Lbs)",
+                "Área Transversal (in²)",
+                "Esfuerzo PSI",
+                "Esfuerzo Kg/cm²",
+                "% Diseño",
+                "Estado / Alerta"
+            ];
             $stmtLoteId = $db->prepare("SELECT id_lote FROM ensayo_edades WHERE id_detalle_cotizacion = :id_detalle LIMIT 1");
             $stmtLoteId->execute(['id_detalle' => $id_detalle]);
             $idLote = (int)$stmtLoteId->fetchColumn();

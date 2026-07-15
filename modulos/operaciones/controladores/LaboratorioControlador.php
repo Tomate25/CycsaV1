@@ -165,10 +165,7 @@ class LaboratorioControlador extends ControladorBase {
         $this->verificarPermiso($respuesta, 'crear_editar');
 
         if ($peticion->esPost()) {
-            $datos = $peticion->obtainData();
-            if (!$datos) {
-                $datos = $peticion->obtenerDatos();
-            }
+            $datos = $peticion->obtenerDatos();
 
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
                 $_SESSION['error'] = 'Token CSRF inválido.';

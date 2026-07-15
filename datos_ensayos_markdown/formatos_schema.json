@@ -83,10 +83,13 @@
     "document_code": "CYCSA-RT-FM-22 F V1-R2",
     "sample_type": "Suelo",
     "columns": [
-      "Descripción",
-      "Unidad",
-      "Método de ensayo",
-      "Resultado"
+      "Malla",
+      "P. Retenido parcial (gr)",
+      "% Retenido parcial",
+      "% Acumulativo",
+      "% que pasa la malla",
+      "Límite Mín",
+      "Límite Máx"
     ]
   },
   "formato_de_lodo_concreto.md": {
@@ -174,12 +177,13 @@
     "document_code": "CYCSA-RT-FM-22 F V1R2",
     "sample_type": "Agregados 3/4\"",
     "columns": [
-      "Descripción",
-      "Unidad",
-      "Resultado",
-      "Método de ensayo",
-      "Min",
-      "Max"
+      "Malla",
+      "P. Retenido parcial (gr)",
+      "% Retenido parcial",
+      "% Acumulativo",
+      "% que pasa la malla",
+      "Límite Mín",
+      "Límite Máx"
     ]
   },
   "pesos_volumetricos.md": {

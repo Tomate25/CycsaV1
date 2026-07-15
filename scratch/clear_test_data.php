@@ -59,7 +59,6 @@ try {
         'ordenes_servicio',
         'cotizacion_detalles',
         'cotizaciones',
-        'clientes',
         'bitacora'
     ];
 
