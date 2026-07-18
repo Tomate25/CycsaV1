@@ -26,6 +26,62 @@ $accionesAmigables = [
     'rechazar_admin_cliente' => 'Rechazado por Admin',
     'editar_reenviar' => 'Corregido y Re-enviado'
 ];
+
+/**
+ * LIMS Lógica Visibilidad: Convierte descripciones técnicas con ID de BD (ej: 'O/S ID 1')
+ * a formatos legibles amigables con el código oficial (ej: 'Orden de Servicio OS-2026-001 (Cliente)').
+ */
+function formatearDescripcionBitacora(array $log): string {
+    $desc = $log['descripcion'];
+    
+    // Convertir O/S ID X o Orden de Servicio ID X
+    if (preg_match('/(Orden de Servicio|O\/S)\s+ID\s+(\d+)/i', $desc, $matches)) {
+        $idOS = (int)$matches[2];
+        static $osCache = [];
+        if ($idOS > 0) {
+            if (!isset($osCache[$idOS])) {
+                try {
+                    $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                    $stmt = $db->prepare("SELECT codigo_os, cliente_nombre FROM ordenes_servicio WHERE id = :id LIMIT 1");
+                    $stmt->execute(['id' => $idOS]);
+                    $osCache[$idOS] = $stmt->fetch(PDO::FETCH_ASSOC) ?: false;
+                } catch (\Exception $e) {
+                    $osCache[$idOS] = false;
+                }
+            }
+            if ($osCache[$idOS]) {
+                $codigoOS = $osCache[$idOS]['codigo_os'];
+                $clienteOS = !empty($osCache[$idOS]['cliente_nombre']) ? ' (Cliente: ' . $osCache[$idOS]['cliente_nombre'] . ')' : '';
+                $desc = preg_replace('/(Orden de Servicio|O\/S)\s+ID\s+\d+/i', 'Orden de Servicio ' . $codigoOS . $clienteOS, $desc);
+            }
+        }
+    }
+
+    // Convertir Cotización ID X
+    if (preg_match('/(Cotización|Cotizacion)\s+ID\s+(\d+)/i', $desc, $matches)) {
+        $idCot = (int)$matches[2];
+        static $cotCache = [];
+        if ($idCot > 0) {
+            if (!isset($cotCache[$idCot])) {
+                try {
+                    $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                    $stmt = $db->prepare("SELECT codigo_cotizacion, cliente_nombre FROM cotizaciones WHERE id = :id LIMIT 1");
+                    $stmt->execute(['id' => $idCot]);
+                    $cotCache[$idCot] = $stmt->fetch(PDO::FETCH_ASSOC) ?: false;
+                } catch (\Exception $e) {
+                    $cotCache[$idCot] = false;
+                }
+            }
+            if ($cotCache[$idCot]) {
+                $codigoCot = $cotCache[$idCot]['codigo_cotizacion'];
+                $clienteCot = !empty($cotCache[$idCot]['cliente_nombre']) ? ' (Cliente: ' . $cotCache[$idCot]['cliente_nombre'] . ')' : '';
+                $desc = preg_replace('/(Cotización|Cotizacion)\s+ID\s+\d+/i', 'Cotización ' . $codigoCot . $clienteCot, $desc);
+            }
+        }
+    }
+
+    return $desc;
+}
 ?>
 <style>
     /* Premium Stats Cards CSS */
@@ -231,8 +287,9 @@ $accionesAmigables = [
                                 <?= htmlspecialchars($accionLimpia, ENT_QUOTES, 'UTF-8') ?>
                             </span>
                         </td>
+                        <?php $descFormateada = formatearDescripcionBitacora($log); ?>
                         <td style="color: #334155; font-weight: 500;">
-                            <span class="truncate-desc"><?= htmlspecialchars($log['descripcion'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <span class="truncate-desc"><?= htmlspecialchars($descFormateada, ENT_QUOTES, 'UTF-8') ?></span>
                             <span class="info-badge-click">Detalles</span>
                         </td>
                         <td style="font-family: monospace; color: #64748b; font-size: 12px;"><?= htmlspecialchars($log['ip'], ENT_QUOTES, 'UTF-8') ?></td>
@@ -247,7 +304,7 @@ $accionesAmigables = [
                                         <div class="detail-item">
                                             <span class="detail-label">Descripción Completa del Movimiento</span>
                                             <div class="detail-value" style="font-size: 14px; line-height: 1.5; color: #0f172a;">
-                                                <?= htmlspecialchars($log['descripcion'], ENT_QUOTES, 'UTF-8') ?>
+                                                <?= htmlspecialchars($descFormateada, ENT_QUOTES, 'UTF-8') ?>
                                             </div>
                                         </div>
                                         

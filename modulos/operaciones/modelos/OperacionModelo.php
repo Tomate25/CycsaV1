@@ -686,6 +686,7 @@ class OperacionModelo extends ModeloBase {
             $procedencia = trim($datos['procedencia_punto_muestreo'] ?? '');
             $personaToma = trim($datos['nombre_persona_toma_muestra'] ?? '');
             $fechaHoraToma = !empty($datos['fecha_hora_toma_muestra']) ? $datos['fecha_hora_toma_muestra'] : null;
+            $condicionMuestreoDatos = trim($datos['condicion_muestreo_datos'] ?? 'Muestra tomada y entregada por el cliente');
             
             $muestrasJson = $datos['identificacion_muestras_json'] ?? '[]';
             
@@ -755,6 +756,7 @@ class OperacionModelo extends ModeloBase {
                             procedencia_punto_muestreo = :proc,
                             nombre_persona_toma_muestra = :p_toma,
                             fecha_hora_toma_muestra = :f_toma,
+                            condicion_muestreo_datos = :cond_m,
                             muestras_json = :m_json,
                             req_resistencia_concreto = :rc_con,
                             req_resistencia_adoquin = :rc_ado,
@@ -781,14 +783,14 @@ class OperacionModelo extends ModeloBase {
             } else {
                 $sql = "INSERT INTO hojas_solicitud (
                             id_os, fecha_hora_llegada_laboratorio, codigo_documento, nombre_empresa_o_cliente, direccion_proyecto, telefono, correo_electronico, nombre_persona_entrega_muestra,
-                            naturaleza_muestra, procedencia_punto_muestreo, nombre_persona_toma_muestra, fecha_hora_toma_muestra, muestras_json,
+                            naturaleza_muestra, procedencia_punto_muestreo, nombre_persona_toma_muestra, fecha_hora_toma_muestra, condicion_muestreo_datos, muestras_json,
                             req_resistencia_concreto, req_resistencia_adoquin, req_resistencia_bloques, req_otros_concreto,
                             req_granulometria, req_limites_atterberg, req_humedad, req_resistencia_corte, req_clasificacion_sucs_hr, req_proctor_sm, req_infiltracion, req_cbr, req_densidad, req_otros_suelo,
                             req_otros_materiales, descripcion_otros_analisis,
                             analisis_adicionales, observaciones, nombre_recibe_cycsa, firma_recibe_cycsa, firma_cliente
                         ) VALUES (
                             :id_os, :f_llegada, :cod_doc, :n_empresa, :dir, :tel, :email, :p_entrega,
-                            :naturaleza, :proc, :p_toma, :f_toma, :m_json,
+                            :naturaleza, :proc, :p_toma, :f_toma, :cond_m, :m_json,
                             :rc_con, :rc_ado, :rc_blo, :rc_ot,
                             :rg, :rl, :rh, :rs, :rc_sucs, :rp, :ri, :rcbr, :rd, :rs_ot,
                             :ro_mat, :ro_desc,
@@ -810,6 +812,7 @@ class OperacionModelo extends ModeloBase {
                 'proc' => $procedencia,
                 'p_toma' => $personaToma,
                 'f_toma' => $fechaHoraToma,
+                'cond_m' => $condicionMuestreoDatos,
                 'm_json' => $muestrasJson,
                 'rc_con' => $reqResistenciaConcreto,
                 'rc_ado' => $reqResistenciaAdoquin,

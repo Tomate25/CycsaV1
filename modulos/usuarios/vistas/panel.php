@@ -278,6 +278,210 @@
         font-weight: 700;
         color: #103487;
     }
+
+    /* CAJÓN DE APLICACIONES (APP LAUNCHER) */
+    .panel-tabs-navigation {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 25px;
+        background: #e2e8f0;
+        padding: 5px;
+        border-radius: 14px;
+        width: fit-content;
+        margin-left: auto;
+        margin-right: auto;
+        border: 1px solid rgba(203, 213, 225, 0.5);
+    }
+    
+    .panel-tab-btn {
+        background: transparent;
+        border: none;
+        padding: 10px 22px;
+        border-radius: 10px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .panel-tab-btn:hover {
+        color: #0f172a;
+        background: rgba(255, 255, 255, 0.4);
+    }
+    
+    .panel-tab-btn.active {
+        background: white;
+        color: var(--cycsa-azul);
+        box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+    }
+    
+    .app-drawer-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        animation: fadeInPanel 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        padding: 35px 20px;
+        border-radius: 24px;
+        background: radial-gradient(circle at 50% 30%, rgba(241, 245, 249, 0.75) 0%, rgba(248, 250, 252, 0.95) 100%);
+        border: 1px solid rgba(226, 232, 240, 0.6);
+        box-shadow: 0 10px 30px -10px rgba(16, 52, 135, 0.04);
+        overflow: hidden;
+    }
+
+    .app-drawer-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        animation: fadeInPanel 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        padding: 35px 20px;
+        border-radius: 24px;
+        background: white;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: var(--card-shadow);
+    }
+
+    .app-card {
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+    }
+
+    .app-card:hover {
+        background: white;
+        box-shadow: 0 20px 35px -5px rgba(16, 52, 135, 0.12), 0 10px 15px -8px rgba(16, 52, 135, 0.08);
+    }
+
+    @keyframes fadeInPanel {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .app-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(290px, 340px));
+        justify-content: center;
+        gap: 20px;
+        width: 100%;
+        margin-top: 15px;
+    }
+    
+    .app-card {
+        background: white;
+        border-radius: 16px;
+        padding: 22px;
+        display: flex;
+        gap: 18px;
+        text-decoration: none;
+        color: inherit;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .app-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-hover-shadow);
+        border-color: rgba(16, 52, 135, 0.18);
+    }
+
+    .app-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: transparent;
+        transition: background 0.3s ease;
+    }
+
+    .app-card:hover::before {
+        background: var(--app-color, var(--cycsa-azul));
+    }
+    
+    .app-icon-container {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 22px;
+        flex-shrink: 0;
+        background: var(--app-color, var(--cycsa-azul));
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    
+    .app-card:hover .app-icon-container {
+        transform: scale(1.08) rotate(3deg);
+        box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+    }
+    
+    .app-details {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .app-name-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        transition: color 0.2s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .app-card:hover .app-name-title {
+        color: var(--cycsa-azul);
+    }
+    
+    .app-desc {
+        font-size: 12.5px;
+        color: #64748b;
+        line-height: 1.35;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .app-arrow {
+        align-self: center;
+        color: #cbd5e1;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .app-card:hover .app-arrow {
+        color: var(--cycsa-azul);
+        transform: translateX(4px);
+    }
 </style>
 
 <div class="dashboard-container">
@@ -285,8 +489,8 @@
     <!-- Welcome Header -->
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 5px;">
         <div>
-            <h2 style="margin: 0; color: #0f172a; font-size: 24px; font-weight: 800;">Panel de Control</h2>
-            <p style="color: #64748b; margin-top: 4px; font-size: 14px;">Bienvenido de nuevo, <strong style="color: #103487;"><?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?></strong>. Aquí está el resumen de la actividad comercial.</p>
+            <h2 style="margin: 0; color: #0f172a; font-size: 24px; font-weight: 800; font-family: 'Outfit', sans-serif;">Panel de Control</h2>
+            <p style="color: #64748b; margin-top: 4px; font-size: 14px;">Bienvenido de nuevo, <strong style="color: #103487;"><?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?></strong>. ¿Con qué módulo deseas trabajar hoy?</p>
         </div>
         <div style="font-size: 13px; color: #64748b; background: white; padding: 8px 16px; border-radius: 30px; box-shadow: var(--card-shadow); border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
             <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block;"></span>
@@ -294,214 +498,287 @@
         </div>
     </div>
 
-    <!-- KPI Grid -->
-    <div class="kpi-grid">
-        <!-- Cotizaciones Totales -->
-        <div class="kpi-card kpi-1" onclick="window.location.href='/Cycsa/publico/cotizaciones?tab=todas'">
-            <div class="kpi-info">
-                <span class="kpi-title">Total Cotizado</span>
-                <span class="kpi-value"><?= number_format($kpis['total_cotizaciones']) ?></span>
-                <span class="kpi-subtitle">Propuestas generadas</span>
-            </div>
-            <div class="kpi-icon-wrapper">
-                <i class="fa-solid fa-file-invoice-dollar"></i>
-            </div>
-        </div>
+    <!-- Navigation Tabs if Admin -->
+    <?php if ($esAdmin): ?>
+    <div class="panel-tabs-navigation">
+        <button class="panel-tab-btn active" data-target="app-drawer-section">
+            <i class="fa-solid fa-cubes"></i> Cajón de Aplicaciones
+        </button>
+        <button class="panel-tab-btn" data-target="analytics-section">
+            <i class="fa-solid fa-chart-line"></i> Analíticas & KPIs
+        </button>
+    </div>
+    <?php endif; ?>
 
-        <!-- Monto Aprobado -->
-        <div class="kpi-card kpi-2" onclick="window.location.href='/Cycsa/publico/cotizaciones?tab=aprobadas'">
-            <div class="kpi-info">
-                <span class="kpi-title">Aprobado Cliente</span>
-                <span class="kpi-value" style="font-size: 20px; margin-top: 3px; font-weight: 800;">C$ <?= number_format($kpis['total_monto_aprobado'], 2, '.', ',') ?></span>
-                <span class="kpi-subtitle">Monto en cartera activa</span>
-            </div>
-            <div class="kpi-icon-wrapper">
-                <i class="fa-solid fa-circle-check"></i>
-            </div>
-        </div>
-
-        <!-- En Revisión -->
-        <div class="kpi-card kpi-3" onclick="window.location.href='/Cycsa/publico/cotizaciones?tab=revision'">
-            <div class="kpi-info">
-                <span class="kpi-title">En Revisión</span>
-                <span class="kpi-value"><?= number_format($kpis['total_en_revision']) ?></span>
-                <span class="kpi-subtitle">Pendientes de firma interna</span>
-            </div>
-            <div class="kpi-icon-wrapper">
-                <i class="fa-solid fa-clock-rotate-left"></i>
-            </div>
-        </div>
-
-        <!-- Clientes Activos -->
-        <div class="kpi-card kpi-4" onclick="window.location.href='/Cycsa/publico/clientes'">
-            <div class="kpi-info">
-                <span class="kpi-title">Clientes Activos</span>
-                <span class="kpi-value"><?= number_format($kpis['total_clientes']) ?></span>
-                <span class="kpi-subtitle">Clientes con cotizaciones</span>
-            </div>
-            <div class="kpi-icon-wrapper">
-                <i class="fa-solid fa-address-book"></i>
-            </div>
+    <!-- 📱 APP DRAWER SECTION -->
+    <div id="app-drawer-section" class="app-drawer-section">
+        <div class="app-grid">
+            <?php foreach ($cajon_aplicaciones as $app): ?>
+                <a href="<?= $app['link'] ?>" class="app-card" style="--app-color: <?= $app['color'] ?>;">
+                    <div class="app-icon-container">
+                        <i class="<?= $app['icon'] ?>"></i>
+                    </div>
+                    <div class="app-details">
+                        <span class="app-name-title"><?= htmlspecialchars($app['nombre'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <p class="app-desc"><?= htmlspecialchars($app['desc'], ENT_QUOTES, 'UTF-8') ?></p>
+                    </div>
+                    <div class="app-arrow">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </div>
+                </a>
+            <?php endforeach; ?>
         </div>
     </div>
 
-    <!-- Row 1: Area Chart & Donut Chart -->
-    <div class="row-grid-2">
-        <!-- Ventas Mensuales -->
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <span class="chart-card-title"><i class="fa-solid fa-chart-line"></i> Ventas Mensuales (Últimos 6 Meses)</span>
-                <span style="font-size: 12px; color: #64748b; font-weight: 500;">Monto Mensual en C$</span>
-            </div>
-            <?php
-            $total_monto_periodo = 0.0;
-            foreach ($tendencia_mensual as $tm) {
-                $total_monto_periodo += $tm['total'];
-            }
-            if ($total_monto_periodo === 0.0 && $kpis['total_cotizaciones'] === 0):
-            ?>
-                <div style="height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; gap: 10px;">
-                    <i class="fa-solid fa-chart-line" style="font-size: 40px; opacity: 0.3;"></i>
-                    <span>No hay cotizaciones registradas en los últimos 6 meses</span>
+    <!-- 📊 ANALYTICS SECTION (Admin Only) -->
+    <?php if ($esAdmin): ?>
+    <div id="analytics-section" style="display: none; width: 100%; flex-direction: column; gap: 25px;">
+        
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+            <!-- Cotizaciones Totales -->
+            <div class="kpi-card kpi-1" onclick="window.location.href='/Cycsa/publico/cotizaciones?tab=todas'">
+                <div class="kpi-info">
+                    <span class="kpi-title">Total Cotizado</span>
+                    <span class="kpi-value"><?= number_format($kpis['total_cotizaciones']) ?></span>
+                    <span class="kpi-subtitle">Propuestas generadas</span>
                 </div>
-            <?php else: ?>
-                <div id="chart-mensual" style="min-height: 320px;"></div>
-            <?php endif; ?>
+                <div class="kpi-icon-wrapper">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </div>
+            </div>
+
+            <!-- Monto Aprobado -->
+            <div class="kpi-card kpi-2" onclick="window.location.href='/Cycsa/publico/cotizaciones?tab=aprobadas'">
+                <div class="kpi-info">
+                    <span class="kpi-title">Aprobado Cliente</span>
+                    <span class="kpi-value" style="font-size: 20px; margin-top: 3px; font-weight: 800;">C$ <?= number_format($kpis['total_monto_aprobado'], 2, '.', ',') ?></span>
+                    <span class="kpi-subtitle">Monto en cartera activa</span>
+                </div>
+                <div class="kpi-icon-wrapper">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+
+            <!-- En Revisión -->
+            <div class="kpi-card kpi-3" onclick="window.location.href='/Cycsa/publico/cotizaciones?tab=revision'">
+                <div class="kpi-info">
+                    <span class="kpi-title">En Revisión</span>
+                    <span class="kpi-value"><?= number_format($kpis['total_en_revision']) ?></span>
+                    <span class="kpi-subtitle">Pendientes de firma interna</span>
+                </div>
+                <div class="kpi-icon-wrapper">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+            </div>
+
+            <!-- Clientes Activos -->
+            <div class="kpi-card kpi-4" onclick="window.location.href='/Cycsa/publico/clientes'">
+                <div class="kpi-info">
+                    <span class="kpi-title">Clientes Activos</span>
+                    <span class="kpi-value"><?= number_format($kpis['total_clientes']) ?></span>
+                    <span class="kpi-subtitle">Clientes con cotizaciones</span>
+                </div>
+                <div class="kpi-icon-wrapper">
+                    <i class="fa-solid fa-address-book"></i>
+                </div>
+            </div>
         </div>
 
-        <!-- Distribución de Estados -->
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <span class="chart-card-title"><i class="fa-solid fa-chart-pie"></i> Distribución de Estados</span>
-            </div>
-            <?php if (empty($distribucion_estados)): ?>
-                <div style="height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; gap: 10px;">
-                    <i class="fa-solid fa-chart-pie" style="font-size: 40px; opacity: 0.3;"></i>
-                    <span>No hay cotizaciones para clasificar</span>
+        <!-- Row 1: Area Chart & Donut Chart -->
+        <div class="row-grid-2">
+            <!-- Ventas Mensuales -->
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title"><i class="fa-solid fa-chart-line"></i> Ventas Mensuales (Últimos 6 Meses)</span>
+                    <span style="font-size: 12px; color: #64748b; font-weight: 500;">Monto Mensual en C$</span>
                 </div>
-            <?php else: ?>
-                <div id="chart-estados" style="min-height: 320px; display: flex; align-items: center; justify-content: center;"></div>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <!-- Row 2: Column Chart (Prioridad) & Top Clientes -->
-    <div class="row-grid-2">
-        <!-- Prioridades -->
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <span class="chart-card-title"><i class="fa-solid fa-triangle-exclamation"></i> Prioridad de Cotizaciones</span>
-                <span style="font-size: 12px; color: #64748b; font-weight: 500;">Cantidad por prioridad</span>
-            </div>
-            <?php 
-            $total_prioridades = array_sum($distribucion_prioridad);
-            if ($total_prioridades === 0): 
-            ?>
-                <div style="height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; gap: 10px;">
-                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 40px; opacity: 0.3;"></i>
-                    <span>No hay cotizaciones con prioridad registrada</span>
-                </div>
-            <?php else: ?>
-                <div id="chart-prioridad" style="min-height: 280px;"></div>
-            <?php endif; ?>
-        </div>
-
-        <!-- Top Clientes -->
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <span class="chart-card-title"><i class="fa-solid fa-crown"></i> Top Clientes</span>
-                <span style="font-size: 12px; color: #64748b; font-weight: 500;">Por volumen total</span>
-            </div>
-            <div class="top-clients-list">
-                <?php 
-                $max_monto = 0.01; // Avoid division by zero
-                foreach ($top_clientes as $tc) {
-                    if ($tc['total_monto'] > $max_monto) {
-                        $max_monto = (float) $tc['total_monto'];
+                <?php
+                $total_monto_periodo = 0.0;
+                if (!empty($tendencia_mensual)) {
+                    foreach ($tendencia_mensual as $tm) {
+                        $total_monto_periodo += $tm['total'];
                     }
                 }
+                if ($total_monto_periodo === 0.0 && $kpis['total_cotizaciones'] === 0):
                 ?>
-                <?php foreach ($top_clientes as $tc): 
-                    $porcentaje = ($max_monto > 0) ? ($tc['total_monto'] / $max_monto) * 100 : 0;
-                ?>
-                    <div class="client-item">
-                        <div class="client-info">
-                            <span class="client-name" title="<?= htmlspecialchars($tc['cliente'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($tc['cliente'], ENT_QUOTES, 'UTF-8') ?></span>
-                            <span class="client-amount">C$ <?= number_format($tc['total_monto'], 2) ?></span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" style="width: <?= $porcentaje ?>%"></div>
-                        </div>
+                    <div style="height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; gap: 10px;">
+                        <i class="fa-solid fa-chart-line" style="font-size: 40px; opacity: 0.3;"></i>
+                        <span>No hay cotizaciones registradas en los últimos 6 meses</span>
                     </div>
-                <?php endforeach; ?>
-                <?php if (empty($top_clientes)): ?>
-                    <div style="text-align: center; color: #64748b; padding: 40px 0;">No hay datos de clientes disponibles.</div>
+                <?php else: ?>
+                    <div id="chart-mensual" style="min-height: 320px;"></div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Distribución de Estados -->
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title"><i class="fa-solid fa-chart-pie"></i> Distribución de Estados</span>
+                </div>
+                <?php if (empty($distribucion_estados)): ?>
+                    <div style="height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; gap: 10px;">
+                        <i class="fa-solid fa-chart-pie" style="font-size: 40px; opacity: 0.3;"></i>
+                        <span>No hay cotizaciones para clasificar</span>
+                    </div>
+                <?php else: ?>
+                    <div id="chart-estados" style="min-height: 320px; display: flex; align-items: center; justify-content: center;"></div>
                 <?php endif; ?>
             </div>
         </div>
-    </div>
 
-    <!-- Recent Quotations Card (Full Width) -->
-    <div class="recent-table-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px;">
-            <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 10px;">
-                <i class="fa-solid fa-list-check" style="color: var(--cycsa-azul);"></i> Cotizaciones Recientes
-            </h3>
-            <a href="/Cycsa/publico/cotizaciones" style="color: var(--cycsa-azul); font-weight: 600; font-size: 13px; text-decoration: none; display: flex; align-items: center; gap: 4px;">
-                Ver todas <i class="fa-solid fa-arrow-right"></i>
-            </a>
-        </div>
-        
-        <div class="table-responsive">
-            <table class="premium-table">
-                <thead>
-                    <tr>
-                        <th>Código</th>
-                        <th>Cliente</th>
-                        <th>Fecha de Creación</th>
-                        <th>Total</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($recientes as $rec): ?>
-                        <tr>
-                            <td class="code-span"><?= htmlspecialchars($rec['codigo'], ENT_QUOTES, 'UTF-8') ?></td>
-                            <td style="font-weight: 600;"><?= htmlspecialchars($rec['cliente'], ENT_QUOTES, 'UTF-8') ?></td>
-                            <td style="color: #64748b;"><?= date('d/m/Y h:i A', strtotime($rec['fecha_creacion'])) ?></td>
-                            <td style="font-weight: 700; color: #0f172a;">C$ <?= number_format($rec['total'], 2, '.', ',') ?></td>
-                            <td>
-                                <?php 
-                                    $claseBadge = 'badge-borrador';
-                                    if ($rec['estado'] == 'En Revision') $claseBadge = 'badge-revision';
-                                    if ($rec['estado'] == 'Observada') $claseBadge = 'badge-observada';
-                                    if ($rec['estado'] == 'Aprobada Internamente') $claseBadge = 'badge-aprobada-int';
-                                    if ($rec['estado'] == 'Enviada al Cliente') $claseBadge = 'badge-enviada';
-                                    if ($rec['estado'] == 'Aprobada por Cliente') $claseBadge = 'badge-aprobada-cli';
-                                    if ($rec['estado'] == 'Rechazada por Cliente') $claseBadge = 'badge-rechazada-cli';
-                                ?>
-                                <span class="badge-premium <?= $claseBadge ?>">
-                                    <span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block;"></span>
-                                    <?= htmlspecialchars($rec['estado'], ENT_QUOTES, 'UTF-8') ?>
-                                </span>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    <?php if (empty($recientes)): ?>
-                        <tr>
-                            <td colspan="5" style="text-align: center; color: #64748b; padding: 30px;">No hay cotizaciones registradas.</td>
-                        </tr>
+        <!-- Row 2: Column Chart (Prioridad) & Top Clientes -->
+        <div class="row-grid-2">
+            <!-- Prioridades -->
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title"><i class="fa-solid fa-triangle-exclamation"></i> Prioridad de Cotizaciones</span>
+                    <span style="font-size: 12px; color: #64748b; font-weight: 500;">Cantidad por prioridad</span>
+                </div>
+                <?php 
+                $total_prioridades = !empty($distribucion_prioridad) ? array_sum($distribucion_prioridad) : 0;
+                if ($total_prioridades === 0): 
+                ?>
+                    <div style="height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; gap: 10px;">
+                        <i class="fa-solid fa-triangle-exclamation" style="font-size: 40px; opacity: 0.3;"></i>
+                        <span>No hay cotizaciones con prioridad registrada</span>
+                    </div>
+                <?php else: ?>
+                    <div id="chart-prioridad" style="min-height: 280px;"></div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Top Clientes -->
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title"><i class="fa-solid fa-crown"></i> Top Clientes</span>
+                    <span style="font-size: 12px; color: #64748b; font-weight: 500;">Por volumen total</span>
+                </div>
+                <div class="top-clients-list">
+                    <?php 
+                    $max_monto = 0.01; // Avoid division by zero
+                    if (!empty($top_clientes)) {
+                        foreach ($top_clientes as $tc) {
+                            if ($tc['total_monto'] > $max_monto) {
+                                $max_monto = (float) $tc['total_monto'];
+                            }
+                        }
+                    }
+                    ?>
+                    <?php if (!empty($top_clientes)): ?>
+                        <?php foreach ($top_clientes as $tc): 
+                            $porcentaje = ($max_monto > 0) ? ($tc['total_monto'] / $max_monto) * 100 : 0;
+                        ?>
+                            <div class="client-item">
+                                <div class="client-info">
+                                    <span class="client-name" title="<?= htmlspecialchars($tc['cliente'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($tc['cliente'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="client-amount">C$ <?= number_format($tc['total_monto'], 2) ?></span>
+                                </div>
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill" style="width: <?= $porcentaje ?>%"></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div style="text-align: center; color: #64748b; padding: 40px 0;">No hay datos de clientes disponibles.</div>
                     <?php endif; ?>
-                </tbody>
-            </table>
+                </div>
+            </div>
         </div>
+
+        <!-- Recent Quotations Card (Full Width) -->
+        <div class="recent-table-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-list-check" style="color: var(--cycsa-azul);"></i> Cotizaciones Recientes
+                </h3>
+                <a href="/Cycsa/publico/cotizaciones" style="color: var(--cycsa-azul); font-weight: 600; font-size: 13px; text-decoration: none; display: flex; align-items: center; gap: 4px;">
+                    Ver todas <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="premium-table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Cliente</th>
+                            <th>Fecha de Creación</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($recientes)): ?>
+                            <?php foreach ($recientes as $rec): ?>
+                                <tr>
+                                    <td class="code-span"><?= htmlspecialchars($rec['codigo'], ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td style="font-weight: 600;"><?= htmlspecialchars($rec['cliente'], ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td style="color: #64748b;"><?= date('d/m/Y h:i A', strtotime($rec['fecha_creacion'])) ?></td>
+                                    <td style="font-weight: 700; color: #0f172a;">C$ <?= number_format($rec['total'], 2, '.', ',') ?></td>
+                                    <td>
+                                        <?php 
+                                            $claseBadge = 'badge-borrador';
+                                            if ($rec['estado'] == 'En Revision') $claseBadge = 'badge-revision';
+                                            if ($rec['estado'] == 'Observada') $claseBadge = 'badge-observada';
+                                            if ($rec['estado'] == 'Aprobada Internamente') $claseBadge = 'badge-aprobada-int';
+                                            if ($rec['estado'] == 'Enviada al Cliente') $claseBadge = 'badge-enviada';
+                                            if ($rec['estado'] == 'Aprobada por Cliente') $claseBadge = 'badge-aprobada-cli';
+                                            if ($rec['estado'] == 'Rechazada por Cliente') $claseBadge = 'badge-rechazada-cli';
+                                        ?>
+                                        <span class="badge-premium <?= $claseBadge ?>">
+                                            <span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block;"></span>
+                                            <?= htmlspecialchars($rec['estado'], ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #64748b; padding: 30px;">No hay cotizaciones registradas.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
+    <?php endif; ?>
 
 </div>
 
 <!-- ApexCharts Setup Script -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+    // 🔀 LOGICA DE CAMBIO DE PESTAÑAS (Solo Administradores)
+    <?php if ($esAdmin): ?>
+    const tabButtons = document.querySelectorAll('.panel-tab-btn');
+    const appDrawerSection = document.getElementById('app-drawer-section');
+    const analyticsSection = document.getElementById('analytics-section');
+
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const target = btn.getAttribute('data-target');
+            if (target === 'app-drawer-section') {
+                appDrawerSection.style.display = 'block';
+                analyticsSection.style.setProperty('display', 'none', 'important');
+            } else {
+                appDrawerSection.style.display = 'none';
+                analyticsSection.style.setProperty('display', 'flex', 'important');
+                
+                // Forzar redibujado de gráficos ApexCharts al cambiar a visible
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 50);
+            }
+        });
+    });
+    <?php endif; ?>
+
     // Render progress bar animations
     setTimeout(function() {
         const bars = document.querySelectorAll('.progress-bar-fill');
@@ -515,7 +792,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }, 100);
 
     // 1. Ventas Mensuales (Area Chart)
-    <?php if (!($total_monto_periodo === 0.0 && $kpis['total_cotizaciones'] === 0)): ?>
+    <?php if ($esAdmin && !($total_monto_periodo === 0.0 && $kpis['total_cotizaciones'] === 0)): ?>
         <?php
         $trend_labels = [];
         $trend_totals = [];
@@ -598,7 +875,7 @@ document.addEventListener("DOMContentLoaded", function() {
     <?php endif; ?>
 
     // 2. Distribución de Estados (Donut Chart)
-    <?php if (!empty($distribucion_estados)): ?>
+    <?php if ($esAdmin && !empty($distribucion_estados)): ?>
         <?php
         $estado_labels = [];
         $estado_counts = [];
@@ -674,7 +951,7 @@ document.addEventListener("DOMContentLoaded", function() {
     <?php endif; ?>
 
     // 3. Prioridad de Cotizaciones (Column Chart)
-    <?php if ($total_prioridades > 0): ?>
+    <?php if ($esAdmin && $total_prioridades > 0): ?>
         var optionsPrioridad = {
             series: [{
                 name: 'Cotizaciones',

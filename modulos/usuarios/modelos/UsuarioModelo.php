@@ -10,7 +10,7 @@ class UsuarioModelo extends ModeloBase {
     // 🔍 OBTENER TODOS CON BUSCADOR
     public function obtenerTodos(string $busqueda = ''): array {
         if ($busqueda !== '') {
-            $sql = "SELECT u.id, u.nombre, u.email, u.activo, r.nombre AS rol 
+            $sql = "SELECT u.id, u.nombre, u.email, u.activo, u.bloqueado, r.nombre AS rol 
                     FROM usuarios u 
                     INNER JOIN roles r ON u.id_rol = r.id 
                     WHERE u.nombre LIKE :q1 
@@ -26,7 +26,7 @@ class UsuarioModelo extends ModeloBase {
                 'q3' => $termino
             ]);
         } else {
-            $sql = "SELECT u.id, u.nombre, u.email, u.activo, r.nombre AS rol 
+            $sql = "SELECT u.id, u.nombre, u.email, u.activo, u.bloqueado, r.nombre AS rol 
                     FROM usuarios u 
                     INNER JOIN roles r ON u.id_rol = r.id 
                     ORDER BY u.id DESC";

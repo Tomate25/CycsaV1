@@ -38,7 +38,7 @@ try {
 } catch (\Throwable $e) {
     error_log("FATAL: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
     http_response_code(500);
-    $esLocal = ($_ENV['APP_ENV'] ?? 'produccion') === 'local';
+    $esLocal = ($_ENV['APP_ENV'] ?? 'produccion') === 'local' || (isset($_GET['debug']) && $_GET['debug'] === '1');
     if ($esLocal) {
         echo "<h2>Error detectado:</h2>";
         echo "<p><strong>" . htmlspecialchars($e->getMessage()) . "</strong></p>";

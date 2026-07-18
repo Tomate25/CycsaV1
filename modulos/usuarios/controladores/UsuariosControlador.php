@@ -259,4 +259,40 @@ class UsuariosControlador extends ControladorBase {
         $respuesta->redirigir('/Cycsa/publico/usuarios');
         return;
     }
+
+    // 🔓 DESBLOQUEAR USUARIO, GENERAR CLAVE TEMPORAL Y FORZAR CAMBIO
+    public function desbloquear(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesionAdmin($respuesta);
+        
+        $id = $_GET['id'] ?? null;
+        if ($id) {
+            $modelo = new UsuarioModelo();
+            $usuario = $modelo->obtenerPorId((int)$id);
+            if ($usuario) {
+                // Generar contraseña temporal aleatoria segura (Ej: CYC-8F92A1)
+                $tempPassword = 'CYC-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+                $hashedTemp = password_hash($tempPassword, PASSWORD_DEFAULT);
+
+                // Guardar el hash en la BD y marcar debe_cambiar_password = 1
+                $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                $stmt = $db->prepare("UPDATE usuarios SET password = :password, debe_cambiar_password = 1, intentos_fallidos = 0, bloqueado = 0 WHERE id = :id");
+                $stmt->execute([
+                    'password' => $hashedTemp,
+                    'id' => (int)$id
+                ]);
+                
+                // Guardar mensaje flash para notificar al administrador la contraseña temporal generada
+                $_SESSION['temp_password_info'] = [
+                    'nombre' => $usuario['nombre'],
+                    'email' => $usuario['email'],
+                    'temp_pass' => $tempPassword
+                ];
+
+                registrarBitacora('usuarios', 'desbloquear', 'Desbloqueado usuario: ' . $usuario['nombre'] . ' (' . $usuario['email'] . ') y generada contraseña temporal.', (int)$id);
+            }
+        }
+        
+        $respuesta->redirigir('/Cycsa/publico/usuarios');
+        return;
+    }
 }

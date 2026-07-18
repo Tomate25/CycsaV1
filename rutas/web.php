@@ -22,6 +22,8 @@ $app->enrutador->get('/login', [AutenticacionControlador::class, 'mostrarLogin']
 $app->enrutador->post('/login', [AutenticacionControlador::class, 'procesarLogin']);
 $app->enrutador->get('/logout', [AutenticacionControlador::class, 'cerrarSesion']);
 $app->enrutador->get('/verificar-sesion-activa', [AutenticacionControlador::class, 'verificarSesionActiva']);
+$app->enrutador->get('/cambiar-password-obligatorio', [AutenticacionControlador::class, 'mostrarCambiarPasswordObligatorio']);
+$app->enrutador->post('/cambiar-password-obligatorio', [AutenticacionControlador::class, 'procesarCambiarPasswordObligatorio']);
 $app->enrutador->get('/recuperar-password', [AutenticacionControlador::class, 'mostrarRecuperarPassword']);
 $app->enrutador->post('/recuperar-password', [AutenticacionControlador::class, 'procesarRecuperarPassword']);
 $app->enrutador->get('/restablecer-password', [AutenticacionControlador::class, 'mostrarRestablecerPassword']);
@@ -38,6 +40,7 @@ $app->enrutador->post('/usuarios/crear', [UsuariosControlador::class, 'guardar']
 $app->enrutador->get('/usuarios/editar', [UsuariosControlador::class, 'editar']);
 $app->enrutador->post('/usuarios/editar', [UsuariosControlador::class, 'actualizar']);
 $app->enrutador->get('/usuarios/eliminar', [UsuariosControlador::class, 'eliminar']);
+$app->enrutador->get('/usuarios/desbloquear', [UsuariosControlador::class, 'desbloquear']);
 
 // Rutas de Roles y Permisos (Solo Admin)
 $app->enrutador->get('/roles', [RolesControlador::class, 'index']);

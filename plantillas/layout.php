@@ -56,6 +56,10 @@
             border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
         
+        .sidebar.oculto-panel {
+            display: none !important;
+        }
+        
         /* Sidebar Colapsado */
         .sidebar.colapsado { width: 70px; }
         .sidebar.colapsado .menu-texto, 
@@ -227,36 +231,91 @@
 
         /* ==========================================================================
            RESPONSIVIDAD Y ADAPTACIÓN A DISPOSITIVOS MÓVILES (TELÉFONOS Y TABLETS)
+           ======================================================================        /* ==========================================================================
+           SISTEMA DE RESPONSIVIDAD PREMIUM - MULTIPLES BREAKPOINTS (MÓVILES, TABLETS, LAPTOPS)
            ========================================================================== */
-        @media (max-width: 768px) {
+        
+        /* 📱 1. TELÉFONOS MÓVILES (max-width: 576px) */
+        @media (max-width: 576px) {
+            .content-wrapper {
+                padding: 10px !important;
+                padding-bottom: 80px !important;
+            }
+            /* Ocultar nombre de usuario para ahorrar espacio en la barra superior */
+            .user-profile-badge div:last-child {
+                display: none !important;
+            }
+            .user-info {
+                gap: 12px !important;
+            }
+            /* Ajustar tamaño de cabecera/logotipo de la barra superior */
+            .topbar a img {
+                max-height: 30px !important;
+            }
+            .topbar a span[style*="font-size: 20px"] {
+                font-size: 16px !important;
+            }
+            .topbar a span[style*="font-size: 12.5px"] {
+                font-size: 10px !important;
+                padding: 3px 8px !important;
+                margin-left: 6px !important;
+            }
+            /* Formularios colapsados al 100% */
+            .form-control, input, select, textarea, button {
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            /* Botones de acción principales */
+            .actions-flex, .actions-flex form {
+                flex-direction: column !important;
+                width: 100% !important;
+            }
+            .btn-action, button, .actions-flex a {
+                justify-content: center !important;
+                text-align: center !important;
+                width: 100% !important;
+            }
+        }
+
+        /* 📱 2. TABLETAS Y MÓVILES EN GENERAL (max-width: 992px) */
+        @media (max-width: 992px) {
             /* 1. COMPORTAMIENTO DE SIDEBAR COMO CAJÓN DESLIZABLE (DRAWER) */
             .sidebar {
                 position: fixed;
                 left: -260px;
                 height: 100%;
                 width: 260px;
-                box-shadow: 10px 0 30px rgba(0,0,0,0.25);
+                z-index: 1000;
+                box-shadow: 10px 0 30px rgba(0,0,0,0.2);
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
             .sidebar.mostrar-movil {
                 left: 0;
             }
             
             /* 2. REORDENAMIENTO DE REJILLAS Y COLUMNAS */
-            .info-grid, .grid-form, .form-row, .row, .grid-2, .grid-3 {
+            .info-grid, .grid-form, .form-row, .row, .grid-2 {
                 grid-template-columns: 1fr !important;
                 display: flex !important;
                 flex-direction: column !important;
                 gap: 15px !important;
             }
             
+            /* Grid de 3 columnas pasa a auto-fit en tabletas */
+            .grid-3 {
+                display: grid !important;
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+                gap: 15px !important;
+            }
+            
             .kpi-container {
-                grid-template-columns: 1fr !important;
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
                 gap: 15px !important;
             }
             
             .content-wrapper {
-                padding: 15px !important;
-                padding-bottom: 90px !important; /* Espacio extra abajo para evitar corte de scroll en móvil */
+                padding: 20px;
+                padding-bottom: 80px; /* Espacio extra para evitar problemas de scroll en móviles */
             }
             
             .topbar {
@@ -283,7 +342,7 @@
                 width: 100% !important;
                 display: flex !important;
             }
-
+            
             .actions-flex form input {
                 flex: 1 !important;
                 width: auto !important;
@@ -307,7 +366,7 @@
 
             .modal-premium-content {
                 width: 95% !important;
-                padding: 15px !important;
+                padding: 20px !important;
                 margin: 20px auto !important;
             }
 
@@ -320,15 +379,15 @@
                 max-width: 100% !important;
             }
 
-            /* Scroll para pestañas de cotizaciones */
+            /* Scroll para pestañas de módulos y contabilidad */
             .tabs-container {
                 overflow-x: auto !important;
                 white-space: nowrap !important;
                 display: flex !important;
                 flex-direction: row !important;
-                gap: 5px !important;
+                gap: 8px !important;
                 padding-bottom: 8px !important;
-                border-bottom: 1px solid var(--border-light) !important;
+                border-bottom: 1px solid #e2e8f0 !important;
                 -webkit-overflow-scrolling: touch;
             }
             .tab-link {
@@ -342,12 +401,12 @@
                 -webkit-overflow-scrolling: touch;
                 width: 100%;
                 margin-bottom: 20px;
-                border: 1px solid var(--border-light);
-                border-radius: 6px;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
             }
             
             .tabla-detalles, .tabla-premium, .tabla-visual, .modal-tabla, .tabla-cycsa {
-                min-width: 700px !important; /* Forzar ancho mínimo interno */
+                min-width: 850px !important; /* Forzar ancho mínimo interno para legibilidad de columnas */
             }
 
             /* 5. DISEÑO DE TOTALES */
@@ -358,28 +417,43 @@
                 width: 100% !important;
             }
         }
+
+        /* 💻 3. PORTÁTILES Y LAPTOPS (min-width: 993px) and (max-width: 1366px) */
+        @media (min-width: 993px) and (max-width: 1366px) {
+            .content-wrapper {
+                padding: 24px;
+            }
+            .grid-3 {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 15px !important;
+            }
+            .kpi-container {
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 15px !important;
+        }
     </style>
 </head>
 <body>
 
-    <aside class="sidebar" id="sidebar">
+    <?php 
+    $rutaActual = $_SERVER['REQUEST_URI']; 
+    $esVistaGeneral = true; // Desactivar la barra lateral (sidebar) de forma global en todo el sistema
+    ?>
+
+    <aside class="sidebar <?= $esVistaGeneral ? 'oculto-panel' : '' ?>" id="sidebar">
         <div class="sidebar-header">
             <img src="/Cycsa/publico/img/logo.png" alt="Logo Cycsa" class="logo-img">
             <span class="logo-texto">CYCSA</span>
         </div>
         
-        <?php $rutaActual = $_SERVER['REQUEST_URI']; ?>
-        
         <ul class="sidebar-menu">
-            <?php if (($_SESSION['usuario_rol'] ?? 0) == 1): ?>
             <li class="menu-categoria">Principal</li>
             <li>
                 <a href="/Cycsa/publico/panel" class="<?= strpos($rutaActual, '/panel') !== false ? 'activo' : '' ?>">
-                    <i class="fa-solid fa-chart-pie"></i>
-                    <span class="menu-texto">Vista General</span>
+                    <i class="fa-solid fa-cubes"></i>
+                    <span class="menu-texto">Cajón de Aplicaciones</span>
                 </a>
             </li>
-            <?php endif; ?>
             
             <li class="menu-categoria">Módulos</li>
             <?php if (tienePermiso('clientes', 'ver')): ?>
@@ -454,9 +528,19 @@
 
     <main class="main-content">
         <header class="topbar">
+            <?php if (!$esVistaGeneral): ?>
             <button class="toggle-btn" id="btn-toggle">
                 <i class="fa-solid fa-bars"></i>
             </button>
+            <?php else: ?>
+            <a href="/Cycsa/publico/panel" style="display: flex; align-items: center; gap: 12px; text-decoration: none; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.015)'" onmouseout="this.style.transform='scale(1)'" title="Regresar al Cajón de Aplicaciones">
+                <img src="/Cycsa/publico/img/logo.png" alt="Logo Cycsa" style="max-height: 38px; object-fit: contain;">
+                <span style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--cycsa-azul); letter-spacing: 0.5px;">CYCSA ERP</span>
+                <span style="color: #475569; font-size: 12.5px; margin-left: 10px; padding: 5px 12px; border-radius: 20px; background: #e2e8f0; display: flex; align-items: center; gap: 6px; font-weight: 600; font-family: 'Inter', sans-serif; border: 1px solid rgba(203,213,225,0.5);">
+                    <i class="fa-solid fa-cubes"></i> Módulos
+                </span>
+            </a>
+            <?php endif; ?>
             
             <div class="user-info">
                 <div class="user-profile-badge">
@@ -492,19 +576,21 @@
             const btnToggle = document.getElementById('btn-toggle');
             const sidebar = document.getElementById('sidebar');
 
-            btnToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.toggle('mostrar-movil');
-                } else {
-                    sidebar.classList.toggle('colapsado');
-                }
-            });
+            if (btnToggle && sidebar) {
+                btnToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.toggle('mostrar-movil');
+                    } else {
+                        sidebar.classList.toggle('colapsado');
+                    }
+                });
+            }
 
             // Cerrar el menú deslizante si se da clic fuera de él en dispositivos móviles
             document.addEventListener('click', (e) => {
-                if (window.innerWidth <= 768) {
-                    if (!sidebar.contains(e.target) && e.target !== btnToggle && !btnToggle.contains(e.target)) {
+                if (window.innerWidth <= 768 && sidebar) {
+                    if (!sidebar.contains(e.target) && e.target !== btnToggle && (!btnToggle || !btnToggle.contains(e.target))) {
                         sidebar.classList.remove('mostrar-movil');
                     }
                 }

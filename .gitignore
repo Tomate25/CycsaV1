@@ -5,6 +5,9 @@
 # Dependencias de Composer
 vendor/
 
+# Carpetas de desarrollo temporal
+scratch/
+
 # Almacenamiento interno
 almacenamiento/logs/
 almacenamiento/cache/

@@ -284,9 +284,7 @@
                     </div>
                 </div>
                 
-                <div style="text-align: right; margin-top: -12px; margin-bottom: 20px;">
-                    <a href="/Cycsa/publico/recuperar-password" style="color: #38bdf8; text-decoration: none; font-size: 13px; font-weight: 500; transition: color 0.3s ease;">¿Olvidaste tu contraseña?</a>
-                </div>
+
                 
                 <button type="submit" class="btn-ingresar">
                     <span>Iniciar Sesión</span>

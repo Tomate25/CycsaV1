@@ -16,125 +16,214 @@ class PanelControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/login');
             return;
         }
+
+        $esAdmin = (($_SESSION['usuario_rol'] ?? 0) == 1);
         
-        // El vendedor y otros roles no pueden ver la vista general de KPIs administrativos
-        if (($_SESSION['usuario_rol'] ?? 0) != 1) {
-            if (tienePermiso('cotizaciones', 'ver')) {
-                $respuesta->redirigir('/Cycsa/publico/cotizaciones');
-            } elseif (tienePermiso('clientes', 'ver')) {
-                $respuesta->redirigir('/Cycsa/publico/clientes');
-            } elseif (tienePermiso('productos', 'ver')) {
-                $respuesta->redirigir('/Cycsa/publico/productos');
-            } elseif (tienePermiso('laboratorio', 'ver') || tienePermiso('operaciones', 'ver')) {
-                $respuesta->redirigir('/Cycsa/publico/operaciones');
-            } elseif (tienePermiso('contabilidad', 'ver')) {
-                $respuesta->redirigir('/Cycsa/publico/contabilidad/cxc');
-            } else {
-                $respuesta->redirigir('/Cycsa/publico/logout');
-            }
-            return;
+        // Construir cajón de aplicaciones según los permisos del usuario
+        $cajon_aplicaciones = [];
+        
+        if (tienePermiso('clientes', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Clientes',
+                'link' => '/Cycsa/publico/clientes',
+                'icon' => 'fa-solid fa-address-book',
+                'desc' => 'Gestión y catálogo de clientes comerciales.',
+                'color' => 'linear-gradient(135deg, #2563eb, #1d4ed8)', // Azul
+            ];
         }
-        
-        $db = Conexion::obtenerInstancia();
-        
-        // 1. KPI metrics
-        // total_cotizaciones
-        $stmt = $db->query("SELECT COUNT(*) FROM cotizaciones");
-        $total_cotizaciones = (int) $stmt->fetchColumn();
-        
-        // total_clientes (Total distinct clients)
-        $stmt = $db->query("SELECT COUNT(DISTINCT id_cliente) FROM cotizaciones");
-        $total_clientes = (int) $stmt->fetchColumn();
-        
-        // total_monto_aprobado (Sum of total for quotes in 'Aprobada por Cliente', 'Aprobada Internamente', 'Enviada al Cliente')
-        $stmt = $db->query("SELECT SUM(total) FROM cotizaciones WHERE estado IN ('Aprobada por Cliente', 'Aprobada Internamente', 'Enviada al Cliente')");
-        $total_monto_aprobado = (float) ($stmt->fetchColumn() ?? 0.0);
-        
-        // total_en_revision (Count of quotes in 'En Revision')
-        $stmt = $db->query("SELECT COUNT(*) FROM cotizaciones WHERE estado = 'En Revision'");
-        $total_en_revision = (int) $stmt->fetchColumn();
-        
-        // 2. Status Distribution
-        $stmt = $db->query("SELECT estado, COUNT(*) as cantidad FROM cotizaciones GROUP BY estado");
-        $distribucion_estados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // 3. Monthly Trend (last 6 months)
-        $meses_es = [
-            '01' => 'Ene', '02' => 'Feb', '03' => 'Mar', '04' => 'Abr', '05' => 'May', '06' => 'Jun',
-            '07' => 'Jul', '08' => 'Ago', '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dic'
-        ];
-        
-        $tendencia_mensual = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $timestamp = strtotime("-$i months");
-            $mes_key = date('Y-m', $timestamp);
-            $num_mes = date('m', $timestamp);
-            $tendencia_mensual[$mes_key] = [
-                'mes' => $mes_key,
-                'nombre_mes' => $meses_es[$num_mes] ?? date('M', $timestamp),
-                'total' => 0.0,
-                'cantidad' => 0
+        if (tienePermiso('productos', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Productos / Ensayos',
+                'link' => '/Cycsa/publico/productos',
+                'icon' => 'fa-solid fa-flask-vial',
+                'desc' => 'Catálogo de ensayos de laboratorio y tarifas.',
+                'color' => 'linear-gradient(135deg, #059669, #047857)', // Verde
+            ];
+        }
+        if (tienePermiso('cotizaciones', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Cotizaciones',
+                'link' => '/Cycsa/publico/cotizaciones',
+                'icon' => 'fa-solid fa-file-invoice-dollar',
+                'desc' => 'Creación y seguimiento de propuestas comerciales.',
+                'color' => 'linear-gradient(135deg, #d97706, #b45309)', // Naranja
+            ];
+        }
+        if (tienePermiso('operaciones', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Operaciones LIMS',
+                'link' => '/Cycsa/publico/operaciones',
+                'icon' => 'fa-solid fa-gears',
+                'desc' => 'Órdenes de servicio y recepción de muestras.',
+                'color' => 'linear-gradient(135deg, #0284c7, #0369a1)', // Celeste
+            ];
+        }
+        if (tienePermiso('laboratorio', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Laboratorio (Ciego)',
+                'link' => '/Cycsa/publico/laboratorio',
+                'icon' => 'fa-solid fa-flask',
+                'desc' => 'Registro ciego de rupturas y control de calidad.',
+                'color' => 'linear-gradient(135deg, #7c3aed, #5b21b6)', // Morado
+            ];
+        }
+        if (tienePermiso('contabilidad', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Contabilidad ERP',
+                'link' => '/Cycsa/publico/contabilidad/cuentas',
+                'icon' => 'fa-solid fa-calculator',
+                'desc' => 'Catálogo de cuentas, diario y estados contables.',
+                'color' => 'linear-gradient(135deg, #db2777, #be185d)', // Rosado
+            ];
+        }
+        if (tienePermiso('usuarios', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Gestión de Usuarios',
+                'link' => '/Cycsa/publico/usuarios',
+                'icon' => 'fa-solid fa-users',
+                'desc' => 'Administración de usuarios, roles y accesos.',
+                'color' => 'linear-gradient(135deg, #475569, #334155)', // Slate
             ];
         }
         
-        $fecha_limite = date('Y-m-01', strtotime('-5 months')) . ' 00:00:00';
-        $sql_trend = "SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') as mes, SUM(total) as total, COUNT(*) as cantidad 
-                      FROM cotizaciones 
-                      WHERE fecha_creacion >= :fecha_limite
-                      GROUP BY DATE_FORMAT(fecha_creacion, '%Y-%m')";
-        $stmt = $db->prepare($sql_trend);
-        $stmt->execute(['fecha_limite' => $fecha_limite]);
-        $resultados_trend = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        foreach ($resultados_trend as $row) {
-            $mes = $row['mes'];
-            if (isset($tendencia_mensual[$mes])) {
-                $tendencia_mensual[$mes]['total'] = (float)$row['total'];
-                $tendencia_mensual[$mes]['cantidad'] = (int)$row['cantidad'];
-            }
+        // Ajustes y Bitácora solo para administradores
+        if ($esAdmin) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Condiciones Comerciales',
+                'link' => '/Cycsa/publico/configuracion',
+                'icon' => 'fa-solid fa-sliders',
+                'desc' => 'Parámetros del sistema, vehículos y técnicos.',
+                'color' => 'linear-gradient(135deg, #0d9488, #0f766e)', // Teal
+            ];
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Bitácora de Auditoría',
+                'link' => '/Cycsa/publico/panel/bitacora',
+                'icon' => 'fa-solid fa-list-check',
+                'desc' => 'Historial de auditoría interna de actividades.',
+                'color' => 'linear-gradient(135deg, #e11d48, #be123c)', // Rojo
+            ];
         }
-        $tendencia_mensual = array_values($tendencia_mensual);
-        
-        // 4. Top Clients (Top 5 clients by total quotation value)
-        $sql_top_clients = "SELECT cl.nombre_razon_social as cliente, SUM(c.total) as total_monto, COUNT(c.id) as cantidad_cotizaciones
-                            FROM cotizaciones c
-                            INNER JOIN clientes cl ON c.id_cliente = cl.id
-                            GROUP BY c.id_cliente, cl.nombre_razon_social
-                            ORDER BY total_monto DESC
-                            LIMIT 5";
-        $stmt = $db->query($sql_top_clients);
-        $top_clientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // 5. Priority Distribution
-        $stmt = $db->query("SELECT prioridad, COUNT(*) as cantidad FROM cotizaciones GROUP BY prioridad");
-        $resultados_prioridad = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
+        // Si no tiene aplicaciones habilitadas, cerramos sesión por seguridad
+        if (empty($cajon_aplicaciones)) {
+            $respuesta->redirigir('/Cycsa/publico/logout');
+            return;
+        }
+
+        // Valores por defecto
+        $total_cotizaciones = 0;
+        $total_clientes = 0;
+        $total_monto_aprobado = 0.0;
+        $total_en_revision = 0;
+        $distribucion_estados = [];
+        $tendencia_mensual = [];
+        $top_clientes = [];
         $prioridades_dist = [
             'Alta' => 0,
             'Media' => 0,
             'Normal' => 0
         ];
-        foreach ($resultados_prioridad as $row) {
-            $prio = $row['prioridad'];
-            if (isset($prioridades_dist[$prio])) {
-                $prioridades_dist[$prio] = (int)$row['cantidad'];
+        $recientes = [];
+
+        // Consultas exclusivas para el Administrador (Analíticas del Dashboard)
+        if ($esAdmin) {
+            try {
+                $db = Conexion::obtenerInstancia();
+                
+                // 1. KPI metrics
+                $stmt = $db->query("SELECT COUNT(*) FROM cotizaciones");
+                $total_cotizaciones = (int) $stmt->fetchColumn();
+                
+                $stmt = $db->query("SELECT COUNT(DISTINCT id_cliente) FROM cotizaciones");
+                $total_clientes = (int) $stmt->fetchColumn();
+                
+                $stmt = $db->query("SELECT SUM(total) FROM cotizaciones WHERE estado IN ('Aprobada por Cliente', 'Aprobada Internamente', 'Enviada al Cliente')");
+                $total_monto_aprobado = (float) ($stmt->fetchColumn() ?? 0.0);
+                
+                $stmt = $db->query("SELECT COUNT(*) FROM cotizaciones WHERE estado = 'En Revision'");
+                $total_en_revision = (int) $stmt->fetchColumn();
+                
+                // 2. Status Distribution
+                $stmt = $db->query("SELECT estado, COUNT(*) as cantidad FROM cotizaciones GROUP BY estado");
+                $distribucion_estados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // 3. Monthly Trend (last 6 months)
+                $meses_es = [
+                    '01' => 'Ene', '02' => 'Feb', '03' => 'Mar', '04' => 'Abr', '05' => 'May', '06' => 'Jun',
+                    '07' => 'Jul', '08' => 'Ago', '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dic'
+                ];
+                
+                for ($i = 5; $i >= 0; $i--) {
+                    $timestamp = strtotime("-$i months");
+                    $mes_key = date('Y-m', $timestamp);
+                    $num_mes = date('m', $timestamp);
+                    $tendencia_mensual[$mes_key] = [
+                        'mes' => $mes_key,
+                        'nombre_mes' => $meses_es[$num_mes] ?? date('M', $timestamp),
+                        'total' => 0.0,
+                        'cantidad' => 0
+                    ];
+                }
+                
+                $fecha_limite = date('Y-m-01', strtotime('-5 months')) . ' 00:00:00';
+                $sql_trend = "SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') as mes, SUM(total) as total, COUNT(*) as cantidad 
+                              FROM cotizaciones 
+                              WHERE fecha_creacion >= :fecha_limite
+                              GROUP BY DATE_FORMAT(fecha_creacion, '%Y-%m')";
+                $stmt = $db->prepare($sql_trend);
+                $stmt->execute(['fecha_limite' => $fecha_limite]);
+                $resultados_trend = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($resultados_trend as $row) {
+                    $mes = $row['mes'];
+                    if (isset($tendencia_mensual[$mes])) {
+                        $tendencia_mensual[$mes]['total'] = (float)$row['total'];
+                        $tendencia_mensual[$mes]['cantidad'] = (int)$row['cantidad'];
+                    }
+                }
+                $tendencia_mensual = array_values($tendencia_mensual);
+                
+                // 4. Top Clients (Top 5 clients)
+                $sql_top_clients = "SELECT cl.nombre_razon_social as cliente, SUM(c.total) as total_monto, COUNT(c.id) as cantidad_cotizaciones
+                                    FROM cotizaciones c
+                                    INNER JOIN clientes cl ON c.id_cliente = cl.id
+                                    GROUP BY c.id_cliente, cl.nombre_razon_social
+                                    ORDER BY total_monto DESC
+                                    LIMIT 5";
+                $stmt = $db->query($sql_top_clients);
+                $top_clientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // 5. Priority Distribution
+                $stmt = $db->query("SELECT prioridad, COUNT(*) as cantidad FROM cotizaciones GROUP BY prioridad");
+                $resultados_prioridad = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($resultados_prioridad as $row) {
+                    $prio = $row['prioridad'];
+                    if (isset($prioridades_dist[$prio])) {
+                        $prioridades_dist[$prio] = (int)$row['cantidad'];
+                    }
+                }
+                
+                // 6. Recent Activity
+                $sql_recent = "SELECT c.codigo, c.total, c.estado, c.fecha_creacion, cl.nombre_razon_social as cliente
+                               FROM cotizaciones c
+                               INNER JOIN clientes cl ON c.id_cliente = cl.id
+                               ORDER BY c.fecha_creacion DESC, c.id DESC
+                               LIMIT 5";
+                $stmt = $db->query($sql_recent);
+                $recientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (\Exception $e) {
+                error_log("Error al cargar KPIs del dashboard: " . $e->getMessage());
             }
         }
-        
-        // 6. Recent Activity (The 5 most recent quotes)
-        $sql_recent = "SELECT c.codigo, c.total, c.estado, c.fecha_creacion, cl.nombre_razon_social as cliente
-                       FROM cotizaciones c
-                       INNER JOIN clientes cl ON c.id_cliente = cl.id
-                       ORDER BY c.fecha_creacion DESC, c.id DESC
-                       LIMIT 5";
-        $stmt = $db->query($sql_recent);
-        $recientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Mostramos la vista del panel y le pasamos los datos del usuario y del dashboard
         $this->renderizar('usuarios/vistas/panel', [
             'titulo' => 'Panel de Control - Cycsa',
             'nombre' => $_SESSION['usuario_nombre'],
             'rol_id' => $_SESSION['usuario_rol'],
+            'esAdmin' => $esAdmin,
+            'cajon_aplicaciones' => $cajon_aplicaciones,
             'kpis' => [
                 'total_cotizaciones' => $total_cotizaciones,
                 'total_clientes' => $total_clientes,

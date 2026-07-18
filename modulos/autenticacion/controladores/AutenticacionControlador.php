@@ -30,68 +30,211 @@ class AutenticacionControlador extends ControladorBase {
 
     public function procesarLogin(Peticion $peticion, Respuesta $respuesta) {
         $datos = $peticion->obtenerDatos();
-        $email = $datos['email'] ?? '';
+        
+        // 🔒 Mayor seguridad en inputs: sanitización y validación
+        $email = isset($datos['email']) ? filter_var(trim($datos['email']), FILTER_SANITIZE_EMAIL) : '';
         $password = $datos['password'] ?? '';
+
+        // Validar formato de email y longitud de password
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL) || empty($password)) {
+            $this->renderizarSinLayout('autenticacion/vistas/login', [
+                'titulo' => 'Iniciar Sesión - Cycsa',
+                'error' => 'Por favor, ingresa credenciales válidas.'
+            ]);
+            return;
+        }
 
         $modeloUsuario = new UsuarioModelo();
         $usuario = $modeloUsuario->buscarPorEmail($email);
 
-        if ($usuario && password_verify($password, $usuario['password'])) {
-            if ($usuario['activo'] == 1) {
-                // Prevenir Session Fixation regenerando el ID
-                session_regenerate_id(true);
-                
-                $_SESSION['usuario_id'] = $usuario['id'];
-                $_SESSION['usuario_nombre'] = $usuario['nombre'];
-                $_SESSION['usuario_rol'] = $usuario['id_rol'];
-                $permisos = null;
-                if (!empty($usuario['permisos'])) {
-                    $permisos = json_decode($usuario['permisos'], true);
-                } else {
-                    try {
-                        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-                        $stmtRol = $db->prepare("SELECT permisos FROM roles WHERE id = :id_rol LIMIT 1");
-                        $stmtRol->execute(['id_rol' => $usuario['id_rol']]);
-                        $rolPermisos = $stmtRol->fetchColumn();
-                        if (!empty($rolPermisos)) {
-                            $permisos = json_decode($rolPermisos, true);
-                        }
-                    } catch (\Exception $e) {
-                        error_log("Error al obtener permisos por defecto del rol: " . $e->getMessage());
-                    }
-                }
-                $_SESSION['usuario_permisos'] = $permisos;
-                
-                // Guardar la nueva sesión en la base de datos para invalidar sesiones anteriores
-                try {
-                    $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-                    $stmt = $db->prepare("UPDATE usuarios SET session_id = :session_id WHERE id = :id");
-                    $stmt->execute([
-                        'session_id' => session_id(),
-                        'id' => $usuario['id']
-                    ]);
-                } catch (\Exception $e) {
-                    error_log("Error al guardar session_id en login: " . $e->getMessage());
-                }
-
-                registrarBitacora('autenticacion', 'login', 'Inicio de sesión exitoso de ' . $usuario['nombre']);
-                
-                // 🚀 REDIRIGIR AL PANEL DE CONTROL
-                $respuesta->redirigir('/Cycsa/publico/panel');
-            } else {
-                registrarBitacora('autenticacion', 'intento_login', 'Intento de inicio de sesión inactivo: ' . $email);
+        if ($usuario) {
+            // 1. Verificar si ya está bloqueado
+            if ((int)($usuario['bloqueado'] ?? 0) === 1) {
+                registrarBitacora('autenticacion', 'intento_login', 'Intento de login en cuenta bloqueada: ' . $email);
                 $this->renderizarSinLayout('autenticacion/vistas/login', [
                     'titulo' => 'Iniciar Sesión - Cycsa',
-                    'error' => 'Tu cuenta está inactiva.'
+                    'error' => 'Tu cuenta está bloqueada por exceso de intentos fallidos. Contacta al administrador.'
+                ]);
+                return;
+            }
+
+            // 2. Verificar contraseña
+            if (password_verify($password, $usuario['password'])) {
+                if ($usuario['activo'] == 1) {
+                    // Restablecer contador de intentos fallidos a 0
+                    $modeloUsuario->restablecerIntentos($usuario['id']);
+
+                    // 🔒 SI EL USUARIO TIENE PENDIENTE CAMBIO OBLIGATORIO DE CONTRASEÑA (DESBLOQUEO POR SUPERVISOR)
+                    if ((int)($usuario['debe_cambiar_password'] ?? 0) === 1) {
+                        $_SESSION['usuario_id_cambio_obligatorio'] = $usuario['id'];
+                        $_SESSION['usuario_nombre_cambio_obligatorio'] = $usuario['nombre'];
+                        $respuesta->redirigir('/Cycsa/publico/cambiar-password-obligatorio');
+                        return;
+                    }
+
+                    // Prevenir Session Fixation regenerando el ID
+                    session_regenerate_id(true);
+                    
+                    $_SESSION['usuario_id'] = $usuario['id'];
+                    $_SESSION['usuario_nombre'] = $usuario['nombre'];
+                    $_SESSION['usuario_rol'] = $usuario['id_rol'];
+                    
+                    $permisos = null;
+                    if (!empty($usuario['permisos'])) {
+                        $permisos = json_decode($usuario['permisos'], true);
+                    } else {
+                        try {
+                            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                            $stmtRol = $db->prepare("SELECT permisos FROM roles WHERE id = :id_rol LIMIT 1");
+                            $stmtRol->execute(['id_rol' => $usuario['id_rol']]);
+                            $rolPermisos = $stmtRol->fetchColumn();
+                            if (!empty($rolPermisos)) {
+                                $permisos = json_decode($rolPermisos, true);
+                            }
+                        } catch (\Exception $e) {
+                            error_log("Error al obtener permisos del rol: " . $e->getMessage());
+                        }
+                    }
+                    $_SESSION['usuario_permisos'] = $permisos;
+                    
+                    // Guardar la nueva sesión en la base de datos para invalidar anteriores
+                    try {
+                        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                        $stmt = $db->prepare("UPDATE usuarios SET session_id = :session_id WHERE id = :id");
+                        $stmt->execute([
+                            'session_id' => session_id(),
+                            'id' => $usuario['id']
+                        ]);
+                    } catch (\Exception $e) {
+                        error_log("Error al guardar session_id: " . $e->getMessage());
+                    }
+
+                    registrarBitacora('autenticacion', 'login', 'Inicio de sesión exitoso de ' . $usuario['nombre']);
+                    $respuesta->redirigir('/Cycsa/publico/panel');
+                } else {
+                    registrarBitacora('autenticacion', 'intento_login', 'Intento de login en cuenta inactiva: ' . $email);
+                    $this->renderizarSinLayout('autenticacion/vistas/login', [
+                        'titulo' => 'Iniciar Sesión - Cycsa',
+                        'error' => 'Tu cuenta está inactiva.'
+                    ]);
+                }
+            } else {
+                // Contraseña incorrecta: Registrar intento fallido
+                $intentos = (int)($usuario['intentos_fallidos'] ?? 0);
+                $res = $modeloUsuario->registrarIntentoFallido($usuario['id'], $intentos);
+                
+                if ($res['bloqueado'] === 1) {
+                    registrarBitacora('autenticacion', 'bloqueo_usuario', 'Usuario bloqueado por exceder límite de intentos: ' . $email, $usuario['id']);
+                    $errorMsg = 'Tu cuenta ha sido bloqueada debido a 5 intentos fallidos consecutivos. Contacta al administrador.';
+                } else {
+                    $restantes = 5 - $res['intentos_fallidos'];
+                    registrarBitacora('autenticacion', 'intento_fallido', 'Intento fallido de login de ' . $email . ' (Intento ' . $res['intentos_fallidos'] . '/5)');
+                    $errorMsg = 'Credenciales incorrectas. Te quedan ' . $restantes . ' intentos antes de bloquear tu cuenta.';
+                }
+
+                $this->renderizarSinLayout('autenticacion/vistas/login', [
+                    'titulo' => 'Iniciar Sesión - Cycsa',
+                    'error' => $errorMsg
                 ]);
             }
         } else {
-            registrarBitacora('autenticacion', 'intento_login', 'Intento fallido de inicio de sesión con correo: ' . $email);
+            // Usuario no encontrado
+            registrarBitacora('autenticacion', 'intento_login', 'Intento fallido de inicio de sesión con correo inexistente: ' . $email);
             $this->renderizarSinLayout('autenticacion/vistas/login', [
                 'titulo' => 'Iniciar Sesión - Cycsa',
                 'error' => 'Credenciales incorrectas.'
             ]);
         }
+    }
+
+    // 🔑 MOSTRAR FORMULARIO DE CAMBIO DE CONTRASEÑA OBLIGATORIO TRAS DESBLOQUEO
+    public function mostrarCambiarPasswordObligatorio(Peticion $peticion, Respuesta $respuesta): void {
+        if (!isset($_SESSION['usuario_id_cambio_obligatorio'])) {
+            $respuesta->redirigir('/Cycsa/publico/login');
+            return;
+        }
+
+        $error = $_SESSION['cambio_pass_error'] ?? null;
+        unset($_SESSION['cambio_pass_error']);
+
+        $this->renderizarSinLayout('autenticacion/vistas/cambiar_password_obligatorio', [
+            'titulo' => 'Actualizar Contraseña - Cycsa',
+            'error' => $error
+        ]);
+    }
+
+    // 🔑 PROCESAR EL CAMBIO OBLIGATORIO DE CONTRASEÑA
+    public function procesarCambiarPasswordObligatorio(Peticion $peticion, Respuesta $respuesta): void {
+        if (!isset($_SESSION['usuario_id_cambio_obligatorio'])) {
+            $respuesta->redirigir('/Cycsa/publico/login');
+            return;
+        }
+
+        $idUsuario = (int)$_SESSION['usuario_id_cambio_obligatorio'];
+        $datos = $peticion->obtenerDatos();
+        $password = $datos['password'] ?? '';
+        $confirmPassword = $datos['confirm_password'] ?? '';
+
+        if (empty($password) || strlen($password) < 6) {
+            $_SESSION['cambio_pass_error'] = 'La nueva contraseña debe tener al menos 6 caracteres.';
+            $respuesta->redirigir('/Cycsa/publico/cambiar-password-obligatorio');
+            return;
+        }
+
+        if ($password !== $confirmPassword) {
+            $_SESSION['cambio_pass_error'] = 'Las contraseñas no coinciden.';
+            $respuesta->redirigir('/Cycsa/publico/cambiar-password-obligatorio');
+            return;
+        }
+
+        // Hashear de forma segura con password_hash (PASSWORD_DEFAULT)
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+        // Actualizar la contraseña en la BD y quitar la marca de cambio obligatorio
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmt = $db->prepare("UPDATE usuarios SET password = :password, debe_cambiar_password = 0, intentos_fallidos = 0, bloqueado = 0 WHERE id = :id");
+        $stmt->execute([
+            'password' => $hashedPassword,
+            'id' => $idUsuario
+        ]);
+
+        // Obtener datos completos del usuario para iniciar sesión directamente
+        $stmtUser = $db->prepare("SELECT * FROM usuarios WHERE id = :id LIMIT 1");
+        $stmtUser->execute(['id' => $idUsuario]);
+        $usuario = $stmtUser->fetch(\PDO::FETCH_ASSOC);
+
+        // Limpiar variable temporal de cambio obligatorio
+        unset($_SESSION['usuario_id_cambio_obligatorio'], $_SESSION['usuario_nombre_cambio_obligatorio']);
+
+        // Iniciar sesión real
+        session_regenerate_id(true);
+        $_SESSION['usuario_id'] = $usuario['id'];
+        $_SESSION['usuario_nombre'] = $usuario['nombre'];
+        $_SESSION['usuario_rol'] = $usuario['id_rol'];
+
+        $permisos = null;
+        if (!empty($usuario['permisos'])) {
+            $permisos = json_decode($usuario['permisos'], true);
+        } else {
+            try {
+                $stmtRol = $db->prepare("SELECT permisos FROM roles WHERE id = :id_rol LIMIT 1");
+                $stmtRol->execute(['id_rol' => $usuario['id_rol']]);
+                $rolPermisos = $stmtRol->fetchColumn();
+                if (!empty($rolPermisos)) {
+                    $permisos = json_decode($rolPermisos, true);
+                }
+            } catch (\Exception $e) {}
+        }
+        $_SESSION['usuario_permisos'] = $permisos;
+
+        try {
+            $stmtSess = $db->prepare("UPDATE usuarios SET session_id = :session_id WHERE id = :id");
+            $stmtSess->execute(['session_id' => session_id(), 'id' => $usuario['id']]);
+        } catch (\Exception $e) {}
+
+        registrarBitacora('autenticacion', 'cambio_password_obligatorio', 'Actualizada contraseña tras desbloqueo por ' . $usuario['nombre']);
+        $_SESSION['exito'] = 'Contraseña actualizada exitosamente. Bienvenido al sistema CYCSA.';
+        $respuesta->redirigir('/Cycsa/publico/panel');
     }
 
     // 🔒 NUEVA FUNCIÓN: Destruir la sesión
@@ -117,175 +260,30 @@ class AutenticacionControlador extends ControladorBase {
     }
 
     public function mostrarRecuperarPassword(Peticion $peticion, Respuesta $respuesta) {
-        $this->renderizarSinLayout('autenticacion/vistas/recuperar', [
-            'titulo' => 'Recuperar Contraseña - Cycsa'
+        $this->renderizarSinLayout('autenticacion/vistas/login', [
+            'titulo' => 'Iniciar Sesión - Cycsa',
+            'error' => 'La recuperación y desbloqueo de cuentas es administrada exclusivamente por el Administrador/Supervisor.'
         ]);
     }
 
     public function procesarRecuperarPassword(Peticion $peticion, Respuesta $respuesta) {
-        $datos = $peticion->obtenerDatos();
-        $email = trim($datos['email'] ?? '');
-
-        if (empty($email)) {
-            $this->renderizarSinLayout('autenticacion/vistas/recuperar', [
-                'titulo' => 'Recuperar Contraseña - Cycsa',
-                'error' => 'Por favor, ingresa tu correo electrónico.'
-            ]);
-            return;
-        }
-
-        try {
-            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-            $stmt = $db->prepare("SELECT id, nombre FROM usuarios WHERE email = :email LIMIT 1");
-            $stmt->execute(['email' => $email]);
-            $usuario = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-            if ($usuario) {
-                // Generar código de 6 dígitos
-                $codigo = sprintf("%06d", random_int(100000, 999999));
-                $expires = date('Y-m-d H:i:s', strtotime('+15 minutes'));
-
-                // Guardar código en la BD
-                $stmtUpdate = $db->prepare("UPDATE usuarios SET reset_token = :code, reset_token_expires_at = :expires WHERE id = :id");
-                $stmtUpdate->execute([
-                    'code' => $codigo,
-                    'expires' => $expires,
-                    'id' => $usuario['id']
-                ]);
-
-                // Asunto y cuerpo del correo
-                $asunto = "Código de Recuperación - CYCSA";
-                $cuerpoHTML = "
-                <div style='font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; color: #1e293b;'>
-                    <div style='text-align: center; margin-bottom: 20px;'>
-                        <h2 style='color: #103487; margin: 0;'>CYCSA ERP</h2>
-                        <span style='font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase;'>Recuperación de Contraseña</span>
-                    </div>
-                    <p>Hola, <strong>" . htmlspecialchars($usuario['nombre'], ENT_QUOTES, 'UTF-8') . "</strong>.</p>
-                    <p>Has solicitado restablecer tu contraseña de acceso al sistema CYCSA. Tu código de seguridad temporal es:</p>
-                    <div style='text-align: center; margin: 30px 0;'>
-                        <span style='font-size: 32px; font-weight: bold; color: #103487; letter-spacing: 5px; background: #f1f5f9; padding: 12px 24px; border-radius: 6px; border: 1px dashed #cbd5e1; display: inline-block;'>" . $codigo . "</span>
-                    </div>
-                    <p style='font-size: 13px; color: #475569;'>Este código es de uso único y tiene una validez de <strong>15 minutos</strong>. Si el código expira, deberás solicitar uno nuevo.</p>
-                    <hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;' />
-                    <p style='color: #94a3b8; font-size: 11px; text-align: center;'>Si no solicitaste este restablecimiento, por favor ignora este correo electrónico.</p>
-                </div>
-                ";
-
-                // Enviar el correo usando la función de ayudantes
-                enviarCorreo($email, $asunto, $cuerpoHTML);
-            }
-
-            // Mensaje de éxito genérico para seguridad
-            $_SESSION['success_message'] = "Si el correo existe en nuestro sistema, recibirás un código de 6 dígitos.";
-            $respuesta->redirigir('/Cycsa/publico/restablecer-password?email=' . urlencode($email));
-
-        } catch (\Exception $e) {
-            error_log("Error al procesar recuperación de contraseña: " . $e->getMessage());
-            $this->renderizarSinLayout('autenticacion/vistas/recuperar', [
-                'titulo' => 'Recuperar Contraseña - Cycsa',
-                'error' => 'Ocurrió un error interno. Intenta más tarde.'
-            ]);
-        }
+        $this->renderizarSinLayout('autenticacion/vistas/login', [
+            'titulo' => 'Iniciar Sesión - Cycsa',
+            'error' => 'La recuperación y desbloqueo de cuentas es administrada exclusivamente por el Administrador/Supervisor.'
+        ]);
     }
 
     public function mostrarRestablecerPassword(Peticion $peticion, Respuesta $respuesta) {
-        $email = $_GET['email'] ?? '';
-        $success = null;
-        if (isset($_SESSION['success_message'])) {
-            $success = $_SESSION['success_message'];
-            unset($_SESSION['success_message']);
-        }
-
-        $this->renderizarSinLayout('autenticacion/vistas/restablecer', [
-            'titulo' => 'Ingresar Código - Cycsa',
-            'email' => $email,
-            'success' => $success
+        $this->renderizarSinLayout('autenticacion/vistas/login', [
+            'titulo' => 'Iniciar Sesión - Cycsa',
+            'error' => 'La recuperación y desbloqueo de cuentas es administrada exclusivamente por el Administrador/Supervisor.'
         ]);
     }
 
     public function procesarRestablecerPassword(Peticion $peticion, Respuesta $respuesta) {
-        $datos = $peticion->obtenerDatos();
-        $email = trim($datos['email'] ?? '');
-        $codigo = trim($datos['codigo'] ?? '');
-        $password = $datos['password'] ?? '';
-        $confirm_password = $datos['confirm_password'] ?? '';
-
-        // Validaciones iniciales
-        if (empty($email) || empty($codigo) || empty($password)) {
-            $this->renderizarSinLayout('autenticacion/vistas/restablecer', [
-                'titulo' => 'Ingresar Código - Cycsa',
-                'email' => $email,
-                'error' => 'Todos los campos son obligatorios.'
-            ]);
-            return;
-        }
-
-        if ($password !== $confirm_password) {
-            $this->renderizarSinLayout('autenticacion/vistas/restablecer', [
-                'titulo' => 'Ingresar Código - Cycsa',
-                'email' => $email,
-                'error' => 'Las contraseñas no coinciden.'
-            ]);
-            return;
-        }
-
-        if (strlen($password) < 6) {
-            $this->renderizarSinLayout('autenticacion/vistas/restablecer', [
-                'titulo' => 'Ingresar Código - Cycsa',
-                'email' => $email,
-                'error' => 'La contraseña debe tener al menos 6 caracteres.'
-            ]);
-            return;
-        }
-
-        try {
-            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-            
-            // Buscar usuario por correo y código
-            $stmt = $db->prepare("SELECT id, reset_token_expires_at FROM usuarios WHERE email = :email AND reset_token = :code LIMIT 1");
-            $stmt->execute(['email' => $email, 'code' => $codigo]);
-            $usuario = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-            if (!$usuario) {
-                $this->renderizarSinLayout('autenticacion/vistas/restablecer', [
-                    'titulo' => 'Ingresar Código - Cycsa',
-                    'email' => $email,
-                    'error' => 'El código de seguridad o correo es incorrecto.'
-                ]);
-                return;
-            }
-
-            // Validar expiración del código
-            $now = date('Y-m-d H:i:s');
-            if ($usuario['reset_token_expires_at'] < $now) {
-                $this->renderizarSinLayout('autenticacion/vistas/restablecer', [
-                    'titulo' => 'Ingresar Código - Cycsa',
-                    'email' => $email,
-                    'error' => 'El código de seguridad ha expirado. Por favor, solicita uno nuevo.'
-                ]);
-                return;
-            }
-
-            // Cifrar la nueva contraseña e invalidar el código usado
-            $hash = password_hash($password, PASSWORD_BCRYPT);
-            $stmtUpdate = $db->prepare("UPDATE usuarios SET password = :password, reset_token = NULL, reset_token_expires_at = NULL WHERE id = :id");
-            $stmtUpdate->execute([
-                'password' => $hash,
-                'id' => $usuario['id']
-            ]);
-
-            // Guardar confirmación en sesión y redirigir al login
-            $_SESSION['login_error'] = 'Tu contraseña ha sido restablecida con éxito. Ya puedes iniciar sesión.';
-            $respuesta->redirigir('/Cycsa/publico/login');
-
-        } catch (\Exception $e) {
-            error_log("Error al restablecer contraseña: " . $e->getMessage());
-            $this->renderizarSinLayout('autenticacion/vistas/restablecer', [
-                'titulo' => 'Ingresar Código - Cycsa',
-                'email' => $email,
-                'error' => 'Ocurrió un error interno. Intenta más tarde.'
-            ]);
-        }
+        $this->renderizarSinLayout('autenticacion/vistas/login', [
+            'titulo' => 'Iniciar Sesión - Cycsa',
+            'error' => 'La recuperación y desbloqueo de cuentas es administrada exclusivamente por el Administrador/Supervisor.'
+        ]);
     }
 }

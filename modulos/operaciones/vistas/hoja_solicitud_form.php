@@ -316,6 +316,16 @@
                 </div>
             </div>
 
+            <div class="form-group" style="margin-top: 15px;">
+                <label style="font-weight: 700; color: #0f172a;"><i class="fa-solid fa-clipboard-check"></i> Condición de Muestreo y Datos (Normativo Paso 7)</label>
+                <select name="condicion_muestreo_datos" class="form-control" style="background: #ffffff;">
+                    <option value="Muestra tomada y entregada por el cliente" <?= ($hoja['condicion_muestreo_datos'] ?? '') === 'Muestra tomada y entregada por el cliente' ? 'selected' : '' ?>>Muestra tomada y entregada por el cliente</option>
+                    <option value="Muestra tomada por el cliente y trasladada por CYCSA" <?= ($hoja['condicion_muestreo_datos'] ?? '') === 'Muestra tomada por el cliente y trasladada por CYCSA' ? 'selected' : '' ?>>Muestra tomada por el cliente y trasladada por CYCSA</option>
+                    <option value="Datos proporcionados por el cliente" <?= ($hoja['condicion_muestreo_datos'] ?? '') === 'Datos proporcionados por el cliente' ? 'selected' : '' ?>>Datos proporcionados por el cliente</option>
+                    <option value="Datos obtenidos por CYCSA durante el muestreo o la actividad de campo" <?= ($hoja['condicion_muestreo_datos'] ?? '') === 'Datos obtenidos por CYCSA durante el muestreo o la actividad de campo' ? 'selected' : '' ?>>Datos obtenidos por CYCSA durante el muestreo o la actividad de campo</option>
+                </select>
+            </div>
+
             <!-- 4. IDENTIFICACIÓN PROPIA DE LA MUESTRA (TABLA DINÁMICA) -->
             <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
                 <span><i class="fa-solid fa-list-ol"></i> 2. Identificaciones Propias de la Muestra</span>

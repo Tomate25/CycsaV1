@@ -9,6 +9,7 @@ use Cycsa\Modulos\Cotizaciones\Modelos\CotizacionModelo;
 use Cycsa\Modulos\Clientes\Modelos\ClienteModelo;
 use Cycsa\Modulos\Productos\Modelos\ProductoModelo;
 use Cycsa\Modulos\Configuracion\Modelos\ConfiguracionModelo;
+use PDO;
 
 class CotizacionesControlador extends ControladorBase {
     
@@ -1089,7 +1090,7 @@ class CotizacionesControlador extends ControladorBase {
                                       JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
                                       WHERE lm.id = :id_lote");
             $stmtLote->execute(['id_lote' => $idLote]);
-            $loteData = $stmtLote->fetch(PDO::FETCH_ASSOC);
+            $loteData = $stmtLote->fetch(PDO::FETCH_ASSOC) ?: [];
 
             $stmtEsp = $db->prepare("SELECT * FROM ensayo_edades WHERE id_detalle_cotizacion = :id_detalle ORDER BY edad_dias ASC, identificador_especimen ASC");
             $stmtEsp->execute(['id_detalle' => $id_detalle]);

@@ -26,6 +26,73 @@
         </a>
     </div>
 
+    <?php if (!empty($_SESSION['temp_password_info'])): 
+        $info = $_SESSION['temp_password_info'];
+        unset($_SESSION['temp_password_info']);
+    ?>
+    <!-- Modal Premium Responsivo de Clave Temporal (Solo Administradores/Supervisores) -->
+    <div id="modal-clave-temporal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box; animation: fadeInModal 0.3s ease;">
+        <div style="background: white; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); overflow: hidden; border: 1px solid #e2e8f0; animation: slideUpModal 0.35s cubic-bezier(0.16, 1, 0.3, 1);">
+            <!-- Modal Header -->
+            <div style="background: linear-gradient(135deg, #103487 0%, #1e40af 100%); padding: 20px 24px; color: white; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.2); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 17px; font-weight: 700; font-family: 'Outfit', sans-serif;">Usuario Desbloqueado</h3>
+                        <span style="font-size: 11.5px; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.5px;">Acción Exclusiva de Administrador</span>
+                    </div>
+                </div>
+                <button type="button" onclick="document.getElementById('modal-clave-temporal').remove();" style="background: rgba(255,255,255,0.15); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: background 0.2s;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div style="padding: 24px;">
+                <p style="margin: 0 0 16px 0; color: #334155; font-size: 14px; line-height: 1.5;">
+                    Se ha restablecido el acceso para <strong><?= htmlspecialchars($info['nombre'], ENT_QUOTES, 'UTF-8') ?></strong> (<code><?= htmlspecialchars($info['email'], ENT_QUOTES, 'UTF-8') ?></code>). Entrégale la siguiente contraseña temporal:
+                </p>
+
+                <!-- Caja de la Contraseña Temporal -->
+                <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 18px; text-align: center; margin-bottom: 20px;">
+                    <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">Contraseña Temporal Generada</span>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                        <span style="font-family: 'Courier New', monospace; font-size: 26px; font-weight: 800; color: #103487; letter-spacing: 2px;" id="lblModalTempPass"><?= htmlspecialchars($info['temp_pass'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <button type="button" onclick="navigator.clipboard.writeText('<?= htmlspecialchars($info['temp_pass'], ENT_QUOTES, 'UTF-8') ?>'); this.innerText='¡Copiado!'; this.style.background='#16a34a'; setTimeout(() => { this.innerText='Copiar'; this.style.background='#103487'; }, 2000);" style="background: #103487; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Outfit', sans-serif; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-copy"></i> Copiar
+                        </button>
+                    </div>
+                </div>
+
+                <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px 16px; border-radius: 6px; color: #166534; font-size: 12.5px; line-height: 1.4; display: flex; align-items: flex-start; gap: 10px;">
+                    <i class="fa-solid fa-circle-info" style="margin-top: 2px; font-size: 14px;"></i>
+                    <span>Cuando el usuario inicie sesión con esta clave temporal, el sistema le solicitará obligatoriamente ingresar una nueva contraseña personal antes de ingresar.</span>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="background: #f8fafc; padding: 14px 24px; border-top: 1px solid #e2e8f0; text-align: right;">
+                <button type="button" onclick="document.getElementById('modal-clave-temporal').remove();" style="background: #e2e8f0; color: #334155; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13.5px; transition: background 0.2s;">
+                    Entendido / Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes fadeInModal {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUpModal {
+            from { opacity: 0; transform: translateY(30px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+    </style>
+    <?php endif; ?>
+
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <div>
             <h2 style="margin: 0; color: #333; font-size: 20px;">Gestión de Usuarios</h2>
@@ -55,13 +122,18 @@
                     <td><?= htmlspecialchars($usuario['email'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($usuario['rol'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td>
-                        <?php if ($usuario['activo'] == 1): ?>
+                        <?php if ((int)($usuario['bloqueado'] ?? 0) === 1): ?>
+                            <span class="badge-bloqueado" style="background-color: #fee2e2; color: #dc2626; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-lock"></i> Bloqueado</span>
+                        <?php elseif ($usuario['activo'] == 1): ?>
                             <span class="badge-activo">Activo</span>
                         <?php else: ?>
                             <span class="badge-inactivo">Inactivo</span>
                         <?php endif; ?>
                     </td>
                     <td style="text-align: right;">
+                        <?php if ((int)($usuario['bloqueado'] ?? 0) === 1): ?>
+                            <a href="/Cycsa/publico/usuarios/desbloquear?id=<?= $usuario['id'] ?>" class="btn-accion" title="Desbloquear" style="color: #ea580c; margin-right: 5px;" onclick="return confirm('¿Estás seguro de que deseas desbloquear a este usuario y restablecer sus intentos de acceso?');"><i class="fa-solid fa-lock-open"></i></a>
+                        <?php endif; ?>
                         <a href="/Cycsa/publico/usuarios/editar?id=<?= $usuario['id'] ?>" class="btn-accion btn-editar" title="Editar"><i class="fa-solid fa-pen-to-square"></i></a>
                         <a href="/Cycsa/publico/usuarios/eliminar?id=<?= $usuario['id'] ?>" class="btn-accion btn-eliminar" title="Desactivar" onclick="return confirm('¿Estás seguro de que deseas desactivar a este usuario? Ya no podrá iniciar sesión.');"><i class="fa-solid fa-trash"></i></a>
                     </td>

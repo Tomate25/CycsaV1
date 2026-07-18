@@ -74,6 +74,8 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     $options = new Options();
     $options->set('isHtml5ParserEnabled', true);
     $options->set('isRemoteEnabled', false);
+    $options->set('tempDir', __DIR__ . '/../almacenamiento/cache');
+    $options->set('fontCache', __DIR__ . '/../almacenamiento/cache');
     $dompdf = new Dompdf($options);
 
     $logoPath = __DIR__ . '/../publico/img/logo_cycsa.jpg';
@@ -266,7 +268,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
                 <td style=\"width: 40%; text-align: right; vertical-align: top;\">
                     <span style=\"font-size: 14px; font-weight: bold; color: #103487;\">COTIZACIÓN DE SERVICIO</span><br>
                     <span style=\"font-size: 16px; font-weight: bold; color: #1e293b; margin: 2px 0; display: block;\">{$codigo}</span><br>
-                    <span style=\"font-size: 9px; color: #64748b;\">Versión: {$version} | Fecha: {$fecha}</span>
+                    <span style=\"font-size: 9px; color: #64748b;\">Formato: CYCSA-RG-FM-31 | Versión: {$version} | Fecha: {$fecha}</span>
                 </td>
             </tr>
         </table>
@@ -678,6 +680,8 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
     $options = new Options();
     $options->set('isHtml5ParserEnabled', true);
     $options->set('isRemoteEnabled', false);
+    $options->set('tempDir', __DIR__ . '/../almacenamiento/cache');
+    $options->set('fontCache', __DIR__ . '/../almacenamiento/cache');
     $dompdf = new Dompdf($options);
 
     $logoPath = __DIR__ . '/../publico/img/logo_cycsa.jpg';
@@ -902,6 +906,8 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
     $options = new Options();
     $options->set('isHtml5ParserEnabled', true);
     $options->set('isRemoteEnabled', false);
+    $options->set('tempDir', __DIR__ . '/../almacenamiento/cache');
+    $options->set('fontCache', __DIR__ . '/../almacenamiento/cache');
     $dompdf = new Dompdf($options);
 
     $fecha = date('d/m/Y', strtotime($cotizacion['fecha_creacion']));
@@ -1332,6 +1338,8 @@ function generarHojaSolicitudPDF(array $hoja, array $os): string {
     $options = new \Dompdf\Options();
     $options->set('isHtml5ParserEnabled', true);
     $options->set('isRemoteEnabled', false);
+    $options->set('tempDir', __DIR__ . '/../almacenamiento/cache');
+    $options->set('fontCache', __DIR__ . '/../almacenamiento/cache');
     $dompdf = new \Dompdf\Dompdf($options);
 
     $logoPath = __DIR__ . '/../publico/img/logo_cycsa.jpg';
@@ -1545,3 +1553,23 @@ function generarHojaSolicitudPDF(array $hoja, array $os): string {
     $dompdf->render();
     return $dompdf->output();
 }
+
+/**
+ * LIMS ISO/IEC 17025: Limpia el código de muestra quitando sufijos de réplica (CR) o repetición (C1, C2...)
+ * para emitir el informe oficial al cliente con el código base (Paso 18).
+ */
+function obtenerCodigoLimpioInforme(string $codigoMuestra): string {
+    return preg_replace('/(CR|C\d+)$/i', '', trim($codigoMuestra));
+}
+
+/**
+ * LIMS ISO/IEC 17025: Genera el código para réplicas de calidad (CR) o repeticiones (C1, C2...) (Pasos 14 y 17).
+ */
+function generarCodigoCalidadLIMS(string $codigoBase, string $tipo = 'replica', int $numeroRepeticion = 1): string {
+    $codigoLimpio = obtenerCodigoLimpioInforme($codigoBase);
+    if (strtolower($tipo) === 'replica') {
+        return $codigoLimpio . 'CR';
+    }
+    return $codigoLimpio . 'C' . max(1, $numeroRepeticion);
+}
+

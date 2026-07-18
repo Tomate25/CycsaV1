@@ -491,7 +491,7 @@ class OperacionesControlador extends ControladorBase {
                                           JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
                                           WHERE lm.id = :id_lote");
                 $stmtLote->execute(['id_lote' => $idLote]);
-                $loteData = $stmtLote->fetch(PDO::FETCH_ASSOC);
+                 $loteData = $stmtLote->fetch(PDO::FETCH_ASSOC) ?: [];
 
                 // Obtener especímenes del lote
                 $sqlEsp = "SELECT * FROM ensayo_edades WHERE id_lote = :id_lote";
@@ -771,7 +771,9 @@ class OperacionesControlador extends ControladorBase {
 
             $modelo = new OperacionModelo();
             if ($modelo->actualizarEstadoOS($idOS, $estado, $motivo, $requiere)) {
-                registrarBitacora('operaciones', 'cambiar_estado', 'Orden de Servicio ID ' . $idOS . ' cambiada al estado: ' . $estado);
+                $osInfo = $modelo->obtenerOSPorId($idOS);
+                $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
+                registrarBitacora('operaciones', 'cambiar_estado', 'Orden de Servicio ' . $codigoTexto . ' cambiada al estado: ' . $estado, $idOS);
                 $_SESSION['exito'] = 'Estado de la orden de servicio actualizado exitosamente.';
             } else {
                 $_SESSION['error'] = 'Error al actualizar el estado de la orden de servicio.';
@@ -808,7 +810,9 @@ class OperacionesControlador extends ControladorBase {
 
             $modelo = new OperacionModelo();
             if ($modelo->programarMuestreo($idOS, $fecha, $hora, $tecnico, $vehiculo)) {
-                registrarBitacora('operaciones', 'programar_muestreo', 'Muestreo programado para O/S ID ' . $idOS);
+                $osInfo = $modelo->obtenerOSPorId($idOS);
+                $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
+                registrarBitacora('operaciones', 'programar_muestreo', 'Muestreo programado para Orden de Servicio ' . $codigoTexto, $idOS);
                 $_SESSION['exito'] = 'Programación de muestreo en campo guardada y estado actualizado.';
             } else {
                 $_SESSION['error'] = 'Error al programar el muestreo.';
@@ -844,7 +848,9 @@ class OperacionesControlador extends ControladorBase {
 
             $modelo = new OperacionModelo();
             if ($modelo->registrarHojaCampo($idOS, $codigo, $operador, $notas)) {
-                registrarBitacora('operaciones', 'hoja_campo', 'Hoja de Campo registrada (CYCSA-RT-FM-07) para O/S ID ' . $idOS);
+                $osInfo = $modelo->obtenerOSPorId($idOS);
+                $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
+                registrarBitacora('operaciones', 'hoja_campo', 'Hoja de Campo registrada (CYCSA-RT-FM-07) para Orden de Servicio ' . $codigoTexto, $idOS);
                 $_SESSION['exito'] = 'Hoja de Campo CYCSA-RT-FM-07 guardada. Iniciado período obligatorio de 24 horas.';
             } else {
                 $_SESSION['error'] = 'Error al guardar la hoja de campo.';
@@ -985,7 +991,8 @@ class OperacionesControlador extends ControladorBase {
                 $nombrePdf = "CYCSA-RT-FM-13-" . $os['codigo_os'] . ".pdf";
                 file_put_contents($dirPdf . '/' . $nombrePdf, $pdfContenido);
 
-                registrarBitacora('operaciones', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada y PDF generado para O/S ID ' . $idOS);
+                $codigoTexto = $os ? ($os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
+                registrarBitacora('operaciones', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada y PDF generado para Orden de Servicio ' . $codigoTexto, $idOS);
                 $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 guardada exitosamente y PDF generado. Estado de la O/S actualizado.';
             } else {
                 $_SESSION['error'] = 'Error al registrar la Hoja de Solicitud.';
@@ -1018,7 +1025,9 @@ class OperacionesControlador extends ControladorBase {
 
             $modelo = new OperacionModelo();
             if ($modelo->actualizarEstadoOS($idOS, 'Estado 6: Ejecucion Ensayos')) {
-                registrarBitacora('operaciones', 'emitir_solicitud', 'Solicitud emitida a técnicos para O/S ID ' . $idOS);
+                $osInfo = $modelo->obtenerOSPorId($idOS);
+                $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
+                registrarBitacora('operaciones', 'emitir_solicitud', 'Solicitud emitida a técnicos para Orden de Servicio ' . $codigoTexto, $idOS);
                 $_SESSION['exito'] = 'Solicitud emitida a técnicos de laboratorio. Las muestras están disponibles para ejecución de ensayos.';
             } else {
                 $_SESSION['error'] = 'Error al emitir la solicitud.';
@@ -1051,7 +1060,9 @@ class OperacionesControlador extends ControladorBase {
 
             $modelo = new OperacionModelo();
             if ($modelo->actualizarEstadoOS($idOS, 'Estado 7: Revision Resultados')) {
-                registrarBitacora('operaciones', 'enviar_revision_resultados', 'Resultados de ensayos enviados a revisión para O/S ID ' . $idOS);
+                $osInfo = $modelo->obtenerOSPorId($idOS);
+                $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
+                registrarBitacora('operaciones', 'enviar_revision_resultados', 'Resultados de ensayos enviados a revisión para Orden de Servicio ' . $codigoTexto, $idOS);
                 $_SESSION['exito'] = 'Resultados enviados a revisión de calidad por el supervisor.';
             } else {
                 $_SESSION['error'] = 'Error al enviar a revisión.';
@@ -1091,11 +1102,13 @@ class OperacionesControlador extends ControladorBase {
             }
 
             $modelo = new OperacionModelo();
+            $osInfo = $modelo->obtenerOSPorId($idOS);
+            $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
             
             if ($decision === 'Aprobar') {
                 $exito = $modelo->actualizarEstadoOS($idOS, 'Finalizado', null);
                 if ($exito) {
-                    registrarBitacora('operaciones', 'finalizar_os', 'Orden de Servicio ID ' . $idOS . ' aprobada y finalizada.');
+                    registrarBitacora('operaciones', 'finalizar_os', 'Orden de Servicio ' . $codigoTexto . ' aprobada y finalizada.', $idOS);
                     $_SESSION['exito'] = 'Resultados de ensayos aprobados y orden de servicio marcada como Finalizada.';
                 }
             } else {
@@ -1106,7 +1119,7 @@ class OperacionesControlador extends ControladorBase {
                 }
                 $exito = $modelo->actualizarEstadoOS($idOS, 'Estado 6: Ejecucion Ensayos', $motivo);
                 if ($exito) {
-                    registrarBitacora('operaciones', 'observar_resultados', 'Resultados de O/S ID ' . $idOS . ' observados: ' . $motivo);
+                    registrarBitacora('operaciones', 'observar_resultados', 'Resultados de Orden de Servicio ' . $codigoTexto . ' observados: ' . $motivo, $idOS);
                     $_SESSION['exito'] = 'Resultados rechazados y devueltos a ejecución de ensayos con la respectiva observación.';
                 }
             }
