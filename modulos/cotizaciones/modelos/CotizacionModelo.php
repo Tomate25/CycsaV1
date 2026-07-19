@@ -115,25 +115,93 @@ class CotizacionModelo extends ModeloBase {
                 'id' => $id
             ]);
 
-            // 2. Si el estado es 'Aprobada por Cliente', crear Orden de Servicio automáticamente
+            // 2. Si el estado es 'Aprobada por Cliente', crear Orden de Servicio automáticamente y gestionar Facturación / CXC / Bancos
             if ($estado === 'Aprobada por Cliente') {
-                // Verificar si ya existe una O/S para esta cotización
-                $stmtCheck = $this->db->prepare("SELECT id FROM ordenes_servicio WHERE id_cotizacion = :id_cot");
-                $stmtCheck->execute(['id_cot' => $id]);
-                if (!$stmtCheck->fetch()) {
-                    $anio = (int)date('Y');
-                    $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM ordenes_servicio WHERE YEAR(fecha_emision) = :anio");
-                    $stmtCount->execute(['anio' => $anio]);
-                    $consecutivo = (int)$stmtCount->fetchColumn() + 1;
-                    $codigoOS = sprintf("OS-%d-%04d", $anio, $consecutivo);
+                // Obtener datos completos de la cotización y cliente
+                $stmtCot = $this->db->prepare("SELECT c.*, cl.nombre_razon_social AS cliente_nombre FROM cotizaciones c JOIN clientes cl ON c.id_cliente = cl.id WHERE c.id = :id");
+                $stmtCot->execute(['id' => $id]);
+                $cotInfo = $stmtCot->fetch(PDO::FETCH_ASSOC);
 
-                    $sqlOS = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, tipo_contrato, fecha_emision, estado) 
-                              VALUES (:codigo_os, :id_cotizacion, 'Puntual', CURRENT_DATE, 'Estado 1: Recepcion')";
-                    $stmtOS = $this->db->prepare($sqlOS);
-                    $stmtOS->execute([
-                        'codigo_os' => $codigoOS,
-                        'id_cotizacion' => $id
-                    ]);
+                if ($cotInfo) {
+                    $idCliente = (int)$cotInfo['id_cliente'];
+                    $codigoCot = $cotInfo['codigo'];
+                    $totalCot = (float)$cotInfo['total'];
+                    $facturaNum = "FAC-" . $codigoCot;
+
+                    // A. Crear Orden de Servicio si no existe
+                    $stmtCheck = $this->db->prepare("SELECT id FROM ordenes_servicio WHERE id_cotizacion = :id_cot");
+                    $stmtCheck->execute(['id_cot' => $id]);
+                    if (!$stmtCheck->fetch()) {
+                        $anio = (int)date('Y');
+                        $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM ordenes_servicio WHERE YEAR(fecha_emision) = :anio");
+                        $stmtCount->execute(['anio' => $anio]);
+                        $consecutivo = (int)$stmtCount->fetchColumn() + 1;
+                        $codigoOS = sprintf("OS-%d-%04d", $anio, $consecutivo);
+
+                        $sqlOS = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, tipo_contrato, fecha_emision, estado) 
+                                  VALUES (:codigo_os, :id_cotizacion, 'Puntual', CURRENT_DATE, 'Estado 1: Recepcion')";
+                        $stmtOS = $this->db->prepare($sqlOS);
+                        $stmtOS->execute([
+                            'codigo_os' => $codigoOS,
+                            'id_cotizacion' => $id
+                        ]);
+                    }
+
+                    // B. Gestionar Factura en Cuentas por Cobrar (cuentas_por_cobrar)
+                    $stmtCheckCxc = $this->db->prepare("SELECT id FROM cuentas_por_cobrar WHERE factura_numero = :fn");
+                    $stmtCheckCxc->execute(['fn' => $facturaNum]);
+                    if (!$stmtCheckCxc->fetch()) {
+                        $montoPago = max(0.00, (float)$montoPagoInmediato);
+                        $saldoPendiente = max(0.00, $totalCot - $montoPago);
+                        
+                        $estadoCxc = 'Pendiente';
+                        if ($saldoPendiente <= 0.01) {
+                            $estadoCxc = 'Pagado';
+                        } elseif ($montoPago > 0) {
+                            $estadoCxc = 'Parcial';
+                        }
+
+                        $diasVal = max(0, (int)$diasCredito);
+                        $fechaVenc = date('Y-m-d', strtotime("+$diasVal days"));
+                        $notasCxc = ($estadoCxc === 'Pagado') ? "Pago Contado Inmediato 100% - Ref: " . ($referenciaPago ?: 'Transferencia') : "Factura a Crédito ($diasVal días de plazo)";
+
+                        $sqlCxc = "INSERT INTO cuentas_por_cobrar (id_cliente, factura_numero, monto, saldo, estado, fecha_emision, fecha_vencimiento, notas)
+                                   VALUES (:id_cliente, :factura_numero, :monto, :saldo, :estado, CURRENT_DATE, :fecha_venc, :notas)";
+                        $stmtCxc = $this->db->prepare($sqlCxc);
+                        $stmtCxc->execute([
+                            'id_cliente' => $idCliente,
+                            'factura_numero' => $facturaNum,
+                            'monto' => $totalCot,
+                            'saldo' => $saldoPendiente,
+                            'estado' => $estadoCxc,
+                            'fecha_venc' => $fechaVenc,
+                            'notas' => $notasCxc
+                        ]);
+
+                        // C. Si hubo pago inmediato/anticipo y se seleccionó banco, registrar en bancos_transacciones e incrementar saldo bancario
+                        if ($montoPago > 0 && $idBancoCuenta && $idBancoCuenta > 0) {
+                            $tipoTx = !empty($metodoPago) ? strtoupper($metodoPago) : 'TRANSFERENCIA';
+                            if (!in_array($tipoTx, ['DEPOSITO', 'RETIRO', 'CHEQUE', 'TRANSFERENCIA'])) {
+                                $tipoTx = 'TRANSFERENCIA';
+                            }
+
+                            $sqlTx = "INSERT INTO bancos_transacciones (id_banco_cuenta, tipo_transaccion, numero_documento, beneficiario, monto, fecha, estado, descripcion)
+                                      VALUES (:id_banco, :tipo, :doc, :beneficiario, :monto, CURRENT_DATE, 'Cobrado', :desc)";
+                            $stmtTx = $this->db->prepare($sqlTx);
+                            $stmtTx->execute([
+                                'id_banco' => $idBancoCuenta,
+                                'tipo' => $tipoTx,
+                                'doc' => $referenciaPago ?: $facturaNum,
+                                'beneficiario' => $cotInfo['cliente_nombre'],
+                                'monto' => $montoPago,
+                                'desc' => "Cobro de Factura $facturaNum (" . ($estadoCxc === 'Pagado' ? 'Pago Contado' : 'Anticipo') . ")"
+                            ]);
+
+                            // Actualizar saldo de la cuenta bancaria
+                            $this->db->prepare("UPDATE bancos_cuentas SET saldo_actual = saldo_actual + :monto WHERE id = :id_banco")
+                                     ->execute(['monto' => $montoPago, 'id_banco' => $idBancoCuenta]);
+                        }
+                    }
                 }
             }
 
