@@ -175,6 +175,10 @@ class OperacionesControlador extends ControladorBase {
 
         $hojaSolicitud = $modelo->obtenerHojaSolicitudPorOS($idOS);
 
+        $anio = date('Y');
+        $numOs = sprintf('%04d', $os['id']);
+        $codigoCampoAuto = !empty($os['hoja_campo_codigo']) ? $os['hoja_campo_codigo'] : "MC-$anio-$numOs";
+
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
@@ -185,6 +189,7 @@ class OperacionesControlador extends ControladorBase {
             'servicios' => $servicios,
             'idDetalle' => $idDetalle,
             'hoja_solicitud' => $hojaSolicitud,
+            'codigoCampoAuto' => $codigoCampoAuto,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
         ]);

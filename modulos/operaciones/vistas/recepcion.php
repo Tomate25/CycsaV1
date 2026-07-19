@@ -164,8 +164,9 @@
                 </select>
             </div>
             <div class="form-group">
-                <label style="font-weight: 600; font-size: 13px; color: #334155;">Código de Campo / Referencia (Hoja de Campo)</label>
-                <input type="text" name="codigo_campo" required placeholder="Ej: MC-02" class="form-control">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">Código de Campo / Referencia (Sincronizado Consecutivo)</label>
+                <input type="text" name="codigo_campo" required placeholder="Ej: MC-2026-0001" class="form-control" value="<?= htmlspecialchars($codigoCampoAuto ?? '', ENT_QUOTES, 'UTF-8') ?>" style="font-weight: 600; color: #103487; background-color: #f0f9ff; border-color: #7dd3fc;">
+                <span style="font-size: 11px; color: #64748b; margin-top: 2px;">Precargado automáticamente según la Hoja de Campo o el consecutivo MC-AÑO-XXXX de la O/S.</span>
             </div>
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">ID del Cilindro / Especímen Individual</label>
