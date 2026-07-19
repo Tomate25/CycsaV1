@@ -740,6 +740,42 @@ if ($tieneEdades):
                 ipRow['% que pasa la malla'].value = (llVal > 0 || lpVal > 0) ? ipVal.toFixed(2) : '';
             }
         }
+
+        // Validación Automática Condicional: Pérdida por Lavado (Máximo 0.30%)
+        let alertaLavado = document.getElementById('alerta-lavado-norma');
+        if (!alertaLavado) {
+            alertaLavado = document.createElement('div');
+            alertaLavado.id = 'alerta-lavado-norma';
+            alertaLavado.style.marginTop = '15px';
+            alertaLavado.style.padding = '12px 16px';
+            alertaLavado.style.borderRadius = '8px';
+            alertaLavado.style.fontSize = '13px';
+            alertaLavado.style.fontWeight = '600';
+            const tableBody = document.getElementById('tabla-captura-body');
+            if (tableBody && tableBody.closest('form')) {
+                tableBody.closest('form').insertBefore(alertaLavado, document.getElementById('modal-resultados-json'));
+            }
+        }
+
+        const perdidaRow = rowsArray.find(r => r['Malla'] && (r['Malla'].value.trim().toLowerCase().includes('pérdida') || r['Malla'].value.trim().toLowerCase().includes('perdida')));
+        if (perdidaRow) {
+            const valPercent = parseFloat(perdidaRow['% Retenido parcial']?.value || 0);
+            if (valPercent > 0.30) {
+                alertaLavado.style.display = 'block';
+                alertaLavado.style.backgroundColor = '#fef2f2';
+                alertaLavado.style.color = '#991b1b';
+                alertaLavado.style.border = '1px solid #fecaca';
+                alertaLavado.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <strong>RECHAZO AUTOMÁTICO DE NORMA:</strong> Pérdida por Lavado (' + valPercent.toFixed(2) + '%) supera el límite máximo permitido de 0.30%. El ensayo requiere repetición obligatoria.';
+            } else if (valPercent > 0) {
+                alertaLavado.style.display = 'block';
+                alertaLavado.style.backgroundColor = '#f0fdf4';
+                alertaLavado.style.color = '#166534';
+                alertaLavado.style.border = '1px solid #bbf7d0';
+                alertaLavado.innerHTML = '<i class="fa-solid fa-circle-check"></i> <strong>VALIDACIÓN CONFORME:</strong> Pérdida por Lavado (' + valPercent.toFixed(2) + '%) cumple dentro del máximo normado de 0.30%.';
+            } else {
+                alertaLavado.style.display = 'none';
+            }
+        }
     }
 
     function recalculateIP() {

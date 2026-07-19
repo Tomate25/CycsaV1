@@ -255,10 +255,25 @@
                 </div>
             </div>
 
+            <!-- DATALIST DE TÉCNICOS REGISTRADOS DE CYCSA -->
+            <datalist id="lista-tecnicos-cycsa">
+                <?php if (!empty($tecnicos)): ?>
+                    <?php foreach ($tecnicos as $tec): ?>
+                        <option value="<?= htmlspecialchars($tec['nombre'], ENT_QUOTES, 'UTF-8') ?>">Técnico Registrado CYCSA</option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </datalist>
+
             <!-- 2. DATOS DEL CLIENTE -->
             <div class="section-title">
                 <i class="fa-solid fa-user-tie"></i> 1. Empresa o Cliente que Solicita el Servicio
             </div>
+
+            <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 500; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span><strong>DATOS DE CLIENTE AUTOCAPTURADOS:</strong> Nombre, dirección, teléfono y correo precargados desde la Orden de Servicio. Los campos de técnicos permiten seleccionar de nuestro personal registrado en CYCSA.</span>
+            </div>
+
             <div class="grid-2">
                 <div class="form-group">
                     <label>Nombre de la Empresa o Cliente</label>
@@ -280,7 +295,7 @@
                 </div>
                 <div class="form-group">
                     <label>Nombre de la Persona quien trae la muestra</label>
-                    <input type="text" name="nombre_persona_entrega_muestra" required class="form-control" placeholder="Nombre completo" value="<?= htmlspecialchars($hoja['nombre_persona_entrega_muestra'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="text" name="nombre_persona_entrega_muestra" list="lista-tecnicos-cycsa" required class="form-control" placeholder="Seleccione técnico o escriba nombre del cliente" value="<?= htmlspecialchars($hoja['nombre_persona_entrega_muestra'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
             </div>
 
@@ -307,8 +322,8 @@
                     <input type="text" name="procedencia_punto_muestreo" required class="form-control" placeholder="Ej: Eje A-1" value="<?= htmlspecialchars($hoja['procedencia_punto_muestreo'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
                 <div class="form-group">
-                    <label>Persona quien tomó la muestra</label>
-                    <input type="text" name="nombre_persona_toma_muestra" required class="form-control" value="<?= htmlspecialchars($hoja['nombre_persona_toma_muestra'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <label>Persona quien tomó la muestra (Técnico CYCSA o Cliente)</label>
+                    <input type="text" name="nombre_persona_toma_muestra" list="lista-tecnicos-cycsa" required class="form-control" placeholder="Seleccione técnico o escriba nombre" value="<?= htmlspecialchars($hoja['nombre_persona_toma_muestra'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
                 <div class="form-group">
                     <label>1.2 Fecha y hora en que se tomó la muestra</label>
@@ -461,7 +476,7 @@
             <div class="grid-3" style="margin-top: 15px;">
                 <div class="form-group">
                     <label>PERSONA DE CYCSA QUIEN RECIBE LA MUESTRA</label>
-                    <input type="text" name="nombre_recibe_cycsa" required class="form-control" placeholder="Nombre del receptor" value="<?= htmlspecialchars($hoja['nombre_recibe_cycsa'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="text" name="nombre_recibe_cycsa" list="lista-tecnicos-cycsa" required class="form-control" placeholder="Seleccione técnico receptor o escriba nombre" value="<?= htmlspecialchars($hoja['nombre_recibe_cycsa'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
                 <div class="form-group">
                     <label>&nbsp;</label>

@@ -104,11 +104,7 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
-        // Si no tiene aplicaciones habilitadas, cerramos sesión por seguridad
-        if (empty($cajon_aplicaciones)) {
-            $respuesta->redirigir('/Cycsa/publico/logout');
-            return;
-        }
+        // Si no tiene aplicaciones habilitadas, permitimos cargar el panel informando la falta de módulos asignados.
 
         // Valores por defecto
         $total_cotizaciones = 0;

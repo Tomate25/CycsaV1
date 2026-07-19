@@ -503,6 +503,18 @@
                 <textarea name="motivo_reemplazo" id="inf_motivo" rows="2" placeholder="Describa el motivo del por qué genera una nueva versión para el cliente..." class="form-control"></textarea>
             </div>
 
+            <div class="form-group" style="margin-top: 10px;">
+                <label style="font-weight: 600; font-size: 13px; color: var(--cycsa-azul);"><i class="fa-solid fa-comment-dots"></i> Comentarios / Observaciones del Supervisor (PDF)</label>
+                <textarea name="observaciones_supervisor" id="inf_obs_supervisor" rows="2" placeholder="Ingrese comentarios técnicos u observaciones del supervisor para figurar en el documento oficial..." class="form-control" style="border-color: #93c5fd;"></textarea>
+            </div>
+
+            <div class="form-group" style="margin-top: 8px; background-color: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #334155; cursor: pointer;">
+                    <input type="checkbox" name="ocultar_columna_cumplimiento" value="1">
+                    <i class="fa-solid fa-eye-slash"></i> Ocultar columna de validación interna ("Cumple / No Cumple") en el PDF impreso
+                </label>
+            </div>
+
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                 <button type="button" onclick="cerrarInformeModal()" class="form-control" style="cursor: pointer; background: #fff; border: 1px solid var(--color-slate-300); font-weight: 600; color: var(--color-slate-600); width: auto; padding: 10px 20px;">Cancelar</button>
                 <button type="submit" class="form-control" style="cursor: pointer; background: var(--cycsa-azul); border: 1px solid var(--cycsa-azul); color: white; font-weight: 600; width: auto; padding: 10px 24px;">Generar PDF & Versionar</button>

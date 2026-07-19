@@ -83,19 +83,27 @@ class OperacionModelo extends ModeloBase {
     }
 
     /**
-     * Obtiene los productos/ensayos de una O/S y su estado de recepción (código MS y id_lote si existe).
+     * Obtiene los productos/ensayos de una O/S y su estado de recepción (aislado por O/S y soportando múltiples muestras por servicio).
      */
     public function obtenerItemsOS(int $idOS): array {
-        $sql = "SELECT cd.id AS id_detalle, cd.descripcion_ensayo, cd.codigo_servicio,
+        $sql = "SELECT cd.id AS id_detalle, cd.descripcion_ensayo, cd.codigo_servicio, cd.cantidad AS cantidad_facturada,
+                       (SELECT COUNT(DISTINCT lm.id)
+                        FROM ensayo_edades ee
+                        JOIN lotes_muestras lm ON ee.id_lote = lm.id
+                        JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                        WHERE ee.id_detalle_cotizacion = cd.id AND rm.id_os = os.id) AS total_recibidos,
                        (SELECT rm.codigo_muestra 
                         FROM ensayo_edades ee 
                         JOIN lotes_muestras lm ON ee.id_lote = lm.id
                         JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
-                        WHERE ee.id_detalle_cotizacion = cd.id LIMIT 1) AS codigo_muestra,
+                        WHERE ee.id_detalle_cotizacion = cd.id AND rm.id_os = os.id
+                        ORDER BY lm.id DESC LIMIT 1) AS codigo_muestra,
                        (SELECT lm.id 
                         FROM ensayo_edades ee 
                         JOIN lotes_muestras lm ON ee.id_lote = lm.id
-                        WHERE ee.id_detalle_cotizacion = cd.id LIMIT 1) AS id_lote
+                        JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                        WHERE ee.id_detalle_cotizacion = cd.id AND rm.id_os = os.id
+                        ORDER BY lm.id DESC LIMIT 1) AS id_lote
                 FROM cotizacion_detalles cd
                 JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
                 WHERE os.id = :id_os";
@@ -109,8 +117,9 @@ class OperacionModelo extends ModeloBase {
      */
     public function obtenerOSPorId(int $idOS): ?array {
         $sql = "SELECT os.id, os.codigo_os, os.tipo_contrato, os.fecha_emision, os.estado, os.id_cotizacion,
+                       os.tecnico_muestreo, os.vehiculo_muestreo, os.fecha_muestreo, os.hora_muestreo,
                        cot.codigo AS cot_codigo, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
-                       cli.nombre_razon_social AS cliente_nombre, cli.identificacion AS cliente_ruc, cli.telefono AS cliente_telefono
+                       cli.nombre_razon_social AS cliente_nombre, cli.identificacion AS cliente_ruc, cli.telefono AS cliente_telefono, cli.email AS cliente_email
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id
@@ -149,40 +158,57 @@ class OperacionModelo extends ModeloBase {
             $observaciones = trim($datos['observaciones'] ?? '');
             $fechaRecepcion = $datos['fecha_recepcion'] ?? date('Y-m-d H:i:s');
             
+            $tipoMuestra = in_array($datos['tipo_muestra'] ?? '', ['Campo', 'Laboratorio']) ? $datos['tipo_muestra'] : 'Laboratorio';
+            $isQaQc = !empty($datos['is_qa_qc']) ? 1 : 0;
+            $idCilindro = trim($datos['id_cilindro'] ?? '');
+
             $anio = (int)date('Y', strtotime($fechaRecepcion));
+            $anioShort = date('y', strtotime($fechaRecepcion));
 
             // ADQUIRIR CANDADO DE CONCURRENCIA PARA RECEPCION DE MUESTRAS
             $this->db->prepare("SELECT GET_LOCK('lock_recepcion_muestras', 10)")->execute();
 
-            // Calcular correlativo secuencial anual (1 a 1000)
-            $stmtSec = $this->db->prepare("SELECT MAX(correlativo_anual) FROM recepcion_muestras WHERE anio = :anio");
-            $stmtSec->execute(['anio' => $anio]);
-            $correlativo = (int)$stmtSec->fetchColumn() + 1;
-            
-            // Límite de control
-            if ($correlativo > 1000) {
-                // Si pasa de 1000 anual por alta demanda, igual lo guardamos pero lo logueamos
-                error_log("Alerta LIMS: Correlativo de muestra excede de 1000 en el año $anio");
+            // Calcular correlativo por anio y tipo_muestra usando secuencias_muestras (Reinicio anual el 1° de Enero)
+            $stmtSec = $this->db->prepare("SELECT ultimo_correlativo FROM secuencias_muestras WHERE anio = :anio AND tipo_muestra = :tipo");
+            $stmtSec->execute(['anio' => $anio, 'tipo' => $tipoMuestra]);
+            $lastCorr = $stmtSec->fetchColumn();
+            $correlativo = ($lastCorr === false) ? 1 : (int)$lastCorr + 1;
+
+            $stmtUpsert = $this->db->prepare("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) VALUES (:anio, :tipo, :corr) ON DUPLICATE KEY UPDATE ultimo_correlativo = :corr2");
+            $stmtUpsert->execute(['anio' => $anio, 'tipo' => $tipoMuestra, 'corr' => $correlativo, 'corr2' => $correlativo]);
+
+            // Formato de código consecutivo automático e inmutable por tipo
+            $replicaCodigo = null;
+            if ($tipoMuestra === 'Campo') {
+                $codigoMuestra = sprintf("CAM-%02d-%04d", $anioShort, $correlativo);
+            } else {
+                $codigoMuestra = sprintf("MS-%04d-%02d", $correlativo, $anioShort);
             }
 
-            $anioShort = date('y', strtotime($fechaRecepcion));
-            $codigoMuestra = sprintf("MS-%04d-%02d", $correlativo, $anioShort);
-            
-            // Si no se provee código de campo o si se pide auto-generado, lo generamos en formato MC-1000-26
+            if ($isQaQc) {
+                $replicaCodigo = "-1";
+                $codigoMuestra .= $replicaCodigo;
+            }
+
+            // Si no se provee código de campo, lo generamos
             if (empty($codigoCampo)) {
                 $codigoCampo = sprintf("MC-%04d-%02d", $correlativo, $anioShort);
             }
 
-            // 1. Insertar Recepción
-            $sqlRec = "INSERT INTO recepcion_muestras (id_os, correlativo_anual, anio, codigo_muestra, codigo_campo, fecha_recepcion, recibido_por, entregado_por, observaciones, estado)
-                       VALUES (:id_os, :correlativo_anual, :anio, :codigo_muestra, :codigo_campo, :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, 'Registrado')";
+            // 1. Insertar Recepción con inmutabilidad y sellado
+            $sqlRec = "INSERT INTO recepcion_muestras (id_os, correlativo_anual, anio, tipo_muestra, codigo_muestra, id_cilindro, codigo_campo, is_qa_qc, replica_codigo, is_sealed, fecha_recepcion, recibido_por, entregado_por, observaciones, estado)
+                       VALUES (:id_os, :correlativo_anual, :anio, :tipo_muestra, :codigo_muestra, :id_cilindro, :codigo_campo, :is_qa_qc, :replica_codigo, 1, :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, 'Registrado')";
             $stmtRec = $this->db->prepare($sqlRec);
             $stmtRec->execute([
                 'id_os' => $idOS,
                 'correlativo_anual' => $correlativo,
                 'anio' => $anio,
+                'tipo_muestra' => $tipoMuestra,
                 'codigo_muestra' => $codigoMuestra,
+                'id_cilindro' => $idCilindro,
                 'codigo_campo' => $codigoCampo,
+                'is_qa_qc' => $isQaQc,
+                'replica_codigo' => $replicaCodigo,
                 'fecha_recepcion' => $fechaRecepcion,
                 'recibido_por' => $_SESSION['usuario_id'],
                 'entregado_por' => $entregadoPor,
@@ -531,10 +557,10 @@ class OperacionModelo extends ModeloBase {
     /**
      * Registra una nueva versión de informe en la base de datos y guarda el PDF físico.
      */
-    public function registrarInforme(int $idLote, string $codigoInforme, int $version, string $codigoCompleto, string $tipoInforme, ?int $edadEvaluada, string $motivoReemplazo, string $rutaPdf): ?int {
+    public function registrarInforme(int $idLote, string $codigoInforme, int $version, string $codigoCompleto, string $tipoInforme, ?int $edadEvaluada, string $motivoReemplazo, string $rutaPdf, ?string $observacionesSupervisor = null, int $ocultarCumplimiento = 0): ?int {
         try {
-            $sql = "INSERT INTO informes_control (id_lote, codigo_informe, version, codigo_completo, tipo_informe, edad_evaluada, estado_aprobacion, motivo_reemplazo, ruta_archivo_pdf)
-                    VALUES (:id_lote, :codigo_informe, :version, :codigo_completo, :tipo_informe, :edad_evaluada, 'Pendiente', :motivo_reemplazo, :ruta_pdf)";
+            $sql = "INSERT INTO informes_control (id_lote, codigo_informe, version, codigo_completo, tipo_informe, edad_evaluada, estado_aprobacion, motivo_reemplazo, observaciones_supervisor, ocultar_columna_cumplimiento, ruta_archivo_pdf)
+                    VALUES (:id_lote, :codigo_informe, :version, :codigo_completo, :tipo_informe, :edad_evaluada, 'Pendiente', :motivo_reemplazo, :obs, :ocultar, :ruta_pdf)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 'id_lote' => $idLote,
@@ -544,6 +570,8 @@ class OperacionModelo extends ModeloBase {
                 'tipo_informe' => $tipoInforme,
                 'edad_evaluada' => $edadEvaluada,
                 'motivo_reemplazo' => $motivoReemplazo,
+                'obs' => $observacionesSupervisor,
+                'ocultar' => $ocultarCumplimiento,
                 'ruta_pdf' => $rutaPdf
             ]);
             return (int)$this->db->lastInsertId();
@@ -631,14 +659,15 @@ class OperacionModelo extends ModeloBase {
     }
 
     /**
-     * Registra la hoja de campo (CYCSA-RT-FM-07) y marca la fecha de inicio del retraso de 24 horas.
+     * Registra la hoja de campo (CYCSA-RT-FM-07) y marca la fecha de inicio del retraso de horas personalizadas (ej. 24, 11, 12h...).
      */
-    public function registrarHojaCampo(int $idOS, string $codigo, string $operador, string $notas): bool {
+    public function registrarHojaCampo(int $idOS, string $codigo, string $operador, string $notas, int $horasEspera = 24): bool {
         try {
             $sql = "UPDATE ordenes_servicio 
                     SET hoja_campo_codigo = :codigo,
                         hoja_campo_operador = :operador,
                         hoja_campo_notas = :notas,
+                        horas_espera_requeridas = :horas,
                         fecha_registro_campo = NOW(),
                         estado = 'Estado 3C: Espera Muestreo'
                     WHERE id = :id";
@@ -647,10 +676,25 @@ class OperacionModelo extends ModeloBase {
                 'codigo' => $codigo,
                 'operador' => $operador,
                 'notas' => $notas,
+                'horas' => max(0, $horasEspera),
                 'id' => $idOS
             ]);
         } catch (Exception $e) {
             error_log("Error en registrarHojaCampo: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Permite a la supervisión u operadores omitir/liberar inmediatamente el tiempo de espera.
+     */
+    public function omitirEsperaMuestreo(int $idOS): bool {
+        try {
+            $sql = "UPDATE ordenes_servicio SET horas_espera_requeridas = 0 WHERE id = :id";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute(['id' => $idOS]);
+        } catch (Exception $e) {
+            error_log("Error en omitirEsperaMuestreo: " . $e->getMessage());
             return false;
         }
     }

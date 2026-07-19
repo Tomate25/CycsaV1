@@ -150,14 +150,23 @@ class OperacionesControlador extends ControladorBase {
         // Obtener los ítems de la O/S para saber cuáles ya tienen recepción registrada
         $itemsOS = $modelo->obtenerItemsOS($idOS);
         
-        // Mapear el estado de recepción a cada servicio
+        // Mapear el estado de recepción a cada servicio (aislado estrictamente por O/S)
         foreach ($servicios as &$s) {
             $s['ya_recibido'] = false;
             $s['codigo_muestra'] = null;
+            $s['total_recibidos'] = 0;
+            $s['cantidad_facturada'] = max(1, (int)($s['cantidad'] ?? 1));
+            
             foreach ($itemsOS as $item) {
-                if ((int)$item['id_detalle'] === (int)$s['id'] && !empty($item['codigo_muestra'])) {
-                    $s['ya_recibido'] = true;
+                if ((int)$item['id_detalle'] === (int)$s['id']) {
+                    $recibidos = (int)($item['total_recibidos'] ?? 0);
+                    $s['total_recibidos'] = $recibidos;
                     $s['codigo_muestra'] = $item['codigo_muestra'];
+                    
+                    // Solo marcar como deshabilitado si ya se recibieron TODAS las muestras facturadas para esta O/S específica
+                    if ($recibidos >= $s['cantidad_facturada']) {
+                        $s['ya_recibido'] = true;
+                    }
                     break;
                 }
             }
@@ -608,9 +617,12 @@ class OperacionesControlador extends ControladorBase {
 
             $codigoCompleto = sprintf("%s-%02d", $codigoInforme, $version);
 
+            $observacionesSupervisor = trim($datos['observaciones_supervisor'] ?? '');
+            $ocultarCumplimiento = !empty($datos['ocultar_columna_cumplimiento']) ? 1 : 0;
+
             // Generación real del PDF
             require_once __DIR__ . '/../../../ayudantes/funciones.php';
-            $pdfContenido = generarReporteEnsayoPDF($cotizacion, $detalle, $columnas, $filas, $codigoCompleto, $version);
+            $pdfContenido = generarReporteEnsayoPDF($cotizacion, $detalle, $columnas, $filas, $codigoCompleto, $version, $observacionesSupervisor, $ocultarCumplimiento);
 
             // Guardar archivo PDF en disco
             $rutaCarpeta = __DIR__ . '/../../../almacenamiento/informes';
@@ -624,7 +636,7 @@ class OperacionesControlador extends ControladorBase {
             // Guardar registro en base de datos
             $modelo = new OperacionModelo();
             $rutaRelativa = 'almacenamiento/informes/' . $nombrePdf;
-            $exitoId = $modelo->registrarInforme($idLote, $codigoInforme, $version, $codigoCompleto, $tipoInforme, $edadEvaluadaDb, $motivoReemplazo, $rutaRelativa);
+            $exitoId = $modelo->registrarInforme($idLote, $codigoInforme, $version, $codigoCompleto, $tipoInforme, $edadEvaluadaDb, $motivoReemplazo, $rutaRelativa, $observacionesSupervisor, $ocultarCumplimiento);
 
             if ($exitoId) {
                 $_SESSION['exito'] = "Informe $codigoCompleto generado y versionado correctamente en PDF.";
@@ -846,14 +858,51 @@ class OperacionesControlador extends ControladorBase {
                 return;
             }
 
+            $horasEspera = isset($datos['horas_espera_requeridas']) && $datos['horas_espera_requeridas'] !== '' ? (int)$datos['horas_espera_requeridas'] : 24;
+
             $modelo = new OperacionModelo();
-            if ($modelo->registrarHojaCampo($idOS, $codigo, $operador, $notas)) {
+            if ($modelo->registrarHojaCampo($idOS, $codigo, $operador, $notas, $horasEspera)) {
                 $osInfo = $modelo->obtenerOSPorId($idOS);
                 $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
                 registrarBitacora('operaciones', 'hoja_campo', 'Hoja de Campo registrada (CYCSA-RT-FM-07) para Orden de Servicio ' . $codigoTexto, $idOS);
-                $_SESSION['exito'] = 'Hoja de Campo CYCSA-RT-FM-07 guardada. Iniciado período obligatorio de 24 horas.';
+                $_SESSION['exito'] = "Hoja de Campo CYCSA-RT-FM-07 guardada. Período de espera configurado a $horasEspera hora(s).";
             } else {
                 $_SESSION['error'] = 'Error al guardar la hoja de campo.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    public function omitirEsperaMuestreo(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+
+            if ($idOS <= 0) {
+                $_SESSION['error'] = 'Orden de Servicio inválida.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $modelo = new OperacionModelo();
+            if ($modelo->omitirEsperaMuestreo($idOS)) {
+                $osInfo = $modelo->obtenerOSPorId($idOS);
+                $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
+                registrarBitacora('operaciones', 'omitir_espera', 'Período de espera liberado/omitido por supervisión para ' . $codigoTexto, $idOS);
+                $_SESSION['exito'] = 'Tiempo de espera liberado exitosamente. Las muestras ya pueden ser recepcionadas e ingresadas.';
+            } else {
+                $_SESSION['error'] = 'Error al liberar el tiempo de espera.';
             }
 
             $respuesta->redirigir('/Cycsa/publico/operaciones');
@@ -883,16 +932,17 @@ class OperacionesControlador extends ControladorBase {
         
         $anioActual = (int)date('Y');
         $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra($anioActual);
+        $tecnicos = $modelo->obtenerTecnicosActivos();
 
-        // Obtener cliente y proyecto predeterminados de la O/S si es nueva hoja
+        // Obtener cliente y proyecto predeterminados de la O/S si es nueva hoja o si hay campos vacíos
         if (!$hoja) {
             $hoja = [
                 'id_os' => $idOS,
                 'nombre_empresa_o_cliente' => $os['cliente_nombre'],
                 'direccion_proyecto' => $os['direccion_proyecto'],
                 'telefono' => $os['cliente_telefono'],
-                'correo_electronico' => '',
-                'nombre_persona_entrega_muestra' => '',
+                'correo_electronico' => $os['cliente_email'] ?? '',
+                'nombre_persona_entrega_muestra' => !empty($os['atencion_a']) ? $os['atencion_a'] : $os['cliente_nombre'],
                 'naturaleza_muestra' => 'Concreto',
                 'procedencia_punto_muestreo' => '',
                 'nombre_persona_toma_muestra' => $os['tecnico_muestreo'] ?? '',
@@ -916,11 +966,19 @@ class OperacionesControlador extends ControladorBase {
                 'descripcion_otros_analisis' => '',
                 'analisis_adicionales' => '',
                 'observaciones' => '',
-                'nombre_recibe_cycsa' => '',
+                'nombre_recibe_cycsa' => $_SESSION['usuario_nombre'] ?? '',
                 'firma_recibe_cycsa' => 0,
                 'firma_cliente' => 0,
                 'fecha_hora_llegada_laboratorio' => date('Y-m-d H:i')
             ];
+        } else {
+            // Autocompletar datos del cliente si estaban vacíos
+            if (empty($hoja['nombre_empresa_o_cliente'])) $hoja['nombre_empresa_o_cliente'] = $os['cliente_nombre'];
+            if (empty($hoja['direccion_proyecto'])) $hoja['direccion_proyecto'] = $os['direccion_proyecto'];
+            if (empty($hoja['telefono'])) $hoja['telefono'] = $os['cliente_telefono'];
+            if (empty($hoja['correo_electronico']) && !empty($os['cliente_email'])) $hoja['correo_electronico'] = $os['cliente_email'];
+            if (empty($hoja['nombre_persona_entrega_muestra'])) $hoja['nombre_persona_entrega_muestra'] = !empty($os['atencion_a']) ? $os['atencion_a'] : $os['cliente_nombre'];
+            if (empty($hoja['nombre_persona_toma_muestra']) && !empty($os['tecnico_muestreo'])) $hoja['nombre_persona_toma_muestra'] = $os['tecnico_muestreo'];
         }
 
         if (empty($_SESSION['csrf_token'])) {
@@ -931,6 +989,7 @@ class OperacionesControlador extends ControladorBase {
             'titulo' => 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13',
             'os' => $os,
             'hoja' => $hoja,
+            'tecnicos' => $tecnicos,
             'siguienteConsecutivo' => $siguienteConsecutivo,
             'anioActual' => $anioActual
         ]);

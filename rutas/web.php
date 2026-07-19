@@ -134,6 +134,7 @@ $app->enrutador->get('/informes/descargar', [OperacionesControlador::class, 'des
 $app->enrutador->post('/operaciones/actualizar-estado', [OperacionesControlador::class, 'actualizarEstado']);
 $app->enrutador->post('/operaciones/programar-muestreo', [OperacionesControlador::class, 'procesarProgramarMuestreo']);
 $app->enrutador->post('/operaciones/guardar-hoja-campo', [OperacionesControlador::class, 'guardarHojaCampo']);
+$app->enrutador->post('/operaciones/omitir-espera', [OperacionesControlador::class, 'omitirEsperaMuestreo']);
 $app->enrutador->get('/operaciones/hoja-solicitud', [OperacionesControlador::class, 'hojaSolicitudForm']);
 $app->enrutador->get('/operaciones/hoja-solicitud-datos', [OperacionesControlador::class, 'hojaSolicitudDatosAjax']);
 $app->enrutador->get('/operaciones/descargar-solicitud', [OperacionesControlador::class, 'descargarSolicitudPDF']);

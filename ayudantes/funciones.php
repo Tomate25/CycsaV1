@@ -676,7 +676,7 @@ function generarGraficoGranulometriaSVG(array $filas): string {
 /**
  * Genera el reporte de ensayo PDF para un producto/ensayo específico usando Dompdf.
  */
-function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $columnas, array $filas, string $codigoReporte = '', $version = null): string {
+function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $columnas, array $filas, string $codigoReporte = '', $version = null, ?string $observacionesSupervisor = null, int $ocultarCumplimiento = 0): string {
     $options = new Options();
     $options->set('isHtml5ParserEnabled', true);
     $options->set('isRemoteEnabled', false);
@@ -719,6 +719,19 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
         $headerStyle = 'border-collapse: collapse; width: 45%;';
     }
 
+    // Filtrar columna de validación ("Cumple / No Cumple / Estado") si el cliente lo solicita
+    if ($ocultarCumplimiento == 1) {
+        $colsFiltradas = [];
+        foreach ($columnas as $c) {
+            $cLow = mb_strtolower(trim($c));
+            if (strpos($cLow, 'estado') !== false || strpos($cLow, 'cumple') !== false || strpos($cLow, 'alerta') !== false) {
+                continue;
+            }
+            $colsFiltradas[] = $c;
+        }
+        $columnas = $colsFiltradas;
+    }
+
     $graficoHtml = '';
     $archivoMarkdown = $detalle['archivo_markdown'] ?? '';
     $esGranulometriaReport = (strpos($archivoMarkdown, 'granulometria') !== false || strpos($archivoMarkdown, 'granulomnetria') !== false);
@@ -737,7 +750,7 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
     $fechaEjecucion = $cotizacion['fecha_entrega'] ? date('d/m/Y', strtotime($cotizacion['fecha_entrega'])) : date('d/m/Y');
     $fechaEmision = date('d/m/Y');
 
-    // Header table columns rendering - Standard font-size for Landscape!
+    // Header table columns rendering
     $theadHtml = '';
     foreach ($columnas as $col) {
         $theadHtml .= "<th style=\"border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; font-size: 8.5px; color: #475569; text-transform: uppercase; font-weight: bold;\">" . htmlspecialchars($col, ENT_QUOTES, 'UTF-8') . "</th>";
@@ -773,6 +786,15 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
     $codigoFormato = htmlspecialchars($detalle['codigo_formato'] ?? 'CYCSA-RT-FM-22', ENT_QUOTES, 'UTF-8');
     $normaAstm = htmlspecialchars($detalle['norma_astm'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
     $nombreFormato = htmlspecialchars($detalle['formato_nombre'] ?? 'Informe de Ensayo', ENT_QUOTES, 'UTF-8');
+
+    $observacionesSupervisorHtml = '';
+    if (!empty($observacionesSupervisor)) {
+        $observacionesSupervisorHtml = "
+        <div style=\"margin-top: 15px; padding: 8px 12px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 8.5px;\">
+            <strong style=\"color: #103487; text-transform: uppercase;\">Observaciones y Comentarios del Supervisor:</strong><br>
+            <span style=\"color: #334155;\">" . nl2br(htmlspecialchars($observacionesSupervisor, ENT_QUOTES, 'UTF-8')) . "</span>
+        </div>";
+    }
 
     $html = "
     <!DOCTYPE html>
@@ -854,7 +876,7 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
         </table>
 
         <!-- Main Results Table -->
-        <table style=\"width: 100%; border-collapse: collapse; margin-bottom: 20px;\">
+        <table style=\"width: 100%; border-collapse: collapse; margin-bottom: 15px;\">
             <thead>
                 <tr style=\"background-color: #f1f5f9;\">
                     {$theadHtml}
@@ -865,6 +887,8 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
             </tbody>
         </table>
 
+        {$observacionesSupervisorHtml}
+
         {$graficoHtml}
 
         <!-- Footer terms -->
@@ -873,7 +897,7 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
         </div>
 
         <!-- Signatures -->
-        <table style=\"width: 100%; margin-top: 40px; border-collapse: collapse;\">
+        <table style=\"width: 100%; margin-top: 35px; border-collapse: collapse;\">
             <tr>
                 <td style=\"width: 50%; text-align: center;\">
                     <div style=\"border-top: 1px solid #cbd5e1; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
@@ -884,8 +908,8 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
                 </td>
                 <td style=\"width: 50%; text-align: center;\">
                     <div style=\"border-top: 1px solid #cbd5e1; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
-                        <strong>Técnico de Calidad</strong><br>
-                        Realizado por / Firma
+                        <strong>Técnico / Supervisor de Calidad</strong><br>
+                        Realizado / Revisado por Firma
                     </div>
                 </td>
             </tr>

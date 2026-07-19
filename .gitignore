@@ -8,6 +8,10 @@ vendor/
 # Carpetas de desarrollo temporal
 scratch/
 
+# Ejecutables y utilidades temporales
+cloudflared.exe
+*.bat
+
 # Almacenamiento interno
 almacenamiento/logs/
 almacenamiento/cache/

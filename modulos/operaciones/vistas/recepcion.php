@@ -157,11 +157,25 @@
 
         <div class="grid-3" style="margin-top: 10px;">
             <div class="form-group">
-                <label style="font-weight: 600; font-size: 13px; color: #334155;">Código de Campo (Hoja de Campo)</label>
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">Tipo / Origen de Muestra</label>
+                <select name="tipo_muestra" required class="form-control" style="background-color: #f8fafc; font-weight: 600; border-color: #93c5fd;">
+                    <option value="Laboratorio" selected>Laboratorio (MS-XXXX-YY) - Consecutivo Automático</option>
+                    <option value="Campo">Campo (CAM-YY-XXXX) - Muestreo In-Situ Inmutable</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">Código de Campo / Referencia (Hoja de Campo)</label>
                 <input type="text" name="codigo_campo" required placeholder="Ej: MC-02" class="form-control">
             </div>
             <div class="form-group">
-                <label style="font-weight: 600; font-size: 13px; color: #334155;">Entregado Por (Nombre cliente/chofer)</label>
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">ID del Cilindro / Especímen Individual</label>
+                <input type="text" name="id_cilindro" placeholder="Ej: MC10 - MC12 (3 Cilindros)" class="form-control">
+            </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 10px;">
+            <div class="form-group">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">Entregado Por (Nombre cliente/chofer/técnico)</label>
                 <?php
                 $valorDefectoEntregado = '';
                 if (!empty($os['tecnico_muestreo'])) {
@@ -176,21 +190,32 @@
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Fecha/Hora Recepción</label>
                 <input type="datetime-local" name="fecha_recepcion" required class="form-control" value="<?= date('Y-m-d\TH:i') ?>">
             </div>
+            <div class="form-group" style="justify-content: center;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155; margin-bottom: 4px;">Auditoría / Control de Calidad</label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #1e40af; background-color: #eff6ff; padding: 8px 12px; border-radius: 6px; border: 1px solid #bfdbfe; cursor: pointer;">
+                    <input type="checkbox" name="is_qa_qc" value="1">
+                    <i class="fa-solid fa-microscope"></i> Es Muestra para Control de Calidad (QA/QC - Réplica)
+                </label>
+            </div>
         </div>
 
         <div class="form-group">
             <label style="font-weight: 600; font-size: 13px; color: #334155;">Observaciones Iniciales de Recepción</label>
             <textarea name="observaciones" rows="2" placeholder="Escribe detalles del estado de las muestras al recibirse..." class="form-control"></textarea>
         </div>
+
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">
+            <i class="fa-solid fa-lock"></i> <strong>INMUTABILIDAD AUTOMÁTICA:</strong> Al guardar, el código consecutivo de la muestra será generado de forma automática y sellado. No requiere manipulación manual.
+        </div>
     </div>
 
-    <!-- 2. DATOS TÉCNICOS DEL LOTE -->
+    <!-- 2. DATOS TÉCNICOS DEL LOTE Y PARÁMETROS -->
     <div class="form-box" id="seccion-especificaciones-lote">
-        <h4 class="form-section-title"><i class="fa-solid fa-flask" style="margin-right: 6px;"></i> Especificaciones Técnicas del Lote de Concreto</h4>
+        <h4 class="form-section-title"><i class="fa-solid fa-flask" style="margin-right: 6px;"></i> Especificaciones Técnicas y Parámetros del Lote</h4>
         <div class="grid-2">
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Identificación del Lote / Elemento Estructural</label>
-                <input type="text" name="nombre_lote" id="input_nombre_lote" required placeholder="Ej: Columnas Eje C - Nivel 2" class="form-control">
+                <input type="text" name="nombre_lote" id="input_nombre_lote" required placeholder="Ej: Columnas Eje C - Nivel 2 (MC10-MC12)" class="form-control">
             </div>
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Fecha de Moldeo / Fabricación (T0)</label>
@@ -198,20 +223,25 @@
             </div>
         </div>
 
+        <!-- Diferenciación explícita entre Parámetros del Cliente vs Datos del Ensayo en Obra -->
+        <div style="margin-top: 12px; font-size: 12px; font-weight: 700; color: #0369a1; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">
+            <i class="fa-solid fa-sliders"></i> Parámetros de Especificación del Cliente vs. Datos Medidos en Campo
+        </div>
+
         <div class="grid-3" style="margin-top: 10px;">
             <div class="form-group">
-                <label style="font-weight: 600; font-size: 13px; color: #334155;">Resistencia de Diseño Objetivo</label>
-                <input type="text" name="diseno_resistencia" id="input_diseno_resistencia" required placeholder="Ej: 3000 PSI / 210 kg/cm²" class="form-control">
+                <label style="font-weight: 600; font-size: 13px; color: #0369a1;">Resistencia de Diseño Objetivo (Cliente/Proyecto)</label>
+                <input type="text" name="diseno_resistencia" id="input_diseno_resistencia" required placeholder="Ej: 3000 PSI / 210 kg/cm²" class="form-control" style="border-color: #93c5fd;">
             </div>
             <div class="form-group">
-                <label style="font-weight: 600; font-size: 13px; color: #334155;">Revenimiento (Slump) Medido</label>
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">Revenimiento (Slump) Medido en Campo</label>
                 <div style="display: flex; gap: 8px;">
                     <input type="number" step="0.01" name="revenimiento_in" placeholder="Pulgadas" class="form-control" style="width: 50%;">
                     <input type="number" step="0.01" name="revenimiento_cm" placeholder="CM" class="form-control" style="width: 50%;">
                 </div>
             </div>
             <div class="form-group">
-                <label style="font-weight: 600; font-size: 13px; color: #334155;">Temperatura Concreto (°C)</label>
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">Temperatura Concreto en Obra (°C)</label>
                 <input type="number" step="0.1" name="temperatura_c" placeholder="Grados Celsius" class="form-control">
             </div>
         </div>
@@ -226,14 +256,26 @@
                 <select name="id_detalle_cotizacion" id="id_detalle_cotizacion" required class="form-control" style="background-color: white;" onchange="toggleEdadesSection()">
                     <option value="">-- Seleccione el servicio facturado --</option>
                     <?php foreach ($servicios as $s): 
+                        $cantidadFacturada = max(1, (int)($s['cantidad_facturada'] ?? $s['cantidad'] ?? 1));
+                        $recibidos = (int)($s['total_recibidos'] ?? 0);
                         $yaRecibido = (!empty($s['ya_recibido']) && $s['id'] != ($idDetalle ?? 0));
-                        $lblExtra = $yaRecibido ? ' (YA EN LAB - ' . $s['codigo_muestra'] . ')' : '';
+                        
+                        $lblEstado = '';
+                        if ($recibidos > 0) {
+                            if ($yaRecibido) {
+                                $lblEstado = ' (✔ COMPLETADO: ' . $recibidos . '/' . $cantidadFacturada . ' - Muestra: ' . $s['codigo_muestra'] . ')';
+                            } else {
+                                $lblEstado = ' (PARTICULAR: Recibidas ' . $recibidos . '/' . $cantidadFacturada . ' Muestras)';
+                            }
+                        } else {
+                            $lblEstado = ' (PENDIENTE DE INGRESAR)';
+                        }
                     ?>
                         <option value="<?= $s['id'] ?>" 
                                 data-formato-id="<?= $s['formato_id'] ?>" 
                                 <?= ($s['id'] == ($idDetalle ?? 0)) ? 'selected' : '' ?>
                                 <?= $yaRecibido ? 'disabled style="color: #94a3b8; background-color: #f1f5f9;"' : '' ?>>
-                            <?= htmlspecialchars($s['codigo_servicio'] ? $s['codigo_servicio'] . ' - ' : '', ENT_QUOTES, 'UTF-8') ?><?= htmlspecialchars($s['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?><?= $lblExtra ?>
+                            <?= htmlspecialchars($s['codigo_servicio'] ? $s['codigo_servicio'] . ' - ' : '', ENT_QUOTES, 'UTF-8') ?><?= htmlspecialchars($s['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?> [Cant. Facturada: <?= $cantidadFacturada ?>]<?= $lblEstado ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

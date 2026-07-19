@@ -30,10 +30,16 @@ class UsuariosControlador extends ControladorBase {
         
         $bitacora_logs = obtenerBitacoraModulo('usuarios');
 
+        $exito = $_SESSION['exito'] ?? null;
+        $error = $_SESSION['error'] ?? null;
+        unset($_SESSION['exito'], $_SESSION['error']);
+
         $this->renderizar('usuarios/vistas/index', [
             'titulo' => 'Gestión de Usuarios - Cycsa',
             'usuarios' => $modelo->obtenerTodos($busqueda),
             'busqueda' => $busqueda,
+            'exito' => $exito,
+            'error' => $error,
             'bitacora_logs' => $bitacora_logs
         ]);
     }
@@ -123,10 +129,14 @@ class UsuariosControlador extends ControladorBase {
                 $permisosJson = json_encode($permisos);
             }
             
-            $modelo->guardarUsuario($nombre, $email, $password, $id_rol, $permisosJson);
-            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-            $lastId = $db->lastInsertId();
-            registrarBitacora('usuarios', 'crear', 'Creado usuario: ' . $nombre . ' (correo: ' . $email . ')', $lastId);
+            if ($modelo->guardarUsuario($nombre, $email, $password, $id_rol, $permisosJson)) {
+                $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                $lastId = $db->lastInsertId();
+                registrarBitacora('usuarios', 'crear', 'Creado usuario: ' . $nombre . ' (correo: ' . $email . ')', $lastId);
+                $_SESSION['exito'] = "Usuario '$nombre' ($email) registrado exitosamente en el sistema.";
+            } else {
+                $_SESSION['error'] = "Error al registrar el usuario en la base de datos.";
+            }
             $respuesta->redirigir('/Cycsa/publico/usuarios');
             return;
         }

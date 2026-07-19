@@ -93,6 +93,20 @@
     </style>
     <?php endif; ?>
 
+    <?php if (!empty($exito)): ?>
+        <div style="background-color: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-circle-check" style="font-size: 18px;"></i>
+            <span><?= htmlspecialchars($exito, ENT_QUOTES, 'UTF-8') ?></span>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($error)): ?>
+        <div style="background-color: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-circle-exclamation" style="font-size: 18px;"></i>
+            <span><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></span>
+        </div>
+    <?php endif; ?>
+
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <div>
             <h2 style="margin: 0; color: #333; font-size: 20px;">Gestión de Usuarios</h2>

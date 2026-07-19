@@ -227,18 +227,19 @@
                                 $fechaRegistro = strtotime($o['fecha_registro_campo']);
                                 $segundosTranscurridos = time() - $fechaRegistro;
                                 $horasTranscurridas = $segundosTranscurridos / 3600;
-                                $esperaCompletada = $horasTranscurridas >= 24;
-                                $segundosRestantes = (24 * 3600) - $segundosTranscurridos;
+                                $horasRequeridas = (isset($o['horas_espera_requeridas']) && $o['horas_espera_requeridas'] !== null) ? (int)$o['horas_espera_requeridas'] : 24;
+                                $esperaCompletada = $horasTranscurridas >= $horasRequeridas;
+                                $segundosRestantes = max(0, ($horasRequeridas * 3600) - $segundosTranscurridos);
                                 $horasRestantes = floor($segundosRestantes / 3600);
                                 $minutosRestantes = floor(($segundosRestantes % 3600) / 60);
                                 ?>
-                                <?php if ($esperaCompletada): ?>
+                                <?php if ($esperaCompletada || $horasRequeridas == 0): ?>
                                     <div class="phase-alert" style="background:#ecfdf5; border-color:#a7f3d0; color:#047857;">
-                                        <i class="fa-solid fa-hourglass-end"></i> Retraso obligatorio de 24 horas completado. Muestras listas para recolección e ingreso.
+                                        <i class="fa-solid fa-hourglass-end"></i> Período de espera (<?= $horasRequeridas ?>h) completado. Muestras listas para recolección e ingreso.
                                     </div>
                                 <?php else: ?>
                                     <div class="phase-alert" style="background:#faf5ff; border-color:#e9d5ff; color:#6b21a8;">
-                                        <i class="fa-solid fa-hourglass-half"></i> Retraso de 24 horas activo. Restan: <strong><?= $horasRestantes ?>h <?= $minutosRestantes ?>m</strong> para poder ingresar al laboratorio.
+                                        <i class="fa-solid fa-hourglass-half"></i> Período de espera de <?= $horasRequeridas ?>h activo. Restan: <strong><?= $horasRestantes ?>h <?= $minutosRestantes ?>m</strong> para ingresar.
                                     </div>
                                 <?php endif; ?>
                             <?php elseif ($o['estado'] === 'Estado 4: Ingreso Laboratorio'): ?>
@@ -264,9 +265,25 @@
                                 <div class="phase-alert" style="background:#e0f2fe; border-color:#bae6fd; color:#0369a1;">
                                     <i class="fa-solid fa-magnifying-glass"></i> Resultados capturados. Esperando revisión de calidad por el supervisor.
                                 </div>
-                            <?php elseif ($o['estado'] === 'Finalizado'): ?>
-                                <div class="phase-alert" style="background:#ecfdf5; border-color:#a7f3d0; color:#047857;">
-                                    <i class="fa-solid fa-circle-check"></i> Orden de servicio finalizada. Informe de ensayos enviado al cliente.
+                            <?php endif; ?>
+
+                            <?php if (!empty($o['hoja_campo_codigo'])): ?>
+                                <div style="margin-top: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: #334155;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                                        <strong style="color: #103487; display: flex; align-items: center; gap: 6px; font-family: 'Outfit', sans-serif;">
+                                            <i class="fa-solid fa-lock" style="color: #64748b;"></i> HOJA DE CAMPO SELLADA: <span style="font-family: monospace; color: #103487; font-weight: 800; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;"><?= htmlspecialchars($o['hoja_campo_codigo'], ENT_QUOTES, 'UTF-8') ?></span>
+                                        </strong>
+                                        <span style="background: #e2e8f0; color: #334155; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 700;">
+                                            <i class="fa-solid fa-clock"></i> Tiempo Configurado: <?= (int)($o['horas_espera_requeridas'] ?? 24) ?>h
+                                        </span>
+                                    </div>
+                                    <div style="display: flex; gap: 15px; flex-wrap: wrap; color: #475569; font-size: 12px; margin-top: 4px;">
+                                        <span><i class="fa-solid fa-user-gear" style="color:#103487;"></i> <strong>Operador:</strong> <?= htmlspecialchars($o['hoja_campo_operador'] ?? '—', ENT_QUOTES, 'UTF-8') ?></span>
+                                        <span><i class="fa-solid fa-calendar-check" style="color:#103487;"></i> <strong>Fecha Registro:</strong> <?= !empty($o['fecha_registro_campo']) ? date('d/m/Y H:i', strtotime($o['fecha_registro_campo'])) : '—' ?></span>
+                                        <?php if (!empty($o['hoja_campo_notas'])): ?>
+                                            <span><i class="fa-solid fa-comment-dots" style="color:#103487;"></i> <strong>Notas:</strong> <?= htmlspecialchars($o['hoja_campo_notas'], ENT_QUOTES, 'UTF-8') ?></span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             <?php endif; ?>
                         </td>
@@ -324,13 +341,17 @@
                                     <button type="button" class="btn-accion btn-os" onclick="abrirModalMuestreo(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')"><i class="fa-solid fa-calendar-plus"></i> Programar Muestreo</button>
                                 
                                 <?php elseif ($o['estado'] === 'Estado 3B: Ejecucion Muestreo'): ?>
-                                    <button type="button" class="btn-accion btn-recepcion" onclick="abrirModalHojaCampo(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')"><i class="fa-solid fa-file-contract"></i> Registrar CYCSA-RT-FM-07</button>
+                                    <?php 
+                                    $autoTecnico = !empty($o['tecnico_muestreo']) ? $o['tecnico_muestreo'] : ($_SESSION['usuario_nombre'] ?? '');
+                                    $autoCodigoDoc = 'CYCSA-RT-FM-07-' . sprintf('%04d', $o['id']);
+                                    $autoHoras = isset($o['horas_espera_requeridas']) ? (int)$o['horas_espera_requeridas'] : 24;
+                                    ?>
+                                    <button type="button" class="btn-accion btn-recepcion" onclick="abrirModalHojaCampo(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>', '<?= htmlspecialchars($autoTecnico, ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars($autoCodigoDoc, ENT_QUOTES, 'UTF-8') ?>', <?= $autoHoras ?>)"><i class="fa-solid fa-file-contract"></i> Registrar CYCSA-RT-FM-07</button>
                                 
                                 <?php elseif ($o['estado'] === 'Estado 3C: Espera Muestreo'): ?>
-                                    <?php if ($esperaCompletada): ?>
-                                        <a href="/Cycsa/publico/operaciones/recepcion?id_os=<?= $o['id'] ?>" class="btn-accion btn-recepcion"><i class="fa-solid fa-truck-pickup"></i> Recolectar e Ingresar</a>
-                                    <?php else: ?>
-                                        <button type="button" disabled class="btn-accion btn-detalle" style="cursor:not-allowed;" title="Debe esperar 24 horas desde la hoja de campo"><i class="fa-solid fa-lock"></i> Espera 24h</button>
+                                    <a href="/Cycsa/publico/operaciones/recepcion?id_os=<?= $o['id'] ?>" class="btn-accion btn-recepcion"><i class="fa-solid fa-truck-pickup"></i> Recolectar e Ingresar</a>
+                                    <?php if (!$esperaCompletada && $horasRequeridas > 0): ?>
+                                        <button type="submit" formaction="/Cycsa/publico/operaciones/omitir-espera" class="btn-accion btn-os" style="background:#fff7ed; color:#c2410c; border-color:#ffedd5;" onclick="return confirm('¿Desea omitir las <?= $horasRestantes ?>h <?= $minutosRestantes ?>m restantes e ingresar inmediatamente las muestras?');" title="Liberar tiempo de espera inmediatamente"><i class="fa-solid fa-forward-step"></i> Omitir Espera (<?= $horasRestantes ?>h)</button>
                                     <?php endif; ?>
                                 
                                 <?php elseif ($o['estado'] === 'Estado 4: Ingreso Laboratorio'): ?>
@@ -558,19 +579,30 @@
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <input type="hidden" name="id_os" id="field_id_os">
             
+            <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span><strong>AUTOCAPTURA DE CAMPO:</strong> El código consecutivo y el operador asignado han sido precargados automáticamente. Puede ajustar las horas de espera libremente (ej: 11h, 12h, 24h) o colocar 0h para ingreso inmediato.</span>
+            </div>
+
             <div class="form-group">
-                <label>Código de Hoja de Campo</label>
-                <input type="text" name="hoja_campo_codigo" required class="form-control" placeholder="Ej: CYCSA-RT-FM-07-001">
+                <label>Código de Hoja de Campo (Autogenerado consecutivo)</label>
+                <input type="text" name="hoja_campo_codigo" id="field_hoja_campo_codigo" required class="form-control" placeholder="Ej: CYCSA-RT-FM-07-001">
             </div>
             
             <div class="form-group">
-                <label>Operador / Muestreador Responsable</label>
-                <input type="text" name="hoja_campo_operador" required class="form-control" placeholder="Nombre completo">
+                <label>Operador / Muestreador Responsable (Autocapturado)</label>
+                <input type="text" name="hoja_campo_operador" id="field_hoja_campo_operador" list="lista-tecnicos-cycsa" required class="form-control" placeholder="Seleccione técnico o escriba nombre completo">
+            </div>
+
+            <div class="form-group">
+                <label style="font-weight: 600; color: #1e293b;">Horas de Espera Requeridas (Elegibles libremente)</label>
+                <input type="number" name="horas_espera_requeridas" id="field_horas_espera" class="form-control" value="24" min="0" max="168" placeholder="Ej: 24, 11, 12, 6...">
+                <span style="font-size: 11.5px; color: #64748b; margin-top: 3px; display: block;">Puede indicar 24h por defecto, 11h, 12h, 6h o las horas exactas que el equipo decida. Si indica 0h, el ingreso se habilita de inmediato.</span>
             </div>
             
             <div class="form-group">
                 <label>Notas / Observaciones del Muestreo</label>
-                <textarea name="hoja_campo_notas" class="form-control" rows="3" placeholder="Describa el estado climático, novedades del sitio u otras notas..."></textarea>
+                <textarea name="hoja_campo_notas" id="field_hoja_campo_notas" class="form-control" rows="2" placeholder="Describa el estado climático, novedades del sitio u otras notas..."></textarea>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -950,9 +982,12 @@
 
     // Modal Hoja de Campo (CYCSA-RT-FM-07)
     const modField = document.getElementById('modalHojaCampo');
-    function abrirModalHojaCampo(id, code) {
+    function abrirModalHojaCampo(id, code, tecnico = '', autoCodigo = '', horas = 24) {
         document.getElementById('field_id_os').value = id;
         document.getElementById('field_codigo_os').innerText = code;
+        if (autoCodigo) document.getElementById('field_hoja_campo_codigo').value = autoCodigo;
+        if (tecnico) document.getElementById('field_hoja_campo_operador').value = tecnico;
+        if (horas !== undefined && horas !== null) document.getElementById('field_horas_espera').value = horas;
         modField.style.display = 'block';
     }
     function cerrarModalHojaCampo() {
