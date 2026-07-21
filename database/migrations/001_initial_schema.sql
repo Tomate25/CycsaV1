@@ -1,0 +1,128 @@
+-- 001_initial_schema.sql
+-- Creación de tablas principales
+
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    descripcion TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_rol INT NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_rol) REFERENCES roles(id)
+);
+
+CREATE TABLE clientes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_razon_social VARCHAR(255) NOT NULL,
+    rfc VARCHAR(20),
+    direccion TEXT,
+    telefono VARCHAR(20),
+    email VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE cotizaciones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT NOT NULL,
+    folio VARCHAR(50) NOT NULL UNIQUE,
+    fecha DATE NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL,
+    iva DECIMAL(10,2) NOT NULL,
+    total DECIMAL(10,2) NOT NULL,
+    estado VARCHAR(20) DEFAULT 'PENDIENTE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+);
+
+CREATE TABLE ordenes_servicio (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cotizacion_id INT,
+    cliente_id INT NOT NULL,
+    codigo VARCHAR(50) NOT NULL UNIQUE,
+    fecha DATE NOT NULL,
+    estado VARCHAR(20) DEFAULT 'EN PROCESO',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cotizacion_id) REFERENCES cotizaciones(id),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+);
+
+CREATE TABLE hojas_solicitud (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    orden_id INT NOT NULL,
+    descripcion TEXT,
+    fecha_solicitud DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (orden_id) REFERENCES ordenes_servicio(id)
+);
+
+CREATE TABLE recepcion_muestras (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    orden_id INT NOT NULL,
+    codigo_muestra VARCHAR(50) NOT NULL UNIQUE,
+    descripcion TEXT,
+    fecha_recepcion DATE NOT NULL,
+    estado VARCHAR(20) DEFAULT 'RECIBIDA',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (orden_id) REFERENCES ordenes_servicio(id)
+);
+
+CREATE TABLE informes_control (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    muestra_id INT NOT NULL,
+    resultado TEXT,
+    fecha_emision DATE,
+    estado VARCHAR(20) DEFAULT 'BORRADOR',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (muestra_id) REFERENCES recepcion_muestras(id)
+);
+
+CREATE TABLE cxc (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT NOT NULL,
+    factura VARCHAR(50),
+    monto DECIMAL(10,2) NOT NULL,
+    saldo DECIMAL(10,2) NOT NULL,
+    fecha_vencimiento DATE,
+    estado VARCHAR(20) DEFAULT 'PENDIENTE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+);
+
+CREATE TABLE cxp (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    proveedor VARCHAR(255) NOT NULL,
+    factura VARCHAR(50),
+    monto DECIMAL(10,2) NOT NULL,
+    saldo DECIMAL(10,2) NOT NULL,
+    fecha_vencimiento DATE,
+    estado VARCHAR(20) DEFAULT 'PENDIENTE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE bitacora (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT,
+    accion VARCHAR(255) NOT NULL,
+    tabla_afectada VARCHAR(50),
+    registro_id INT,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+);

@@ -5,16 +5,22 @@
 # Dependencias de Composer
 vendor/
 
-# Carpetas de desarrollo temporal
+# Carpetas de desarrollo temporal y respaldos
 scratch/
+*.zip
+database/backups/*.sql
 
 # Ejecutables y utilidades temporales
 cloudflared.exe
 *.bat
 
-# Almacenamiento interno
-almacenamiento/logs/
-almacenamiento/cache/
+# Almacenamiento interno de logs y temporales
+storage/logs/*
+storage/cache/*
+storage/pdf/*
+storage/temp/*
+almacenamiento/logs/*
+almacenamiento/cache/*
 
 # Archivos del sistema operativo
 .DS_Store

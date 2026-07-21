@@ -1,0 +1,57 @@
+-- 003_future_modules.sql
+-- Módulos Futuros: Inventario, Compras, RRHH, Activos Fijos, Mantenimiento
+
+CREATE TABLE inventario_insumos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo VARCHAR(50) UNIQUE NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
+    cantidad DECIMAL(10,2) DEFAULT 0,
+    unidad_medida VARCHAR(20),
+    stock_minimo DECIMAL(10,2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE ordenes_compra (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    proveedor VARCHAR(255) NOT NULL,
+    fecha DATE NOT NULL,
+    total DECIMAL(10,2) NOT NULL,
+    estado VARCHAR(20) DEFAULT 'SOLICITADA',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE rrhh_empleados (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    puesto VARCHAR(100),
+    fecha_ingreso DATE,
+    salario DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE activos_fijos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo VARCHAR(50) UNIQUE NOT NULL,
+    descripcion VARCHAR(255) NOT NULL,
+    fecha_adquisicion DATE,
+    valor DECIMAL(10,2),
+    estado VARCHAR(20) DEFAULT 'ACTIVO',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE mantenimiento_equipos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    activo_id INT NOT NULL,
+    fecha_programada DATE NOT NULL,
+    fecha_realizada DATE,
+    tipo VARCHAR(50) NOT NULL, -- PREVENTIVO / CORRECTIVO
+    estado VARCHAR(20) DEFAULT 'PROGRAMADO',
+    observaciones TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (activo_id) REFERENCES activos_fijos(id)
+);

@@ -1,36 +1,13 @@
-# Desactivar el listado de directorios por seguridad (Comentado para compatibilidad con Bluehost)
-# Options -Indexes
-
-# Bloquear acceso a archivos ocultos (como .env) con soporte híbrido Apache 2.2/2.4
-<FilesMatch "^\.">
-    <IfModule mod_authz_core.c>
-        Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order allow,deny
-        Deny from all
-    </IfModule>
-</FilesMatch>
-
-# Bloquear acceso a archivos de composer
-<FilesMatch "^(composer\.json|composer\.lock)$">
-    <IfModule mod_authz_core.c>
-        Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order allow,deny
-        Deny from all
-    </IfModule>
-</FilesMatch>
+DirectoryIndex index.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Evitar bucles de redirección si ya estamos en publico/ o si se accede a un script de diagnóstico
-    RewriteCond %{REQUEST_URI} !/publico/
-    RewriteCond %{REQUEST_URI} !/prueba\.php$
-    RewriteCond %{REQUEST_URI} !/fix_permissions\.php$
+    # Mapeo directo de imágenes si se solicitan en /sistema/img/ -> /sistema/publico/img/
+    RewriteRule ^img/(.*)$ publico/img/$1 [L]
     
-    # Redirigir el tráfico hacia la carpeta publico/ de forma compatible con subcarpetas
-    RewriteRule ^(.*)$ publico/$1 [L]
+    # Redirección amigable a index.php para el enrutador
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>

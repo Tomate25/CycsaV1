@@ -1,30 +1,17 @@
 {
     "name": "cycsa/sistema",
-    "description": "Sistema de Gestión y Cotizaciones Cycsa",
+    "description": "Sistema ERP & LIMS Corporativo CYCSA S.A. - ISO/IEC 17025",
     "type": "project",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Cycsa\\Nucleo\\": "nucleo/",
-            "Cycsa\\Modulos\\Autenticacion\\Controladores\\": "modulos/autenticacion/controladores/",
-            "Cycsa\\Modulos\\Autenticacion\\Modelos\\": "modulos/autenticacion/modelos/",
-            "Cycsa\\Modulos\\Clientes\\Controladores\\": "modulos/clientes/controladores/",
-            "Cycsa\\Modulos\\Clientes\\Modelos\\": "modulos/clientes/modelos/",
-            "Cycsa\\Modulos\\Cotizaciones\\Controladores\\": "modulos/cotizaciones/controladores/",
-            "Cycsa\\Modulos\\Cotizaciones\\Modelos\\": "modulos/cotizaciones/modelos/",
-            "Cycsa\\Modulos\\Productos\\Controladores\\": "modulos/productos/controladores/",
-            "Cycsa\\Modulos\\Productos\\Modelos\\": "modulos/productos/modelos/",
-            "Cycsa\\Modulos\\Usuarios\\Controladores\\": "modulos/usuarios/controladores/",
-            "Cycsa\\Modulos\\Usuarios\\Modelos\\": "modulos/usuarios/modelos/",
-            "Cycsa\\Modulos\\Configuracion\\Controladores\\": "modulos/configuracion/controladores/",
-            "Cycsa\\Modulos\\Configuracion\\Modelos\\": "modulos/configuracion/modelos/",
-            "Cycsa\\Modulos\\Contabilidad\\Controladores\\": "modulos/contabilidad/controladores/",
-            "Cycsa\\Modulos\\Contabilidad\\Modelos\\": "modulos/contabilidad/modelos/",
-            "Cycsa\\Modulos\\Operaciones\\Controladores\\": "modulos/operaciones/controladores/",
-            "Cycsa\\Modulos\\Operaciones\\Modelos\\": "modulos/operaciones/modelos/"
+            "Cycsa\\App\\": "app/",
+            "Cycsa\\Config\\": "config/",
+            "Cycsa\\Modulos\\": "app/Modulos/",
+            "Cycsa\\Nucleo\\": "app/Core/"
         },
         "files": [
-            "ayudantes/funciones.php"
+            "app/Helpers/funciones.php"
         ]
     },
     "require": {

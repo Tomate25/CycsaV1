@@ -99,12 +99,12 @@ foreach ($extensions as $ext => $desc) {
 echo "</table>";
 
 // 3. Verificar Archivos Críticos
-echo "<h2>3. Archivos y Autoload</h2>";
+echo "<h2>3. Archivos y Autoload (v2.0)</h2>";
 $archivos = [
     '.env' => 'Archivo de variables de entorno global',
     '.env.local' => 'Archivo de variables locales (NO debe existir en producción)',
     'vendor/autoload.php' => 'Cargador de clases de Composer (PHPMailer, Dompdf, etc.)',
-    'nucleo/Aplicacion.php' => 'Inicializador del núcleo MVC',
+    'app/Core/Aplicacion.php' => 'Inicializador del núcleo MVC v2.0',
     'rutas/web.php' => 'Definición de rutas del enrutador'
 ];
 
@@ -137,21 +137,27 @@ foreach ($archivos as $file => $desc) {
 }
 echo "</table>";
 
+// Mapeo dinámico de lo que realmente existe en este directorio en el servidor
+$itemsEnDir = array_diff(scandir(__DIR__), ['.', '..']);
+echo "<h3>📂 Elementos detectados físicamente en esta carpeta en Bluehost:</h3>";
+echo "<code>" . implode(', ', $itemsEnDir) . "</code><br><br>";
+
 if (file_exists(__DIR__ . '/.env.local')) {
     echo "<div class='alert alert-danger'>
         <strong>⚠️ ERROR CRÍTICO DETECTADO:</strong> El archivo <code>.env.local</code> está en el servidor de producción. 
-        Este archivo sobrescribirá los datos del archivo <code>.env</code> principal, provocando que la aplicación use las credenciales de base de datos locales (como 'root' o base de datos 'cycsa_db') y falle la conexión. 
-        <strong>Por favor, elimina el archivo <code>.env.local</code> de tu servidor mediante el Administrador de Archivos de Bluehost.</strong>
+        Este archivo sobrescribirá los datos del archivo <code>.env</code> principal.
+        <strong>Por favor, elimina el archivo <code>.env.local</code> de tu servidor.</strong>
     </div>";
 }
 
-// 4. Verificar Permisos de Escritura
-echo "<h2>4. Permisos de Directorios de Escritura</h2>";
+// 4. Verificar Permisos de Directorios de Escritura
+echo "<h2>4. Permisos de Directorios de Escritura (storage/)</h2>";
 $directorios = [
-    'almacenamiento' => 'Carpeta raíz de archivos',
-    'almacenamiento/logs' => 'Carpeta para logs de errores e historial',
-    'almacenamiento/informes' => 'Almacén de PDFs de informes',
-    'almacenamiento/solicitudes' => 'Almacén de PDFs de solicitudes'
+    'storage' => 'Carpeta raíz de almacenamiento',
+    'storage/logs' => 'Carpeta para logs de errores e historial',
+    'storage/pdf' => 'Almacén de PDFs generados',
+    'storage/uploads' => 'Almacén de archivos subidos',
+    'storage/cache' => 'Caché del sistema'
 ];
 
 echo "<table>
