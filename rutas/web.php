@@ -148,6 +148,11 @@ $app->enrutador->get('/laboratorio', [LaboratorioControlador::class, 'index']);
 $app->enrutador->get('/laboratorio/detalle-muestra', [LaboratorioControlador::class, 'detalleMuestra']);
 $app->enrutador->post('/laboratorio/guardar-ruptura', [LaboratorioControlador::class, 'guardarRuptura']);
 
+// Rutas Públicas para que Clientes Soliciten Cotizaciones
+$app->enrutador->get('/solicitar-cotizacion', [CotizacionesControlador::class, 'mostrarSolicitudPublica']);
+$app->enrutador->post('/solicitar-cotizacion', [CotizacionesControlador::class, 'procesarSolicitudPublica']);
+$app->enrutador->get('/api/clientes/buscar-por-identificacion', [ClientesControlador::class, 'buscarPorIdentificacionPublico']);
+
 // Redirección de Raíz
 $app->enrutador->get('/', function($peticion, $respuesta) {
     $respuesta->redirigir('/Cycsa/publico/panel');

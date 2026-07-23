@@ -131,9 +131,9 @@ Cycsa/
 
 ## 🚀 Guía Paso a Paso de Despliegue en Bluehost (cPanel)
 
-1. **Subir el Paquete:**
-   - Sube el archivo `cycsa_deploy_v2.zip` a la subcarpeta `public_html/sistema` en el Administrador de Archivos de cPanel.
-   - Extrae los archivos asegurándote de que la ruta de destino sea `/public_html/sistema`.
+1. **Subir Archivos:**
+   - Sube el archivo `cycsa_deploy_v2.zip` a la raíz de tu subdominio (ej: carpeta vinculada a `app.cycsanic.com` en cPanel).
+   - Extrae los archivos directamente en el directorio raíz del subdominio.
 
 2. **Base de Datos:**
    - Crea la base de datos `cycsanic_cycsa_db` y el usuario `cycsanic_erp_e` en cPanel MySQL Database Wizard.
@@ -141,11 +141,11 @@ Cycsa/
    - Entra a **phpMyAdmin**, selecciona la base de datos e importa el archivo `database/backups/cycsa_datos_completos_2026.sql`.
 
 3. **Configurar `.env`:**
-   - Edita el archivo `.env` en `public_html/sistema/.env` con la URL `https://cycsanic.com/sistema` y las credenciales MySQL creadas.
+   - Edita el archivo `.env` con la URL `https://app.cycsanic.com` y las credenciales MySQL creadas.
 
 4. **Verificación:**
-   - Accede a `https://cycsanic.com/sistema/prueba.php` para verificar el entorno.
-   - Ingresa a **`https://cycsanic.com/sistema`** para operar la plataforma.
+   - Accede a `https://app.cycsanic.com/prueba.php` para verificar el entorno.
+   - Ingresa a **`https://app.cycsanic.com`** para operar la plataforma.
 
 ---
 

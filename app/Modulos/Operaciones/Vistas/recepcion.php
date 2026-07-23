@@ -137,6 +137,69 @@
     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
     <input type="hidden" name="id_os" value="<?= $os['id'] ?>">
 
+    <!-- 0. MUESTRAS DECLARADAS EN LA ORDEN DE SERVICIO -->
+    <?php if (!empty($muestrasDeclaradas)): ?>
+        <div class="form-box" style="border-color: #cbd5e1; background-color: #f8fafc; margin-bottom: 20px;">
+            <h4 class="form-section-title" style="color: #475569; border-bottom-color: #e2e8f0; margin-bottom: 10px;">
+                <i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> 
+                Muestras / Especímenes Declarados en la Orden de Servicio
+            </h4>
+            <p style="font-size: 13.5px; color: #64748b; margin-bottom: 15px;">
+                Estas son las muestras ingresadas durante la planificación de la O/S. Haga clic en <strong>"Cargar Muestra"</strong> para autocompletar el formulario de recepción.
+            </p>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 10px;">
+                    <thead>
+                        <tr style="background-color: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
+                            <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #475569;">Código de Campo / Muestra</th>
+                            <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #475569;">Descripción</th>
+                            <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #475569;">Información Importante</th>
+                            <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 700; color: #475569;">Estado LIMS</th>
+                            <th style="padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 700; color: #475569;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($muestrasDeclaradas as $md): 
+                            $nombre = htmlspecialchars($md['nombre_muestra'] ?? '', ENT_QUOTES, 'UTF-8');
+                            $desc = htmlspecialchars($md['descripcion'] ?? '', ENT_QUOTES, 'UTF-8');
+                            $info = htmlspecialchars($md['info_importante'] ?? '', ENT_QUOTES, 'UTF-8');
+                            $recibida = !empty($md['recibida']);
+                        ?>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 10px 12px; font-weight: 600; color: var(--cycsa-azul); font-family: monospace; font-size: 13.5px;"><?= $nombre ?></td>
+                                <td style="padding: 10px 12px; font-size: 13px; color: #334155;"><?= $desc ?></td>
+                                <td style="padding: 10px 12px; font-size: 13px; color: #64748b; font-style: italic;"><?= $info ?></td>
+                                <td style="padding: 10px 12px; text-align: center;">
+                                    <?php if ($recibida): ?>
+                                        <span style="display: inline-block; background-color: #d1fae5; color: #065f46; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 20px; border: 1px solid #a7f3d0;">
+                                            <i class="fa-solid fa-circle-check"></i> Recibida (<?= htmlspecialchars($md['codigo_muestra'], ENT_QUOTES, 'UTF-8') ?>)
+                                        </span>
+                                    <?php else: ?>
+                                        <span style="display: inline-block; background-color: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 20px; border: 1px solid #fde68a;">
+                                            <i class="fa-solid fa-clock"></i> Pendiente
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding: 10px 12px; text-align: center;">
+                                    <?php if (!$recibida): ?>
+                                        <button type="button" 
+                                                onclick="cargarMuestraDeclarada('<?= addslashes($nombre) ?>', '<?= addslashes($desc) ?>', '<?= addslashes($info) ?>')" 
+                                                class="form-control" 
+                                                style="padding: 4px 10px; font-size: 11px; background-color: var(--cycsa-azul); border-color: var(--cycsa-azul); color: white; cursor: pointer; display: inline-block; width: auto; height: auto;">
+                                            <i class="fa-solid fa-cloud-arrow-down"></i> Cargar Muestra
+                                        </button>
+                                    <?php else: ?>
+                                        <span style="font-size: 11px; color: #94a3b8;">—</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <!-- 1. DATOS DE LOGÍSTICA -->
     <div class="form-box">
         <h4 class="form-section-title"><i class="fa-solid fa-truck-ramp-box" style="margin-right: 6px;"></i> Datos de Logística y Recepción</h4>
@@ -165,12 +228,12 @@
             </div>
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Código de Campo / Referencia (Sincronizado Consecutivo)</label>
-                <input type="text" name="codigo_campo" required placeholder="Ej: MC-2026-0001" class="form-control" value="<?= htmlspecialchars($codigoCampoAuto ?? '', ENT_QUOTES, 'UTF-8') ?>" style="font-weight: 600; color: #103487; background-color: #f0f9ff; border-color: #7dd3fc;">
+                <input type="text" name="codigo_campo" id="codigo_campo" required placeholder="Ej: MC-2026-0001" class="form-control" value="<?= htmlspecialchars($codigoCampoAuto ?? '', ENT_QUOTES, 'UTF-8') ?>" style="font-weight: 600; color: #103487; background-color: #f0f9ff; border-color: #7dd3fc;">
                 <span style="font-size: 11px; color: #64748b; margin-top: 2px;">Precargado automáticamente según la Hoja de Campo o el consecutivo MC-AÑO-XXXX de la O/S.</span>
             </div>
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">ID del Cilindro / Especímen Individual</label>
-                <input type="text" name="id_cilindro" placeholder="Ej: MC10 - MC12 (3 Cilindros)" class="form-control">
+                <input type="text" name="id_cilindro" id="id_cilindro" placeholder="Ej: MC10 - MC12 (3 Cilindros)" class="form-control">
             </div>
         </div>
 
@@ -551,4 +614,23 @@
             }
         });
     });
+
+    // Autocompletar datos de muestra declarada en la O/S
+    function cargarMuestraDeclarada(nombre, descripcion, info) {
+        document.getElementById('codigo_campo').value = nombre;
+        
+        let loteText = descripcion;
+        if (info && info.trim() !== '') {
+            loteText += ' - ' + info;
+        }
+        document.getElementById('input_nombre_lote').value = loteText;
+        
+        // Autocompletar también ID Cilindro
+        document.getElementById('id_cilindro').value = nombre;
+        
+        // Foco y scroll suave al campo de código de campo
+        const targetInput = document.getElementById('codigo_campo');
+        targetInput.focus();
+        targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 </script>

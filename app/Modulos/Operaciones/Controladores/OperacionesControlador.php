@@ -174,6 +174,35 @@ class OperacionesControlador extends ControladorBase {
         unset($s);
 
         $hojaSolicitud = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        
+        $muestrasDeclaradas = [];
+        if ($hojaSolicitud && !empty($hojaSolicitud['muestras_json'])) {
+            $muestrasDeclaradas = json_decode($hojaSolicitud['muestras_json'], true) ?: [];
+        }
+
+        // Fetch already received samples for this OS to map status
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmtRM = $db->prepare("SELECT codigo_campo, codigo_muestra FROM recepcion_muestras WHERE id_os = :id_os");
+        $stmtRM->execute(['id_os' => $idOS]);
+        $rmList = $stmtRM->fetchAll(PDO::FETCH_ASSOC);
+
+        $recibidasMap = [];
+        foreach ($rmList as $rm) {
+            $recibidasMap[trim($rm['codigo_campo'])] = $rm['codigo_muestra'];
+        }
+
+        // Enhance muestrasDeclaradas with received status
+        foreach ($muestrasDeclaradas as &$md) {
+            $nombreTrim = trim($md['nombre_muestra'] ?? '');
+            if (isset($recibidasMap[$nombreTrim])) {
+                $md['recibida'] = true;
+                $md['codigo_muestra'] = $recibidasMap[$nombreTrim];
+            } else {
+                $md['recibida'] = false;
+                $md['codigo_muestra'] = null;
+            }
+        }
+        unset($md);
 
         $anio = date('Y');
         $numOs = sprintf('%04d', $os['id']);
@@ -190,6 +219,7 @@ class OperacionesControlador extends ControladorBase {
             'idDetalle' => $idDetalle,
             'hoja_solicitud' => $hojaSolicitud,
             'codigoCampoAuto' => $codigoCampoAuto,
+            'muestrasDeclaradas' => $muestrasDeclaradas,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
         ]);

@@ -292,7 +292,7 @@ class CotizacionesControlador extends ControladorBase {
                     enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
 
                     // Registro local en logs
-                    $rutaLog = dirname(__DIR__, 4) . '/almacenamiento/logs/emails.log';
+                    $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
                     if (!file_exists(dirname($rutaLog))) {
                         @mkdir(dirname($rutaLog), 0777, true);
                     }
@@ -302,7 +302,7 @@ class CotizacionesControlador extends ControladorBase {
                     $_SESSION['envio_exitoso'] = "¡Cotización corregida (V" . $cot['version'] . ") enviada automáticamente al cliente!";
                 } else {
                     // Registro local en logs
-                    $rutaLog = dirname(__DIR__, 4) . '/almacenamiento/logs/emails.log';
+                    $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
                     if (!file_exists(dirname($rutaLog))) {
                         @mkdir(dirname($rutaLog), 0777, true);
                     }
@@ -389,7 +389,7 @@ class CotizacionesControlador extends ControladorBase {
                     enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
                     
                     // Registro local en logs de desarrollo
-                    $rutaLog = dirname(__DIR__, 4) . '/almacenamiento/logs/emails.log';
+                    $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
                     if (!file_exists(dirname($rutaLog))) {
                         @mkdir(dirname($rutaLog), 0777, true);
                     }
@@ -397,7 +397,7 @@ class CotizacionesControlador extends ControladorBase {
                     @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
                 } else {
                     // Registro local en logs de desarrollo
-                    $rutaLog = dirname(__DIR__, 4) . '/almacenamiento/logs/emails.log';
+                    $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
                     if (!file_exists(dirname($rutaLog))) {
                         @mkdir(dirname($rutaLog), 0777, true);
                     }
@@ -529,7 +529,7 @@ class CotizacionesControlador extends ControladorBase {
                 }
                 
                 // Registro local
-                $rutaLog = dirname(__DIR__, 4) . '/almacenamiento/logs/emails.log';
+                $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
                 if (!file_exists(dirname($rutaLog))) {
                     @mkdir(dirname($rutaLog), 0777, true);
                 }
@@ -545,7 +545,7 @@ class CotizacionesControlador extends ControladorBase {
                 }
                 
                 // Registro local
-                $rutaLog = dirname(__DIR__, 4) . '/almacenamiento/logs/emails.log';
+                $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
                 if (!file_exists(dirname($rutaLog))) {
                     @mkdir(dirname($rutaLog), 0777, true);
                 }
@@ -711,7 +711,7 @@ class CotizacionesControlador extends ControladorBase {
                 registrarBitacora('cotizaciones', ($accion === 'aceptar' ? 'aprobar_cliente' : 'rechazar_cliente'), $descAccion . ': ' . $cotizacion['codigo'], $id);
                 
                 // 4. Registrar auditoría en log
-                $rutaLog = dirname(__DIR__, 4) . '/almacenamiento/logs/auditoria_clientes.log';
+                $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_auditoria.log';
                 if (!file_exists(dirname($rutaLog))) {
                     @mkdir(dirname($rutaLog), 0777, true);
                 }
@@ -892,7 +892,7 @@ class CotizacionesControlador extends ControladorBase {
                 registrarBitacora('cotizaciones', ($accion === 'aceptar' ? 'aprobar_admin_cliente' : 'rechazar_admin_cliente'), $descAccion . ': ' . $cotizacion['codigo'], $id);
 
                 // Registrar auditoría en log
-                $rutaLog = dirname(__DIR__, 4) . '/almacenamiento/logs/auditoria_clientes.log';
+                $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_auditoria.log';
                 if (!file_exists(dirname($rutaLog))) {
                     @mkdir(dirname($rutaLog), 0777, true);
                 }
@@ -1169,5 +1169,196 @@ class CotizacionesControlador extends ControladorBase {
             return $data[$archivo_markdown]['columns'] ?? [];
         }
         return [];
+    }
+
+    // 🌐 VISTA PÚBLICA PARA SOLICITUD DE COTIZACIÓN POR PARTE DEL CLIENTE
+    public function mostrarSolicitudPublica(Peticion $peticion, Respuesta $respuesta): void {
+        $exitoCodigo = null;
+        if (isset($_GET['exito'])) {
+            if (isset($_SESSION['solicitud_publica_exito'])) {
+                $exitoCodigo = $_SESSION['solicitud_publica_exito'];
+                // Unset to make it a one-time load
+                unset($_SESSION['solicitud_publica_exito']);
+            } else {
+                // Manual url query tampering detected. Redirect back to form.
+                $respuesta->redirigir('/Cycsa/publico/solicitar-cotizacion');
+                return;
+            }
+        }
+
+        $prodModelo = new ProductoModelo();
+        $todosProductos = $prodModelo->obtenerTodos('', '', 1); // Solo productos activos
+        
+        // Excluir productos de tipo Movilización o que contengan "movilizac"
+        $productos = [];
+        foreach ($todosProductos as $p) {
+            $tipoMatriz = strtolower($p['matriz_tipo'] ?? '');
+            $ensServicio = strtolower($p['ensayo_servicio'] ?? '');
+            $nomComercial = strtolower($p['nombre_comercial'] ?? '');
+            
+            if ($tipoMatriz === 'movilización' || $tipoMatriz === 'movilizacion' 
+                || strpos($ensServicio, 'movilizac') !== false 
+                || strpos($nomComercial, 'movilizac') !== false) {
+                continue;
+            }
+            $productos[] = $p;
+        }
+
+        // Obtener categorías y excluir 'Movilización'
+        $rawCategorias = $prodModelo->obtenerCategorias();
+        $categorias = [];
+        foreach ($rawCategorias as $cat) {
+            $catLower = strtolower($cat);
+            if ($catLower === 'movilización' || $catLower === 'movilizacion') {
+                continue;
+            }
+            $categorias[] = $cat;
+        }
+
+        $this->renderizarSinLayout('cotizaciones/vistas/solicitar_publica', [
+            'titulo' => 'Solicitud de Cotización - CYCSA',
+            'productos' => $productos,
+            'categorias' => $categorias,
+            'exitoCodigo' => $exitoCodigo
+        ]);
+    }
+
+    // 💾 PROCESAR LA SOLICITUD DE COTIZACIÓN PÚBLICA (Genera Borrador en ERP)
+    public function procesarSolicitudPublica(Peticion $peticion, Respuesta $respuesta): void {
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $cliModelo = new ClienteModelo();
+            $cotModelo = new CotizacionModelo();
+
+            // 1. Obtener o registrar el cliente
+            $idCliente = null;
+            $identificacion = trim($datos['identificacion'] ?? '');
+
+            if ($datos['id_cliente'] === 'new') {
+                // Verificar si ya existe un cliente con esa identificación para no duplicarlo
+                $existingClient = $cliModelo->obtenerPorIdentificacion($identificacion);
+                if ($existingClient) {
+                    $idCliente = (int)$existingClient['id'];
+                } else {
+                    $tipoCliente = trim($datos['tipo_cliente'] ?? 'Jurídico');
+                    $nombreCliente = trim($datos['nombre_cliente'] ?? '');
+                    
+                    $datosCliente = [
+                        'tipo_cliente' => $tipoCliente,
+                        'nombre_cliente' => $nombreCliente,
+                        'primer_apellido' => trim($datos['primer_apellido'] ?? ''),
+                        'segundo_apellido' => trim($datos['segundo_apellido'] ?? ''),
+                        'numero_ruc' => ($tipoCliente === 'Jurídico') ? $identificacion : null,
+                        'numero_cedula' => ($tipoCliente === 'Natural') ? $identificacion : null,
+                        'identificacion' => $identificacion,
+                        'email' => trim($datos['email'] ?? ''),
+                        'telefono' => trim($datos['telefono'] ?? ''),
+                        'direccion' => trim($datos['direccion'] ?? ''),
+                        'contacto_nombre' => trim($datos['contacto_nombre'] ?? ''),
+                        'contacto_apellido' => trim($datos['contacto_apellido'] ?? ''),
+                        'contacto_cargo' => trim($datos['contacto_cargo'] ?? ''),
+                        'activo' => 1
+                    ];
+
+                    if ($cliModelo->guardar($datosCliente)) {
+                        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                        $idCliente = (int)$db->lastInsertId();
+                        registrarBitacora('clientes', 'crear_publico', 'Cliente registrado desde portal público: ' . $nombreCliente, $idCliente);
+                    } else {
+                        // Error de BD
+                        $respuesta->redirigir('/Cycsa/publico/solicitar-cotizacion?error=' . urlencode('Error al registrar los datos del cliente.'));
+                        return;
+                    }
+                }
+            } else {
+                $idCliente = (int)$datos['id_cliente'];
+            }
+
+            // 2. Procesar detalles de los ensayos seleccionados
+            $detalles = [];
+            $subtotalGeneral = 0.00;
+            $prodModelo = new ProductoModelo();
+
+            if (!empty($datos['productos']) && is_array($datos['productos'])) {
+                foreach ($datos['productos'] as $idProd => $item) {
+                    $cantidad = (int)($item['cantidad'] ?? 0);
+                    if ($cantidad <= 0) {
+                        continue;
+                    }
+
+                    $producto = $prodModelo->obtenerPorId((int)$idProd);
+                    if ($producto) {
+                        $precio = (float)($producto['precio'] ?? 0.00);
+                        $subtotal = $precio * $cantidad;
+                        $subtotalGeneral += $subtotal;
+
+                        $detalles[] = [
+                            'id_producto' => $producto['id'],
+                            'descripcion' => $producto['ensayo_servicio'],
+                            'codigo_servicio' => $producto['codigo_servicio'] ?? null,
+                            'norma_astm' => $producto['norma_astm'] ?? null,
+                            'formato_reporte' => $producto['formato_reporte'] ?? null,
+                            'observaciones' => trim($item['observaciones'] ?? ''),
+                            'cantidad' => $cantidad,
+                            'precio' => $precio,
+                            'subtotal' => $subtotal
+                        ];
+                    }
+                }
+            }
+
+            if (empty($detalles)) {
+                $respuesta->redirigir('/Cycsa/publico/solicitar-cotizacion?error=' . urlencode('Debe seleccionar al menos un producto/ensayo para solicitar la cotización.'));
+                return;
+            }
+
+            // Calcular impuestos (15% IVA estándar)
+            $impuestoGeneral = $subtotalGeneral * 0.15;
+            $totalGeneral = $subtotalGeneral + $impuestoGeneral;
+
+            // 3. Generar cabecera de cotización
+            $codigo = $cotModelo->generarCodigoUnico();
+            
+            // Obtener el ID del primer usuario administrador activo
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmtAdmin = $db->query("SELECT id FROM usuarios WHERE id_rol = 1 AND activo = 1 LIMIT 1");
+            $adminId = (int)$stmtAdmin->fetchColumn();
+            if (!$adminId) {
+                $adminId = 1; // Fallback
+            }
+
+            $cabecera = [
+                'codigo' => $codigo,
+                'id_cliente' => $idCliente,
+                'tipo_moneda' => 1, // Córdoba (C$) por defecto
+                'id_usuario_creador' => $adminId,
+                'atencion_a' => trim($datos['atencion_a'] ?? ''),
+                'nombre_proyecto' => trim($datos['nombre_proyecto'] ?? ''),
+                'direccion_proyecto' => trim($datos['direccion_proyecto'] ?? ''),
+                'prioridad' => $datos['prioridad'] ?? 'Normal',
+                'fecha_limite' => null,
+                'condicion_pago' => 'Por definir',
+                'tiempo_entrega' => 'Por definir',
+                'vigencia_oferta' => 'Por definir',
+                'configuracion_notas' => null,
+                'contactos' => trim($datos['contactos'] ?? ''),
+                'subtotal' => $subtotalGeneral,
+                'descuento' => 0.00,
+                'exonerado' => 0,
+                'exoneracion_no' => null,
+                'impuesto' => $impuestoGeneral,
+                'total' => $totalGeneral,
+                'fecha_entrega' => null,
+                'fecha_seguimiento' => null
+            ];
+
+            if ($cotModelo->guardarCotizacionCompleta($cabecera, $detalles)) {
+                registrarBitacora('cotizaciones', 'crear_publico', 'Nueva solicitud de cotización recibida vía Web: ' . $codigo);
+                $_SESSION['solicitud_publica_exito'] = $codigo;
+                $respuesta->redirigir('/Cycsa/publico/solicitar-cotizacion?exito=1');
+            } else {
+                $respuesta->redirigir('/Cycsa/publico/solicitar-cotizacion?error=' . urlencode('No se pudo guardar la solicitud de cotización.'));
+            }
+        }
     }
 }

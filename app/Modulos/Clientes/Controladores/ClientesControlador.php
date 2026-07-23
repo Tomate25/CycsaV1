@@ -303,4 +303,35 @@ class ClientesControlador extends ControladorBase {
         }
         $respuesta->enviarJson($resultados);
     }
+
+    // 🔍 BUSCAR CLIENTE POR RUC O CÉDULA VÍA AJAX (Público - Sin sesión)
+    public function buscarPorIdentificacionPublico(Peticion $peticion, Respuesta $respuesta): void {
+        $identificacion = trim($_GET['identificacion'] ?? '');
+        if ($identificacion === '') {
+            $respuesta->enviarJson(['existe' => false]);
+            return;
+        }
+        $modelo = new ClienteModelo();
+        $cliente = $modelo->obtenerPorIdentificacion($identificacion);
+        if ($cliente) {
+            $respuesta->enviarJson([
+                'existe' => true,
+                'cliente' => [
+                    'id' => $cliente['id'],
+                    'nombre_razon_social' => $cliente['nombre_razon_social'],
+                    'nombre_cliente' => $cliente['nombre_cliente'] ?? '',
+                    'primer_apellido' => $cliente['primer_apellido'] ?? '',
+                    'segundo_apellido' => $cliente['segundo_apellido'] ?? '',
+                    'tipo_cliente' => $cliente['tipo_cliente'] ?? 'Jurídico',
+                    'direccion' => $cliente['direccion'] ?? '',
+                    'telefono' => $cliente['telefono'] ?? '',
+                    'email' => $cliente['email'] ?? '',
+                    'numero_ruc' => $cliente['numero_ruc'] ?? '',
+                    'numero_cedula' => $cliente['numero_cedula'] ?? ''
+                ]
+            ]);
+        } else {
+            $respuesta->enviarJson(['existe' => false]);
+        }
+    }
 }

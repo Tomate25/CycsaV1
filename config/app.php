@@ -7,8 +7,8 @@ namespace Cycsa\Config;
  */
 return [
     'name' => 'CYCSA ERP & LIMS',
-    'env' => 'production',
+    'env' => $_ENV['APP_ENV'] ?? 'produccion',
     'timezone' => 'America/Managua',
     'debug' => false,
-    'url' => 'https://erp.cycsa.com',
+    'url' => $_ENV['APP_URL'] ?? 'https://app.cycsanic.com',
 ];

@@ -45,6 +45,19 @@ class ClienteModelo extends ModeloBase {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // ✏️ OBTENER UN SOLO CLIENTE POR SU IDENTIFICACIÓN (RUC o Cédula)
+    public function obtenerPorIdentificacion(string $identificacion) {
+        $sql = "SELECT * FROM clientes WHERE identificacion = :identi1 OR numero_ruc = :identi2 OR numero_cedula = :identi3 LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $val = trim($identificacion);
+        $stmt->execute([
+            'identi1' => $val,
+            'identi2' => $val,
+            'identi3' => $val
+        ]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     // 🛡️ CONTROL DE DUPLICADOS: Verificar si el correo ya existe
     public function emailExiste(string $email, int $id_excluir = 0): bool {
         if (empty(trim($email))) return false;

@@ -242,7 +242,11 @@ class CotizacionModelo extends ModeloBase {
 
             $this->db->commit();
             return true;
-        } catch (Exception $e) { $this->db->rollBack(); return false; }
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            error_log("FATAL: Error al guardar cotizacion completa: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
+            return false;
+        }
     }
 
     // Actualizar (Corrección)
@@ -346,7 +350,11 @@ class CotizacionModelo extends ModeloBase {
 
             $this->db->commit();
             return true;
-        } catch (Exception $e) { $this->db->rollBack(); return false; }
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            error_log("FATAL: Error al actualizar cotizacion completa: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
+            return false;
+        }
     }
 
     // Re-enviar una cotización rechazada por el cliente (creando una nueva versión sin cambios manuales en la edición)
