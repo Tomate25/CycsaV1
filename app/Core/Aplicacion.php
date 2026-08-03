@@ -160,6 +160,24 @@ class Aplicacion {
     }
 
     public function correr(): void {
-        echo $this->enrutador->resolver();
+        $contenido = $this->enrutador->resolver();
+
+        if (is_string($contenido)) {
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+            $scriptDir = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+            if ($scriptDir === '/' || $scriptDir === '\\') {
+                $scriptDir = '';
+            }
+
+            // Adaptar dinámicamente rutas /Cycsa/publico al entorno de producción VPS
+            if (strpos($scriptDir, '/publico') === false) {
+                $baseTarget = $scriptDir !== '' ? $scriptDir . '/' : '/';
+                $contenido = str_replace('/Cycsa/publico/', $baseTarget, $contenido);
+                $contenido = str_replace('/Cycsa/publico"', rtrim($baseTarget, '/') . '"', $contenido);
+                $contenido = str_replace("/Cycsa/publico'", rtrim($baseTarget, '/') . "'", $contenido);
+            }
+        }
+
+        echo $contenido;
     }
 }
