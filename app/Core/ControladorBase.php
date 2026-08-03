@@ -4,7 +4,7 @@ namespace Cycsa\Nucleo;
 
 class ControladorBase {
     
-    public function renderizar(string $rutaVista, array $datos = []): void {
+    public function renderizar(string $rutaVista, array $datos = []): string {
         extract($datos);
 
         $rutaCompleta = $this->resolverRutaVista($rutaVista);
@@ -21,7 +21,9 @@ class ControladorBase {
             if (!file_exists($rutaLayout)) {
                 $rutaLayout = __DIR__ . '/../../plantillas/layout.php';
             }
+            ob_start();
             require $rutaLayout;
+            return ob_get_clean();
         } else {
             error_log("Error del Sistema: No se encontró la vista en la ruta {$rutaCompleta}");
             die("Error 500: Fallo interno.");
@@ -29,13 +31,15 @@ class ControladorBase {
     }
 
     // Renderiza una vista SIN el layout del sistema (para login, errores 404, etc.)
-    public function renderizarSinLayout(string $rutaVista, array $datos = []): void {
+    public function renderizarSinLayout(string $rutaVista, array $datos = []): string {
         extract($datos);
 
         $rutaCompleta = $this->resolverRutaVista($rutaVista);
 
         if (file_exists($rutaCompleta)) {
+            ob_start();
             require $rutaCompleta;
+            return ob_get_clean();
         } else {
             error_log("Error del Sistema: No se encontró la vista en la ruta {$rutaCompleta}");
             die("Error 500: Fallo interno.");
