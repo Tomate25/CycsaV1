@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Middleware;
+namespace Cycsa\App\Middleware;
 
 /**
  * Middleware para validar token CSRF.
@@ -38,3 +38,4 @@ class CsrfMiddleware
         return true;
     }
 }
+

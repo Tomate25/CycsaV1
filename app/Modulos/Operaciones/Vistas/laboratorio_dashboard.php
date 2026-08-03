@@ -169,7 +169,7 @@
                         <span class="status-badge <?= $esHoy ? 'badge-today' : 'badge-upcoming' ?>">Listo para ruptura</span>
                     </td>
                     <td style="text-align: right; white-space: nowrap;">
-                        <a href="/Cycsa/publico/laboratorio/detalle-muestra?id_lote=<?= $r['id_lote'] ?>" class="btn-accion btn-os">
+                        <a href="/Cycsa/publico/laboratorio/detalle-muestra?id_lote=<?= codificarId($r['id_lote']) ?>" class="btn-accion btn-os">
                             <i class="fa-solid fa-hammer"></i> Abrir Ensaye
                         </a>
                     </td>
@@ -216,7 +216,7 @@
                         <span class="badge-estado estado-<?= str_replace(' ', '-', $m['estado']) ?>"><?= htmlspecialchars($m['estado'], ENT_QUOTES, 'UTF-8') ?></span>
                     </td>
                     <td style="text-align: right; white-space: nowrap;">
-                        <a href="/Cycsa/publico/laboratorio/detalle-muestra?id_lote=<?= $m['id_lote'] ?>" class="btn-accion btn-detalle" title="Cargar resultados en matriz ciega">
+                        <a href="/Cycsa/publico/laboratorio/detalle-muestra?id_lote=<?= codificarId($m['id_lote']) ?>" class="btn-accion btn-detalle" title="Cargar resultados en matriz ciega">
                             <i class="fa-solid fa-list-check"></i> Hoja de Trabajo
                         </a>
                     </td>

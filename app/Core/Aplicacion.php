@@ -26,6 +26,9 @@ class Aplicacion {
         // 2. Cargamos las variables de entorno (.env)
         $this->cargarEntorno();
         
+        // 2b. Decodificar automáticamente los parámetros de IDs ofuscados (AES-128)
+        $this->decodificarPeticionIds();
+
         // 3. Validar sesión única (si hay un usuario logueado en la sesión)
         if (isset($_SESSION['usuario_id'])) {
             try {
@@ -128,6 +131,29 @@ class Aplicacion {
                     }
                     
                     $_ENV[$clave] = $valor;
+                }
+            }
+        }
+    }
+
+    private function decodificarPeticionIds(): void {
+        foreach (['id', 'id_lote', 'id_informe'] as $key) {
+            if (isset($_GET[$key]) && is_string($_GET[$key]) && !is_numeric($_GET[$key])) {
+                $dec = \Cycsa\App\Helpers\HashHelper::decodificar($_GET[$key]);
+                if ($dec !== null) {
+                    $_GET[$key] = $dec;
+                    if (isset($_REQUEST[$key])) {
+                        $_REQUEST[$key] = $dec;
+                    }
+                }
+            }
+            if (isset($_POST[$key]) && is_string($_POST[$key]) && !is_numeric($_POST[$key])) {
+                $dec = \Cycsa\App\Helpers\HashHelper::decodificar($_POST[$key]);
+                if ($dec !== null) {
+                    $_POST[$key] = $dec;
+                    if (isset($_REQUEST[$key])) {
+                        $_REQUEST[$key] = $dec;
+                    }
                 }
             }
         }

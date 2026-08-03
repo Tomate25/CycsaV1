@@ -93,9 +93,9 @@
     </div>
 <?php endif; ?>
 
-<form action="/Cycsa/publico/clientes/editar?id=<?= htmlspecialchars($cliente['id'] ?? '', ENT_QUOTES, 'UTF-8') ?>" method="POST" style="max-width: 1000px; margin: 0 auto 40px auto;">
+<form action="/Cycsa/publico/clientes/editar?id=<?= codificarId($cliente['id']) ?>" method="POST" style="max-width: 1000px; margin: 0 auto 40px auto;">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-    <input type="hidden" name="id" value="<?= htmlspecialchars($cliente['id'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="id" value="<?= codificarId($cliente['id']) ?>">
 
     <!-- SECCIÓN 1: INFORMACIÓN GENERAL -->
     <div class="form-section-card">

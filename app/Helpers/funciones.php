@@ -1600,3 +1600,21 @@ function generarCodigoCalidadLIMS(string $codigoBase, string $tipo = 'replica', 
     return $codigoLimpio . 'C' . max(1, $numeroRepeticion);
 }
 
+/**
+ * Codifica un ID numérico de forma reversible (Hashids).
+ */
+function codificarId($id): string {
+    if (empty($id)) return '';
+    return \Cycsa\App\Helpers\HashHelper::codificar((int)$id);
+}
+
+/**
+ * Decodifica un ID numérico de forma reversible. Retorna null si no es válido.
+ */
+function decodificarId($hash): ?int {
+    if (empty($hash)) return null;
+    // Si ya es un ID numérico puro (fallback de retrocompatibilidad), lo devolvemos directamente
+    if (is_numeric($hash)) return (int)$hash;
+    return \Cycsa\App\Helpers\HashHelper::decodificar((string)$hash);
+}
+

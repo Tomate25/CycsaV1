@@ -217,10 +217,10 @@ $precioPromedio = $conPrecio > 0 ? $sumaPrecios / $conPrecio : 0;
                             </td>
                             <?php if (tienePermiso('productos', 'crear_editar')): ?>
                             <td style="text-align: center;">
-                                <a href="/Cycsa/publico/productos/editar?id=<?= $p['id'] ?>" class="btn-accion editar" title="Editar ensayo">
+                                <a href="/Cycsa/publico/productos/editar?id=<?= codificarId($p['id']) ?>" class="btn-accion editar" title="Editar ensayo">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </a>
-                                <a href="/Cycsa/publico/productos/eliminar?id=<?= $p['id'] ?>" class="btn-accion eliminar" title="Desactivar ensayo" onclick="return confirm('¿Está seguro de que desea desactivar este ensayo del catálogo?')">
+                                <a href="/Cycsa/publico/productos/eliminar?id=<?= codificarId($p['id']) ?>" class="btn-accion eliminar" title="Desactivar ensayo" onclick="return confirm('¿Está seguro de que desea desactivar este ensayo del catálogo?')">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </a>
                             </td>

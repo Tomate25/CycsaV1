@@ -75,6 +75,13 @@ class LaboratorioControlador extends ControladorBase {
         $stmtCal = $db->query($sqlCalendario);
         $eventosCalendario = $stmtCal->fetchAll(PDO::FETCH_ASSOC);
 
+        // Codificar los IDs de los lotes para el calendario JS
+        foreach ($eventosCalendario as &$ev) {
+            if (isset($ev['id_lote'])) {
+                $ev['id_lote'] = codificarId($ev['id_lote']);
+            }
+        }
+
         $this->renderizar('operaciones/vistas/laboratorio_dashboard', [
             'titulo' => 'Portal de Laboratorio LIMS (Operación Ciega)',
             'muestras' => $muestras,
@@ -122,7 +129,12 @@ class LaboratorioControlador extends ControladorBase {
         $especimenes = $modelo->obtenerDetallesLote($idLote);
         $historial = $modelo->obtenerHistorialInformes($idLote);
 
-        // 3. Obtener ensayos cotizados relacionados (ciego)
+        // Obtener el id_detalle_cotizacion asociado a este lote desde ensayo_edades
+        $stmtDetalleLote = $db->prepare("SELECT DISTINCT id_detalle_cotizacion FROM ensayo_edades WHERE id_lote = :id_lote LIMIT 1");
+        $stmtDetalleLote->execute(['id_lote' => $idLote]);
+        $idDetalleCotizacionAsociado = $stmtDetalleLote->fetchColumn();
+
+        // 3. Obtener únicamente el ensayo cotizado relacionado y asociado a este lote (ciego)
         $sqlItems = "SELECT cd.id, cd.descripcion_ensayo, cd.norma_astm, fe.archivo_markdown, 
                             fe.nombre AS formato_nombre, cd.resultados_json, cd.id_cotizacion
                      FROM cotizacion_detalles cd
@@ -131,9 +143,12 @@ class LaboratorioControlador extends ControladorBase {
                      JOIN ordenes_servicio os ON rm.id_os = os.id
                      LEFT JOIN productos p ON cd.id_producto = p.id
                      LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
-                     WHERE cd.id_cotizacion = os.id_cotizacion";
+                     WHERE cd.id_cotizacion = os.id_cotizacion AND cd.id = :id_det_cot";
         $stmtItems = $db->prepare($sqlItems);
-        $stmtItems->execute(['id_lote' => $idLote]);
+        $stmtItems->execute([
+            'id_lote' => $idLote,
+            'id_det_cot' => $idDetalleCotizacionAsociado
+        ]);
         $itemsOS = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 
         // Cargar esquemas JSON

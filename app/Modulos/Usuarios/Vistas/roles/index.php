@@ -85,9 +85,9 @@
                         endif; ?>
                     </td>
                     <td style="text-align: right;">
-                        <a href="/Cycsa/publico/roles/editar?id=<?= $rol['id'] ?>" class="btn-accion btn-editar" title="Editar"><i class="fa-solid fa-pen-to-square"></i></a>
+                        <a href="/Cycsa/publico/roles/editar?id=<?= codificarId($rol['id']) ?>" class="btn-accion btn-editar" title="Editar"><i class="fa-solid fa-pen-to-square"></i></a>
                         <?php if ($rol['id'] != 1 && $rol['id'] != 2): ?>
-                            <a href="/Cycsa/publico/roles/eliminar?id=<?= $rol['id'] ?>" class="btn-accion btn-eliminar" title="Eliminar" onclick="return confirm('¿Estás seguro de que deseas eliminar este rol? Solo se puede eliminar si ningún usuario lo tiene asignado.');"><i class="fa-solid fa-trash"></i></a>
+                            <a href="/Cycsa/publico/roles/eliminar?id=<?= codificarId($rol['id']) ?>" class="btn-accion btn-eliminar" title="Eliminar" onclick="return confirm('¿Estás seguro de que deseas eliminar este rol? Solo se puede eliminar si ningún usuario lo tiene asignado.');"><i class="fa-solid fa-trash"></i></a>
                         <?php else: ?>
                             <span class="btn-accion btn-deshabilitado" title="Rol crítico del sistema (protegido)"><i class="fa-solid fa-trash"></i></span>
                         <?php endif; ?>

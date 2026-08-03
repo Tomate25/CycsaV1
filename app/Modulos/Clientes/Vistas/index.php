@@ -123,7 +123,7 @@
                     </td>
                     <td style="text-align: right;" onclick="event.stopPropagation();">
                         <?php if (tienePermiso('clientes', 'crear_editar')): ?>
-                        <a href="/Cycsa/publico/clientes/editar?id=<?= $cliente['id'] ?>" class="btn-cycsa btn-cycsa-secondary" style="padding: 6px 12px; font-size: 12px;" title="Editar Ficha">
+                        <a href="/Cycsa/publico/clientes/editar?id=<?= codificarId($cliente['id']) ?>" class="btn-cycsa btn-cycsa-secondary" style="padding: 6px 12px; font-size: 12px;" title="Editar Ficha">
                             <i class="fa-solid fa-pen-to-square"></i> Editar
                         </a>
                         <?php endif; ?>

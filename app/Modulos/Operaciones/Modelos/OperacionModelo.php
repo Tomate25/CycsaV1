@@ -43,7 +43,7 @@ class OperacionModelo extends ModeloBase {
         $codigoOS = sprintf("OS-%d-%04d", $anio, $consecutivo);
 
         $sql = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, tipo_contrato, fecha_emision, estado, fecha_muestreo, hora_muestreo, tecnico_muestreo, vehiculo_muestreo) 
-                VALUES (:codigo_os, :id_cotizacion, :tipo_contrato, CURRENT_DATE, 'Abierta', :fecha_m, :hora_m, :tecnico_m, :vehiculo_m)";
+                VALUES (:codigo_os, :id_cotizacion, :tipo_contrato, CURRENT_DATE, 'Estado 1: Recepcion', :fecha_m, :hora_m, :tecnico_m, :vehiculo_m)";
         $stmtInsert = $this->db->prepare($sql);
         $stmtInsert->execute([
             'codigo_os' => $codigoOS,
@@ -86,7 +86,8 @@ class OperacionModelo extends ModeloBase {
      * Obtiene los productos/ensayos de una O/S y su estado de recepción (aislado por O/S y soportando múltiples muestras por servicio).
      */
     public function obtenerItemsOS(int $idOS): array {
-        $sql = "SELECT cd.id AS id_detalle, cd.descripcion_ensayo, cd.codigo_servicio, cd.cantidad AS cantidad_facturada,
+        $sql = "SELECT cd.id, cd.id AS id_detalle, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad AS cantidad, cd.cantidad AS cantidad_facturada,
+                       p.formato_id, fe.archivo_markdown, fe.nombre AS formato_nombre,
                        (SELECT COUNT(DISTINCT lm.id)
                         FROM ensayo_edades ee
                         JOIN lotes_muestras lm ON ee.id_lote = lm.id
@@ -106,6 +107,8 @@ class OperacionModelo extends ModeloBase {
                         ORDER BY lm.id DESC LIMIT 1) AS id_lote
                 FROM cotizacion_detalles cd
                 JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+                LEFT JOIN productos p ON cd.id_producto = p.id
+                LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
                 WHERE os.id = :id_os";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id_os' => $idOS]);
@@ -153,133 +156,157 @@ class OperacionModelo extends ModeloBase {
             $this->db->beginTransaction();
 
             $idOS = (int)$datos['id_os'];
-            $codigoCampo = trim($datos['codigo_campo'] ?? '');
             $entregadoPor = trim($datos['entregado_por'] ?? '');
             $observaciones = trim($datos['observaciones'] ?? '');
             $fechaRecepcion = $datos['fecha_recepcion'] ?? date('Y-m-d H:i:s');
             
             $tipoMuestra = in_array($datos['tipo_muestra'] ?? '', ['Campo', 'Laboratorio']) ? $datos['tipo_muestra'] : 'Laboratorio';
             $isQaQc = !empty($datos['is_qa_qc']) ? 1 : 0;
-            $idCilindro = trim($datos['id_cilindro'] ?? '');
 
-            $anio = (int)date('Y', strtotime($fechaRecepcion));
-            $anioShort = date('y', strtotime($fechaRecepcion));
+            // Decodificar múltiples muestras si vienen del frontend
+            $muestrasData = [];
+            if (!empty($datos['muestras_recibidas_json'])) {
+                $muestrasData = json_decode($datos['muestras_recibidas_json'], true) ?: [];
+            }
+
+            // Si no viene el JSON (fallback / retrocompatibilidad), creamos un array con la muestra única
+            if (empty($muestrasData)) {
+                $muestrasData[] = [
+                    'codigo_campo' => trim($datos['codigo_campo'] ?? ''),
+                    'id_cilindro' => trim($datos['id_cilindro'] ?? ''),
+                    'nombre_lote' => trim($datos['nombre_lote'] ?? 'Muestra General'),
+                    'fecha_moldeo' => $datos['fecha_moldeo'] ?? date('Y-m-d'),
+                    'diseno_resistencia' => trim($datos['diseno_resistencia'] ?? ''),
+                    'revenimiento_in' => !empty($datos['revenimiento_in']) ? (float)$datos['revenimiento_in'] : null,
+                    'revenimiento_cm' => !empty($datos['revenimiento_cm']) ? (float)$datos['revenimiento_cm'] : null,
+                    'temperatura_c' => !empty($datos['temperatura_c']) ? (float)$datos['temperatura_c'] : null,
+                    'procedimiento_muestreo' => trim($datos['procedimiento_muestreo'] ?? 'ASTM C172'),
+                    'id_detalle_cotizacion' => (int)$datos['id_detalle_cotizacion'],
+                    'edades_dias' => $datos['edades_dias'] ?? [],
+                    'edades_identificadores' => $datos['edades_identificadores'] ?? []
+                ];
+            }
 
             // ADQUIRIR CANDADO DE CONCURRENCIA PARA RECEPCION DE MUESTRAS
             $this->db->prepare("SELECT GET_LOCK('lock_recepcion_muestras', 10)")->execute();
 
-            // Calcular correlativo por anio y tipo_muestra usando secuencias_muestras (Reinicio anual el 1° de Enero)
-            $stmtSec = $this->db->prepare("SELECT ultimo_correlativo FROM secuencias_muestras WHERE anio = :anio AND tipo_muestra = :tipo");
-            $stmtSec->execute(['anio' => $anio, 'tipo' => $tipoMuestra]);
-            $lastCorr = $stmtSec->fetchColumn();
-            $correlativo = ($lastCorr === false) ? 1 : (int)$lastCorr + 1;
+            $anio = (int)date('Y', strtotime($fechaRecepcion));
+            $anioShort = date('y', strtotime($fechaRecepcion));
 
-            $stmtUpsert = $this->db->prepare("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) VALUES (:anio, :tipo, :corr) ON DUPLICATE KEY UPDATE ultimo_correlativo = :corr2");
-            $stmtUpsert->execute(['anio' => $anio, 'tipo' => $tipoMuestra, 'corr' => $correlativo, 'corr2' => $correlativo]);
+            foreach ($muestrasData as $m) {
+                $codigoCampo = trim($m['codigo_campo'] ?? '');
+                $idCilindro = trim($m['id_cilindro'] ?? '');
+                $nombreLote = trim($m['nombre_lote'] ?? 'Muestra General');
+                $fechaMoldeo = $m['fecha_moldeo'] ?? date('Y-m-d');
+                $disenoResistencia = trim($m['diseno_resistencia'] ?? '');
+                $revenimientoIn = !empty($m['revenimiento_in']) ? (float)$m['revenimiento_in'] : null;
+                $revenimientoCm = !empty($m['revenimiento_cm']) ? (float)$m['revenimiento_cm'] : null;
+                $temperaturaC = !empty($m['temperatura_c']) ? (float)$m['temperatura_c'] : null;
+                $procedimiento = trim($m['procedimiento_muestreo'] ?? 'ASTM C172');
+                $idDetalleCotizacion = (int)$m['id_detalle_cotizacion'];
+                $edadesDias = $m['edades_dias'] ?? [];
+                $edadesIdentificadores = $m['edades_identificadores'] ?? [];
 
-            // Formato de código consecutivo automático e inmutable por tipo
-            $replicaCodigo = null;
-            if ($tipoMuestra === 'Campo') {
-                $codigoMuestra = sprintf("CAM-%02d-%04d", $anioShort, $correlativo);
-            } else {
-                $codigoMuestra = sprintf("MS-%04d-%02d", $correlativo, $anioShort);
-            }
+                // Calcular correlativo por anio y tipo_muestra usando secuencias_muestras
+                $stmtSec = $this->db->prepare("SELECT ultimo_correlativo FROM secuencias_muestras WHERE anio = :anio AND tipo_muestra = :tipo");
+                $stmtSec->execute(['anio' => $anio, 'tipo' => $tipoMuestra]);
+                $lastCorr = $stmtSec->fetchColumn();
+                $correlativo = ($lastCorr === false) ? 1 : (int)$lastCorr + 1;
 
-            if ($isQaQc) {
-                $replicaCodigo = "-1";
-                $codigoMuestra .= $replicaCodigo;
-            }
+                $stmtUpsert = $this->db->prepare("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) VALUES (:anio, :tipo, :corr) ON DUPLICATE KEY UPDATE ultimo_correlativo = :corr2");
+                $stmtUpsert->execute(['anio' => $anio, 'tipo' => $tipoMuestra, 'corr' => $correlativo, 'corr2' => $correlativo]);
 
-            // Si no se provee código de campo, lo generamos
-            if (empty($codigoCampo)) {
-                $codigoCampo = sprintf("MC-%04d-%02d", $correlativo, $anioShort);
-            }
+                // Formato de código consecutivo automático e inmutable por tipo
+                $replicaCodigo = null;
+                if ($tipoMuestra === 'Campo') {
+                    $codigoMuestra = sprintf("CAM-%02d-%04d", $anioShort, $correlativo);
+                } else {
+                    $codigoMuestra = sprintf("MS-%04d-%02d", $correlativo, $anioShort);
+                }
 
-            // 1. Insertar Recepción con inmutabilidad y sellado
-            $sqlRec = "INSERT INTO recepcion_muestras (id_os, correlativo_anual, anio, tipo_muestra, codigo_muestra, id_cilindro, codigo_campo, is_qa_qc, replica_codigo, is_sealed, fecha_recepcion, recibido_por, entregado_por, observaciones, estado)
-                       VALUES (:id_os, :correlativo_anual, :anio, :tipo_muestra, :codigo_muestra, :id_cilindro, :codigo_campo, :is_qa_qc, :replica_codigo, 1, :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, 'Registrado')";
-            $stmtRec = $this->db->prepare($sqlRec);
-            $stmtRec->execute([
-                'id_os' => $idOS,
-                'correlativo_anual' => $correlativo,
-                'anio' => $anio,
-                'tipo_muestra' => $tipoMuestra,
-                'codigo_muestra' => $codigoMuestra,
-                'id_cilindro' => $idCilindro,
-                'codigo_campo' => $codigoCampo,
-                'is_qa_qc' => $isQaQc,
-                'replica_codigo' => $replicaCodigo,
-                'fecha_recepcion' => $fechaRecepcion,
-                'recibido_por' => $_SESSION['usuario_id'],
-                'entregado_por' => $entregadoPor,
-                'observaciones' => $observaciones
-            ]);
+                if ($isQaQc) {
+                    $replicaCodigo = "-1";
+                    $codigoMuestra .= $replicaCodigo;
+                }
 
-            $idRecepcion = $this->db->lastInsertId();
+                // Si no se provee código de campo, lo generamos
+                if (empty($codigoCampo)) {
+                    $codigoCampo = sprintf("MC-%04d-%02d", $correlativo, $anioShort);
+                }
 
-            // 2. Insertar Lote
-            $nombreLote = trim($datos['nombre_lote'] ?? 'Muestra General');
-            $disenoResistencia = trim($datos['diseno_resistencia'] ?? '');
-            $fechaMoldeo = $datos['fecha_moldeo'] ?? date('Y-m-d');
-            $revenimientoIn = !empty($datos['revenimiento_in']) ? (float)$datos['revenimiento_in'] : null;
-            $revenimientoCm = !empty($datos['revenimiento_cm']) ? (float)$datos['revenimiento_cm'] : null;
-            $temperaturaC = !empty($datos['temperatura_c']) ? (float)$datos['temperatura_c'] : null;
-            $procedimiento = trim($datos['procedimiento_muestreo'] ?? 'ASTM C172');
-
-            $sqlLote = "INSERT INTO lotes_muestras (id_recepcion, nombre_lote, diseno_resistencia, fecha_moldeo, revenimiento_in, revenimiento_cm, temperatura_c, procedimiento_muestreo)
-                        VALUES (:id_recepcion, :nombre_lote, :diseno_resistencia, :fecha_moldeo, :revenimiento_in, :revenimiento_cm, :temperatura_c, :procedimiento_muestreo)";
-            $stmtLote = $this->db->prepare($sqlLote);
-            $stmtLote->execute([
-                'id_recepcion' => $idRecepcion,
-                'nombre_lote' => $nombreLote,
-                'diseno_resistencia' => $disenoResistencia,
-                'fecha_moldeo' => $fechaMoldeo,
-                'revenimiento_in' => $revenimientoIn,
-                'revenimiento_cm' => $revenimientoCm,
-                'temperatura_c' => $temperaturaC,
-                'procedimiento_muestreo' => $procedimiento
-            ]);
-
-            $idLote = $this->db->lastInsertId();
-
-            // 3. Generar Especímenes y Edades Programadas
-            $edadesDias = $datos['edades_dias'] ?? [];
-            $edadesIdentificadores = $datos['edades_identificadores'] ?? [];
-            $idDetalleCotizacion = (int)$datos['id_detalle_cotizacion'];
-
-            if (empty($edadesDias)) {
-                // Si es un ensayo sin edades (ej: Proctor), creamos una muestra técnica base con edad 0
-                $sqlEdad = "INSERT INTO ensayo_edades (id_lote, id_detalle_cotizacion, identificador_especimen, edad_dias, fecha_programada, estado)
-                            VALUES (:id_lote, :id_detalle_cotizacion, 'Muestra', 0, :fecha_programada, 'Completado')";
-                $stmtEdad = $this->db->prepare($sqlEdad);
-                $stmtEdad->execute([
-                    'id_lote' => $idLote,
-                    'id_detalle_cotizacion' => $idDetalleCotizacion,
-                    'fecha_programada' => $fechaMoldeo
+                // 1. Insertar Recepción con inmutabilidad y sellado
+                $sqlRec = "INSERT INTO recepcion_muestras (id_os, correlativo_anual, anio, tipo_muestra, codigo_muestra, id_cilindro, codigo_campo, is_qa_qc, replica_codigo, is_sealed, fecha_recepcion, recibido_por, entregado_por, observaciones, estado)
+                           VALUES (:id_os, :correlativo_anual, :anio, :tipo_muestra, :codigo_muestra, :id_cilindro, :codigo_campo, :is_qa_qc, :replica_codigo, 1, :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, 'Registrado')";
+                $stmtRec = $this->db->prepare($sqlRec);
+                $stmtRec->execute([
+                    'id_os' => $idOS,
+                    'correlativo_anual' => $correlativo,
+                    'anio' => $anio,
+                    'tipo_muestra' => $tipoMuestra,
+                    'codigo_muestra' => $codigoMuestra,
+                    'id_cilindro' => $idCilindro,
+                    'codigo_campo' => $codigoCampo,
+                    'is_qa_qc' => $isQaQc,
+                    'replica_codigo' => $replicaCodigo,
+                    'fecha_recepcion' => $fechaRecepcion,
+                    'recibido_por' => $_SESSION['usuario_id'],
+                    'entregado_por' => $entregadoPor,
+                    'observaciones' => $observaciones
                 ]);
-            } else {
-                for ($i = 0; $i < count($edadesDias); $i++) {
-                    $edadDias = (int)$edadesDias[$i];
-                    $identificadores = trim($edadesIdentificadores[$i] ?? '');
-                    if ($edadDias <= 0 || $identificadores === '') continue;
 
-                    $especimenes = explode(',', $identificadores);
-                    foreach ($especimenes as $espName) {
-                        $espName = trim($espName);
-                        if ($espName === '') continue;
+                $idRecepcion = $this->db->lastInsertId();
 
-                        $fechaProgramada = date('Y-m-d', strtotime("$fechaMoldeo + $edadDias days"));
+                // 2. Insertar Lote
+                $sqlLote = "INSERT INTO lotes_muestras (id_recepcion, nombre_lote, diseno_resistencia, fecha_moldeo, revenimiento_in, revenimiento_cm, temperatura_c, procedimiento_muestreo)
+                            VALUES (:id_recepcion, :nombre_lote, :diseno_resistencia, :fecha_moldeo, :revenimiento_in, :revenimiento_cm, :temperatura_c, :procedimiento_muestreo)";
+                $stmtLote = $this->db->prepare($sqlLote);
+                $stmtLote->execute([
+                    'id_recepcion' => $idRecepcion,
+                    'nombre_lote' => $nombreLote,
+                    'diseno_resistencia' => $disenoResistencia,
+                    'fecha_moldeo' => $fechaMoldeo,
+                    'revenimiento_in' => $revenimientoIn,
+                    'revenimiento_cm' => $revenimientoCm,
+                    'temperatura_c' => $temperaturaC,
+                    'procedimiento_muestreo' => $procedimiento
+                ]);
 
-                        $sqlEdad = "INSERT INTO ensayo_edades (id_lote, id_detalle_cotizacion, identificador_especimen, edad_dias, fecha_programada, estado)
-                                    VALUES (:id_lote, :id_detalle_cotizacion, :identificador_especimen, :edad_dias, :fecha_programada, 'Programado')";
-                        $stmtEdad = $this->db->prepare($sqlEdad);
-                        $stmtEdad->execute([
-                            'id_lote' => $idLote,
-                            'id_detalle_cotizacion' => $idDetalleCotizacion,
-                            'identificador_especimen' => $espName,
-                            'edad_dias' => $edadDias,
-                            'fecha_programada' => $fechaProgramada
-                        ]);
+                $idLote = $this->db->lastInsertId();
+
+                // 3. Generar Especímenes y Edades Programadas
+                if (empty($edadesDias)) {
+                    $sqlEdad = "INSERT INTO ensayo_edades (id_lote, id_detalle_cotizacion, identificador_especimen, edad_dias, fecha_programada, estado)
+                                VALUES (:id_lote, :id_detalle_cotizacion, 'Muestra', 0, :fecha_programada, 'Completado')";
+                    $stmtEdad = $this->db->prepare($sqlEdad);
+                    $stmtEdad->execute([
+                        'id_lote' => $idLote,
+                        'id_detalle_cotizacion' => $idDetalleCotizacion,
+                        'fecha_programada' => $fechaMoldeo
+                    ]);
+                } else {
+                    for ($i = 0; $i < count($edadesDias); $i++) {
+                        $edadDias = (int)$edadesDias[$i];
+                        $identificadores = trim($edadesIdentificadores[$i] ?? '');
+                        if ($edadDias <= 0 || $identificadores === '') continue;
+
+                        $especimenes = explode(',', $identificadores);
+                        foreach ($especimenes as $espName) {
+                            $espName = trim($espName);
+                            if ($espName === '') continue;
+
+                            $fechaProgramada = date('Y-m-d', strtotime("$fechaMoldeo + $edadDias days"));
+
+                            $sqlEdad = "INSERT INTO ensayo_edades (id_lote, id_detalle_cotizacion, identificador_especimen, edad_dias, fecha_programada, estado)
+                                        VALUES (:id_lote, :id_detalle_cotizacion, :identificador_especimen, :edad_dias, :fecha_programada, 'Programado')";
+                            $stmtEdad = $this->db->prepare($sqlEdad);
+                            $stmtEdad->execute([
+                                'id_lote' => $idLote,
+                                'id_detalle_cotizacion' => $idDetalleCotizacion,
+                                'identificador_especimen' => $espName,
+                                'edad_dias' => $edadDias,
+                                'fecha_programada' => $fechaProgramada
+                            ]);
+                        }
                     }
                 }
             }
@@ -288,8 +315,14 @@ class OperacionModelo extends ModeloBase {
             $items = $this->obtenerItemsOS($idOS);
             $todosRecibidos = true;
             foreach ($items as $item) {
-                $esItemActual = ((int)$item['id_detalle'] === $idDetalleCotizacion);
-                if (empty($item['codigo_muestra']) && !$esItemActual) {
+                $esRecibidoAhora = false;
+                foreach ($muestrasData as $m) {
+                    if ((int)$item['id_detalle'] === (int)$m['id_detalle_cotizacion']) {
+                        $esRecibidoAhora = true;
+                        break;
+                    }
+                }
+                if (empty($item['codigo_muestra']) && !$esRecibidoAhora) {
                     $todosRecibidos = false;
                     break;
                 }
@@ -718,6 +751,7 @@ class OperacionModelo extends ModeloBase {
             $fechaHoraLlegada = !empty($datos['fecha_hora_llegada_laboratorio']) ? $datos['fecha_hora_llegada_laboratorio'] : null;
             $codigoDoc = trim($datos['codigo_documento'] ?? 'CYCSA-RT-FM-13');
             $nombreEmpresa = trim($datos['nombre_empresa_o_cliente'] ?? '');
+            $razonSocial = trim($datos['razon_social'] ?? '');
             $direccionProj = trim($datos['direccion_proyecto'] ?? '');
             $telefono = trim($datos['telefono'] ?? '');
             $email = trim($datos['correo_electronico'] ?? '');
@@ -792,6 +826,7 @@ class OperacionModelo extends ModeloBase {
                             fecha_hora_llegada_laboratorio = :f_llegada,
                             codigo_documento = :cod_doc,
                             nombre_empresa_o_cliente = :n_empresa,
+                            razon_social = :razon_social,
                             direccion_proyecto = :dir,
                             telefono = :tel,
                             correo_electronico = :email,
@@ -826,14 +861,14 @@ class OperacionModelo extends ModeloBase {
                         WHERE id_os = :id_os";
             } else {
                 $sql = "INSERT INTO hojas_solicitud (
-                            id_os, fecha_hora_llegada_laboratorio, codigo_documento, nombre_empresa_o_cliente, direccion_proyecto, telefono, correo_electronico, nombre_persona_entrega_muestra,
+                            id_os, fecha_hora_llegada_laboratorio, codigo_documento, nombre_empresa_o_cliente, razon_social, direccion_proyecto, telefono, correo_electronico, nombre_persona_entrega_muestra,
                             naturaleza_muestra, procedencia_punto_muestreo, nombre_persona_toma_muestra, fecha_hora_toma_muestra, condicion_muestreo_datos, muestras_json,
                             req_resistencia_concreto, req_resistencia_adoquin, req_resistencia_bloques, req_otros_concreto,
                             req_granulometria, req_limites_atterberg, req_humedad, req_resistencia_corte, req_clasificacion_sucs_hr, req_proctor_sm, req_infiltracion, req_cbr, req_densidad, req_otros_suelo,
                             req_otros_materiales, descripcion_otros_analisis,
                             analisis_adicionales, observaciones, nombre_recibe_cycsa, firma_recibe_cycsa, firma_cliente
                         ) VALUES (
-                            :id_os, :f_llegada, :cod_doc, :n_empresa, :dir, :tel, :email, :p_entrega,
+                            :id_os, :f_llegada, :cod_doc, :n_empresa, :razon_social, :dir, :tel, :email, :p_entrega,
                             :naturaleza, :proc, :p_toma, :f_toma, :cond_m, :m_json,
                             :rc_con, :rc_ado, :rc_blo, :rc_ot,
                             :rg, :rl, :rh, :rs, :rc_sucs, :rp, :ri, :rcbr, :rd, :rs_ot,
@@ -848,6 +883,7 @@ class OperacionModelo extends ModeloBase {
                 'f_llegada' => $fechaHoraLlegada,
                 'cod_doc' => $codigoDoc,
                 'n_empresa' => $nombreEmpresa,
+                'razon_social' => $razonSocial,
                 'dir' => $direccionProj,
                 'tel' => $telefono,
                 'email' => $email,
@@ -880,6 +916,33 @@ class OperacionModelo extends ModeloBase {
                 'f_recibe' => $firmaRecibeCycsa,
                 'f_cliente' => $firmaCliente
             ]);
+
+            // Sincronizar fecha, hora y técnico de muestreo en ordenes_servicio para que se reflejen en el Calendario de Operaciones
+            if (!empty($fechaHoraToma)) {
+                $ts = strtotime($fechaHoraToma);
+                if ($ts) {
+                    $fechaM = date('Y-m-d', $ts);
+                    $horaM = date('H:i:s', $ts);
+                    
+                    $sqlSync = "UPDATE ordenes_servicio SET 
+                                    fecha_muestreo = :fm,
+                                    hora_muestreo = :hm";
+                    $paramsSync = [
+                        'fm' => $fechaM,
+                        'hm' => $horaM,
+                        'id_os' => $idOS
+                    ];
+                    
+                    if (!empty($personaToma)) {
+                        $sqlSync .= ", tecnico_muestreo = :tm, requiere_muestreo = 1";
+                        $paramsSync['tm'] = $personaToma;
+                    }
+                    
+                    $sqlSync .= " WHERE id = :id_os";
+                    $stmtSync = $this->db->prepare($sqlSync);
+                    $stmtSync->execute($paramsSync);
+                }
+            }
 
             if ($lockAcquired) {
                 $this->db->prepare("SELECT RELEASE_LOCK('lock_hojas_solicitud')")->execute();

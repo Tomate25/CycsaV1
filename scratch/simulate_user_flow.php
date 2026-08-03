@@ -132,7 +132,7 @@ try {
     $stmtOs = $db->prepare("INSERT INTO ordenes_servicio 
         (id_cotizacion, codigo_os, tipo_contrato, fecha_emision, estado, requiere_muestreo) 
         VALUES 
-        (:id_cotizacion, 'OS-2026-0001', 'Puntual', '2026-07-14', 'Emitida', 0)");
+        (:id_cotizacion, 'OS-2026-0001', 'Puntual', '2026-07-14', 'Estado 1: Recepcion', 0)");
     $stmtOs->execute(['id_cotizacion' => $idCotizacion]);
     $idOs = $db->lastInsertId();
     echo "✓ Orden de Servicio OS-2026-0001 creada (ID: $idOs)\n";

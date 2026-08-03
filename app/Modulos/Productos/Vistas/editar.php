@@ -23,7 +23,7 @@
     </div>
 <?php endif; ?>
 
-<form action="/Cycsa/publico/productos/editar?id=<?= $producto['id'] ?>" method="POST">
+<form action="/Cycsa/publico/productos/editar?id=<?= codificarId($producto['id']) ?>" method="POST">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
     <div class="seccion-form">

@@ -314,7 +314,7 @@ function formatearDescripcionBitacora(array $log): string {
                                                 <div class="detail-value">
                                                     <?php if ($log['modulo'] === 'cotizaciones'): ?>
                                                         <br>
-                                                        <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= $log['id_referencia'] ?>" class="btn-detail-link">
+                                                        <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($log['id_referencia']) ?>" class="btn-detail-link">
                                                             <i class="fa-solid fa-eye"></i> Ver Cotización Relacionada
                                                         </a>
                                                     <?php elseif ($log['modulo'] === 'usuarios'): ?>

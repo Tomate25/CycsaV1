@@ -103,8 +103,8 @@
                     </td>
                     <td style="color: #6c757d; font-size: 13px;"><?= date('d/m/Y', strtotime($cot['fecha_creacion'])) ?></td>
                     <td style="text-align: right;">
-                        <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= $cot['id'] ?>" class="btn-accion btn-ver" title="Ver Detalle"><i class="fa-solid fa-eye"></i></a>
-                        <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= $cot['id'] ?>" target="_blank" class="btn-accion btn-ver" style="color: #e31837;" title="Imprimir PDF"><i class="fa-solid fa-file-pdf"></i></a>
+                        <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cot['id']) ?>" class="btn-accion btn-ver" title="Ver Detalle"><i class="fa-solid fa-eye"></i></a>
+                        <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cot['id']) ?>" target="_blank" class="btn-accion btn-ver" style="color: #e31837;" title="Imprimir PDF"><i class="fa-solid fa-file-pdf"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>

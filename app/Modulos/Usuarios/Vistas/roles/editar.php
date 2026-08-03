@@ -9,7 +9,7 @@
         <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">Modifica el nombre, descripción o los permisos asignados por defecto al rol <strong><?= htmlspecialchars($rol['nombre'] ?? '', ENT_QUOTES, 'UTF-8') ?></strong>.</p>
     </div>
 
-    <form action="/Cycsa/publico/roles/editar?id=<?= htmlspecialchars($rol['id'] ?? '', ENT_QUOTES, 'UTF-8') ?>" method="POST">
+    <form action="/Cycsa/publico/roles/editar?id=<?= codificarId($rol['id']) ?>" method="POST">
         <?php if (isset($error)): ?>
             <div style="background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; margin-bottom: 20px; text-align: center; border: 1px solid #ef9a9a; font-size: 14px;">
                 <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>

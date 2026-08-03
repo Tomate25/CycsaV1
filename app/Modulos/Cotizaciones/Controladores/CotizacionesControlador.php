@@ -183,7 +183,7 @@ class CotizacionesControlador extends ControladorBase {
         $id = (int)($_GET['id'] ?? 0);
         $modelo = new CotizacionModelo();
         $cot = $modelo->obtenerPorId($id);
-        if ($cot['estado'] !== 'Observada' && $cot['estado'] !== 'Rechazada por Cliente') { $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id='.$id); return; }
+        if ($cot['estado'] !== 'Observada' && $cot['estado'] !== 'Rechazada por Cliente') { $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id='.codificarId($id)); return; }
         $prodModelo = new ProductoModelo();
         $configModelo = new ConfiguracionModelo();
         $this->renderizar('cotizaciones/vistas/editar', [
@@ -247,7 +247,7 @@ class CotizacionesControlador extends ControladorBase {
                 $destinatario = !empty($cot['cliente_email']) ? $cot['cliente_email'] : '';
                 $titulo_correo = "Cotización Oficial Corregida - CYCSA - " . $cot['codigo'];
                 $token = $cot['token_seguridad'];
-                $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id={$id}&token={$token}";
+                $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id=" . codificarId($id) . "&token={$token}";
 
                 $mensaje = "
                 <html>
@@ -411,7 +411,7 @@ class CotizacionesControlador extends ControladorBase {
             registrarBitacora('cotizaciones', 'devolver_gerencia', 'Devuelta cotización con observaciones por Gerencia: ' . $cot['codigo'] . ' - Motivo: ' . $datos['motivo_observacion'], $id);
         }
         
-        $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id='.$id);
+        $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id='.codificarId($id));
     }
 
     public function enviarCliente(Peticion $peticion, Respuesta $respuesta): void {
@@ -441,7 +441,7 @@ class CotizacionesControlador extends ControladorBase {
                 $exito = $modelo->volverEnviarRechazada($id);
                 if (!$exito) {
                     $_SESSION['envio_exitoso'] = "Error al procesar el re-envío de la cotización.";
-                    $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . $id);
+                    $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
                     return;
                 }
                 // Recargar cotización para obtener nueva versión, token, etc.
@@ -465,7 +465,7 @@ class CotizacionesControlador extends ControladorBase {
                 $titulo_correo .= " (V" . $cotizacion['version'] . ")";
             }
             
-            $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id={$id}&token={$token}";
+            $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id=" . codificarId($id) . "&token={$token}";
             
             $mensaje = "
             <html>
@@ -553,7 +553,7 @@ class CotizacionesControlador extends ControladorBase {
                 @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
             }
             
-            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . $id);
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
             return;
         }
     }
@@ -645,7 +645,7 @@ class CotizacionesControlador extends ControladorBase {
             
             // Si el estado ya es 'Aprobada por Cliente' o 'Rechazada por Cliente'
             if ($cotizacion['estado'] === 'Aprobada por Cliente' || $cotizacion['estado'] === 'Rechazada por Cliente') {
-                $respuesta->redirigir("/Cycsa/publico/cotizaciones/decision-cliente?id={$id}&token={$token}");
+                $respuesta->redirigir("/Cycsa/publico/cotizaciones/decision-cliente?id=" . codificarId($id) . "&token={$token}");
                 return;
             }
             
@@ -801,7 +801,7 @@ class CotizacionesControlador extends ControladorBase {
             
             // CSRF Check
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . $id);
+                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
                 return;
             }
             
@@ -811,7 +811,7 @@ class CotizacionesControlador extends ControladorBase {
                 $modelo->actualizarEstado($id, 'En Revision', $cot['id_usuario_revisor'] ?? $_SESSION['usuario_id'], $cot['motivo_observacion'], $cot['token_seguridad']);
                 registrarBitacora('cotizaciones', 'enviar_revision', 'Cotización enviada a revisión de Gerencia: ' . $cot['codigo'], $id);
             }
-             $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . $id);
+             $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
         }
     }
 
@@ -830,7 +830,7 @@ class CotizacionesControlador extends ControladorBase {
             
             // Validar CSRF
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . $id);
+                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
                 return;
             }
 
@@ -838,7 +838,7 @@ class CotizacionesControlador extends ControladorBase {
             $cotizacion = $modelo->obtenerPorId($id);
 
             if (!$cotizacion || $cotizacion['estado'] !== 'Enviada al Cliente') {
-                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . $id);
+                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
                 return;
             }
 
@@ -860,7 +860,7 @@ class CotizacionesControlador extends ControladorBase {
                 $nuevoEstado = 'Rechazada por Cliente';
                 if (empty($motivo_rechazo)) {
                     $_SESSION['envio_exitoso'] = 'Error: Debe especificar el motivo del rechazo.';
-                    $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . $id);
+                    $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
                     return;
                 }
                 $motivo = $motivo_rechazo;
@@ -909,7 +909,7 @@ class CotizacionesControlador extends ControladorBase {
                 $_SESSION['envio_exitoso'] = "Error al intentar actualizar la decisión de la cotización.";
             }
 
-            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . $id);
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
         }
     }
 
@@ -967,17 +967,44 @@ class CotizacionesControlador extends ControladorBase {
 
     private function procesarDetalles($datos): array {
         $detalles = [];
+        $prodModelo = new ProductoModelo();
         for ($i = 0; $i < count($datos['ensayo_desc'] ?? []); $i++) {
             if (!empty(trim($datos['ensayo_desc'][$i]))) {
                 $id_prod = !empty($datos['ensayo_id_producto'][$i]) ? (int)$datos['ensayo_id_producto'][$i] : null;
                 $cant = (float)$datos['ensayo_cant'][$i]; $prec = (float)$datos['ensayo_precio'][$i];
+
+                // Obtener datos del formulario
+                $codigo = !empty(trim($datos['ensayo_codigo'][$i] ?? '')) ? trim($datos['ensayo_codigo'][$i]) : null;
+                $norma = !empty(trim($datos['ensayo_norma'][$i] ?? '')) ? trim($datos['ensayo_norma'][$i]) : null;
+                $formato = !empty(trim($datos['ensayo_formato'][$i] ?? '')) ? trim($datos['ensayo_formato'][$i]) : null;
+                $obs = !empty(trim($datos['ensayo_obs'][$i] ?? '')) ? trim($datos['ensayo_obs'][$i]) : null;
+
+                // Si hay un producto del catálogo, completar datos faltantes desde la BD
+                if ($id_prod) {
+                    $producto = $prodModelo->obtenerPorId($id_prod);
+                    if ($producto) {
+                        if (empty($codigo)) {
+                            $codigo = $producto['codigo_servicio'] ?? null;
+                        }
+                        if (empty($norma)) {
+                            $norma = $producto['norma_astm'] ?? null;
+                        }
+                        if (empty($formato)) {
+                            $formato = $producto['formato_reporte'] ?? null;
+                        }
+                        if (empty($obs)) {
+                            $obs = $producto['observaciones'] ?? null;
+                        }
+                    }
+                }
+
                 $detalles[] = [
                     'id_producto' => $id_prod,
                     'descripcion' => trim($datos['ensayo_desc'][$i]), 
-                    'codigo_servicio' => !empty(trim($datos['ensayo_codigo'][$i] ?? '')) ? trim($datos['ensayo_codigo'][$i]) : null,
-                    'norma_astm' => !empty(trim($datos['ensayo_norma'][$i] ?? '')) ? trim($datos['ensayo_norma'][$i]) : null,
-                    'formato_reporte' => !empty(trim($datos['ensayo_formato'][$i] ?? '')) ? trim($datos['ensayo_formato'][$i]) : null,
-                    'observaciones' => !empty(trim($datos['ensayo_obs'][$i] ?? '')) ? trim($datos['ensayo_obs'][$i]) : null,
+                    'codigo_servicio' => $codigo,
+                    'norma_astm' => $norma,
+                    'formato_reporte' => $formato,
+                    'observaciones' => $obs,
                     'cantidad' => $cant, 
                     'precio' => $prec, 
                     'subtotal' => $cant * $prec
@@ -1000,7 +1027,7 @@ class CotizacionesControlador extends ControladorBase {
             $id_cotizacion = (int)($datos['id_cotizacion'] ?? 0);
             $resultados_json = $datos['resultados_json'] ?? '';
 
-            $redir = !empty($datos['redireccionar_a']) ? $datos['redireccionar_a'] : '/Cycsa/publico/cotizaciones/detalle?id=' . $id_cotizacion;
+            $redir = !empty($datos['redireccionar_a']) ? $datos['redireccionar_a'] : '/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id_cotizacion);
 
             if ($id_detalle <= 0) {
                 $_SESSION['error'] = 'Detalle inválido.';
@@ -1064,9 +1091,25 @@ class CotizacionesControlador extends ControladorBase {
 
         // Parse saved rows
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-        $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_detalle_cotizacion = :id_detalle AND identificador_especimen != 'Muestra' AND edad_dias > 0");
-        $stmtCount->execute(['id_detalle' => $id_detalle]);
-        $esEnsayoEdades = ((int)$stmtCount->fetchColumn() > 0);
+        $formatosEdades = [
+            'resistencia_de_concreto.md',
+            'resistencia_de_mortero.md',
+            'resistencia_de_nucleo_de_concreto.md',
+            'formato_de_resistencia_de_a_la_flexion.md',
+            'formato_de_resistencia_de_bloques.md',
+            'resistencia_de_adoquines.md',
+            'resistencia_de_ladrillo.md',
+            'resistencia_de_martillo_suizo.md',
+            'formato_de_lodo_concreto.md',
+            'formato_de_reveniemiento_y_temperatura.md'
+        ];
+        $archivoMd = $detalle['archivo_markdown'] ?? '';
+        $esEnsayoEdades = false;
+        if (in_array($archivoMd, $formatosEdades)) {
+            $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_detalle_cotizacion = :id_detalle AND identificador_especimen != 'Muestra' AND edad_dias > 0");
+            $stmtCount->execute(['id_detalle' => $id_detalle]);
+            $esEnsayoEdades = ((int)$stmtCount->fetchColumn() > 0);
+        }
 
         if ($esEnsayoEdades) {
             $columnas = [

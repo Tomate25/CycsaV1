@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Middleware;
+namespace Cycsa\App\Middleware;
 
 /**
  * Middleware para agregar cabeceras de seguridad.
@@ -24,3 +24,4 @@ class SecurityHeadersMiddleware
         return true;
     }
 }
+

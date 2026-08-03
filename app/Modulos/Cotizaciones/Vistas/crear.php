@@ -790,12 +790,25 @@
         const datalist = document.getElementById('productos-datalist');
         
         const valorNorm = normalizarTexto(valor);
-        const opcion = Array.from(datalist.options).find(opt => {
+        
+        // Intentar match exacto primero
+        let opcion = Array.from(datalist.options).find(opt => {
             const valNorm = normalizarTexto(opt.value);
             const textNorm = normalizarTexto(opt.textContent);
             const labelNorm = normalizarTexto(opt.getAttribute('label') || '');
-            return valNorm === valorNorm || textNorm === valorNorm || labelNorm === valorNorm;
+            const ensayoNorm = normalizarTexto(opt.getAttribute('data-ensayo-servicio') || '');
+            return valNorm === valorNorm || textNorm === valorNorm || labelNorm === valorNorm || ensayoNorm === valorNorm;
         });
+        
+        // Si no hay match exacto, buscar si coincide parcialmente (ej: si escribe "CYCSA-PE-10")
+        if (!opcion && valorNorm.length >= 4) {
+            opcion = Array.from(datalist.options).find(opt => {
+                const valNorm = normalizarTexto(opt.value);
+                const textNorm = normalizarTexto(opt.textContent);
+                const ensayoNorm = normalizarTexto(opt.getAttribute('data-ensayo-servicio') || '');
+                return valNorm.includes(valorNorm) || textNorm.includes(valorNorm) || ensayoNorm.includes(valorNorm);
+            });
+        }
         
         const idInput = fila.querySelector('.prod-id-input');
         const codigoInput = fila.querySelector('.spec-codigo');
@@ -812,8 +825,8 @@
             const precioInput = fila.querySelector('.precio-input');
             precioInput.value = precio.toFixed(2);
             
-            // Reemplazar la descripción con el nombre comercial del producto seleccionado
-            input.value = opcion.value;
+            // Reemplazar la descripción con el nombre comercial o ensayo técnico seleccionado
+            input.value = opcion.getAttribute('data-ensayo-servicio') || opcion.value;
             
             // Auto-rellenar info técnica
             const codigo = opcion.getAttribute('data-codigo') || '';
@@ -1038,7 +1051,11 @@
         $codigo_opcion = $prod['codigo_servicio'] ?? '';
         $formato_opcion = (!empty($prod['codigo_servicio']) && strpos($prod['codigo_servicio'], 'CYCSA-RT-') !== false) ? $prod['codigo_servicio'] : ($prod['formato_reporte'] ?? '');
         
+        // Concatenar descripción técnica completa para que se indexe y se busque
         $nombre = $nombre_comercial_solo;
+        if (!empty($prod['ensayo_servicio'])) {
+            $nombre = $prod['ensayo_servicio'] . ' (' . $nombre . ')';
+        }
         if (!empty($codigo_opcion)) {
             $nombre = $codigo_opcion . ' - ' . $nombre;
         }
@@ -1049,6 +1066,7 @@
                 data-codigo="<?= htmlspecialchars($codigo_opcion, ENT_QUOTES, 'UTF-8') ?>"
                 data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-formato="<?= htmlspecialchars($formato_opcion, ENT_QUOTES, 'UTF-8') ?>"
+                data-ensayo-servicio="<?= htmlspecialchars($prod['ensayo_servicio'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             <?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?>
         </option>

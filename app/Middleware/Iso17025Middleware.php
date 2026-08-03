@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Middleware;
+namespace Cycsa\App\Middleware;
 
 /**
  * Middleware para validar cumplimiento de norma ISO 17025.
@@ -28,3 +28,4 @@ class Iso17025Middleware
         return true;
     }
 }
+

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Middleware;
+namespace Cycsa\App\Middleware;
 
 /**
  * Middleware para bloqueo/limitación de intentos de login o peticiones.
@@ -45,3 +45,4 @@ class RateLimitMiddleware
         return true;
     }
 }
+

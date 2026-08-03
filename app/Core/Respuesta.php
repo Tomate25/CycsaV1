@@ -27,8 +27,12 @@ class Respuesta {
 
     public function enviarJson(array $datos, int $codigoEstado = 200): void {
         $this->establecerCodigoEstado($codigoEstado);
-        header('Content-Type: application/json');
-        echo json_encode($datos);
+        header('Content-Type: application/json; charset=utf-8');
+        $json = json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($json === false) {
+            $json = json_encode(['status' => 'error', 'message' => 'Error al codificar respuesta JSON: ' . json_last_error_msg()]);
+        }
+        echo $json;
         exit;
     }
 }

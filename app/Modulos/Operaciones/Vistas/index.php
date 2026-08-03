@@ -167,17 +167,20 @@
                 </thead>
                 <tbody>
                     <?php foreach ($ordenes as $o): 
-                        $totalItems = count($o['items']);
-                        $receivedItems = 0;
-                        foreach ($o['items'] as $item) {
-                            if (!empty($item['codigo_muestra'])) {
-                                $receivedItems++;
+                        $totalItemsOS = count($o['items']);
+                        $matricesLlenadas = 0;
+                        foreach ($o['items'] as $it) {
+                            if (!empty($it['resultados_json']) && $it['resultados_json'] !== '[]') {
+                                $matricesLlenadas++;
                             }
                         }
+                        $matrizCompleta = ($totalItemsOS > 0 && $matricesLlenadas === $totalItemsOS);
+                        $tieneTecnico = !empty($o['tecnico_muestreo']);
+                        $tieneHojaServicio = !empty($o['hoja_solicitud']);
                     ?>
                     <tr id="os-row-<?= $o['id'] ?>" data-detail-id="os-detail-<?= $o['id'] ?>">
                         <td style="text-align: center;">
-                            <button class="btn-toggle-detail" onclick="toggleDetailOS(<?= $o['id'] ?>, this)" title="Ver Ensayos">
+                            <button class="btn-toggle-detail" onclick="toggleDetailOS(<?= $o['id'] ?>, this)" title="Ver Productos y Rellenar Matriz">
                                 <i class="fa-solid fa-chevron-right"></i>
                             </button>
                         </td>
@@ -190,270 +193,107 @@
                         </td>
                         <td><?= date('d/m/Y', strtotime($o['fecha_emision'])) ?></td>
                         <td>
-                            <span class="badge-estado estado-<?= str_replace([' ', ':'], '-', $o['estado']) ?>"><?= htmlspecialchars($o['estado'], ENT_QUOTES, 'UTF-8') ?></span>
-                                                 <!-- DETALLE EXPLICATIVO DE LA FASE -->
-                            <?php if ($o['estado'] === 'Estado 1: Recepcion'): ?>
-                                <?php if (empty($o['hoja_solicitud'])): ?>
-                                    <div class="phase-alert" style="background:#fef2f2; border-color:#fecaca; color:#b91c1c;">
-                                        <i class="fa-solid fa-circle-exclamation"></i> <strong>PENDIENTE:</strong> Registrar la Hoja de Solicitud de Servicio (CYCSA-RT-FM) para poder enviar a revisión.
-                                    </div>
-                                <?php else: ?>
-                                    <div class="phase-alert" style="background:#f8fafc; border-color:#e2e8f0; color:#475569;">
-                                        <i class="fa-solid fa-circle-check"></i> Hoja <?= htmlspecialchars($o['hoja_solicitud']['codigo_documento'] ?? 'CYCSA-RT-FM', ENT_QUOTES, 'UTF-8') ?> registrada. <a href="/Cycsa/publico/operaciones/descargar-solicitud?id_os=<?= $o['id'] ?>" target="_blank" style="color:var(--cycsa-azul); font-weight:700; text-decoration:underline;">Ver PDF</a>. Listo para enviar a revisión de supervisor.
-                                    </div>
-                                <?php endif; ?>
-                            <?php elseif ($o['estado'] === 'Estado 2: Revision'): ?>
-                                <div class="phase-alert" style="background:#eff6ff; border-color:#bfdbfe; color:#1e40af;">
-                                    <i class="fa-solid fa-circle-info"></i> Pendiente de aprobación de supervisor. Se validará si requiere muestreo en campo. <a href="/Cycsa/publico/operaciones/descargar-solicitud?id_os=<?= $o['id'] ?>" target="_blank" style="color:var(--cycsa-azul); font-weight:700; text-decoration:underline;">Ver PDF</a>
-                                </div>
-                            <?php elseif ($o['estado'] === 'Estado 2: Observada'): ?>
-                                <div class="phase-alert" style="background:#fef2f2; border-color:#fecaca; color:#b91c1c;">
-                                    <i class="fa-solid fa-circle-xmark"></i> <strong>OS OBSERVADA:</strong> <?= htmlspecialchars($o['motivo_observacion'] ?? 'Sin motivo indicado.', ENT_QUOTES, 'UTF-8') ?>. Edite la hoja de solicitud y re-envíe a revisión.
-                                </div>
-                            <?php elseif ($o['estado'] === 'Estado 3: Ingreso Directo'): ?>
-                                <div class="phase-alert" style="background:#f0fdf4; border-color:#bbf7d0; color:#15803d;">
-                                    <i class="fa-solid fa-circle-check"></i> <strong>RUTA DIRECTA:</strong> No requiere muestreo en campo. Listo para ingreso técnico.
-                                </div>
-                            <?php elseif ($o['estado'] === 'Estado 3A: Programacion Muestreo'): ?>
-                                <div class="phase-alert" style="background:#fffbeb; border-color:#fef3c7; color:#b45309;">
-                                    <i class="fa-solid fa-circle-info"></i> <strong>RUTA DE CAMPO:</strong> Requiere programar fecha, técnico y vehículo de muestreo.
-                                </div>
-                            <?php elseif ($o['estado'] === 'Estado 3B: Ejecucion Muestreo'): ?>
-                                <div class="phase-alert" style="background:#fff7ed; border-color:#ffedd5; color:#c2410c;">
-                                    <i class="fa-solid fa-truck"></i> Programación: <?= date('d/m/Y', strtotime($o['fecha_muestreo'])) ?> <?= $o['hora_muestreo'] ?> &bull; Técnico: <?= htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') ?> &bull; Pendiente registrar hoja CYCSA-RT-FM-07.
-                                </div>
-                            <?php elseif ($o['estado'] === 'Estado 3C: Espera Muestreo'): ?>
-                                <?php
-                                $fechaRegistro = strtotime($o['fecha_registro_campo']);
-                                $segundosTranscurridos = time() - $fechaRegistro;
-                                $horasTranscurridas = $segundosTranscurridos / 3600;
-                                $horasRequeridas = (isset($o['horas_espera_requeridas']) && $o['horas_espera_requeridas'] !== null) ? (int)$o['horas_espera_requeridas'] : 24;
-                                $esperaCompletada = $horasTranscurridas >= $horasRequeridas;
-                                $segundosRestantes = max(0, ($horasRequeridas * 3600) - $segundosTranscurridos);
-                                $horasRestantes = floor($segundosRestantes / 3600);
-                                $minutosRestantes = floor(($segundosRestantes % 3600) / 60);
-                                ?>
-                                <?php if ($esperaCompletada || $horasRequeridas == 0): ?>
-                                    <div class="phase-alert" style="background:#ecfdf5; border-color:#a7f3d0; color:#047857;">
-                                        <i class="fa-solid fa-hourglass-end"></i> Período de espera (<?= $horasRequeridas ?>h) completado. Muestras listas para recolección e ingreso.
-                                    </div>
-                                <?php else: ?>
-                                    <div class="phase-alert" style="background:#faf5ff; border-color:#e9d5ff; color:#6b21a8;">
-                                        <i class="fa-solid fa-hourglass-half"></i> Período de espera de <?= $horasRequeridas ?>h activo. Restan: <strong><?= $horasRestantes ?>h <?= $minutosRestantes ?>m</strong> para ingresar.
-                                    </div>
-                                <?php endif; ?>
-                            <?php elseif ($o['estado'] === 'Estado 4: Ingreso Laboratorio'): ?>
-                                <div class="phase-alert" style="background:#ecfeff; border-color:#c5f6fa; color:#0891b2;">
-                                    <i class="fa-solid fa-flask"></i> Muestras en laboratorio. Pendiente registrar ingreso y programación de edades/rupturas.
-                                </div>
-                            <?php elseif ($o['estado'] === 'En Proceso'): ?>
-                                <div class="phase-alert" style="background:#fffbeb; border-color:#fef3c7; color:#b45309;">
-                                    <i class="fa-solid fa-spinner fa-spin"></i> <strong>RECEPCIÓN EN PROCESO:</strong> Se han registrado algunas muestras. Pendiente recibir el resto de muestras facturadas.
-                                </div>
-                            <?php elseif ($o['estado'] === 'Estado 5: Solicitud Tecnicos'): ?>
-                                <div class="phase-alert" style="background:#f0fdf4; border-color:#bbf7d0; color:#166534;">
-                                    <i class="fa-solid fa-file-pdf"></i> Hoja <?= htmlspecialchars($o['hoja_solicitud']['codigo_documento'] ?? 'CYCSA-RT-FM', ENT_QUOTES, 'UTF-8') ?> registrada. <a href="/Cycsa/publico/operaciones/descargar-solicitud?id_os=<?= $o['id'] ?>" target="_blank" style="color:var(--cycsa-azul); font-weight:700; text-decoration:underline;">Ver PDF de Solicitud</a>.
-                                </div>
-                            <?php elseif ($o['estado'] === 'Estado 6: Ejecucion Ensayos'): ?>
-                                <div class="phase-alert" style="background:#fff7ed; border-color:#ffedd5; color:#c2410c;">
-                                    <i class="fa-solid fa-hammer"></i> Ensayos técnicos de laboratorio en ejecución. Blindaje comercial activo.
-                                    <?php if (!empty($o['motivo_observacion'])): ?>
-                                        <br><strong style="color:var(--color-danger);">OBSERVADA:</strong> <?= htmlspecialchars($o['motivo_observacion'], ENT_QUOTES, 'UTF-8') ?>
+                            <?php if ($tieneTecnico): ?>
+                                <div style="font-size: 12.5px; color: #1e293b;">
+                                    <span style="font-weight: 700; color: var(--cycsa-azul);"><i class="fa-solid fa-user-check"></i> Técnico: <?= htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php if (!empty($o['fecha_muestreo'])): ?>
+                                        <br><span style="font-size: 11.5px; color: #64748b;"><i class="fa-solid fa-calendar-day"></i> Visita: <?= date('d/m/Y', strtotime($o['fecha_muestreo'])) ?> <?= $o['hora_muestreo'] ?></span>
                                     <?php endif; ?>
                                 </div>
-                            <?php elseif ($o['estado'] === 'Estado 7: Revision Resultados'): ?>
-                                <div class="phase-alert" style="background:#e0f2fe; border-color:#bae6fd; color:#0369a1;">
-                                    <i class="fa-solid fa-magnifying-glass"></i> Resultados capturados. Esperando revisión de calidad por el supervisor.
-                                </div>
-                            <?php endif; ?>
-
-                            <?php if (!empty($o['hoja_campo_codigo'])): ?>
-                                <div style="margin-top: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: #334155;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
-                                        <strong style="color: #103487; display: flex; align-items: center; gap: 6px; font-family: 'Outfit', sans-serif;">
-                                            <i class="fa-solid fa-lock" style="color: #64748b;"></i> HOJA DE CAMPO SELLADA: <span style="font-family: monospace; color: #103487; font-weight: 800; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;"><?= htmlspecialchars($o['hoja_campo_codigo'], ENT_QUOTES, 'UTF-8') ?></span>
-                                        </strong>
-                                        <span style="background: #e2e8f0; color: #334155; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 700;">
-                                            <i class="fa-solid fa-clock"></i> Tiempo Configurado: <?= (int)($o['horas_espera_requeridas'] ?? 24) ?>h
-                                        </span>
-                                    </div>
-                                    <div style="display: flex; gap: 15px; flex-wrap: wrap; color: #475569; font-size: 12px; margin-top: 4px;">
-                                        <span><i class="fa-solid fa-user-gear" style="color:#103487;"></i> <strong>Operador:</strong> <?= htmlspecialchars($o['hoja_campo_operador'] ?? '—', ENT_QUOTES, 'UTF-8') ?></span>
-                                        <span><i class="fa-solid fa-calendar-check" style="color:#103487;"></i> <strong>Fecha Registro:</strong> <?= !empty($o['fecha_registro_campo']) ? date('d/m/Y H:i', strtotime($o['fecha_registro_campo'])) : '—' ?></span>
-                                        <?php if (!empty($o['hoja_campo_notas'])): ?>
-                                            <span><i class="fa-solid fa-comment-dots" style="color:#103487;"></i> <strong>Notas:</strong> <?= htmlspecialchars($o['hoja_campo_notas'], ENT_QUOTES, 'UTF-8') ?></span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
+                            <?php else: ?>
+                                <button type="button" 
+                                        onclick="abrirModalMuestreo(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')" 
+                                        class="btn-accion btn-os" 
+                                        style="padding: 6px 12px; font-size: 12px; background-color: #fffbeb; color: #b45309; border-color: #fef3c7;">
+                                    <i class="fa-solid fa-user-plus"></i> Asignar Técnico de Visita
+                                </button>
                             <?php endif; ?>
                         </td>
                         <td style="text-align: right; white-space: nowrap; vertical-align: middle;">
-                            <!-- BOTÓN DE FACTURACIÓN / CXC (Según diagrama de flujo) -->
-                            <?php 
-                            $cxcInfo = $cxcMap[$o['cot_codigo']] ?? null;
-                            if ($cxcInfo): 
-                            ?>
-                                <a href="/Cycsa/publico/contabilidad/cxc?q=<?= urlencode($o['cot_codigo']) ?>" 
-                                   class="btn-accion btn-detalle" 
-                                   style="background-color: #10b981; color: white; border: 1px solid #10b981; padding: 7px 12px; font-size:12.5px; font-weight:600; text-decoration:none; display:inline-block; margin-right: 5px; border-radius: 4px;" 
-                                   title="Ver estado de pago de la factura en contabilidad">
-                                    <i class="fa-solid fa-circle-check"></i> Facturado (<?= $cxcInfo['estado'] ?>)
+                            <!-- BOTÓN ÚNICO: GENERAR HOJA DE LABORATORIO (Se habilita al rellenar matriz) -->
+                            <?php if ($matrizCompleta): ?>
+                                <a href="/Cycsa/publico/operaciones/recepcion?id_os=<?= $o['id'] ?>" 
+                                   class="btn-accion btn-recepcion" 
+                                   style="background-color: #10b981; color: white; border-color: #10b981; text-decoration: none; padding: 8px 16px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-paper-plane"></i> Generar Hoja de Laboratorio
                                 </a>
                             <?php else: ?>
-                                <a href="/Cycsa/publico/contabilidad/cxc?prefill_cli=<?= $o['cliente_id'] ?>&prefill_fact=<?= urlencode($o['cot_codigo']) ?>&prefill_monto=<?= $o['cot_total'] ?>&prefill_notes=<?= urlencode('Facturación de Orden de Servicio ' . $o['codigo_os'] . ' - Proyecto: ' . $o['nombre_proyecto']) ?>" 
-                                   class="btn-accion btn-os" 
-                                   style="background-color: #f59e0b; color: white; border: 1px solid #f59e0b; padding: 7px 12px; font-size:12.5px; font-weight:600; text-decoration:none; display:inline-block; margin-right: 5px; border-radius: 4px;" 
-                                   title="Registrar factura en cuentas por cobrar para iniciar proceso de cobro">
-                                    <i class="fa-solid fa-file-invoice-dollar"></i> Facturar CXC
-                                </a>
+                                <button type="button" 
+                                        onclick="intentarGenerarHojaLaboratorio(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>', <?= $tieneTecnico ? 'true' : 'false' ?>)" 
+                                        class="btn-accion btn-detalle" 
+                                        style="background-color: #f8fafc; color: #94a3b8; border-color: #cbd5e1; padding: 8px 16px; font-weight: 600; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-hourglass-half"></i> ⏳ Pendiente Llenar Matriz (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)
+                                </button>
                             <?php endif; ?>
-
-                            <!-- BOTÓN PERMANENTE DE VISUALIZACIÓN PDF HOJA DE SERVICIO (CYCSA-RT-FM-13) SI EXISTE -->
-                            <?php if (!empty($o['hoja_solicitud'])): ?>
-                                <a href="/Cycsa/publico/operaciones/descargar-solicitud?id_os=<?= $o['id'] ?>" 
-                                   target="_blank" 
-                                   class="btn-accion btn-detalle" 
-                                   style="background-color: #dc2626; color: white; border: 1px solid #dc2626; padding: 7px 12px; font-size:12.5px; font-weight:600; text-decoration:none; display:inline-block; margin-right: 5px; border-radius: 4px;" 
-                                   title="Ver o Descargar PDF oficial de la Hoja de Servicio CYCSA-RT-FM-13">
-                                    <i class="fa-solid fa-file-pdf"></i> PDF RT-FM-13
-                                </a>
-                            <?php endif; ?>
-
-                            <!-- BOTONES DE ACCIÓN SEGÚN ESTADO Y FLUJO NORMATIVO -->
-                            <form method="POST" action="/Cycsa/publico/operaciones/actualizar-estado" style="display:inline;">
-                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                                <input type="hidden" name="id_os" value="<?= $o['id'] ?>">
-
-                                <?php if ($o['estado'] === 'Estado 1: Recepcion'): ?>
-                                    <?php if (empty($o['hoja_solicitud'])): ?>
-                                        <button type="button" onclick="abrirModalHojaSolicitud(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')" class="btn-accion btn-recepcion" style="padding: 7px 12px; font-size:12.5px; cursor:pointer;"><i class="fa-solid fa-file-circle-plus"></i> Registrar CYCSA-RT-FM</button>
-                                    <?php else: ?>
-                                        <input type="hidden" name="estado" value="Estado 2: Revision">
-                                        <button type="submit" class="btn-accion btn-primary" style="padding: 7px 12px; font-size:12.5px; margin-right: 5px; cursor: pointer; background: var(--cycsa-azul); border: 1px solid var(--cycsa-azul); color: white; font-weight: 600;"><i class="fa-solid fa-paper-plane"></i> Enviar a Revisión</button>
-                                        <button type="button" onclick="abrirModalHojaSolicitud(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')" class="btn-accion btn-detalle" style="padding: 7px 12px; font-size:12.5px; cursor:pointer;"><i class="fa-solid fa-edit"></i> Editar <?= htmlspecialchars($o['hoja_solicitud']['codigo_documento'] ?? 'CYCSA-RT-FM', ENT_QUOTES, 'UTF-8') ?></button>
-                                    <?php endif; ?>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 2: Revision'): ?>
-                                    <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
-                                        <button type="button" class="btn-accion btn-recepcion" onclick="abrirModalRevision(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')"><i class="fa-solid fa-check"></i> Decisión Supervisor</button>
-                                    <?php else: ?>
-                                        <span style="font-size:12px; color:var(--color-slate-600);"><i class="fa-solid fa-hourglass-half"></i> En Revisión</span>
-                                    <?php endif; ?>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 2: Observada'): ?>
-                                    <input type="hidden" name="estado" value="Estado 2: Revision">
-                                    <button type="submit" class="btn-accion btn-primary" style="padding: 7px 12px; font-size:12.5px; margin-right: 5px; cursor: pointer; background: var(--cycsa-azul); border: 1px solid var(--cycsa-azul); color: white; font-weight: 600;"><i class="fa-solid fa-arrows-rotate"></i> Corregir y Re-enviar</button>
-                                    <button type="button" onclick="abrirModalHojaSolicitud(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')" class="btn-accion btn-detalle" style="padding: 7px 12px; font-size:12.5px; cursor:pointer;"><i class="fa-solid fa-edit"></i> Editar <?= htmlspecialchars($o['hoja_solicitud']['codigo_documento'] ?? 'CYCSA-RT-FM', ENT_QUOTES, 'UTF-8') ?></button>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 3: Ingreso Directo'): ?>
-                                    <a href="/Cycsa/publico/operaciones/recepcion?id_os=<?= $o['id'] ?>" class="btn-accion btn-recepcion"><i class="fa-solid fa-plus-circle"></i> Recibir Muestras</a>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 3A: Programacion Muestreo'): ?>
-                                    <button type="button" class="btn-accion btn-os" onclick="abrirModalMuestreo(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')"><i class="fa-solid fa-calendar-plus"></i> Programar Muestreo</button>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 3B: Ejecucion Muestreo'): ?>
-                                    <?php 
-                                    $autoTecnico = !empty($o['tecnico_muestreo']) ? $o['tecnico_muestreo'] : ($_SESSION['usuario_nombre'] ?? '');
-                                    $autoCodigoDoc = 'CYCSA-RT-FM-07-' . sprintf('%04d', $o['id']);
-                                    $autoHoras = isset($o['horas_espera_requeridas']) ? (int)$o['horas_espera_requeridas'] : 24;
-                                    ?>
-                                    <button type="button" class="btn-accion btn-recepcion" onclick="abrirModalHojaCampo(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>', '<?= htmlspecialchars($autoTecnico, ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars($autoCodigoDoc, ENT_QUOTES, 'UTF-8') ?>', <?= $autoHoras ?>)"><i class="fa-solid fa-file-contract"></i> Registrar CYCSA-RT-FM-07</button>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 3C: Espera Muestreo'): ?>
-                                    <a href="/Cycsa/publico/operaciones/recepcion?id_os=<?= $o['id'] ?>" class="btn-accion btn-recepcion"><i class="fa-solid fa-truck-pickup"></i> Recolectar e Ingresar</a>
-                                    <?php if (!$esperaCompletada && $horasRequeridas > 0): ?>
-                                        <button type="submit" formaction="/Cycsa/publico/operaciones/omitir-espera" class="btn-accion btn-os" style="background:#fff7ed; color:#c2410c; border-color:#ffedd5;" onclick="return confirm('¿Desea omitir las <?= $horasRestantes ?>h <?= $minutosRestantes ?>m restantes e ingresar inmediatamente las muestras?');" title="Liberar tiempo de espera inmediatamente"><i class="fa-solid fa-forward-step"></i> Omitir Espera (<?= $horasRestantes ?>h)</button>
-                                    <?php endif; ?>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 4: Ingreso Laboratorio'): ?>
-                                    <a href="/Cycsa/publico/operaciones/recepcion?id_os=<?= $o['id'] ?>" class="btn-accion btn-recepcion"><i class="fa-solid fa-flask"></i> Recibir en Lab</a>
-                                
-                                <?php elseif ($o['estado'] === 'En Proceso'): ?>
-                                    <a href="/Cycsa/publico/operaciones/recepcion?id_os=<?= $o['id'] ?>" class="btn-accion btn-recepcion"><i class="fa-solid fa-plus-circle"></i> Recibir Pendientes</a>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 5: Solicitud Tecnicos'): ?>
-                                    <button type="submit" formaction="/Cycsa/publico/operaciones/emitir-solicitud" class="btn-accion btn-recepcion"><i class="fa-solid fa-paper-plane"></i> Emitir a Técnicos</button>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 6: Ejecucion Ensayos'): ?>
-                                    <button type="submit" formaction="/Cycsa/publico/operaciones/enviar-revision-resultados" class="btn-accion btn-os"><i class="fa-solid fa-share-from-square"></i> Enviar a Revisión de Resultados</button>
-                                
-                                <?php elseif ($o['estado'] === 'Estado 7: Revision Resultados'): ?>
-                                    <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
-                                        <button type="button" class="btn-accion btn-recepcion" onclick="abrirModalRevisionResultados(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')"><i class="fa-solid fa-graduation-cap"></i> Revisar Calidad</button>
-                                    <?php else: ?>
-                                        <span style="font-size:12px; color:var(--color-slate-600);"><i class="fa-solid fa-hourglass-half"></i> En Revisión de Calidad</span>
-                                    <?php endif; ?>
-                                
-                                <?php elseif ($o['estado'] === 'Finalizado'): ?>
-                                    <span style="color:var(--color-success); font-weight:700;"><i class="fa-solid fa-check-double"></i> OS Completada</span>
-                                <?php endif; ?>
-                            </form>
                         </td>
                     </tr>
                     
-                    <!-- Sub-fila para detalles desplegables -->
-                    <tr class="detalle-os-row" id="os-detail-<?= $o['id'] ?>" style="display: none; background-color: var(--color-slate-50);">
-                        <td colspan="6" style="padding: 15px 25px; border-bottom: 1px solid var(--color-slate-200);">
-                            <div class="detalle-os-card">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
-                                    <div>
-                                        <h4 style="margin: 0; font-family: 'Outfit'; font-size: 14px; font-weight: 700; color: var(--color-slate-900);"><i class="fa-solid fa-circle-info" style="color: var(--cycsa-azul);"></i> Estado de Recepción y Control de Ensayos LIMS</h4>
-                                        <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--color-slate-600);">Muestras ingresadas al laboratorio: <strong><?= $receivedItems ?></strong> de <strong><?= $totalItems ?></strong> totales solicitadas.</p>
-                                    </div>
+                    <!-- Sub-fila para detalles desplegables (Acordeón / Viñetas) -->
+                    <tr class="detalle-os-row" id="os-detail-<?= $o['id'] ?>" style="display: none; background-color: #f8fafc;">
+                        <td colspan="6" style="padding: 15px 25px; border-bottom: 1.5px solid #cbd5e1;">
+                            <div class="detalle-os-card" style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                                    <h4 style="margin: 0; font-family: 'Outfit'; font-size: 15px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                        <i class="fa-solid fa-table-cells" style="color: var(--cycsa-azul);"></i> 
+                                        Productos Cotizados - Rellenar Matriz Técnica de Campo
+                                    </h4>
+                                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">
+                                        Técnico: <strong><?= $tieneTecnico ? htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') : 'Sin asignar' ?></strong>
+                                    </span>
                                 </div>
                                 
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex-wrap: wrap;">
-                                    <!-- Columna: Pendientes -->
-                                    <div style="border-right: 1px solid var(--color-slate-100); padding-right: 10px;">
-                                        <h5 style="margin: 0 0 10px 0; font-size: 12px; color: var(--color-danger); text-transform: uppercase; font-weight: 700; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-clock"></i> Pendientes de Recepción</h5>
-                                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                                            <?php 
-                                            $hasPending = false;
-                                            foreach ($o['items'] as $item): 
-                                                if (empty($item['codigo_muestra'])):
-                                                    $hasPending = true;
-                                            ?>
-                                                <div style="display: flex; align-items: center; justify-content: space-between; background: #fff5f5; border: 1px solid #fed7d7; padding: 8px 12px; border-radius: 6px; font-size: 13px;">
-                                                    <span style="color: #991b1b; font-weight: 500;"><i class="fa-solid fa-flask" style="font-size: 10.5px; margin-right: 6px; color: #f87171;"></i> <?= htmlspecialchars($item['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?></span>
-                                                    <?php if (in_array($o['estado'], ['Estado 3: Ingreso Directo', 'Estado 4: Ingreso Laboratorio', 'Estado 3C: Espera Muestreo', 'En Proceso'])): ?>
-                                                        <a href="/Cycsa/publico/operaciones/recepcion?id_os=<?= $o['id'] ?>&id_detalle=<?= $item['id_detalle'] ?>" class="btn-accion btn-recepcion" style="padding: 4px 10px; font-size: 11px; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-plus-circle"></i> Recibir</a>
-                                                    <?php endif; ?>
+                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                    <?php foreach ($o['items'] as $it): 
+                                        $tieneRes = !empty($it['resultados_json']) && $it['resultados_json'] !== '[]';
+                                    ?>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 8px; transition: all 0.2s;">
+                                            <div>
+                                                <div style="font-weight: 700; color: #0f172a; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                                                    <i class="fa-solid fa-flask" style="color: var(--cycsa-azul);"></i>
+                                                    <?= htmlspecialchars($it['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?>
                                                 </div>
-                                            <?php 
-                                                endif;
-                                            endforeach; 
-                                            if (!$hasPending):
-                                            ?>
-                                                <div style="color: var(--color-slate-600); font-size: 12.5px; font-style: italic; padding: 8px 0;"><i class="fa-solid fa-circle-check" style="color: var(--color-success); margin-right: 6px;"></i> Todas las muestras de esta O/S han sido recibidas y registradas.</div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Columna: Recibidas -->
-                                    <div>
-                                        <h5 style="margin: 0 0 10px 0; font-size: 12px; color: var(--color-success); text-transform: uppercase; font-weight: 700; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-flask-vial"></i> Muestras en Laboratorio</h5>
-                                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                                            <?php 
-                                            $hasReceived = false;
-                                            foreach ($o['items'] as $item): 
-                                                if (!empty($item['codigo_muestra'])):
-                                                    $hasReceived = true;
-                                            ?>
-                                                <div style="display: flex; align-items: center; justify-content: space-between; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 6px; font-size: 13px;">
-                                                    <span style="color: #15803d; font-weight: 500;"><i class="fa-solid fa-flask" style="font-size: 10.5px; margin-right: 6px; color: #4ade80;"></i> <?= htmlspecialchars($item['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?></span>
-                                                    <a href="/Cycsa/publico/operaciones/detalle-lote?id_lote=<?= $item['id_lote'] ?>" class="btn-accion btn-detalle" style="padding: 4px 10px; font-size: 11px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-family: monospace; font-weight: 700;" title="Ver lote y rupturas en Laboratorio">
-                                                        <?= htmlspecialchars($item['codigo_muestra'], ENT_QUOTES, 'UTF-8') ?> <i class="fa-solid fa-chevron-right" style="font-size: 8px;"></i>
+                                                <?php if (!empty($it['norma_astm'])): ?>
+                                                    <div style="font-size: 12px; color: #64748b; font-family: monospace; margin-top: 2px;">
+                                                        Norma: <?= htmlspecialchars($it['norma_astm'], ENT_QUOTES, 'UTF-8') ?> &bull; Formato: <?= htmlspecialchars($it['formato_nombre'] ?? 'Matriz Técnica', ENT_QUOTES, 'UTF-8') ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <?php if ($tieneRes): ?>
+                                                    <span style="background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 700;">
+                                                        <i class="fa-solid fa-circle-check"></i> CON RESULTADOS
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span style="background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 700;">
+                                                        <i class="fa-solid fa-hourglass"></i> PENDIENTE MATRIZ
+                                                    </span>
+                                                <?php endif; ?>
+
+                                                <?php if (!$tieneHojaServicio): ?>
+                                                    <button type="button" 
+                                                            onclick="intentarRellenarMatrizProducto(false, <?= $tieneTecnico ? 'true' : 'false' ?>, <?= $o['id'] ?>, '<?= $o['codigo_os'] ?>', <?= $it['id'] ?>)" 
+                                                            class="btn-accion-hs btn-editar" 
+                                                            style="padding: 7px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; cursor: pointer; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">
+                                                        <i class="fa-solid fa-lock"></i> Requiere Hoja de Servicio Primero
+                                                    </button>
+                                                <?php elseif (!$tieneTecnico): ?>
+                                                    <button type="button" 
+                                                            onclick="intentarRellenarMatrizProducto(true, false, <?= $o['id'] ?>, '<?= $o['codigo_os'] ?>', <?= $it['id'] ?>)" 
+                                                            class="btn-accion-hs btn-editar" 
+                                                            style="padding: 7px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; cursor: pointer; background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">
+                                                        <i class="fa-solid fa-user-lock"></i> Asignar Técnico Primero
+                                                    </button>
+                                                <?php else: ?>
+                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" 
+                                                       class="btn-accion-hs btn-registrar" 
+                                                       style="text-decoration: none; padding: 7px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                                                        <i class="fa-solid fa-pen-to-square"></i> <?= $tieneRes ? 'Editar Matriz' : 'Rellenar Matriz' ?>
                                                     </a>
-                                                </div>
-                                            <?php 
-                                                endif;
-                                            endforeach; 
-                                            if (!$hasReceived):
-                                            ?>
-                                                <div style="color: var(--color-slate-600); font-size: 12.5px; font-style: italic; padding: 8px 0;"><i class="fa-solid fa-circle-exclamation" style="margin-right: 6px; color: var(--color-warning);"></i> Ninguna muestra ingresada en el laboratorio todavía.</div>
-                                            <?php endif; ?>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
-                                    </div>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
                         </td>
@@ -473,50 +313,7 @@
 
 </div>
 
-<!-- MODAL DECISIÓN SUPERVISOR (Fase 1 a Fase 2) -->
-<div id="modalRevision" class="modal-premium">
-    <div class="modal-premium-content" style="width: 40%;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0; color: var(--color-slate-900); font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700;">Revisión de Orden de Servicio: <span id="rev_codigo_os" style="color:var(--cycsa-azul);"></span></h3>
-            <button onclick="cerrarModalRevision()" class="btn-cerrar">&times;</button>
-        </div>
-        
-        <form method="POST" action="/Cycsa/publico/operaciones/actualizar-estado" id="form-revision-os">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <input type="hidden" name="id_os" id="rev_id_os">
-            <input type="hidden" name="estado" id="rev_nuevo_estado" value="">
-            
-            <div class="form-group" id="group-muestreo-check">
-                <label style="font-weight: 700; font-size: 13px; color: #1e293b; margin-bottom: 8px;">¿Requiere Muestreo en Campo?</label>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                    <label style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 12px; cursor: pointer; text-align: center; display: block; background: white;" id="card-muestreo-si" onclick="setRequiereMuestreo(1)">
-                        <input type="radio" name="requiere_muestreo" value="1" style="display:none;" id="radio-muestreo-si">
-                        <div style="font-weight: 700; font-size: 14px; color: #1e293b;">SÍ REQUIERE</div>
-                        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Ruta de Campo (Estado 3A)</div>
-                    </label>
-                    <label style="border: 2px solid #cbd5e1; border-radius: 8px; padding: 12px; cursor: pointer; text-align: center; display: block; background: white;" id="card-muestreo-no" onclick="setRequiereMuestreo(0)">
-                        <input type="radio" name="requiere_muestreo" value="0" style="display:none;" id="radio-muestreo-no">
-                        <div style="font-weight: 700; font-size: 14px; color: #1e293b;">NO REQUIERE</div>
-                        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Ingreso Directo (Estado 3)</div>
-                    </label>
-                </div>
-            </div>
-
-            <div class="form-group" id="group-motivo-obs" style="display:none; margin-top: 15px;">
-                <label style="font-weight: 700; font-size: 13px; color: #b91c1c; display: block; margin-bottom: 5px;">Indique el Motivo de Observación / Corrección (Requerido)</label>
-                <textarea name="motivo_observacion" id="rev_motivo" class="form-control" rows="3" placeholder="Ej: Los diámetros de vigas son incorrectos en la descripción, corregir..."></textarea>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; gap: 15px; margin-top: 25px; border-top:1px solid var(--color-slate-100); padding-top:15px;">
-                <button type="button" onclick="ejecutarObservacionOS()" class="btn-accion btn-danger" style="cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Observar / Rechazar</button>
-                <div style="display:flex; gap:10px;">
-                    <button type="button" onclick="cerrarModalRevision()" class="btn-accion btn-detalle" style="cursor:pointer; margin:0;">Cancelar</button>
-                    <button type="button" onclick="ejecutarAprobacionOS()" class="btn-accion btn-primary" id="btn-aprobar-submit" style="display:none; cursor:pointer;"><i class="fa-solid fa-circle-check"></i> Aprobar y Continuar</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- Supervisor decision modal moved to /hojas-servicio module -->
 
 <!-- MODAL PROGRAMACIÓN MUESTREO (Fase 2) -->
 <div id="modalMuestreo" class="modal-premium">
@@ -530,36 +327,55 @@
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <input type="hidden" name="id_os" id="mues_id_os">
             
+            <div class="form-group" style="margin-bottom:15px; background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:8px;">
+                <label style="font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">Modalidad de Entrega / Muestreo:</label>
+                <div style="display:flex; gap:20px;">
+                    <label style="font-weight:600; cursor:pointer; font-size:13px; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                        <input type="radio" name="modalidad_muestreo" value="tecnico" checked onclick="toggleModalidadMuestreo('tecnico')">
+                        👷‍♂️ Técnico CYCSA (Muestreo en Sitio)
+                    </label>
+                    <label style="font-weight:600; cursor:pointer; font-size:13px; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                        <input type="radio" name="modalidad_muestreo" value="cliente" onclick="toggleModalidadMuestreo('cliente')">
+                        👤 Cliente Trajo Muestra a Lab
+                    </label>
+                </div>
+            </div>
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 <div class="form-group">
-                    <label>Fecha de Muestreo</label>
-                    <input type="date" name="fecha_muestreo" required class="form-control" value="<?= date('Y-m-d') ?>">
+                    <label id="lbl_fecha_mues">Fecha de Muestreo / Recepción</label>
+                    <input type="date" name="fecha_muestreo" id="input_fecha_mues" required class="form-control" value="<?= date('Y-m-d') ?>">
                 </div>
                 <div class="form-group">
-                    <label>Hora de Muestreo</label>
-                    <input type="time" name="hora_muestreo" class="form-control" value="08:00">
+                    <label id="lbl_hora_mues">Hora Exacta Registrada</label>
+                    <input type="time" name="hora_muestreo" id="input_hora_mues" required class="form-control" value="<?= date('H:i') ?>">
                 </div>
             </div>
             
-            <div class="form-group">
+            <div class="form-group" id="grp_tecnico_cycsa">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <label>Técnico de Muestreo Asignado</label>
                     <a href="/Cycsa/publico/configuracion" style="font-size:11px; color:var(--cycsa-azul); text-decoration:underline;" target="_blank"><i class="fa-solid fa-plus-circle"></i> Gestionar Técnicos</a>
                 </div>
-                <select name="tecnico_muestreo" required class="form-control" style="font-size:13px; padding:10px 14px;">
+                <select name="tecnico_muestreo_select" id="select_tecnico_muestreo" class="form-control" style="font-size:13px; padding:10px 14px;">
                     <option value="">-- Seleccionar Técnico --</option>
                     <?php foreach ($tecnicos as $t): ?>
                         <option value="<?= htmlspecialchars($t['nombre'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($t['nombre'], ENT_QUOTES, 'UTF-8') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
+
+            <div class="form-group" id="grp_cliente_entrega" style="display:none;">
+                <label>Nombre del Cliente / Entregante que trajo la Muestra</label>
+                <input type="text" name="cliente_entrega_nombre" id="input_cliente_entrega" class="form-control" placeholder="Ej: Cliente (Entregado en Recepción por Ing. Carlos Ruiz)">
+            </div>
             
-            <div class="form-group">
+            <div class="form-group" id="grp_vehiculo_cycsa">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <label>Vehículo de Muestreo Asignado</label>
                     <a href="/Cycsa/publico/configuracion" style="font-size:11px; color:var(--cycsa-azul); text-decoration:underline;" target="_blank"><i class="fa-solid fa-plus-circle"></i> Gestionar Vehículos</a>
                 </div>
-                <select name="vehiculo_muestreo" required class="form-control" style="font-size:13px; padding:10px 14px;">
+                <select name="vehiculo_muestreo" id="select_vehiculo_muestreo" class="form-control" style="font-size:13px; padding:10px 14px;">
                     <option value="">-- Seleccionar Vehículo --</option>
                     <?php foreach ($vehiculos as $v): ?>
                         <?php 
@@ -570,10 +386,51 @@
                 </select>
             </div>
 
+            <input type="hidden" name="tecnico_muestreo" id="final_tecnico_muestreo" value="">
+
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                 <button type="button" onclick="cerrarModalMuestreo()" class="btn-accion btn-detalle" style="cursor:pointer; margin:0;">Cancelar</button>
-                <button type="submit" class="btn-accion btn-primary" style="cursor:pointer;">Guardar y Programar</button>
+                <button type="submit" onclick="prepararSubmitMuestreo(event)" class="btn-accion btn-primary" style="cursor:pointer;">Guardar y Registrar en Hoja de Servicio</button>
             </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function toggleModalidadMuestreo(tipo) {
+        const grpTec = document.getElementById('grp_tecnico_cycsa');
+        const grpCli = document.getElementById('grp_cliente_entrega');
+        const grpVeh = document.getElementById('grp_vehiculo_cycsa');
+        const selTec = document.getElementById('select_tecnico_muestreo');
+        const selVeh = document.getElementById('select_vehiculo_muestreo');
+
+        if (tipo === 'cliente') {
+            grpTec.style.display = 'none';
+            grpVeh.style.display = 'none';
+            grpCli.style.display = 'block';
+            selTec.removeAttribute('required');
+            selVeh.removeAttribute('required');
+        } else {
+            grpTec.style.display = 'block';
+            grpVeh.style.display = 'block';
+            grpCli.style.display = 'none';
+            selTec.setAttribute('required', 'required');
+            selVeh.setAttribute('required', 'required');
+        }
+    }
+
+    function prepararSubmitMuestreo(e) {
+        const mod = document.querySelector('input[name="modalidad_muestreo"]:checked').value;
+        const finalInput = document.getElementById('final_tecnico_muestreo');
+
+        if (mod === 'cliente') {
+            const nomCli = document.getElementById('input_cliente_entrega').value.trim();
+            finalInput.value = nomCli !== '' ? ('Cliente: ' + nomCli) : 'Cliente (Entregado en Recepción)';
+        } else {
+            finalInput.value = document.getElementById('select_tecnico_muestreo').value;
+        }
+    }
+</script>
         </form>
     </div>
 </div>
@@ -655,222 +512,7 @@
     </div>
 </div>
 
-<!-- MODAL REGISTRAR/EDITAR HOJA DE SOLICITUD DE SERVICIO (CYCSA-RT-FM-13) -->
-<div id="modalHojaSolicitud" class="modal-premium" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.4);">
-    <div class="modal-premium-content" style="width: 80%; max-width: 850px; max-height: 85vh; overflow-y: auto; padding: 25px 35px; background: white; margin: 5% auto; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--color-slate-100); padding-bottom: 12px;">
-            <div>
-                <h3 style="margin: 0; color: var(--color-slate-900); font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;">Hoja de Solicitud de Servicio (Ingreso)</h3>
-                <p style="margin: 3px 0 0 0; font-size: 12px; color: var(--color-slate-500);">Documento CYCSA-RT-FM-13 vinculado a la O/S: <strong id="hs_codigo_os_label" style="color:var(--cycsa-azul);"></strong></p>
-            </div>
-            <button onclick="cerrarModalHojaSolicitud()" class="btn-cerrar" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">&times;</button>
-        </div>
-        
-        <div id="loading-hoja-solicitud" style="display:none; text-align:center; padding: 40px;">
-            <i class="fa-solid fa-spinner fa-spin" style="font-size:32px; color:var(--cycsa-azul);"></i>
-            <p style="color:var(--color-slate-600); margin-top:10px; font-size:14px;">Cargando datos de la O/S...</p>
-        </div>
-
-        <form method="POST" action="/Cycsa/publico/operaciones/guardar-hoja-solicitud" id="form-hoja-solicitud" style="display:none;">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <input type="hidden" name="id_os" id="hs_id_os">
-
-            <!-- 1. METADATOS Y CONTROL INTERNO -->
-            <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px; margin-top: 15px;"><i class="fa-solid fa-clipboard-check"></i> 1. Metadatos y Control Interno</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label>Fecha/Hora de Llegada al Lab</label>
-                    <input type="datetime-local" name="fecha_hora_llegada_laboratorio" id="hs_fecha_llegada" required class="form-control" style="font-size:13px; padding:8px 12px;">
-                </div>
-                <div class="form-group">
-                    <label>Código del Documento</label>
-                    <input type="text" name="codigo_documento" id="hs_codigo_documento" readonly class="form-control" style="background:#f1f5f9; font-weight:700; font-size:13px; padding:8px 12px;" value="CYCSA-RT-FM-01">
-                </div>
-            </div>
-
-            <!-- 2. DATOS DEL CLIENTE -->
-            <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-user-tie"></i> 1. Empresa o Cliente que Solicita el Servicio</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom: 12px;">
-                <div class="form-group">
-                    <label>Nombre Empresa/Cliente</label>
-                    <input type="text" name="nombre_empresa_o_cliente" id="hs_nombre_empresa" required class="form-control" style="font-size:13px; padding:8px 12px;">
-                </div>
-                <div class="form-group">
-                    <label>Dirección Proyecto/Obra</label>
-                    <input type="text" name="direccion_proyecto" id="hs_direccion" required class="form-control" style="font-size:13px; padding:8px 12px;">
-                </div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label>Teléfono</label>
-                    <input type="text" name="telefono" id="hs_telefono" required class="form-control" style="font-size:13px; padding:8px 12px;">
-                </div>
-                <div class="form-group">
-                    <label>Correo Electrónico</label>
-                    <input type="email" name="correo_electronico" id="hs_email" required class="form-control" style="font-size:13px; padding:8px 12px;">
-                </div>
-                <div class="form-group">
-                    <label>Nombre de quien trae la muestra</label>
-                    <input type="text" name="nombre_persona_entrega_muestra" id="hs_persona_entrega" required class="form-control" style="font-size:13px; padding:8px 12px;">
-                </div>
-            </div>
-
-            <!-- 3. DATOS DE LA MUESTRA -->
-            <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-flask-vial"></i> 1. Datos de la Muestra (Sección 1.1 y 1.2)</div>
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label>Naturaleza de la Muestra (Seleccione todas las que apliquen)</label>
-                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:5px;">
-                    <?php foreach (['Concreto', 'Bloques', 'Suelo', 'Adoquines', 'Agregados', 'Otros materiales'] as $nat): ?>
-                        <label style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; font-size:13px; cursor:pointer;">
-                            <input type="checkbox" name="naturaleza_muestra[]" value="<?= $nat ?>" class="hs-nat-checkbox"> <?= $nat ?>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label>Procedencia/ Punto de muestreo</label>
-                    <input type="text" name="procedencia_punto_muestreo" id="hs_procedencia" required class="form-control" style="font-size:13px; padding:8px 12px;">
-                </div>
-                <div class="form-group">
-                    <label>Persona quien tomó la muestra</label>
-                    <input type="text" name="nombre_persona_toma_muestra" id="hs_persona_toma" required class="form-control" style="font-size:13px; padding:8px 12px;">
-                </div>
-                <div class="form-group">
-                    <label>Fecha y hora de toma muestra</label>
-                    <input type="datetime-local" name="fecha_hora_toma_muestra" id="hs_fecha_toma" required class="form-control" style="font-size:13px; padding:8px 12px;">
-                </div>
-            </div>
-
-            <!-- 4. IDENTIFICACIONES PROPIAS (TABLA DINÁMICA) -->
-            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;">
-                <span><i class="fa-solid fa-list-ol"></i> 2. Identificaciones Propias de la Muestra (Especímenes)</span>
-                <button type="button" class="btn-accion btn-os" style="padding:4px 8px; font-size:11px; cursor:pointer;" onclick="agregarFilaMuestraModal()"><i class="fa-solid fa-plus"></i> Agregar Muestra</button>
-            </div>
-            <table class="tabla-cycsa" style="width:100%; border-collapse:collapse; margin-bottom:20px;" id="hs-tabla-muestras">
-                <thead>
-                    <tr style="background:#f1f5f9;">
-                        <th style="font-size:12px; padding:8px; text-align:left;">Nombre de la muestra</th>
-                        <th style="font-size:12px; padding:8px; text-align:left;">Descripción</th>
-                        <th style="font-size:12px; padding:8px; text-align:left;">Informaciones importantes</th>
-                        <th style="width:40px; padding:8px; text-align:center;"></th>
-                    </tr>
-                </thead>
-                <tbody id="hs-tbody-muestras">
-                    <!-- Filas dinámicas se insertan aquí -->
-                </tbody>
-            </table>
-
-            <!-- 5. PARÁMETROS SOLICITADOS -->
-            <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-vials"></i> 3. Parámetros Solicitados</div>
-            
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:15px; margin-bottom:15px;">
-                <h5 style="margin: 0 0 10px 0; font-family:'Outfit'; font-size:13.5px; color:var(--cycsa-azul);">3.1 Muestra de Concreto, Adoquines, Bloques</h5>
-                <div style="display:flex; gap:15px; flex-wrap:wrap; margin-bottom:10px;">
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_resistencia_concreto" value="1" id="hs_req_resistencia_concreto"> Resistencia de conc
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_resistencia_adoquin" value="1" id="hs_req_resistencia_adoquin"> Resistencia de adoquin
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_resistencia_bloques" value="1" id="hs_req_resistencia_bloques"> Resistencia bloques
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label style="font-size:12px;">Otros Concreto (Especificar)</label>
-                    <input type="text" name="req_otros_concreto" id="hs_req_otros_concreto" class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="Ej: Revenimiento, flexión...">
-                </div>
-            </div>
-
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:15px; margin-bottom:15px;">
-                <h5 style="margin: 0 0 10px 0; font-family:'Outfit'; font-size:13.5px; color:var(--cycsa-azul);">3.2 Muestras de Suelo</h5>
-                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px; margin-bottom:10px;">
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_granulometria" value="1" id="hs_req_granulometria"> Granulometría
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_limites_atterberg" value="1" id="hs_req_limites_atterberg"> Límites de atterberg
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_humedad" value="1" id="hs_req_humedad"> Humedad
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_resistencia_corte" value="1" id="hs_req_resistencia_corte"> Resistencia al corte
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_clasificacion_sucs_hr" value="1" id="hs_req_clasificacion_sucs_hr"> Clasificación SUCS/HR
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_proctor_sm" value="1" id="hs_req_proctor_sm"> PROCTOR S/M
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_infiltracion" value="1" id="hs_req_infiltracion"> Infiltración
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_cbr" value="1" id="hs_req_cbr"> CBR
-                    </label>
-                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" name="req_densidad" value="1" id="hs_req_densidad"> Densidad
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label style="font-size:12px;">Otros Suelos (Especificar)</label>
-                    <input type="text" name="req_otros_suelo" id="hs_req_otros_suelo" class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="Ej: Expansión, permeabilidad...">
-                </div>
-            </div>
-
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:15px; margin-bottom:15px;">
-                <h5 style="margin: 0 0 10px 0; font-family:'Outfit'; font-size:13.5px; color:var(--cycsa-azul);">3.3 Otros Materiales</h5>
-                <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; margin-bottom:10px;">
-                    <input type="checkbox" name="req_otros_materiales" value="1" id="hs_req_otros_materiales"> Otro
-                </label>
-                <div class="form-group">
-                    <label style="font-size:12px;">Detalle qué análisis necesita</label>
-                    <textarea name="descripcion_otros_analisis" id="hs_descripcion_otros" class="form-control" rows="2" style="font-size:13px;" placeholder="Describa el ensayo especial solicitado..."></textarea>
-                </div>
-            </div>
-
-            <!-- 6. CIERRE, OBSERVACIONES Y FIRMAS -->
-            <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-signature"></i> Campos Finales / Cierre</div>
-            <div class="form-group" style="margin-bottom:12px;">
-                <label>Análisis adicionales</label>
-                <textarea name="analisis_adicionales" id="hs_analisis_adicionales" class="form-control" rows="2" style="font-size:13px;" placeholder="Instrucciones adicionales para el laboratorio..."></textarea>
-            </div>
-            <div class="form-group" style="margin-bottom:15px;">
-                <label>Observaciones</label>
-                <textarea name="observaciones" id="hs_observaciones" class="form-control" rows="2" style="font-size:13px;" placeholder="Novedades observadas en la recepción..."></textarea>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom:15px;">
-                <div class="form-group">
-                    <label>Persona CYCSA que Recibe</label>
-                    <input type="text" name="nombre_recibe_cycsa" id="hs_nombre_recibe" required class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="Nombre completo">
-                </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <div style="display:flex; align-items:center; height:38px;">
-                        <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; margin:0;">
-                            <input type="checkbox" name="firma_recibe_cycsa" value="1" id="hs_firma_recibe_cycsa"> ¿Firma digitalizada receptor?
-                        </label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <div style="display:flex; align-items:center; height:38px;">
-                        <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; margin:0;">
-                            <input type="checkbox" name="firma_cliente" value="1" id="hs_firma_cliente"> ¿Firma digitalizada cliente?
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; border-top:1px solid var(--color-slate-100); padding-top:15px;">
-                <button type="button" onclick="cerrarModalHojaSolicitud()" class="btn-accion btn-detalle" style="padding:8px 20px; font-size:13px; cursor:pointer;">Cancelar</button>
-                <button type="submit" class="btn-accion btn-primary" style="padding:8px 20px; font-size:13px; cursor:pointer;"><i class="fa-solid fa-save"></i> Guardar y Generar PDF</button>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- Modal Hoja Solicitud moved to /hojas-servicio module -->
 
 <script>
     // Tab functionality
@@ -887,98 +529,49 @@
         filtrarTabla('');
     }
 
-    // Detail dropdown
-    function toggleDetailOS(id, btn) {
-        const detailRow = document.getElementById('os-detail-' + id);
-        const parentRow = document.getElementById('os-row-' + id);
-        const toggleBtn = parentRow.querySelector('.btn-toggle-detail');
-        const icon = toggleBtn.querySelector('i');
+    function intentarGenerarHojaLaboratorio(idOS, codigoOS, tieneTecnico) {
+        if (!tieneTecnico) {
+            alert('Debe asignar primero un técnico muestreador de visita antes de continuar.');
+            abrirModalMuestreo(idOS, codigoOS);
+            return;
+        }
+        alert('Debe rellenar primero la matriz técnica de los productos cotizados para habilitar la Hoja de Laboratorio.');
+        abrirModalMatrizEnsayosOS(idOS, codigoOS);
+    }
+
+    function intentarRellenarMatrizProducto(tieneHoja, tieneTecnico, idOS, codigoOS, idDetalle) {
+        if (!tieneHoja) {
+            alert('Debe llenar y registrar primero la Hoja de Servicio (CYCSA-RT-FM-13) en el módulo de Hojas de Servicio antes de rellenar la matriz técnica.');
+            window.location.href = '/Cycsa/publico/hojas-servicio';
+            return;
+        }
+        if (!tieneTecnico) {
+            alert('Debe asignar primero un técnico muestreador de visita antes de rellenar la matriz del producto.');
+            abrirModalMuestreo(idOS, codigoOS);
+            return;
+        }
+        abrirModalMatrizEnsayosOS(idOS, codigoOS);
+    }
+
+    function toggleDetailOS(idOS, btn) {
+        const detailRow = document.getElementById('os-detail-' + idOS);
+        if (!detailRow) return;
+        const icon = btn.querySelector('i');
         
-        if (detailRow.style.display === 'none') {
+        if (detailRow.style.display === 'none' || detailRow.style.display === '') {
             detailRow.style.display = 'table-row';
-            icon.className = 'fa-solid fa-chevron-down';
-            parentRow.style.backgroundColor = 'var(--color-slate-50)';
-            toggleBtn.style.color = 'var(--cycsa-azul)';
-            toggleBtn.style.backgroundColor = 'var(--color-slate-200)';
+            if (icon) icon.className = 'fa-solid fa-chevron-down';
+            btn.style.color = 'var(--cycsa-azul)';
+            btn.style.backgroundColor = '#eff6ff';
         } else {
             detailRow.style.display = 'none';
-            icon.className = 'fa-solid fa-chevron-right';
-            parentRow.style.backgroundColor = '';
-            toggleBtn.style.color = 'var(--color-slate-600)';
-            toggleBtn.style.backgroundColor = '';
+            if (icon) icon.className = 'fa-solid fa-chevron-right';
+            btn.style.color = 'var(--color-slate-600)';
+            btn.style.backgroundColor = '';
         }
     }
 
-    // Modal Revision Initial
-    const modRev = document.getElementById('modalRevision');
-    function abrirModalRevision(id, code) {
-        document.getElementById('rev_id_os').value = id;
-        document.getElementById('rev_codigo_os').innerText = code;
-        document.getElementById('radio-muestreo-si').checked = false;
-        document.getElementById('radio-muestreo-no').checked = false;
-        document.getElementById('card-muestreo-si').style.borderColor = '#cbd5e1';
-        document.getElementById('card-muestreo-si').style.background = 'white';
-        document.getElementById('card-muestreo-no').style.borderColor = '#cbd5e1';
-        document.getElementById('card-muestreo-no').style.background = 'white';
-        
-        document.getElementById('btn-aprobar-submit').style.display = 'none';
-        document.getElementById('group-motivo-obs').style.display = 'none';
-        document.getElementById('rev_motivo').value = '';
-        modRev.style.display = 'block';
-    }
-    function cerrarModalRevision() {
-        modRev.style.display = 'none';
-    }
-    function setRequiereMuestreo(val) {
-        document.getElementById('group-motivo-obs').style.display = 'none';
-        document.getElementById('btn-aprobar-submit').style.display = 'inline-flex';
-        
-        if (val === 1) {
-            document.getElementById('radio-muestreo-si').checked = true;
-            document.getElementById('card-muestreo-si').style.borderColor = 'var(--cycsa-azul)';
-            document.getElementById('card-muestreo-si').style.background = 'var(--primary-light)';
-            document.getElementById('card-muestreo-no').style.borderColor = '#cbd5e1';
-            document.getElementById('card-muestreo-no').style.background = 'white';
-            
-            // Si requiere, irá a Programación Muestreo
-            document.getElementById('rev_nuevo_estado').value = 'Estado 3A: Programacion Muestreo';
-        } else {
-            document.getElementById('radio-muestreo-no').checked = true;
-            document.getElementById('card-muestreo-no').style.borderColor = 'var(--cycsa-azul)';
-            document.getElementById('card-muestreo-no').style.background = 'var(--primary-light)';
-            document.getElementById('card-muestreo-si').style.borderColor = '#cbd5e1';
-            document.getElementById('card-muestreo-si').style.background = 'white';
-            
-            // Si no requiere, irá a Ingreso Directo
-            document.getElementById('rev_nuevo_estado').value = 'Estado 3: Ingreso Directo';
-        }
-    }
-    function ejecutarObservacionOS() {
-        const groupObs = document.getElementById('group-motivo-obs');
-        if (groupObs.style.display === 'none') {
-            groupObs.style.display = 'block';
-            document.getElementById('rev_motivo').focus();
-            document.getElementById('btn-aprobar-submit').style.display = 'none';
-            
-            // Quitar estilos de tarjetas
-            document.getElementById('card-muestreo-si').style.borderColor = '#cbd5e1';
-            document.getElementById('card-muestreo-si').style.background = 'white';
-            document.getElementById('card-muestreo-no').style.borderColor = '#cbd5e1';
-            document.getElementById('card-muestreo-no').style.background = 'white';
-        } else {
-            const motivo = document.getElementById('rev_motivo').value.trim();
-            if (motivo === '') {
-                alert('Por favor, indique la razón de la observación.');
-                document.getElementById('rev_motivo').focus();
-                return;
-            }
-            document.getElementById('rev_nuevo_estado').value = 'Estado 2: Observada';
-            document.getElementById('form-revision-os').submit();
-        }
-    }
-    function ejecutarAprobacionOS() {
-        document.getElementById('form-revision-os').submit();
-    }
+    // (Modal Revisión movido a /hojas-servicio - ver HojasServicioControlador.php)
 
     // Modal Programar Muestreo
     const modMues = document.getElementById('modalMuestreo');
@@ -1074,157 +667,349 @@
         });
     }
 
-    // Hoja Solicitud Modal
-    const modHS = document.getElementById('modalHojaSolicitud');
-    const hsLoading = document.getElementById('loading-hoja-solicitud');
-    const hsForm = document.getElementById('form-hoja-solicitud');
+    // (Hoja Solicitud Modal movido a /hojas-servicio - ver HojasServicioControlador.php)
 
-    function abrirModalHojaSolicitud(idOS, code) {
-        document.getElementById('hs_codigo_os_label').innerText = code;
-        modHS.style.display = 'block';
-        hsLoading.style.display = 'block';
-        hsForm.style.display = 'none';
+    window.addEventListener('click', (e) => {
+        if (e.target === modMues) cerrarModalMuestreo();
+        if (e.target === modField) cerrarModalHojaCampo();
+        if (e.target === modQC) cerrarModalRevisionResultados();
+        if (e.target === document.getElementById('modalMatrizEnsayosOS')) cerrarModalMatrizEnsayosOS();
+    });
 
-        // Limpiar tabla dinámica de especímenes
-        document.getElementById('hs-tbody-muestras').innerHTML = '';
+    function abrirModalMatrizEnsayosOS(idOS, code) {
+        document.getElementById('m_matriz_codigo_os').innerText = code;
+        document.getElementById('m_matriz_loading').style.display = 'block';
+        document.getElementById('m_matriz_contenido').style.display = 'none';
+        document.getElementById('modalMatrizEnsayosOS').style.display = 'block';
 
-        fetch('/Cycsa/publico/operaciones/hoja-solicitud-datos?id_os=' + idOS)
+        fetch('/Cycsa/publico/operaciones/obtener-matriz-os?id_os=' + idOS)
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'error') {
-                    alert(data.message);
-                    cerrarModalHojaSolicitud();
+                document.getElementById('m_matriz_loading').style.display = 'none';
+                if (data.status !== 'success' || !data.items) {
+                    alert(data.message || 'Error al obtener matriz de la O/S');
                     return;
                 }
-                
-                const hoja = data.hoja;
-                const os = data.os;
 
-                // Llenar campos
-                document.getElementById('hs_id_os').value = hoja.id_os;
-                document.getElementById('hs_codigo_documento').value = hoja.codigo_documento || 'CYCSA-RT-FM-01';
-                document.getElementById('hs_fecha_llegada').value = hoja.fecha_hora_llegada_laboratorio || '';
-                document.getElementById('hs_nombre_empresa').value = hoja.nombre_empresa_o_cliente || '';
-                document.getElementById('hs_direccion').value = hoja.direccion_proyecto || '';
-                document.getElementById('hs_telefono').value = hoja.telefono || '';
-                document.getElementById('hs_email').value = hoja.correo_electronico || '';
-                document.getElementById('hs_persona_entrega').value = hoja.nombre_persona_entrega_muestra || '';
-                document.getElementById('hs_procedencia').value = hoja.procedencia_punto_muestreo || '';
-                document.getElementById('hs_persona_toma').value = hoja.nombre_persona_toma_muestra || '';
-                document.getElementById('hs_fecha_toma').value = hoja.fecha_hora_toma_muestra || '';
-                
-                // Checkboxes de naturaleza
-                const natureList = (hoja.naturaleza_muestra || '').split(',');
-                document.querySelectorAll('.hs-nat-checkbox').forEach(cb => {
-                    cb.checked = natureList.includes(cb.value);
-                });
+                const tbody = document.getElementById('tbody-matriz-items-os');
+                tbody.innerHTML = '';
 
-                // Parámetros de concreto
-                document.getElementById('hs_req_resistencia_concreto').checked = parseInt(hoja.req_resistencia_concreto) === 1;
-                document.getElementById('hs_req_resistencia_adoquin').checked = parseInt(hoja.req_resistencia_adoquin) === 1;
-                document.getElementById('hs_req_resistencia_bloques').checked = parseInt(hoja.req_resistencia_bloques) === 1;
-                document.getElementById('hs_req_otros_concreto').value = hoja.req_otros_concreto || '';
-
-                // Parámetros de suelos
-                document.getElementById('hs_req_granulometria').checked = parseInt(hoja.req_granulometria) === 1;
-                document.getElementById('hs_req_limites_atterberg').checked = parseInt(hoja.req_limites_atterberg) === 1;
-                document.getElementById('hs_req_humedad').checked = parseInt(hoja.req_humedad) === 1;
-                document.getElementById('hs_req_resistencia_corte').checked = parseInt(hoja.req_resistencia_corte) === 1;
-                document.getElementById('hs_req_clasificacion_sucs_hr').checked = parseInt(hoja.req_clasificacion_sucs_hr) === 1;
-                document.getElementById('hs_req_proctor_sm').checked = parseInt(hoja.req_proctor_sm) === 1;
-                document.getElementById('hs_req_infiltracion').checked = parseInt(hoja.req_infiltracion) === 1;
-                document.getElementById('hs_req_cbr').checked = parseInt(hoja.req_cbr) === 1;
-                document.getElementById('hs_req_densidad').checked = parseInt(hoja.req_densidad) === 1;
-                document.getElementById('hs_req_otros_suelo').value = hoja.req_otros_suelo || '';
-
-                // Otros
-                document.getElementById('hs_req_otros_materiales').checked = parseInt(hoja.req_otros_materiales) === 1;
-                document.getElementById('hs_descripcion_otros').value = hoja.descripcion_otros_analisis || '';
-
-                // Footer / Cierre
-                document.getElementById('hs_analisis_adicionales').value = hoja.analisis_adicionales || '';
-                document.getElementById('hs_observaciones').value = hoja.observaciones || '';
-                document.getElementById('hs_nombre_recibe').value = hoja.nombre_recibe_cycsa || '';
-                document.getElementById('hs_firma_recibe_cycsa').checked = parseInt(hoja.firma_recibe_cycsa) === 1;
-                document.getElementById('hs_firma_cliente').checked = parseInt(hoja.firma_cliente) === 1;
-
-                // Cargar filas de especímenes
-                let muestras = [];
-                try {
-                    muestras = JSON.parse(hoja.muestras_json || '[]');
-                } catch(e) {
-                    muestras = [];
-                }
-                
-                siguienteConsecutivoMuestra = data.siguiente_consecutivo;
-                anioActualMuestra = data.anio_actual;
-
-                if (muestras.length === 0) {
-                    agregarFilaMuestraModal('', 'Cilindros de concreto', 'Estándar');
+                if (data.items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#64748b;">No hay ensayos registrados para esta Orden de Servicio.</td></tr>';
                 } else {
-                    muestras.forEach(m => {
-                        agregarFilaMuestraModal(m.nombre_muestra, m.descripcion, m.info_importante);
+                    const tieneTecnicoOS = !!(data.os && data.os.tecnico_muestreo);
+                    data.items.forEach(it => {
+                        const tr = document.createElement('tr');
+                        tr.style.borderBottom = '1px solid #f1f5f9';
+                        
+                        const tieneResultados = it.resultados_json && it.resultados_json !== '[]';
+                        const badgeHtml = tieneResultados 
+                            ? '<span style="background-color:#dcfce7; color:#15803d; border:1px solid #bbf7d0; margin-right:8px; font-size:11px; padding:4px 8px; border-radius:12px; font-weight:700;"><i class="fa-solid fa-circle-check"></i> CON RESULTADOS</span>'
+                            : '<span style="background-color:#f1f5f9; color:#475569; border:1px solid #cbd5e1; margin-right:8px; font-size:11px; padding:4px 8px; border-radius:12px; font-weight:700;"><i class="fa-solid fa-hourglass"></i> PENDIENTE</span>';
+
+                        const btnMatrizHtml = tieneTecnicoOS
+                            ? `<a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=${it.id}" class="btn-accion-hs btn-registrar" style="text-decoration:none; padding:7px 14px; font-size:12px; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:6px;"><i class="fa-solid fa-pen-to-square"></i> ${tieneResultados ? 'Editar Matriz' : 'Capturar Matriz'}</a>`
+                            : `<button type="button" onclick="intentarRellenarMatrizProducto(false, ${idOS}, '${code}', ${it.id})" class="btn-accion-hs btn-editar" style="padding:7px 14px; font-size:12px; font-weight:700; border-radius:6px; cursor:pointer; background:#fffbeb; color:#b45309; border:1px solid #fde68a;"><i class="fa-solid fa-user-lock"></i> Asignar Técnico Primero</button>`;
+
+                        tr.innerHTML = `
+                            <td style="padding:12px 14px; font-weight:700; color:#0f172a;">${it.descripcion_ensayo}</td>
+                            <td style="padding:12px 14px; color:#475569; font-family:monospace; font-size:12.5px;">${it.norma_astm || 'N/A'}</td>
+                            <td style="padding:12px 14px; font-weight:500; color:#334155;">${it.formato_nombre || 'Matriz Técnica'}</td>
+                            <td style="padding:12px 14px; font-weight:700; text-align:center;">${parseInt(it.cantidad || 1)}</td>
+                            <td style="padding:12px 14px; text-align:right; white-space:nowrap;">
+                                ${badgeHtml}
+                                ${btnMatrizHtml}
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
                     });
                 }
 
-                hsLoading.style.display = 'none';
-                hsForm.style.display = 'block';
+                document.getElementById('m_matriz_contenido').style.display = 'block';
             })
             .catch(err => {
                 console.error(err);
                 alert('Error al conectar con el servidor.');
-                cerrarModalHojaSolicitud();
+                cerrarModalMatrizEnsayosOS();
             });
     }
 
-    function cerrarModalHojaSolicitud() {
-        modHS.style.display = 'none';
+    function escapeHtml(text) {
+        return (text || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+    function escapeJson(jsonStr) {
+        if (!jsonStr) return "'[]'";
+        return "'" + jsonStr.replace(/'/g, "\\'") + "'";
     }
 
-    let siguienteConsecutivoMuestra = 1;
-    let anioActualMuestra = new Date().getFullYear();
-
-    function agregarFilaMuestraModal(nombre = '', desc = '', info = '') {
-        if (nombre === '') {
-            nombre = 'MC-' + String(siguienteConsecutivoMuestra).padStart(3, '0') + '-' + anioActualMuestra;
-            siguienteConsecutivoMuestra++;
-        }
-        if (desc === '') {
-            desc = 'Cilindros de concreto';
-        }
-        if (info === '') {
-            info = 'Estándar';
-        }
-        const tbody = document.getElementById('hs-tbody-muestras');
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="padding:6px;"><input type="text" name="m_nombre[]" readonly class="form-control" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:6px 10px; background:#f1f5f9; cursor:not-allowed;" value="${nombre}"></td>
-            <td style="padding:6px;"><input type="text" name="m_desc[]" required class="form-control" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:6px 10px;" value="${desc}"></td>
-            <td style="padding:6px;"><input type="text" name="m_info[]" class="form-control" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:6px 10px;" value="${info}"></td>
-            <td style="width:40px; text-align:center; padding:6px;"><button type="button" class="btn-action btn-danger" style="padding:4px 8px; font-size:11px; cursor:pointer;" onclick="eliminarFilaMuestraModal(this)">&times;</button></td>
-        `;
-        tbody.appendChild(tr);
+    function cerrarModalMatrizEnsayosOS() {
+        document.getElementById('modalMatrizEnsayosOS').style.display = 'none';
     }
 
-    function eliminarFilaMuestraModal(btn) {
-        const tbody = document.getElementById('hs-tbody-muestras');
-        if (tbody.children.length > 1) {
-            btn.closest('tr').remove();
+    // Modal de Resultados Directos por Producto (Schemas de Ensayos CYCSA)
+    const FORMATOS_SCHEMA_INDEX = {
+        "compactacion_densimetro_nuclear.md": {"columns": ["Código laboratorio", "Nombre muestra", "Capa (N°)", "Espesor (cm)", "Profundidad (cm)", "P.V.S Max (kg/m³)", "Humedad Óptima ((% )(P/P))", "P.V.S.Sitio (kg/cm²)", "Humedad Sitio ((%) (P/P))", "Humedad Sitio (kg/m³)", "Compactación ((%) (P/P))", "Fecha de muestreo"]},
+        "ensayos_varios.md": {"columns": ["Código laboratorio", "Nombre muestra", "Color", "PVSS (kg/m³)", "PVSC (kg/m³)", "Módulo de finura ((%) (P/P))", "Humedad Natural ((%) (P/P))", "Absorción ((%)(P/P))", "Gravedad Específica.", "Gravedad Específica (SSS)", "Gravedad Específica Aparente"]},
+        "formato_de_compactacion_por_cono_de_arena.md": {"columns": ["Código laboratorio", "Nombre muestra", "Capa (N°)", "Espesor (cm)", "Profundidad (cm)", "P.V.S Max (kg/m³)", "Humedad Óptima ((% )(P/P))", "P.V.S.Sitio (kg/m³)", "Humedad sitio ((%) (P/P))", "Humedad Sitio (kg/m³)", "Compactación ((%) (P/P))", "Fecha de muestreo"]},
+        "formato_de_compactacion_por_reemplazo_de_agua_no_acreditado.md": {"columns": ["Código laboratorio", "Nombre muestra", "Capa (N°)", "Espesor (cm)", "Profundidad (cm)", "P.V.S Max (kg/m³)", "Humedad Óptima (( %)(P/P))", "P.V.S.Sitio (kg/m³)", "Humedad sitio ((%) (P/P))", "Humedad Sitio (kg/m³)", "Compactación ((%) (P/P))", "Fecha de muestreo"]},
+        "formato_de_equivalente_de_arena.md": {"columns": ["Código laboratorio", "Nombre muestra", "Equivalente de arena. ((%)(P/P))"]},
+        "formato_de_granulometria_de_suelo.md": {"columns": ["Malla", "P. Retenido parcial (gr)", "% Retenido parcial", "% Acumulativo", "% que pasa la malla", "Límite Mín", "Límite Máx"]},
+        "formato_de_lodo_concreto.md": {"columns": ["Código laboratorio", "Nombre muestra", "Área (cm²)", "Carga (kg)", "Peso Volumétrico (kg/m³)", "Diseño (kg/cm²)", "R. compresión. (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
+        "formato_de_particulas_desmezurables.md": {"columns": ["Código laboratorio", "Nombre muestra", "Terrones de arcilla. ((%)(P/P))"]},
+        "formato_de_resistencia_de_a_la_flexion.md": {"columns": ["Código laboratorio", "Nombre muestra", "Ancho Promedio (in)", "Espesor Promedio (in)", "Longitud de Apoyo (in)", "Reven. (in)", "Reven. (cm)", "Temp. (°C)", "Carga (lb)", "Peso volumétrico (kg/m³)", "Diseño MR (kg/cm²)", "Resistencia a la flexión. (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
+        "formato_de_resistencia_de_bloques.md": {"columns": ["Descripción", "Método de ensayo", "Unidad", "Resultado", "Min", "Max"]},
+        "formato_de_reveniemiento_y_temperatura.md": {"columns": ["Código laboratorio", "Nombre muestra", "Reven. (in)", "Reven. (cm)", "Temp. (°C)", "Diseño de concreto (lb/in²)", "Fecha de Fabricación", "Fecha de Finalización"]},
+        "formato_de_suelo_cemento.md": {"columns": ["Código laboratorio", "Nombre muestra", "Color"]},
+        "granulomnetria_de_agregados.md": {"columns": ["Malla", "P. Retenido parcial (gr)", "% Retenido parcial", "% Acumulativo", "% que pasa la malla", "Límite Mín", "Límite Máx"]},
+        "pesos_volumetricos.md": {"columns": ["Código laboratorio", "Nombre muestra", "P.V.S.S (kg/m³)", "P.V.S.C (kg/m³)", "Humedad Natural (%)"]},
+        "proctor_estandar.md": {"columns": ["Muestra", "P.V.S Max (kg/m³)", "Humedad Óptima (%)"]},
+        "resistencia_de_adoquines.md": {"columns": ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "Peso Volumétrico (kg/m³)", "Diseño (lb/in²)", "R. Compresión (lb/in²)", "R. Compresión. (kg/cm²)", "Absorción ((%)(P/P))", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
+        "resistencia_de_concreto.md": {"columns": ["Código laboratorio", "Nombre muestra", "Área (in²)", "Reven. (in)", "Reven. (cm)", "Temp. (°C)", "Carga (lb)", "Peso Volumétrico (kg/m³)", "Diseño de concreto (lb/in²)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
+        "resistencia_de_ladrillo.md": {"columns": ["Código laboratorio", "Nombre muestra", "Área (cm²)", "Carga (kg)", "Peso Volumétrico (kg/m³)", "R. a la compresión (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
+        "resistencia_de_martillo_suizo.md": {"columns": ["Código laboratorio", "Nombre muestra", "Diseño de Concreto (lb/in²)", "Forma de Prueba", "Promedio de Rebotes (N°)", "Estimación R. compresión (lb/in²)", "Estimación R. compresión (kg/cm²)", "Fecha de Fabricación", "Edad (Días)"]},
+        "resistencia_de_mortero.md": {"columns": ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "Peso Volumétrico (kg/m³)", "Diseño de Mortero (lb/in²)", "R. Compresión (lb/in²)", "R. Compresión. (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
+        "resistencia_de_nucleo_de_concreto.md": {"columns": ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "Peso Volumétrico (kg/m³)", "Diseño de concreto (lb/in²)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)", "Fecha de Fabricación", "Fecha de Ruptura", "Edad (Días)"]}
+    };
+
+    let columnasDirectas = [];
+
+    function abrirModalResultadosDirecto(idDetalle, nombreEnsayo, archivoMarkdown, resultadosJsonStr) {
+        document.getElementById('m_res_id_detalle').value = idDetalle;
+        document.getElementById('m_res_titulo_ensayo').innerText = 'Capturar Matriz Técnica: ' + nombreEnsayo;
+        
+        const schema = FORMATOS_SCHEMA_INDEX[archivoMarkdown] || { columns: [] };
+        columnasDirectas = schema.columns;
+        if (columnasDirectas.length === 0) {
+            columnasDirectas = ["Código laboratorio", "Nombre muestra", "Lectura / Resultado"];
+        }
+
+        // Render Header
+        const headerRow = document.createElement('tr');
+        columnasDirectas.forEach(col => {
+            const th = document.createElement('th');
+            th.innerText = col;
+            th.style.padding = '12px 10px';
+            th.style.fontSize = '11.5px';
+            th.style.backgroundColor = '#f8fafc';
+            th.style.color = '#475569';
+            th.style.borderBottom = '2px solid #e2e8f0';
+            headerRow.appendChild(th);
+        });
+        const headerContainer = document.getElementById('tabla-directa-header');
+        headerContainer.innerHTML = '';
+        headerContainer.appendChild(headerRow);
+
+        // Render Body
+        const bodyContainer = document.getElementById('tabla-directa-body');
+        bodyContainer.innerHTML = '';
+
+        let data = [];
+        try {
+            data = (typeof resultadosJsonStr === 'string') ? JSON.parse(resultadosJsonStr) : (resultadosJsonStr || []);
+        } catch(e) {
+            data = [];
+        }
+
+        if (data.length === 0) {
+            agregarFilaDirecta();
         } else {
-            alert('Debe ingresar al menos un espécimen.');
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                columnasDirectas.forEach(col => {
+                    const td = document.createElement('td');
+                    td.style.padding = '8px';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'form-control';
+                    input.style.width = '100%';
+                    input.style.padding = '8px 12px';
+                    input.style.fontSize = '13.5px';
+                    input.style.borderRadius = '6px';
+                    input.style.border = '1px solid #cbd5e1';
+                    input.value = row[col] || '';
+                    input.dataset.col = col;
+                    
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                });
+                bodyContainer.appendChild(tr);
+            });
         }
+
+        document.getElementById('modalResultadosDirecto').style.display = 'block';
     }
 
-    window.addEventListener('click', (e) => {
-        if (e.target === modRev) cerrarModalRevision();
-        if (e.target === modMues) cerrarModalMuestreo();
-        if (e.target === modField) cerrarModalHojaCampo();
-        if (e.target === modQC) cerrarModalRevisionResultados();
-        if (e.target === modHS) cerrarModalHojaSolicitud();
-    });
+    function agregarFilaDirecta() {
+        const bodyContainer = document.getElementById('tabla-directa-body');
+        const tr = document.createElement('tr');
+        
+        columnasDirectas.forEach(col => {
+            const td = document.createElement('td');
+            td.style.padding = '8px';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control';
+            input.style.width = '100%';
+            input.style.padding = '8px 12px';
+            input.style.fontSize = '13.5px';
+            input.style.borderRadius = '6px';
+            input.style.border = '1px solid #cbd5e1';
+            input.value = '';
+            input.dataset.col = col;
+            
+            td.appendChild(input);
+            tr.appendChild(td);
+        });
+        bodyContainer.appendChild(tr);
+    }
+
+    function cerrarModalResultadosDirecto() {
+        document.getElementById('modalResultadosDirecto').style.display = 'none';
+    }
+
+    function guardarFormularioMatrizDirecta(e) {
+        e.preventDefault();
+        const bodyContainer = document.getElementById('tabla-directa-body');
+        const rows = bodyContainer.querySelectorAll('tr');
+        const data = [];
+        
+        rows.forEach(tr => {
+            const inputs = tr.querySelectorAll('input');
+            let rowObj = {};
+            let hasValue = false;
+            
+            inputs.forEach(input => {
+                const col = input.dataset.col;
+                const val = input.value.trim();
+                rowObj[col] = val;
+                if (val !== '') hasValue = true;
+            });
+            
+            if (hasValue) {
+                data.push(rowObj);
+            }
+        });
+
+        document.getElementById('m_res_json_input').value = JSON.stringify(data);
+        
+        const form = document.getElementById('form-matriz-directa');
+        const formData = new FormData(form);
+
+        fetch('/Cycsa/publico/operaciones/guardar-matriz-resultados', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (resData.status === 'success') {
+                alert('Matriz técnica del producto guardada correctamente.');
+                cerrarModalResultadosDirecto();
+                // Refrescar el modal de matrices
+                const idOS = document.getElementById('rev_id_os') ? document.getElementById('rev_id_os').value : 0;
+                if (idOS > 0) {
+                    abrirModalMatrizEnsayosOS(idOS, document.getElementById('m_matriz_codigo_os').innerText);
+                } else {
+                    location.reload();
+                }
+            } else {
+                alert(resData.message || 'Error al guardar la matriz.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Error al guardar datos en el servidor.');
+        });
+
+        return false;
+    }
 </script>
+
+<!-- MODAL MATRIZ DE ENSAYOS Y RESULTADOS POR PRODUCTO (MATCHING CAPTURA DE PANTALLA) -->
+<div id="modalMatrizEnsayosOS" class="modal-premium" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.4);">
+    <div class="modal-premium-content" style="width: 75%; max-width:1050px; background:white; margin:4% auto; padding:25px; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.15);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="margin: 0; color: #1e293b; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-table-cells" style="color:var(--cycsa-azul);"></i> 
+                Ensayos Solicitados y Matrices de Resultados - <span id="m_matriz_codigo_os" style="color:var(--cycsa-azul);"></span>
+            </h3>
+            <button onclick="cerrarModalMatrizEnsayosOS()" class="btn-cerrar" style="background:#f1f5f9; border:none; color:#64748b; width:32px; height:32px; border-radius:50%; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="Cerrar modal">&times;</button>
+        </div>
+
+        <div id="m_matriz_loading" style="text-align:center; padding:30px; color:#64748b;">
+            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+            <p style="margin-top:10px; font-weight:600;">Cargando lista de ensayos y matrices de productos...</p>
+        </div>
+
+        <div id="m_matriz_contenido" style="display:none;">
+            <p style="font-size:13.5px; color:#64748b; margin-bottom:15px;">
+                Haga clic en <strong>"Capturar Matriz"</strong> en el producto correspondiente para ingresar las lecturas de campo/laboratorio.
+            </p>
+            <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+                <table class="hs-table" style="width:100%; border-collapse:collapse;" id="tabla-matriz-os-body">
+                    <thead>
+                        <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; text-align:left;">
+                            <th style="padding:12px 14px; font-size:12px; color:#475569; font-weight:700;">SERVICIO / ENSAYO</th>
+                            <th style="padding:12px 14px; font-size:12px; color:#475569; font-weight:700;">NORMA / ASTM</th>
+                            <th style="padding:12px 14px; font-size:12px; color:#475569; font-weight:700;">FORMATO DOCUMENTO</th>
+                            <th style="padding:12px 14px; font-size:12px; color:#475569; font-weight:700; text-align:center;">CANTIDAD</th>
+                            <th style="padding:12px 14px; font-size:12px; color:#475569; font-weight:700; text-align:right;">CAPTURA LIMS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-matriz-items-os">
+                        <!-- Se llena dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:20px; border-top:1px solid #e2e8f0; padding-top:15px;">
+            <button type="button" onclick="cerrarModalMatrizEnsayosOS()" class="btn-accion-hs btn-editar" style="padding:9px 24px; font-size:13.5px; font-weight:600; cursor:pointer; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; border-radius:6px;">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE CAPTURA DE MATRIZ DE RESULTADOS TÉCNICOS DE CADA PRODUCTO -->
+<div id="modalResultadosDirecto" class="modal-premium" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+    <div class="modal-premium-content" style="width: 85%; max-width:1150px; background:white; margin:3% auto; padding:25px; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 10px;">
+            <h3 style="margin: 0; color: #1e293b; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;" id="m_res_titulo_ensayo">Capturar Matriz Técnica</h3>
+            <button type="button" onclick="cerrarModalResultadosDirecto()" class="btn-cerrar">&times;</button>
+        </div>
+
+        <form id="form-matriz-directa" onsubmit="return guardarFormularioMatrizDirecta(event)">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id_detalle" id="m_res_id_detalle" value="">
+            <input type="hidden" name="resultados_json" id="m_res_json_input" value="">
+
+            <p style="color: #64748b; font-size: 13.5px; margin-bottom: 15px;">Ingrese los valores correspondientes en la matriz del ensayo de laboratorio. Deje celdas vacías si no requiere usarlas.</p>
+
+            <div style="overflow-x: auto; width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; margin-bottom: 20px;">
+                <table class="hs-table" style="margin-top: 0; margin-bottom: 0; width:100%; border-collapse:collapse;">
+                    <thead id="tabla-directa-header">
+                        <!-- Columnas dinámicas -->
+                    </thead>
+                    <tbody id="tabla-directa-body">
+                        <!-- Filas de inputs -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #cbd5e1; padding-top: 15px; margin-top: 15px;">
+                <button type="button" class="btn-accion-hs btn-editar" style="cursor: pointer; padding: 8px 16px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" onclick="agregarFilaDirecta()"><i class="fa-solid fa-plus"></i> Agregar Fila</button>
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" onclick="cerrarModalResultadosDirecto()" class="btn-accion-hs btn-editar" style="cursor: pointer; padding: 8px 20px; font-weight: 600;">Cancelar</button>
+                    <button type="submit" class="btn-accion-hs btn-registrar" style="cursor: pointer; padding: 8px 24px; font-weight: 600;"><i class="fa-solid fa-save"></i> Guardar Matriz del Producto</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
 <?php
 $bitacora_modulo_nombre = 'Operaciones LIMS';
 include dirname(__DIR__, 3) . '/Views/parciales/bitacora_modulo.php';
 ?>
+
+

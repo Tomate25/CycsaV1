@@ -304,13 +304,13 @@
                     <td style="font-size:12.5px; color:var(--color-slate-600); font-style:italic; max-width: 250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?= $h['motivo_reemplazo'] ? htmlspecialchars($h['motivo_reemplazo'], ENT_QUOTES, 'UTF-8') : '—' ?></td>
                     <td style="text-align: right; white-space: nowrap;">
                         <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
-                            <a href="/Cycsa/publico/informes/descargar?id=<?= $h['id'] ?>" class="btn-accion btn-detalle" target="_blank" style="padding: 6px 12px;"><i class="fa-solid fa-download"></i> Descargar PDF</a>
+                            <a href="/Cycsa/publico/informes/descargar?id=<?= codificarId($h['id']) ?>" class="btn-accion btn-detalle" target="_blank" style="padding: 6px 12px;"><i class="fa-solid fa-download"></i> Descargar PDF</a>
                             
                             <?php if ($h['estado_aprobacion'] === 'Pendiente'): ?>
                                 <form method="POST" action="/Cycsa/publico/operaciones/cambiar-estado-informe" style="display:inline; margin: 0;">
                                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                                    <input type="hidden" name="id_informe" value="<?= $h['id'] ?>">
-                                    <input type="hidden" name="id_lote" value="<?= $lote['id'] ?>">
+                                    <input type="hidden" name="id_informe" value="<?= codificarId($h['id']) ?>">
+                                    <input type="hidden" name="id_lote" value="<?= codificarId($lote['id']) ?>">
                                     <input type="hidden" name="nuevo_estado" value="Revisado">
                                     <button type="submit" class="btn-accion btn-os" style="padding: 6px 12px;" title="Marcar como Revisado"><i class="fa-solid fa-check"></i> Revisar</button>
                                 </form>

@@ -205,8 +205,8 @@ class OperacionesControlador extends ControladorBase {
         unset($md);
 
         $anio = date('Y');
-        $numOs = sprintf('%04d', $os['id']);
-        $codigoCampoAuto = !empty($os['hoja_campo_codigo']) ? $os['hoja_campo_codigo'] : "MC-$anio-$numOs";
+        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra((int)$anio);
+        $codigoCampoAuto = !empty($os['hoja_campo_codigo']) ? $os['hoja_campo_codigo'] : 'MC-' . sprintf("%03d", $siguienteConsecutivo) . '-' . $anio;
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -219,6 +219,7 @@ class OperacionesControlador extends ControladorBase {
             'idDetalle' => $idDetalle,
             'hoja_solicitud' => $hojaSolicitud,
             'codigoCampoAuto' => $codigoCampoAuto,
+            'siguienteConsecutivo' => $siguienteConsecutivo,
             'muestrasDeclaradas' => $muestrasDeclaradas,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
@@ -353,13 +354,21 @@ class OperacionesControlador extends ControladorBase {
         $especimenes = $modelo->obtenerDetallesLote($idLote);
         $historialInformes = $modelo->obtenerHistorialInformes($idLote);
 
-        // Cargar todos los ensayos cotizados de esta O/S para poder capturar sus matrices
+        // Obtener el id_detalle_cotizacion asociado a este lote desde ensayo_edades
+        $stmtDetalleLote = $db->prepare("SELECT DISTINCT id_detalle_cotizacion FROM ensayo_edades WHERE id_lote = :id_lote LIMIT 1");
+        $stmtDetalleLote->execute(['id_lote' => $idLote]);
+        $idDetalleCotizacionAsociado = $stmtDetalleLote->fetchColumn();
+
+        // Cargar únicamente el ensayo cotizado de esta O/S asociado al lote para capturar su matriz
         $stmtItems = $db->prepare("SELECT cd.*, fe.archivo_markdown, fe.nombre AS formato_nombre
                                    FROM cotizacion_detalles cd
                                    LEFT JOIN productos p ON cd.id_producto = p.id
                                    LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
-                                   WHERE cd.id_cotizacion = :id_cot");
-        $stmtItems->execute(['id_cot' => $lote['id_cotizacion']]);
+                                   WHERE cd.id_cotizacion = :id_cot AND cd.id = :id_det_cot");
+        $stmtItems->execute([
+            'id_cot' => $lote['id_cotizacion'],
+            'id_det_cot' => $idDetalleCotizacionAsociado
+        ]);
         $itemsOS = $stmtItems->fetchAll(\PDO::FETCH_ASSOC);
 
         // Cargar el JSON del esquema de los formatos
@@ -511,10 +520,25 @@ class OperacionesControlador extends ControladorBase {
             $filas = [];
             $archivoMd = $detalle['archivo_markdown'];
             
-        // Determinar si es un ensayo basado en especímenes/roturas (si tiene especímenes reales en la base de datos)
-            $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_lote = :id_lote AND identificador_especimen != 'Muestra' AND edad_dias > 0");
-            $stmtCount->execute(['id_lote' => $idLote]);
-            $esEnsayoEdades = ((int)$stmtCount->fetchColumn() > 0);
+            // Determinar si es un ensayo basado en especímenes/roturas (si tiene especímenes reales en la base de datos)
+            $formatosEdades = [
+                'resistencia_de_concreto.md',
+                'resistencia_de_mortero.md',
+                'resistencia_de_nucleo_de_concreto.md',
+                'formato_de_resistencia_de_a_la_flexion.md',
+                'formato_de_resistencia_de_bloques.md',
+                'resistencia_de_adoquines.md',
+                'resistencia_de_ladrillo.md',
+                'resistencia_de_martillo_suizo.md',
+                'formato_de_lodo_concreto.md',
+                'formato_de_reveniemiento_y_temperatura.md'
+            ];
+            $esEnsayoEdades = false;
+            if (in_array($archivoMd, $formatosEdades)) {
+                $stmtCount = $db->prepare("SELECT COUNT(*) FROM ensayo_edades WHERE id_lote = :id_lote AND identificador_especimen != 'Muestra' AND edad_dias > 0");
+                $stmtCount->execute(['id_lote' => $idLote]);
+                $esEnsayoEdades = ((int)$stmtCount->fetchColumn() > 0);
+            }
 
              if ($esEnsayoEdades) {
                  $columnas = [
@@ -1356,5 +1380,136 @@ class OperacionesControlador extends ControladorBase {
             'siguiente_consecutivo' => $siguienteConsecutivo,
             'anio_actual' => $anioActual
         ]);
+    }
+
+    public function obtenerMatrizOSAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $idOS = (int)($_GET['id_os'] ?? 0);
+        if ($idOS <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'ID de Orden de Servicio inválido.']);
+            return;
+        }
+
+        $modelo = new OperacionModelo();
+        $os = $modelo->obtenerOSPorId($idOS);
+        if (!$os) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio no encontrada.']);
+            return;
+        }
+
+        $items = $modelo->obtenerItemsOS($idOS);
+
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'os' => $os,
+            'items' => $items
+        ]);
+    }
+
+    public function capturaMatrizProducto(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $idDetalle = (int)($_GET['id_detalle'] ?? 0);
+        if ($idDetalle <= 0) {
+            $_SESSION['error'] = 'ID de ensayo no especificado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmt = $db->prepare("
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo,
+                   cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento
+            FROM cotizacion_detalles cd
+            JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+            JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+            JOIN clientes cli ON cot.id_cliente = cli.id
+            LEFT JOIN productos p ON cd.id_producto = p.id
+            LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+            WHERE cd.id = :id
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $idDetalle]);
+        $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$detalle) {
+            $_SESSION['error'] = 'Producto o ensayo no encontrado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        // 1. Verificar que exista la Hoja de Servicio (CYCSA-RT-FM-13) registrada
+        $stmtHoja = $db->prepare("SELECT id FROM hojas_solicitud WHERE id_os = :id_os LIMIT 1");
+        $stmtHoja->execute(['id_os' => $detalle['id_os']]);
+        $hojaExistente = $stmtHoja->fetchColumn();
+
+        if (!$hojaExistente) {
+            $_SESSION['error'] = 'Debe registrar primero la Hoja de Servicio (CYCSA-RT-FM-13) en el módulo de Hojas de Servicio antes de capturar la matriz técnica de los productos.';
+            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            return;
+        }
+
+        // 2. Verificar asignación de técnico
+        if (empty($detalle['tecnico_muestreo'])) {
+            $_SESSION['error'] = 'Debe asignar primero un técnico muestreador de visita antes de rellenar la matriz del producto.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+        if (empty($columnas)) {
+            $columnas = ["Código laboratorio", "Nombre muestra", "P.V.S.S (kg/m³)", "PVSC (kg/m³)", "Humedad Natural (%)", "Resultado / Lectura"];
+        }
+
+        // 3. Obtener muestras declaradas en la Hoja de Servicio (CYCSA-RT-FM-13)
+        $stmtHojaFull = $db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os LIMIT 1");
+        $stmtHojaFull->execute(['id_os' => $detalle['id_os']]);
+        $hojaFull = $stmtHojaFull->fetch(PDO::FETCH_ASSOC);
+
+        $muestrasSeteadas = [];
+        if ($hojaFull && !empty($hojaFull['muestras_json'])) {
+            $muestrasArr = json_decode($hojaFull['muestras_json'], true) ?: [];
+            foreach ($muestrasArr as $idx => $m) {
+                if (!empty($m['nombre_muestra'])) {
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => $m['nombre_muestra'],
+                        'nombre_muestra' => !empty($m['descripcion']) ? $m['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                    ];
+                }
+            }
+        }
+
+        $this->renderizar('operaciones/vistas/captura_matriz', [
+            'titulo' => 'Captura de Matriz Técnica - ' . $detalle['descripcion_ensayo'],
+            'detalle' => $detalle,
+            'columnas' => $columnas,
+            'muestrasSeteadas' => $muestrasSeteadas
+        ]);
+    }
+
+    public function guardarMatrizProductoPOST(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idDetalle = (int)($datos['id_detalle'] ?? 0);
+            $resultadosJson = $datos['resultados_json'] ?? '[]';
+
+            if ($idDetalle <= 0) {
+                $_SESSION['error'] = 'Detalle inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmt = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+            $stmt->execute([
+                'json' => $resultadosJson,
+                'id' => $idDetalle
+            ]);
+
+            $_SESSION['exito'] = 'Matriz técnica guardada correctamente.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
     }
 }

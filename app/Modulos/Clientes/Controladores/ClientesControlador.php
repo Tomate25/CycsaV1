@@ -159,7 +159,7 @@ class ClientesControlador extends ControladorBase {
             exit;
         }
         
-        $id = $_GET['id'] ?? null;
+        $id = decodificarId($_GET['id'] ?? '');
         if (!$id) { 
             $respuesta->redirigir('/Cycsa/publico/clientes'); 
             return; 
@@ -192,7 +192,7 @@ class ClientesControlador extends ControladorBase {
         }
         
         $datos = $peticion->obtenerDatos();
-        $id = $datos['id'] ?? $_GET['id'] ?? null;
+        $id = decodificarId($datos['id'] ?? $_GET['id'] ?? '');
         
         if (!$id || !$peticion->esPost()) { 
             $respuesta->redirigir('/Cycsa/publico/clientes'); 

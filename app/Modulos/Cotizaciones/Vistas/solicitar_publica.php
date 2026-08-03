@@ -1217,6 +1217,25 @@
             const optNew = document.getElementById("optNew");
             const searchSection = document.getElementById("searchSection");
 
+            // Función para activar o desactivar el atributo required y disabled en campos de nuevo cliente
+            function setNewClientFieldsRequired(required) {
+                txtIdent.required = required;
+                txtNombreCliente.required = required;
+                txtEmail.required = required;
+                txtTelefono.required = required;
+                txtDireccion.required = required;
+                
+                txtIdent.disabled = !required;
+                txtNombreCliente.disabled = !required;
+                txtEmail.disabled = !required;
+                txtTelefono.disabled = !required;
+                txtDireccion.disabled = !required;
+                selectTipo.disabled = !required;
+            }
+
+            // Desactivar al inicio puesto que empieza en "Ya soy cliente" y el formulario nuevo está oculto
+            setNewClientFieldsRequired(false);
+
             // Handle option toggles
             optRegistered.addEventListener("click", function() {
                 optRegistered.classList.add("selected");
@@ -1233,6 +1252,8 @@
                 clientErrorMsg.style.display = "none";
                 btnNext.disabled = false;
                 txtIdent.style.borderColor = "var(--border)";
+                
+                setNewClientFieldsRequired(false);
             });
 
             optNew.addEventListener("click", function() {
@@ -1254,6 +1275,8 @@
                 btnNext.disabled = false;
                 txtIdent.style.borderColor = "var(--border)";
                 txtIdent.focus();
+                
+                setNewClientFieldsRequired(true);
             });
 
             // Async Validation for unique ID (RUC / Cédula) in new client form
@@ -1330,6 +1353,8 @@
                             existingClientBanner.style.display = "flex";
                             newClientForm.style.display = "none";
                             searchSection.style.display = "none";
+                            
+                            setNewClientFieldsRequired(false);
                         } else {
                             // Client is new, show registry form
                             inputIdCliente.value = "new";
@@ -1347,6 +1372,8 @@
                             existingClientBanner.style.display = "none";
                             newClientForm.style.display = "block";
                             searchSection.style.display = "none";
+                            
+                            setNewClientFieldsRequired(true);
                         }
                     })
                     .catch(err => {
@@ -1365,10 +1392,12 @@
                     searchSection.style.display = "block";
                     identBuscar.value = "";
                     identBuscar.focus();
+                    setNewClientFieldsRequired(false);
                 } else {
                     newClientForm.style.display = "block";
                     txtIdent.value = "";
                     txtIdent.focus();
+                    setNewClientFieldsRequired(true);
                 }
             });
 
@@ -1602,6 +1631,54 @@
                     return;
                 }
             });
+
+            // --- MÁSCARA AUTOMÁTICA DE IDENTIFICACIÓN (CÉDULA / RUC) ---
+            function aplicarMascaraIdentificacion(input) {
+                if (!input) return;
+                
+                input.addEventListener('input', function(e) {
+                    let value = input.value.replace(/-/g, ''); // Eliminar guiones actuales para formatear
+                    
+                    // Si empieza con número, aplicamos formato de Cédula: ###-######-####A
+                    if (/^\d/.test(value)) {
+                        let formatted = '';
+                        if (value.length > 0) {
+                            formatted += value.substring(0, 3);
+                        }
+                        if (value.length > 3) {
+                            formatted += '-' + value.substring(3, 9);
+                        }
+                        if (value.length > 9) {
+                            formatted += '-' + value.substring(9, 13);
+                        }
+                        if (value.length > 13) {
+                            formatted += value.substring(13, 14).toUpperCase();
+                        }
+                        input.value = formatted;
+                    } else {
+                        // Si es RUC Jurídico (comienza con letras), limitamos a 14 caracteres alfanuméricos
+                        input.value = value.substring(0, 14);
+                    }
+                });
+
+                // Permitir borrar guiones con Backspace de forma fluida sin atascos
+                input.addEventListener('keydown', function(e) {
+                    const key = e.key;
+                    if (key === 'Backspace') {
+                        const val = input.value;
+                        const start = input.selectionStart;
+                        if (start > 0 && val[start - 1] === '-') {
+                            e.preventDefault();
+                            input.value = val.substring(0, start - 2) + val.substring(start);
+                            input.setSelectionRange(start - 2, start - 2);
+                        }
+                    }
+                });
+            }
+
+            // Aplicar la máscara a los campos correspondientes
+            aplicarMascaraIdentificacion(identBuscar);
+            aplicarMascaraIdentificacion(txtIdent);
         });
     </script>
 </body>

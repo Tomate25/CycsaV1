@@ -1,3 +1,4 @@
+<?php $valores = $valores ?? []; ?>
 <style>
     .form-section-card { background: white; padding: 25px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 25px; }
     .section-title { font-size: 14px; font-weight: 700; color: var(--cycsa-azul); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; display: flex; align-items: center; gap: 8px; }

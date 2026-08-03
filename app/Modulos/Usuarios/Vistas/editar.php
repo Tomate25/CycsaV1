@@ -9,7 +9,7 @@
         <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">Modifica la información o permisos del usuario seleccionado.</p>
     </div>
 
-    <form action="/Cycsa/publico/usuarios/editar?id=<?= htmlspecialchars($usuario['id'] ?? '', ENT_QUOTES, 'UTF-8') ?>" method="POST">
+    <form action="/Cycsa/publico/usuarios/editar?id=<?= codificarId($usuario['id']) ?>" method="POST">
         <?php if (isset($error)): ?>
             <div style="background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; margin-bottom: 20px; text-align: center; border: 1px solid #ef9a9a;">
                 <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>

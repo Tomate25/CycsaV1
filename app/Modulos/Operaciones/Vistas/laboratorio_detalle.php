@@ -247,14 +247,14 @@ if ($tieneEdades):
                             $esTecnico = ($_SESSION['usuario_rol'] ?? 0) == 6;
                             if (!$esTecnico): 
                             ?>
-                                <a href="/Cycsa/publico/informes/descargar?id=<?= $h['id'] ?>" class="btn-accion btn-detalle" target="_blank" style="padding: 6px 12px;"><i class="fa-solid fa-download"></i> Descargar PDF</a>
+                                <a href="/Cycsa/publico/informes/descargar?id=<?= codificarId($h['id']) ?>" class="btn-accion btn-detalle" target="_blank" style="padding: 6px 12px;"><i class="fa-solid fa-download"></i> Descargar PDF</a>
                                 
                                 <?php if ($h['estado_aprobacion'] === 'Pendiente'): ?>
                                     <form method="POST" action="/Cycsa/publico/operaciones/cambiar-estado-informe" style="display:inline; margin: 0;">
                                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                                        <input type="hidden" name="id_informe" value="<?= $h['id'] ?>">
-                                        <input type="hidden" name="id_lote" value="<?= $lote['id'] ?>">
-                                        <input type="hidden" name="redireccionar_a" value="/Cycsa/publico/laboratorio/detalle-muestra?id_lote=<?= $lote['id'] ?>">
+                                        <input type="hidden" name="id_informe" value="<?= codificarId($h['id']) ?>">
+                                        <input type="hidden" name="id_lote" value="<?= codificarId($lote['id']) ?>">
+                                        <input type="hidden" name="redireccionar_a" value="/Cycsa/publico/laboratorio/detalle-muestra?id_lote=<?= codificarId($lote['id']) ?>">
                                         <input type="hidden" name="nuevo_estado" value="Revisado">
                                         <button type="submit" class="btn-accion btn-os" style="padding: 6px 12px;" title="Marcar como Revisado"><i class="fa-solid fa-check"></i> Revisar</button>
                                     </form>

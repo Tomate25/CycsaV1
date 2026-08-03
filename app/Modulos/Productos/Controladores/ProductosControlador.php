@@ -135,7 +135,7 @@ class ProductosControlador extends ControladorBase {
             exit;
         }
         
-        $id = $_GET['id'] ?? null;
+        $id = decodificarId($_GET['id'] ?? '');
         if (!$id) { 
             $respuesta->redirigir('/Cycsa/publico/productos'); 
             return; 
@@ -169,7 +169,7 @@ class ProductosControlador extends ControladorBase {
             exit;
         }
         
-        $id = $_GET['id'] ?? null;
+        $id = decodificarId($_GET['id'] ?? '');
         if (!$id || !$peticion->esPost()) { 
             $respuesta->redirigir('/Cycsa/publico/productos'); 
             return; 
@@ -238,7 +238,7 @@ class ProductosControlador extends ControladorBase {
             exit;
         }
         
-        $id = $_GET['id'] ?? null;
+        $id = decodificarId($_GET['id'] ?? '');
         if ($id) {
             $modelo = new ProductoModelo();
             $producto = $modelo->obtenerPorId((int)$id);

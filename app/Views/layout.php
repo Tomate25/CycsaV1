@@ -482,6 +482,14 @@
             <?php endif; ?>
             <?php if (tienePermiso('operaciones', 'ver')): ?>
             <li>
+                <a href="/Cycsa/publico/hojas-servicio" class="<?= strpos($rutaActual, '/hojas-servicio') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-file-signature"></i>
+                    <span class="menu-texto">Hojas de Servicio</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('operaciones', 'ver')): ?>
+            <li>
                 <a href="/Cycsa/publico/operaciones" class="<?= strpos($rutaActual, '/operaciones') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-gears"></i>
                     <span class="menu-texto">Operaciones LIMS</span>

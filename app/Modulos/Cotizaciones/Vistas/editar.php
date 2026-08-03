@@ -120,7 +120,7 @@
 </style>
 
 <div style="margin-bottom: 20px;">
-    <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= $cotizacion['id'] ?>" style="color: #6c757d; text-decoration: none; font-size: 14px;"><i class="fa-solid fa-arrow-left"></i> Volver al Detalle</a>
+    <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cotizacion['id']) ?>" style="color: #6c757d; text-decoration: none; font-size: 14px;"><i class="fa-solid fa-arrow-left"></i> Volver al Detalle</a>
 </div>
 
 <h2 style="margin: 0 0 20px 0; color: #333; font-size: 22px;">Editar Cotización <?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?></h2>
@@ -135,9 +135,9 @@
     </div>
 <?php endif; ?>
 
-<form action="/Cycsa/publico/cotizaciones/editar?id=<?= $cotizacion['id'] ?>" method="POST" id="form-cotizacion">
+<form action="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" method="POST" id="form-cotizacion">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-    <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
+    <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
 
     <div class="seccion-form">
         <h3 class="seccion-titulo"><i class="fa-solid fa-address-card"></i> Datos Generales</h3>
@@ -364,7 +364,7 @@
     </div>
 
     <div style="display: flex; gap: 15px; justify-content: flex-end; margin-bottom: 50px;">
-        <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= $cotizacion['id'] ?>" style="padding: 12px 25px; border-radius: 4px; text-decoration: none; color: #6c757d; font-weight: 500; background: #f8f9fa; border: 1px solid #ddd;">Cancelar</a>
+        <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cotizacion['id']) ?>" style="padding: 12px 25px; border-radius: 4px; text-decoration: none; color: #6c757d; font-weight: 500; background: #f8f9fa; border: 1px solid #ddd;">Cancelar</a>
         <button type="submit" style="background: var(--cycsa-azul); color: white; border: none; padding: 12px 25px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; font-size: 15px; box-shadow: 0 4px 6px rgba(16, 52, 135, 0.2);">
             <i class="fa-solid fa-save"></i> Guardar Cambios y Re-enviar
         </button>
@@ -752,12 +752,25 @@
         const datalist = document.getElementById('productos-datalist');
         
         const valorNorm = normalizarTexto(valor);
-        const opcion = Array.from(datalist.options).find(opt => {
+        
+        // Intentar match exacto primero
+        let opcion = Array.from(datalist.options).find(opt => {
             const valNorm = normalizarTexto(opt.value);
             const textNorm = normalizarTexto(opt.textContent);
             const labelNorm = normalizarTexto(opt.getAttribute('label') || '');
-            return valNorm === valorNorm || textNorm === valorNorm || labelNorm === valorNorm;
+            const ensayoNorm = normalizarTexto(opt.getAttribute('data-ensayo-servicio') || '');
+            return valNorm === valorNorm || textNorm === valorNorm || labelNorm === valorNorm || ensayoNorm === valorNorm;
         });
+        
+        // Si no hay match exacto, buscar si coincide parcialmente (ej: si escribe "CYCSA-PE-10")
+        if (!opcion && valorNorm.length >= 4) {
+            opcion = Array.from(datalist.options).find(opt => {
+                const valNorm = normalizarTexto(opt.value);
+                const textNorm = normalizarTexto(opt.textContent);
+                const ensayoNorm = normalizarTexto(opt.getAttribute('data-ensayo-servicio') || '');
+                return valNorm.includes(valorNorm) || textNorm.includes(valorNorm) || ensayoNorm.includes(valorNorm);
+            });
+        }
         
         const idInput = fila.querySelector('.prod-id-input');
         const codigoInput = fila.querySelector('.spec-codigo');
@@ -774,8 +787,8 @@
             const precioInput = fila.querySelector('.precio-input');
             precioInput.value = precio.toFixed(2);
 
-            // Reemplazar la descripción con el nombre comercial del producto seleccionado
-            input.value = opcion.value;
+            // Reemplazar la descripción con el nombre comercial o ensayo técnico seleccionado
+            input.value = opcion.getAttribute('data-ensayo-servicio') || opcion.value;
 
             // Auto-rellenar info técnica
             const codigo = opcion.getAttribute('data-codigo') || '';
@@ -1004,7 +1017,11 @@
         $codigo_opcion = $prod['codigo_servicio'] ?? '';
         $formato_opcion = (!empty($prod['codigo_servicio']) && strpos($prod['codigo_servicio'], 'CYCSA-RT-') !== false) ? $prod['codigo_servicio'] : ($prod['formato_reporte'] ?? '');
         
+        // Concatenar descripción técnica completa para que se indexe y se busque
         $nombre = $nombre_comercial_solo;
+        if (!empty($prod['ensayo_servicio'])) {
+            $nombre = $prod['ensayo_servicio'] . ' (' . $nombre . ')';
+        }
         if (!empty($codigo_opcion)) {
             $nombre = $codigo_opcion . ' - ' . $nombre;
         }
@@ -1015,6 +1032,7 @@
                 data-codigo="<?= htmlspecialchars($codigo_opcion, ENT_QUOTES, 'UTF-8') ?>"
                 data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-formato="<?= htmlspecialchars($formato_opcion, ENT_QUOTES, 'UTF-8') ?>"
+                data-ensayo-servicio="<?= htmlspecialchars($prod['ensayo_servicio'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             <?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?>
         </option>

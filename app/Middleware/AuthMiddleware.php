@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Middleware;
+namespace Cycsa\App\Middleware;
 
 /**
  * Middleware para validar la sesión activa del usuario y tiempo de inactividad.
@@ -21,16 +21,28 @@ class AuthMiddleware
         }
 
         if (!isset($_SESSION['usuario_id'])) {
-            header('HTTP/1.1 401 Unauthorized');
-            echo json_encode(['ok' => false, 'mensaje' => 'No autorizado. Inicie sesión.', 'codigo' => 401]);
+            $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+            if (strpos($requestUri, '/api/') !== false) {
+                header('Content-Type: application/json');
+                header('HTTP/1.1 401 Unauthorized');
+                echo json_encode(['ok' => false, 'mensaje' => 'No autorizado. Inicie sesión.', 'codigo' => 401]);
+            } else {
+                header('Location: /Cycsa/publico/login');
+            }
             exit;
         }
 
         if (isset($_SESSION['ultima_actividad']) && (time() - $_SESSION['ultima_actividad'] > self::TIEMPO_INACTIVIDAD)) {
             session_unset();
             session_destroy();
-            header('HTTP/1.1 401 Unauthorized');
-            echo json_encode(['ok' => false, 'mensaje' => 'Sesión expirada por inactividad.', 'codigo' => 401]);
+            $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+            if (strpos($requestUri, '/api/') !== false) {
+                header('Content-Type: application/json');
+                header('HTTP/1.1 401 Unauthorized');
+                echo json_encode(['ok' => false, 'mensaje' => 'Sesión expirada por inactividad.', 'codigo' => 401]);
+            } else {
+                header('Location: /Cycsa/publico/login');
+            }
             exit;
         }
 
@@ -38,3 +50,4 @@ class AuthMiddleware
         return true;
     }
 }
+

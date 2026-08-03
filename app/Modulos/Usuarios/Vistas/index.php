@@ -146,10 +146,10 @@
                     </td>
                     <td style="text-align: right;">
                         <?php if ((int)($usuario['bloqueado'] ?? 0) === 1): ?>
-                            <a href="/Cycsa/publico/usuarios/desbloquear?id=<?= $usuario['id'] ?>" class="btn-accion" title="Desbloquear" style="color: #ea580c; margin-right: 5px;" onclick="return confirm('¿Estás seguro de que deseas desbloquear a este usuario y restablecer sus intentos de acceso?');"><i class="fa-solid fa-lock-open"></i></a>
+                            <a href="/Cycsa/publico/usuarios/desbloquear?id=<?= codificarId($usuario['id']) ?>" class="btn-accion" title="Desbloquear" style="color: #ea580c; margin-right: 5px;" onclick="return confirm('¿Estás seguro de que deseas desbloquear a este usuario y restablecer sus intentos de acceso?');"><i class="fa-solid fa-lock-open"></i></a>
                         <?php endif; ?>
-                        <a href="/Cycsa/publico/usuarios/editar?id=<?= $usuario['id'] ?>" class="btn-accion btn-editar" title="Editar"><i class="fa-solid fa-pen-to-square"></i></a>
-                        <a href="/Cycsa/publico/usuarios/eliminar?id=<?= $usuario['id'] ?>" class="btn-accion btn-eliminar" title="Desactivar" onclick="return confirm('¿Estás seguro de que deseas desactivar a este usuario? Ya no podrá iniciar sesión.');"><i class="fa-solid fa-trash"></i></a>
+                        <a href="/Cycsa/publico/usuarios/editar?id=<?= codificarId($usuario['id']) ?>" class="btn-accion btn-editar" title="Editar"><i class="fa-solid fa-pen-to-square"></i></a>
+                        <a href="/Cycsa/publico/usuarios/eliminar?id=<?= codificarId($usuario['id']) ?>" class="btn-accion btn-eliminar" title="Desactivar" onclick="return confirm('¿Estás seguro de que deseas desactivar a este usuario? Ya no podrá iniciar sesión.');"><i class="fa-solid fa-trash"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>

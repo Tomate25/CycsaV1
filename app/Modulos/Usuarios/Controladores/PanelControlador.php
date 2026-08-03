@@ -51,6 +51,15 @@ class PanelControlador extends ControladorBase {
         }
         if (tienePermiso('operaciones', 'ver')) {
             $cajon_aplicaciones[] = [
+                'nombre' => 'Hojas de Servicio',
+                'link' => '/Cycsa/publico/hojas-servicio',
+                'icon' => 'fa-solid fa-file-signature',
+                'desc' => 'Recepción, registro y aprobación de hojas de servicio CYCSA-RT-FM-13.',
+                'color' => 'linear-gradient(135deg, #4f46e5, #3730a3)', // Indigo
+            ];
+        }
+        if (tienePermiso('operaciones', 'ver')) {
+            $cajon_aplicaciones[] = [
                 'nombre' => 'Operaciones LIMS',
                 'link' => '/Cycsa/publico/operaciones',
                 'icon' => 'fa-solid fa-gears',
@@ -60,10 +69,10 @@ class PanelControlador extends ControladorBase {
         }
         if (tienePermiso('laboratorio', 'ver')) {
             $cajon_aplicaciones[] = [
-                'nombre' => 'Laboratorio (Ciego)',
+                'nombre' => 'Laboratorio',
                 'link' => '/Cycsa/publico/laboratorio',
                 'icon' => 'fa-solid fa-flask',
-                'desc' => 'Registro ciego de rupturas y control de calidad.',
+                'desc' => 'Registro de rupturas y control de calidad.',
                 'color' => 'linear-gradient(135deg, #7c3aed, #5b21b6)', // Morado
             ];
         }

@@ -52,7 +52,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
             <p style="margin: 5px 0 0 0; color: #6c757d;">Versión <?= $cotizacion['version'] ?> | Generada el <?= date('d/m/Y', strtotime($cotizacion['fecha_creacion'])) ?></p>
         </div>
         <div style="text-align: right; display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
-            <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= $cotizacion['id'] ?>" target="_blank" style="background-color: #e31837; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(227, 24, 55, 0.2);">
+            <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>" target="_blank" style="background-color: #e31837; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(227, 24, 55, 0.2);">
                 <i class="fa-solid fa-file-pdf"></i> Imprimir PDF
             </a>
             <span class="badge" style="background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1;"><?= htmlspecialchars($cotizacion['estado'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -193,7 +193,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
             </div>
             <form action="/Cycsa/publico/cotizaciones/enviar-revision" method="POST" style="margin: 0;">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
+                <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
                 <button type="submit" style="background: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-paper-plane"></i> Enviar a Revisión</button>
             </form>
         </div>
@@ -213,7 +213,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
             
             <form action="/Cycsa/publico/cotizaciones/revision" method="POST" id="form-revision">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
+                <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
                 <input type="hidden" name="accion" id="input-accion" value="">
 
                 <textarea name="motivo_observacion" id="txt-motivo" placeholder="Escribe el motivo del rechazo u observación aquí..." style="width: 100%; padding: 10px; border: 1px solid #fcd34d; border-radius: 4px; font-family: 'Inter', sans-serif; display: none; margin-bottom: 15px;" rows="3"></textarea>
@@ -241,7 +241,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
             </div>
             <form action="/Cycsa/publico/cotizaciones/enviar" method="POST" style="margin: 0;">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
+                <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
                 <?php if ($tieneEmail): ?>
                     <button type="submit" style="background: #059669; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-paper-plane"></i> Enviar al Cliente</button>
                 <?php else: ?>
@@ -268,7 +268,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                 <?php if ($tieneEmail): ?>
                     <form action="/Cycsa/publico/cotizaciones/enviar" method="POST" style="margin: 0;" onsubmit="return confirm('¿Deseas volver a enviar el correo al cliente?');">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                        <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
+                        <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
                         <button type="submit" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-arrows-rotate"></i> Re-enviar Correo</button>
                     </form>
                 <?php endif; ?>
@@ -281,7 +281,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                     
                     <form action="/Cycsa/publico/cotizaciones/decision-administrativa" method="POST" id="form-admin-decision" style="display: flex; flex-direction: column; gap: 10px; max-width: 550px; margin: 0;">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                        <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
+                        <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
                         <input type="hidden" name="accion" id="admin-accion" value="">
                         
                         <div id="admin-motivo-container" style="display: none; margin-bottom: 10px; width: 100%;">
@@ -342,13 +342,13 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
             <h3 style="margin-top: 0; font-size: 16px; font-weight: 700;"><?= $tituloAlerta ?></h3>
             <p style="margin-bottom: 0; font-size: 14px;"><strong>Motivo indicado:</strong> <?= htmlspecialchars($motivoAlerta ?? 'No especificado', ENT_QUOTES, 'UTF-8') ?></p>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 15px;">
-                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= $cotizacion['id'] ?>" class="btn-aprobar" style="background: #e11d48; display: inline-block; text-decoration: none; font-family: 'Inter', sans-serif; margin-top: 0;">
+                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" class="btn-aprobar" style="background: #e11d48; display: inline-block; text-decoration: none; font-family: 'Inter', sans-serif; margin-top: 0;">
                     <i class="fa-solid fa-pen-to-square"></i> Corregir y Re-enviar
                 </a>
                 <?php if ($cotizacion['estado'] === 'Rechazada por Cliente'): ?>
                     <form action="/Cycsa/publico/cotizaciones/enviar" method="POST" style="margin: 0;" onsubmit="return confirm('¿Deseas volver a enviar esta cotización al cliente sin realizar cambios? Se archivará la versión actual V<?= $cotizacion['version'] ?> y se generará una nueva versión V<?= ($cotizacion['version'] + 1) ?>.');">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                        <input type="hidden" name="id" value="<?= $cotizacion['id'] ?>">
+                        <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
                         <button type="submit" class="btn-aprobar" style="background: #2563eb; cursor: pointer; border: none; font-family: 'Inter', sans-serif;">
                             <i class="fa-solid fa-paper-plane"></i> Volver a Enviar (Nueva Versión)
                         </button>
