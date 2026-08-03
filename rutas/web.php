@@ -21,6 +21,7 @@ use Cycsa\App\Middleware\ContabilidadMiddleware;
 $app = Aplicacion::$app;
 
 // 🌐 RUTAS PÚBLICAS DE AUTENTICACIÓN
+$app->enrutador->get('/', [AutenticacionControlador::class, 'mostrarLogin']);
 $app->enrutador->get('/login', [AutenticacionControlador::class, 'mostrarLogin']);
 $app->enrutador->post('/login', [AutenticacionControlador::class, 'procesarLogin']);
 $app->enrutador->get('/logout', [AutenticacionControlador::class, 'cerrarSesion']);
