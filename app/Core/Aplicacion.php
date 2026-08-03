@@ -160,7 +160,13 @@ class Aplicacion {
     }
 
     public function correr(): void {
-        $contenido = $this->enrutador->resolver();
+        ob_start();
+        $resolverResult = $this->enrutador->resolver();
+        $contenido = ob_get_clean();
+
+        if (empty($contenido) && is_string($resolverResult)) {
+            $contenido = $resolverResult;
+        }
 
         if (is_string($contenido)) {
             $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
