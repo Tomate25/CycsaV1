@@ -20,6 +20,13 @@ class AuthMiddleware
             session_start();
         }
 
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $basePath = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+        if ($basePath === '/' || $basePath === '\\') {
+            $basePath = '';
+        }
+        $loginUrl = $basePath . '/login';
+
         if (!isset($_SESSION['usuario_id'])) {
             $requestUri = $_SERVER['REQUEST_URI'] ?? '';
             if (strpos($requestUri, '/api/') !== false) {
@@ -27,7 +34,7 @@ class AuthMiddleware
                 header('HTTP/1.1 401 Unauthorized');
                 echo json_encode(['ok' => false, 'mensaje' => 'No autorizado. Inicie sesión.', 'codigo' => 401]);
             } else {
-                header('Location: /Cycsa/publico/login');
+                header('Location: ' . $loginUrl);
             }
             exit;
         }
@@ -41,7 +48,7 @@ class AuthMiddleware
                 header('HTTP/1.1 401 Unauthorized');
                 echo json_encode(['ok' => false, 'mensaje' => 'Sesión expirada por inactividad.', 'codigo' => 401]);
             } else {
-                header('Location: /Cycsa/publico/login');
+                header('Location: ' . $loginUrl);
             }
             exit;
         }
