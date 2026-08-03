@@ -456,22 +456,6 @@
             </li>
             
             <li class="menu-categoria">Módulos</li>
-            <?php if (tienePermiso('clientes', 'ver')): ?>
-            <li>
-                <a href="/Cycsa/publico/clientes" class="<?= strpos($rutaActual, '/clientes') !== false ? 'activo' : '' ?>">
-                    <i class="fa-solid fa-address-book"></i>
-                    <span class="menu-texto">Clientes</span>
-                </a>
-            </li>
-            <?php endif; ?>
-            <?php if (tienePermiso('productos', 'ver')): ?>
-            <li>
-                <a href="/Cycsa/publico/productos" class="<?= strpos($rutaActual, '/productos') !== false ? 'activo' : '' ?>">
-                    <i class="fa-solid fa-flask-vial"></i>
-                    <span class="menu-texto">Productos / Ensayos</span>
-                </a>
-            </li>
-            <?php endif; ?>
             <?php if (tienePermiso('cotizaciones', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/cotizaciones" class="<?= strpos($rutaActual, '/cotizaciones') !== false ? 'activo' : '' ?>">
@@ -509,6 +493,22 @@
                 <a href="/Cycsa/publico/contabilidad/cuentas" class="<?= strpos($rutaActual, '/contabilidad') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-calculator"></i>
                     <span class="menu-texto">Contabilidad</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('productos', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/productos" class="<?= strpos($rutaActual, '/productos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-flask-vial"></i>
+                    <span class="menu-texto">Productos / Ensayos</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('clientes', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/clientes" class="<?= strpos($rutaActual, '/clientes') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-address-book"></i>
+                    <span class="menu-texto">Clientes</span>
                 </a>
             </li>
             <?php endif; ?>

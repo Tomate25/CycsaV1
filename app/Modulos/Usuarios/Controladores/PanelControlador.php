@@ -22,24 +22,7 @@ class PanelControlador extends ControladorBase {
         // Construir cajón de aplicaciones según los permisos del usuario
         $cajon_aplicaciones = [];
         
-        if (tienePermiso('clientes', 'ver')) {
-            $cajon_aplicaciones[] = [
-                'nombre' => 'Clientes',
-                'link' => '/Cycsa/publico/clientes',
-                'icon' => 'fa-solid fa-address-book',
-                'desc' => 'Gestión y catálogo de clientes comerciales.',
-                'color' => 'linear-gradient(135deg, #2563eb, #1d4ed8)', // Azul
-            ];
-        }
-        if (tienePermiso('productos', 'ver')) {
-            $cajon_aplicaciones[] = [
-                'nombre' => 'Productos / Ensayos',
-                'link' => '/Cycsa/publico/productos',
-                'icon' => 'fa-solid fa-flask-vial',
-                'desc' => 'Catálogo de ensayos de laboratorio y tarifas.',
-                'color' => 'linear-gradient(135deg, #059669, #047857)', // Verde
-            ];
-        }
+        // 1. Cotizaciones (Inicio de flujo comercial)
         if (tienePermiso('cotizaciones', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Cotizaciones',
@@ -49,6 +32,7 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #d97706, #b45309)', // Naranja
             ];
         }
+        // 2. Hojas de Servicio (CYCSA-RT-FM-13)
         if (tienePermiso('operaciones', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Hojas de Servicio',
@@ -58,24 +42,27 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #4f46e5, #3730a3)', // Indigo
             ];
         }
+        // 3. Operaciones LIMS (Programación y Muestras)
         if (tienePermiso('operaciones', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Operaciones LIMS',
                 'link' => '/Cycsa/publico/operaciones',
                 'icon' => 'fa-solid fa-gears',
-                'desc' => 'Órdenes de servicio y recepción de muestras.',
+                'desc' => 'Órdenes de servicio, asignación técnica y captura matricial.',
                 'color' => 'linear-gradient(135deg, #0284c7, #0369a1)', // Celeste
             ];
         }
+        // 4. Laboratorio (Ensayes y Rupturas)
         if (tienePermiso('laboratorio', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Laboratorio',
                 'link' => '/Cycsa/publico/laboratorio',
                 'icon' => 'fa-solid fa-flask',
-                'desc' => 'Registro de rupturas y control de calidad.',
+                'desc' => 'Registro de rupturas y control de calidad de ensayes.',
                 'color' => 'linear-gradient(135deg, #7c3aed, #5b21b6)', // Morado
             ];
         }
+        // 5. Contabilidad ERP
         if (tienePermiso('contabilidad', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Contabilidad ERP',
@@ -85,6 +72,27 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #db2777, #be185d)', // Rosado
             ];
         }
+        // 6. Productos / Ensayos
+        if (tienePermiso('productos', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Productos / Ensayos',
+                'link' => '/Cycsa/publico/productos',
+                'icon' => 'fa-solid fa-flask-vial',
+                'desc' => 'Catálogo de ensayos de laboratorio y tarifas.',
+                'color' => 'linear-gradient(135deg, #059669, #047857)', // Verde
+            ];
+        }
+        // 7. Clientes
+        if (tienePermiso('clientes', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Clientes',
+                'link' => '/Cycsa/publico/clientes',
+                'icon' => 'fa-solid fa-address-book',
+                'desc' => 'Gestión y catálogo de clientes comerciales.',
+                'color' => 'linear-gradient(135deg, #2563eb, #1d4ed8)', // Azul
+            ];
+        }
+        // 8. Usuarios
         if (tienePermiso('usuarios', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Gestión de Usuarios',
@@ -95,7 +103,7 @@ class PanelControlador extends ControladorBase {
             ];
         }
         
-        // Ajustes y Bitácora solo para administradores
+        // 9. Ajustes y Bitácora solo para administradores
         if ($esAdmin) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Condiciones Comerciales',
