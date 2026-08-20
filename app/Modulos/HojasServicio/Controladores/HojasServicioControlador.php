@@ -38,7 +38,7 @@ class HojasServicioControlador extends ControladorBase {
                             cot.codigo AS cot_codigo, cot.nombre_proyecto,
                             cli.nombre_razon_social AS cliente_nombre,
                             hs.id AS id_hoja, hs.codigo_documento,
-                            pm.estado_muestreo, pm.fecha_ida, pm.fecha_llegada,
+                            pm.id AS id_pm, pm.estado_muestreo, pm.fecha_ida, pm.fecha_llegada,
                             tec.nombre AS tecnico_muestreo_nombre
                      FROM ordenes_servicio os
                      JOIN cotizaciones cot ON os.id_cotizacion = cot.id
@@ -142,6 +142,21 @@ class HojasServicioControlador extends ControladorBase {
 
         $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
         
+        $osModelo = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
+        $osCompleta = $osModelo->obtenerPorId($idOS);
+
+        $tecnicoMuestreo = $os['tecnico_muestreo'] ?? '';
+        $fechaToma = !empty($os['fecha_muestreo']) ? $os['fecha_muestreo'] . ' ' . ($os['hora_muestreo'] ?: '08:00:00') : '';
+
+        if (!empty($osCompleta['programacion_muestreo'])) {
+            if (empty($tecnicoMuestreo) && !empty($osCompleta['programacion_muestreo']['tecnico_nombre'])) {
+                $tecnicoMuestreo = $osCompleta['programacion_muestreo']['tecnico_nombre'];
+            }
+            if (empty($fechaToma) && !empty($osCompleta['programacion_muestreo']['fecha_ida'])) {
+                $fechaToma = $osCompleta['programacion_muestreo']['fecha_ida'];
+            }
+        }
+
         if (!$hoja) {
             $numCorrelativo = $modelo->obtenerSiguienteNumeroHojaSolicitud((int)$os['id_cotizacion']);
             $codigoDoc = "CYCSA-RT-FM-" . sprintf("%02d", $numCorrelativo);
@@ -154,11 +169,11 @@ class HojasServicioControlador extends ControladorBase {
                 'direccion_proyecto' => $os['direccion_proyecto'] ?? '',
                 'telefono' => $os['cliente_telefono'] ?? '',
                 'correo_electronico' => $os['cliente_email'] ?? '',
-                'nombre_persona_entrega_muestra' => !empty($os['atencion_a']) ? $os['atencion_a'] : $os['cliente_nombre'],
+                'nombre_persona_entrega_muestra' => !empty($os['atencion_a']) ? $os['atencion_a'] : ($os['cliente_nombre'] ?? ''),
                 'naturaleza_muestra' => 'Concreto',
                 'procedencia_punto_muestreo' => '',
-                'nombre_persona_toma_muestra' => $os['tecnico_muestreo'] ?? '',
-                'fecha_hora_toma_muestra' => !empty($os['fecha_muestreo']) ? $os['fecha_muestreo'] . ' ' . ($os['hora_muestreo'] ?: '08:00:00') : '',
+                'nombre_persona_toma_muestra' => !empty($tecnicoMuestreo) ? $tecnicoMuestreo : 'Cliente / Entregada por Cliente',
+                'fecha_hora_toma_muestra' => !empty($fechaToma) ? $fechaToma : date('Y-m-d H:i'),
                 'muestras_json' => '[]',
                 'req_resistencia_concreto' => 1,
                 'req_resistencia_adoquin' => 0,
@@ -189,11 +204,8 @@ class HojasServicioControlador extends ControladorBase {
             if (empty($hoja['telefono'])) $hoja['telefono'] = $os['cliente_telefono'];
             if (empty($hoja['correo_electronico']) && !empty($os['cliente_email'])) $hoja['correo_electronico'] = $os['cliente_email'];
             if (empty($hoja['nombre_persona_entrega_muestra'])) $hoja['nombre_persona_entrega_muestra'] = !empty($os['atencion_a']) ? $os['atencion_a'] : $os['cliente_nombre'];
-            if (empty($hoja['nombre_persona_toma_muestra']) && !empty($os['tecnico_muestreo'])) $hoja['nombre_persona_toma_muestra'] = $os['tecnico_muestreo'];
+            if (empty($hoja['nombre_persona_toma_muestra']) && !empty($tecnicoMuestreo)) $hoja['nombre_persona_toma_muestra'] = $tecnicoMuestreo;
         }
-
-        $osModelo = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
-        $osCompleta = $osModelo->obtenerPorId($idOS);
 
         $respuesta->enviarJson([
             'status' => 'success',

@@ -250,13 +250,16 @@
                     <?php foreach ($nuevas as $n): ?>
                         <?php
                         // Determinar estado de muestreo para Casos A, B y C
-                        $estadoMuestreo = 'sin_decidir'; // Caso A
-                        if ($n['requiere_muestreo'] === 0 || $n['requiere_muestreo'] === '0') {
-                            $estadoMuestreo = 'no_aplica'; // Caso C
-                        } elseif (!empty($n['requiere_muestreo']) && in_array($n['estado_muestreo'], ['Programado', 'En Proceso'])) {
-                            $estadoMuestreo = 'en_proceso'; // Caso B
-                        } elseif (!empty($n['requiere_muestreo']) && $n['estado_muestreo'] === 'Finalizado') {
-                            $estadoMuestreo = 'finalizado'; // Caso C
+                        $estadoMuestreo = 'sin_decidir'; // Caso A: Nueva orden (Preguntar si requiere muestreo o ingreso directo)
+                        
+                        if (!empty($n['id_pm'])) {
+                            if (in_array($n['estado_muestreo'], ['Programado', 'En Proceso', 'En Campo'])) {
+                                $estadoMuestreo = 'en_proceso'; // Caso B: Técnico asignado en campo
+                            } else {
+                                $estadoMuestreo = 'finalizado'; // Caso C: Muestreo completado
+                            }
+                        } elseif (!empty($n['id_hoja'])) {
+                            $estadoMuestreo = 'finalizado'; // Caso C: Ya cuenta con hoja registrada
                         }
                         ?>
                         <tr>
