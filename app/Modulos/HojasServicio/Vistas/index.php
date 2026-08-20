@@ -1356,8 +1356,8 @@
 
     <?php if (!empty($id_os_auto)): ?>
     document.addEventListener("DOMContentLoaded", function() {
-        if (typeof abrirModalSolicitud === 'function') {
-            abrirModalSolicitud(<?= (int)$id_os_auto ?>);
+        if (typeof abrirModalHojaSolicitud === 'function') {
+            abrirModalHojaSolicitud(<?= (int)$id_os_auto ?>, 'O/S #<?= (int)$id_os_auto ?>');
         }
     });
     <?php endif; ?>
