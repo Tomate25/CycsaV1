@@ -38,14 +38,8 @@
                 <i class="fa-solid fa-file-contract" style="color: var(--cycsa-azul);"></i> Órdenes de Servicio
             </h2>
             <p style="color: #64748b; margin-top: 5px; font-size: 13.5px; margin-bottom: 0;">
-                Gestión y seguimiento del formato oficial <strong>CYCSA-RG-FM-39 V1</strong>
+                Gestión, consulta e impresión del formato oficial <strong>CYCSA-RG-FM-39 V1</strong>
             </p>
-        </div>
-        
-        <div>
-            <a href="/Cycsa/publico/cotizaciones" class="btn-cycsa btn-cycsa-primary">
-                <i class="fa-solid fa-circle-plus"></i> Generar desde Cotización
-            </a>
         </div>
     </div>
 
@@ -122,16 +116,16 @@
                             </td>
                             <td style="text-align: right;">
                                 <div style="display: flex; gap: 6px; justify-content: flex-end;">
-                                    <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary" title="Ver Documento CYCSA-RG-FM-39 V1" style="padding: 6px 10px; font-size: 12px;">
-                                        <i class="fa-solid fa-eye" style="color: var(--cycsa-azul);"></i> O/S
+                                    <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary" title="Ver e Imprimir Documento Oficial CYCSA-RG-FM-39 V1" style="padding: 6px 12px; font-size: 12px;">
+                                        <i class="fa-solid fa-print" style="color: var(--cycsa-azul);"></i> Ver / Imprimir O/S
                                     </a>
                                     <?php if (!empty($os['requiere_muestreo']) && $os['estado'] === 'Pendiente de Muestreo'): ?>
-                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-warning" title="Programar Logística" style="padding: 6px 10px; font-size: 12px;">
-                                            <i class="fa-solid fa-calendar-alt"></i> Logística
+                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-warning" title="Programar Logística de Muestreo" style="padding: 6px 10px; font-size: 12px;">
+                                            <i class="fa-solid fa-truck-pickup"></i> Logística
                                         </a>
                                     <?php endif; ?>
-                                    <a href="/Cycsa/publico/hojas-servicio?id_os=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-success" title="Ir a Hoja de Servicio CYCSA RT-FM-13" style="padding: 6px 10px; font-size: 12px;">
-                                        <i class="fa-solid fa-file-circle-check"></i> Hoja Servicio
+                                    <a href="/Cycsa/publico/hojas-servicio?id_os=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-success" title="Ir a la Hoja de Servicio CYCSA-RT-FM-13" style="padding: 6px 12px; font-size: 12px;">
+                                        <i class="fa-solid fa-file-circle-check"></i> Hoja RT-FM-13
                                     </a>
                                 </div>
                             </td>
