@@ -12,6 +12,7 @@ use Cycsa\Modulos\Contabilidad\Controladores\ContabilidadControlador;
 use Cycsa\Modulos\Operaciones\Controladores\OperacionesControlador;
 use Cycsa\Modulos\Operaciones\Controladores\LaboratorioControlador;
 use Cycsa\Modulos\HojasServicio\Controladores\HojasServicioControlador;
+use Cycsa\Modulos\OrdenesServicio\Controladores\OrdenesServicioControlador;
 
 // Importar Middlewares
 use Cycsa\App\Middleware\AuthMiddleware;
@@ -104,6 +105,16 @@ $app->enrutador->post('/cotizaciones/decision-administrativa', [CotizacionesCont
 $app->enrutador->get('/cotizaciones/imprimir', [CotizacionesControlador::class, 'imprimir'], [AuthMiddleware::class]);
 $app->enrutador->post('/cotizaciones/guardar-resultados-item', [CotizacionesControlador::class, 'guardarResultadosItem'], [AuthMiddleware::class]);
 $app->enrutador->get('/cotizaciones/imprimir-reporte-item', [CotizacionesControlador::class, 'imprimirReporteItem'], [AuthMiddleware::class]);
+
+// 🔒 RUTAS DEL MÓDULO DE ÓRDENES DE SERVICIO (CYCSA-RG-FM-39 V1)
+$app->enrutador->get('/ordenes-servicio', [OrdenesServicioControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/ordenes-servicio/crear', [OrdenesServicioControlador::class, 'crear'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/guardar', [OrdenesServicioControlador::class, 'guardar'], [AuthMiddleware::class]);
+$app->enrutador->get('/ordenes-servicio/detalle', [OrdenesServicioControlador::class, 'detalle'], [AuthMiddleware::class]);
+$app->enrutador->get('/ordenes-servicio/programar-muestreo', [OrdenesServicioControlador::class, 'programarMuestreo'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/guardar-muestreo', [OrdenesServicioControlador::class, 'guardarProgramacionMuestreo'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/finalizar-muestreo', [OrdenesServicioControlador::class, 'finalizarMuestreo'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/marcar-ingreso-directo', [OrdenesServicioControlador::class, 'marcarIngresoDirectoAjax'], [AuthMiddleware::class]);
 
 // 🔒 RUTAS DEL MÓDULO CONTABLE (REQUERIDO: SESIÓN Y PERMISO DE CONTABILIDAD)
 $app->enrutador->get('/contabilidad', function($peticion, $respuesta) {

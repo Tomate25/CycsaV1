@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Repositories;
+namespace Cycsa\App\Repositories;
 
 /**
  * Class CotizacionRepository

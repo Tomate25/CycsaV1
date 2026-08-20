@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exceptions;
+namespace Cycsa\App\Exceptions;
 
 use Exception;
 

@@ -130,7 +130,7 @@
     <a href="/Cycsa/publico/cotizaciones" style="color: #6c757d; text-decoration: none; font-size: 14px;"><i class="fa-solid fa-arrow-left"></i> Volver a la lista</a>
 </div>
 
-<form action="/Cycsa/publico/cotizaciones/crear" method="POST" id="form-cotizacion">
+<form action="/Cycsa/publico/cotizaciones/crear" method="POST" id="form-cotizacion" autocomplete="off">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
     <div class="seccion-form">
@@ -143,7 +143,7 @@
                     <!-- Contenedor del Buscador -->
                     <div id="cliente-search-container" style="position: relative; cursor: pointer;" onclick="abrirModalClientes()">
                         <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" id="cliente-search-placeholder" class="form-control" placeholder="Haga clic aquí para buscar cliente..." readonly style="cursor: pointer; padding-left: 40px; background: white;" required>
+                        <input type="text" id="cliente-search-trigger" class="form-control" placeholder="Haz clic aquí para buscar y seleccionar cliente..." readonly style="padding-left: 42px; cursor: pointer; background: white; border-color: #cbd5e1; font-weight: 500;" autocomplete="off">
                     </div>
                     
                     <!-- Tarjeta de Cliente Seleccionado (Layout Premium) -->
@@ -166,19 +166,19 @@
             
             <div class="form-group">
                 <label class="form-label">Atención a (Contacto) *</label>
-                <input type="text" name="atencion_a" class="form-control" required placeholder="Nombre de la persona que recibe la cotización">
+                <input type="text" name="atencion_a" class="form-control" required placeholder="Nombre de la persona que recibe la cotización" autocomplete="off">
             </div>
         </div>
 
         <div class="grid-2">
             <div class="form-group">
                 <label class="form-label">Nombre del Proyecto *</label>
-                <input type="text" name="nombre_proyecto" class="form-control" required placeholder="Ej: Construcción Oficinas Centrales">
+                <input type="text" name="nombre_proyecto" class="form-control" required placeholder="Ej: Construcción Oficinas Centrales" autocomplete="off">
             </div>
             
             <div class="form-group">
                 <label class="form-label">Dirección Exacta del Proyecto *</label>
-                <input type="text" name="direccion_proyecto" class="form-control" required placeholder="Ubicación física del proyecto">
+                <input type="text" name="direccion_proyecto" class="form-control" required placeholder="Ubicación física del proyecto" autocomplete="off">
             </div>
         </div>
     </div>
@@ -189,32 +189,32 @@
         <div class="grid-3">
             <div class="form-group">
                 <label class="form-label">Condición de Pago *</label>
-                <select name="condicion_pago" class="form-control" required>
-                    <option value="">Seleccionar...</option>
-                    <?php foreach ($condiciones_pago as $item): ?>
-                        <option value="<?= htmlspecialchars($item['valor'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($item['valor'], ENT_QUOTES, 'UTF-8') ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="text" name="condicion_pago" id="input_condicion_pago" class="form-control" required placeholder="Seleccionar condición de pago..." autocomplete="off" readonly onclick="abrirModalCondiciones('pago')" style="cursor: pointer; padding-right: 42px; background-color: #ffffff; font-weight: 500;">
+                    <button type="button" onclick="abrirModalCondiciones('pago')" style="position: absolute; right: 5px; background: #ebf8ff; border: 1px solid #cbd5e1; color: var(--cycsa-azul); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;" title="Seleccionar condición de pago">
+                        <i class="fa-solid fa-list-check"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Tiempo de Entrega *</label>
-                <input type="text" name="tiempo_entrega" class="form-control" required placeholder="Ej: 5 a 7 días hábiles" list="tiempos-entrega-datalist">
-                <datalist id="tiempos-entrega-datalist">
-                    <?php foreach ($tiempos_entrega as $item): ?>
-                        <option value="<?= htmlspecialchars($item['valor'], ENT_QUOTES, 'UTF-8') ?>">
-                    <?php endforeach; ?>
-                </datalist>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="text" name="tiempo_entrega" id="input_tiempo_entrega" class="form-control" required placeholder="Ej: 5 a 7 días hábiles" autocomplete="off" readonly onclick="abrirModalCondiciones('entrega')" style="cursor: pointer; padding-right: 42px; background-color: #ffffff; font-weight: 500;">
+                    <button type="button" onclick="abrirModalCondiciones('entrega')" style="position: absolute; right: 5px; background: #ebf8ff; border: 1px solid #cbd5e1; color: var(--cycsa-azul); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;" title="Seleccionar tiempo de entrega">
+                        <i class="fa-solid fa-clock"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Vigencia de la Oferta *</label>
-                <input type="text" name="vigencia_oferta" class="form-control" required placeholder="Ej: 15 días calendario" value="15 días calendario" list="vigencias-oferta-datalist">
-                <datalist id="vigencias-oferta-datalist">
-                    <?php foreach ($vigencias_oferta as $item): ?>
-                        <option value="<?= htmlspecialchars($item['valor'], ENT_QUOTES, 'UTF-8') ?>">
-                    <?php endforeach; ?>
-                </datalist>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="text" name="vigencia_oferta" id="input_vigencia_oferta" class="form-control" required placeholder="Ej: 15 días calendario" value="15 días calendario" autocomplete="off" readonly onclick="abrirModalCondiciones('vigencia')" style="cursor: pointer; padding-right: 42px; background-color: #ffffff; font-weight: 500;">
+                    <button type="button" onclick="abrirModalCondiciones('vigencia')" style="position: absolute; right: 5px; background: #ebf8ff; border: 1px solid #cbd5e1; color: var(--cycsa-azul); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;" title="Seleccionar vigencia de la oferta">
+                        <i class="fa-solid fa-calendar-check"></i>
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -251,11 +251,12 @@
         <table class="tabla-detalles" id="tabla-ensayos">
             <thead>
                 <tr>
-                    <th style="width: 48%;">Nombre Comercial / Descripción</th>
-                    <th style="width: 20%;">Tiempo Entrega/Obs</th>
-                    <th style="width: 8%;">Cantidad</th>
+                    <th style="width: 22%;">Ensayo / Servicio Técnico</th>
+                    <th style="width: 22%;">Detalle (BD)</th>
+                    <th style="width: 7%;">Cantidad</th>
                     <th style="width: 10%;" id="th-precio-header">Precio Unit. (C$)</th>
-                    <th style="width: 10%;" id="th-subtotal-header">Subtotal (C$)</th>
+                    <th style="width: 27%;">Descripción (Escribir)</th>
+                    <th style="width: 8%;" id="th-subtotal-header">Subtotal (C$)</th>
                     <th style="width: 4%; text-align: center;"><i class="fa-solid fa-trash"></i></th>
                 </tr>
             </thead>
@@ -266,7 +267,7 @@
                         <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
                         <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
                         <input type="hidden" name="ensayo_id_producto[]" value="" class="prod-id-input">
-                        <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." list="productos-datalist" onchange="completarPrecio(this)">
+                        <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Ensayo / Servicio Técnico..." autocomplete="off" onchange="completarPrecio(this)">
                         <div style="margin-top: 3px; font-size: 10px;">
                             <span class="badge-tipo-row" style="font-weight: bold; padding: 1px 4px; border-radius: 3px; background: #fef3c7; color: #d97706; transition: all 0.2s;">
                                 <i class="fa-solid fa-pen-fancy"></i> Campo Libre
@@ -274,10 +275,13 @@
                         </div>
                     </td>
                     <td>
-                        <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega...">
+                        <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Detalle capturado de BD...">
                     </td>
                     <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)"></td>
                     <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="0.00" required oninput="calcularFila(this)"></td>
+                    <td>
+                        <textarea name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" rows="2" placeholder="Escribir descripción personalizada sin límite..." style="resize: vertical; width: 100%; font-family: inherit; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background-color: #ffffff;"></textarea>
+                    </td>
                     <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">C$ 0.00</td>
                     <td style="text-align: center; vertical-align: middle;">
                         <button type="button" class="btn-remover" onclick="eliminarFila(this)" disabled title="No puedes eliminar la primera fila"><i class="fa-solid fa-xmark"></i></button>
@@ -839,16 +843,39 @@
             if (formatoInput) formatoInput.value = formato;
             if (obsInput) obsInput.value = obs;
             
-            // Cambiar el badge a Catálogo
-            if (badge) {
-                badge.style.background = '#e0f2fe';
-                badge.style.color = '#0369a1';
-                badge.innerHTML = '<i class="fa-solid fa-book"></i> Catálogo';
+            if (idProd) {
+                input.setAttribute('readonly', 'readonly');
+                input.style.backgroundColor = '#f1f5f9';
+                input.style.color = '#334155';
+                input.style.fontWeight = '600';
+                input.style.cursor = 'not-allowed';
+                input.style.borderColor = '#cbd5e1';
+                if (badge) {
+                    badge.style.background = '#e0f2fe';
+                    badge.style.color = '#0369a1';
+                    badge.innerHTML = '<i class="fa-solid fa-lock"></i> Catálogo (Nombre Bloqueado)';
+                }
+            } else {
+                input.removeAttribute('readonly');
+                input.style.backgroundColor = '#ffffff';
+                input.style.color = 'inherit';
+                input.style.fontWeight = 'normal';
+                input.style.cursor = 'text';
+                if (badge) {
+                    badge.style.background = '#fef3c7';
+                    badge.style.color = '#d97706';
+                    badge.innerHTML = '<i class="fa-solid fa-pen-fancy"></i> Campo Libre';
+                }
             }
             
             calcularFila(precioInput);
         } else {
             if (idInput) idInput.value = '';
+            input.removeAttribute('readonly');
+            input.style.backgroundColor = '#ffffff';
+            input.style.color = 'inherit';
+            input.style.fontWeight = 'normal';
+            input.style.cursor = 'text';
             
             // Cambiar el badge a Campo Libre
             if (badge) {
@@ -941,19 +968,21 @@
             .replace(/'/g, "&#039;");
     }
 
-    function agregarFilaConDatos(descripcion, precio, idProducto = '', codigo = '', norma = '', formato = '', obs = '') {
+    function agregarFilaConDatos(descripcion, precio, idProducto = '', codigo = '', norma = '', formato = '', obs = '', descAdicional = '') {
         const tbody = document.querySelector('#tabla-ensayos tbody');
+        const isCatalogo = (idProducto !== '' && idProducto !== null && idProducto !== undefined);
         
         // Si solo hay una fila y está vacía, la sobrescribimos
         const filas = tbody.querySelectorAll('tr');
         if (filas.length === 1) {
             const idInput = filas[0].querySelector('.prod-id-input');
             const descInput = filas[0].querySelector('input[name="ensayo_desc[]"]');
+            const obsInput = filas[0].querySelector('.spec-obs');
             const precioInput = filas[0].querySelector('input[name="ensayo_precio[]"]');
             const codigoInput = filas[0].querySelector('.spec-codigo');
             const normaInput = filas[0].querySelector('.spec-norma');
             const formatoInput = filas[0].querySelector('.spec-formato');
-            const obsInput = filas[0].querySelector('.spec-obs');
+            const descAdicionalInput = filas[0].querySelector('.spec-desc-adicional');
             const badge = filas[0].querySelector('.badge-tipo-row');
 
             if (descInput && descInput.value.trim() === "" && (parseFloat(precioInput.value) || 0) === 0) {
@@ -965,13 +994,54 @@
                 if (normaInput) normaInput.value = norma;
                 if (formatoInput) formatoInput.value = formato;
                 if (obsInput) obsInput.value = obs;
+                if (descAdicionalInput) descAdicionalInput.value = descAdicional;
                 
-                if (badge) {
-                    if (idProducto) {
+                if (isCatalogo) {
+                    descInput.setAttribute('readonly', 'readonly');
+                    descInput.style.backgroundColor = '#f1f5f9';
+                    descInput.style.color = '#1e293b';
+                    descInput.style.fontWeight = '600';
+                    descInput.style.cursor = 'not-allowed';
+
+                    if (obsInput) {
+                        obsInput.setAttribute('readonly', 'readonly');
+                        obsInput.style.backgroundColor = '#f1f5f9';
+                        obsInput.style.color = '#475569';
+                        obsInput.style.cursor = 'not-allowed';
+                    }
+
+                    precioInput.setAttribute('readonly', 'readonly');
+                    precioInput.style.backgroundColor = '#f1f5f9';
+                    precioInput.style.color = '#1e293b';
+                    precioInput.style.fontWeight = '600';
+                    precioInput.style.cursor = 'not-allowed';
+
+                    if (badge) {
                         badge.style.background = '#e0f2fe';
                         badge.style.color = '#0369a1';
-                        badge.innerHTML = '<i class="fa-solid fa-book"></i> Catálogo';
-                    } else {
+                        badge.innerHTML = '<i class="fa-solid fa-lock"></i> Catálogo (Bloqueado)';
+                    }
+                } else {
+                    descInput.removeAttribute('readonly');
+                    descInput.style.backgroundColor = '#ffffff';
+                    descInput.style.color = 'inherit';
+                    descInput.style.fontWeight = 'normal';
+                    descInput.style.cursor = 'text';
+
+                    if (obsInput) {
+                        obsInput.removeAttribute('readonly');
+                        obsInput.style.backgroundColor = '#ffffff';
+                        obsInput.style.color = 'inherit';
+                        obsInput.style.cursor = 'text';
+                    }
+
+                    precioInput.removeAttribute('readonly');
+                    precioInput.style.backgroundColor = '#ffffff';
+                    precioInput.style.color = 'inherit';
+                    precioInput.style.fontWeight = 'normal';
+                    precioInput.style.cursor = 'text';
+
+                    if (badge) {
                         badge.style.background = '#fef3c7';
                         badge.style.color = '#d97706';
                         badge.innerHTML = '<i class="fa-solid fa-pen-fancy"></i> Campo Libre';
@@ -984,26 +1054,27 @@
         }
         
         const nuevaFila = document.createElement('tr');
-        const hasTechInfo = (codigo || norma || formato);
-        const isCatalogo = idProducto !== '';
         nuevaFila.innerHTML = `
             <td>
-                <input type="hidden" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01" value="${escapeHtml(codigo)}">
-                <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39" value="${escapeHtml(norma)}">
-                <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01" value="${escapeHtml(formato)}">
+                <input type="hidden" name="ensayo_codigo[]" class="form-control spec-codigo" value="${escapeHtml(codigo)}">
+                <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" value="${escapeHtml(norma)}">
+                <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" value="${escapeHtml(formato)}">
                 <input type="hidden" name="ensayo_id_producto[]" value="${escapeHtml(idProducto.toString())}" class="prod-id-input">
-                <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." list="productos-datalist" onchange="completarPrecio(this)" value="${escapeHtml(descripcion)}">
+                <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." autocomplete="off" onchange="completarPrecio(this)" value="${escapeHtml(descripcion)}" ${isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1;"' : ''}>
                 <div style="margin-top: 3px; font-size: 10px;">
                     <span class="badge-tipo-row" style="font-weight: bold; padding: 1px 4px; border-radius: 3px; background: ${isCatalogo ? '#e0f2fe' : '#fef3c7'}; color: ${isCatalogo ? '#0369a1' : '#d97706'}; transition: all 0.2s;">
-                        ${isCatalogo ? '<i class="fa-solid fa-book"></i> Catálogo' : '<i class="fa-solid fa-pen-fancy"></i> Campo Libre'}
+                        ${isCatalogo ? '<i class="fa-solid fa-lock"></i> Catálogo (Bloqueado)' : '<i class="fa-solid fa-pen-fancy"></i> Campo Libre'}
                     </span>
                 </div>
             </td>
             <td>
-                <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega..." value="${escapeHtml(obs)}">
+                <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Detalle..." value="${escapeHtml(obs)}" ${isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #475569; cursor: not-allowed; border-color: #cbd5e1;"' : ''}>
             </td>
             <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)"></td>
-            <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="${precio.toFixed(2)}" required oninput="calcularFila(this)"></td>
+            <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="${precio.toFixed(2)}" required oninput="calcularFila(this)" ${isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1;"' : ''}></td>
+            <td>
+                <textarea name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" rows="2" placeholder="Escribir descripción personalizada sin límite..." style="resize: vertical; font-family: inherit; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background-color: #ffffff; width: 100%;">${escapeHtml(descAdicional)}</textarea>
+            </td>
             <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">${formatearMonto(precio)}</td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" class="btn-remover" onclick="eliminarFila(this)"><i class="fa-solid fa-xmark"></i></button>
@@ -1042,37 +1113,6 @@
     }
 </script>
 
-<datalist id="productos-datalist">
-    <?php foreach ($productos as $prod): ?>
-        <?php 
-        $nombre_comercial_solo = !empty($prod['nombre_comercial']) ? $prod['nombre_comercial'] : $prod['ensayo_servicio'];
-        
-        // Determinar código inteligente (sólo servicio) y formato de reporte
-        $codigo_opcion = $prod['codigo_servicio'] ?? '';
-        $formato_opcion = (!empty($prod['codigo_servicio']) && strpos($prod['codigo_servicio'], 'CYCSA-RT-') !== false) ? $prod['codigo_servicio'] : ($prod['formato_reporte'] ?? '');
-        
-        // Concatenar descripción técnica completa para que se indexe y se busque
-        $nombre = $nombre_comercial_solo;
-        if (!empty($prod['ensayo_servicio'])) {
-            $nombre = $prod['ensayo_servicio'] . ' (' . $nombre . ')';
-        }
-        if (!empty($codigo_opcion)) {
-            $nombre = $codigo_opcion . ' - ' . $nombre;
-        }
-        ?>
-        <option value="<?= htmlspecialchars($nombre_comercial_solo, ENT_QUOTES, 'UTF-8') ?>" 
-                data-precio="<?= $prod['precio'] ?>" 
-                data-id="<?= $prod['id'] ?>"
-                data-codigo="<?= htmlspecialchars($codigo_opcion, ENT_QUOTES, 'UTF-8') ?>"
-                data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                data-formato="<?= htmlspecialchars($formato_opcion, ENT_QUOTES, 'UTF-8') ?>"
-                data-ensayo-servicio="<?= htmlspecialchars($prod['ensayo_servicio'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-            <?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?>
-        </option>
-    <?php endforeach; ?>
-</datalist>
-
 <!-- MODAL DE BÚSQUEDA Y SELECCIÓN DE ENSAYOS -->
 <div class="modal-premium-bg" id="modal-catalogo" style="display:none;">
     <div class="modal-premium-content">
@@ -1095,7 +1135,7 @@
                     <tr>
                         <th style="width: 5%; text-align: center;"><input type="checkbox" id="modal-select-all" onchange="seleccionarTodosModal(this)"></th>
                         <th style="width: 15%;">Código</th>
-                        <th style="width: 50%;">Descripción / Ensayo</th>
+                        <th style="width: 50%;">Ensayo / Servicio Técnico</th>
                         <th style="width: 18%;">Matriz / Tipo</th>
                         <th style="width: 12%; text-align: right;">Precio</th>
                     </tr>
@@ -1103,27 +1143,26 @@
                 <tbody>
                     <?php foreach ($productos as $prod): ?>
                         <?php 
-                        $nombre_completo = !empty($prod['nombre_comercial']) ? $prod['nombre_comercial'] : $prod['ensayo_servicio'];
+                        $ensayo_tecnico = !empty($prod['ensayo_servicio']) ? trim($prod['ensayo_servicio']) : trim($prod['nombre_comercial'] ?? '');
+                        $nombre_comercial = trim($prod['nombre_comercial'] ?? '');
                         
                         $codigo_opcion = $prod['codigo_servicio'] ?? '';
                         $formato_opcion = (!empty($prod['codigo_servicio']) && strpos($prod['codigo_servicio'], 'CYCSA-RT-') !== false) ? $prod['codigo_servicio'] : ($prod['formato_reporte'] ?? '');
                         
-                        $busqueda_val = strtolower($nombre_completo . ' ' . $codigo_opcion . ' ' . $formato_opcion . ' ' . ($prod['norma_astm'] ?? '') . ' ' . ($prod['matriz_tipo'] ?? ''));
-                        
-                        $nombre_opcion = $nombre_completo;
-                        if (!empty($codigo_opcion)) {
-                            $nombre_opcion = $codigo_opcion . ' - ' . $nombre_completo;
-                        }
+                        $busqueda_val = strtolower($ensayo_tecnico . ' ' . $nombre_comercial . ' ' . $codigo_opcion . ' ' . $formato_opcion . ' ' . ($prod['norma_astm'] ?? '') . ' ' . ($prod['matriz_tipo'] ?? ''));
                         ?>
                         <tr style="cursor: pointer;" onclick="toggleFilaCheck(this, event)" data-text="<?= htmlspecialchars($busqueda_val, ENT_QUOTES, 'UTF-8') ?>" data-cat="<?= htmlspecialchars(strtolower($prod['matriz_tipo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                             <td style="text-align: center;">
-                                <input type="checkbox" class="modal-prod-checkbox" data-id="<?= $prod['id'] ?>" data-nombre="<?= htmlspecialchars($nombre_completo, ENT_QUOTES, 'UTF-8') ?>" data-precio="<?= $prod['precio'] ?>" data-codigo="<?= htmlspecialchars($codigo_opcion, ENT_QUOTES, 'UTF-8') ?>" data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-formato="<?= htmlspecialchars($formato_opcion, ENT_QUOTES, 'UTF-8') ?>" data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>" onchange="actualizarContadorModal()">
+                                <input type="checkbox" class="modal-prod-checkbox" data-id="<?= $prod['id'] ?>" data-nombre="<?= htmlspecialchars($ensayo_tecnico, ENT_QUOTES, 'UTF-8') ?>" data-precio="<?= $prod['precio'] ?>" data-codigo="<?= htmlspecialchars($codigo_opcion, ENT_QUOTES, 'UTF-8') ?>" data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-formato="<?= htmlspecialchars($formato_opcion, ENT_QUOTES, 'UTF-8') ?>" data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>" onchange="actualizarContadorModal()">
                             </td>
                             <td style="font-family: monospace; font-weight: bold; color: #2d3748;"><?= htmlspecialchars($codigo_opcion !== '' ? $codigo_opcion : 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
                             <td>
-                                <strong style="color: #2d3748;"><?= htmlspecialchars($nombre_completo, ENT_QUOTES, 'UTF-8') ?></strong>
+                                <strong style="color: #2d3748; line-height: 1.3; display: block;"><?= htmlspecialchars($ensayo_tecnico, ENT_QUOTES, 'UTF-8') ?></strong>
+                                <?php if (!empty($nombre_comercial) && $nombre_comercial !== $ensayo_tecnico): ?>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;"><i class="fa-solid fa-tag"></i> Comercial: <?= htmlspecialchars($nombre_comercial, ENT_QUOTES, 'UTF-8') ?></div>
+                                <?php endif; ?>
                                 <?php if (!empty($prod['norma_astm'])): ?>
-                                    <div style="font-size: 11px; color: var(--cycsa-azul); margin-top: 2px;"><i class="fa-solid fa-scroll"></i> Norma: <?= htmlspecialchars($prod['norma_astm'], ENT_QUOTES, 'UTF-8') ?></div>
+                                    <div style="font-size: 11px; color: var(--cycsa-azul); margin-top: 1px;"><i class="fa-solid fa-scroll"></i> Norma: <?= htmlspecialchars($prod['norma_astm'], ENT_QUOTES, 'UTF-8') ?></div>
                                 <?php endif; ?>
                             </td>
                             <td><span style="background: #ebf8ff; color: #2b6cb0; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; display: inline-block;"><?= htmlspecialchars($prod['matriz_tipo'] ?? 'Otros', ENT_QUOTES, 'UTF-8') ?></span></td>
@@ -1192,3 +1231,139 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL DE SELECCIÓN DE CONDICIONES COMERCIALES (PAGO, TIEMPO ENTREGA, VIGENCIA) -->
+<div class="modal-premium-bg" id="modal-condiciones" style="display:none;">
+    <div class="modal-premium-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h4 class="modal-title" id="modal-condiciones-titulo"><i class="fa-solid fa-list-check"></i> Seleccionar Opción</h4>
+            <button type="button" class="modal-close" onclick="cerrarModalCondiciones()">&times;</button>
+        </div>
+        
+        <div style="padding: 20px;">
+            <div class="modal-search-wrapper" style="position: relative; margin-bottom: 15px;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                <input type="text" id="modal-condicion-search-input" class="form-control" placeholder="Buscar opción..." style="padding-left: 40px;" oninput="filtrarCondicionesModal()" autocomplete="off">
+            </div>
+            
+            <div id="modal-condiciones-lista" style="max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+                <!-- Lista interactiva -->
+            </div>
+
+            <div style="margin-top: 18px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
+                <label style="font-size: 12.5px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">
+                    <i class="fa-solid fa-pen-to-square"></i> Escribir opción personalizada:
+                </label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="modal-condicion-custom-input" class="form-control" placeholder="Ej: Crédito 60 días..." autocomplete="off">
+                    <button type="button" class="btn-premium-azul" style="padding: 8px 18px; white-space: nowrap; font-size: 13px; font-weight: 600;" onclick="aplicarCondicionCustom()">
+                        <i class="fa-solid fa-check"></i> Usar esta
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top: 10px;">
+            <button type="button" class="form-control" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px 20px; border-radius: 6px; color: #475569; font-size: 13.5px; font-weight: 600; width: auto; cursor: pointer;" onclick="cerrarModalCondiciones()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let condicionTipoActual = '';
+    const opcionesComerciales = {
+        pago: <?= json_encode(array_values(array_filter(array_map(function($i){ return $i['valor'] ?? ''; }, $condiciones_pago ?? [])))) ?>,
+        entrega: <?= json_encode(array_values(array_filter(array_map(function($i){ return $i['valor'] ?? ''; }, $tiempos_entrega ?? [])))) ?>,
+        vigencia: <?= json_encode(array_values(array_filter(array_map(function($i){ return $i['valor'] ?? ''; }, $vigencias_oferta ?? [])))) ?>
+    };
+
+    const titulosCondiciones = {
+        pago: '<i class="fa-solid fa-credit-card"></i> Seleccionar Condición de Pago',
+        entrega: '<i class="fa-solid fa-clock"></i> Seleccionar Tiempo de Entrega',
+        vigencia: '<i class="fa-solid fa-calendar-check"></i> Seleccionar Vigencia de la Oferta'
+    };
+
+    function abrirModalCondiciones(tipo) {
+        condicionTipoActual = tipo;
+        document.getElementById('modal-condiciones-titulo').innerHTML = titulosCondiciones[tipo] || 'Seleccionar Opción';
+        document.getElementById('modal-condicion-search-input').value = '';
+        document.getElementById('modal-condicion-custom-input').value = '';
+        
+        renderizarListaCondiciones(opcionesComerciales[tipo] || []);
+        document.getElementById('modal-condiciones').style.display = 'flex';
+        document.getElementById('modal-condicion-search-input').focus();
+    }
+
+    function cerrarModalCondiciones() {
+        document.getElementById('modal-condiciones').style.display = 'none';
+    }
+
+    function renderizarListaCondiciones(lista) {
+        const contenedor = document.getElementById('modal-condiciones-lista');
+        contenedor.innerHTML = '';
+        
+        const targetId = 'input_' + (condicionTipoActual === 'pago' ? 'condicion_pago' : (condicionTipoActual === 'entrega' ? 'tiempo_entrega' : 'vigencia_oferta'));
+        const valorActualInput = document.getElementById(targetId) ? document.getElementById(targetId).value : '';
+
+        if (lista.length === 0) {
+            contenedor.innerHTML = '<div style="text-align:center; padding: 15px; color:#94a3b8; font-size:13px;">No hay opciones predefinidas. Ingresa un valor personalizado abajo.</div>';
+            return;
+        }
+
+        lista.forEach(item => {
+            const div = document.createElement('div');
+            const esSeleccionado = (item === valorActualInput);
+            div.className = 'item-condicion-option';
+            div.setAttribute('data-val', item.toLowerCase());
+            div.style.cssText = `
+                padding: 10px 14px;
+                border-radius: 6px;
+                border: 1px solid ${esSeleccionado ? 'var(--cycsa-azul)' : '#cbd5e1'};
+                background: ${esSeleccionado ? '#eff6ff' : '#f8fafc'};
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                font-size: 13.5px;
+                font-weight: 500;
+                color: #1e293b;
+                transition: all 0.15s ease;
+            `;
+            
+            div.onmouseover = function() { if(!esSeleccionado) this.style.background = '#f1f5f9'; };
+            div.onmouseout = function() { if(!esSeleccionado) this.style.background = '#f8fafc'; };
+            div.onclick = function() { seleccionarCondicion(item); };
+
+            div.innerHTML = `
+                <span>${escapeHtml(item)}</span>
+                <i class="fa-solid fa-circle-check" style="color: ${esSeleccionado ? 'var(--cycsa-azul)' : '#cbd5e1'}; font-size: 16px;"></i>
+            `;
+            contenedor.appendChild(div);
+        });
+    }
+
+    function filtrarCondicionesModal() {
+        const q = document.getElementById('modal-condicion-search-input').value.toLowerCase().trim();
+        const items = document.querySelectorAll('.item-condicion-option');
+        items.forEach(it => {
+            const val = it.getAttribute('data-val') || '';
+            it.style.display = val.includes(q) ? 'flex' : 'none';
+        });
+    }
+
+    function seleccionarCondicion(valor) {
+        const targetId = 'input_' + (condicionTipoActual === 'pago' ? 'condicion_pago' : (condicionTipoActual === 'entrega' ? 'tiempo_entrega' : 'vigencia_oferta'));
+        const inputEl = document.getElementById(targetId);
+        if (inputEl) {
+            inputEl.value = valor;
+        }
+        cerrarModalCondiciones();
+    }
+
+    function aplicarCondicionCustom() {
+        const val = document.getElementById('modal-condicion-custom-input').value.trim();
+        if (val !== '') {
+            seleccionarCondicion(val);
+        }
+    }
+</script>

@@ -1,9 +1,9 @@
 <?php
 
-namespace Nucleo;
+namespace Cycsa\Nucleo;
 
-use App\Services\LogService;
-use App\Traits\ResponseTrait;
+use Cycsa\App\Services\LogService;
+use Cycsa\App\Traits\ResponseTrait;
 
 /**
  * Manejador global de errores y excepciones.

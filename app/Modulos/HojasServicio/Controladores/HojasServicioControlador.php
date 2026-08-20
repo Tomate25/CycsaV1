@@ -34,15 +34,19 @@ class HojasServicioControlador extends ControladorBase {
         $db = Conexion::obtenerInstancia();
 
         // 1. QUERY NUEVO (O/S sin Hoja de Solicitud registrada o en estado inicial)
-        $sqlNuevo = "SELECT os.id, os.codigo_os, os.fecha_emision, os.estado,
+        $sqlNuevo = "SELECT os.id, os.codigo_os, os.fecha_emision, os.estado, os.requiere_muestreo,
                             cot.codigo AS cot_codigo, cot.nombre_proyecto,
                             cli.nombre_razon_social AS cliente_nombre,
-                            hs.id AS id_hoja, hs.codigo_documento
+                            hs.id AS id_hoja, hs.codigo_documento,
+                            pm.estado_muestreo, pm.fecha_ida, pm.fecha_llegada,
+                            tec.nombre AS tecnico_muestreo_nombre
                      FROM ordenes_servicio os
                      JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                      JOIN clientes cli ON cot.id_cliente = cli.id
                      LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
-                     WHERE (os.estado = 'Estado 1: Recepcion' OR hs.id IS NULL)
+                     LEFT JOIN programacion_muestreo pm ON pm.id_orden_servicio = os.id
+                     LEFT JOIN tecnicos tec ON pm.id_tecnico = tec.id
+                     WHERE (os.estado IN ('Estado 1: Recepcion', 'Pendiente de Muestreo') OR hs.id IS NULL)
                        AND os.estado NOT IN ('Estado 2: Revision', 'Estado 2: Observada')";
         if ($busqueda !== '') {
             $sqlNuevo .= " AND (os.codigo_os LIKE :q1 OR cot.nombre_proyecto LIKE :q2 OR cli.nombre_razon_social LIKE :q3)";
@@ -115,7 +119,8 @@ class HojasServicioControlador extends ControladorBase {
             'proceso' => $proceso,
             'aprobadas' => $aprobadas,
             'tecnicos' => $tecnicos,
-            'busqueda' => $busqueda
+            'busqueda' => $busqueda,
+            'id_os_auto' => (int)($_GET['id_os'] ?? 0)
         ]);
     }
 
@@ -187,13 +192,17 @@ class HojasServicioControlador extends ControladorBase {
             if (empty($hoja['nombre_persona_toma_muestra']) && !empty($os['tecnico_muestreo'])) $hoja['nombre_persona_toma_muestra'] = $os['tecnico_muestreo'];
         }
 
+        $osModelo = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
+        $osCompleta = $osModelo->obtenerPorId($idOS);
+
         $respuesta->enviarJson([
             'status' => 'success',
             'hoja' => $hoja,
             'os' => [
                 'id' => $os['id'],
                 'codigo_os' => $os['codigo_os']
-            ]
+            ],
+            'os_referencia' => $osCompleta
         ]);
     }
 

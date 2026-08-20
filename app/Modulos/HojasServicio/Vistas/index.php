@@ -248,6 +248,17 @@
                 </thead>
                 <tbody>
                     <?php foreach ($nuevas as $n): ?>
+                        <?php
+                        // Determinar estado de muestreo para Casos A, B y C
+                        $estadoMuestreo = 'sin_decidir'; // Caso A
+                        if ($n['requiere_muestreo'] === 0 || $n['requiere_muestreo'] === '0') {
+                            $estadoMuestreo = 'no_aplica'; // Caso C
+                        } elseif (!empty($n['requiere_muestreo']) && in_array($n['estado_muestreo'], ['Programado', 'En Proceso'])) {
+                            $estadoMuestreo = 'en_proceso'; // Caso B
+                        } elseif (!empty($n['requiere_muestreo']) && $n['estado_muestreo'] === 'Finalizado') {
+                            $estadoMuestreo = 'finalizado'; // Caso C
+                        }
+                        ?>
                         <tr>
                             <td><strong style="color:var(--cycsa-azul); font-family:monospace;"><?= htmlspecialchars($n['codigo_os']) ?></strong></td>
                             <td><span style="font-family:monospace;"><?= htmlspecialchars($n['cot_codigo']) ?></span></td>
@@ -256,7 +267,20 @@
                             <td><?= date('d/m/Y', strtotime($n['fecha_emision'])) ?></td>
                             <td>
                                 <?php if (empty($n['id_hoja'])): ?>
-                                    <span class="badge-hs badge-nuevo"><i class="fa-solid fa-plus-circle"></i> Nuevo</span>
+                                    <?php if ($estadoMuestreo === 'en_proceso'): ?>
+                                        <span class="badge-hs" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;">
+                                            <i class="fa-solid fa-truck-pickup"></i> Muestreo en Campo
+                                        </span>
+                                        <?php if (!empty($n['tecnico_muestreo_nombre'])): ?>
+                                            <div style="font-size:11px; color:#64748b; margin-top:2px;">Téc: <?= htmlspecialchars($n['tecnico_muestreo_nombre']) ?></div>
+                                        <?php endif; ?>
+                                    <?php elseif ($estadoMuestreo === 'finalizado'): ?>
+                                        <span class="badge-hs" style="background:#dcfce7; color:#15803d; border:1px solid #86efac;">
+                                            <i class="fa-solid fa-check-circle"></i> Muestreo Finalizado
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge-hs badge-nuevo"><i class="fa-solid fa-plus-circle"></i> Nuevo</span>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span class="badge-hs badge-borrador"><i class="fa-solid fa-pen-to-square"></i> Borrador</span>
                                 <?php endif; ?>
@@ -264,7 +288,14 @@
                             <td style="text-align:right; display:flex; justify-content:flex-end; gap:8px;">
                                 <?php if (tienePermiso('operaciones', 'crear_editar')): ?>
                                     <?php if (empty($n['id_hoja'])): ?>
-                                        <button type="button" class="btn-accion-hs btn-registrar" onclick="abrirModalHojaSolicitud(<?= $n['id'] ?>, '<?= $n['codigo_os'] ?>')">
+                                        <button type="button" class="btn-accion-hs btn-registrar"
+                                                data-id-os="<?= $n['id'] ?>"
+                                                data-codigo-os="<?= htmlspecialchars($n['codigo_os']) ?>"
+                                                data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                data-tecnico="<?= htmlspecialchars($n['tecnico_muestreo_nombre'] ?? '') ?>"
+                                                data-fecha-ida="<?= !empty($n['fecha_ida']) ? date('d/m/Y H:i', strtotime($n['fecha_ida'])) : '' ?>"
+                                                data-fecha-llegada="<?= !empty($n['fecha_llegada']) ? date('d/m/Y H:i', strtotime($n['fecha_llegada'])) : '' ?>"
+                                                onclick="iniciarRegistroHojaRTFM13(this)">
                                             <i class="fa-solid fa-file-circle-plus"></i> Registrar Hoja RT-FM-13
                                         </button>
                                     <?php else: ?>
@@ -423,25 +454,86 @@
      MODALES DENTRO DEL MÓDULO DE HOJAS
      ========================================== -->
 
-<!-- MODAL REGISTRAR/EDITAR HOJA DE SOLICITUD DE SERVICIO (CYCSA-RT-FM-13) -->
-<div id="modalHojaSolicitud" class="modal-premium" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.4);">
-    <div class="modal-premium-content" style="width: 80%; max-width: 850px; max-height: 85vh; overflow-y: auto; padding: 25px 35px; background: white; margin: 5% auto; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 12px;">
+<!-- MODAL REGISTRAR/EDITAR HOJA DE SOLICITUD DE SERVICIO (CYCSA-RT-FM-13) CON REFERENCIA O/S -->
+<div id="modalHojaSolicitud" class="modal-premium" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5); backdrop-filter:blur(4px);">
+    <div class="modal-premium-content" style="width: 95%; max-width: 1350px; max-height: 90vh; overflow-y: auto; padding: 25px 30px; background: white; margin: 2% auto; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
             <div>
-                <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;">Hoja de Solicitud de Servicio (Ingreso)</h3>
-                <p style="margin: 3px 0 0 0; font-size: 12px; color: #64748b;">Documento CYCSA-RT-FM-13 vinculado a la O/S: <strong id="hs_codigo_os_label" style="color:var(--cycsa-azul);"></strong></p>
+                <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; display:flex; align-items:center; gap:10px;">
+                    <i class="fa-solid fa-file-signature" style="color:var(--cycsa-azul);"></i> Hoja de Solicitud de Servicio (Ingreso CYCSA-RT-FM-13)
+                </h3>
+                <p style="margin: 3px 0 0 0; font-size: 13px; color: #64748b;">
+                    Orden de Servicio Vinculada: <strong id="hs_codigo_os_label" style="color:var(--cycsa-azul); font-family:monospace; font-size:14px;"></strong>
+                </p>
             </div>
-            <button onclick="cerrarModalHojaSolicitud()" class="btn-cerrar">&times;</button>
+            <button onclick="cerrarModalHojaSolicitud()" class="btn-cerrar" style="font-size:26px; border:none; background:none; cursor:pointer; color:#64748b;">&times;</button>
         </div>
         
-        <div id="loading-hoja-solicitud" style="text-align:center; padding: 40px; display:none;">
-            <i class="fa-solid fa-spinner fa-spin" style="font-size:32px; color:var(--cycsa-azul);"></i>
-            <p style="color:#64748b; margin-top:10px; font-size:14px;">Cargando datos de la O/S...</p>
+        <div id="loading-hoja-solicitud" style="text-align:center; padding: 50px; display:none;">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size:36px; color:var(--cycsa-azul);"></i>
+            <p style="color:#64748b; margin-top:12px; font-size:14px; font-weight:600;">Cargando datos de la O/S y plantilla RT-FM-13...</p>
         </div>
 
-        <form method="POST" action="/Cycsa/publico/hojas-servicio/guardar" id="form-hoja-solicitud" style="display:none;">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <input type="hidden" name="id_os" id="hs_id_os">
+        <div id="wrapper-split-rt-fm-13" style="display:none; grid-template-columns: 360px 1fr; gap: 25px; align-items: flex-start;">
+            
+            <!-- PANEL LATERAL IZQUIERDO: REFERENCIA VISUAL DE LA ORDEN DE SERVICIO (SOLO LECTURA) -->
+            <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 18px; position: sticky; top: 0; max-height: 75vh; overflow-y: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                <div style="display:flex; align-items:center; justify-content:space-between; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 12px;">
+                    <span style="font-family:'Outfit'; font-weight:700; color:var(--cycsa-azul); font-size:13px; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-file-contract"></i> Referencia O/S (CYCSA-RG-FM-39)
+                    </span>
+                    <span id="ref_os_badge_estado" style="font-size:10px; font-weight:700; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:10px; text-transform:uppercase;">Solo Lectura</span>
+                </div>
+
+                <div style="font-size: 12.5px; color: #334155; display: flex; flex-direction: column; gap: 8px;">
+                    <div><strong style="color:#0f172a;">Cliente:</strong> <span id="ref_os_cliente">--</span></div>
+                    <div><strong style="color:#0f172a;">RUC / Cédula:</strong> <span id="ref_os_rfc" style="font-family:monospace;">--</span></div>
+                    <div><strong style="color:#0f172a;">Atención a:</strong> <span id="ref_os_atencion">--</span></div>
+                    <div><strong style="color:#0f172a;">Proyecto:</strong> <span id="ref_os_proyecto">--</span></div>
+                    <div><strong style="color:#0f172a;">Cotización:</strong> <span id="ref_os_cotizacion" style="font-family:monospace;">--</span></div>
+                    <div><strong style="color:#0f172a;">Forma de Pago:</strong> <span id="ref_os_pago">--</span></div>
+                </div>
+
+                <!-- Logística de Campo si aplica -->
+                <div id="ref_os_logistica_box" style="display:none; background:white; border:1px solid #93c5fd; border-radius:8px; padding:10px; margin-top:12px;">
+                    <strong style="font-size:11px; color:#0369a1; text-transform:uppercase; display:block; margin-bottom:4px;">
+                        <i class="fa-solid fa-truck-pickup"></i> Logística de Muestreo en Campo
+                    </strong>
+                    <div style="font-size:11.5px; color:#1e293b;">
+                        <div><strong>Técnico:</strong> <span id="ref_os_tecnico"></span></div>
+                        <div><strong>Vehículo:</strong> <span id="ref_os_vehiculo"></span></div>
+                        <div><strong>Fechas:</strong> <span id="ref_os_fechas"></span></div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Ensayos Solicitados por el Cliente -->
+                <div style="margin-top: 15px;">
+                    <strong style="font-size:11.5px; color:#0f172a; text-transform:uppercase; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                        <i class="fa-solid fa-vials" style="color:var(--cycsa-azul);"></i> Ensayos Solicitados (O/S)
+                    </strong>
+                    <table style="width:100%; border-collapse:collapse; background:white; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+                        <thead>
+                            <tr style="background:#f1f5f9; font-size:11px; text-transform:uppercase; color:#475569;">
+                                <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1;">Código</th>
+                                <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1;">Ensayo / Norma</th>
+                                <th style="padding:6px; text-align:center; border-bottom:1px solid #cbd5e1; width:45px;">Cant</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ref_os_tbody_ensayos">
+                            <!-- Filas inyectadas por JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 12px; font-size: 11px; color: #64748b; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px;">
+                    <i class="fa-solid fa-lightbulb" style="color:#f59e0b;"></i> <em>Referencia para cotejar los especímenes recibidos y los análisis que deben marcarse en la sección 3.</em>
+                </div>
+            </div>
+
+            <!-- PANEL DERECHO: FORMULARIO EDITABLE RT-FM-13 -->
+            <form method="POST" action="/Cycsa/publico/hojas-servicio/guardar" id="form-hoja-solicitud" style="display:block;">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                <input type="hidden" name="id_os" id="hs_id_os">
 
             <!-- 1. METADATOS Y CONTROL INTERNO -->
             <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px; margin-top: 15px;"><i class="fa-solid fa-clipboard-check"></i> 1. Metadatos y Control Interno</div>
@@ -663,6 +755,7 @@
                 <button type="submit" class="btn-accion-hs btn-registrar" style="padding:8px 20px; font-size:13px;"><i class="fa-solid fa-save"></i> Guardar y Generar PDF</button>
             </div>
         </form>
+        </div>
     </div>
 </div>
 
@@ -745,11 +838,175 @@
         siguienteConsecutivoMuestra = max + 1;
     }
 
+    // Intercepción Inteligente del clic en "Registrar Hoja RT-FM-13" (Casos A, B y C)
+    function iniciarRegistroHojaRTFM13(btnOrId, codeParam, estadoParam, tecParam, idaParam, llegParam) {
+        let idOS, codigoOS, estadoMuestreo, tecnico, fechaIda, fechaLlegada;
+
+        if (typeof btnOrId === 'object' && btnOrId !== null) {
+            idOS = btnOrId.getAttribute('data-id-os');
+            codigoOS = btnOrId.getAttribute('data-codigo-os');
+            estadoMuestreo = btnOrId.getAttribute('data-estado-muestreo') || 'sin_decidir';
+            tecnico = btnOrId.getAttribute('data-tecnico') || '';
+            fechaIda = btnOrId.getAttribute('data-fecha-ida') || '';
+            fechaLlegada = btnOrId.getAttribute('data-fecha-llegada') || '';
+        } else {
+            idOS = btnOrId;
+            codigoOS = codeParam || 'O/S #' + idOS;
+            estadoMuestreo = estadoParam || 'sin_decidir';
+            tecnico = tecParam || '';
+            fechaIda = idaParam || '';
+            fechaLlegada = llegParam || '';
+        }
+
+        // =========================================================================
+        // CASO B: MUESTREO EN PROCESO (El técnico se encuentra en campo)
+        // =========================================================================
+        if (estadoMuestreo === 'en_proceso') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Muestreo en campo en proceso',
+                    html: `
+                        <div style="text-align:left; font-size:13.5px; color:#475569; margin-top:8px; line-height:1.5;">
+                            <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:12px; margin-bottom:14px;">
+                                <strong style="color:#92400e; display:block; margin-bottom:4px;"><i class="fa-solid fa-truck-pickup"></i> Estado: Técnico en Campo</strong>
+                                <div style="font-size:12.5px; color:#78350f;">
+                                    ${tecnico ? `<div><strong>Técnico:</strong> ${tecnico}</div>` : ''}
+                                    ${fechaIda ? `<div><strong>Salida:</strong> ${fechaIda}</div>` : ''}
+                                    ${fechaLlegada ? `<div><strong>Retorno estimado:</strong> ${fechaLlegada}</div>` : ''}
+                                </div>
+                            </div>
+                            <p style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:6px;">¿El técnico ya regresó al laboratorio con los especímenes?</p>
+                            <p style="font-size:12px; color:#64748b; margin:0;">Al confirmar, la orden se marcará como finalizada y podrá ingresar la Hoja RT-FM-13 inmediatamente.</p>
+                        </div>
+                    `,
+                    icon: 'info',
+                    showCancelButton: true,
+                    showDenyButton: true,
+                    confirmButtonText: '<i class="fa-solid fa-circle-check"></i> Sí, finalizar muestreo',
+                    confirmButtonColor: '#10b981',
+                    denyButtonText: '<i class="fa-solid fa-pen-to-square"></i> Ver / Editar Logística',
+                    denyButtonColor: '#103487',
+                    cancelButtonText: 'Aún en campo (Cerrar)',
+                    cancelButtonColor: '#94a3b8',
+                    reverseButtons: false,
+                    focusConfirm: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Finalizar muestreo vía Ajax
+                        Swal.fire({
+                            title: 'Finalizando muestreo...',
+                            allowOutsideClick: false,
+                            didOpen: () => { Swal.showLoading(); }
+                        });
+
+                        const formData = new FormData();
+                        formData.append('id_os', idOS);
+                        formData.append('ajax', '1');
+
+                        fetch('/Cycsa/publico/ordenes-servicio/finalizar-muestreo', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(r => r.json())
+                        .then(res => {
+                            if (res.status === 'success') {
+                                Swal.close();
+                                if (typeof btnOrId === 'object' && btnOrId !== null) {
+                                    btnOrId.setAttribute('data-estado-muestreo', 'finalizado');
+                                }
+                                // Abrir directamente el modal RT-FM-13
+                                abrirModalHojaSolicitud(idOS, codigoOS);
+                            } else {
+                                Swal.fire('Error', res.message || 'No se pudo finalizar el muestreo.', 'error');
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            Swal.fire('Error', 'Error de comunicación con el servidor.', 'error');
+                        });
+                    } else if (result.isDenied) {
+                        window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
+                    }
+                });
+            } else {
+                if (confirm("El técnico está en campo.\n\n¿El técnico ya regresó y desea FINALIZAR el muestreo para abrir la Hoja RT-FM-13?")) {
+                    window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
+                }
+            }
+            return;
+        }
+
+        // =========================================================================
+        // CASO C: MUESTREO FINALIZADO O INGRESO DIRECTO
+        // =========================================================================
+        if (estadoMuestreo === 'finalizado' || estadoMuestreo === 'no_aplica') {
+            abrirModalHojaSolicitud(idOS, codigoOS);
+            return;
+        }
+
+        // =========================================================================
+        // CASO A: SIN DECIDIR / NUEVA ORDEN
+        // =========================================================================
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '¿Se requiere muestreo en campo?',
+                html: `
+                    <div style="text-align:left; font-size:13.5px; color:#475569; margin-top:8px; line-height:1.5;">
+                        <div style="background:#f1f5f9; padding:10px 14px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:12px;">
+                            <strong style="color:#0f172a;">Orden de Servicio:</strong> <span style="color:var(--cycsa-azul); font-family:monospace; font-weight:700;">${codigoOS}</span>
+                        </div>
+                        <p style="margin-bottom:8px;">Seleccione el flujo operativo para esta Orden de Servicio:</p>
+                        <ul style="margin-left:18px; font-size:12.5px; color:#64748b;">
+                            <li><strong>Sí, programar logística:</strong> Asignar técnico, vehículo y fechas de salida a campo.</li>
+                            <li><strong>No, ingreso directo:</strong> Abrir el formulario RT-FM-13 para especímenes entregados en laboratorio.</li>
+                        </ul>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: '<i class="fa-solid fa-truck-pickup"></i> Sí, programar logística',
+                confirmButtonColor: '#103487',
+                denyButtonText: '<i class="fa-solid fa-flask"></i> No, ingreso directo',
+                denyButtonColor: '#10b981',
+                cancelButtonText: 'Cancelar',
+                cancelButtonColor: '#94a3b8',
+                reverseButtons: false,
+                focusDeny: true,
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // CAMINO SÍ: Redirigir a programar logística (el técnico sale a campo)
+                    window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
+                } else if (result.isDenied) {
+                    // CAMINO NO: Registrar ingreso directo y abrir modal RT-FM-13
+                    if (typeof btnOrId === 'object' && btnOrId !== null) {
+                        btnOrId.setAttribute('data-estado-muestreo', 'no_aplica');
+                    }
+                    fetch('/Cycsa/publico/ordenes-servicio/marcar-ingreso-directo', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'id_os=' + encodeURIComponent(idOS)
+                    }).catch(console.error);
+
+                    abrirModalHojaSolicitud(idOS, codigoOS);
+                }
+            });
+        } else {
+            if (confirm("¿Se requiere muestreo en campo para la Orden " + codigoOS + "?\n\n- Aceptar (OK): SÍ, programar logística.\n- Cancelar: NO, ingreso directo al formulario RT-FM-13.")) {
+                window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
+            } else {
+                abrirModalHojaSolicitud(idOS, codigoOS);
+            }
+        }
+    }
+
     function abrirModalHojaSolicitud(idOS, code) {
         document.getElementById('hs_codigo_os_label').innerText = code;
         modHS.style.display = 'block';
         hsLoading.style.display = 'block';
-        hsForm.style.display = 'none';
+        const splitWrapper = document.getElementById('wrapper-split-rt-fm-13');
+        if (splitWrapper) splitWrapper.style.display = 'none';
 
         // Limpiar especímenes y resetear contador
         document.getElementById('hs-tbody-muestras').innerHTML = '';
@@ -771,7 +1028,52 @@
                 
                 const hoja = data.hoja;
 
-                // Llenar campos
+                // 1. POBLAR PANEL LATERAL DE REFERENCIA VISUAL O/S (CYCSA-RG-FM-39)
+                if (data.os_referencia) {
+                    const osRef = data.os_referencia;
+                    document.getElementById('ref_os_cliente').innerText = osRef.cliente_nombre || 'N/A';
+                    document.getElementById('ref_os_rfc').innerText = osRef.cliente_rfc || 'N/A';
+                    document.getElementById('ref_os_atencion').innerText = osRef.atencion_a || 'N/A';
+                    document.getElementById('ref_os_proyecto').innerText = osRef.nombre_proyecto || 'N/A';
+                    document.getElementById('ref_os_cotizacion').innerText = (osRef.cotizacion_codigo || 'N/A') + (osRef.cotizacion_version ? ' (v' + osRef.cotizacion_version + ')' : '');
+                    document.getElementById('ref_os_pago').innerText = osRef.forma_pago || 'Pago contra entrega';
+                    
+                    const badgeEst = document.getElementById('ref_os_badge_estado');
+                    if (badgeEst) badgeEst.innerText = osRef.estado || 'Solo Lectura';
+
+                    // Logística de Muestreo en Campo
+                    const logBox = document.getElementById('ref_os_logistica_box');
+                    if (osRef.programacion_muestreo) {
+                        logBox.style.display = 'block';
+                        document.getElementById('ref_os_tecnico').innerText = osRef.programacion_muestreo.tecnico_nombre || 'Asignado';
+                        document.getElementById('ref_os_vehiculo').innerText = ((osRef.programacion_muestreo.marca || '') + ' ' + (osRef.programacion_muestreo.modelo || '') + ' (' + (osRef.programacion_muestreo.placa || '') + ')').trim() || 'N/A';
+                        document.getElementById('ref_os_fechas').innerText = (osRef.programacion_muestreo.fecha_ida ? osRef.programacion_muestreo.fecha_ida.substring(0, 16) : '') + ' a ' + (osRef.programacion_muestreo.fecha_llegada ? osRef.programacion_muestreo.fecha_llegada.substring(0, 16) : '');
+                    } else {
+                        logBox.style.display = 'none';
+                    }
+
+                    // Ensayos Solicitados por el Cliente en la O/S
+                    const tbodyEns = document.getElementById('ref_os_tbody_ensayos');
+                    tbodyEns.innerHTML = '';
+                    if (osRef.ensayos && osRef.ensayos.length > 0) {
+                        osRef.ensayos.forEach(ens => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; font-weight:700; color:var(--cycsa-azul); font-size:11.5px;">${ens.codigo_servicio || 'CYCSA-PE'}</td>
+                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; font-size:11.5px;">
+                                    ${ens.nombre_ensayo || ens.descripcion_ensayo || ''}
+                                    ${ens.norma_astm ? '<div style="font-size:10px; color:#0369a1; font-weight:600; margin-top:2px;">Norma: ' + ens.norma_astm + '</div>' : ''}
+                                </td>
+                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center; font-weight:700; font-size:11.5px;">${parseFloat(ens.cantidad || 0).toFixed(1)}</td>
+                            `;
+                            tbodyEns.appendChild(tr);
+                        });
+                    } else {
+                        tbodyEns.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#64748b; font-size:11px; padding:10px;">Sin ensayos registrados</td></tr>';
+                    }
+                }
+
+                // 2. LLENAR FORMULARIO EDITABLE CYCSA-RT-FM-13
                 document.getElementById('hs_id_os').value = hoja.id_os;
                 document.getElementById('hs_codigo_documento').value = hoja.codigo_documento || 'CYCSA-RT-FM-13';
                 document.getElementById('hs_fecha_llegada').value = hoja.fecha_hora_llegada_laboratorio ? hoja.fecha_hora_llegada_laboratorio.replace(' ', 'T') : '';
@@ -868,12 +1170,11 @@
                     muestras.forEach(m => {
                         agregarFilaMuestraModal(m.nombre_muestra, m.descripcion, m.info_importante);
                     });
-                    // Recalcular el consecutivo DESPUÉS de cargar las muestras existentes
                     recalcularConsecutivoMuestra();
                 }
 
                 hsLoading.style.display = 'none';
-                hsForm.style.display = 'block';
+                if (splitWrapper) splitWrapper.style.display = 'grid';
             })
             .catch(err => {
                 console.error(err);
@@ -1049,4 +1350,12 @@
     function ejecutarAprobacionOS() {
         document.getElementById('form-revision-os').submit();
     }
+
+    <?php if (!empty($id_os_auto)): ?>
+    document.addEventListener("DOMContentLoaded", function() {
+        if (typeof abrirModalSolicitud === 'function') {
+            abrirModalSolicitud(<?= (int)$id_os_auto ?>);
+        }
+    });
+    <?php endif; ?>
 </script>

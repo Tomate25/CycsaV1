@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services;
+namespace Cycsa\App\Services;
 
-use App\Repositories\CotizacionRepository;
+use Cycsa\App\Repositories\CotizacionRepository;
 
 /**
  * Class CotizacionService

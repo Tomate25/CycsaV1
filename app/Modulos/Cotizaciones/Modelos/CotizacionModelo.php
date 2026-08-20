@@ -43,7 +43,7 @@ class CotizacionModelo extends ModeloBase {
     }
 
     public function obtenerDetalles(int $id_cotizacion): array {
-        $sql = "SELECT cd.id, cd.id_cotizacion, cd.id_producto, cd.descripcion_ensayo, cd.cantidad, cd.precio_unitario, cd.subtotal, cd.resultados_json,
+        $sql = "SELECT cd.id, cd.id_cotizacion, cd.id_producto, cd.descripcion_ensayo, cd.cantidad, cd.precio_unitario, cd.subtotal, cd.resultados_json, cd.descripcion_adicional,
                        COALESCE(p.codigo_servicio, cd.codigo_servicio) AS codigo_servicio,
                        COALESCE(cd.norma_astm, p.norma_astm) AS norma_astm,
                        COALESCE(cd.formato_reporte, f.codigo_formato) AS formato_reporte,
@@ -223,7 +223,7 @@ class CotizacionModelo extends ModeloBase {
             $stmtCabecera->execute($cabecera);
             $idCotizacion = $this->db->lastInsertId();
 
-            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, codigo_servicio, norma_astm, formato_reporte, observaciones, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :cantidad, :precio, :subtotal)";
+            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, codigo_servicio, norma_astm, formato_reporte, observaciones, descripcion_adicional, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :descripcion_adicional, :cantidad, :precio, :subtotal)";
             $stmtDetalle = $this->db->prepare($sqlDetalle);
             foreach ($detalles as $detalle) {
                 $stmtDetalle->execute([
@@ -234,6 +234,7 @@ class CotizacionModelo extends ModeloBase {
                     'norma_astm' => $detalle['norma_astm'] ?? null,
                     'formato_reporte' => $detalle['formato_reporte'] ?? null,
                     'observaciones' => $detalle['observaciones'] ?? null,
+                    'descripcion_adicional' => $detalle['descripcion_adicional'] ?? null,
                     'cantidad' => $detalle['cantidad'],
                     'precio' => $detalle['precio'],
                     'subtotal' => $detalle['subtotal']
@@ -294,6 +295,7 @@ class CotizacionModelo extends ModeloBase {
                         'norma_astm' => $d['norma_astm'] ?? null,
                         'formato_reporte' => $d['formato_reporte'] ?? null,
                         'observaciones' => $d['observaciones'] ?? null,
+                        'descripcion_adicional' => $d['descripcion_adicional'] ?? null,
                         'cantidad' => $d['cantidad'],
                         'precio_unitario' => $d['precio_unitario'],
                         'subtotal' => $d['subtotal']
@@ -331,7 +333,7 @@ class CotizacionModelo extends ModeloBase {
             $delStmt = $this->db->prepare("DELETE FROM cotizacion_detalles WHERE id_cotizacion = :id");
             $delStmt->execute(['id' => $id]);
 
-            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, codigo_servicio, norma_astm, formato_reporte, observaciones, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :cantidad, :precio, :subtotal)";
+            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, codigo_servicio, norma_astm, formato_reporte, observaciones, descripcion_adicional, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :descripcion_adicional, :cantidad, :precio, :subtotal)";
             $stmtDetalle = $this->db->prepare($sqlDetalle);
             foreach ($detalles as $detalle) {
                 $stmtDetalle->execute([
@@ -342,6 +344,7 @@ class CotizacionModelo extends ModeloBase {
                     'norma_astm' => $detalle['norma_astm'] ?? null,
                     'formato_reporte' => $detalle['formato_reporte'] ?? null,
                     'observaciones' => $detalle['observaciones'] ?? null,
+                    'descripcion_adicional' => $detalle['descripcion_adicional'] ?? null,
                     'cantidad' => $detalle['cantidad'],
                     'precio' => $detalle['precio'],
                     'subtotal' => $detalle['subtotal']

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace Cycsa\App\Services;
 
 /**
  * Servicio para registro de logs.

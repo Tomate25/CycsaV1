@@ -13,6 +13,9 @@
     <!-- FontAwesome para íconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- SweetAlert2 para modales y decisiones interactivas -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <style>
         :root {
             /* Variables de diseño premium y corporativo */
@@ -461,6 +464,12 @@
                 <a href="/Cycsa/publico/cotizaciones" class="<?= strpos($rutaActual, '/cotizaciones') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
                     <span class="menu-texto">Cotizaciones</span>
+                </a>
+            </li>
+            <li>
+                <a href="/Cycsa/publico/ordenes-servicio" class="<?= strpos($rutaActual, '/ordenes-servicio') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-file-contract"></i>
+                    <span class="menu-texto">Órdenes de Servicio</span>
                 </a>
             </li>
             <?php endif; ?>

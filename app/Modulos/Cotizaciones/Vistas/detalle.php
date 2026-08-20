@@ -52,6 +52,11 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
             <p style="margin: 5px 0 0 0; color: #6c757d;">Versión <?= $cotizacion['version'] ?> | Generada el <?= date('d/m/Y', strtotime($cotizacion['fecha_creacion'])) ?></p>
         </div>
         <div style="text-align: right; display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
+            <?php if (in_array($cotizacion['estado'], ['Aprobada por Cliente', 'Aprobada Internamente', 'Enviada al Cliente'])): ?>
+                <a href="/Cycsa/publico/ordenes-servicio/crear?id_cotizacion=<?= $cotizacion['id'] ?>" style="background-color: #103487; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(16, 52, 135, 0.2);">
+                    <i class="fa-solid fa-file-contract"></i> Generar O/S (CYCSA-RG-FM-39 V1)
+                </a>
+            <?php endif; ?>
             <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>" target="_blank" style="background-color: #e31837; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(227, 24, 55, 0.2);">
                 <i class="fa-solid fa-file-pdf"></i> Imprimir PDF
             </a>

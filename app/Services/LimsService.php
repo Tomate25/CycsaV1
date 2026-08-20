@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services;
+namespace Cycsa\App\Services;
 
-use App\Repositories\LimsRepository;
+use Cycsa\App\Repositories\LimsRepository;
 
 /**
  * Class LimsService

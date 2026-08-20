@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services;
+namespace Cycsa\App\Services;
 
-use App\Repositories\ClienteRepository;
+use Cycsa\App\Repositories\ClienteRepository;
 
 /**
  * Class ClienteService

@@ -43,23 +43,28 @@ class ControladorBase {
     }
 
     private function resolverRutaVista(string $rutaVista): string {
-        // Normalizar separadores y variaciones de mayúsculas en 'vistas' / 'Vistas'
-        $variaciones = [
-            $rutaVista,
-            ucfirst($rutaVista),
-            str_replace('/vistas/', '/Vistas/', $rutaVista),
-            str_replace('/Vistas/', '/vistas/', $rutaVista),
-            ucfirst(str_replace('/vistas/', '/Vistas/', $rutaVista))
-        ];
+        $partes = explode('/', ltrim($rutaVista, '/'));
+        if (count($partes) >= 2) {
+            $modOrig = $partes[0];
+            $modStudly = str_replace(' ', '', ucwords(str_replace(['_', '-'], ' ', $modOrig)));
+            $modUc = ucfirst($modOrig);
+            
+            $resto = implode('/', array_slice($partes, 1));
+            $restoVistas = str_replace('vistas/', 'Vistas/', $resto);
 
-        foreach ($variaciones as $var) {
-            $opciones = [
-                __DIR__ . '/../Modulos/' . $var . '.php',
-                __DIR__ . '/../../modulos/' . $var . '.php'
-            ];
-            foreach ($opciones as $opcion) {
-                if (file_exists($opcion)) {
-                    return $opcion;
+            $modulosProbar = array_unique([$modOrig, $modStudly, $modUc]);
+            $restosProbar = array_unique([$resto, $restoVistas]);
+
+            foreach ($modulosProbar as $mod) {
+                foreach ($restosProbar as $rst) {
+                    $opcion = __DIR__ . '/../Modulos/' . $mod . '/' . $rst . '.php';
+                    if (file_exists($opcion)) {
+                        return $opcion;
+                    }
+                    $opcionOld = __DIR__ . '/../../modulos/' . $mod . '/' . $rst . '.php';
+                    if (file_exists($opcionOld)) {
+                        return $opcionOld;
+                    }
                 }
             }
         }

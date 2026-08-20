@@ -978,6 +978,7 @@ class CotizacionesControlador extends ControladorBase {
                 $norma = !empty(trim($datos['ensayo_norma'][$i] ?? '')) ? trim($datos['ensayo_norma'][$i]) : null;
                 $formato = !empty(trim($datos['ensayo_formato'][$i] ?? '')) ? trim($datos['ensayo_formato'][$i]) : null;
                 $obs = !empty(trim($datos['ensayo_obs'][$i] ?? '')) ? trim($datos['ensayo_obs'][$i]) : null;
+                $descAdicional = !empty(trim($datos['ensayo_descripcion_adicional'][$i] ?? '')) ? trim($datos['ensayo_descripcion_adicional'][$i]) : null;
 
                 // Si hay un producto del catálogo, completar datos faltantes desde la BD
                 if ($id_prod) {
@@ -1005,6 +1006,7 @@ class CotizacionesControlador extends ControladorBase {
                     'norma_astm' => $norma,
                     'formato_reporte' => $formato,
                     'observaciones' => $obs,
+                    'descripcion_adicional' => $descAdicional,
                     'cantidad' => $cant, 
                     'precio' => $prec, 
                     'subtotal' => $cant * $prec

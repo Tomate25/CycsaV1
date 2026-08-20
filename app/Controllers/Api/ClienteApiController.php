@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Controllers\Api;
+namespace Cycsa\App\Controllers\Api;
 
-use App\Services\ClienteService;
+use Cycsa\App\Services\ClienteService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 

@@ -31,6 +31,13 @@ class PanelControlador extends ControladorBase {
                 'desc' => 'Creación y seguimiento de propuestas comerciales.',
                 'color' => 'linear-gradient(135deg, #d97706, #b45309)', // Naranja
             ];
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Órdenes de Servicio',
+                'link' => '/Cycsa/publico/ordenes-servicio',
+                'icon' => 'fa-solid fa-file-contract',
+                'desc' => 'Emisión de órdenes de servicio CYCSA-RG-FM-39 V1 y logística de muestreo.',
+                'color' => 'linear-gradient(135deg, #103487, #1e40af)', // Azul CYCSA
+            ];
         }
         // 2. Hojas de Servicio (CYCSA-RT-FM-13)
         if (tienePermiso('operaciones', 'ver')) {
