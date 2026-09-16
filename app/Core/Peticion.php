@@ -36,6 +36,18 @@ class Peticion {
             }
         }
         
+        // 4. Normalizar /index.php si está presente en la ruta
+        if ($ruta === '/index.php') {
+            $ruta = '/';
+        } elseif (strpos($ruta, '/index.php/') === 0) {
+            $ruta = substr($ruta, 10);
+        }
+
+        // 5. Normalizar trailing slashes (ej: /login/ -> /login)
+        if (strlen($ruta) > 1 && substr($ruta, -1) === '/') {
+            $ruta = rtrim($ruta, '/');
+        }
+        
         return $ruta === '' ? '/' : $ruta;
     }
 

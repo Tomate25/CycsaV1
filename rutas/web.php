@@ -23,8 +23,11 @@ $app = Aplicacion::$app;
 
 // 🌐 RUTAS PÚBLICAS DE AUTENTICACIÓN
 $app->enrutador->get('/', [AutenticacionControlador::class, 'mostrarLogin']);
+$app->enrutador->post('/', [AutenticacionControlador::class, 'procesarLogin']);
 $app->enrutador->get('/login', [AutenticacionControlador::class, 'mostrarLogin']);
 $app->enrutador->post('/login', [AutenticacionControlador::class, 'procesarLogin']);
+$app->enrutador->get('/index.php', [AutenticacionControlador::class, 'mostrarLogin']);
+$app->enrutador->post('/index.php', [AutenticacionControlador::class, 'procesarLogin']);
 $app->enrutador->get('/logout', [AutenticacionControlador::class, 'cerrarSesion']);
 $app->enrutador->get('/verificar-sesion-activa', [AutenticacionControlador::class, 'verificarSesionActiva']);
 $app->enrutador->get('/cambiar-password-obligatorio', [AutenticacionControlador::class, 'mostrarCambiarPasswordObligatorio']);

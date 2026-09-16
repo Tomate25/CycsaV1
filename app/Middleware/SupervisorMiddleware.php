@@ -18,6 +18,13 @@ class SupervisorMiddleware
             session_start();
         }
 
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $basePath = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+        if ($basePath === '/' || $basePath === '\\') {
+            $basePath = '';
+        }
+        $panelUrl = $basePath . '/panel';
+
         $rol = isset($_SESSION['usuario_rol']) ? (int)$_SESSION['usuario_rol'] : 0;
         $rolesPermitidos = [1, 3]; // Admin y Supervisor
         if (!isset($_SESSION['usuario_id']) || !in_array($rol, $rolesPermitidos)) {
@@ -27,7 +34,7 @@ class SupervisorMiddleware
                 header('HTTP/1.1 403 Forbidden');
                 echo json_encode(['ok' => false, 'mensaje' => 'Acceso denegado. Se requiere rol de supervisor.', 'codigo' => 403]);
             } else {
-                header('Location: /Cycsa/publico/panel');
+                header('Location: ' . $panelUrl);
             }
             exit;
         }

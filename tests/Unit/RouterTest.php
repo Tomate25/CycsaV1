@@ -134,4 +134,43 @@ class RouterTest extends TestCase {
 
         $enrutador->resolver();
     }
+
+    public function testRutaPostRaizEjecutaLoginCallback(): void {
+        $peticion = $this->createMock(Peticion::class);
+        $peticion->method('obtenerMetodo')->willReturn('POST');
+        $peticion->method('obtenerRuta')->willReturn('/');
+
+        $respuesta = $this->createMock(Respuesta::class);
+
+        $enrutador = new Enrutador($peticion, $respuesta);
+        $enrutador->post('/', function (Peticion $req, Respuesta $res) {
+            return 'login_procesado';
+        });
+
+        $resultado = $enrutador->resolver();
+        $this->assertEquals('login_procesado', $resultado);
+    }
+
+    public function testPeticionNormalizaRutaConIndexPhpYTrailingSlash(): void {
+        $peticion = new Peticion();
+
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        // 1. Caso raíz con /index.php
+        $_SERVER['REQUEST_URI'] = '/index.php';
+        $this->assertEquals('/', $peticion->obtenerRuta());
+
+        // 2. Caso /index.php/login
+        $_SERVER['REQUEST_URI'] = '/index.php/login';
+        $this->assertEquals('/login', $peticion->obtenerRuta());
+
+        // 3. Caso trailing slash /login/
+        $_SERVER['REQUEST_URI'] = '/login/';
+        $this->assertEquals('/login', $peticion->obtenerRuta());
+
+        // 4. Caso con parámetros GET /login/?ref=1
+        $_SERVER['REQUEST_URI'] = '/login/?ref=1';
+        $this->assertEquals('/login', $peticion->obtenerRuta());
+    }
 }
+

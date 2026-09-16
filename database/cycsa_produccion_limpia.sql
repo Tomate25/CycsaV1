@@ -1,6 +1,6 @@
 -- ==============================================================
 -- CYCSA ERP & LIMS - BASE DE DATOS DE PRODUCCION LIMPIA
--- Fecha de generacion: 2026-09-16 19:11:00
+-- Fecha de generacion: 2026-09-16 19:52:47
 -- Base de datos objetivo: cycsanic_cycsa_db (Bluehost / cPanel MySQL)
 -- ==============================================================
 

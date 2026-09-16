@@ -16,12 +16,14 @@ class Aplicacion {
         
         // 1. Iniciamos las sesiones con configuración de seguridad para producción
         $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-        session_start([
-            'cookie_httponly' => true,   // Impide acceso a la cookie desde JavaScript (anti-XSS)
-            'cookie_secure'   => $secure,  // Solo envía la cookie por HTTPS si está habilitado
-            'cookie_samesite' => 'Strict', // Bloquea envío de cookie desde sitios externos (anti-CSRF)
-            'use_strict_mode' => true,   // Rechaza IDs de sesión no generados por el servidor
-        ]); 
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start([
+                'cookie_httponly' => true,   // Impide acceso a la cookie desde JavaScript (anti-XSS)
+                'cookie_secure'   => $secure,  // Solo envía la cookie por HTTPS si está habilitado
+                'cookie_samesite' => 'Strict', // Bloquea envío de cookie desde sitios externos (anti-CSRF)
+                'use_strict_mode' => true,   // Rechaza IDs de sesión no generados por el servidor
+            ]); 
+        } 
 
         // 1b. Encabezados HTTP de seguridad defensiva
         if (!headers_sent()) {

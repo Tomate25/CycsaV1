@@ -8,17 +8,33 @@ class Respuesta {
     }
 
     public function redirigir(string $url): void {
+        // Si ya es una URL absoluta externa (http:// o https://), redirigir directamente
+        if (preg_match('#^https?://#i', $url)) {
+            header('Location: ' . $url);
+            exit;
+        }
+
         $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
         $basePath = dirname($scriptName);
         $basePath = str_replace('\\', '/', $basePath);
         $basePath = rtrim($basePath, '/');
-        if ($basePath === '/') {
+        if ($basePath === '/' || $basePath === '\\') {
             $basePath = '';
         }
         
-        // Si la URL redirige a /Cycsa/publico, la adaptamos al base path real
+        // Si la URL redirige a /Cycsa/publico, quitarlo
         if (strpos($url, '/Cycsa/publico') === 0) {
-            $url = $basePath . substr($url, 14);
+            $url = substr($url, 14);
+        }
+        
+        // Asegurar que la ruta comience con /
+        if ($url === '' || $url[0] !== '/') {
+            $url = '/' . $url;
+        }
+
+        // Si la ruta no empieza ya con el basePath (y basePath no está vacío), anteponer basePath
+        if ($basePath !== '' && strpos($url, $basePath . '/') !== 0 && $url !== $basePath) {
+            $url = $basePath . $url;
         }
         
         header('Location: ' . $url);
