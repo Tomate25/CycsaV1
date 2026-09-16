@@ -22,6 +22,43 @@ $metodoMuestreoOficial = !empty($schemaInfo['metodo_muestreo']) ? $schemaInfo['m
 $tipoMuestraOficial = !empty($schemaInfo['tipo_muestra']) ? $schemaInfo['tipo_muestra'] : 'Especímenes / Muestras';
 $colMethods = $schemaInfo['column_methods'] ?? [];
 
+$disclaimerOficial = !empty($schemaInfo['disclaimer']) ? $schemaInfo['disclaimer'] : 'Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.';
+$notasOficiales = !empty($schemaInfo['notas']) && is_array($schemaInfo['notas']) ? $schemaInfo['notas'] : [];
+
+if (empty($notasOficiales) && !empty($archivoMd)) {
+    $rutaMdFallback = dirname(__DIR__, 4) . '/database/ensayos/' . $archivoMd;
+    if (!file_exists($rutaMdFallback)) {
+        $archSin = strtr(utf8_decode($archivoMd), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
+        $rutaMdFallback = dirname(__DIR__, 4) . '/database/ensayos/' . $archSin;
+    }
+    if (file_exists($rutaMdFallback)) {
+        $mdLines = file($rutaMdFallback, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $collectingFallback = false;
+        foreach ($mdLines as $lineaMd) {
+            $lineaMd = trim($lineaMd);
+            if (stripos($lineaMd, 'Consultoría y Construcción SA') !== false && stripos($lineaMd, 'es responsable únicamente') !== false) {
+                $disclaimerOficial = $lineaMd;
+                $collectingFallback = true;
+                continue;
+            }
+            if ($collectingFallback) {
+                if (preg_match('/^[-#]{2,}|Última Línea|Ing\.|Página/i', $lineaMd)) {
+                    break;
+                }
+                if (!empty($lineaMd)) {
+                    $partsFallback = preg_split('/(?<=[^\s])\s+(?=Nota(?:\s*\d+)?\s*:)/iu', $lineaMd);
+                    foreach ($partsFallback as $pf) {
+                        $pf = trim(preg_replace('/[-#]+$/', '', trim($pf)));
+                        if (!empty($pf)) {
+                            $notasOficiales[] = $pf;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 $resultados = [];
 if (!empty($detalle['resultados_json'])) {
     $resultados = json_decode($detalle['resultados_json'], true) ?: [];
@@ -197,13 +234,13 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
             margin-top: 3px;
         }
 
-        /* 2. ZONA DE CONTENIDO: Inicia DEBAJO del logo (Top: 45mm) y termina ARRIBA del pie de página (Bottom: 34mm) */
+        /* 2. ZONA DE CONTENIDO: Inicia DEBAJO del logo (Top: 45mm) y termina ARRIBA del pie de página (Bottom: 22mm) */
         .zona-cuerpo {
             position: absolute;
             top: 45mm;
             left: 14mm;
             right: 14mm;
-            bottom: 34mm;
+            bottom: 22mm;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -315,20 +352,45 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
             font-family: monospace;
         }
 
+        /* Disclaimer y Notas Oficiales del Formato (ISO 17025) */
+        .bloque-normativo-formato {
+            margin-top: 3px;
+            margin-bottom: 3px;
+            font-size: 7.2px;
+            line-height: 1.25;
+            color: #000000;
+        }
+
+        .disclaimer-formato {
+            text-align: justify;
+            font-style: italic;
+            color: #222222;
+            margin-bottom: 2px;
+        }
+
+        .notas-formato {
+            font-weight: normal;
+            color: #000000;
+        }
+
+        .nota-item {
+            margin-bottom: 1.5px;
+        }
+
         /* Observaciones y Declaración ISO 17025 */
         .seccion-observaciones {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6px;
-            margin-bottom: 6px;
-            font-size: 7.5px;
+            margin-bottom: 4px;
+            font-size: 7.2px;
         }
 
         .caja-obs {
             border: 1px solid #000000;
             background: #ffffff;
             padding: 2px 5px;
-            min-height: 22px;
+            min-height: 20px;
         }
 
         .caja-obs-titulo {
@@ -336,7 +398,7 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
             color: #000000;
             margin-bottom: 1px;
             text-transform: uppercase;
-            font-size: 7.5px;
+            font-size: 7.2px;
             border-bottom: 1px solid #cccccc;
             padding-bottom: 1px;
         }
@@ -356,7 +418,7 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
         }
 
         .espacio-para-firma {
-            height: 38px; /* Espacio libre de 38px para firmar y sellar físicamente */
+            height: 32px; /* Espacio libre para firmar y sellar físicamente */
             background: transparent;
         }
 
@@ -539,6 +601,20 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
                             <?php endif; ?>
                         </tbody>
                     </table>
+
+                    <!-- DISCLAIMER Y NOTAS OFICIALES DEL FORMATO (ISO/IEC 17025) -->
+                    <div class="bloque-normativo-formato">
+                        <div class="disclaimer-formato">
+                            <?= htmlspecialchars($disclaimerOficial) ?>
+                        </div>
+                        <?php if (!empty($notasOficiales)): ?>
+                            <div class="notas-formato">
+                                <?php foreach ($notasOficiales as $nota): ?>
+                                    <div class="nota-item"><?= htmlspecialchars($nota) ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 

@@ -81,4 +81,59 @@ class MatrizEnvioClienteTest extends TestCase {
             $this->assertTrue(true);
         }
     }
+
+    public function testGenerarMatrizTecnicaPdfYVistaPrintIncluyenNotasYDisclaimer(): void {
+        $detalle = [
+            'id' => 101,
+            'codigo_os' => 'OS-2026-0003',
+            'descripcion_ensayo' => 'Compactación Densímetro Nuclear',
+            'archivo_markdown' => 'compactacion_densimetro_nuclear.md',
+            'norma_astm' => 'DE-ASTM D6938-23',
+            'codigo_documento' => 'CYCSA-RT-FM-22 B V1-R2',
+            'cliente_nombre' => 'CONSTRUCTORA CYCSA S.A.',
+            'cliente_email' => 'cliente@cycsa.com',
+            'nombre_proyecto' => 'Colector ZZZ',
+            'tecnico_muestreo' => 'Ing. Noel Quintana Lira',
+            'fecha_hora_toma_muestra' => '2026-01-06 08:00:00',
+            'resultados_json' => json_encode([
+                [
+                    'Código laboratorio' => 'MS-0001-26',
+                    'Nombre muestra' => 'Muestra Sitio Colector',
+                    'Capa (N°)' => '1',
+                    'Espesor (cm)' => '20',
+                    'Profundidad (cm)' => '15',
+                    'P.V.S Max (kg/m³)' => '1950',
+                    'Humedad Óptima ((% )(P/P))' => '12.0',
+                    'P.V.S.Sitio (kg/cm²)' => '1900',
+                    'Humedad Sitio ((%) (P/P))' => '11.8',
+                    'Humedad Sitio (kg/m³)' => '1890',
+                    'Compactación ((%) (P/P))' => '97.4',
+                    'Fecha de muestreo' => '2026-01-06'
+                ]
+            ])
+        ];
+
+        // 1. Validar generación PDF
+        $pdfBytes = generarMatrizTecnicaPDF($detalle);
+        $this->assertNotEmpty($pdfBytes);
+        $this->assertStringStartsWith('%PDF-', $pdfBytes);
+
+        // 2. Validar inclusión en matriz_print.php
+        $formatosSchemaJson = file_get_contents(dirname(__DIR__, 2) . '/database/ensayos/formatos_schema.json');
+        $columnas = [
+            'Código laboratorio', 'Nombre muestra', 'Capa (N°)', 'Espesor (cm)', 'Profundidad (cm)',
+            'P.V.S Max (kg/m³)', 'Humedad Óptima ((% )(P/P))', 'P.V.S.Sitio (kg/cm²)',
+            'Humedad Sitio ((%) (P/P))', 'Humedad Sitio (kg/m³)', 'Compactación ((%) (P/P))', 'Fecha de muestreo'
+        ];
+        $muestrasSeteadas = [];
+
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php';
+        $htmlPrint = ob_get_clean();
+
+        $this->assertStringContainsString('Consultoría y Construcción SA.CYCSA es responsable únicamente', $htmlPrint);
+        $this->assertStringContainsString('CYCSA-PE-25', $htmlPrint);
+        $this->assertStringContainsString('TROXLER, Modelo: 3440, N/S : 62677 Eq-6555', $htmlPrint);
+        $this->assertStringContainsString('bloque-normativo-formato', $htmlPrint);
+    }
 }

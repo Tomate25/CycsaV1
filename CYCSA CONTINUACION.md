@@ -170,17 +170,25 @@ Se implementó la vista oficial e imprimible [`factura_print.php`](file:///C:/xa
 - Esquema JSON de metadatos matemáticos (`database/ensayos/formatos_schema.json`) con definición de columnas, fórmulas de cálculo automático de humedad, densidad seca, compactación y resistencia a la compresión.
 - Normalización insensible a acentos para vincular automáticamente cada ensayo con su matriz correspondiente.
 
-### 5.7 Infraestructura de Pruebas Unitarias Automatizadas (PHPUnit)
+### 5.7 Disclaimers y Notas Normativas Oficiales de los 21 Formatos (ISO/IEC 17025)
+- Inclusión dinámica del disclaimer legal institucional y el listado de notas técnicas específicas en cada uno de los 21 formatos normativos de laboratorio.
+- Integración en la vista imprimible horizontal de navegador ([`matriz_print.php`](file:///C:/xampp/htdocs/Cycsa/app/Modulos/Operaciones/Vistas/matriz_print.php)), en la generación PDF para descarga/correo ([`generarMatrizTecnicaPDF()`](file:///C:/xampp/htdocs/Cycsa/app/Helpers/funciones.php)) y en los anexos técnicos de la cotización completa ([`generarCotizacionCompletaPDF()`](file:///C:/xampp/htdocs/Cycsa/app/Helpers/funciones.php)).
+- Por ejemplo, en el ensayo de *Compactación Densímetro Nuclear* (`CYCSA-RT-FM-22 B V1-R2`), se incorporan automáticamente sus notas oficiales:
+  1. `Notas: Ensayos realizados in Situ: CYCSA-PE-25." CYCSA-PE-13","CYCSA-PE-18"`
+  2. `Nota 1: Muestra tomada con equipo TROXLER, Modelo: 3440, N/S : 62677 Eq-6555`
+
+### 5.8 Infraestructura de Pruebas Unitarias Automatizadas (PHPUnit)
 - Configuración de PHPUnit (`phpunit.xml`) integrado con Composer.
-- **72 pruebas unitarias y de integración** con **645 aserciones** que validan:
+- **74 pruebas unitarias y de integración** con **831 aserciones** que validan:
   - Enrutamiento HTTP y protección de Middlewares.
   - Generación y verificación estricta de tokens CSRF.
   - Integridad contable de partida doble (rechazo de asientos descuadrados, débitos negativos o líneas insuficientes).
   - Conversión de números a letras para facturación.
-  - Generación de PDFs y flujos de muestreo.
+  - Verificación exhaustiva de esquemas, disclaimers y notas normativas en las 21 plantillas oficiales.
+  - Generación de matrices PDF y vistas imprimibles con membrete y notas oficiales.
 - Ejecución limpia y garantizada con el comando: `vendor/bin/phpunit`.
 
-### 5.8 Sanitización y Seguridad Defensiva
+### 5.9 Sanitización y Seguridad Defensiva
 - Eliminación de credenciales en texto plano en archivos públicos y documentación.
 - Manejo centralizado de secretos en variables de entorno `.env` (excluido en `.gitignore`).
 - Sistema fail-closed en verificación de sesiones y permisos por rol.
@@ -226,7 +234,7 @@ MAIL_FROM_NAME="CYCSA S.A."
 ```bash
 vendor/bin/phpunit
 ```
-*Resultado esperado:* `OK (72 tests, 645 assertions)`
+*Resultado esperado:* `OK (74 tests, 831 assertions)`
 
 ---
 

@@ -1757,6 +1757,43 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $tipoMuestraOficial = !empty($schemaInfo['tipo_muestra']) ? $schemaInfo['tipo_muestra'] : 'Especímenes / Muestras';
     $colMethods = $schemaInfo['column_methods'] ?? [];
 
+    $disclaimerOficial = !empty($schemaInfo['disclaimer']) ? $schemaInfo['disclaimer'] : 'Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.';
+    $notasOficiales = !empty($schemaInfo['notas']) && is_array($schemaInfo['notas']) ? $schemaInfo['notas'] : [];
+
+    if (empty($notasOficiales) && !empty($archivoMd)) {
+        $rutaMdFallback = dirname(__DIR__, 2) . '/database/ensayos/' . $archivoMd;
+        if (!file_exists($rutaMdFallback)) {
+            $archSin = strtr(utf8_decode($archivoMd), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
+            $rutaMdFallback = dirname(__DIR__, 2) . '/database/ensayos/' . $archSin;
+        }
+        if (file_exists($rutaMdFallback)) {
+            $mdLines = file($rutaMdFallback, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            $collectingFallback = false;
+            foreach ($mdLines as $lineaMd) {
+                $lineaMd = trim($lineaMd);
+                if (stripos($lineaMd, 'Consultoría y Construcción SA') !== false && stripos($lineaMd, 'es responsable únicamente') !== false) {
+                    $disclaimerOficial = $lineaMd;
+                    $collectingFallback = true;
+                    continue;
+                }
+                if ($collectingFallback) {
+                    if (preg_match('/^[-#]{2,}|Última Línea|Ing\.|Página/i', $lineaMd)) {
+                        break;
+                    }
+                    if (!empty($lineaMd)) {
+                        $partsFallback = preg_split('/(?<=[^\s])\s+(?=Nota(?:\s*\d+)?\s*:)/iu', $lineaMd);
+                        foreach ($partsFallback as $pf) {
+                            $pf = trim(preg_replace('/[-#]+$/', '', trim($pf)));
+                            if (!empty($pf)) {
+                                $notasOficiales[] = $pf;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if (empty($columnas)) {
         $columnas = $schemaInfo['columns'] ?? [];
     }
@@ -1823,6 +1860,16 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
 
     $bgCss = !empty($bgBase64) ? 'background-image: url("data:image/jpeg;base64,' . $bgBase64 . '"); background-size: 279.4mm 215.9mm; background-repeat: no-repeat;' : '';
 
+    $notasHtml = '';
+    if (!empty($notasOficiales)) {
+        $notasHtml .= '<div class="notas-normativas">';
+        foreach ($notasOficiales as $nota) {
+            $notasHtml .= '<div class="nota-linea">' . htmlspecialchars($nota, ENT_QUOTES, 'UTF-8') . '</div>';
+        }
+        $notasHtml .= '</div>';
+    }
+    $disclaimerEsc = htmlspecialchars($disclaimerOficial, ENT_QUOTES, 'UTF-8');
+
     $html = <<<HTML
 <!DOCTYPE html>
 <html lang="es">
@@ -1878,7 +1925,26 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         border-collapse: collapse;
         font-size: 7.5px;
         border: 1px solid #000;
-        margin-bottom: 4px;
+        margin-bottom: 3px;
+    }
+    .bloque-normativo {
+        margin-top: 2px;
+        margin-bottom: 3px;
+        font-size: 7.2px;
+        line-height: 1.2;
+    }
+    .disclaimer-normativo {
+        font-style: italic;
+        color: #222222;
+        text-align: justify;
+        margin-bottom: 2px;
+    }
+    .notas-normativas {
+        color: #000000;
+        font-weight: normal;
+    }
+    .nota-linea {
+        margin-bottom: 1.5px;
     }
     table.obs-tbl {
         width: 100%;
@@ -1887,9 +1953,9 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     }
     table.obs-tbl td {
         border: 1px solid #000;
-        padding: 3px 5px;
+        padding: 2.5px 5px;
         vertical-align: top;
-        font-size: 7.5px;
+        font-size: 7.2px;
     }
     table.firmas-tbl {
         width: 100%;
@@ -1956,6 +2022,11 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         <thead><tr>{$theadThs}</tr></thead>
         <tbody>{$tbodyTrs}</tbody>
     </table>
+
+    <div class="bloque-normativo">
+        <div class="disclaimer-normativo">{$disclaimerEsc}</div>
+        {$notasHtml}
+    </div>
 
     <table class="obs-tbl">
         <tr>
@@ -2351,6 +2422,17 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
             $normaAstm = htmlspecialchars($det['norma_astm'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
             $nombreFormato = htmlspecialchars($det['formato_nombre'] ?? 'Informe de Ensayo', ENT_QUOTES, 'UTF-8');
 
+            $formatoDisc = !empty($schemaData[$archivoMd]['disclaimer']) ? htmlspecialchars($schemaData[$archivoMd]['disclaimer'], ENT_QUOTES, 'UTF-8') : 'Consultoría y Construcción SA. CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.';
+            $formatoNotas = !empty($schemaData[$archivoMd]['notas']) && is_array($schemaData[$archivoMd]['notas']) ? $schemaData[$archivoMd]['notas'] : [];
+            $formatoNotasHtml = '';
+            if (!empty($formatoNotas)) {
+                $formatoNotasHtml = '<div style="margin-top: 4px; font-size: 8px; color: #334155; line-height: 1.3;">';
+                foreach ($formatoNotas as $fn) {
+                    $formatoNotasHtml .= '<div style="margin-bottom: 2px;">' . htmlspecialchars($fn, ENT_QUOTES, 'UTF-8') . '</div>';
+                }
+                $formatoNotasHtml .= '</div>';
+            }
+
             $html .= "
             <div class=\"page-landscape\">
                 <table style=\"width: 100%; border-bottom: 2px solid #103487; padding-bottom: 8px; margin-bottom: 12px; border-collapse: collapse;\">
@@ -2415,8 +2497,9 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
                     </tbody>
                 </table>
 
-                <div style=\"font-size: 8px; color: #64748b; line-height: 1.3; margin-top: 15px; border-top: 1px solid #cbd5e1; padding-top: 6px;\">
-                    Consultoría y Construcción SA. CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.
+                <div style=\"font-size: 8px; color: #475569; line-height: 1.3; margin-top: 12px; border-top: 1px solid #cbd5e1; padding-top: 6px;\">
+                    <div style=\"font-style: italic;\">{$formatoDisc}</div>
+                    {$formatoNotasHtml}
                 </div>
 
                 <table style=\"width: 100%; margin-top: 40px; border-collapse: collapse;\">

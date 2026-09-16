@@ -145,4 +145,35 @@ class FormatosEnsayosTest extends TestCase {
         $this->assertIsArray($data, "El esquema detallado debe ser un array de formatos.");
         $this->assertGreaterThanOrEqual(15, count($data), "El esquema detallado debe contener al menos 15 formatos.");
     }
+
+    /**
+     * Valida que cada formato en formatos_schema.json registre su disclaimer oficial
+     * y su listado de notas técnicas (ISO 17025).
+     */
+    public function testFormatosSchemaContieneDisclaimerYNotasOficiales(): void {
+        $contenido = file_get_contents($this->schemaPath);
+        $data = json_decode($contenido, true);
+
+        $this->assertIsArray($data);
+
+        foreach ($data as $archivo => $formato) {
+            $contexto = "Formato clave '{$archivo}' en formatos_schema.json";
+
+            $this->assertArrayHasKey('disclaimer', $formato, "{$contexto} debe tener la clave 'disclaimer'.");
+            $this->assertIsString($formato['disclaimer'], "{$contexto} 'disclaimer' debe ser string.");
+            $this->assertNotEmpty(trim($formato['disclaimer']), "{$contexto} 'disclaimer' no debe estar vacío.");
+            $this->assertStringContainsString('Consultoría y Construcción', $formato['disclaimer'], "{$contexto} debe contener 'Consultoría y Construcción'.");
+
+            $this->assertArrayHasKey('notas', $formato, "{$contexto} debe tener la clave 'notas'.");
+            $this->assertIsArray($formato['notas'], "{$contexto} 'notas' debe ser array.");
+            $this->assertNotEmpty($formato['notas'], "{$contexto} 'notas' no debe estar vacío.");
+        }
+
+        // Validación puntual del formato Compactación Densímetro Nuclear (Captura 2026-09-16 092442)
+        $this->assertArrayHasKey('compactacion_densimetro_nuclear.md', $data);
+        $densimetro = $data['compactacion_densimetro_nuclear.md'];
+        $this->assertCount(2, $densimetro['notas'], "El formato de densímetro nuclear debe contener exactamente 2 notas técnicas.");
+        $this->assertStringContainsString('CYCSA-PE-25', $densimetro['notas'][0]);
+        $this->assertStringContainsString('TROXLER, Modelo: 3440', $densimetro['notas'][1]);
+    }
 }
