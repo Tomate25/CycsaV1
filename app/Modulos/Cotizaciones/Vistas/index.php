@@ -53,6 +53,9 @@
 
     <!-- Pestañas Filtros del Ciclo de Vida de Cotizaciones -->
     <div class="tabs-container">
+        <a href="/Cycsa/publico/cotizaciones?tab=todas" class="tab-link <?= $tabActual === 'todas' ? 'active' : '' ?>">
+            <i class="fa-solid fa-list"></i> Todas
+        </a>
         <a href="/Cycsa/publico/cotizaciones?tab=borradores" class="tab-link <?= $tabActual === 'borradores' ? 'active' : '' ?>">
             <i class="fa-solid fa-file-signature"></i> Borradores
         </a>
@@ -64,9 +67,6 @@
         </a>
         <a href="/Cycsa/publico/cotizaciones?tab=aprobadas" class="tab-link <?= $tabActual === 'aprobadas' ? 'active' : '' ?>">
             <i class="fa-solid fa-circle-check"></i> Aprobadas / Enviadas
-        </a>
-        <a href="/Cycsa/publico/cotizaciones?tab=todas" class="tab-link <?= $tabActual === 'todas' ? 'active' : '' ?>">
-            <i class="fa-solid fa-list"></i> Todas
         </a>
     </div>
 
@@ -104,7 +104,7 @@
                     <td style="color: #6c757d; font-size: 13px;"><?= date('d/m/Y', strtotime($cot['fecha_creacion'])) ?></td>
                     <td style="text-align: right;">
                         <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cot['id']) ?>" class="btn-accion btn-ver" title="Ver Detalle"><i class="fa-solid fa-eye"></i></a>
-                        <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cot['id']) ?>" target="_blank" class="btn-accion btn-ver" style="color: #e31837;" title="Imprimir PDF"><i class="fa-solid fa-file-pdf"></i></a>
+                        <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cot['id']) ?>&t=<?= time() ?>" target="_blank" class="btn-accion btn-ver" style="color: #e31837;" title="Imprimir PDF"><i class="fa-solid fa-file-pdf"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>

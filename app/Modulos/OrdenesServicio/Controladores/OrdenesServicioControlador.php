@@ -15,6 +15,9 @@ class OrdenesServicioControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/login');
             exit;
         }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
     }
 
     /**
@@ -27,10 +30,20 @@ class OrdenesServicioControlador extends ControladorBase {
         $busqueda = trim($_GET['q'] ?? '');
         $ordenes = $modelo->obtenerTodas($busqueda);
 
+        // Cargar técnicos activos para el autocompletado en la Hoja RT-FM-13
+        $opModelo = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
+        $tecnicos = $opModelo->obtenerTecnicosActivos();
+
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
         $this->renderizar('OrdenesServicio/Vistas/index', [
-            'titulo' => 'Órdenes de Servicio (CYCSA-RG-FM-39 V1)',
+            'titulo' => 'Órdenes de Servicio & Hojas de Recepción - CYCSA',
             'ordenes' => $ordenes,
-            'busqueda' => $busqueda
+            'tecnicos' => $tecnicos,
+            'busqueda' => $busqueda,
+            'id_os_auto' => (int)($_GET['id_os'] ?? 0)
         ]);
     }
 
@@ -80,6 +93,15 @@ class OrdenesServicioControlador extends ControladorBase {
         }
 
         $datos = $peticion->obtenerDatos();
+
+        // 🔒 Validar CSRF
+        $csrfToken = $datos['csrf_token'] ?? '';
+        if (empty($csrfToken) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+            $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
         $idCotizacion = (int)($datos['id_cotizacion'] ?? 0);
         $requiereMuestreo = isset($datos['requiere_muestreo']) && ($datos['requiere_muestreo'] === '1' || $datos['requiere_muestreo'] === 1);
 
@@ -113,9 +135,9 @@ class OrdenesServicioControlador extends ControladorBase {
                 $_SESSION['exito'] = 'Orden de Servicio registrada. Proceda con la programación de muestreo en campo.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' . $idOS);
             } else {
-                // NO requiere muestreo en campo -> Redirigir inmediatamente a Hojas de Servicio (CYCSA RT-FM-13)
+                // NO requiere muestreo en campo -> Redirigir inmediatamente a Órdenes de Servicio con apertura de Hoja RT-FM-13
                 $_SESSION['exito'] = 'Orden de Servicio registrada sin muestreo en campo. Redirigido a la Hoja de Servicio.';
-                $respuesta->redirigir('/Cycsa/publico/hojas-servicio?id_os=' . $idOS);
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
             }
         } else {
             $_SESSION['error'] = 'Error al registrar la Orden de Servicio.';
@@ -139,6 +161,9 @@ class OrdenesServicioControlador extends ControladorBase {
             return;
         }
 
+        // Asegurar que la orden está marcada como que requiere muestreo en campo
+        $osModelo->marcarRequiereMuestreo($idOS);
+
         $tecnicos = $osModelo->obtenerTecnicos();
         $vehiculos = $osModelo->obtenerVehiculos();
 
@@ -157,12 +182,30 @@ class OrdenesServicioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
 
         if (!$peticion->esPost()) {
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
             return;
         }
 
         $datos = $peticion->obtenerDatos();
+
+        // 🔒 Validar CSRF
+        $csrfToken = $datos['csrf_token'] ?? $_POST['csrf_token'] ?? '';
+        $csrfValido = !empty($csrfToken) && !empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $csrfToken);
+        if (!$csrfValido && empty($_SESSION['usuario_id'])) {
+            $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
         $idOS = (int)($datos['id_os'] ?? 0);
+        $accionMuestreo = $datos['accion_muestreo'] ?? 'guardar';
+        $esFinalizar = ($accionMuestreo === 'finalizar');
+
+        // Procesar lista de chequeo si viene en el post
+        $checklist = $datos['chk'] ?? [];
+        $checklistJson = !empty($checklist) ? json_encode($checklist, JSON_UNESCAPED_UNICODE) : null;
+
+        $estadoMuestreo = $esFinalizar ? 'Finalizado' : 'En Campo';
 
         $osModelo = new OrdenServicioModelo();
         $exito = $osModelo->guardarProgramacionMuestreo($idOS, [
@@ -170,18 +213,36 @@ class OrdenesServicioControlador extends ControladorBase {
             'fecha_llegada' => $datos['fecha_llegada'],
             'id_tecnico' => (int)$datos['id_tecnico'],
             'id_vehiculo' => (int)$datos['id_vehiculo'],
+            'lugar_muestreo' => trim($datos['lugar_muestreo'] ?? ''),
+            'cantidad_muestras_est' => trim($datos['cantidad_muestras_est'] ?? ''),
+            'num_muestreadores' => (int)($datos['num_muestreadores'] ?? 1),
             'observaciones_campo' => trim($datos['observaciones_campo'] ?? ''),
-            'estado_muestreo' => 'En Proceso'
+            'checklist_json' => $checklistJson,
+            'estado_muestreo' => $estadoMuestreo
         ]);
 
         if ($exito) {
-            $_SESSION['exito'] = 'Programación de muestreo registrada con éxito. El técnico ha sido asignado y se encuentra en salida a campo.';
+            if ($esFinalizar) {
+                registrarBitacora('ordenes_servicio', 'finalizar_muestreo', "Muestreo finalizado (retorno al lab) y guardado para la Orden de Servicio ID: {$idOS}", $idOS);
+                $_SESSION['exito'] = 'Muestreo en campo finalizado con éxito. El técnico retornó con los especímenes al laboratorio. Abriendo Hoja de Servicio (CYCSA-RT-FM-13)...';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
+                return;
+            } else {
+                registrarBitacora('ordenes_servicio', 'programar_muestreo', "Programación de muestreo y checklist guardados para la Orden de Servicio ID: {$idOS}", $idOS);
+                $_SESSION['exito'] = 'Programación de muestreo y Lista de Chequeo CYCSA-RT-FM-40 B guardada con éxito.';
+            }
         } else {
             $_SESSION['error'] = 'Ocurrió un error al guardar la programación de muestreo.';
         }
 
-        // Redirige de vuelta al listado normal de Hojas de Servicio (no abre el modal todavía, porque el técnico apenas va saliendo)
-        $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+        // Si se solicitó imprimir, redirige a la vista imprimible
+        if (!empty($datos['accion_imprimir'])) {
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=' . $idOS);
+            return;
+        }
+
+        // Redirige de vuelta a programar muestreo
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' . $idOS);
     }
 
     /**
@@ -191,17 +252,33 @@ class OrdenesServicioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
 
         if (!$peticion->esPost()) {
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
             return;
         }
 
         $datos = $peticion->obtenerDatos();
+        $esAjax = !empty($_POST['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || !empty($datos['ajax']);
+
+        // 🔒 Validar CSRF
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $csrfHeader = $headers['X-CSRF-TOKEN'] ?? $headers['X-Csrf-Token'] ?? $headers['x-csrf-token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        $csrfToken = $datos['csrf_token'] ?? $_POST['csrf_token'] ?? $csrfHeader;
+        $csrfValido = !empty($csrfToken) && !empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $csrfToken);
+
+        if (!$csrfValido && empty($_SESSION['usuario_id'])) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Token de seguridad inválido o sesión expirada.']);
+                return;
+            }
+            $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
         $idOS = (int)($datos['id_os'] ?? 0);
 
         $osModelo = new OrdenServicioModelo();
         $exito = $osModelo->finalizarMuestreo($idOS);
-
-        $esAjax = !empty($_POST['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
 
         if ($exito) {
             registrarBitacora('ordenes_servicio', 'finalizar_muestreo', "Muestreo finalizado para la Orden de Servicio ID: {$idOS}", $idOS);
@@ -210,7 +287,7 @@ class OrdenesServicioControlador extends ControladorBase {
                 return;
             }
             $_SESSION['exito'] = 'Muestreo en campo finalizado con éxito. Abriendo Hoja de Servicio (CYCSA RT-FM-13)...';
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio?id_os=' . $idOS);
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
         } else {
             if ($esAjax) {
                 $respuesta->enviarJson(['status' => 'error', 'message' => 'Error al finalizar el muestreo.']);
@@ -226,10 +303,42 @@ class OrdenesServicioControlador extends ControladorBase {
      */
     public function marcarIngresoDirectoAjax(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+
+        // 🔒 Validar CSRF
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $csrfHeader = $headers['X-CSRF-TOKEN'] ?? $headers['X-Csrf-Token'] ?? $headers['x-csrf-token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        $csrfToken = $_POST['csrf_token'] ?? $csrfHeader;
+        $csrfValido = !empty($csrfToken) && !empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $csrfToken);
+
+        if (!$csrfValido && empty($_SESSION['usuario_id'])) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Token de seguridad inválido o sesión expirada.']);
+            return;
+        }
+
         $idOS = (int)($_POST['id_os'] ?? 0);
         $osModelo = new OrdenServicioModelo();
         $exito = $osModelo->establecerIngresoDirecto($idOS);
         $respuesta->enviarJson(['status' => $exito ? 'success' : 'error']);
+    }
+
+    /**
+     * Imprimir Formato Oficial CYCSA-RT-FM-40 B (Lista de Chequeo para Muestreos de Compactación)
+     */
+    public function imprimirListaChequeo(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $idOS = (int)($_GET['id'] ?? 0);
+        $osModelo = new OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS);
+
+        if (!$os) {
+            $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        require __DIR__ . '/../Vistas/imprimir_checklist.php';
+        exit;
     }
 
     /**

@@ -87,7 +87,11 @@
                     <td style="text-align: right;">
                         <a href="/Cycsa/publico/roles/editar?id=<?= codificarId($rol['id']) ?>" class="btn-accion btn-editar" title="Editar"><i class="fa-solid fa-pen-to-square"></i></a>
                         <?php if ($rol['id'] != 1 && $rol['id'] != 2): ?>
-                            <a href="/Cycsa/publico/roles/eliminar?id=<?= codificarId($rol['id']) ?>" class="btn-accion btn-eliminar" title="Eliminar" onclick="return confirm('¿Estás seguro de que deseas eliminar este rol? Solo se puede eliminar si ningún usuario lo tiene asignado.');"><i class="fa-solid fa-trash"></i></a>
+                            <form action="/Cycsa/publico/roles/eliminar" method="POST" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este rol? Solo se puede eliminar si ningún usuario lo tiene asignado.');">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="id" value="<?= codificarId($rol['id']) ?>">
+                                <button type="submit" class="btn-accion btn-eliminar" title="Eliminar" style="background: none; border: none; cursor: pointer; padding: 0;"><i class="fa-solid fa-trash"></i></button>
+                            </form>
                         <?php else: ?>
                             <span class="btn-accion btn-deshabilitado" title="Rol crítico del sistema (protegido)"><i class="fa-solid fa-trash"></i></span>
                         <?php endif; ?>

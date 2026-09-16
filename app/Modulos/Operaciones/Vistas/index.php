@@ -161,8 +161,9 @@
                         <th>Código O/S</th>
                         <th>Cliente / Proyecto</th>
                         <th>Fecha Emisión</th>
-                        <th>Fase y Estado Actual</th>
-                        <th style="text-align: right;">Acción Siguiente</th>
+                        <th>Modalidad / Muestreo</th>
+                        <th style="text-align: center;">Facturación / Cobro</th>
+                        <th style="text-align: right;">Matriz Técnica</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -177,6 +178,14 @@
                         $matrizCompleta = ($totalItemsOS > 0 && $matricesLlenadas === $totalItemsOS);
                         $tieneTecnico = !empty($o['tecnico_muestreo']);
                         $tieneHojaServicio = !empty($o['hoja_solicitud']);
+                        $requiereMuestreo = !empty($o['requiere_muestreo']);
+                        $tieneMuestrasAceptadas = !empty($o['muestras_aceptadas_lab']) && $o['muestras_aceptadas_lab'] > 0;
+                        
+                        $cxcOS = $o['cxc'] ?? null;
+                        $montoOS = (float)($o['cot_total'] ?? 0.0);
+                        $saldoOS = $cxcOS ? (float)$cxcOS['saldo'] : $montoOS;
+                        $estadoOS = $cxcOS ? $cxcOS['estado'] : 'Pendiente';
+                        $pagadaOS = ($estadoOS === 'Pagado' || $saldoOS <= 0.01);
                     ?>
                     <tr id="os-row-<?= $o['id'] ?>" data-detail-id="os-detail-<?= $o['id'] ?>">
                         <td style="text-align: center;">
@@ -193,36 +202,105 @@
                         </td>
                         <td><?= date('d/m/Y', strtotime($o['fecha_emision'])) ?></td>
                         <td>
-                            <?php if ($tieneTecnico): ?>
-                                <div style="font-size: 12.5px; color: #1e293b;">
-                                    <span style="font-weight: 700; color: var(--cycsa-azul);"><i class="fa-solid fa-user-check"></i> Técnico: <?= htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') ?></span>
-                                    <?php if (!empty($o['fecha_muestreo'])): ?>
-                                        <br><span style="font-size: 11.5px; color: #64748b;"><i class="fa-solid fa-calendar-day"></i> Visita: <?= date('d/m/Y', strtotime($o['fecha_muestreo'])) ?> <?= $o['hora_muestreo'] ?></span>
+                            <?php if ($requiereMuestreo): ?>
+                                <div>
+                                    <span style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
+                                        <i class="fa-solid fa-truck-pickup"></i> Muestreo en Campo
+                                    </span>
+                                    <?php if ($tieneTecnico): ?>
+                                        <div style="font-size: 12px; color: #1e293b; margin-top: 4px;">
+                                            <strong style="color: #103487;"><i class="fa-solid fa-user-check"></i> <?= htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                            <?php if (!empty($o['fecha_muestreo'])): ?>
+                                                <br><span style="font-size: 11px; color: #64748b;"><i class="fa-solid fa-calendar-day"></i> <?= date('d/m/Y', strtotime($o['fecha_muestreo'])) ?> <?= htmlspecialchars($o['hora_muestreo'] ?? '') ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div style="margin-top: 5px;">
+                                            <button type="button" 
+                                                    onclick="abrirModalMuestreo(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')" 
+                                                    class="btn-accion btn-os" 
+                                                    style="padding: 4px 8px; font-size: 11px; background-color: #fffbeb; color: #b45309; border-color: #fef3c7;">
+                                                <i class="fa-solid fa-user-plus"></i> Asignar Técnico Dedicado
+                                            </button>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             <?php else: ?>
-                                <button type="button" 
-                                        onclick="abrirModalMuestreo(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')" 
-                                        class="btn-accion btn-os" 
-                                        style="padding: 6px 12px; font-size: 12px; background-color: #fffbeb; color: #b45309; border-color: #fef3c7;">
-                                    <i class="fa-solid fa-user-plus"></i> Asignar Técnico de Visita
-                                </button>
+                                <div>
+                                    <span style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
+                                        <i class="fa-solid fa-building-user"></i> Entregada por Cliente
+                                    </span>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 3px;">
+                                        <i class="fa-solid fa-store"></i> Ingreso Directo en Lab Central
+                                    </div>
+                                </div>
                             <?php endif; ?>
                         </td>
+
+                        <!-- Columna Facturación y Cobro -->
+                        <td style="text-align: center; vertical-align: middle; white-space: nowrap;">
+                            <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                <?php if ($pagadaOS): ?>
+                                    <span style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="fa-solid fa-circle-check"></i> Pagada (<?= htmlspecialchars($o['factura_numero']) ?>)
+                                    </span>
+                                    <a href="/Cycsa/publico/operaciones/imprimir-factura?id_os=<?= $o['id'] ?>" target="_blank" class="btn-accion-hs btn-pdf" style="text-decoration: none; padding: 5px 9px; font-size: 11.5px; display: inline-flex; align-items: center; gap: 4px;" title="Ver e Imprimir Factura Oficial">
+                                        <i class="fa-solid fa-print"></i> Factura
+                                    </a>
+                                <?php elseif ($estadoOS === 'Parcial'): ?>
+                                    <span style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="fa-solid fa-clock"></i> Parcial (Saldo: C$ <?= number_format($saldoOS, 2) ?>)
+                                    </span>
+                                    <button type="button" 
+                                            onclick="abrirModalFacturarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>', '<?= htmlspecialchars(addslashes($o['factura_numero'])) ?>', <?= $saldoOS ?>, '<?= htmlspecialchars(addslashes($o['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($o['condicion_pago'] ?? '')) ?>')" 
+                                            class="btn-accion-hs btn-registrar" 
+                                            style="padding: 5px 10px; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" 
+                                            title="Cobrar Saldo Pendiente">
+                                        <i class="fa-solid fa-money-bill-transfer"></i> Abonar
+                                    </button>
+                                <?php else: ?>
+                                    <span style="background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="fa-solid fa-hourglass"></i> Pendiente (C$ <?= number_format($montoOS, 2) ?>)
+                                    </span>
+                                    <button type="button" 
+                                            onclick="abrirModalFacturarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>', '<?= htmlspecialchars(addslashes($o['factura_numero'])) ?>', <?= $saldoOS ?>, '<?= htmlspecialchars(addslashes($o['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($o['condicion_pago'] ?? '')) ?>')" 
+                                            class="btn-accion-hs btn-registrar" 
+                                            style="background-color: #0f3b68; border-color: #0f3b68; color: white; padding: 5px 10px; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" 
+                                            title="Facturar y Registrar Cobro Inmediato (Efectivo o Transferencia)">
+                                        <i class="fa-solid fa-file-invoice-dollar"></i> Facturar
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+
                         <td style="text-align: right; white-space: nowrap; vertical-align: middle;">
-                            <!-- BOTÓN ÚNICO: GENERAR HOJA DE LABORATORIO (Se habilita al rellenar matriz) -->
+                            <?php 
+                            $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
+                            ?>
+                            <?php if ($esSoloCompactacion): ?>
+                                <span style="background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 11.5px; display: inline-flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-gauge-high"></i> Compactación In Situ
+                                </span>
+                            <?php elseif ($tieneMuestrasAceptadas): ?>
+                                <span style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 11.5px; display: inline-flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-circle-check"></i> Aprobado Lab
+                                </span>
+                            <?php elseif ($tieneHojaServicio): ?>
+                                <span style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 11.5px; display: inline-flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-flask"></i> En Custodia Lab
+                                </span>
+                            <?php endif; ?>
+
                             <?php if ($matrizCompleta): ?>
-                                <a href="/Cycsa/publico/operaciones/recepcion?id_os=<?= $o['id'] ?>" 
-                                   class="btn-accion btn-recepcion" 
-                                   style="background-color: #10b981; color: white; border-color: #10b981; text-decoration: none; padding: 8px 16px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fa-solid fa-paper-plane"></i> Generar Hoja de Laboratorio
-                                </a>
+                                <span style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 11.5px; display: inline-flex; align-items: center; gap: 5px; margin-left: 6px;">
+                                    <i class="fa-solid fa-check-double"></i> Matriz Completa (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)
+                                </span>
                             <?php else: ?>
                                 <button type="button" 
-                                        onclick="intentarGenerarHojaLaboratorio(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>', <?= $tieneTecnico ? 'true' : 'false' ?>)" 
+                                        onclick="toggleDetailOS(<?= $o['id'] ?>, document.querySelector('#os-row-<?= $o['id'] ?> .btn-toggle-detail'))" 
                                         class="btn-accion btn-detalle" 
-                                        style="background-color: #f8fafc; color: #94a3b8; border-color: #cbd5e1; padding: 8px 16px; font-weight: 600; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fa-solid fa-hourglass-half"></i> ⏳ Pendiente Llenar Matriz (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)
+                                        style="background-color: #f8fafc; color: #475569; border-color: #cbd5e1; padding: 5px 10px; font-weight: 600; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; margin-left: 6px;">
+                                    <i class="fa-solid fa-table-cells"></i> Ensayos (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)
                                 </button>
                             <?php endif; ?>
                         </td>
@@ -230,21 +308,111 @@
                     
                     <!-- Sub-fila para detalles desplegables (Acordeón / Viñetas) -->
                     <tr class="detalle-os-row" id="os-detail-<?= $o['id'] ?>" style="display: none; background-color: #f8fafc;">
-                        <td colspan="6" style="padding: 15px 25px; border-bottom: 1.5px solid #cbd5e1;">
+                        <td colspan="7" style="padding: 15px 25px; border-bottom: 1.5px solid #cbd5e1;">
                             <div class="detalle-os-card" style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                                
+                                <!-- APARTADO DE FACTURACIÓN Y REGISTRO CONTABLE DIARIO -->
+                                <div style="background: #ffffff; border: 1.5px solid <?= $pagadaOS ? '#a7f3d0' : '#cbd5e1' ?>; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                                        <div style="font-family: 'Outfit'; font-size: 14px; font-weight: 700; color: #0f3b68; display: flex; align-items: center; gap: 8px;">
+                                            <i class="fa-solid fa-file-invoice-dollar" style="color: #059669; font-size: 17px;"></i>
+                                            Apartado de Facturación y Registro Contable Diario
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <?php if ($pagadaOS): ?>
+                                                <span style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">
+                                                    <i class="fa-solid fa-circle-check"></i> Factura Pagada (100%)
+                                                </span>
+                                            <?php elseif ($estadoOS === 'Parcial'): ?>
+                                                <span style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">
+                                                    <i class="fa-solid fa-clock"></i> Cobro Parcial (Pendiente: C$ <?= number_format($saldoOS, 2) ?>)
+                                                </span>
+                                            <?php else: ?>
+                                                <span style="background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">
+                                                    <i class="fa-solid fa-clock"></i> Pendiente de Cobro
+                                                </span>
+                                            <?php endif; ?>
+                                            <a href="/Cycsa/publico/operaciones/imprimir-factura?id_os=<?= $o['id'] ?>" target="_blank" class="btn-accion-hs btn-pdf" style="text-decoration: none; padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                                                <i class="fa-solid fa-print"></i> Ver / Imprimir Factura Oficial
+                                            </a>
+                                            <?php if (!$pagadaOS): ?>
+                                                <button type="button" onclick="abrirModalFacturarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>', '<?= htmlspecialchars(addslashes($o['factura_numero'])) ?>', <?= $saldoOS ?>, '<?= htmlspecialchars(addslashes($o['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($o['condicion_pago'] ?? '')) ?>')" class="btn-accion-hs btn-registrar" style="background: #0f3b68; border-color: #0f3b68; color: white; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                                    <i class="fa-solid fa-cash-register"></i> Facturar / Cobrar Ahora
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; font-size: 12px;">
+                                        <div>
+                                            <span style="color: #64748b;">N° Factura:</span> 
+                                            <strong style="font-family: monospace; color: #0f3b68;"><?= htmlspecialchars($o['factura_numero']) ?></strong>
+                                        </div>
+                                        <div>
+                                            <span style="color: #64748b;">Monto Facturado:</span> 
+                                            <strong style="color: #0f172a;">C$ <?= number_format($montoOS, 2) ?></strong>
+                                        </div>
+                                        <div>
+                                            <span style="color: #64748b;">Saldo Pendiente:</span> 
+                                            <strong style="color: <?= $saldoOS > 0 ? '#b91c1c' : '#059669' ?>;">C$ <?= number_format($saldoOS, 2) ?></strong>
+                                        </div>
+                                        <div>
+                                            <span style="color: #64748b;">Condición de Pago:</span> 
+                                            <span><?= htmlspecialchars($o['condicion_pago'] ?? 'Contado') ?></span>
+                                        </div>
+                                    </div>
+                                    <?php if (!empty($cxcOS['notas'])): ?>
+                                        <div style="margin-top: 8px; font-size: 11.5px; color: #475569; background: #f8fafc; border-radius: 4px; padding: 6px 10px; border-left: 3px solid #059669;">
+                                            <i class="fa-solid fa-receipt" style="color: #059669;"></i> <?= htmlspecialchars($cxcOS['notas']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div style="margin-top: 6px; font-size: 11px; color: #64748b; font-style: italic;">
+                                        <i class="fa-solid fa-info-circle"></i> La facturación y el cobro se pueden emitir en cualquier momento del proceso sin restricciones por ensayos o resultados pendientes.
+                                    </div>
+                                </div>
+
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
                                     <h4 style="margin: 0; font-family: 'Outfit'; font-size: 15px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
                                         <i class="fa-solid fa-table-cells" style="color: var(--cycsa-azul);"></i> 
-                                        Productos Cotizados - Rellenar Matriz Técnica de Campo
+                                        Productos Cotizados - Matriz Técnica de Ensayos
                                     </h4>
                                     <span style="font-size: 12px; color: #64748b; font-weight: 600;">
-                                        Técnico: <strong><?= $tieneTecnico ? htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') : 'Sin asignar' ?></strong>
+                                        Modalidad: <strong><?= $requiereMuestreo ? 'Muestreo en Campo' : 'Ingreso Directo Lab' ?></strong>
                                     </span>
+                                </div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                                    <div>
+                                        <span style="font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">Origen de la Muestra:</span>
+                                        <?php if ($esSoloCompactacion): ?>
+                                            <span style="background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 11px; margin-left: 6px;">
+                                                <i class="fa-solid fa-gauge-high"></i> Ensayo In Situ (Sin muestra física a custodia de lab)
+                                            </span>
+                                        <?php elseif ($requiereMuestreo): ?>
+                                            <span style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 11px; margin-left: 6px;">
+                                                <i class="fa-solid fa-truck-pickup"></i> Muestreo en Campo por Técnico Dedicado (CYCSA)
+                                            </span>
+                                        <?php else: ?>
+                                            <span style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 11px; margin-left: 6px;">
+                                                <i class="fa-solid fa-building-user"></i> Muestra Entregada Directamente por el Cliente
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div style="font-size: 12px; color: #64748b; font-weight: 600;">
+                                        <?php if ($esSoloCompactacion): ?>
+                                            Responsable: <strong style="color: #0369a1;">Operaciones / Ensayos en Terreno</strong>
+                                        <?php elseif ($requiereMuestreo): ?>
+                                            Técnico Asignado: <strong style="color: #103487;"><?= $tieneTecnico ? htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') : 'Sin Asignar' ?></strong>
+                                        <?php else: ?>
+                                            Recepción: <strong style="color: #059669;">Ventanilla / Laboratorio Central (MS-XXXX-26)</strong>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                                 
                                 <div style="display: flex; flex-direction: column; gap: 10px;">
                                     <?php foreach ($o['items'] as $it): 
                                         $tieneRes = !empty($it['resultados_json']) && $it['resultados_json'] !== '[]';
+                                        $esCompactacion = esItemCompactacion($it);
                                     ?>
                                         <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 8px; transition: all 0.2s;">
                                             <div>
@@ -270,26 +438,65 @@
                                                     </span>
                                                 <?php endif; ?>
 
-                                                <?php if (!$tieneHojaServicio): ?>
-                                                    <button type="button" 
-                                                            onclick="intentarRellenarMatrizProducto(false, <?= $tieneTecnico ? 'true' : 'false' ?>, <?= $o['id'] ?>, '<?= $o['codigo_os'] ?>', <?= $it['id'] ?>)" 
-                                                            class="btn-accion-hs btn-editar" 
-                                                            style="padding: 7px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; cursor: pointer; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">
-                                                        <i class="fa-solid fa-lock"></i> Requiere Hoja de Servicio Primero
-                                                    </button>
-                                                <?php elseif (!$tieneTecnico): ?>
-                                                    <button type="button" 
-                                                            onclick="intentarRellenarMatrizProducto(true, false, <?= $o['id'] ?>, '<?= $o['codigo_os'] ?>', <?= $it['id'] ?>)" 
-                                                            class="btn-accion-hs btn-editar" 
-                                                            style="padding: 7px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; cursor: pointer; background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">
-                                                        <i class="fa-solid fa-user-lock"></i> Asignar Técnico Primero
-                                                    </button>
+                                                <?php if ($esCompactacion): ?>
+                                                    <!-- COMPACTACIÓN / DENSIDAD IN SITU: DIRECTO A LLENADO DE MATRIZ SIN SOLICITUD DE MUESTRAS -->
+                                                    <span style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 12px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; display: inline-flex; align-items: center; gap: 4px;">
+                                                        <i class="fa-solid fa-gauge-high"></i> In Situ
+                                                    </span>
+                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" 
+                                                       class="btn-accion-hs btn-registrar" 
+                                                       style="text-decoration: none; padding: 7px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background-color:#103487; color:white;">
+                                                        <i class="fa-solid fa-pen-to-square"></i> <?= $tieneRes ? 'Editar Matriz' : 'Rellenar Matriz' ?>
+                                                    </a>
+                                                    <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $it['id'] ?>" 
+                                                       target="_blank" 
+                                                       class="btn-accion-hs btn-pdf" 
+                                                       style="text-decoration: none; padding: 7px 11px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;" 
+                                                       title="Imprimir Matriz Técnica Oficial con Membrete CYCSA">
+                                                        <i class="fa-solid fa-print"></i> Imprimir
+                                                    </a>
+                                                    <?php if ($tieneRes): ?>
+                                                        <button type="button" 
+                                                                onclick="abrirModalEnviarMatriz(<?= (int)$it['id'] ?>, '<?= htmlspecialchars(addslashes($it['descripcion_ensayo']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['cliente_nombre']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['cliente_email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')" 
+                                                                class="btn-accion-hs btn-enviar-cliente" 
+                                                                style="padding: 7px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background-color: #059669; color: white; border: 1px solid #047857; cursor: pointer;" 
+                                                                title="Enviar Matriz Oficial en PDF al Correo del Cliente">
+                                                            <i class="fa-solid fa-paper-plane"></i> Enviar al Cliente
+                                                        </button>
+                                                    <?php endif; ?>
+                                                <?php elseif (!$tieneHojaServicio): ?>
+                                                    <span style="padding: 6px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 5px;">
+                                                        <i class="fa-solid fa-lock"></i> Requiere Hoja RT-FM-13
+                                                    </span>
+                                                <?php elseif (!$tieneMuestrasAceptadas): ?>
+                                                    <span style="padding: 6px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 5px;">
+                                                        <i class="fa-solid fa-hourglass-half"></i> En Custodia / Pendiente Lab
+                                                    </span>
                                                 <?php else: ?>
+                                                    <span style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 12px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 4px;">
+                                                        <i class="fa-solid fa-circle-check"></i> Aprobado Lab
+                                                    </span>
                                                     <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" 
                                                        class="btn-accion-hs btn-registrar" 
                                                        style="text-decoration: none; padding: 7px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
                                                         <i class="fa-solid fa-pen-to-square"></i> <?= $tieneRes ? 'Editar Matriz' : 'Rellenar Matriz' ?>
                                                     </a>
+                                                    <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $it['id'] ?>" 
+                                                       target="_blank" 
+                                                       class="btn-accion-hs btn-pdf" 
+                                                       style="text-decoration: none; padding: 7px 11px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;" 
+                                                       title="Imprimir Matriz Técnica Oficial con Membrete CYCSA">
+                                                        <i class="fa-solid fa-print"></i> Imprimir
+                                                    </a>
+                                                    <?php if ($tieneRes): ?>
+                                                        <button type="button" 
+                                                                onclick="abrirModalEnviarMatriz(<?= (int)$it['id'] ?>, '<?= htmlspecialchars(addslashes($it['descripcion_ensayo']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['cliente_nombre']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['cliente_email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')" 
+                                                                class="btn-accion-hs btn-enviar-cliente" 
+                                                                style="padding: 7px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background-color: #059669; color: white; border: 1px solid #047857; cursor: pointer;" 
+                                                                title="Enviar Matriz Oficial en PDF al Correo del Cliente">
+                                                            <i class="fa-solid fa-paper-plane"></i> Enviar al Cliente
+                                                        </button>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -539,18 +746,19 @@
         abrirModalMatrizEnsayosOS(idOS, codigoOS);
     }
 
-    function intentarRellenarMatrizProducto(tieneHoja, tieneTecnico, idOS, codigoOS, idDetalle) {
+    function intentarRellenarMatrizProducto(tieneHoja, tieneAceptacionLab, idOS, codigoOS, idDetalle) {
         if (!tieneHoja) {
-            alert('Debe llenar y registrar primero la Hoja de Servicio (CYCSA-RT-FM-13) en el módulo de Hojas de Servicio antes de rellenar la matriz técnica.');
-            window.location.href = '/Cycsa/publico/hojas-servicio';
+            alert('Debe llenar y registrar primero la Hoja de Solicitud de Servicio (CYCSA-RT-FM-13) para la Orden ' + codigoOS + ' antes de rellenar la matriz.');
+            window.location.href = '/Cycsa/publico/ordenes-servicio?id_os=' + idOS;
             return;
         }
-        if (!tieneTecnico) {
-            alert('Debe asignar primero un técnico muestreador de visita antes de rellenar la matriz del producto.');
-            abrirModalMuestreo(idOS, codigoOS);
+        if (!tieneAceptacionLab) {
+            if (confirm('Las muestras de la Orden ' + codigoOS + ' aún no han sido aceptadas e ingresadas en el Laboratorio.\n\n¿Desea ir al Portal de Laboratorio para aceptarlas y asignar los códigos oficiales (MS-XXXX-26)?')) {
+                window.location.href = '/Cycsa/publico/laboratorio?tab=kanban';
+            }
             return;
         }
-        abrirModalMatrizEnsayosOS(idOS, codigoOS);
+        window.location.href = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' + idDetalle;
     }
 
     function toggleDetailOS(idOS, btn) {
@@ -924,6 +1132,37 @@
 
         return false;
     }
+
+    function abrirModalEnviarMatriz(idDetalle, nombreEnsayo, clienteNombre, clienteEmail, codigoOS) {
+        document.getElementById('envio_id_detalle').value = idDetalle;
+        document.getElementById('envio_txt_ensayo').innerText = nombreEnsayo;
+        document.getElementById('envio_txt_os').innerText = codigoOS;
+        document.getElementById('envio_txt_cliente').innerText = clienteNombre;
+        document.getElementById('envio_destinatario').value = clienteEmail || '';
+        document.getElementById('envio_asunto').value = 'Informe Oficial de Ensayo - ' + codigoOS + ' - ' + nombreEnsayo + ' - CYCSA';
+        document.getElementById('btn-previsualizar-pdf').href = '/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=' + idDetalle;
+        
+        const modal = document.getElementById('modalEnviarInformeCliente');
+        if (modal) {
+            modal.style.display = 'block';
+        }
+    }
+
+    function cerrarModalEnviarMatriz() {
+        const modal = document.getElementById('modalEnviarInformeCliente');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    function prepararEnvioMatriz(form) {
+        const btn = document.getElementById('btn-submit-envio');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando PDF por correo...';
+        }
+        return true;
+    }
 </script>
 
 <!-- MODAL MATRIZ DE ENSAYOS Y RESULTADOS POR PRODUCTO (MATCHING CAPTURA DE PANTALLA) -->
@@ -1006,6 +1245,246 @@
         </form>
     </div>
 </div>
+
+<!-- MODAL DE ENVÍO DE INFORME OFICIAL DE RESULTADOS EN PDF AL CLIENTE -->
+<div id="modalEnviarInformeCliente" class="modal-premium" style="display:none; position:fixed; z-index:10005; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+    <div class="modal-premium-content" style="width: 50%; max-width:620px; background:white; margin:5% auto; padding:25px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="margin: 0; color: #1e293b; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-paper-plane" style="color: #059669;"></i> Enviar Informe Oficial al Cliente
+            </h3>
+            <button type="button" onclick="cerrarModalEnviarMatriz()" class="btn-cerrar">&times;</button>
+        </div>
+
+        <form method="POST" action="/Cycsa/publico/operaciones/enviar-matriz-cliente" id="form-enviar-matriz-cliente" onsubmit="prepararEnvioMatriz(this)">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id_detalle" id="envio_id_detalle" value="">
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Resumen del Ensayo:</div>
+                <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 4px;" id="envio_txt_ensayo"></div>
+                <div style="font-size: 12.5px; color: #475569; margin-top: 4px;">
+                    O/S: <strong id="envio_txt_os" style="color: #103487; font-family: monospace;"></strong> &bull; 
+                    Cliente: <strong id="envio_txt_cliente"></strong>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="font-size: 13px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                    <i class="fa-solid fa-envelope" style="color: var(--cycsa-azul);"></i> Correo Electrónico del Cliente (Destinatario):
+                </label>
+                <input type="email" name="destinatario" id="envio_destinatario" class="form-control" required style="width: 100%; padding: 10px 14px; font-size: 13.5px; border-radius: 6px; border: 1.5px solid #cbd5e1; box-sizing: border-box;">
+                <small style="color: #64748b; font-size: 11.5px; margin-top: 4px; display: block;">
+                    * Correo cargado automáticamente del perfil del cliente. Puede editarlo o escribir una dirección diferente si lo requiere.
+                </small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="font-size: 13px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                    <i class="fa-solid fa-heading" style="color: var(--cycsa-azul);"></i> Asunto del Correo:
+                </label>
+                <input type="text" name="asunto" id="envio_asunto" class="form-control" required style="width: 100%; padding: 10px 14px; font-size: 13.5px; border-radius: 6px; border: 1.5px solid #cbd5e1; box-sizing: border-box;">
+            </div>
+
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; font-size: 12px; color: #065f46; display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-file-pdf" style="font-size: 24px; color: #059669;"></i>
+                <div>
+                    <strong>Documento PDF Oficial Adjunto:</strong><br>
+                    Se generará y adjuntará automáticamente la matriz de resultados con membrete horizontal CYCSA, metadatos, firmas y notas normativas ISO/IEC 17025.
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                <a href="javascript:void(0)" id="btn-previsualizar-pdf" target="_blank" class="btn-accion-hs btn-pdf" style="text-decoration: none; padding: 9px 15px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-eye"></i> Previsualizar PDF
+                </a>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="cerrarModalEnviarMatriz()" class="btn-accion-hs btn-editar" style="padding: 9px 18px; font-size: 13px; cursor: pointer; border-radius: 6px;">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btn-submit-envio" class="btn-accion-hs btn-registrar" style="background-color: #059669; color: white; border: 1px solid #047857; padding: 9px 22px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; border-radius: 6px;">
+                        <i class="fa-solid fa-paper-plane"></i> Enviar por Correo al Cliente
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL FACTURACIÓN Y COBRO INMEDIATO (EFECTIVO O TRANSFERENCIA) -->
+<div id="modalFacturarOS" class="modal-premium" style="display:none; position:fixed; z-index:10006; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+    <div class="modal-premium-content" style="width: 50%; max-width:640px; background:white; margin:4% auto; padding:25px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="margin: 0; color: #0f3b68; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-file-invoice-dollar" style="color: #059669;"></i> Facturación y Cobro de Orden de Servicio
+            </h3>
+            <button type="button" onclick="cerrarModalFacturarOS()" class="btn-cerrar">&times;</button>
+        </div>
+
+        <form method="POST" action="/Cycsa/publico/operaciones/procesar-facturacion" id="form-facturar-os">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id_os" id="fact_id_os" value="">
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Orden de Servicio:</div>
+                        <div style="font-size: 15px; font-weight: 800; color: #0f3b68; font-family: monospace;" id="fact_txt_os"></div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Cliente:</div>
+                        <div style="font-size: 13.5px; font-weight: 700; color: #1e293b;" id="fact_txt_cliente"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 16px;">
+                <div class="form-group">
+                    <label style="font-size: 12.5px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 5px;">
+                        Número de Factura:
+                    </label>
+                    <input type="text" name="factura_numero" id="fact_input_factura_num" class="form-control" required style="font-family: monospace; font-weight: 700; color: #0f3b68; width: 100%; padding: 9px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 12.5px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 5px;">
+                        Monto a Facturar / Cobrar (C$):
+                    </label>
+                    <input type="number" step="0.01" min="0.01" name="monto" id="fact_input_monto" class="form-control" required style="font-weight: 700; font-size: 15px; color: #0f172a; width: 100%; padding: 9px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px;">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="font-size: 12.5px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                    Método de Pago / Facturación:
+                </label>
+                <div style="display: flex; gap: 18px; background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; font-size: 13px;">
+                        <input type="radio" name="metodo_pago" value="efectivo" checked onchange="toggleMetodoPagoFacturacion('efectivo')">
+                        💵 Efectivo (Caja Principal)
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; font-size: 13px;">
+                        <input type="radio" name="metodo_pago" value="transferencia" onchange="toggleMetodoPagoFacturacion('transferencia')">
+                        🏦 Transferencia Bancaria
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; font-size: 13px;">
+                        <input type="radio" name="metodo_pago" value="credito" onchange="toggleMetodoPagoFacturacion('credito')">
+                        📑 Crédito
+                    </label>
+                </div>
+            </div>
+
+            <!-- Sección Transferencia Bancaria -->
+            <div id="seccion-transferencia-banco" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 5px;">
+                            Cuenta Bancaria Receptora:
+                        </label>
+                        <select name="id_banco_cuenta" id="fact_select_banco" class="form-control" style="width: 100%; padding: 9px 12px; font-size: 12.5px; border-radius: 6px; border: 1.5px solid #86efac;">
+                            <option value="">-- Seleccionar Banco --</option>
+                            <?php foreach (($bancos ?? []) as $b): ?>
+                                <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['banco_nombre']) ?> - <?= htmlspecialchars($b['numero_cuenta']) ?> (<?= $b['moneda'] ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 5px;">
+                            N° Referencia / Transferencia:
+                        </label>
+                        <input type="text" name="referencia" id="fact_input_ref" class="form-control" placeholder="Ej: TRANS-982341" style="width: 100%; padding: 9px 12px; font-size: 12.5px; border-radius: 6px; border: 1.5px solid #86efac;">
+                    </div>
+                </div>
+                <small style="color: #166534; font-size: 11px; margin-top: 6px; display: block;">
+                    * Se incrementará el saldo de la cuenta bancaria y se registrará la transacción en Bancos y en el Libro Diario.
+                </small>
+            </div>
+
+            <!-- Sección Efectivo -->
+            <div id="seccion-efectivo-caja" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: #1e40af;">
+                <i class="fa-solid fa-circle-info"></i> El cobro se debitará en <strong>Caja Principal (Cuenta 1010101)</strong> y se acreditará a <strong>Ingresos por Laboratorio (Cuenta 4010106)</strong> en el registro diario contable.
+            </div>
+
+            <!-- Sección Crédito -->
+            <div id="seccion-credito-plazo" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div class="form-group">
+                    <label style="font-size: 12px; font-weight: 700; color: #b45309; display: block; margin-bottom: 5px;">
+                        Plazo de Crédito (Días):
+                    </label>
+                    <input type="number" name="dias_credito" id="fact_dias_credito" value="30" min="1" max="180" class="form-control" style="width: 120px; padding: 8px 12px; font-size: 13px; border-radius: 6px; border: 1.5px solid #fcd34d;">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label style="font-size: 12.5px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 5px;">
+                    Fecha de Facturación:
+                </label>
+                <input type="date" name="fecha" id="fact_input_fecha" value="<?= date('Y-m-d') ?>" class="form-control" required style="width: 100%; padding: 9px 12px; font-size: 13px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                <button type="button" onclick="cerrarModalFacturarOS()" class="btn-accion-hs btn-editar" style="padding: 9px 20px; font-size: 13px; cursor: pointer; border-radius: 6px;">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-accion-hs btn-registrar" style="background: #0f3b68; border-color: #0f3b68; color: white; padding: 9px 24px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; border-radius: 6px;">
+                    <i class="fa-solid fa-check-circle"></i> Emitir Factura y Registrar en Diario
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalFacturarOS(idOS, codigoOS, facturaNum, saldoPendiente, clienteNombre, condicionPago) {
+        document.getElementById('fact_id_os').value = idOS;
+        document.getElementById('fact_txt_os').innerText = codigoOS;
+        document.getElementById('fact_txt_cliente').innerText = clienteNombre;
+        document.getElementById('fact_input_factura_num').value = facturaNum;
+        document.getElementById('fact_input_monto').value = parseFloat(saldoPendiente || 0).toFixed(2);
+        document.getElementById('fact_input_fecha').value = new Date().toISOString().split('T')[0];
+
+        // Reset radios
+        const radEfectivo = document.querySelector('input[name="metodo_pago"][value="efectivo"]');
+        if (radEfectivo) radEfectivo.checked = true;
+        toggleMetodoPagoFacturacion('efectivo');
+
+        const modal = document.getElementById('modalFacturarOS');
+        if (modal) {
+            modal.style.display = 'block';
+        }
+    }
+
+    function cerrarModalFacturarOS() {
+        const modal = document.getElementById('modalFacturarOS');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    function toggleMetodoPagoFacturacion(metodo) {
+        const secTransf = document.getElementById('seccion-transferencia-banco');
+        const secEfec = document.getElementById('seccion-efectivo-caja');
+        const secCred = document.getElementById('seccion-credito-plazo');
+        const selBanco = document.getElementById('fact_select_banco');
+
+        if (metodo === 'transferencia') {
+            secTransf.style.display = 'block';
+            secEfec.style.display = 'none';
+            secCred.style.display = 'none';
+            if (selBanco) selBanco.setAttribute('required', 'required');
+        } else if (metodo === 'credito') {
+            secTransf.style.display = 'none';
+            secEfec.style.display = 'none';
+            secCred.style.display = 'block';
+            if (selBanco) selBanco.removeAttribute('required');
+        } else {
+            secTransf.style.display = 'none';
+            secEfec.style.display = 'block';
+            secCred.style.display = 'none';
+            if (selBanco) selBanco.removeAttribute('required');
+        }
+    }
+</script>
 
 <?php
 $bitacora_modulo_nombre = 'Operaciones LIMS';

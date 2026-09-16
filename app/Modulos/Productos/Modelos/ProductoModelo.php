@@ -20,17 +20,57 @@ class ProductoModelo extends ModeloBase {
         }
         
         if ($busqueda !== '') {
-            $sql .= " AND (p.nombre_comercial LIKE :q1 
-                        OR p.ensayo_servicio LIKE :q2 
-                        OR p.codigo_servicio LIKE :q3 
-                        OR p.norma_astm LIKE :q4 
-                        OR p.tipo_muestra LIKE :q5)";
-            $termino = '%' . trim($busqueda) . '%';
-            $params['q1'] = $termino;
-            $params['q2'] = $termino;
-            $params['q3'] = $termino;
-            $params['q4'] = $termino;
-            $params['q5'] = $termino;
+            $busquedaTrim = trim($busqueda);
+            // Tokens separados por espacios o signos comunes
+            $tokens = preg_split('/[\s\-_,.:;]+/', $busquedaTrim);
+            $tokens = array_values(array_filter($tokens, function($t) { return strlen($t) > 0; }));
+            
+            // Versión compacta (solo letras y números, ej: "pe25" para "CYCSA-PE-25" o "astmd6938")
+            $compact = preg_replace('/[^a-zA-Z0-9]/', '', $busquedaTrim);
+            
+            $concatCampos = "CONCAT_WS(' ', 
+                p.nombre_comercial, 
+                p.ensayo_servicio, 
+                p.codigo_servicio, 
+                p.procedimiento_muestreo, 
+                REPLACE(p.procedimiento_muestreo, '-', ' '), 
+                p.norma_astm, 
+                REPLACE(p.norma_astm, '-', ' '), 
+                p.tipo_muestra, 
+                p.codigo_hoja_campo, 
+                p.matriz_tipo, 
+                p.condiciones_muestra
+            )";
+
+            $tokenClauses = [];
+            $i = 0;
+            foreach ($tokens as $tok) {
+                $i++;
+                $pName = "q_{$i}";
+                $tokenClauses[] = "{$concatCampos} LIKE :{$pName}";
+                $params[$pName] = '%' . $tok . '%';
+            }
+            
+            $whereParts = [];
+            if (!empty($tokenClauses)) {
+                $whereParts[] = '(' . implode(' AND ', $tokenClauses) . ')';
+            }
+            
+            if (strlen($compact) >= 2) {
+                $concatCompacto = "REPLACE(REPLACE(CONCAT_WS('', 
+                    p.procedimiento_muestreo, 
+                    p.codigo_servicio, 
+                    p.norma_astm, 
+                    p.nombre_comercial, 
+                    p.ensayo_servicio
+                ), '-', ''), ' ', '')";
+                $whereParts[] = "{$concatCompacto} LIKE :q_comp";
+                $params['q_comp'] = '%' . $compact . '%';
+            }
+            
+            if (!empty($whereParts)) {
+                $sql .= " AND (" . implode(' OR ', $whereParts) . ")";
+            }
         }
         
         if ($categoria !== '') {

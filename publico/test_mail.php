@@ -1,4 +1,10 @@
 <?php
+// Script de prueba y diagnóstico SMTP - Solo accesible desde CLI o con clave de acceso autorizada
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    die("Acceso restringido. Este script de prueba SMTP solo puede ejecutarse desde la terminal (CLI).");
+}
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;

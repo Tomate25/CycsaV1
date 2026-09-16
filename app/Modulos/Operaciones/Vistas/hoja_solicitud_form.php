@@ -361,9 +361,19 @@
                     <?php
                     $identMuestras = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
                     if (empty($identMuestras)) {
-                        $nombreDefecto = 'MC-' . sprintf("%03d", $siguienteConsecutivo) . '-' . $anioActual;
-                        $identMuestras[] = ['nombre_muestra' => $nombreDefecto, 'descripcion' => 'Cilindros de concreto', 'info_importante' => 'Estándar'];
-                        $siguienteConsecutivo++;
+                        $esCampo = !empty($os['tecnico_muestreo']) || (!empty($os['requiere_muestreo']) && $os['requiere_muestreo'] != 0);
+                        $prefijo = $esCampo ? 'MC' : 'MS';
+                        $cantMuestras = max(1, (int)($os['cantidad_muestras_est'] ?? 1));
+                        $anio2Dig = substr((string)$anioActual, -2);
+                        for ($i = 0; $i < $cantMuestras; $i++) {
+                            $nombreDefecto = $prefijo . '-' . sprintf("%04d", $siguienteConsecutivo) . '-' . $anio2Dig;
+                            $identMuestras[] = [
+                                'nombre_muestra' => $nombreDefecto, 
+                                'descripcion' => $esCampo ? 'Muestra tomada en campo' : 'Muestra entregada en laboratorio', 
+                                'info_importante' => $esCampo ? (!empty($hoja['procedencia_punto_muestreo']) ? 'Punto: ' . $hoja['procedencia_punto_muestreo'] : 'Muestreo en Obra') : 'Recepción Lab Central'
+                            ];
+                            $siguienteConsecutivo++;
+                        }
                     }
                     foreach ($identMuestras as $idx => $m):
                     ?>

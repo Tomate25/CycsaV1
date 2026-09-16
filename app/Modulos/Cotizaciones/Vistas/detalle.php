@@ -49,15 +49,10 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     <div class="doc-header">
         <div>
             <h2 style="margin: 0; color: var(--cycsa-azul); font-size: 24px;">Cotización <?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?></h2>
-            <p style="margin: 5px 0 0 0; color: #6c757d;">Versión <?= $cotizacion['version'] ?> | Generada el <?= date('d/m/Y', strtotime($cotizacion['fecha_creacion'])) ?></p>
+            <p style="margin: 5px 0 0 0; color: #6c757d;">Cód. Doc CYCSA-RG-FM-31 V2R1 &bull; Versión <?= max(1, (int)($cotizacion['version'] ?? 1)) ?> | Generada el <?= date('d/m/Y', strtotime($cotizacion['fecha_creacion'])) ?></p>
         </div>
         <div style="text-align: right; display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
-            <?php if (in_array($cotizacion['estado'], ['Aprobada por Cliente', 'Aprobada Internamente', 'Enviada al Cliente'])): ?>
-                <a href="/Cycsa/publico/ordenes-servicio/crear?id_cotizacion=<?= $cotizacion['id'] ?>" style="background-color: #103487; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(16, 52, 135, 0.2);">
-                    <i class="fa-solid fa-file-contract"></i> Generar O/S (CYCSA-RG-FM-39 V1)
-                </a>
-            <?php endif; ?>
-            <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>" target="_blank" style="background-color: #e31837; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(227, 24, 55, 0.2);">
+            <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&t=<?= time() ?>" target="_blank" style="background-color: #e31837; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(227, 24, 55, 0.2);">
                 <i class="fa-solid fa-file-pdf"></i> Imprimir PDF
             </a>
             <span class="badge" style="background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1;"><?= htmlspecialchars($cotizacion['estado'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -83,42 +78,14 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         <div class="info-box" style="grid-column: span 2; background-color: #f8fafc; border: 1px solid #cbd5e1; margin-bottom: 30px; padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
                 <span class="info-label" style="font-size: 12px; font-weight: 700; color: var(--cycsa-azul); margin: 0; display: flex; align-items: center; gap: 8px; text-transform: uppercase;">
-                    <i class="fa-solid fa-gears"></i> Seguimiento Logístico y Operaciones
+                    <i class="fa-solid fa-gears"></i> Estado del Servicio
                 </span>
-                <?php if (tienePermiso('operaciones', 'crear_editar')): ?>
-                    <button type="button" onclick="abrirProgramacionCotizacion()" style="background-color: var(--cycsa-azul); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; font-family: 'Inter', sans-serif;">
-                        <i class="fa-solid fa-calendar-plus"></i> Programar
-                    </button>
-                <?php endif; ?>
+                <span class="badge" style="background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 12px; padding: 3px 10px;">
+                    <?= htmlspecialchars($cotizacion['estado_operativo'] ?? 'En Proceso O/S', ENT_QUOTES, 'UTF-8') ?>
+                </span>
             </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                <div>
-                    <span style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; display: block; margin-bottom: 3px;">Día de Entrega</span>
-                    <span style="font-size: 14px; font-weight: 700; color: #166534;">
-                        <i class="fa-solid fa-truck" style="margin-right: 4px; opacity: 0.8;"></i>
-                        <?= $cotizacion['fecha_entrega'] ? date('d/m/Y', strtotime($cotizacion['fecha_entrega'])) : '<span style="color:#94a3b8; font-weight:normal;">Sin definir</span>' ?>
-                    </span>
-                </div>
-                
-                <div>
-                    <span style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; display: block; margin-bottom: 3px;">Día de Seguimiento</span>
-                    <span style="font-size: 14px; font-weight: 700; color: #2563eb;">
-                        <i class="fa-solid fa-calendar-check" style="margin-right: 4px; opacity: 0.8;"></i>
-                        <?= $cotizacion['fecha_seguimiento'] ? date('d/m/Y', strtotime($cotizacion['fecha_seguimiento'])) : '<span style="color:#94a3b8; font-weight:normal;">Sin definir</span>' ?>
-                    </span>
-                </div>
-                
-                <div>
-                    <span style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; display: block; margin-bottom: 3px;">Estado Operativo</span>
-                    <span class="badge" style="background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 12px; padding: 3px 10px; display: inline-block; margin-top: 2px;">
-                        <?= htmlspecialchars($cotizacion['estado_operativo'] ?? 'Pendiente', ENT_QUOTES, 'UTF-8') ?>
-                    </span>
-                </div>
-            </div>
-            
             <?php if (!empty($cotizacion['notas_operativas'])): ?>
-                <div style="margin-top: 15px; background: #fffbeb; border: 1px solid #fef3c7; padding: 12px; border-radius: 6px; color: #b45309; font-size: 13px;">
+                <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 12px; border-radius: 6px; color: #b45309; font-size: 13px;">
                     <strong>Notas e Instrucciones de Operación:</strong>
                     <p style="margin-top: 4px; margin-bottom: 0; color: #78350f;"><?= nl2br(htmlspecialchars($cotizacion['notas_operativas'], ENT_QUOTES, 'UTF-8')) ?></p>
                 </div>
@@ -126,46 +93,68 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         </div>
     <?php endif; ?>
 
-    <h3 style="font-size: 16px; margin-bottom: 15px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px;">Detalle de Ensayos y Servicios</h3>
-    <div style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; margin-bottom: 30px; border: 1px solid #e2e8f0; border-radius: 6px;">
-        <table class="tabla-visual" style="margin-bottom: 0;">
+    <h3 style="font-size: 16px; margin-bottom: 15px; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-flask" style="color: var(--cycsa-azul);"></i> Detalle de Ensayos y Servicios
+    </h3>
+    <div style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; margin-bottom: 30px; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <table class="tabla-visual" style="margin-bottom: 0; min-width: 950px; width: 100%; border-collapse: collapse;">
             <thead>
-                <tr>
-                    <th>Descripción</th>
-                    <th>Cant.</th>
-                    <th>Precio Unit.</th>
-                    <th>Subtotal</th>
+                <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                    <th style="width: 45px; text-align: center; padding: 10px 8px;">Línea</th>
+                    <th style="width: 25%; padding: 10px 12px;">Descripción (Nombre comercial)</th>
+                    <th style="width: 23%; padding: 10px 12px;">Condiciones de muestra</th>
+                    <th style="width: 14%; padding: 10px 12px;">Procedimiento</th>
+                    <th style="width: 10%; padding: 10px 10px; text-align: center;">Unidad de medida</th>
+                    <th style="width: 7%; padding: 10px 8px; text-align: center;">Cantidad</th>
+                    <th style="width: 9%; padding: 10px 10px; text-align: right;">Costo (C$)</th>
+                    <th style="width: 11%; padding: 10px 12px; text-align: right;">Monto (C$)</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($detalles as $detalle): ?>
-                <tr>
-                    <td>
-                        <strong><?= htmlspecialchars($detalle['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?></strong>
-                        <?php
-                        $metaParts = [];
-                        if (!empty($detalle['codigo_servicio'])) {
-                            $metaParts[] = 'Código: <strong>' . htmlspecialchars($detalle['codigo_servicio'], ENT_QUOTES, 'UTF-8') . '</strong>';
-                        }
-                        if (!empty($detalle['norma_astm'])) {
-                            $metaParts[] = 'Norma: <strong>' . htmlspecialchars($detalle['norma_astm'], ENT_QUOTES, 'UTF-8') . '</strong>';
-                        }
-                        if (!empty($detalle['formato_reporte'])) {
-                            $metaParts[] = 'Formato Reporte: <strong>' . htmlspecialchars($detalle['formato_reporte'], ENT_QUOTES, 'UTF-8') . '</strong>';
-                        }
-                        if (!empty($detalle['observaciones'])) {
-                            $metaParts[] = 'Tiempo Entrega: <strong>' . htmlspecialchars($detalle['observaciones'], ENT_QUOTES, 'UTF-8') . '</strong>';
-                        }
-                        ?>
-                        <?php if (!empty($metaParts)): ?>
-                            <div style="margin-top: 5px; padding-top: 3px; border-top: 1px dashed #e2e8f0; font-size: 11px; color: #475569;">
-                                <?= implode(' &bull; ', $metaParts) ?>
+                <?php foreach ($detalles as $idx => $detalle): ?>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="text-align: center; font-weight: 700; color: #0f172a; vertical-align: top; padding: 12px 8px;">
+                        <?= $idx + 1 ?>
+                    </td>
+                    <td style="vertical-align: top; padding: 12px;">
+                        <strong style="color: #0f172a; font-size: 13.5px; display: block;"><?= htmlspecialchars($detalle['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        <?php if (!empty($detalle['descripcion_adicional'])): ?>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 4px; line-height: 1.4;">
+                                <?= nl2br(htmlspecialchars($detalle['descripcion_adicional'], ENT_QUOTES, 'UTF-8')) ?>
                             </div>
                         <?php endif; ?>
+                        <?php if (!empty($detalle['codigo_servicio'])): ?>
+                            <span style="font-size: 10.5px; font-family: monospace; color: #64748b; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; display: inline-block; margin-top: 4px;">
+                                <?= htmlspecialchars($detalle['codigo_servicio'], ENT_QUOTES, 'UTF-8') ?>
+                            </span>
+                        <?php endif; ?>
                     </td>
-                    <td><?= $detalle['cantidad'] ?></td>
-                    <td>C$ <?= number_format($detalle['precio_unitario'], 2, '.', ',') ?></td>
-                    <td>C$ <?= number_format($detalle['subtotal'], 2, '.', ',') ?></td>
+                    <td style="vertical-align: top; padding: 12px; font-size: 12px; color: #78350f;">
+                        <?php if (!empty($detalle['condiciones_muestra'])): ?>
+                            <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 6px 10px; border-radius: 4px;">
+                                <?= nl2br(htmlspecialchars($detalle['condiciones_muestra'], ENT_QUOTES, 'UTF-8')) ?>
+                            </div>
+                        <?php else: ?>
+                            <span style="color: #94a3b8; font-style: italic;">Sin condición especial</span>
+                        <?php endif; ?>
+                    </td>
+                    <td style="vertical-align: top; padding: 12px; font-family: monospace; font-size: 12px; color: #1e40af; font-weight: 600;">
+                        <?= !empty($detalle['procedimiento']) ? htmlspecialchars($detalle['procedimiento'], ENT_QUOTES, 'UTF-8') : (!empty($detalle['norma_astm']) ? htmlspecialchars($detalle['norma_astm'], ENT_QUOTES, 'UTF-8') : '<span style="color:#94a3b8; font-weight: normal;">N/A</span>') ?>
+                    </td>
+                    <td style="vertical-align: top; padding: 12px 10px; text-align: center; font-size: 12px; color: #334155;">
+                        <span style="background: #f1f5f9; padding: 3px 8px; border-radius: 4px; font-weight: 500;">
+                            <?= htmlspecialchars($detalle['unidad_medida'] ?? 'Unidad', ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+                    </td>
+                    <td style="vertical-align: top; padding: 12px 8px; text-align: center; font-weight: 600; color: #0f172a;">
+                        <?= $detalle['cantidad'] ?>
+                    </td>
+                    <td style="vertical-align: top; padding: 12px 10px; text-align: right; color: #334155;">
+                        C$ <?= number_format($detalle['precio_unitario'], 2, '.', ',') ?>
+                    </td>
+                    <td style="vertical-align: top; padding: 12px; text-align: right; font-weight: 700; color: #0f172a;">
+                        C$ <?= number_format($detalle['subtotal'], 2, '.', ',') ?>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -189,6 +178,106 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
             </div>
         </div>
     </div>
+
+    <?php
+    $configNotas = json_decode($cotizacion['configuracion_notas'] ?? '', true) ?: [];
+    $notasDisponibles = [
+        'digital_pdf' => '<strong>Informes Digitales en PDF:</strong> Los informes de ensayo se entregan únicamente en formato digital (.PDF). Serán enviados al correo del contacto designado por el cliente.',
+        'no_movilizacion' => '<strong>Sin Movilización:</strong> No incluye movilización por traslado de muestras.',
+        'entrega_laboratorio' => '<strong>Lugar de Entrega:</strong> Cliente toma las muestras y las entrega en Laboratorio CYCSA ubicado Km 83.5 Carretera León Managua.',
+        'concreto' => '<strong>Muestreo de Concreto (Cilindros):</strong> El cliente deberá entregar los cilindros de concreto debidamente identificados (Nombre, Ubicación, Resistencia, Revenimiento) y de dimensiones estándar CYCSA-PE-07 (4"x8" o 6"x12").',
+        'laboratorio_lleno' => '<strong>Condición de Tiempos:</strong> Los tiempos de entrega aplican a partir del ingreso de las muestras. La disponibilidad deberá ser consultada al momento de la entrega debido a variaciones en la carga del laboratorio.',
+        'trae_muestra' => '<strong>Entrega de Muestras:</strong> El cliente traerá las muestras a las instalaciones del Laboratorio CYCSA Km 83.5 Carretera León-Managua.',
+        'minimo_muestreo' => '<strong>Programación de Muestreo:</strong> Se requiere un cargo mínimo de C$ 4,400.00 más movilización para programar muestreos. Programación con un mínimo de 2 días hábiles de anticipación.'
+    ];
+
+    if (empty($configNotas)) {
+        $configNotas = [
+            'digital_pdf' => 1,
+            'no_movilizacion' => 1,
+            'entrega_laboratorio' => 1
+        ];
+    }
+
+    $incluirAnexo = !empty($cotizacion['incluir_anexo_tecnico']) && !empty(trim($cotizacion['anexo_tecnico'] ?? ''));
+    $anexoContenido = trim($cotizacion['anexo_tecnico'] ?? '');
+    ?>
+
+    <!-- CONDICIONES COMERCIALES, DATOS DE PAGO Y NOTAS -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 25px; margin-bottom: 25px;">
+        <!-- Condiciones Comerciales y Pago -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px;">
+            <h4 style="margin: 0 0 12px 0; color: #103487; font-size: 13.5px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-file-contract"></i> Condiciones Comerciales
+            </h4>
+            <div style="font-size: 13px; color: #334155; line-height: 1.6;">
+                <div><span style="color: #64748b;">Condición de Pago:</span> <strong><?= htmlspecialchars($cotizacion['condicion_pago'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+                <div><span style="color: #64748b;">Tiempo de Entrega:</span> <strong><?= htmlspecialchars($cotizacion['tiempo_entrega'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+                <div><span style="color: #64748b;">Vigencia de Oferta:</span> <strong><?= htmlspecialchars($cotizacion['vigencia_oferta'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+            </div>
+
+            <div style="margin-top: 15px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #1e3a8a;">
+                <strong style="display: block; margin-bottom: 4px; color: #103487;"><i class="fa-solid fa-building-columns"></i> Cuentas Bancarias CYC.S.A:</strong>
+                <div>BANPRO: C$ 10010207085164 / $ 10010210874512</div>
+                <div>BAC: C$ 357-02445-4 / $ 363259490</div>
+                <div>LAFISE: C$ 550-2000-11</div>
+                <div style="margin-top: 4px; font-size: 11.5px; color: #2563eb;">RUC: J0310000073465 &bull; Validez de oferta: 30 días</div>
+            </div>
+        </div>
+
+        <!-- Notas y Condiciones de Cotización -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px;">
+            <h4 style="margin: 0 0 12px 0; color: #103487; font-size: 13.5px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-clipboard-list"></i> Notas y Condiciones
+            </h4>
+            <ul style="margin: 0; padding-left: 18px; font-size: 12.5px; color: #475569; line-height: 1.5;">
+                <?php foreach ($configNotas as $clave => $seleccionada): ?>
+                    <?php if ($seleccionada && isset($notasDisponibles[$clave])): ?>
+                        <li style="margin-bottom: 6px;"><?= $notasDisponibles[$clave] ?></li>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </ul>
+
+            <?php if (!empty($cotizacion['contactos'])): ?>
+                <div style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+                    <strong style="font-size: 12px; color: #103487; text-transform: uppercase; display: block; margin-bottom: 4px;"><i class="fa-solid fa-address-book"></i> Contactos de Seguimiento:</strong>
+                    <div style="font-size: 12.5px; color: #475569; line-height: 1.4;"><?= nl2br(htmlspecialchars($cotizacion['contactos'], ENT_QUOTES, 'UTF-8')) ?></div>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- DOCUMENTO DIGITAL ADJUNTO (SI EXISTE) -->
+    <?php if (!empty($cotizacion['archivo_adjunto'])): ?>
+        <div style="background: white; border: 1px solid #cbd5e1; border-top: 4px solid #16a34a; border-radius: 8px; padding: 18px 22px; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div style="font-size: 13.5px; color: #166534;">
+                    <i class="fa-solid fa-paperclip"></i> <strong>Documento Digital Adjunto:</strong> <?= htmlspecialchars(basename($cotizacion['archivo_adjunto']), ENT_QUOTES, 'UTF-8') ?>
+                </div>
+                <a href="/Cycsa/publico/<?= htmlspecialchars($cotizacion['archivo_adjunto'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="background: #16a34a; color: white; padding: 7px 16px; border-radius: 4px; text-decoration: none; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-download"></i> Descargar Adjunto
+                </a>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- ANEXO TÉCNICO OFICIAL (SI ESTÁ INCLUIDO) -->
+    <?php if ($incluirAnexo): ?>
+        <div style="background: white; border: 1px solid #cbd5e1; border-top: 4px solid #103487; border-radius: 8px; padding: 22px; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #103487; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-file-shield"></i> Anexo Técnico Oficial Incluido
+                </h3>
+                <span class="badge" style="background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-size: 12px; padding: 4px 10px; font-weight: 600;">
+                    Compilado en PDF
+                </span>
+            </div>
+
+            <div style="font-size: 13px; color: #1e293b; line-height: 1.55; background: #fafbfc; padding: 15px 20px; border-radius: 6px; border: 1px solid #f1f5f9;">
+                <?= $anexoContenido ?>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <?php if (tienePermiso('cotizaciones', 'crear_editar') && $cotizacion['estado'] == 'Borrador' && ($_SESSION['usuario_id'] == $cotizacion['id_usuario_creador'] || $_SESSION['usuario_rol'] == 1)): ?>
         <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; margin-top: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
@@ -295,8 +384,8 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                         </div>
                         
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button type="button" onclick="confirmarDecisionAdmin('aceptar')" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;"><i class="fa-solid fa-thumbs-up"></i> Aprobar en nombre del Cliente</button>
-                            <button type="button" id="btn-admin-rechazar-init" onclick="mostrarRechazoAdmin()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;"><i class="fa-solid fa-thumbs-down"></i> Rechazar en nombre del Cliente</button>
+                            <button type="button" onclick="confirmarDecisionAdmin('aceptar')" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;"><i class="fa-solid fa-circle-check"></i> Aprobar Cotización</button>
+                            <button type="button" id="btn-admin-rechazar-init" onclick="mostrarRechazoAdmin()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;"><i class="fa-solid fa-circle-xmark"></i> Rechazar Cotización</button>
                             <button type="button" id="btn-admin-rechazar-confirm" onclick="confirmarDecisionAdmin('rechazar')" style="background: #b91c1c; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; display: none;"><i class="fa-solid fa-circle-check"></i> Confirmar Rechazo</button>
                             <button type="button" id="btn-admin-cancelar" onclick="cancelarRechazoAdmin()" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; display: none;">Cancelar</button>
                         </div>
@@ -309,7 +398,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                                     <button type="button" onclick="cerrarAdminAprobarModal()" class="btn-cerrar">&times;</button>
                                 </div>
                                 
-                                <p style="color: #64748b; font-size: 13.5px; margin-bottom: 25px;">¿Está seguro de que desea aprobar esta cotización en nombre del cliente? Al confirmar, se creará la Orden de Servicio automáticamente y comenzará el flujo operativo en el laboratorio.</p>
+                                <p style="color: #64748b; font-size: 13.5px; margin-bottom: 25px;">¿Está seguro de que desea aprobar esta cotización? Al confirmar, se creará la Orden de Servicio automáticamente y comenzará el flujo operativo en el laboratorio.</p>
                                 
                                 <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
                                     <button type="button" onclick="cerrarAdminAprobarModal()" class="form-control" style="cursor: pointer; background: #fff; border: 1px solid #cbd5e1; font-weight: 600; color: #64748b; width: auto; padding: 8px 16px; margin: 0;">Cancelar</button>

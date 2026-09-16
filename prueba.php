@@ -4,6 +4,11 @@
  * Permite verificar los requisitos del sistema y diagnosticar errores 500 en producción.
  */
 
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    die("Acceso denegado. Este script de diagnóstico solo puede ejecutarse desde la terminal (CLI).");
+}
+
 // Desactivar almacenamiento en caché
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);

@@ -30,98 +30,14 @@ class HojasServicioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         $this->verificarPermiso($respuesta, 'ver');
 
-        $busqueda = trim($_GET['buscar'] ?? '');
-        $db = Conexion::obtenerInstancia();
-
-        // 1. QUERY NUEVO (O/S sin Hoja de Solicitud registrada o en estado inicial)
-        $sqlNuevo = "SELECT os.id, os.codigo_os, os.fecha_emision, os.estado, os.requiere_muestreo,
-                            cot.codigo AS cot_codigo, cot.nombre_proyecto,
-                            cli.nombre_razon_social AS cliente_nombre,
-                            hs.id AS id_hoja, hs.codigo_documento,
-                            pm.id AS id_pm, pm.estado_muestreo, pm.fecha_ida, pm.fecha_llegada,
-                            tec.nombre AS tecnico_muestreo_nombre
-                     FROM ordenes_servicio os
-                     JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-                     JOIN clientes cli ON cot.id_cliente = cli.id
-                     LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
-                     LEFT JOIN programacion_muestreo pm ON pm.id_orden_servicio = os.id
-                     LEFT JOIN tecnicos tec ON pm.id_tecnico = tec.id
-                     WHERE (os.estado IN ('Estado 1: Recepcion', 'Pendiente de Muestreo') OR hs.id IS NULL)
-                       AND os.estado NOT IN ('Estado 2: Revision', 'Estado 2: Observada')";
-        if ($busqueda !== '') {
-            $sqlNuevo .= " AND (os.codigo_os LIKE :q1 OR cot.nombre_proyecto LIKE :q2 OR cli.nombre_razon_social LIKE :q3)";
-        }
-        $sqlNuevo .= " ORDER BY os.id DESC";
-        $stmtNuevo = $db->prepare($sqlNuevo);
-        if ($busqueda !== '') {
-            $term = '%' . $busqueda . '%';
-            $stmtNuevo->execute(['q1' => $term, 'q2' => $term, 'q3' => $term]);
-        } else {
-            $stmtNuevo->execute();
-        }
-        $nuevas = $stmtNuevo->fetchAll(PDO::FETCH_ASSOC);
-
-        // 2. QUERY EN PROCESO (O/S enviadas a revisión o que fueron observadas)
-        $sqlProceso = "SELECT os.id, os.codigo_os, os.fecha_emision, os.estado, os.motivo_observacion,
-                              cot.codigo AS cot_codigo, cot.nombre_proyecto,
-                              cli.nombre_razon_social AS cliente_nombre,
-                              hs.codigo_documento, hs.id AS id_hoja
-                       FROM ordenes_servicio os
-                       JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-                       JOIN clientes cli ON cot.id_cliente = cli.id
-                       JOIN hojas_solicitud hs ON hs.id_os = os.id
-                       WHERE os.estado IN ('Estado 2: Revision', 'Estado 2: Observada')";
-        if ($busqueda !== '') {
-            $sqlProceso .= " AND (os.codigo_os LIKE :q1 OR cot.nombre_proyecto LIKE :q2 OR cli.nombre_razon_social LIKE :q3)";
-        }
-        $sqlProceso .= " ORDER BY os.id DESC";
-        $stmtProceso = $db->prepare($sqlProceso);
-        if ($busqueda !== '') {
-            $stmtProceso->execute(['q1' => $term, 'q2' => $term, 'q3' => $term]);
-        } else {
-            $stmtProceso->execute();
-        }
-        $proceso = $stmtProceso->fetchAll(PDO::FETCH_ASSOC);
-
-        // 3. QUERY APROBADO (O/S con Hoja de Solicitud completada y aprobada)
-        $sqlAprobado = "SELECT os.id, os.codigo_os, os.fecha_emision, os.estado,
-                               cot.codigo AS cot_codigo, cot.nombre_proyecto,
-                               cli.nombre_razon_social AS cliente_nombre,
-                               hs.codigo_documento, hs.id AS id_hoja
-                        FROM ordenes_servicio os
-                        JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-                        JOIN clientes cli ON cot.id_cliente = cli.id
-                        JOIN hojas_solicitud hs ON hs.id_os = os.id
-                        WHERE os.estado NOT IN ('Estado 1: Recepcion', 'Estado 2: Revision', 'Estado 2: Observada')";
-        if ($busqueda !== '') {
-            $sqlAprobado .= " AND (os.codigo_os LIKE :q1 OR cot.nombre_proyecto LIKE :q2 OR cli.nombre_razon_social LIKE :q3)";
-        }
-        $sqlAprobado .= " ORDER BY os.id DESC";
-        $stmtAprobado = $db->prepare($sqlAprobado);
-        if ($busqueda !== '') {
-            $stmtAprobado->execute(['q1' => $term, 'q2' => $term, 'q3' => $term]);
-        } else {
-            $stmtAprobado->execute();
-        }
-        $aprobadas = $stmtAprobado->fetchAll(PDO::FETCH_ASSOC);
-
-        // Cargar técnicos para autocompletar en el formulario
-        $modelo = new OperacionModelo();
-        $tecnicos = $modelo->obtenerTecnicosActivos();
-
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
+        if ($idOS > 0) {
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
+            return;
         }
 
-        $this->renderizar('HojasServicio/Vistas/index', [
-            'titulo' => 'Módulo Hojas de Servicio - CYCSA',
-            'nuevas' => $nuevas,
-            'proceso' => $proceso,
-            'aprobadas' => $aprobadas,
-            'tecnicos' => $tecnicos,
-            'busqueda' => $busqueda,
-            'id_os_auto' => (int)($_GET['id_os'] ?? 0)
-        ]);
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+        return;
     }
 
     public function hojaSolicitudDatosAjax(Peticion $peticion, Respuesta $respuesta): void {
@@ -157,63 +73,80 @@ class HojasServicioControlador extends ControladorBase {
             }
         }
 
+        $lugarMuestreo = $osCompleta['programacion_muestreo']['lugar_muestreo'] ?? '';
+        $cantEstimadaProg = (int)($osCompleta['programacion_muestreo']['cantidad_muestras_est'] ?? 0);
+
+        $detectado = $this->detectarParametrosYNaturaleza($osCompleta['ensayos'] ?? []);
+
+        $nombreCliente = !empty($osCompleta['cliente_nombre']) ? $osCompleta['cliente_nombre'] : ($os['cliente_nombre'] ?? '');
+        $direccionProyecto = !empty($osCompleta['direccion_proyecto']) ? $osCompleta['direccion_proyecto'] : (!empty($osCompleta['cliente_direccion']) ? $osCompleta['cliente_direccion'] : ($os['direccion_proyecto'] ?? ''));
+        $telefonoCliente = !empty($osCompleta['cliente_telefono']) ? $osCompleta['cliente_telefono'] : ($os['cliente_telefono'] ?? '');
+        $emailCliente = !empty($osCompleta['cliente_email']) ? $osCompleta['cliente_email'] : ($os['cliente_email'] ?? '');
+        $atencionA = !empty($osCompleta['atencion_a']) ? $osCompleta['atencion_a'] : (!empty($os['atencion_a']) ? $os['atencion_a'] : $nombreCliente);
+        
+        $procedenciaPunto = !empty($lugarMuestreo) ? $lugarMuestreo : (!empty($direccionProyecto) ? $direccionProyecto : ($osCompleta['nombre_proyecto'] ?? $os['nombre_proyecto'] ?? ''));
+
+        $fechaLlegadaLab = date('Y-m-d H:i');
+        if (!empty($osCompleta['programacion_muestreo']['fecha_finalizacion'])) {
+            $fechaLlegadaLab = date('Y-m-d H:i', strtotime($osCompleta['programacion_muestreo']['fecha_finalizacion']));
+        } elseif (!empty($osCompleta['programacion_muestreo']['fecha_llegada'])) {
+            $fechaLlegadaLab = date('Y-m-d H:i', strtotime($osCompleta['programacion_muestreo']['fecha_llegada']));
+        }
+
         if (!$hoja) {
-            $numCorrelativo = $modelo->obtenerSiguienteNumeroHojaSolicitud((int)$os['id_cotizacion']);
-            $codigoDoc = "CYCSA-RT-FM-" . sprintf("%02d", $numCorrelativo);
-            
-            $hoja = [
+            $hoja = array_merge([
                 'id_os' => $idOS,
-                'codigo_documento' => $codigoDoc,
-                'nombre_empresa_o_cliente' => $os['cliente_nombre'] ?? '',
-                'razon_social' => '',
-                'direccion_proyecto' => $os['direccion_proyecto'] ?? '',
-                'telefono' => $os['cliente_telefono'] ?? '',
-                'correo_electronico' => $os['cliente_email'] ?? '',
-                'nombre_persona_entrega_muestra' => !empty($os['atencion_a']) ? $os['atencion_a'] : ($os['cliente_nombre'] ?? ''),
-                'naturaleza_muestra' => 'Concreto',
-                'procedencia_punto_muestreo' => '',
-                'nombre_persona_toma_muestra' => !empty($tecnicoMuestreo) ? $tecnicoMuestreo : 'Cliente / Entregada por Cliente',
-                'fecha_hora_toma_muestra' => !empty($fechaToma) ? $fechaToma : date('Y-m-d H:i'),
+                'codigo_documento' => 'CYCSA-RT-FM-13',
+                'numero_registro' => sprintf("%05d", $idOS),
+                'nombre_empresa_o_cliente' => $nombreCliente,
+                'razon_social' => $nombreCliente,
+                'direccion_proyecto' => $direccionProyecto,
+                'telefono' => $telefonoCliente,
+                'correo_electronico' => $emailCliente,
+                'nombre_persona_entrega_muestra' => $atencionA,
+                'naturaleza_muestra' => $detectado['naturaleza_muestra_str'],
+                'procedencia_punto_muestreo' => $procedenciaPunto,
+                'nombre_persona_toma_muestra' => !empty($tecnicoMuestreo) ? $tecnicoMuestreo : (($os['requiere_muestreo'] === 0 || $os['requiere_muestreo'] === '0') ? 'Cliente / Entregada por Cliente' : ''),
+                'fecha_hora_toma_muestra' => !empty($fechaToma) ? date('Y-m-d H:i', strtotime($fechaToma)) : date('Y-m-d H:i'),
                 'muestras_json' => '[]',
-                'req_resistencia_concreto' => 1,
-                'req_resistencia_adoquin' => 0,
-                'req_resistencia_bloques' => 0,
-                'req_otros_concreto' => '',
-                'req_granulometria' => 0,
-                'req_limites_atterberg' => 0,
-                'req_humedad' => 0,
-                'req_resistencia_corte' => 0,
-                'req_clasificacion_sucs_hr' => 0,
-                'req_proctor_sm' => 0,
-                'req_infiltracion' => 0,
-                'req_cbr' => 0,
-                'req_densidad' => 0,
-                'req_otros_suelo' => '',
-                'req_otros_materiales' => 0,
-                'descripcion_otros_analisis' => '',
                 'analisis_adicionales' => '',
                 'observaciones' => '',
                 'nombre_recibe_cycsa' => $_SESSION['usuario_nombre'] ?? '',
                 'firma_recibe_cycsa' => 0,
                 'firma_cliente' => 0,
-                'fecha_hora_llegada_laboratorio' => date('Y-m-d H:i')
-            ];
+                'fecha_hora_llegada_laboratorio' => $fechaLlegadaLab
+            ], $detectado['flags']);
         } else {
-            if (empty($hoja['nombre_empresa_o_cliente'])) $hoja['nombre_empresa_o_cliente'] = $os['cliente_nombre'];
-            if (empty($hoja['direccion_proyecto'])) $hoja['direccion_proyecto'] = $os['direccion_proyecto'];
-            if (empty($hoja['telefono'])) $hoja['telefono'] = $os['cliente_telefono'];
-            if (empty($hoja['correo_electronico']) && !empty($os['cliente_email'])) $hoja['correo_electronico'] = $os['cliente_email'];
-            if (empty($hoja['nombre_persona_entrega_muestra'])) $hoja['nombre_persona_entrega_muestra'] = !empty($os['atencion_a']) ? $os['atencion_a'] : $os['cliente_nombre'];
+            if (empty($hoja['codigo_documento'])) $hoja['codigo_documento'] = 'CYCSA-RT-FM-13';
+            if (empty($hoja['numero_registro'])) $hoja['numero_registro'] = sprintf("%05d", $idOS);
+            if (empty($hoja['nombre_empresa_o_cliente'])) $hoja['nombre_empresa_o_cliente'] = $nombreCliente;
+            if (empty($hoja['razon_social'])) $hoja['razon_social'] = $nombreCliente;
+            if (empty($hoja['direccion_proyecto'])) $hoja['direccion_proyecto'] = $direccionProyecto;
+            if (empty($hoja['telefono'])) $hoja['telefono'] = $telefonoCliente;
+            if (empty($hoja['correo_electronico']) && !empty($emailCliente)) $hoja['correo_electronico'] = $emailCliente;
+            if (empty($hoja['nombre_persona_entrega_muestra'])) $hoja['nombre_persona_entrega_muestra'] = $atencionA;
             if (empty($hoja['nombre_persona_toma_muestra']) && !empty($tecnicoMuestreo)) $hoja['nombre_persona_toma_muestra'] = $tecnicoMuestreo;
+            if (empty($hoja['procedencia_punto_muestreo'])) $hoja['procedencia_punto_muestreo'] = $procedenciaPunto;
+            if (empty($hoja['naturaleza_muestra'])) $hoja['naturaleza_muestra'] = $detectado['naturaleza_muestra_str'];
         }
+
+        $esCampo = !empty($osCompleta['programacion_muestreo']) || ($osCompleta['requiere_muestreo'] ?? $os['requiere_muestreo']) === 1 || ($osCompleta['requiere_muestreo'] ?? $os['requiere_muestreo']) === '1';
+        $prefijoMuestra = $esCampo ? 'MC' : 'MS';
+        $tipoOrigen = $esCampo ? 'campo' : 'laboratorio';
+        $cantSugerida = $esCampo ? ($cantEstimadaProg > 0 ? $cantEstimadaProg : 1) : 1;
 
         $respuesta->enviarJson([
             'status' => 'success',
             'hoja' => $hoja,
             'os' => [
                 'id' => $os['id'],
-                'codigo_os' => $os['codigo_os']
+                'codigo_os' => $os['codigo_os'],
+                'requiere_muestreo' => $os['requiere_muestreo']
             ],
+            'prefijo_muestra' => $prefijoMuestra,
+            'tipo_origen' => $tipoOrigen,
+            'cantidad_muestras_sugerida' => $cantSugerida,
+            'lugar_muestreo' => $lugarMuestreo,
             'os_referencia' => $osCompleta
         ]);
     }
@@ -228,18 +161,36 @@ class HojasServicioControlador extends ControladorBase {
 
             if ($idOS <= 0) {
                 $_SESSION['error'] = 'Orden de Servicio inválida.';
-                $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
 
             // CSRF
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
                 $_SESSION['error'] = 'Token CSRF inválido.';
-                $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
 
             $modelo = new OperacionModelo();
+            $os = $modelo->obtenerOSPorId($idOS);
+            if (!$os) {
+                $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            if ($os['estado'] === 'Estado 2: Revision') {
+                $_SESSION['error'] = 'La Hoja de Servicio se encuentra en revisión de supervisor y no puede ser modificada hasta que sea observada.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            if (in_array($os['estado'], ['Estado 3: Ingreso Directo', 'Estado 3A: Programacion Muestreo', 'Muestreo Completado'])) {
+                $_SESSION['error'] = 'La Hoja de Servicio ya ha sido aprobada formalmente y no admite modificaciones.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
             
             // Procesar tabla dinámica de especímenes
             $identMuestras = [];
@@ -286,7 +237,7 @@ class HojasServicioControlador extends ControladorBase {
                 $_SESSION['error'] = 'Error al registrar la Hoja de Solicitud.';
             }
 
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
         }
     }
 
@@ -300,14 +251,14 @@ class HojasServicioControlador extends ControladorBase {
 
             if ($idOS <= 0) {
                 $_SESSION['error'] = 'Orden de Servicio inválida.';
-                $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
 
             // CSRF
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
                 $_SESSION['error'] = 'Token CSRF inválido.';
-                $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
 
@@ -315,7 +266,7 @@ class HojasServicioControlador extends ControladorBase {
             $os = $modelo->obtenerOSPorId($idOS);
             if (!$os) {
                 $_SESSION['error'] = 'Orden de Servicio no encontrada.';
-                $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
 
@@ -327,7 +278,7 @@ class HojasServicioControlador extends ControladorBase {
                 $_SESSION['error'] = 'Error al enviar la Hoja de Servicio a revisión.';
             }
 
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
         }
     }
 
@@ -338,7 +289,7 @@ class HojasServicioControlador extends ControladorBase {
         $rol = (int)($_SESSION['usuario_rol'] ?? 0);
         if ($rol !== 1 && $rol !== 3) {
             $_SESSION['error'] = 'No tiene permisos de supervisor para cambiar el estado de la Orden de Servicio.';
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
             return;
         }
 
@@ -351,14 +302,14 @@ class HojasServicioControlador extends ControladorBase {
 
             if ($idOS <= 0 || !in_array($nuevoEstado, ['Estado 3: Ingreso Directo', 'Estado 3A: Programacion Muestreo', 'Estado 2: Observada'])) {
                 $_SESSION['error'] = 'Datos de revisión inválidos.';
-                $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
 
             // CSRF
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
                 $_SESSION['error'] = 'Token CSRF inválido.';
-                $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
 
@@ -366,7 +317,7 @@ class HojasServicioControlador extends ControladorBase {
             $os = $modelo->obtenerOSPorId($idOS);
             if (!$os) {
                 $_SESSION['error'] = 'Orden de Servicio no encontrada.';
-                $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
 
@@ -397,7 +348,7 @@ class HojasServicioControlador extends ControladorBase {
                 $_SESSION['error'] = 'Error al procesar la revisión de la Hoja de Servicio.';
             }
 
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
         }
     }
 
@@ -407,7 +358,7 @@ class HojasServicioControlador extends ControladorBase {
         $idOS = (int)($_GET['id_os'] ?? 0);
         if ($idOS <= 0) {
             $_SESSION['error'] = 'Orden de Servicio inválida.';
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
             return;
         }
 
@@ -415,17 +366,20 @@ class HojasServicioControlador extends ControladorBase {
         $os = $modelo->obtenerOSPorId($idOS);
         if (!$os) {
             $_SESSION['error'] = 'Orden de Servicio no encontrada.';
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
             return;
         }
 
-        $nombrePdf = "CYCSA-RT-FM-13-" . $os['codigo_os'] . ".pdf";
+        $baseAlmacenamiento = realpath(dirname(__DIR__, 4) . '/almacenamiento');
+        $codigoSanitizado = preg_replace('/[^a-zA-Z0-9_-]/', '_', $os['codigo_os']);
+        $nombrePdf = "CYCSA-RT-FM-13-" . $codigoSanitizado . ".pdf";
         $rutaPdf = dirname(__DIR__, 4) . '/almacenamiento/solicitudes/' . $nombrePdf;
+        $rutaReal = realpath($rutaPdf);
 
-        if (file_exists($rutaPdf)) {
+        if ($baseAlmacenamiento && $rutaReal && strpos($rutaReal, $baseAlmacenamiento) === 0 && file_exists($rutaReal)) {
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="' . basename($rutaPdf) . '"');
-            readfile($rutaPdf);
+            header('Content-Disposition: inline; filename="' . basename($rutaReal) . '"');
+            readfile($rutaReal);
             exit;
         } else {
             // Si el archivo no existe físicamente pero los datos están en BD, lo generamos al vuelo
@@ -448,7 +402,139 @@ class HojasServicioControlador extends ControladorBase {
             }
             
             $_SESSION['error'] = 'El PDF de la solicitud no ha sido generado y no se pudo crear.';
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
         }
+    }
+
+    /**
+     * Analiza los ensayos contratados en la O/S y deduce automáticamente la naturaleza
+     * de la muestra y los parámetros/análisis de la Hoja RT-FM-13 (Sección 3).
+     */
+    public function detectarParametrosYNaturaleza(array $ensayos): array {
+        $nats = [];
+        $flags = [
+            'req_resistencia_concreto' => 0,
+            'req_resistencia_adoquin' => 0,
+            'req_resistencia_bloques' => 0,
+            'req_otros_concreto' => '',
+            'req_granulometria' => 0,
+            'req_limites_atterberg' => 0,
+            'req_humedad' => 0,
+            'req_resistencia_corte' => 0,
+            'req_clasificacion_sucs_hr' => 0,
+            'req_proctor_sm' => 0,
+            'req_infiltracion' => 0,
+            'req_cbr' => 0,
+            'req_densidad' => 0,
+            'req_otros_suelo' => '',
+            'req_otros_materiales' => 0,
+            'descripcion_otros_analisis' => ''
+        ];
+
+        foreach ($ensayos as $e) {
+            $texto = mb_strtolower(
+                ($e['descripcion_ensayo'] ?? '') . ' ' .
+                ($e['nombre_ensayo'] ?? '') . ' ' .
+                ($e['procedimiento'] ?? '') . ' ' .
+                ($e['norma_astm'] ?? '') . ' ' .
+                ($e['codigo_servicio'] ?? '') . ' ' .
+                ($e['codigo_hoja_campo'] ?? '')
+            );
+
+            // Suelos
+            if (strpos($texto, 'granulo') !== false) {
+                $flags['req_granulometria'] = 1;
+                if (strpos($texto, 'agregado') !== false) {
+                    $nats['Agregados'] = true;
+                } else {
+                    $nats['Suelo'] = true;
+                }
+            }
+            if (strpos($texto, 'atterberg') !== false || strpos($texto, 'consistencia') !== false || strpos($texto, 'límite') !== false || strpos($texto, 'limite') !== false || strpos($texto, 'd4318') !== false) {
+                $flags['req_limites_atterberg'] = 1;
+                $nats['Suelo'] = true;
+            }
+            if (strpos($texto, 'humedad') !== false || strpos($texto, 'd2216') !== false) {
+                $flags['req_humedad'] = 1;
+                $nats['Suelo'] = true;
+            }
+            if (strpos($texto, 'corte') !== false || strpos($texto, 'triaxial') !== false || strpos($texto, 'veleta') !== false || strpos($texto, 'd3080') !== false) {
+                $flags['req_resistencia_corte'] = 1;
+                $nats['Suelo'] = true;
+            }
+            if (strpos($texto, 'sucs') !== false || strpos($texto, 'clasificaci') !== false || strpos($texto, 'd2487') !== false || strpos($texto, 'aashto') !== false) {
+                $flags['req_clasificacion_sucs_hr'] = 1;
+                $nats['Suelo'] = true;
+            }
+            if (strpos($texto, 'proctor') !== false || strpos($texto, 'compactaci') !== false || strpos($texto, 'd698') !== false || strpos($texto, 'd1557') !== false) {
+                $flags['req_proctor_sm'] = 1;
+                $nats['Suelo'] = true;
+            }
+            if (strpos($texto, 'infiltraci') !== false || strpos($texto, 'porchet') !== false || strpos($texto, 'permeabil') !== false) {
+                $flags['req_infiltracion'] = 1;
+                $nats['Suelo'] = true;
+            }
+            if (strpos($texto, 'cbr') !== false || strpos($texto, 'rodamiento de california') !== false || strpos($texto, 'd1883') !== false) {
+                $flags['req_cbr'] = 1;
+                $nats['Suelo'] = true;
+            }
+            if (strpos($texto, 'densidad') !== false || strpos($texto, 'cono de arena') !== false || strpos($texto, 'densimetro') !== false || strpos($texto, 'densímetro') !== false || strpos($texto, 'd1556') !== false || strpos($texto, 'd6938') !== false) {
+                $flags['req_densidad'] = 1;
+                $nats['Suelo'] = true;
+            }
+            if (strpos($texto, 'spt') !== false || strpos($texto, 'sondeo') !== false || strpos($texto, 'shelby') !== false || strpos($texto, 'd1586') !== false) {
+                $nats['Suelo'] = true;
+            }
+
+            // Adoquines
+            $esAdoquin = (strpos($texto, 'adoqu') !== false || strpos($texto, 'c936') !== false);
+            if ($esAdoquin) {
+                $flags['req_resistencia_adoquin'] = 1;
+                $nats['Adoquines'] = true;
+            }
+
+            // Bloques
+            $esBloque = (strpos($texto, 'bloque') !== false || strpos($texto, 'c90') !== false || strpos($texto, 'mamposter') !== false);
+            if ($esBloque) {
+                $flags['req_resistencia_bloques'] = 1;
+                $nats['Bloques'] = true;
+            }
+
+            // Concreto general (cilindros, vigas, núcleos, revenimiento, etc., excluyendo si es únicamente adoquín o bloque)
+            if (!$esAdoquin && !$esBloque) {
+                if (strpos($texto, 'compresi') !== false && (strpos($texto, 'concreto') !== false || strpos($texto, 'cilindro') !== false || strpos($texto, 'c39') !== false)) {
+                    $flags['req_resistencia_concreto'] = 1;
+                    $nats['Concreto'] = true;
+                } elseif (strpos($texto, 'revenimiento') !== false || strpos($texto, 'escler') !== false || strpos($texto, 'c805') !== false || strpos($texto, 'c143') !== false || strpos($texto, 'c172') !== false || strpos($texto, 'c1064') !== false || strpos($texto, 'c42') !== false || strpos($texto, 'viga') !== false || (strpos($texto, 'concreto') !== false && strpos($texto, 'resistencia') !== false)) {
+                    $flags['req_resistencia_concreto'] = 1;
+                    $nats['Concreto'] = true;
+                }
+            }
+
+            // Agregados
+            if (strpos($texto, 'agregado') !== false || strpos($texto, 'arena') !== false || strpos($texto, 'grava') !== false || strpos($texto, 'c136') !== false || strpos($texto, 'c117') !== false || strpos($texto, 'c40') !== false || strpos($texto, 'c127') !== false || strpos($texto, 'c128') !== false) {
+                $nats['Agregados'] = true;
+            }
+
+            // Otros materiales / Acero / etc.
+            if (strpos($texto, 'acero') !== false || strpos($texto, 'ferroscan') !== false || strpos($texto, 'metal') !== false || strpos($texto, 'asfalto') !== false) {
+                $flags['req_otros_materiales'] = 1;
+                $nats['Otros materiales'] = true;
+                if (empty($flags['descripcion_otros_analisis'])) {
+                    $flags['descripcion_otros_analisis'] = $e['nombre_ensayo'] ?? $e['descripcion_ensayo'] ?? '';
+                }
+            }
+        }
+
+        if (empty($nats)) {
+            $nats['Concreto'] = true;
+            $flags['req_resistencia_concreto'] = 1;
+        }
+
+        return [
+            'naturalezas' => array_keys($nats),
+            'naturaleza_muestra_str' => implode(', ', array_keys($nats)),
+            'flags' => $flags
+        ];
     }
 }

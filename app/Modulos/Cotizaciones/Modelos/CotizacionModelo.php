@@ -44,11 +44,14 @@ class CotizacionModelo extends ModeloBase {
 
     public function obtenerDetalles(int $id_cotizacion): array {
         $sql = "SELECT cd.id, cd.id_cotizacion, cd.id_producto, cd.descripcion_ensayo, cd.cantidad, cd.precio_unitario, cd.subtotal, cd.resultados_json, cd.descripcion_adicional,
+                       COALESCE(cd.condiciones_muestra, p.condiciones_muestra) AS condiciones_muestra,
+                       COALESCE(cd.procedimiento, p.procedimiento_muestreo, p.norma_astm) AS procedimiento,
+                       COALESCE(cd.unidad_medida, p.unidad_medida, 'Unidad') AS unidad_medida,
                        COALESCE(p.codigo_servicio, cd.codigo_servicio) AS codigo_servicio,
                        COALESCE(cd.norma_astm, p.norma_astm) AS norma_astm,
                        COALESCE(cd.formato_reporte, f.codigo_formato) AS formato_reporte,
                        COALESCE(cd.observaciones, p.observaciones) AS observaciones,
-                       p.tipo_muestra, f.archivo_markdown
+                       p.nombre_comercial, p.tipo_muestra, f.archivo_markdown
                 FROM cotizacion_detalles cd
                 LEFT JOIN productos p ON cd.id_producto = p.id
                 LEFT JOIN formatos_ensayos f ON p.formato_id = f.id
@@ -138,8 +141,8 @@ class CotizacionModelo extends ModeloBase {
                         $consecutivo = (int)$stmtCount->fetchColumn() + 1;
                         $codigoOS = sprintf("OS-%d-%04d", $anio, $consecutivo);
 
-                        $sqlOS = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, tipo_contrato, fecha_emision, estado) 
-                                  VALUES (:codigo_os, :id_cotizacion, 'Puntual', CURRENT_DATE, 'Estado 1: Recepcion')";
+                        $sqlOS = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, tipo_contrato, fecha_emision, estado, requiere_muestreo) 
+                                  VALUES (:codigo_os, :id_cotizacion, 'Puntual', CURRENT_DATE, 'Estado 1: Recepcion', NULL)";
                         $stmtOS = $this->db->prepare($sqlOS);
                         $stmtOS->execute([
                             'codigo_os' => $codigoOS,
@@ -218,18 +221,21 @@ class CotizacionModelo extends ModeloBase {
     public function guardarCotizacionCompleta(array $cabecera, array $detalles): bool {
         try {
             $this->db->beginTransaction();
-            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, tipo_moneda, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, contactos, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :tipo_moneda, :id_usuario_creador, :atencion_a, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :contactos, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
+            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, tipo_moneda, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :tipo_moneda, :id_usuario_creador, :atencion_a, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute($cabecera);
             $idCotizacion = $this->db->lastInsertId();
 
-            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, codigo_servicio, norma_astm, formato_reporte, observaciones, descripcion_adicional, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :descripcion_adicional, :cantidad, :precio, :subtotal)";
+            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, condiciones_muestra, procedimiento, unidad_medida, codigo_servicio, norma_astm, formato_reporte, observaciones, descripcion_adicional, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :condiciones_muestra, :procedimiento, :unidad_medida, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :descripcion_adicional, :cantidad, :precio, :subtotal)";
             $stmtDetalle = $this->db->prepare($sqlDetalle);
             foreach ($detalles as $detalle) {
                 $stmtDetalle->execute([
                     'id_cotizacion' => $idCotizacion,
                     'id_producto' => $detalle['id_producto'],
                     'descripcion' => $detalle['descripcion'],
+                    'condiciones_muestra' => $detalle['condiciones_muestra'] ?? null,
+                    'procedimiento' => $detalle['procedimiento'] ?? null,
+                    'unidad_medida' => $detalle['unidad_medida'] ?? 'Unidad',
                     'codigo_servicio' => $detalle['codigo_servicio'] ?? null,
                     'norma_astm' => $detalle['norma_astm'] ?? null,
                     'formato_reporte' => $detalle['formato_reporte'] ?? null,
@@ -285,12 +291,18 @@ class CotizacionModelo extends ModeloBase {
                     'total' => $oldCot['total'],
                     'fecha_entrega' => $oldCot['fecha_entrega'] ?? null,
                     'fecha_seguimiento' => $oldCot['fecha_seguimiento'] ?? null,
+                    'incluir_anexo_tecnico' => $oldCot['incluir_anexo_tecnico'] ?? 0,
+                    'anexo_tecnico' => $oldCot['anexo_tecnico'] ?? null,
+                    'archivo_adjunto' => $oldCot['archivo_adjunto'] ?? null,
                     'detalles' => []
                 ];
                 foreach ($oldDets as $d) {
                     $snapshot['detalles'][] = [
                         'id_producto' => $d['id_producto'],
                         'descripcion_ensayo' => $d['descripcion_ensayo'],
+                        'condiciones_muestra' => $d['condiciones_muestra'] ?? null,
+                        'procedimiento' => $d['procedimiento'] ?? null,
+                        'unidad_medida' => $d['unidad_medida'] ?? 'Unidad',
                         'codigo_servicio' => $d['codigo_servicio'] ?? null,
                         'norma_astm' => $d['norma_astm'] ?? null,
                         'formato_reporte' => $d['formato_reporte'] ?? null,
@@ -319,7 +331,7 @@ class CotizacionModelo extends ModeloBase {
             }
 
             // 3. Sobrescribir los datos de la cotización actual
-            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, tipo_moneda = :tipo_moneda, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
+            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, tipo_moneda = :tipo_moneda, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, incluir_anexo_tecnico = :incluir_anexo_tecnico, anexo_tecnico = :anexo_tecnico, archivo_adjunto = :archivo_adjunto, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute(array_merge($cabecera, [
                 'id' => $id,
@@ -333,13 +345,16 @@ class CotizacionModelo extends ModeloBase {
             $delStmt = $this->db->prepare("DELETE FROM cotizacion_detalles WHERE id_cotizacion = :id");
             $delStmt->execute(['id' => $id]);
 
-            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, codigo_servicio, norma_astm, formato_reporte, observaciones, descripcion_adicional, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :descripcion_adicional, :cantidad, :precio, :subtotal)";
+            $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, condiciones_muestra, procedimiento, unidad_medida, codigo_servicio, norma_astm, formato_reporte, observaciones, descripcion_adicional, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :condiciones_muestra, :procedimiento, :unidad_medida, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :descripcion_adicional, :cantidad, :precio, :subtotal)";
             $stmtDetalle = $this->db->prepare($sqlDetalle);
             foreach ($detalles as $detalle) {
                 $stmtDetalle->execute([
                     'id_cotizacion' => $id,
                     'id_producto' => $detalle['id_producto'],
                     'descripcion' => $detalle['descripcion'],
+                    'condiciones_muestra' => $detalle['condiciones_muestra'] ?? null,
+                    'procedimiento' => $detalle['procedimiento'] ?? null,
+                    'unidad_medida' => $detalle['unidad_medida'] ?? 'Unidad',
                     'codigo_servicio' => $detalle['codigo_servicio'] ?? null,
                     'norma_astm' => $detalle['norma_astm'] ?? null,
                     'formato_reporte' => $detalle['formato_reporte'] ?? null,

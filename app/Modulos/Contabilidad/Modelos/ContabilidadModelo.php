@@ -572,16 +572,28 @@ class ContabilidadModelo extends ModeloBase {
     // =========================================================================
 
     public function registrarAsientoContable(string $fecha, string $concepto, string $origen, ?int $origen_id, array $lineas): ?int {
-        // Validar descuadre
+        if (empty($lineas) || count($lineas) < 2) {
+            error_log("No se puede registrar asiento: Debe contener al menos dos líneas contables.");
+            return null;
+        }
+
+        // Validar descuadre estricto de partida doble
         $totalDebe = 0.0;
         $totalHaber = 0.0;
+        $lineasValidas = 0;
         foreach ($lineas as $l) {
-            $totalDebe += (float)($l['debe'] ?? 0.0);
-            $totalHaber += (float)($l['haber'] ?? 0.0);
+            $d = (float)($l['debe'] ?? 0.0);
+            $h = (float)($l['haber'] ?? 0.0);
+            $idCta = (int)($l['id_cuenta_contable'] ?? 0);
+            if ($idCta > 0 && ($d > 0 || $h > 0)) {
+                $lineasValidas++;
+            }
+            $totalDebe += $d;
+            $totalHaber += $h;
         }
         
-        if (abs($totalDebe - $totalHaber) > 0.01) {
-            error_log("No se puede registrar asiento: Descuadrado (Debe: $totalDebe, Haber: $totalHaber)");
+        if ($lineasValidas < 2 || $totalDebe <= 0.0001 || abs($totalDebe - $totalHaber) > 0.01) {
+            error_log("No se puede registrar asiento: Descuadrado o inválido (Debe: $totalDebe, Haber: $totalHaber, Líneas: $lineasValidas)");
             return null;
         }
 

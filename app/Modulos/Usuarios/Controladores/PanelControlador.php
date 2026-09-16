@@ -35,21 +35,11 @@ class PanelControlador extends ControladorBase {
                 'nombre' => 'Órdenes de Servicio',
                 'link' => '/Cycsa/publico/ordenes-servicio',
                 'icon' => 'fa-solid fa-file-contract',
-                'desc' => 'Emisión de órdenes de servicio CYCSA-RG-FM-39 V1 y logística de muestreo.',
+                'desc' => 'Gestión de órdenes CYCSA-RG-FM-39 V1, logística de campo y registro de Hojas RT-FM-13.',
                 'color' => 'linear-gradient(135deg, #103487, #1e40af)', // Azul CYCSA
             ];
         }
-        // 2. Hojas de Servicio (CYCSA-RT-FM-13)
-        if (tienePermiso('operaciones', 'ver')) {
-            $cajon_aplicaciones[] = [
-                'nombre' => 'Hojas de Servicio',
-                'link' => '/Cycsa/publico/hojas-servicio',
-                'icon' => 'fa-solid fa-file-signature',
-                'desc' => 'Recepción, registro y aprobación de hojas de servicio CYCSA-RT-FM-13.',
-                'color' => 'linear-gradient(135deg, #4f46e5, #3730a3)', // Indigo
-            ];
-        }
-        // 3. Operaciones LIMS (Programación y Muestras)
+        // 2. Operaciones LIMS (Programación y Muestras)
         if (tienePermiso('operaciones', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Operaciones LIMS',

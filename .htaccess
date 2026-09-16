@@ -1,13 +1,37 @@
 DirectoryIndex index.php
+Options -Indexes
 
+# 🔒 Bloquear acceso a archivos sensibles y de configuración
+<FilesMatch "(^\.env|\.sql$|\.zip$|\.log$|\.git|composer\.(json|lock|phar)|package\.json|\.bat$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 🔒 Bloquear acceso directo a directorios internos
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    
-    # Mapeo directo de imágenes si se solicitan en /sistema/img/ -> /sistema/publico/img/
-    RewriteRule ^img/(.*)$ publico/img/$1 [L]
-    
+
+    # Denegar acceso directo a código fuente y carpetas internas
+    RewriteRule ^(app|config|database|rutas|storage|almacenamiento|scratch|vendor|prisma|\.agents)(/.*)?$ - [F,L]
+
+    # Mapeo directo de assets estáticos a la carpeta publico/
+    RewriteRule ^(css|js|img|uploads)/(.*)$ publico/$1/$2 [L]
+
     # Redirección amigable a index.php para el enrutador
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# 🔒 Encabezados HTTP de Seguridad (Defensa en Profundidad)
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>

@@ -30,6 +30,16 @@ class AutenticacionControlador extends ControladorBase {
 
     public function procesarLogin(Peticion $peticion, Respuesta $respuesta) {
         $datos = $peticion->obtenerDatos();
+
+        // 🔒 0. Verificación contra ataques CSRF
+        $csrfToken = $datos['csrf_token'] ?? '';
+        if (empty($csrfToken) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+            $this->renderizarSinLayout('autenticacion/vistas/login', [
+                'titulo' => 'Iniciar Sesión - Cycsa',
+                'error' => 'Token de seguridad inválido o sesión expirada. Por favor, intenta de nuevo.'
+            ]);
+            return;
+        }
         
         // 🔒 Mayor seguridad en inputs: sanitización y validación
         $email = isset($datos['email']) ? filter_var(trim($datos['email']), FILTER_SANITIZE_EMAIL) : '';
@@ -72,8 +82,9 @@ class AutenticacionControlador extends ControladorBase {
                         return;
                     }
 
-                    // Prevenir Session Fixation regenerando el ID
+                    // Prevenir Session Fixation regenerando el ID y renovando el token CSRF
                     session_regenerate_id(true);
+                    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                     
                     $_SESSION['usuario_id'] = $usuario['id'];
                     $_SESSION['usuario_nombre'] = $usuario['nombre'];
@@ -170,8 +181,17 @@ class AutenticacionControlador extends ControladorBase {
             return;
         }
 
-        $idUsuario = (int)$_SESSION['usuario_id_cambio_obligatorio'];
         $datos = $peticion->obtenerDatos();
+
+        // 🔒 Validar CSRF
+        $csrfToken = $datos['csrf_token'] ?? '';
+        if (empty($csrfToken) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+            $_SESSION['cambio_pass_error'] = 'Token de seguridad inválido o sesión expirada.';
+            $respuesta->redirigir('/Cycsa/publico/cambiar-password-obligatorio');
+            return;
+        }
+
+        $idUsuario = (int)$_SESSION['usuario_id_cambio_obligatorio'];
         $password = $datos['password'] ?? '';
         $confirmPassword = $datos['confirm_password'] ?? '';
 
@@ -206,8 +226,9 @@ class AutenticacionControlador extends ControladorBase {
         // Limpiar variable temporal de cambio obligatorio
         unset($_SESSION['usuario_id_cambio_obligatorio'], $_SESSION['usuario_nombre_cambio_obligatorio']);
 
-        // Iniciar sesión real
+        // Iniciar sesión real y regenerar token CSRF
         session_regenerate_id(true);
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         $_SESSION['usuario_id'] = $usuario['id'];
         $_SESSION['usuario_nombre'] = $usuario['nombre'];
         $_SESSION['usuario_rol'] = $usuario['id_rol'];
@@ -237,7 +258,7 @@ class AutenticacionControlador extends ControladorBase {
         $respuesta->redirigir('/Cycsa/publico/panel');
     }
 
-    // 🔒 NUEVA FUNCIÓN: Destruir la sesión
+    // 🔒 Destruir la sesión e invalidar la cookie en el cliente
     public function cerrarSesion(Peticion $peticion, Respuesta $respuesta) {
         if (isset($_SESSION['usuario_nombre'])) {
             // Limpiar session_id en la base de datos al cerrar sesión
@@ -250,8 +271,21 @@ class AutenticacionControlador extends ControladorBase {
             }
             registrarBitacora('autenticacion', 'logout', 'Cierre de sesión de ' . $_SESSION['usuario_nombre']);
         }
-        session_destroy();
+
         $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params["path"],
+                $params["domain"],
+                $params["secure"],
+                $params["httponly"]
+            );
+        }
+        session_destroy();
         $respuesta->redirigir('/Cycsa/publico/login');
     }
 

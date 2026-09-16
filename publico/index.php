@@ -39,7 +39,7 @@ try {
 } catch (\Throwable $e) {
     error_log("FATAL: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine() . "\n" . $e->getTraceAsString());
     
-    $mostrarDetalle = (isset($_GET['debug']) && $_GET['debug'] === '1') || (($_ENV['APP_ENV'] ?? 'produccion') === 'local');
+    $mostrarDetalle = (($_ENV['APP_ENV'] ?? 'produccion') === 'local');
     
     if ($mostrarDetalle) {
         echo "<div style='padding:40px; font-family:sans-serif; background:#fff; color:#991b1b; max-width:900px; margin:20px auto; border:2px solid #fca5a5; border-radius:8px;'>";

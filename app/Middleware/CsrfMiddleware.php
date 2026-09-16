@@ -14,8 +14,8 @@ class CsrfMiddleware
      */
     public function handle(): bool
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            @session_start();
         }
 
         $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';

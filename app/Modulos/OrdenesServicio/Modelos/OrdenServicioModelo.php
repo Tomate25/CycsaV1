@@ -36,16 +36,27 @@ class OrdenServicioModelo {
         $sql = "SELECT os.*, 
                        cot.codigo AS cotizacion_codigo, 
                        cli.nombre_razon_social AS cliente_nombre,
+                       COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
+                       COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
+                       COALESCE(NULLIF(cot.direccion_proyecto, ''), NULLIF(cli.direccion, ''), '') AS direccion_proyecto,
+                       COALESCE(NULLIF(os.forma_pago, ''), NULLIF(cot.condicion_pago, ''), 'Pago contra entrega') AS forma_pago,
                        COALESCE(cli.identificacion, cli.numero_ruc, cli.numero_cedula, '') AS cliente_rfc,
-                       pm.fecha_ida, pm.fecha_llegada, pm.estado_muestreo,
+                       COALESCE(NULLIF(cli.direccion, ''), NULLIF(cot.direccion_proyecto, ''), '') AS cliente_direccion,
+                       COALESCE(NULLIF(cli.telefono, ''), '') AS cliente_telefono,
+                       COALESCE(NULLIF(cli.email, ''), NULLIF(cli.contacto_correo, ''), '') AS cliente_email,
+                       pm.id AS id_pm, pm.fecha_ida, pm.fecha_llegada, pm.estado_muestreo, pm.observaciones_campo,
+                       pm.lugar_muestreo, pm.cantidad_muestras_est, pm.num_muestreadores, pm.fecha_finalizacion,
                        t.nombre AS tecnico_nombre,
-                       v.vehiculo_info
+                       v.vehiculo_info,
+                       hs.id AS id_hoja, hs.codigo_documento AS hoja_codigo, hs.muestras_json,
+                       hs.nombre_persona_toma_muestra, hs.fecha_hora_toma_muestra
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id
                 LEFT JOIN programacion_muestreo pm ON pm.id_orden_servicio = os.id
                 LEFT JOIN tecnicos t ON pm.id_tecnico = t.id
-                LEFT JOIN (SELECT id, CONCAT(marca, ' ', modelo, ' (', placa, ')') AS vehiculo_info FROM vehiculos) v ON pm.id_vehiculo = v.id";
+                LEFT JOIN (SELECT id, CONCAT(marca, ' ', modelo, ' (', placa, ')') AS vehiculo_info FROM vehiculos) v ON pm.id_vehiculo = v.id
+                LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id";
         
         if (!empty($busqueda)) {
             $sql .= " WHERE os.codigo_os LIKE :q OR cot.codigo LIKE :q OR cli.nombre_razon_social LIKE :q OR os.nombre_proyecto LIKE :q";
@@ -61,7 +72,19 @@ class OrdenServicioModelo {
             $stmt->execute();
         }
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $ordenes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($ordenes as &$osItem) {
+            $stmtDet = $this->db->prepare("
+                SELECT cd.*, p.formato_id, fe.nombre AS formato_nombre, fe.archivo_markdown
+                FROM cotizacion_detalles cd
+                LEFT JOIN productos p ON cd.id_producto = p.id
+                LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                WHERE cd.id_cotizacion = :id_cot
+            ");
+            $stmtDet->execute(['id_cot' => $osItem['id_cotizacion']]);
+            $osItem['items'] = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+        }
+        return $ordenes;
     }
 
     /**
@@ -72,10 +95,14 @@ class OrdenServicioModelo {
                        cot.codigo AS cotizacion_codigo, 
                        cot.version AS cotizacion_version,
                        cli.nombre_razon_social AS cliente_nombre,
+                       COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
+                       COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
+                       COALESCE(NULLIF(cot.direccion_proyecto, ''), NULLIF(cli.direccion, ''), '') AS direccion_proyecto,
+                       COALESCE(NULLIF(os.forma_pago, ''), NULLIF(cot.condicion_pago, ''), 'Pago contra entrega') AS forma_pago,
                        COALESCE(cli.identificacion, cli.numero_ruc, cli.numero_cedula, '') AS cliente_rfc,
-                       cli.direccion AS cliente_direccion,
-                       cli.telefono AS cliente_telefono,
-                       cli.email AS cliente_email
+                       COALESCE(NULLIF(cli.direccion, ''), NULLIF(cot.direccion_proyecto, ''), '') AS cliente_direccion,
+                       COALESCE(NULLIF(cli.telefono, ''), '') AS cliente_telefono,
+                       COALESCE(NULLIF(cli.email, ''), NULLIF(cli.contacto_correo, ''), '') AS cliente_email
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id
@@ -103,7 +130,11 @@ class OrdenServicioModelo {
         $sqlDet = "SELECT cd.*, 
                           COALESCE(cd.descripcion_ensayo, p.ensayo_servicio, p.nombre_comercial, '') AS nombre_ensayo, 
                           COALESCE(cd.codigo_servicio, p.codigo_servicio, '') AS codigo_servicio, 
-                          COALESCE(cd.norma_astm, p.norma_astm, '') AS norma_astm
+                          COALESCE(cd.norma_astm, p.norma_astm, '') AS norma_astm,
+                          COALESCE(cd.condiciones_muestra, p.condiciones_muestra, '') AS condiciones_muestra,
+                          COALESCE(cd.procedimiento, p.procedimiento_muestreo, '') AS procedimiento,
+                          COALESCE(cd.unidad_medida, p.unidad_medida, 'Unidad') AS unidad_medida,
+                          COALESCE(p.codigo_hoja_campo, '') AS codigo_hoja_campo
                    FROM cotizacion_detalles cd
                    LEFT JOIN productos p ON cd.id_producto = p.id
                    WHERE cd.id_cotizacion = :id_cotizacion";
@@ -156,6 +187,12 @@ class OrdenServicioModelo {
         $stmtCheck->execute(['id_os' => $idOS]);
         $existente = $stmtCheck->fetchColumn();
 
+        $estadoMuestreo = $datos['estado_muestreo'] ?? 'En Campo';
+        if (!in_array($estadoMuestreo, ['Programado', 'En Campo', 'Finalizado'])) {
+            $estadoMuestreo = 'En Campo';
+        }
+        $esFinalizado = ($estadoMuestreo === 'Finalizado');
+
         if ($existente) {
             $sql = "UPDATE programacion_muestreo SET
                         fecha_ida = :fecha_ida,
@@ -163,13 +200,22 @@ class OrdenServicioModelo {
                         id_tecnico = :id_tecnico,
                         id_vehiculo = :id_vehiculo,
                         observaciones_campo = :observaciones_campo,
-                        estado_muestreo = :estado_muestreo
+                        estado_muestreo = :estado_muestreo,
+                        fecha_finalizacion = IF(:es_finalizado = 1, NOW(), fecha_finalizacion),
+                        lugar_muestreo = :lugar_muestreo,
+                        cantidad_muestras_est = :cantidad_muestras_est,
+                        num_muestreadores = :num_muestreadores,
+                        checklist_json = :checklist_json
                     WHERE id_orden_servicio = :id_os";
         } else {
             $sql = "INSERT INTO programacion_muestreo (
-                        id_orden_servicio, fecha_ida, fecha_llegada, id_tecnico, id_vehiculo, observaciones_campo, estado_muestreo
+                        id_orden_servicio, fecha_ida, fecha_llegada, id_tecnico, id_vehiculo, 
+                        observaciones_campo, estado_muestreo, fecha_finalizacion, lugar_muestreo, cantidad_muestras_est, 
+                        num_muestreadores, checklist_json
                     ) VALUES (
-                        :id_os, :fecha_ida, :fecha_llegada, :id_tecnico, :id_vehiculo, :observaciones_campo, :estado_muestreo
+                        :id_os, :fecha_ida, :fecha_llegada, :id_tecnico, :id_vehiculo, 
+                        :observaciones_campo, :estado_muestreo, IF(:es_finalizado = 1, NOW(), NULL), :lugar_muestreo, :cantidad_muestras_est, 
+                        :num_muestreadores, :checklist_json
                     )";
         }
 
@@ -181,14 +227,31 @@ class OrdenServicioModelo {
             'id_tecnico' => $datos['id_tecnico'],
             'id_vehiculo' => $datos['id_vehiculo'],
             'observaciones_campo' => $datos['observaciones_campo'] ?? null,
-            'estado_muestreo' => $datos['estado_muestreo'] ?? 'Programado'
+            'estado_muestreo' => $estadoMuestreo,
+            'es_finalizado' => $esFinalizado ? 1 : 0,
+            'lugar_muestreo' => $datos['lugar_muestreo'] ?? null,
+            'cantidad_muestras_est' => $datos['cantidad_muestras_est'] ?? null,
+            'num_muestreadores' => (int)($datos['num_muestreadores'] ?? 1),
+            'checklist_json' => $datos['checklist_json'] ?? null
         ]);
 
         // Actualizar estado de la Orden de Servicio
-        $stmtState = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = 'Pendiente de Muestreo' WHERE id = :id");
-        $stmtState->execute(['id' => $idOS]);
+        $estadoOS = $esFinalizado ? 'Estado 1: Recepcion' : 'Pendiente de Muestreo';
+        $stmtState = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = :estado WHERE id = :id");
+        $stmtState->execute([
+            'estado' => $estadoOS,
+            'id' => $idOS
+        ]);
 
         return $res;
+    }
+
+    /**
+     * Marcar la orden como que requiere muestreo en campo
+     */
+    public function marcarRequiereMuestreo(int $idOS): bool {
+        $stmt = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 1 WHERE id = :id");
+        return $stmt->execute(['id' => $idOS]);
     }
 
     /**
@@ -203,13 +266,39 @@ class OrdenServicioModelo {
      * Marcar el muestreo como finalizado (retorno de campo al laboratorio)
      */
     public function finalizarMuestreo(int $idOS): bool {
-        // 1. Actualizar estado del muestreo
-        $sqlPm = "UPDATE programacion_muestreo SET 
-                    estado_muestreo = 'Finalizado', 
-                    fecha_finalizacion = NOW() 
-                  WHERE id_orden_servicio = :id_os";
-        $stmtPm = $this->db->prepare($sqlPm);
-        $stmtPm->execute(['id_os' => $idOS]);
+        // 1. Actualizar estado del muestreo (o insertar registro base si no existía)
+        $sqlCheck = "SELECT id FROM programacion_muestreo WHERE id_orden_servicio = :id_os";
+        $stmtCheck = $this->db->prepare($sqlCheck);
+        $stmtCheck->execute(['id_os' => $idOS]);
+        $existente = $stmtCheck->fetchColumn();
+
+        if ($existente) {
+            $sqlPm = "UPDATE programacion_muestreo SET 
+                        estado_muestreo = 'Finalizado', 
+                        fecha_finalizacion = NOW() 
+                      WHERE id_orden_servicio = :id_os";
+            $stmtPm = $this->db->prepare($sqlPm);
+            $stmtPm->execute(['id_os' => $idOS]);
+        } else {
+            $tecnicos = $this->obtenerTecnicos();
+            $vehiculos = $this->obtenerVehiculos();
+            $idTec = !empty($tecnicos) ? (int)$tecnicos[0]['id'] : 1;
+            $idVeh = !empty($vehiculos) ? (int)$vehiculos[0]['id'] : 1;
+
+            $sqlPm = "INSERT INTO programacion_muestreo (
+                        id_orden_servicio, fecha_ida, fecha_llegada, id_tecnico, id_vehiculo, 
+                        estado_muestreo, fecha_finalizacion
+                      ) VALUES (
+                        :id_os, NOW(), NOW(), :id_tecnico, :id_vehiculo, 
+                        'Finalizado', NOW()
+                      )";
+            $stmtPm = $this->db->prepare($sqlPm);
+            $stmtPm->execute([
+                'id_os' => $idOS,
+                'id_tecnico' => $idTec,
+                'id_vehiculo' => $idVeh
+            ]);
+        }
 
         // 2. Cambiar el estado de la Orden de Servicio a 'Estado 1: Recepcion' (para Hoja de Servicio)
         $sqlOs = "UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = 'Estado 1: Recepcion' WHERE id = :id_os";

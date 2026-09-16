@@ -8,3 +8,11 @@
     # Si no existe, redirige todo el tráfico a index.php para que el Enrutador de PHP lo maneje
     RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
+
+# 🔒 Encabezados HTTP de Seguridad (Defensa en Profundidad)
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

@@ -206,7 +206,19 @@ class RolesControlador extends ControladorBase {
     public function eliminar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesionAdmin($respuesta);
         
-        $id = $_GET['id'] ?? null;
+        if (!$peticion->esPost()) {
+            $respuesta->redirigir('/Cycsa/publico/roles');
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            $_SESSION['roles_error'] = 'Token CSRF inválido o faltante.';
+            $respuesta->redirigir('/Cycsa/publico/roles');
+            return;
+        }
+
+        $id = decodificarId($_POST['id'] ?? $_GET['id'] ?? '');
         if ($id) {
             $modelo = new RolModelo();
             $rol = $modelo->obtenerPorId((int)$id);

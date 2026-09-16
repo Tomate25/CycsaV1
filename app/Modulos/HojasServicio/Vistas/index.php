@@ -250,7 +250,7 @@
                     <?php foreach ($nuevas as $n): ?>
                         <?php
                         // Determinar estado de muestreo para Casos A, B y C
-                        $estadoMuestreo = 'sin_decidir'; // Caso A: Nueva orden (Preguntar si requiere muestreo o ingreso directo)
+                        $estadoMuestreo = 'sin_decidir'; // Por defecto: Sin decidir (Preguntar siempre al usuario)
                         
                         if (!empty($n['id_pm'])) {
                             if (in_array($n['estado_muestreo'], ['Programado', 'En Proceso', 'En Campo'])) {
@@ -259,7 +259,11 @@
                                 $estadoMuestreo = 'finalizado'; // Caso C: Muestreo completado
                             }
                         } elseif (!empty($n['id_hoja'])) {
-                            $estadoMuestreo = 'finalizado'; // Caso C: Ya cuenta con hoja registrada
+                            $estadoMuestreo = 'finalizado'; // Ya cuenta con hoja registrada
+                        } elseif ($n['requiere_muestreo'] === 1 || $n['requiere_muestreo'] === '1') {
+                            $estadoMuestreo = 'pendiente_programar';
+                        } elseif ($n['requiere_muestreo'] === 0 || $n['requiere_muestreo'] === '0') {
+                            $estadoMuestreo = 'no_aplica';
                         }
                         ?>
                         <tr>
@@ -281,8 +285,16 @@
                                         <span class="badge-hs" style="background:#dcfce7; color:#15803d; border:1px solid #86efac;">
                                             <i class="fa-solid fa-check-circle"></i> Muestreo Finalizado
                                         </span>
+                                    <?php elseif ($estadoMuestreo === 'pendiente_programar'): ?>
+                                        <span class="badge-hs" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc;">
+                                            <i class="fa-solid fa-truck-pickup"></i> Requiere Muestreo
+                                        </span>
+                                    <?php elseif ($estadoMuestreo === 'no_aplica'): ?>
+                                        <span class="badge-hs" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">
+                                            <i class="fa-solid fa-flask"></i> Ingreso Directo
+                                        </span>
                                     <?php else: ?>
-                                        <span class="badge-hs badge-nuevo"><i class="fa-solid fa-plus-circle"></i> Nuevo</span>
+                                        <span class="badge-hs badge-nuevo"><i class="fa-solid fa-circle-question"></i> Por Definir</span>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span class="badge-hs badge-borrador"><i class="fa-solid fa-pen-to-square"></i> Borrador</span>
@@ -477,7 +489,7 @@
             <p style="color:#64748b; margin-top:12px; font-size:14px; font-weight:600;">Cargando datos de la O/S y plantilla RT-FM-13...</p>
         </div>
 
-        <div id="wrapper-split-rt-fm-13" style="display:none; grid-template-columns: 360px 1fr; gap: 25px; align-items: flex-start;">
+        <div id="wrapper-split-rt-fm-13" style="display:none; grid-template-columns: 460px 1fr; gap: 25px; align-items: flex-start;">
             
             <!-- PANEL LATERAL IZQUIERDO: REFERENCIA VISUAL DE LA ORDEN DE SERVICIO (SOLO LECTURA) -->
             <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 18px; position: sticky; top: 0; max-height: 75vh; overflow-y: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
@@ -493,6 +505,7 @@
                     <div><strong style="color:#0f172a;">RUC / Cédula:</strong> <span id="ref_os_rfc" style="font-family:monospace;">--</span></div>
                     <div><strong style="color:#0f172a;">Atención a:</strong> <span id="ref_os_atencion">--</span></div>
                     <div><strong style="color:#0f172a;">Proyecto:</strong> <span id="ref_os_proyecto">--</span></div>
+                    <div><strong style="color:#0f172a;">Dirección:</strong> <span id="ref_os_direccion">--</span></div>
                     <div><strong style="color:#0f172a;">Cotización:</strong> <span id="ref_os_cotizacion" style="font-family:monospace;">--</span></div>
                     <div><strong style="color:#0f172a;">Forma de Pago:</strong> <span id="ref_os_pago">--</span></div>
                 </div>
@@ -514,18 +527,23 @@
                     <strong style="font-size:11.5px; color:#0f172a; text-transform:uppercase; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
                         <i class="fa-solid fa-vials" style="color:var(--cycsa-azul);"></i> Ensayos Solicitados (O/S)
                     </strong>
-                    <table style="width:100%; border-collapse:collapse; background:white; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
-                        <thead>
-                            <tr style="background:#f1f5f9; font-size:11px; text-transform:uppercase; color:#475569;">
-                                <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1;">Código</th>
-                                <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1;">Ensayo / Norma</th>
-                                <th style="padding:6px; text-align:center; border-bottom:1px solid #cbd5e1; width:45px;">Cant</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ref_os_tbody_ensayos">
-                            <!-- Filas inyectadas por JS -->
-                        </tbody>
-                    </table>
+                    <div style="overflow-x:auto; border:1px solid #cbd5e1; border-radius:6px; background:white;">
+                        <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                            <thead>
+                                <tr style="background:#f1f5f9; font-size:10px; text-transform:uppercase; color:#475569;">
+                                    <th style="padding:6px 4px; text-align:center; border-bottom:1px solid #cbd5e1; width:20px;">#</th>
+                                    <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1; min-width:120px;">Descripción (Nombre comercial)</th>
+                                    <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1; min-width:130px;">Condiciones de muestra</th>
+                                    <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1; min-width:70px;">Procedimiento</th>
+                                    <th style="padding:6px; text-align:center; border-bottom:1px solid #cbd5e1; width:35px;">U/M</th>
+                                    <th style="padding:6px; text-align:center; border-bottom:1px solid #cbd5e1; width:35px;">Cant</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ref_os_tbody_ensayos">
+                                <!-- Filas inyectadas por JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div style="margin-top: 12px; font-size: 11px; color: #64748b; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px;">
@@ -540,7 +558,11 @@
 
             <!-- 1. METADATOS Y CONTROL INTERNO -->
             <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px; margin-top: 15px;"><i class="fa-solid fa-clipboard-check"></i> 1. Metadatos y Control Interno</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom: 15px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom: 15px;">
+                <div class="form-group">
+                    <label>No. Registro Laboratorio</label>
+                    <input type="text" name="numero_registro" id="hs_numero_registro" class="form-control" style="font-size:13px; padding:8px 12px; font-weight:700;" placeholder="Ej: 23896">
+                </div>
                 <div class="form-group">
                     <label>Fecha/Hora de Llegada al Lab</label>
                     <input type="datetime-local" name="fecha_hora_llegada_laboratorio" id="hs_fecha_llegada" required class="form-control" style="font-size:13px; padding:8px 12px;">
@@ -599,28 +621,19 @@
                     <label>Procedencia/ Punto de muestreo</label>
                     <input type="text" name="procedencia_punto_muestreo" id="hs_procedencia" required class="form-control" style="font-size:13px; padding:8px 12px;">
                 </div>
-                <div class="form-group">
-                    <label>¿Quién tomó la muestra?</label>
-                    <select id="hs_tipo_toma_select" class="form-control" style="font-size:13px; padding:8px 12px; margin-bottom:8px; font-weight:600; color:var(--cycsa-azul);" onchange="seleccionarTipoTomaMuestra(this.value)">
-                        <option value="tecnico">👷‍♂️ Técnico Muestreador CYCSA</option>
-                        <option value="cliente">👤 Cliente / Entregada por Cliente</option>
-                        <option value="otro">✏️ Otro / Escribir Nombre Personalizado</option>
-                    </select>
-
-                    <div id="wrapper_select_tecnico" style="margin-bottom:8px;">
-                        <select id="hs_select_tecnico_cycsa" class="form-control" style="font-size:13px; padding:8px 12px; background:#f0f9ff; border-color:#93c5fd; font-weight:500;" onchange="alCambiarTecnicoSelect(this.value)">
-                            <option value="">-- Seleccione Técnico CYCSA --</option>
+                    <div class="form-group">
+                        <label>¿Quién tomó la muestra?</label>
+                        <input type="text" name="nombre_persona_toma_muestra" id="hs_persona_toma" list="lista_tecnicos_hs" required class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="Nombre de quien tomó la muestra (Ej: Juan / Cliente)">
+                        <datalist id="lista_tecnicos_hs">
+                            <option value="Cliente / Entregada por Cliente"></option>
                             <?php if (!empty($tecnicos)): ?>
                                 <?php foreach ($tecnicos as $t): ?>
                                     <?php $nomTec = htmlspecialchars($t['nombre'] ?? $t['nombre_tecnico'] ?? ''); ?>
-                                    <option value="<?= $nomTec ?>"><?= $nomTec ?></option>
+                                    <option value="<?= $nomTec ?>"></option>
                                 <?php endforeach; ?>
                             <?php endif; ?>
-                        </select>
+                        </datalist>
                     </div>
-
-                    <input type="text" name="nombre_persona_toma_muestra" id="hs_persona_toma" required class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="Nombre de quien tomó la muestra">
-                </div>
                 <div class="form-group">
                     <label>Fecha y hora de toma muestra</label>
                     <input type="datetime-local" name="fecha_hora_toma_muestra" id="hs_fecha_toma" required class="form-control" style="font-size:13px; padding:8px 12px;">
@@ -630,7 +643,9 @@
             <!-- 4. IDENTIFICACIONES PROPIAS (TABLA DINÁMICA) -->
             <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;">
                 <span><i class="fa-solid fa-list-ol"></i> 2. Identificaciones Propias de la Muestra (Especímenes)</span>
-                <button type="button" class="btn-accion-hs btn-registrar" style="padding:4px 8px; font-size:11px; cursor:pointer;" onclick="agregarFilaMuestraModal()"><i class="fa-solid fa-plus"></i> Agregar Muestra</button>
+                <button type="button" class="btn-accion-hs btn-registrar" style="padding:6px 14px; font-size:12.5px; cursor:pointer;" onclick="agregarFilaMuestraModal()">
+                    <i class="fa-solid fa-plus"></i> Agregar Muestra
+                </button>
             </div>
             <table class="hs-table" style="width:100%; border-collapse:collapse; margin-bottom:20px;" id="hs-tabla-muestras">
                 <thead>
@@ -807,6 +822,69 @@
     </div>
 </div>
 
+<!-- MODAL ELECCIÓN DE MUESTREO VS INGRESO DIRECTO -->
+<div id="modalDecisionMuestreoGlobal" class="modal-hs" style="display:none; z-index:10000; align-items:center; justify-content:center;">
+    <div class="modal-hs-content" style="max-width: 650px; border-radius: 12px; padding: 25px 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); background:white;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">
+            <div style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #0f172a; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-circle-question" style="color: var(--cycsa-azul);"></i> ¿Se Requiere Muestreo en Campo?
+            </div>
+            <button type="button" onclick="cerrarModalDecisionMuestreo()" style="background: none; border: none; font-size: 24px; color: #94a3b8; cursor: pointer; line-height: 1;">&times;</button>
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 15px; margin-bottom:20px;">
+            <span style="font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700; display:block;">Orden de Servicio:</span>
+            <div id="decision_codigo_os" style="font-size:16px; font-weight:700; color:var(--cycsa-azul); font-family:monospace; margin-top:2px;">OS-2026-XXXX</div>
+        </div>
+
+        <p style="font-size: 13.5px; color: #475569; margin-bottom: 20px; line-height: 1.5;">
+            Seleccione el flujo correspondiente para la recepción de especímenes de esta Orden de Servicio:
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            
+            <!-- OPCIÓN 1: SÍ REQUIERE MUESTREO (GIRA DE CAMPO) -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; background: white; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cycsa-azul)'; this.style.boxShadow='0 4px 12px rgba(16,52,135,0.08)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                <div>
+                    <div style="width: 44px; height: 44px; border-radius: 8px; background: #eff6ff; color: var(--cycsa-azul); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;">
+                        <i class="fa-solid fa-truck-pickup"></i>
+                    </div>
+                    <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">Sí, Muestreo en Campo</h4>
+                    <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
+                        Asignar técnico muestreador, vehículo, fecha de salida y llenar la <strong>Lista de Chequeo Oficial CYCSA-RT-FM-40 B</strong>.
+                    </p>
+                </div>
+                <button type="button" class="btn-accion-hs" style="background: var(--cycsa-azul); color: white; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; border:none; cursor:pointer;" onclick="confirmarDecisionMuestreo(true)">
+                    <i class="fa-solid fa-calendar-plus"></i> Programar Muestreo
+                </button>
+            </div>
+
+            <!-- OPCIÓN 2: NO REQUIERE MUESTREO (INGRESO DIRECTO AL LAB) -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; background: white; transition: all 0.2s;" onmouseover="this.style.borderColor='#10b981'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.08)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                <div>
+                    <div style="width: 44px; height: 44px; border-radius: 8px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;">
+                        <i class="fa-solid fa-flask"></i>
+                    </div>
+                    <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">No, Ingreso Directo</h4>
+                    <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
+                        Los especímenes fueron entregados directamente por el cliente en el Laboratorio Central (sin salida a campo).
+                    </p>
+                </div>
+                <button type="button" class="btn-accion-hs" style="background: #10b981; color: white; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; border:none; cursor:pointer;" onclick="confirmarDecisionMuestreo(false)">
+                    <i class="fa-solid fa-file-circle-plus"></i> Abrir Hoja RT-FM-13
+                </button>
+            </div>
+
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+            <button type="button" onclick="cerrarModalDecisionMuestreo()" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #64748b; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     // Navegación entre pestañas (Tabs)
     function switchTab(tabId, btn) {
@@ -824,21 +902,71 @@
 
     let siguienteConsecutivoMuestra = 1;
     let anioActualMuestra = new Date().getFullYear();
+    let prefijoMuestraActual = 'MC';
+    let anioActual2Digitos = String(new Date().getFullYear()).slice(-2);
 
-    // Detecta el máximo consecutivo usado en las filas actuales del tbody
-    function recalcularConsecutivoMuestra() {
+    // Detecta el máximo consecutivo usado en las filas actuales del tbody según el prefijo (MC o MS)
+    function recalcularConsecutivoMuestra(prefix = prefijoMuestraActual) {
         const tbody = document.getElementById('hs-tbody-muestras');
-        if (!tbody) return;
+        if (!tbody) return 1;
         let max = 0;
+        const regex = new RegExp(`^${prefix}-(\\d+)-(\\d{2}|\\d{4})$`, 'i');
         tbody.querySelectorAll('input[name="m_nombre[]"]').forEach(input => {
-            const val = input.value || '';
-            // Soporta formatos: MC-NNN-YYYY o CYCSA-M-YYYY-NNNN
-            const m1 = val.match(/^MC-(\d+)-\d{4}$/);
-            const m2 = val.match(/^CYCSA-M-\d{4}-(\d+)$/);
-            const num = m1 ? parseInt(m1[1]) : (m2 ? parseInt(m2[1]) : 0);
-            if (num > max) max = num;
+            const val = (input.value || '').trim();
+            const m = val.match(regex);
+            if (m) {
+                const num = parseInt(m[1], 10);
+                if (num > max) max = num;
+            }
         });
-        siguienteConsecutivoMuestra = max + 1;
+        return max + 1;
+    }
+
+    // Variables de control para el modal de decisión
+    let decisionOSId = null;
+    let decisionOSCodigo = '';
+
+    function cerrarModalDecisionMuestreo() {
+        const m = document.getElementById('modalDecisionMuestreoGlobal');
+        if (m) m.style.display = 'none';
+    }
+
+    function abrirModalDecisionMuestreo(idOS, codigoOS) {
+        decisionOSId = idOS;
+        decisionOSCodigo = codigoOS;
+        const lbl = document.getElementById('decision_codigo_os');
+        if (lbl) lbl.innerText = codigoOS;
+        const m = document.getElementById('modalDecisionMuestreoGlobal');
+        if (m) m.style.display = 'flex';
+    }
+
+    function confirmarDecisionMuestreo(requiereMuestreo) {
+        if (!decisionOSId) return;
+        const idOS = decisionOSId;
+        const codigoOS = decisionOSCodigo;
+        cerrarModalDecisionMuestreo();
+
+        if (requiereMuestreo) {
+            // Redirige a Programar Muestreo en Campo
+            window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
+        } else {
+            // Ingreso directo: Marcar en BD y abrir modal RT-FM-13
+            const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
+            fetch('/Cycsa/publico/ordenes-servicio/marcar-ingreso-directo', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-TOKEN': csrfVal
+                },
+                body: 'id_os=' + encodeURIComponent(idOS) + '&csrf_token=' + encodeURIComponent(csrfVal)
+            }).catch(console.error);
+
+            // Actualizar botones en el DOM
+            const btns = document.querySelectorAll(`button[data-id-os="${idOS}"]`);
+            btns.forEach(b => b.setAttribute('data-estado-muestreo', 'no_aplica'));
+
+            abrirModalHojaSolicitud(idOS, codigoOS);
+        }
     }
 
     // Intercepción Inteligente del clic en "Registrar Hoja RT-FM-13" (Casos A, B y C)
@@ -895,19 +1023,23 @@
                     focusConfirm: true
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Finalizar muestreo vía Ajax
                         Swal.fire({
                             title: 'Finalizando muestreo...',
                             allowOutsideClick: false,
                             didOpen: () => { Swal.showLoading(); }
                         });
 
+                        const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
                         const formData = new FormData();
                         formData.append('id_os', idOS);
                         formData.append('ajax', '1');
+                        formData.append('csrf_token', csrfVal);
 
                         fetch('/Cycsa/publico/ordenes-servicio/finalizar-muestreo', {
                             method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfVal
+                            },
                             body: formData
                         })
                         .then(r => r.json())
@@ -917,7 +1049,6 @@
                                 if (typeof btnOrId === 'object' && btnOrId !== null) {
                                     btnOrId.setAttribute('data-estado-muestreo', 'finalizado');
                                 }
-                                // Abrir directamente el modal RT-FM-13
                                 abrirModalHojaSolicitud(idOS, codigoOS);
                             } else {
                                 Swal.fire('Error', res.message || 'No se pudo finalizar el muestreo.', 'error');
@@ -940,7 +1071,15 @@
         }
 
         // =========================================================================
-        // CASO C: MUESTREO FINALIZADO O INGRESO DIRECTO
+        // CASO PENDIENTE DE PROGRAMAR (El usuario ya indicó que requiere muestreo)
+        // =========================================================================
+        if (estadoMuestreo === 'pendiente_programar') {
+            window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
+            return;
+        }
+
+        // =========================================================================
+        // CASO C: MUESTREO FINALIZADO O INGRESO DIRECTO CONFIRMADO
         // =========================================================================
         if (estadoMuestreo === 'finalizado' || estadoMuestreo === 'no_aplica') {
             abrirModalHojaSolicitud(idOS, codigoOS);
@@ -948,60 +1087,9 @@
         }
 
         // =========================================================================
-        // CASO A: SIN DECIDIR / NUEVA ORDEN
+        // CASO A: SIN DECIDIR / NUEVA ORDEN (Abrir Modal Interactivo Garantizado)
         // =========================================================================
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: '¿Se requiere muestreo en campo?',
-                html: `
-                    <div style="text-align:left; font-size:13.5px; color:#475569; margin-top:8px; line-height:1.5;">
-                        <div style="background:#f1f5f9; padding:10px 14px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:12px;">
-                            <strong style="color:#0f172a;">Orden de Servicio:</strong> <span style="color:var(--cycsa-azul); font-family:monospace; font-weight:700;">${codigoOS}</span>
-                        </div>
-                        <p style="margin-bottom:8px;">Seleccione el flujo operativo para esta Orden de Servicio:</p>
-                        <ul style="margin-left:18px; font-size:12.5px; color:#64748b;">
-                            <li><strong>Sí, programar logística:</strong> Asignar técnico, vehículo y fechas de salida a campo.</li>
-                            <li><strong>No, ingreso directo:</strong> Abrir el formulario RT-FM-13 para especímenes entregados en laboratorio.</li>
-                        </ul>
-                    </div>
-                `,
-                icon: 'question',
-                showCancelButton: true,
-                showDenyButton: true,
-                confirmButtonText: '<i class="fa-solid fa-truck-pickup"></i> Sí, programar logística',
-                confirmButtonColor: '#103487',
-                denyButtonText: '<i class="fa-solid fa-flask"></i> No, ingreso directo',
-                denyButtonColor: '#10b981',
-                cancelButtonText: 'Cancelar',
-                cancelButtonColor: '#94a3b8',
-                reverseButtons: false,
-                focusDeny: true,
-                allowOutsideClick: false
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // CAMINO SÍ: Redirigir a programar logística (el técnico sale a campo)
-                    window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
-                } else if (result.isDenied) {
-                    // CAMINO NO: Registrar ingreso directo y abrir modal RT-FM-13
-                    if (typeof btnOrId === 'object' && btnOrId !== null) {
-                        btnOrId.setAttribute('data-estado-muestreo', 'no_aplica');
-                    }
-                    fetch('/Cycsa/publico/ordenes-servicio/marcar-ingreso-directo', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'id_os=' + encodeURIComponent(idOS)
-                    }).catch(console.error);
-
-                    abrirModalHojaSolicitud(idOS, codigoOS);
-                }
-            });
-        } else {
-            if (confirm("¿Se requiere muestreo en campo para la Orden " + codigoOS + "?\n\n- Aceptar (OK): SÍ, programar logística.\n- Cancelar: NO, ingreso directo al formulario RT-FM-13.")) {
-                window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
-            } else {
-                abrirModalHojaSolicitud(idOS, codigoOS);
-            }
-        }
+        abrirModalDecisionMuestreo(idOS, codigoOS);
     }
 
     function abrirModalHojaSolicitud(idOS, code) {
@@ -1034,11 +1122,15 @@
                 // 1. POBLAR PANEL LATERAL DE REFERENCIA VISUAL O/S (CYCSA-RG-FM-39)
                 if (data.os_referencia) {
                     const osRef = data.os_referencia;
-                    document.getElementById('ref_os_cliente').innerText = osRef.cliente_nombre || 'N/A';
-                    document.getElementById('ref_os_rfc').innerText = osRef.cliente_rfc || 'N/A';
-                    document.getElementById('ref_os_atencion').innerText = osRef.atencion_a || 'N/A';
-                    document.getElementById('ref_os_proyecto').innerText = osRef.nombre_proyecto || 'N/A';
-                    document.getElementById('ref_os_cotizacion').innerText = (osRef.cotizacion_codigo || 'N/A') + (osRef.cotizacion_version ? ' (v' + osRef.cotizacion_version + ')' : '');
+                    document.getElementById('ref_os_cliente').innerText = osRef.cliente_nombre || '--';
+                    document.getElementById('ref_os_rfc').innerText = osRef.cliente_rfc || '--';
+                    document.getElementById('ref_os_atencion').innerText = osRef.atencion_a || '--';
+                    document.getElementById('ref_os_proyecto').innerText = osRef.nombre_proyecto || '--';
+                    const elDirRef = document.getElementById('ref_os_direccion');
+                    if (elDirRef) {
+                        elDirRef.innerText = osRef.direccion_proyecto || osRef.cliente_direccion || '--';
+                    }
+                    document.getElementById('ref_os_cotizacion').innerText = (osRef.cotizacion_codigo || '--') + (osRef.cotizacion_version ? ' (v' + osRef.cotizacion_version + ')' : '');
                     document.getElementById('ref_os_pago').innerText = osRef.forma_pago || 'Pago contra entrega';
                     
                     const badgeEst = document.getElementById('ref_os_badge_estado');
@@ -1059,26 +1151,47 @@
                     const tbodyEns = document.getElementById('ref_os_tbody_ensayos');
                     tbodyEns.innerHTML = '';
                     if (osRef.ensayos && osRef.ensayos.length > 0) {
+                        let itemNum = 1;
                         osRef.ensayos.forEach(ens => {
                             const tr = document.createElement('tr');
+                            const codCampo = ens.codigo_hoja_campo || ens.codigo_servicio || '';
+                            const cond = ens.condiciones_muestra || 'Estándar / Muestra sin alteración';
+                            const proc = ens.procedimiento || 'CYCSA-PE-01';
+                            const um = ens.unidad_medida || 'Unidad';
+                            const cant = parseFloat(ens.cantidad || 1).toFixed(2);
+
                             tr.innerHTML = `
-                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; font-weight:700; color:var(--cycsa-azul); font-size:11.5px;">${ens.codigo_servicio || 'CYCSA-PE'}</td>
-                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; font-size:11.5px;">
-                                    ${ens.nombre_ensayo || ens.descripcion_ensayo || ''}
-                                    ${ens.norma_astm ? '<div style="font-size:10px; color:#0369a1; font-weight:600; margin-top:2px;">Norma: ' + ens.norma_astm + '</div>' : ''}
+                                <td style="padding:6px 4px; border-bottom:1px solid #e2e8f0; text-align:center; font-weight:700; color:#64748b; font-size:11px;">${itemNum}</td>
+                                <td style="padding:6px; border-bottom:1px solid #e2e8f0;">
+                                    <div style="font-weight:700; color:#0f172a; font-size:11px; line-height:1.2;">${ens.nombre_ensayo || ens.descripcion_ensayo || ''}</div>
+                                    ${codCampo ? `<div style="font-size:9.5px; color:var(--cycsa-azul); font-weight:700; font-family:monospace; margin-top:2px;">${codCampo}</div>` : ''}
                                 </td>
-                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center; font-weight:700; font-size:11.5px;">${parseFloat(ens.cantidad || 0).toFixed(1)}</td>
+                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; font-size:10px; color:#475569; line-height:1.3;">
+                                    ${cond}
+                                </td>
+                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; font-size:10px; color:#0369a1; font-weight:600; font-family:monospace;">
+                                    ${proc}
+                                </td>
+                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center; font-size:10px; color:#64748b;">
+                                    ${um}
+                                </td>
+                                <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center; font-weight:700; font-size:11px; color:#0f172a;">
+                                    ${cant}
+                                </td>
                             `;
                             tbodyEns.appendChild(tr);
+                            itemNum++;
                         });
                     } else {
-                        tbodyEns.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#64748b; font-size:11px; padding:10px;">Sin ensayos registrados</td></tr>';
+                        tbodyEns.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b; font-size:11px; padding:10px;">Sin ensayos registrados</td></tr>';
                     }
                 }
 
                 // 2. LLENAR FORMULARIO EDITABLE CYCSA-RT-FM-13
                 document.getElementById('hs_id_os').value = hoja.id_os;
                 document.getElementById('hs_codigo_documento').value = hoja.codigo_documento || 'CYCSA-RT-FM-13';
+                const elReg = document.getElementById('hs_numero_registro');
+                if (elReg) elReg.value = hoja.numero_registro || '';
                 document.getElementById('hs_fecha_llegada').value = hoja.fecha_hora_llegada_laboratorio ? hoja.fecha_hora_llegada_laboratorio.replace(' ', 'T') : '';
                 document.getElementById('hs_nombre_empresa').value = hoja.nombre_empresa_o_cliente || '';
                 document.getElementById('hs_razon_social').value = hoja.razon_social || '';
@@ -1094,38 +1207,11 @@
                 const tipoSelect = document.getElementById('hs_tipo_toma_select');
                 const wrapperTec = document.getElementById('wrapper_select_tecnico');
 
-                let matchTecnico = false;
-                if (selTec) {
-                    Array.from(selTec.options).forEach(opt => {
-                        if (opt.value && opt.value.trim() === valToma.trim()) {
-                            matchTecnico = true;
-                            opt.selected = true;
-                        }
-                    });
-                }
-
-                if (matchTecnico) {
-                    tipoSelect.value = 'tecnico';
-                    wrapperTec.style.display = 'block';
-                    document.getElementById('hs_persona_toma').readOnly = false;
-                } else if (valToma.includes('Cliente') || valToma.includes('cliente')) {
-                    tipoSelect.value = 'cliente';
-                    wrapperTec.style.display = 'none';
-                    document.getElementById('hs_persona_toma').readOnly = true;
-                } else if (valToma !== '') {
-                    tipoSelect.value = 'otro';
-                    wrapperTec.style.display = 'none';
-                    document.getElementById('hs_persona_toma').readOnly = false;
-                } else {
-                    tipoSelect.value = 'tecnico';
-                    wrapperTec.style.display = 'block';
-                    document.getElementById('hs_persona_toma').readOnly = false;
-                }
-
+                document.getElementById('hs_persona_toma').value = valToma || '';
                 document.getElementById('hs_fecha_toma').value = hoja.fecha_hora_toma_muestra ? hoja.fecha_hora_toma_muestra.replace(' ', 'T') : '';
                 
                 // Naturalezas
-                const natureList = (hoja.naturaleza_muestra || '').split(',');
+                const natureList = (hoja.naturaleza_muestra || '').split(',').map(s => s.trim());
                 document.querySelectorAll('.hs-nat-checkbox').forEach(cb => {
                     cb.checked = natureList.includes(cb.value);
                 });
@@ -1167,13 +1253,31 @@
                     muestras = [];
                 }
 
-                if (muestras.length === 0) {
-                    agregarFilaMuestraModal('', 'Cilindros de concreto', 'Estándar');
-                } else {
+                // Establecer prefijo automático: MC para campo, MS para laboratorio central
+                prefijoMuestraActual = data.prefijo_muestra || 'MC';
+
+                // Si ya existen muestras guardadas, cargarlas; de lo contrario pre-poblar las N muestras según programación
+                if (Array.isArray(muestras) && muestras.length > 0) {
                     muestras.forEach(m => {
-                        agregarFilaMuestraModal(m.nombre_muestra, m.descripcion, m.info_importante);
+                        const nom = m.nombre_muestra || m.identificacion || '';
+                        const tipo = nom.startsWith('MS-') ? 'MS' : (nom.startsWith('MC-') ? 'MC' : prefijoMuestraActual);
+                        agregarFilaMuestraModal(tipo, nom, m.descripcion || m.ubicacion || '', m.info_importante || m.observaciones || '');
                     });
-                    recalcularConsecutivoMuestra();
+                } else {
+                    const cantSugerida = parseInt(data.cantidad_muestras_sugerida || data.os_referencia?.programacion_muestreo?.cantidad_muestras_est || 1) || 1;
+                    const puntoMuestreo = hoja.procedencia_punto_muestreo || data.lugar_muestreo || data.os_referencia?.nombre_proyecto || '';
+                    const primerEnsayo = (data.os_referencia?.ensayos && data.os_referencia.ensayos.length > 0) ? (data.os_referencia.ensayos[0].nombre_ensayo || data.os_referencia.ensayos[0].descripcion_ensayo || '') : '';
+                    const desc = primerEnsayo ? (primerEnsayo.length > 50 ? primerEnsayo.substring(0, 50) + '...' : primerEnsayo) : ((prefijoMuestraActual === 'MC') ? 'Muestra tomada en campo' : 'Muestra entregada en laboratorio');
+                    let infoPunto = puntoMuestreo ? `Punto: ${puntoMuestreo}` : '';
+                    if (data.os_referencia?.nombre_proyecto && (!puntoMuestreo || !puntoMuestreo.includes(data.os_referencia.nombre_proyecto))) {
+                        infoPunto += (infoPunto ? ' - ' : '') + `Proy: ${data.os_referencia.nombre_proyecto}`;
+                    }
+                    const info = infoPunto || ((prefijoMuestraActual === 'MC') ? 'Muestreo en Obra' : 'Recepción Lab Central');
+                    for (let i = 1; i <= cantSugerida; i++) {
+                        const consecutiveStr = String(i).padStart(4, '0');
+                        const nom = `${prefijoMuestraActual}-${consecutiveStr}-${anioActual2Digitos}`;
+                        agregarFilaMuestraModal(prefijoMuestraActual, nom, desc, info);
+                    }
                 }
 
                 hsLoading.style.display = 'none';
@@ -1190,78 +1294,57 @@
         modHS.style.display = 'none';
     }
 
-    function seleccionarTipoTomaMuestra(val) {
-        const personaInput = document.getElementById('hs_persona_toma');
-        const wrapperTecnico = document.getElementById('wrapper_select_tecnico');
-        const selectTecnico = document.getElementById('hs_select_tecnico_cycsa');
-        
-        if (val === 'cliente') {
-            wrapperTecnico.style.display = 'none';
-            personaInput.value = 'Cliente / Entregada por Cliente';
-            personaInput.readOnly = true;
-        } else if (val === 'tecnico') {
-            wrapperTecnico.style.display = 'block';
-            personaInput.readOnly = false;
-            if (selectTecnico.value) {
-                personaInput.value = selectTecnico.value;
-            } else {
-                personaInput.value = '';
-            }
-        } else if (val === 'otro') {
-            wrapperTecnico.style.display = 'none';
-            personaInput.readOnly = false;
-            if (personaInput.value.includes('Cliente') || Array.from(selectTecnico.options).some(o => o.value && o.value === personaInput.value)) {
-                personaInput.value = '';
-            }
-            personaInput.focus();
-        }
-    }
 
-    function alCambiarTecnicoSelect(val) {
-        const personaInput = document.getElementById('hs_persona_toma');
-        personaInput.value = val;
-    }
-
-    function agregarFilaMuestraModal(nombre = '', desc = '', info = '') {
+    function resecuenciarMuestras(prefix = prefijoMuestraActual) {
         const tbody = document.getElementById('hs-tbody-muestras');
-        
-        // Si desc o info no son provistos explícitamente, copiar de la última fila o usar valores por defecto
-        if (tbody) {
-            const lastDescInput = tbody.querySelector('tr:last-child input[name="m_desc[]"]');
-            const lastInfoInput = tbody.querySelector('tr:last-child input[name="m_info[]"]');
-            
-            if (desc === '') {
-                desc = (lastDescInput && lastDescInput.value.trim() !== '') ? lastDescInput.value : 'Cilindros de concreto';
-            }
-            if (info === '') {
-                info = (lastInfoInput && lastInfoInput.value.trim() !== '') ? lastInfoInput.value : 'Estándar';
-            }
-        } else {
-            if (desc === '') desc = 'Cilindros de concreto';
-            if (info === '') info = 'Estándar';
-        }
+        if (!tbody) return;
+        let idx = 1;
+        tbody.querySelectorAll('input[name="m_nombre[]"]').forEach(input => {
+            const consecutiveStr = String(idx).padStart(4, '0');
+            input.value = `${prefix}-${consecutiveStr}-${anioActual2Digitos}`;
+            idx++;
+        });
+    }
+
+    function agregarFilaMuestraModal(tipo = null, nombre = '', desc = '', info = '') {
+        const tbody = document.getElementById('hs-tbody-muestras');
+        if (!tbody) return;
+
+        const prefijo = tipo || prefijoMuestraActual || 'MC';
 
         if (nombre === '') {
-            // Recalcular antes de generar por si el usuario borró filas
-            recalcularConsecutivoMuestra();
-            // Generar código en formato MC-NNN-YYYY (mismo que el sistema anterior)
-            const consecutiveStr = String(siguienteConsecutivoMuestra).padStart(3, '0');
-            nombre = `MC-${consecutiveStr}-${anioActualMuestra}`;
-            siguienteConsecutivoMuestra++;
+            const nextNum = recalcularConsecutivoMuestra(prefijo);
+            const consecutiveStr = String(nextNum).padStart(4, '0');
+            nombre = `${prefijo}-${consecutiveStr}-${anioActual2Digitos}`;
+            if (desc === '') {
+                desc = (prefijo === 'MS') ? 'Muestra entregada en laboratorio' : 'Muestra tomada en campo';
+            }
+            if (info === '') {
+                info = (prefijo === 'MS') ? 'Recepción Lab Central' : 'Muestreo en Obra';
+            }
         }
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td style="padding:8px;"><input type="text" name="m_nombre[]" value="${nombre}" class="form-control" style="font-size:12.5px; padding:6px 10px; font-weight:600; font-family:monospace;" required></td>
-            <td style="padding:8px;"><input type="text" name="m_desc[]" value="${desc}" class="form-control" style="font-size:12.5px; padding:6px 10px;" required placeholder="Ej: Columnas Eje C-3"></td>
-            <td style="padding:8px;"><input type="text" name="m_info[]" value="${info}" class="form-control" style="font-size:12.5px; padding:6px 10px;" placeholder="Ej: Edad 7d / Edad 28d"></td>
-            <td style="padding:8px; text-align:center;"><button type="button" class="btn-accion-hs btn-pdf" style="padding:5px 8px; font-size:11px;" onclick="eliminarFilaMuestraModal(this)"><i class="fa-solid fa-trash"></i></button></td>
+            <td style="padding:8px;">
+                <input type="text" name="m_nombre[]" value="${nombre}" readonly required class="form-control" style="font-size:12.5px; padding:6px 10px; font-weight:700; font-family:monospace; color:var(--cycsa-azul); background:#f8fafc; cursor:not-allowed; border-color:#cbd5e1;" title="Código consecutivo bloqueado por el sistema">
+            </td>
+            <td style="padding:8px;">
+                <input type="text" name="m_desc[]" value="${desc}" class="form-control" style="font-size:12.5px; padding:6px 10px;" required placeholder="Ej: Columnas Eje C-3 / Banco de préstamo">
+            </td>
+            <td style="padding:8px;">
+                <input type="text" name="m_info[]" value="${info}" class="form-control" style="font-size:12.5px; padding:6px 10px;" placeholder="Ej: Edad 7d / Tramo Km 12+500">
+            </td>
+            <td style="padding:8px; text-align:center;">
+                <button type="button" class="btn-accion-hs btn-pdf" style="padding:5px 8px; font-size:11px;" onclick="eliminarFilaMuestraModal(this)" title="Eliminar muestra"><i class="fa-solid fa-trash"></i></button>
+            </td>
         `;
         tbody.appendChild(tr);
     }
 
     function eliminarFilaMuestraModal(btn) {
         btn.closest('tr').remove();
+        resecuenciarMuestras();
     }
 
     // Modal de Revisión por Supervisor

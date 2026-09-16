@@ -171,6 +171,7 @@
             <?php endif; ?>
 
             <form action="/Cycsa/publico/cambiar-password-obligatorio" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 <div class="grupo-input">
                     <label for="password">Nueva Contraseña</label>
                     <div class="input-wrapper">

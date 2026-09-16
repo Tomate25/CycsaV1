@@ -28,9 +28,9 @@ class CotizacionesControlador extends ControladorBase {
         $busqueda = $_GET['q'] ?? '';
         $tab = $_GET['tab'] ?? '';
         
-        // Tab por defecto según rol
+        // Tab por defecto: siempre 'todas'
         if (empty($tab)) {
-            $tab = ($_SESSION['usuario_rol'] == 1) ? 'revision' : 'borradores';
+            $tab = 'todas';
         }
         
         $todas = $modelo->obtenerTodas($busqueda);
@@ -110,9 +110,19 @@ class CotizacionesControlador extends ControladorBase {
         }
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) { $respuesta->redirigir('/Cycsa/publico/cotizaciones/crear'); return; }
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $datos['csrf_token'])) { $respuesta->redirigir('/Cycsa/publico/cotizaciones/crear'); return; }
             $modelo = new CotizacionModelo();
             $notasJson = isset($datos['notas']) ? json_encode($datos['notas']) : null;
+
+            // Procesar archivo adjunto de forma segura
+            $archivoAdjunto = null;
+            if (isset($_FILES['archivo_adjunto'])) {
+                $archivoAdjunto = $this->procesarArchivoAdjuntoSeguro($_FILES['archivo_adjunto']);
+            }
+
+            $incluirAnexo = !empty($datos['incluir_anexo_tecnico']) ? 1 : 0;
+            $anexoTecnico = !empty(trim($datos['anexo_tecnico'] ?? '')) ? trim($datos['anexo_tecnico']) : null;
+
             $cabecera = [
                 'codigo' => $modelo->generarCodigoUnico(),
                 'id_cliente' => $datos['id_cliente'],
@@ -122,20 +132,23 @@ class CotizacionesControlador extends ControladorBase {
                 'nombre_proyecto' => trim($datos['nombre_proyecto']),
                 'direccion_proyecto' => trim($datos['direccion_proyecto']),
                 'prioridad' => $datos['prioridad'] ?? 'Normal',
-                'fecha_limite' => !empty($datos['fecha_limite']) ? $datos['fecha_limite'] : null,
+                'fecha_limite' => null,
                 'condicion_pago' => $datos['condicion_pago'],
                 'tiempo_entrega' => trim($datos['tiempo_entrega']),
                 'vigencia_oferta' => trim($datos['vigencia_oferta']),
-                'configuracion_notas' => $notesJson ?? $notasJson,
+                'configuracion_notas' => $notasJson,
                 'contactos' => isset($datos['contactos']) ? trim($datos['contactos']) : null,
+                'incluir_anexo_tecnico' => $incluirAnexo,
+                'anexo_tecnico' => $anexoTecnico,
+                'archivo_adjunto' => $archivoAdjunto,
                 'subtotal' => (float)$datos['subtotal_general'],
                 'descuento' => isset($datos['descuento']) ? (float)$datos['descuento'] : 0.00,
                 'exonerado' => isset($datos['exonerado']) ? (int)$datos['exonerado'] : 0,
                 'exoneracion_no' => !empty($datos['exoneracion_no']) ? trim($datos['exoneracion_no']) : null,
                 'impuesto' => (float)$datos['impuesto_general'],
                 'total' => (float)$datos['total_general'],
-                'fecha_entrega' => !empty($datos['fecha_entrega']) ? $datos['fecha_entrega'] : null,
-                'fecha_seguimiento' => !empty($datos['fecha_seguimiento']) ? $datos['fecha_seguimiento'] : null
+                'fecha_entrega' => null,
+                'fecha_seguimiento' => null
             ];
             $detalles = $this->procesarDetalles($datos);
             if ($modelo->guardarCotizacionCompleta($cabecera, $detalles)) {
@@ -153,7 +166,7 @@ class CotizacionesControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/panel');
             exit;
         }
-        $id = (int)($_GET['id'] ?? 0);
+        $id = decodificarId($_GET['id'] ?? '') ?? (int)($_GET['id'] ?? 0);
         $modelo = new CotizacionModelo();
         $cotizacion = $modelo->obtenerPorId($id);
         if (!$cotizacion) { $respuesta->redirigir('/Cycsa/publico/cotizaciones'); return; }
@@ -180,7 +193,7 @@ class CotizacionesControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/cotizaciones');
             exit;
         }
-        $id = (int)($_GET['id'] ?? 0);
+        $id = decodificarId($_GET['id'] ?? '') ?? (int)($_GET['id'] ?? 0);
         $modelo = new CotizacionModelo();
         $cot = $modelo->obtenerPorId($id);
         if ($cot['estado'] !== 'Observada' && $cot['estado'] !== 'Rechazada por Cliente') { $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id='.codificarId($id)); return; }
@@ -205,7 +218,16 @@ class CotizacionesControlador extends ControladorBase {
             exit;
         }
         $datos = $peticion->obtenerDatos();
-        $id = (int)$datos['id'];
+        $id = decodificarId($datos['id'] ?? '') ?? (int)($datos['id'] ?? 0);
+
+        // 🔒 Validar CSRF
+        $csrfToken = $datos['csrf_token'] ?? '';
+        if (empty($csrfToken) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+            $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+            return;
+        }
+
         $modelo = new CotizacionModelo();
 
         // 1. Obtener estado previo para saber si era rechazada por el cliente
@@ -213,6 +235,19 @@ class CotizacionesControlador extends ControladorBase {
         $eraRechazada = ($cotizacionPrev && $cotizacionPrev['estado'] === 'Rechazada por Cliente');
 
         $notasJson = isset($datos['notas']) ? json_encode($datos['notas']) : null;
+
+        // Procesar archivo adjunto de forma segura si fue subido
+        $archivoAdjunto = $cotizacionPrev['archivo_adjunto'] ?? null;
+        if (isset($_FILES['archivo_adjunto'])) {
+            $nuevoAdjunto = $this->procesarArchivoAdjuntoSeguro($_FILES['archivo_adjunto']);
+            if ($nuevoAdjunto !== null) {
+                $archivoAdjunto = $nuevoAdjunto;
+            }
+        }
+
+        $incluirAnexo = !empty($datos['incluir_anexo_tecnico']) ? 1 : 0;
+        $anexoTecnico = !empty(trim($datos['anexo_tecnico'] ?? '')) ? trim($datos['anexo_tecnico']) : null;
+
         $cabecera = [
             'id_cliente' => $datos['id_cliente'],
             'tipo_moneda' => isset($datos['tipo_moneda']) ? (int)$datos['tipo_moneda'] : 1,
@@ -224,14 +259,17 @@ class CotizacionesControlador extends ControladorBase {
             'vigencia_oferta' => trim($datos['vigencia_oferta']),
             'configuracion_notas' => $notasJson,
             'contactos' => isset($datos['contactos']) ? trim($datos['contactos']) : null,
+            'incluir_anexo_tecnico' => $incluirAnexo,
+            'anexo_tecnico' => $anexoTecnico,
+            'archivo_adjunto' => $archivoAdjunto,
             'subtotal' => (float)$datos['subtotal_general'],
             'descuento' => isset($datos['descuento']) ? (float)$datos['descuento'] : 0.00,
             'exonerado' => isset($datos['exonerado']) ? (int)$datos['exonerado'] : 0,
             'exoneracion_no' => !empty($datos['exoneracion_no']) ? trim($datos['exoneracion_no']) : null,
             'impuesto' => (float)$datos['impuesto_general'],
             'total' => (float)$datos['total_general'],
-            'fecha_entrega' => !empty($datos['fecha_entrega']) ? $datos['fecha_entrega'] : null,
-            'fecha_seguimiento' => !empty($datos['fecha_seguimiento']) ? $datos['fecha_seguimiento'] : null
+            'fecha_entrega' => null,
+            'fecha_seguimiento' => null
         ];
         if ($modelo->actualizarCotizacionCompleta($id, $cabecera, $this->procesarDetalles($datos))) {
             $cot = $modelo->obtenerPorId($id);
@@ -325,8 +363,17 @@ class CotizacionesControlador extends ControladorBase {
             exit;
         }
         $datos = $peticion->obtenerDatos();
+        $id = (int)($datos['id'] ?? 0);
+
+        // 🔒 Validar CSRF
+        $csrfToken = $datos['csrf_token'] ?? '';
+        if (empty($csrfToken) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+            $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+            return;
+        }
+
         $modelo = new CotizacionModelo();
-        $id = (int)$datos['id'];
         
         if ($datos['accion'] === 'aprobar') {
             $token = bin2hex(random_bytes(32));
@@ -424,6 +471,15 @@ class CotizacionesControlador extends ControladorBase {
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
             $id = (int)($datos['id'] ?? 0);
+
+            // 🔒 Validar CSRF
+            $csrfToken = $datos['csrf_token'] ?? '';
+            if (empty($csrfToken) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+                $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
+                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+                return;
+            }
+
             $modelo = new CotizacionModelo();
             $cotizacion = $modelo->obtenerPorId($id);
             
@@ -559,7 +615,7 @@ class CotizacionesControlador extends ControladorBase {
     }
 
     public function decisionCliente(Peticion $peticion, Respuesta $respuesta): void {
-        $id = (int)($_GET['id'] ?? 0);
+        $id = decodificarId($_GET['id'] ?? '') ?? (int)($_GET['id'] ?? 0);
         $token = $_GET['token'] ?? '';
         
         $modelo = new CotizacionModelo();
@@ -800,7 +856,7 @@ class CotizacionesControlador extends ControladorBase {
             $id = (int)($datos['id'] ?? 0);
             
             // CSRF Check
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $datos['csrf_token'])) {
                 $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
                 return;
             }
@@ -829,7 +885,7 @@ class CotizacionesControlador extends ControladorBase {
             $motivo_rechazo = trim($datos['motivo_rechazo'] ?? '');
             
             // Validar CSRF
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $datos['csrf_token'])) {
                 $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
                 return;
             }
@@ -918,7 +974,7 @@ class CotizacionesControlador extends ControladorBase {
             $respuesta->enviarJson(['error' => 'No autorizado'], 403);
             return;
         }
-        $id = (int)($_GET['id'] ?? 0);
+        $id = decodificarId($_GET['id'] ?? '') ?? (int)($_GET['id'] ?? 0);
         if ($id <= 0) {
             $respuesta->enviarJson([]);
             return;
@@ -941,7 +997,7 @@ class CotizacionesControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/panel');
             exit;
         }
-        $id = (int)($_GET['id'] ?? 0);
+        $id = decodificarId($_GET['id'] ?? '') ?? (int)($_GET['id'] ?? 0);
         $completo = (int)($_GET['completo'] ?? 0);
 
         $modelo = new CotizacionModelo();
@@ -961,6 +1017,9 @@ class CotizacionesControlador extends ControladorBase {
         
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="Cotizacion_' . $cotizacion['codigo'] . ($completo ? '_Completa' : '') . '.pdf"');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
         echo $pdfContenido;
         exit;
     }
@@ -971,9 +1030,13 @@ class CotizacionesControlador extends ControladorBase {
         for ($i = 0; $i < count($datos['ensayo_desc'] ?? []); $i++) {
             if (!empty(trim($datos['ensayo_desc'][$i]))) {
                 $id_prod = !empty($datos['ensayo_id_producto'][$i]) ? (int)$datos['ensayo_id_producto'][$i] : null;
-                $cant = (float)$datos['ensayo_cant'][$i]; $prec = (float)$datos['ensayo_precio'][$i];
+                $cant = (float)$datos['ensayo_cant'][$i]; 
+                $prec = (float)$datos['ensayo_precio'][$i];
 
                 // Obtener datos del formulario
+                $condiciones = !empty(trim($datos['ensayo_condiciones'][$i] ?? '')) ? trim($datos['ensayo_condiciones'][$i]) : null;
+                $procedimiento = !empty(trim($datos['ensayo_procedimiento'][$i] ?? '')) ? trim($datos['ensayo_procedimiento'][$i]) : null;
+                $unidad = !empty(trim($datos['ensayo_unidad'][$i] ?? '')) ? trim($datos['ensayo_unidad'][$i]) : 'Unidad';
                 $codigo = !empty(trim($datos['ensayo_codigo'][$i] ?? '')) ? trim($datos['ensayo_codigo'][$i]) : null;
                 $norma = !empty(trim($datos['ensayo_norma'][$i] ?? '')) ? trim($datos['ensayo_norma'][$i]) : null;
                 $formato = !empty(trim($datos['ensayo_formato'][$i] ?? '')) ? trim($datos['ensayo_formato'][$i]) : null;
@@ -984,6 +1047,15 @@ class CotizacionesControlador extends ControladorBase {
                 if ($id_prod) {
                     $producto = $prodModelo->obtenerPorId($id_prod);
                     if ($producto) {
+                        if (empty($condiciones)) {
+                            $condiciones = $producto['condiciones_muestra'] ?? null;
+                        }
+                        if (empty($procedimiento)) {
+                            $procedimiento = $producto['procedimiento_muestreo'] ?: ($producto['norma_astm'] ?? null);
+                        }
+                        if (empty($unidad) || $unidad === 'Unidad') {
+                            $unidad = $producto['unidad_medida'] ?? 'Unidad';
+                        }
                         if (empty($codigo)) {
                             $codigo = $producto['codigo_servicio'] ?? null;
                         }
@@ -1002,6 +1074,9 @@ class CotizacionesControlador extends ControladorBase {
                 $detalles[] = [
                     'id_producto' => $id_prod,
                     'descripcion' => trim($datos['ensayo_desc'][$i]), 
+                    'condiciones_muestra' => $condiciones,
+                    'procedimiento' => $procedimiento,
+                    'unidad_medida' => $unidad,
                     'codigo_servicio' => $codigo,
                     'norma_astm' => $norma,
                     'formato_reporte' => $formato,
@@ -1038,7 +1113,7 @@ class CotizacionesControlador extends ControladorBase {
             }
 
             // CSRF
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $datos['csrf_token'])) {
                 $_SESSION['error'] = 'Token CSRF inválido.';
                 $respuesta->redirigir($redir);
                 return;
@@ -1202,6 +1277,9 @@ class CotizacionesControlador extends ControladorBase {
 
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="Reporte_' . str_replace(' ', '_', $detalle['formato_nombre']) . '_' . $cotizacion['codigo'] . '.pdf"');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
         echo $pdfContenido;
         exit;
     }
@@ -1260,11 +1338,19 @@ class CotizacionesControlador extends ControladorBase {
             $categorias[] = $cat;
         }
 
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
         $this->renderizarSinLayout('cotizaciones/vistas/solicitar_publica', [
             'titulo' => 'Solicitud de Cotización - CYCSA',
             'productos' => $productos,
             'categorias' => $categorias,
-            'exitoCodigo' => $exitoCodigo
+            'exitoCodigo' => $exitoCodigo,
+            'csrf_token' => $_SESSION['csrf_token']
         ]);
     }
 
@@ -1272,6 +1358,14 @@ class CotizacionesControlador extends ControladorBase {
     public function procesarSolicitudPublica(Peticion $peticion, Respuesta $respuesta): void {
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
+
+            // 🔒 Validación de Token Anti-CSRF
+            $tokenPost = $datos['csrf_token'] ?? '';
+            if (empty($tokenPost) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $tokenPost)) {
+                $respuesta->redirigir('/Cycsa/publico/solicitar-cotizacion?error=' . urlencode('Token de seguridad inválido o expirado. Por favor, recargue el formulario.'));
+                return;
+            }
+
             $cliModelo = new ClienteModelo();
             $cotModelo = new CotizacionModelo();
 
@@ -1405,5 +1499,161 @@ class CotizacionesControlador extends ControladorBase {
                 $respuesta->redirigir('/Cycsa/publico/solicitar-cotizacion?error=' . urlencode('No se pudo guardar la solicitud de cotización.'));
             }
         }
+    }
+
+    private function obtenerPlantillaAnexoDefecto(): string {
+        return '<h3>1. Objeto</h3>
+<p>CYCSA presenta el presente Anexo Técnico correspondiente al servicio de <strong>Diseño de Mezclas de Concreto para Planta Concentradora – Proyecto Porvenir</strong>, desarrollado conforme a los requerimientos establecidos en el Pliego de Condiciones y aplicando el Método ACI 211 para diseño de mezclas de concreto. El objetivo del servicio es determinar diseños de mezcla que permitan la colocación mediante bombeo y el cumplimiento de las resistencias requeridas para el proyecto.</p>
+
+<h4>1.1 Forma de pago</h4>
+<p>La forma de pago del Servicio cotizado es <strong>30% anticipo</strong> del monto total del contrato y <strong>70% contra entrega</strong> con trámite de pago de factura 15 días.</p>
+
+<h3>2. Alcance del Servicio</h3>
+<p>El alcance contempla la ejecución de ensayos de laboratorio para caracterización de materiales, elaboración de diseños de mezcla y emisión de informe técnico. No incluye movilización por traslado de muestra; el cliente las entrega en KM 83.5 Carretera León Managua.</p>
+
+<h4>2.1 Ensayos en agregados</h4>
+<p>Aplicables a materiales provenientes de las canteras: <em>Pioneer; Cantera Norte; Cantera No. 5</em>.<br>
+<strong>Incluye:</strong></p>
+<ul>
+    <li>Granulometría – ASTM C136 / ASTM C117</li>
+    <li>Peso específico y absorción – ASTM C127 / ASTM C128</li>
+    <li>Material que pasa tamiz No. 200 – ASTM C117</li>
+    <li>Terrones de arcilla y partículas friables – ASTM C142</li>
+    <li>Desgaste Los Ángeles – ASTM C131 / ASTM C535</li>
+    <li>Forma de partículas – ASTM D4791</li>
+    <li>Reactividad potencial a los álcalis de los agregados (Método de barras de mortero) ASTM C1260, INTE C167: tercerizado por CYCSA en Laboratorio LanammeUCR COSTA RICA.</li>
+    <li>Sanidad con sulfatos – ASTM C88</li>
+    <li>Trituración y preparación de muestras conforme cantidades requeridas para ensayo.</li>
+</ul>
+<p><em>Adicionalmente incluye:</em> toma y preparación de muestra de agregado fino y cemento para evaluación ASR bajo ASTM C1260; embalaje y entrega para retiro por parte del cliente.</p>
+
+<h4>2.2 Ensayos para diseño de concreto</h4>
+<p>Aplicables a los diseños correspondientes al agregado proveniente de cantera Pioneer.<br>
+<strong>Incluye:</strong></p>
+<ul>
+    <li>Muestreo de concreto recién mezclado – ASTM C172</li>
+    <li>Asentamiento (Slump) – ASTM C143</li>
+    <li>Peso unitario – ASTM C138</li>
+    <li>Contenido de aire – ASTM C231 / ASTM C173</li>
+    <li>Resistencia a compresión – ASTM C39</li>
+    <li>Ensayos de durabilidad y absorción (ASTM C642)</li>
+</ul>
+<p><strong>Diseños contemplados:</strong></p>
+<ul>
+    <li>Diseño de mezcla para 100 kg/cm²</li>
+    <li>Diseño de mezcla para 210 kg/cm²</li>
+    <li>Diseño de mezcla para 280 kg/cm² (sin aditivo)</li>
+</ul>
+
+<h4>2.3 Evaluación de calidad de agua</h4>
+<p>Se consideran los siguientes parámetros:</p>
+<ul>
+    <li>Contenido de cloruros (Cl)</li>
+    <li>Contenido de sulfatos (SO₄)</li>
+    <li>Sólidos Totales Disueltos (TDS)</li>
+    <li>Demanda Química de Oxígeno (DQO)</li>
+    <li>pH</li>
+    <li>Interpretación conforme ASTM C1602</li>
+</ul>
+
+<h3>3. Metodología de Trabajo</h3>
+<ol>
+    <li>Recepción y verificación de muestras.</li>
+    <li>Preparación y acondicionamiento del material.</li>
+    <li>Ejecución de ensayos conforme normas ASTM aplicables.</li>
+    <li>Análisis e interpretación de resultados.</li>
+    <li>Desarrollo de diseños de mezcla mediante método ACI 211.</li>
+    <li>Elaboración y entrega de informe técnico.</li>
+</ol>
+
+<h3>4. Entregables</h3>
+<p>CYCSA entregará:</p>
+<ul>
+    <li>Resultados de laboratorio de materiales evaluados.</li>
+    <li>Diseño de mezcla para cada resistencia solicitada.</li>
+    <li>Recomendaciones técnicas para fabricación del concreto.</li>
+    <li>Informe técnico consolidado en formato digital (PDF).</li>
+</ul>
+
+<h4>4.1 Tiempos de entrega</h4>
+<ul>
+    <li><strong>Diseños de mezcla de concreto:</strong> Tiempo estimado de entrega de resultados: 20 días hábiles a partir del ingreso de las muestras.</li>
+    <li><strong>Ensayo ASR:</strong> Servicio sujeto a programación del LanammeUCR. Actualmente existe disponibilidad a partir de finales de junio; puede variar dependiendo de la carga de trabajo del laboratorio al momento de la solicitud. El plazo de ejecución y entrega de resultados será confirmado por el laboratorio al momento de la aceptación de la solicitud, estimando un plazo de 60 días hábiles.</li>
+</ul>
+
+<h3>5. Exclusiones</h3>
+<p>No se considera dentro del alcance económico ofertado:</p>
+<ul>
+    <li>Ensayo Descripción Petrográfica de Agregados para Concreto – ASTM C295.</li>
+    <li>Actividades adicionales no descritas en el presente anexo.</li>
+    <li>Rediseños derivados por cambio de materiales, especificaciones o criterios posteriores a la aprobación.</li>
+</ul>
+
+<h3>7. Condiciones Generales</h3>
+<ul>
+    <li>El servicio será ejecutado en las instalaciones del laboratorio de CYCSA.</li>
+    <li>El cliente garantizará el suministro oportuno de muestras conforme cantidades requeridas.</li>
+    <li>Los tiempos de ejecución iniciarán una vez recibidas las muestras y aprobación de la orden de servicio.</li>
+    <li>Cualquier modificación al alcance deberá formalizarse mediante aprobación escrita.</li>
+</ul>';
+    }
+
+    /**
+     * Valida y almacena de forma segura los archivos adjuntos a cotizaciones.
+     * Previene ataques de ejecución remota de código (RCE).
+     */
+    private function procesarArchivoAdjuntoSeguro(array $file): ?string {
+        if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        // Límite máximo 10 MB
+        if ($file['size'] > 10 * 1024 * 1024) {
+            error_log("Archivo adjunto rechazado: supera 10 MB ({$file['size']} bytes)");
+            return null;
+        }
+
+        $extensionesPermitidas = ['pdf', 'jpg', 'jpeg', 'png', 'xlsx', 'docx', 'xls', 'doc'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        if (!in_array($ext, $extensionesPermitidas, true)) {
+            error_log("Archivo adjunto rechazado: extensión no permitida '{$ext}'");
+            return null;
+        }
+
+        // Validar tipo MIME real inspeccionando los bytes del archivo
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        $mimesPermitidos = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/msword',
+            'application/zip'
+        ];
+
+        if (!in_array($mime, $mimesPermitidos, true)) {
+            error_log("Archivo adjunto rechazado: MIME type inválido '{$mime}' para '{$file['name']}'");
+            return null;
+        }
+
+        $directorio = dirname(__DIR__, 4) . '/publico/uploads/cotizaciones';
+        if (!is_dir($directorio)) {
+            mkdir($directorio, 0755, true);
+        }
+
+        $nombreArchivo = 'anexo_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+        $rutaDestino = $directorio . '/' . $nombreArchivo;
+
+        if (move_uploaded_file($file['tmp_name'], $rutaDestino)) {
+            return 'uploads/cotizaciones/' . $nombreArchivo;
+        }
+
+        return null;
     }
 }

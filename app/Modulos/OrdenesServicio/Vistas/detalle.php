@@ -97,15 +97,6 @@ if (!empty($os['contactos_json'])) {
             <button onclick="window.print()" class="btn-cycsa btn-cycsa-primary">
                 <i class="fa-solid fa-print"></i> Imprimir Orden de Servicio
             </button>
-            <?php if (!empty($os['requiere_muestreo']) && $os['estado'] === 'Pendiente de Muestreo'): ?>
-                <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-warning">
-                    <i class="fa-solid fa-calendar-days"></i> Logística de Muestreo
-                </a>
-            <?php else: ?>
-                <a href="/Cycsa/publico/hojas-servicio?id_os=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-success">
-                    <i class="fa-solid fa-file-circle-check"></i> Ir a Hoja de Servicio CYCSA RT-FM-13
-                </a>
-            <?php endif; ?>
         </div>
     </div>
 

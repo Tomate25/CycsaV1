@@ -42,12 +42,20 @@ class OperacionModelo extends ModeloBase {
         $consecutivo = (int)$stmt->fetchColumn() + 1;
         $codigoOS = sprintf("OS-%d-%04d", $anio, $consecutivo);
 
-        $sql = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, tipo_contrato, fecha_emision, estado, fecha_muestreo, hora_muestreo, tecnico_muestreo, vehiculo_muestreo) 
-                VALUES (:codigo_os, :id_cotizacion, :tipo_contrato, CURRENT_DATE, 'Estado 1: Recepcion', :fecha_m, :hora_m, :tecnico_m, :vehiculo_m)";
+        $stmtCot = $this->db->prepare("SELECT atencion_a, nombre_proyecto, condicion_pago, id_cliente FROM cotizaciones WHERE id = :id_cot");
+        $stmtCot->execute(['id_cot' => $idCotizacion]);
+        $cotData = $stmtCot->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $sql = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, id_cliente, atencion_a, nombre_proyecto, forma_pago, tipo_contrato, fecha_emision, estado, fecha_muestreo, hora_muestreo, tecnico_muestreo, vehiculo_muestreo) 
+                VALUES (:codigo_os, :id_cotizacion, :id_cliente, :atencion_a, :nombre_proyecto, :forma_pago, :tipo_contrato, CURRENT_DATE, 'Estado 1: Recepcion', :fecha_m, :hora_m, :tecnico_m, :vehiculo_m)";
         $stmtInsert = $this->db->prepare($sql);
         $stmtInsert->execute([
             'codigo_os' => $codigoOS,
             'id_cotizacion' => $idCotizacion,
+            'id_cliente' => $cotData['id_cliente'] ?? null,
+            'atencion_a' => $cotData['atencion_a'] ?? '',
+            'nombre_proyecto' => $cotData['nombre_proyecto'] ?? '',
+            'forma_pago' => $cotData['condicion_pago'] ?? 'Pago contra entrega',
             'tipo_contrato' => $tipoContrato,
             'fecha_m' => !empty($fechaMuestreo) ? $fechaMuestreo : null,
             'hora_m' => !empty($horaMuestreo) ? $horaMuestreo : null,
@@ -64,7 +72,8 @@ class OperacionModelo extends ModeloBase {
     public function obtenerOSActivas(string $busqueda = ''): array {
         $sql = "SELECT os.*,
                        cot.codigo AS cot_codigo, cot.nombre_proyecto, cot.total AS cot_total,
-                       cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre
+                       cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre,
+                       cli.email AS cliente_email
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id";
@@ -120,9 +129,17 @@ class OperacionModelo extends ModeloBase {
      */
     public function obtenerOSPorId(int $idOS): ?array {
         $sql = "SELECT os.id, os.codigo_os, os.tipo_contrato, os.fecha_emision, os.estado, os.id_cotizacion,
-                       os.tecnico_muestreo, os.vehiculo_muestreo, os.fecha_muestreo, os.hora_muestreo,
-                       cot.codigo AS cot_codigo, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
-                       cli.nombre_razon_social AS cliente_nombre, cli.identificacion AS cliente_ruc, cli.telefono AS cliente_telefono, cli.email AS cliente_email
+                       os.requiere_muestreo, os.tecnico_muestreo, os.vehiculo_muestreo, os.fecha_muestreo, os.hora_muestreo,
+                       cot.codigo AS cot_codigo, 
+                       COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
+                       COALESCE(NULLIF(cot.direccion_proyecto, ''), NULLIF(cli.direccion, ''), '') AS direccion_proyecto,
+                       COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
+                       COALESCE(NULLIF(os.forma_pago, ''), NULLIF(cot.condicion_pago, ''), 'Pago contra entrega') AS forma_pago,
+                       cli.nombre_razon_social AS cliente_nombre, 
+                       COALESCE(cli.identificacion, cli.numero_ruc, cli.numero_cedula, '') AS cliente_ruc, 
+                       COALESCE(NULLIF(cli.direccion, ''), NULLIF(cot.direccion_proyecto, ''), '') AS cliente_direccion,
+                       COALESCE(NULLIF(cli.telefono, ''), '') AS cliente_telefono, 
+                       COALESCE(NULLIF(cli.email, ''), NULLIF(cli.contacto_correo, ''), '') AS cliente_email
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id
@@ -138,9 +155,10 @@ class OperacionModelo extends ModeloBase {
      * Obtiene los detalles de la cotización asociados.
      */
     public function obtenerDetallesCotizacion(int $idCotizacion): array {
-        $sql = "SELECT cd.id, cd.descripcion_ensayo, cd.cantidad, p.codigo_servicio, p.norma_astm, p.formato_id 
+        $sql = "SELECT cd.id, cd.descripcion_ensayo, cd.cantidad, p.codigo_servicio, p.norma_astm, p.formato_id, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
                 FROM cotizacion_detalles cd
                 LEFT JOIN productos p ON cd.id_producto = p.id
+                LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
                 WHERE cd.id_cotizacion = :id_cotizacion";
         
         $stmt = $this->db->prepare($sql);
@@ -156,6 +174,14 @@ class OperacionModelo extends ModeloBase {
             $this->db->beginTransaction();
 
             $idOS = (int)$datos['id_os'];
+            
+            // 🔒 Limpieza atómica y transaccional si se solicita re-procesamiento
+            if (!empty($datos['limpiar_previas'])) {
+                $this->db->prepare("DELETE FROM ensayo_edades WHERE id_lote IN (SELECT lm.id FROM lotes_muestras lm JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id WHERE rm.id_os = :id_os)")->execute(['id_os' => $idOS]);
+                $this->db->prepare("DELETE FROM lotes_muestras WHERE id_recepcion IN (SELECT id FROM recepcion_muestras WHERE id_os = :id_os)")->execute(['id_os' => $idOS]);
+                $this->db->prepare("DELETE FROM recepcion_muestras WHERE id_os = :id_os")->execute(['id_os' => $idOS]);
+            }
+
             $entregadoPor = trim($datos['entregado_por'] ?? '');
             $observaciones = trim($datos['observaciones'] ?? '');
             $fechaRecepcion = $datos['fecha_recepcion'] ?? date('Y-m-d H:i:s');
@@ -216,10 +242,10 @@ class OperacionModelo extends ModeloBase {
                 $stmtUpsert = $this->db->prepare("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) VALUES (:anio, :tipo, :corr) ON DUPLICATE KEY UPDATE ultimo_correlativo = :corr2");
                 $stmtUpsert->execute(['anio' => $anio, 'tipo' => $tipoMuestra, 'corr' => $correlativo, 'corr2' => $correlativo]);
 
-                // Formato de código consecutivo automático e inmutable por tipo
+                // Formato de código consecutivo automático e inmutable por tipo (Regla Oficial CYCSA)
                 $replicaCodigo = null;
                 if ($tipoMuestra === 'Campo') {
-                    $codigoMuestra = sprintf("CAM-%02d-%04d", $anioShort, $correlativo);
+                    $codigoMuestra = sprintf("MC-%04d-%02d", $correlativo, $anioShort);
                 } else {
                     $codigoMuestra = sprintf("MS-%04d-%02d", $correlativo, $anioShort);
                 }
@@ -750,6 +776,7 @@ class OperacionModelo extends ModeloBase {
             $idOS = (int)$datos['id_os'];
             $fechaHoraLlegada = !empty($datos['fecha_hora_llegada_laboratorio']) ? $datos['fecha_hora_llegada_laboratorio'] : null;
             $codigoDoc = trim($datos['codigo_documento'] ?? 'CYCSA-RT-FM-13');
+            $numeroRegistro = trim($datos['numero_registro'] ?? '');
             $nombreEmpresa = trim($datos['nombre_empresa_o_cliente'] ?? '');
             $razonSocial = trim($datos['razon_social'] ?? '');
             $direccionProj = trim($datos['direccion_proyecto'] ?? '');
@@ -807,13 +834,14 @@ class OperacionModelo extends ModeloBase {
                 $lockAcquired = true;
                 
                 $anioActual = (int)date('Y');
-                $siguienteConsecutivo = $this->obtenerSiguienteConsecutivoMuestra($anioActual);
+                $anioShort = date('y');
+                $siguienteConsecutivo = $this->obtenerSiguienteConsecutivoMuestra($anioActual, 'MC');
                 
                 $muestras = json_decode($muestrasJson, true) ?: [];
                 foreach ($muestras as &$m) {
                     $nombre = trim($m['nombre_muestra'] ?? '');
-                    if (empty($nombre) || preg_match('/^MC-\d+-\d+$/', $nombre) || strpos($nombre, 'Muestra') === 0) {
-                        $m['nombre_muestra'] = 'MC-' . sprintf("%03d", $siguienteConsecutivo) . '-' . $anioActual;
+                    if (empty($nombre) || preg_match('/^(muestra|m-|mc-0*1?$|cilindro)/i', $nombre)) {
+                        $m['nombre_muestra'] = sprintf("MC-%04d-%02d", $siguienteConsecutivo, $anioShort);
                         $siguienteConsecutivo++;
                     }
                 }
@@ -825,6 +853,7 @@ class OperacionModelo extends ModeloBase {
                 $sql = "UPDATE hojas_solicitud SET 
                             fecha_hora_llegada_laboratorio = :f_llegada,
                             codigo_documento = :cod_doc,
+                            numero_registro = :num_reg,
                             nombre_empresa_o_cliente = :n_empresa,
                             razon_social = :razon_social,
                             direccion_proyecto = :dir,
@@ -861,14 +890,14 @@ class OperacionModelo extends ModeloBase {
                         WHERE id_os = :id_os";
             } else {
                 $sql = "INSERT INTO hojas_solicitud (
-                            id_os, fecha_hora_llegada_laboratorio, codigo_documento, nombre_empresa_o_cliente, razon_social, direccion_proyecto, telefono, correo_electronico, nombre_persona_entrega_muestra,
+                            id_os, fecha_hora_llegada_laboratorio, codigo_documento, numero_registro, nombre_empresa_o_cliente, razon_social, direccion_proyecto, telefono, correo_electronico, nombre_persona_entrega_muestra,
                             naturaleza_muestra, procedencia_punto_muestreo, nombre_persona_toma_muestra, fecha_hora_toma_muestra, condicion_muestreo_datos, muestras_json,
                             req_resistencia_concreto, req_resistencia_adoquin, req_resistencia_bloques, req_otros_concreto,
                             req_granulometria, req_limites_atterberg, req_humedad, req_resistencia_corte, req_clasificacion_sucs_hr, req_proctor_sm, req_infiltracion, req_cbr, req_densidad, req_otros_suelo,
                             req_otros_materiales, descripcion_otros_analisis,
                             analisis_adicionales, observaciones, nombre_recibe_cycsa, firma_recibe_cycsa, firma_cliente
                         ) VALUES (
-                            :id_os, :f_llegada, :cod_doc, :n_empresa, :razon_social, :dir, :tel, :email, :p_entrega,
+                            :id_os, :f_llegada, :cod_doc, :num_reg, :n_empresa, :razon_social, :dir, :tel, :email, :p_entrega,
                             :naturaleza, :proc, :p_toma, :f_toma, :cond_m, :m_json,
                             :rc_con, :rc_ado, :rc_blo, :rc_ot,
                             :rg, :rl, :rh, :rs, :rc_sucs, :rp, :ri, :rcbr, :rd, :rs_ot,
@@ -882,6 +911,7 @@ class OperacionModelo extends ModeloBase {
                 'id_os' => $idOS,
                 'f_llegada' => $fechaHoraLlegada,
                 'cod_doc' => $codigoDoc,
+                'num_reg' => $numeroRegistro,
                 'n_empresa' => $nombreEmpresa,
                 'razon_social' => $razonSocial,
                 'dir' => $direccionProj,
@@ -917,12 +947,24 @@ class OperacionModelo extends ModeloBase {
                 'f_cliente' => $firmaCliente
             ]);
 
-            // Sincronizar fecha, hora y técnico de muestreo en ordenes_servicio para que se reflejen en el Calendario de Operaciones
+            // Sincronizar fecha, hora y técnico de muestreo en ordenes_servicio
             if (!empty($fechaHoraToma)) {
                 $ts = strtotime($fechaHoraToma);
                 if ($ts) {
                     $fechaM = date('Y-m-d', $ts);
                     $horaM = date('H:i:s', $ts);
+
+                    $esTecnicoCycsa = false;
+                    if (!empty($personaToma)) {
+                        $pTomaLower = mb_strtolower(trim($personaToma));
+                        if (!str_contains($pTomaLower, 'cliente') && !str_contains($pTomaLower, 'entregada')) {
+                            $stmtChk = $this->db->prepare("SELECT COUNT(*) FROM tecnicos WHERE LOWER(nombre) = LOWER(:nom)");
+                            $stmtChk->execute(['nom' => trim($personaToma)]);
+                            if ((int)$stmtChk->fetchColumn() > 0) {
+                                $esTecnicoCycsa = true;
+                            }
+                        }
+                    }
                     
                     $sqlSync = "UPDATE ordenes_servicio SET 
                                     fecha_muestreo = :fm,
@@ -933,9 +975,11 @@ class OperacionModelo extends ModeloBase {
                         'id_os' => $idOS
                     ];
                     
-                    if (!empty($personaToma)) {
+                    if ($esTecnicoCycsa) {
                         $sqlSync .= ", tecnico_muestreo = :tm, requiere_muestreo = 1";
                         $paramsSync['tm'] = $personaToma;
+                    } else {
+                        $sqlSync .= ", tecnico_muestreo = NULL, requiere_muestreo = 0";
                     }
                     
                     $sqlSync .= " WHERE id = :id_os";
@@ -980,30 +1024,47 @@ class OperacionModelo extends ModeloBase {
     }
 
     /**
-     * Obtiene el siguiente consecutivo para el nombre de muestra (MC-XXX-AÑO) en un año determinado.
+     * Obtiene el siguiente consecutivo para el nombre de muestra (MC-XXXX-AA o MS-XXXX-AA) en un año determinado.
      */
-    public function obtenerSiguienteConsecutivoMuestra(int $anio): int {
-        $sql = "SELECT muestras_json FROM hojas_solicitud WHERE YEAR(fecha_creacion) = :anio";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['anio' => $anio]);
-        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    public function obtenerSiguienteConsecutivoMuestra(int $anio, string $prefijo = 'MC'): int {
+        $tipo = ($prefijo === 'MC' || strtolower($prefijo) === 'campo') ? 'Campo' : 'Laboratorio';
         
-        $maxConsecutivo = 0;
-        foreach ($rows as $row) {
-            $arr = json_decode($row, true);
-            if (is_array($arr)) {
-                foreach ($arr as $item) {
-                    $nombre = $item['nombre_muestra'] ?? '';
-                    if (preg_match('/MC-(\d+)-' . $anio . '/', $nombre, $matches)) {
-                        $num = (int)$matches[1];
-                        if ($num > $maxConsecutivo) {
-                            $maxConsecutivo = $num;
+        // 1. Consultar secuencias_muestras
+        $stmtSec = $this->db->prepare("SELECT ultimo_correlativo FROM secuencias_muestras WHERE anio = :anio AND tipo_muestra = :tipo");
+        $stmtSec->execute(['anio' => $anio, 'tipo' => $tipo]);
+        $corrSec = (int)$stmtSec->fetchColumn();
+
+        // 2. Consultar el máximo correlativo registrado en recepcion_muestras
+        $stmtRec = $this->db->prepare("SELECT MAX(correlativo_anual) FROM recepcion_muestras WHERE anio = :anio AND tipo_muestra = :tipo");
+        $stmtRec->execute(['anio' => $anio, 'tipo' => $tipo]);
+        $corrRec = (int)$stmtRec->fetchColumn();
+
+        // 3. Consultar en hojas_solicitud si hay códigos MC declarados
+        $maxHojas = 0;
+        if ($tipo === 'Campo' || $prefijo === 'MC') {
+            $sql = "SELECT muestras_json FROM hojas_solicitud WHERE YEAR(fecha_creacion) = :anio";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['anio' => $anio]);
+            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $anio2Digitos = substr((string)$anio, -2);
+            foreach ($rows as $row) {
+                $arr = json_decode($row, true);
+                if (is_array($arr)) {
+                    foreach ($arr as $item) {
+                        $nombre = $item['nombre_muestra'] ?? '';
+                        if (preg_match('/' . preg_quote($prefijo, '/') . '-(\d+)-(?:' . $anio . '|' . $anio2Digitos . ')/', $nombre, $matches)) {
+                            $num = (int)$matches[1];
+                            if ($num > $maxHojas) {
+                                $maxHojas = $num;
+                            }
                         }
                     }
                 }
             }
         }
-        return $maxConsecutivo + 1;
+
+        $max = max($corrSec, $corrRec, $maxHojas);
+        return $max + 1;
     }
 }
 

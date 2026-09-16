@@ -22,6 +22,7 @@ storage/temp/*
 almacenamiento/logs/*
 almacenamiento/cache/*
 
-# Archivos del sistema operativo
+# Archivos del sistema operativo y herramientas
 .DS_Store
 Thumbs.db
+.phpunit.result.cache

@@ -256,7 +256,19 @@ class UsuariosControlador extends ControladorBase {
     public function eliminar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesionAdmin($respuesta);
         
-        $id = $_GET['id'] ?? null;
+        if (!$peticion->esPost()) {
+            $respuesta->redirigir('/Cycsa/publico/usuarios');
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            $_SESSION['usuarios_error'] = 'Token CSRF inválido o faltante.';
+            $respuesta->redirigir('/Cycsa/publico/usuarios');
+            return;
+        }
+
+        $id = decodificarId($_POST['id'] ?? $_GET['id'] ?? '');
         if ($id) {
             $modelo = new UsuarioModelo();
             $usuario = $modelo->obtenerPorId((int)$id);
@@ -274,7 +286,19 @@ class UsuariosControlador extends ControladorBase {
     public function desbloquear(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesionAdmin($respuesta);
         
-        $id = $_GET['id'] ?? null;
+        if (!$peticion->esPost()) {
+            $respuesta->redirigir('/Cycsa/publico/usuarios');
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            $_SESSION['usuarios_error'] = 'Token CSRF inválido o faltante.';
+            $respuesta->redirigir('/Cycsa/publico/usuarios');
+            return;
+        }
+
+        $id = decodificarId($_POST['id'] ?? $_GET['id'] ?? '');
         if ($id) {
             $modelo = new UsuarioModelo();
             $usuario = $modelo->obtenerPorId((int)$id);

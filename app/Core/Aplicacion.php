@@ -23,6 +23,19 @@ class Aplicacion {
             'use_strict_mode' => true,   // Rechaza IDs de sesión no generados por el servidor
         ]); 
 
+        // 1b. Encabezados HTTP de seguridad defensiva
+        if (!headers_sent()) {
+            header('X-Frame-Options: SAMEORIGIN');
+            header('X-Content-Type-Options: nosniff');
+            header('X-XSS-Protection: 1; mode=block');
+            header('Referrer-Policy: strict-origin-when-cross-origin');
+        }
+
+        // 1c. Inicializar token CSRF global si aún no existe en la sesión
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
         // 2. Cargamos las variables de entorno (.env)
         $this->cargarEntorno();
         

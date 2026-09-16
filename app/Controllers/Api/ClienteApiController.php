@@ -2,25 +2,27 @@
 
 namespace Cycsa\App\Controllers\Api;
 
-use Cycsa\App\Services\ClienteService;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
+use Cycsa\Nucleo\ControladorBase;
+use Cycsa\Nucleo\Peticion;
+use Cycsa\Nucleo\Respuesta;
+use Cycsa\Modulos\Clientes\Modelos\ClienteModelo;
 
 /**
- * Class ClienteApiController
- * @package App\Controllers\Api
+ * Controlador API REST para Clientes.
+ * Adaptado a la arquitectura nativa Cycsa (eliminadas dependencias fantasma de Laravel).
  */
-class ClienteApiController
+class ClienteApiController extends ControladorBase
 {
-    protected ClienteService $service;
+    private ClienteModelo $modelo;
 
-    public function __construct(ClienteService $service)
+    public function __construct()
     {
-        $this->service = $service;
+        $this->modelo = new ClienteModelo();
     }
 
-    public function index(): JsonResponse
+    public function index(Peticion $peticion, Respuesta $respuesta): void
     {
-        return response()->json($this->service->getAll());
+        $clientes = $this->modelo->obtenerTodos();
+        $respuesta->enviarJson(['status' => 'success', 'data' => $clientes]);
     }
 }

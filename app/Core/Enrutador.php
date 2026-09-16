@@ -47,16 +47,20 @@ class Enrutador {
             $middlewares = $rutaConfig['middlewares'] ?? [];
         }
 
-        // Ejecutar la lista de middlewares en orden
+        // Ejecutar la lista de middlewares en orden (comportamiento estricto fail-closed)
         foreach ($middlewares as $middlewareClass) {
-            if (class_exists($middlewareClass)) {
-                $middleware = new $middlewareClass();
-                if (method_exists($middleware, 'handle')) {
-                    $middleware->handle();
-                }
-            } else {
-                error_log("Error: Middleware class $middlewareClass no existe.");
+            if (!class_exists($middlewareClass)) {
+                error_log("Error de Seguridad: Middleware class '$middlewareClass' no existe o no pudo ser cargada.");
+                throw new \RuntimeException("Error de seguridad: Middleware '$middlewareClass' no encontrado.");
             }
+
+            $middleware = new $middlewareClass();
+            if (!method_exists($middleware, 'handle')) {
+                error_log("Error de Seguridad: Middleware class '$middlewareClass' no implementa el método 'handle'.");
+                throw new \RuntimeException("Error de seguridad: Middleware '$middlewareClass' no implementa el método 'handle'.");
+            }
+
+            $middleware->handle();
         }
 
         // Si el callback es un arreglo (ej. [Controlador::class, 'metodo'])

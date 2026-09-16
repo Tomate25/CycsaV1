@@ -49,17 +49,32 @@ class OperacionesControlador extends ControladorBase {
         $cotizacionesParaOS = $modelo->obtenerCotizacionesParaOS($busqueda);
         $ordenesActivas = $modelo->obtenerOSActivas($busqueda);
         $db = Conexion::obtenerInstancia();
-        $stmtCxcCodes = $db->query("SELECT factura_numero, estado, saldo FROM cuentas_por_cobrar");
+        $stmtCxcCodes = $db->query("SELECT * FROM cuentas_por_cobrar");
         $cxcRecords = $stmtCxcCodes->fetchAll(PDO::FETCH_ASSOC);
         $cxcMap = [];
         foreach ($cxcRecords as $r) {
             $cxcMap[$r['factura_numero']] = $r;
         }
+
+        // Obtener cuentas bancarias activas para cobro / transferencia
+        $stmtBancos = $db->query("SELECT id, banco_nombre, numero_cuenta, moneda, saldo_actual, id_cuenta_contable FROM bancos_cuentas WHERE activo = 1 ORDER BY banco_nombre ASC");
+        $bancos = $stmtBancos->fetchAll(PDO::FETCH_ASSOC);
         
         foreach ($ordenesActivas as &$o) {
             $o['items'] = $modelo->obtenerItemsOS((int)$o['id']);
             $o['hoja_solicitud'] = $modelo->obtenerHojaSolicitudPorOS((int)$o['id']);
+
+            // Verificar si ya cuenta con muestras aceptadas en laboratorio
+            $stmtRecCount = $db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_os = :id_os");
+            $stmtRecCount->execute(['id_os' => $o['id']]);
+            $o['muestras_aceptadas_lab'] = (int)$stmtRecCount->fetchColumn();
+
+            // Vincular estado y datos de facturación (CXC)
+            $facturaNum = 'FAC-' . ($o['cot_codigo'] ?? '');
+            $o['factura_numero'] = $facturaNum;
+            $o['cxc'] = $cxcMap[$facturaNum] ?? null;
         }
+        unset($o);
         
         $bitacora_logs = obtenerBitacoraModulo('operaciones');
 
@@ -70,6 +85,7 @@ class OperacionesControlador extends ControladorBase {
             'busqueda' => $busqueda,
             'tecnicos' => $modelo->obtenerTecnicosActivos(),
             'vehiculos' => $modelo->obtenerVehiculosActivos(),
+            'bancos' => $bancos,
             'cxcMap' => $cxcMap,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null,
@@ -785,15 +801,18 @@ class OperacionesControlador extends ControladorBase {
             }
         }
 
-        // Servir el archivo PDF
-        $rutaPdf = dirname(__DIR__, 4) . '/' . $informe['ruta_archivo_pdf'];
-        if (file_exists($rutaPdf)) {
+        // Servir el archivo PDF asegurando contención en el directorio almacenamiento/ (anti-path traversal)
+        $baseAlmacenamiento = realpath(dirname(__DIR__, 4) . '/almacenamiento');
+        $rutaPdf = dirname(__DIR__, 4) . '/' . ltrim(str_replace('\\', '/', $informe['ruta_archivo_pdf']), '/');
+        $rutaReal = realpath($rutaPdf);
+
+        if ($baseAlmacenamiento && $rutaReal && strpos($rutaReal, $baseAlmacenamiento) === 0 && file_exists($rutaReal)) {
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="' . basename($rutaPdf) . '"');
-            readfile($rutaPdf);
+            header('Content-Disposition: inline; filename="' . basename($rutaReal) . '"');
+            readfile($rutaReal);
             exit;
         } else {
-            die("El archivo PDF físico del informe no se encuentra en el servidor.");
+            die("El archivo PDF físico del informe no se encuentra en el servidor o la ruta es inválida.");
         }
     }
 
@@ -993,51 +1012,48 @@ class OperacionesControlador extends ControladorBase {
         $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra($anioActual);
         $tecnicos = $modelo->obtenerTecnicosActivos();
 
+        $detalles = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
+        $hsCtrl = new \Cycsa\Modulos\HojasServicio\Controladores\HojasServicioControlador();
+        $detectado = $hsCtrl->detectarParametrosYNaturaleza($detalles);
+
+        $nombreCliente = !empty($os['cliente_nombre']) ? $os['cliente_nombre'] : '';
+        $direccionProyecto = !empty($os['direccion_proyecto']) ? $os['direccion_proyecto'] : ($os['cliente_direccion'] ?? '');
+        $atencionA = !empty($os['atencion_a']) ? $os['atencion_a'] : $nombreCliente;
+        $procedenciaPunto = !empty($os['direccion_proyecto']) ? $os['direccion_proyecto'] : ($os['nombre_proyecto'] ?? '');
+
         // Obtener cliente y proyecto predeterminados de la O/S si es nueva hoja o si hay campos vacíos
         if (!$hoja) {
-            $hoja = [
+            $hoja = array_merge([
                 'id_os' => $idOS,
-                'nombre_empresa_o_cliente' => $os['cliente_nombre'],
-                'direccion_proyecto' => $os['direccion_proyecto'],
-                'telefono' => $os['cliente_telefono'],
+                'nombre_empresa_o_cliente' => $nombreCliente,
+                'razon_social' => $nombreCliente,
+                'direccion_proyecto' => $direccionProyecto,
+                'telefono' => $os['cliente_telefono'] ?? '',
                 'correo_electronico' => $os['cliente_email'] ?? '',
-                'nombre_persona_entrega_muestra' => !empty($os['atencion_a']) ? $os['atencion_a'] : $os['cliente_nombre'],
-                'naturaleza_muestra' => 'Concreto',
-                'procedencia_punto_muestreo' => '',
+                'nombre_persona_entrega_muestra' => $atencionA,
+                'naturaleza_muestra' => $detectado['naturaleza_muestra_str'],
+                'procedencia_punto_muestreo' => $procedenciaPunto,
                 'nombre_persona_toma_muestra' => $os['tecnico_muestreo'] ?? '',
                 'fecha_hora_toma_muestra' => !empty($os['fecha_muestreo']) ? $os['fecha_muestreo'] . ' ' . ($os['hora_muestreo'] ?: '08:00:00') : '',
                 'muestras_json' => '[]',
-                'req_resistencia_concreto' => 1,
-                'req_resistencia_adoquin' => 0,
-                'req_resistencia_bloques' => 0,
-                'req_otros_concreto' => '',
-                'req_granulometria' => 0,
-                'req_limites_atterberg' => 0,
-                'req_humedad' => 0,
-                'req_resistencia_corte' => 0,
-                'req_clasificacion_sucs_hr' => 0,
-                'req_proctor_sm' => 0,
-                'req_infiltracion' => 0,
-                'req_cbr' => 0,
-                'req_densidad' => 0,
-                'req_otros_suelo' => '',
-                'req_otros_materiales' => 0,
-                'descripcion_otros_analisis' => '',
                 'analisis_adicionales' => '',
                 'observaciones' => '',
                 'nombre_recibe_cycsa' => $_SESSION['usuario_nombre'] ?? '',
                 'firma_recibe_cycsa' => 0,
                 'firma_cliente' => 0,
                 'fecha_hora_llegada_laboratorio' => date('Y-m-d H:i')
-            ];
+            ], $detectado['flags']);
         } else {
             // Autocompletar datos del cliente si estaban vacíos
-            if (empty($hoja['nombre_empresa_o_cliente'])) $hoja['nombre_empresa_o_cliente'] = $os['cliente_nombre'];
-            if (empty($hoja['direccion_proyecto'])) $hoja['direccion_proyecto'] = $os['direccion_proyecto'];
-            if (empty($hoja['telefono'])) $hoja['telefono'] = $os['cliente_telefono'];
+            if (empty($hoja['nombre_empresa_o_cliente'])) $hoja['nombre_empresa_o_cliente'] = $nombreCliente;
+            if (empty($hoja['razon_social'])) $hoja['razon_social'] = $nombreCliente;
+            if (empty($hoja['direccion_proyecto'])) $hoja['direccion_proyecto'] = $direccionProyecto;
+            if (empty($hoja['telefono'])) $hoja['telefono'] = $os['cliente_telefono'] ?? '';
             if (empty($hoja['correo_electronico']) && !empty($os['cliente_email'])) $hoja['correo_electronico'] = $os['cliente_email'];
-            if (empty($hoja['nombre_persona_entrega_muestra'])) $hoja['nombre_persona_entrega_muestra'] = !empty($os['atencion_a']) ? $os['atencion_a'] : $os['cliente_nombre'];
+            if (empty($hoja['nombre_persona_entrega_muestra'])) $hoja['nombre_persona_entrega_muestra'] = $atencionA;
             if (empty($hoja['nombre_persona_toma_muestra']) && !empty($os['tecnico_muestreo'])) $hoja['nombre_persona_toma_muestra'] = $os['tecnico_muestreo'];
+            if (empty($hoja['procedencia_punto_muestreo'])) $hoja['procedencia_punto_muestreo'] = $procedenciaPunto;
+            if (empty($hoja['naturaleza_muestra'])) $hoja['naturaleza_muestra'] = $detectado['naturaleza_muestra_str'];
         }
 
         if (empty($_SESSION['csrf_token'])) {
@@ -1268,13 +1284,16 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        $nombrePdf = "CYCSA-RT-FM-13-" . $os['codigo_os'] . ".pdf";
+        $baseAlmacenamiento = realpath(dirname(__DIR__, 4) . '/almacenamiento');
+        $codigoSanitizado = preg_replace('/[^a-zA-Z0-9_-]/', '_', $os['codigo_os']);
+        $nombrePdf = "CYCSA-RT-FM-13-" . $codigoSanitizado . ".pdf";
         $rutaPdf = dirname(__DIR__, 4) . '/almacenamiento/solicitudes/' . $nombrePdf;
+        $rutaReal = realpath($rutaPdf);
 
-        if (file_exists($rutaPdf)) {
+        if ($baseAlmacenamiento && $rutaReal && strpos($rutaReal, $baseAlmacenamiento) === 0 && file_exists($rutaReal)) {
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="' . basename($rutaPdf) . '"');
-            readfile($rutaPdf);
+            header('Content-Disposition: inline; filename="' . basename($rutaReal) . '"');
+            readfile($rutaReal);
             exit;
         } else {
             // Si el archivo no existe físicamente pero los datos están en BD, lo generamos al vuelo
@@ -1408,6 +1427,10 @@ class OperacionesControlador extends ControladorBase {
 
     public function capturaMatrizProducto(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
         $idDetalle = (int)($_GET['id_detalle'] ?? 0);
         if ($idDetalle <= 0) {
             $_SESSION['error'] = 'ID de ensayo no especificado.';
@@ -1418,15 +1441,18 @@ class OperacionesControlador extends ControladorBase {
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
         $stmt = $db->prepare("
             SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad,
-                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo,
                    cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre,
-                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento,
+                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra
             FROM cotizacion_detalles cd
             JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
             JOIN cotizaciones cot ON os.id_cotizacion = cot.id
             JOIN clientes cli ON cot.id_cliente = cli.id
             LEFT JOIN productos p ON cd.id_producto = p.id
             LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+            LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
             WHERE cd.id = :id
             LIMIT 1
         ");
@@ -1444,47 +1470,79 @@ class OperacionesControlador extends ControladorBase {
         $stmtHoja->execute(['id_os' => $detalle['id_os']]);
         $hojaExistente = $stmtHoja->fetchColumn();
 
-        if (!$hojaExistente) {
-            $_SESSION['error'] = 'Debe registrar primero la Hoja de Servicio (CYCSA-RT-FM-13) en el módulo de Hojas de Servicio antes de capturar la matriz técnica de los productos.';
-            $respuesta->redirigir('/Cycsa/publico/hojas-servicio');
-            return;
-        }
+        $esCompactacion = esItemCompactacion($detalle);
 
-        // 2. Verificar asignación de técnico
-        if (empty($detalle['tecnico_muestreo'])) {
-            $_SESSION['error'] = 'Debe asignar primero un técnico muestreador de visita antes de rellenar la matriz del producto.';
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        // 1. Obtener muestras aceptadas formalmente en el laboratorio (recepcion_muestras)
+        $stmtMuestrasLab = $db->prepare("
+            SELECT rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote
+            FROM recepcion_muestras rm
+            LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+            WHERE rm.id_os = :id_os
+            ORDER BY rm.id ASC
+        ");
+        $stmtMuestrasLab->execute(['id_os' => $detalle['id_os']]);
+        $muestrasLabList = $stmtMuestrasLab->fetchAll(PDO::FETCH_ASSOC);
+
+        // Control de Trazabilidad (ISO 17025):
+        // Para ensayos convencionales de laboratorio con muestras físicas en custodia se requiere aceptación en Lab.
+        // Para COMPACTACIONES / ENSAYOS IN SITU no se emite solicitud de muestras a laboratorio: pasan directo a llenado de matriz técnica en Operaciones.
+        if (!$esCompactacion && empty($muestrasLabList)) {
+            $_SESSION['error'] = 'Las muestras de la Orden de Servicio (' . ($detalle['codigo_os'] ?? 'O/S') . ') aún no han sido aceptadas e ingresadas en el Laboratorio. Primero debe realizar la aceptación técnica en el módulo de Laboratorio para asignar los códigos oficiales (MS-XXXX-26).';
+            $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
             return;
         }
 
         $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
         if (empty($columnas)) {
-            $columnas = ["Código laboratorio", "Nombre muestra", "P.V.S.S (kg/m³)", "PVSC (kg/m³)", "Humedad Natural (%)", "Resultado / Lectura"];
+            $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
         }
 
-        // 3. Obtener muestras declaradas en la Hoja de Servicio (CYCSA-RT-FM-13)
-        $stmtHojaFull = $db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os LIMIT 1");
-        $stmtHojaFull->execute(['id_os' => $detalle['id_os']]);
-        $hojaFull = $stmtHojaFull->fetch(PDO::FETCH_ASSOC);
-
         $muestrasSeteadas = [];
-        if ($hojaFull && !empty($hojaFull['muestras_json'])) {
-            $muestrasArr = json_decode($hojaFull['muestras_json'], true) ?: [];
-            foreach ($muestrasArr as $idx => $m) {
-                if (!empty($m['nombre_muestra'])) {
+        if (!empty($muestrasLabList)) {
+            foreach ($muestrasLabList as $idx => $ml) {
+                $muestrasSeteadas[] = [
+                    'codigo_lab' => $ml['codigo_muestra'],
+                    'codigo_campo' => $ml['codigo_campo'],
+                    'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                ];
+            }
+        } else {
+            // Caso especial: Ensayos in situ / Compactación sin muestras físicas en lab
+            // Si existe hoja RT-FM-13, usar las muestras declaradas en ella
+            $modeloOp = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
+            $hoja = $modeloOp->obtenerHojaSolicitudPorOS((int)$detalle['id_os']);
+            $muestrasDeclaradas = (!empty($hoja['muestras_json'])) ? (json_decode($hoja['muestras_json'], true) ?: []) : [];
+
+            if (!empty($muestrasDeclaradas)) {
+                foreach ($muestrasDeclaradas as $idx => $md) {
+                    $codLab = !empty($md['nombre_muestra']) ? $md['nombre_muestra'] : sprintf("MC-%04d-%02d", $idx + 1, date('y'));
                     $muestrasSeteadas[] = [
-                        'codigo_lab' => $m['nombre_muestra'],
-                        'nombre_muestra' => !empty($m['descripcion']) ? $m['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                        'codigo_lab' => $codLab,
+                        'codigo_campo' => $md['nombre_muestra'] ?? ('Punto ' . ($idx + 1)),
+                        'nombre_muestra' => !empty($md['descripcion']) ? $md['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Punto ' . ($idx + 1))
+                    ];
+                }
+            } else {
+                $cantPuntos = max(1, (int)($detalle['cantidad'] ?? 1));
+                for ($k = 0; $k < $cantPuntos; $k++) {
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => 'Punto-' . ($k + 1),
+                        'codigo_campo' => 'Punto ' . ($k + 1),
+                        'nombre_muestra' => 'Punto de ensayo in situ #' . ($k + 1)
                     ];
                 }
             }
         }
 
+        $rutaSchemaJson = dirname(__DIR__, 4) . '/database/ensayos/formatos_schema.json';
+        $formatosSchemaJson = file_exists($rutaSchemaJson) ? file_get_contents($rutaSchemaJson) : '{}';
+
         $this->renderizar('operaciones/vistas/captura_matriz', [
             'titulo' => 'Captura de Matriz Técnica - ' . $detalle['descripcion_ensayo'],
             'detalle' => $detalle,
             'columnas' => $columnas,
-            'muestrasSeteadas' => $muestrasSeteadas
+            'muestrasSeteadas' => $muestrasSeteadas,
+            'formatosSchemaJson' => $formatosSchemaJson
         ]);
     }
 
@@ -1512,4 +1570,660 @@ class OperacionesControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/operaciones');
         }
     }
+
+    /**
+     * Vista de Impresión Oficial con Membrete Horizontal CYCSA para cualquier Matriz Técnica
+     */
+    public function imprimirMatrizProducto(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $idDetalle = (int)($_GET['id_detalle'] ?? ($_GET['id'] ?? 0));
+        if ($idDetalle <= 0) {
+            $_SESSION['error'] = 'ID de ensayo no especificado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmt = $db->prepare("
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo,
+                   cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre, cli.email AS cliente_email,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento,
+                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.observaciones
+            FROM cotizacion_detalles cd
+            JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+            JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+            JOIN clientes cli ON cot.id_cliente = cli.id
+            LEFT JOIN productos p ON cd.id_producto = p.id
+            LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+            LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+            WHERE cd.id = :id
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $idDetalle]);
+        $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$detalle) {
+            $_SESSION['error'] = 'Producto o ensayo no encontrado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+        if (empty($columnas)) {
+            $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
+        }
+
+        $esCompactacion = esItemCompactacion($detalle);
+
+        $stmtMuestrasLab = $db->prepare("
+            SELECT rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote
+            FROM recepcion_muestras rm
+            LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+            WHERE rm.id_os = :id_os
+            ORDER BY rm.id ASC
+        ");
+        $stmtMuestrasLab->execute(['id_os' => $detalle['id_os']]);
+        $muestrasLabList = $stmtMuestrasLab->fetchAll(PDO::FETCH_ASSOC);
+
+        $muestrasSeteadas = [];
+        if (!empty($muestrasLabList)) {
+            foreach ($muestrasLabList as $idx => $ml) {
+                $muestrasSeteadas[] = [
+                    'codigo_lab' => $ml['codigo_muestra'],
+                    'codigo_campo' => $ml['codigo_campo'],
+                    'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                ];
+            }
+        } else {
+            $modeloOp = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
+            $siguienteCorr = $modeloOp->obtenerSiguienteConsecutivoMuestra((int)date('Y'), 'MS');
+            $anioShort = date('y');
+            $cantPuntos = max(1, (int)($detalle['cantidad'] ?? 1));
+            for ($k = 0; $k < $cantPuntos; $k++) {
+                $codigoOficial = sprintf("MS-%04d-%02d", $siguienteCorr + $k, $anioShort);
+                $muestrasSeteadas[] = [
+                    'codigo_lab' => $codigoOficial,
+                    'codigo_campo' => 'Muestra ' . ($k + 1),
+                    'nombre_muestra' => 'Muestra tomada en campo #' . ($k + 1)
+                ];
+            }
+        }
+
+        $rutaSchemaJson = dirname(__DIR__, 4) . '/database/ensayos/formatos_schema.json';
+        $formatosSchemaJson = file_exists($rutaSchemaJson) ? file_get_contents($rutaSchemaJson) : '{}';
+
+        // Renderizado directo sin layout maestro para impresión limpia
+        require dirname(__DIR__) . '/Vistas/matriz_print.php';
+    }
+
+    /**
+     * Descarga o visualización directa del PDF oficial de la Matriz Técnica con membrete horizontal CYCSA
+     */
+    public function descargarMatrizPDF(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $idDetalle = (int)($_GET['id_detalle'] ?? ($_GET['id'] ?? 0));
+        if ($idDetalle <= 0) {
+            $_SESSION['error'] = 'ID de ensayo no especificado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmt = $db->prepare("
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo,
+                   cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre, cli.email AS cliente_email,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento,
+                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.observaciones
+            FROM cotizacion_detalles cd
+            JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+            JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+            JOIN clientes cli ON cot.id_cliente = cli.id
+            LEFT JOIN productos p ON cd.id_producto = p.id
+            LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+            LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+            WHERE cd.id = :id
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $idDetalle]);
+        $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$detalle) {
+            $_SESSION['error'] = 'Producto o ensayo no encontrado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+        $muestrasSeteadas = [];
+
+        $pdfBytes = generarMatrizTecnicaPDF($detalle, $muestrasSeteadas, $columnas);
+
+        $codigoLimpio = preg_replace('/[^a-zA-Z0-9_-]/', '_', $detalle['codigo_os']);
+        $nombreArchivo = "Matriz_Tecnica_{$codigoLimpio}_{$idDetalle}.pdf";
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $nombreArchivo . '"');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        echo $pdfBytes;
+        exit;
+    }
+
+    /**
+     * Envía la Matriz Técnica Oficial con Resultados en PDF al correo electrónico del cliente
+     */
+    public function enviarMatrizCliente(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $datos = $peticion->esPost() ? $peticion->obtenerDatos() : $_GET;
+        $idDetalle = (int)($datos['id_detalle'] ?? ($datos['id'] ?? 0));
+
+        if ($idDetalle <= 0) {
+            $_SESSION['error'] = 'ID de ensayo no especificado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        if ($peticion->esPost()) {
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+        }
+
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmt = $db->prepare("
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo,
+                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.nombre_proyecto,
+                   cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre, cli.email AS cliente_email,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento,
+                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.observaciones
+            FROM cotizacion_detalles cd
+            JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+            JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+            JOIN clientes cli ON cot.id_cliente = cli.id
+            LEFT JOIN productos p ON cd.id_producto = p.id
+            LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+            LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+            WHERE cd.id = :id
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $idDetalle]);
+        $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$detalle) {
+            $_SESSION['error'] = 'Producto o ensayo no encontrado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        // VALIDACIÓN CRUCIAL: Solo se puede enviar si la matriz TIENE RESULTADOS
+        $resultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+        if (empty($resultados)) {
+            $_SESSION['error'] = 'No se puede enviar el informe al cliente porque la matriz técnica aún no tiene resultados registrados.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        // Destinatario: tomar el especificado en el formulario o el registrado en la base de datos del cliente
+        $destinatario = trim($datos['destinatario'] ?? ($detalle['cliente_email'] ?? ''));
+        if (empty($destinatario) || !filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
+            $_SESSION['error'] = 'El cliente no tiene un correo electrónico válido registrado para el envío (' . htmlspecialchars($destinatario) . '). Por favor especifique una dirección válida.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        // Generar PDF idéntico a la impresión oficial con membrete horizontal
+        $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+        $muestrasSeteadas = [];
+        $pdfBytes = generarMatrizTecnicaPDF($detalle, $muestrasSeteadas, $columnas);
+
+        $codigoLimpio = preg_replace('/[^a-zA-Z0-9_-]/', '_', $detalle['codigo_os']);
+        $nombrePdf = "Informe_Ensayo_{$codigoLimpio}_{$idDetalle}.pdf";
+
+        $adjuntos = [
+            [
+                'contenido' => $pdfBytes,
+                'nombre' => $nombrePdf
+            ]
+        ];
+
+        $codigoDoc = !empty($detalle['codigo_documento']) ? $detalle['codigo_documento'] : 'CYCSA-RT-FM-22';
+        $asunto = !empty(trim($datos['asunto'] ?? '')) 
+            ? trim($datos['asunto']) 
+            : ("Informe Oficial de Ensayo - " . $detalle['codigo_os'] . " - " . $detalle['descripcion_ensayo'] . " - CYCSA");
+
+        $clienteNom = htmlspecialchars($detalle['cliente_nombre'] ?? 'Estimado Cliente');
+        $proyNom = htmlspecialchars($detalle['nombre_proyecto'] ?? 'Proyecto');
+        $ensayoNom = htmlspecialchars($detalle['descripcion_ensayo'] ?? 'Ensayo');
+        $normaAstm = htmlspecialchars(!empty($detalle['norma_astm']) ? $detalle['norma_astm'] : 'ASTM Oficial');
+        $codigoOS = htmlspecialchars($detalle['codigo_os'] ?? '');
+        $tecnicoResp = htmlspecialchars(!empty($detalle['tecnico_muestreo']) ? $detalle['tecnico_muestreo'] : 'Personal Técnico Autorizado');
+        $fechaToma = !empty($detalle['fecha_hora_toma_muestra']) ? date('d/m/Y H:i', strtotime($detalle['fecha_hora_toma_muestra'])) : date('d/m/Y');
+
+        $cuerpoHTML = "
+        <div style=\"max-width: 650px; margin: 0 auto; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #1e293b; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background-color: #ffffff;\">
+            <div style=\"background-color: #103487; color: #ffffff; padding: 20px 25px;\">
+                <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">Consultoría y Construcción S.A. (CYCSA)</h2>
+                <div style=\"font-size: 12px; opacity: 0.9; margin-top: 4px;\">Laboratorio de Ensayos de Materiales y Control de Calidad &bull; ISO/IEC 17025:2017</div>
+            </div>
+            
+            <div style=\"padding: 25px;\">
+                <h3 style=\"color: #103487; margin-top: 0; font-size: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;\">Informe Oficial de Resultados Técnicos</h3>
+                <p style=\"font-size: 14px;\">Estimado Cliente <strong>{$clienteNom}</strong>,</p>
+                <p style=\"font-size: 13.5px;\">Le notificamos formalmente que se han finalizado y procesado los ensayos técnicos correspondientes a su Orden de Servicio. Los resultados han sido debidamente revisados y validados.</p>
+                
+                <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 18px 0;\">
+                    <table style=\"width: 100%; font-size: 12.5px; border-collapse: collapse;\">
+                        <tr>
+                            <td style=\"padding: 5px 0; color: #64748b; width: 38%;\"><strong>No. Orden Servicio:</strong></td>
+                            <td style=\"padding: 5px 0; font-family: monospace; font-weight: bold; color: #103487;\">{$codigoOS}</td>
+                        </tr>
+                        <tr>
+                            <td style=\"padding: 5px 0; color: #64748b;\"><strong>Proyecto:</strong></td>
+                            <td style=\"padding: 5px 0; font-weight: 600;\">{$proyNom}</td>
+                        </tr>
+                        <tr>
+                            <td style=\"padding: 5px 0; color: #64748b;\"><strong>Ensayo / Servicio:</strong></td>
+                            <td style=\"padding: 5px 0;\">{$ensayoNom}</td>
+                        </tr>
+                        <tr>
+                            <td style=\"padding: 5px 0; color: #64748b;\"><strong>Norma Técnica:</strong></td>
+                            <td style=\"padding: 5px 0; font-family: monospace; font-weight: 600;\">{$normaAstm}</td>
+                        </tr>
+                        <tr>
+                            <td style=\"padding: 5px 0; color: #64748b;\"><strong>Código de Formato:</strong></td>
+                            <td style=\"padding: 5px 0; font-family: monospace; font-weight: bold;\">{$codigoDoc}</td>
+                        </tr>
+                        <tr>
+                            <td style=\"padding: 5px 0; color: #64748b;\"><strong>Responsable Técnico:</strong></td>
+                            <td style=\"padding: 5px 0;\">{$tecnicoResp}</td>
+                        </tr>
+                        <tr>
+                            <td style=\"padding: 5px 0; color: #64748b;\"><strong>Fecha de Registro:</strong></td>
+                            <td style=\"padding: 5px 0;\">{$fechaToma}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div style=\"background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #065f46; display: flex; align-items: center; gap: 10px;\">
+                    <span style=\"font-size: 18px;\">📎</span>
+                    <span><strong>Archivo Adjunto:</strong> Adjunto a este mensaje encontrará el documento oficial en formato PDF (<em>{$nombrePdf}</em>) con la matriz técnica completa de resultados, condiciones de ensayo y firmas correspondientes.</span>
+                </div>
+
+                <p style=\"font-size: 12.5px; color: #475569;\">Si requiere información complementaria o aclaración sobre los resultados obtenidos, nuestro equipo de aseguramiento de calidad se encuentra a su entera disposición.</p>
+                
+                <div style=\"margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 11.5px; color: #94a3b8;\">
+                    Consultoría y Construcción S.A. (CYCSA) &bull; Km 83.5 Carretera León-Managua &bull; Tel: (505) 2310-3988 / (505) 8851-6377 &bull; Correo: gerencia@cycsanic.com
+                </div>
+            </div>
+        </div>";
+
+        $enviado = enviarCorreo($destinatario, $asunto, $cuerpoHTML, '', $adjuntos);
+
+        if ($enviado) {
+            registrarBitacora('operaciones', 'enviar_matriz_cliente', 'Enviado informe de resultados de matriz (' . $detalle['codigo_os'] . ' - ' . $detalle['descripcion_ensayo'] . ') al correo: ' . $destinatario, $idDetalle);
+            
+            $logDir = dirname(__DIR__, 4) . '/storage/logs';
+            if (!is_dir($logDir)) {
+                @mkdir($logDir, 0777, true);
+            }
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] Informe de Matriz ENVIADO al Cliente. Destinatario: {$destinatario} | O/S: {$detalle['codigo_os']} | Ensayo: {$detalle['descripcion_ensayo']} | Archivo: {$nombrePdf}\n";
+            @file_put_contents($logDir . '/operaciones_emails.log', $logMsg, FILE_APPEND);
+
+            $_SESSION['exito'] = "¡Informe de resultados en PDF enviado con éxito al correo del cliente ({$destinatario})!";
+        } else {
+            $_SESSION['error'] = "No se pudo conectar al servidor de correo saliente. Verifique la configuración SMTP o revise storage/logs/mail_errors.log.";
+        }
+
+        $retorno = $_GET['retorno'] ?? '';
+        if ($retorno === 'print') {
+            $respuesta->redirigir('/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=' . $idDetalle);
+        } else {
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    /**
+     * Procesa la facturación oficial de una Orden de Servicio (O/S).
+     * Permite facturar en cualquier momento del proceso sin restricciones de hojas o resultados.
+     * Soporta: Efectivo (Caja Principal), Transferencia Bancaria o Crédito.
+     * Afecta cuentas contables, saldos de bancos/caja, CXC y registra el asiento en el Libro Diario.
+     */
+    public function procesarFacturacion(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if (!$peticion->esPost()) {
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+
+        if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $idOS = (int)($datos['id_os'] ?? 0);
+        $metodoPago = strtolower(trim($datos['metodo_pago'] ?? 'efectivo'));
+        $monto = (float)($datos['monto'] ?? 0.0);
+        $fecha = !empty($datos['fecha']) ? trim($datos['fecha']) : date('Y-m-d');
+        $idBancoCuenta = (int)($datos['id_banco_cuenta'] ?? 0);
+        $referencia = trim($datos['referencia'] ?? '');
+        $diasCredito = max(0, (int)($datos['dias_credito'] ?? 0));
+        $facturaNumeroPersonalizada = trim($datos['factura_numero'] ?? '');
+
+        if ($idOS <= 0) {
+            $_SESSION['error'] = 'Identificador de Orden de Servicio no válido.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        if ($monto <= 0) {
+            $_SESSION['error'] = 'El monto a facturar debe ser mayor a cero.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        if ($metodoPago === 'transferencia' && $idBancoCuenta <= 0) {
+            $_SESSION['error'] = 'Debe seleccionar una cuenta bancaria para el cobro por transferencia.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $db = Conexion::obtenerInstancia();
+
+        // Obtener datos completos de la O/S, cotización y cliente
+        $stmtOS = $db->prepare("
+            SELECT os.*, 
+                   cot.codigo AS cot_codigo, cot.total AS cot_total, cot.id_cliente,
+                   cli.nombre_razon_social AS cliente_nombre, cli.numero_ruc AS cliente_ruc, cli.cuenta_cxc
+            FROM ordenes_servicio os
+            JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+            JOIN clientes cli ON cot.id_cliente = cli.id
+            WHERE os.id = :id
+        ");
+        $stmtOS->execute(['id' => $idOS]);
+        $os = $stmtOS->fetch(PDO::FETCH_ASSOC);
+
+        if (!$os) {
+            $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $facturaNum = !empty($facturaNumeroPersonalizada) ? $facturaNumeroPersonalizada : ('FAC-' . $os['cot_codigo']);
+
+        try {
+            $db->beginTransaction();
+
+            // 1. Obtener o crear el registro en cuentas_por_cobrar
+            $stmtCxc = $db->prepare("SELECT * FROM cuentas_por_cobrar WHERE factura_numero = :fn FOR UPDATE");
+            $stmtCxc->execute(['fn' => $facturaNum]);
+            $cxc = $stmtCxc->fetch(PDO::FETCH_ASSOC);
+
+            $saldoTotal = (float)$os['cot_total'];
+            $saldoActual = $cxc ? (float)$cxc['saldo'] : $saldoTotal;
+            $nuevoSaldo = max(0.0, $saldoActual - $monto);
+
+            if ($metodoPago === 'credito') {
+                $estadoCxc = 'Pendiente';
+            } else {
+                $estadoCxc = ($nuevoSaldo <= 0.01) ? 'Pagado' : 'Parcial';
+            }
+
+            $fechaVencimiento = ($metodoPago === 'credito' && $diasCredito > 0) 
+                ? date('Y-m-d', strtotime("+$diasCredito days", strtotime($fecha)))
+                : $fecha;
+
+            $notaMetodo = match($metodoPago) {
+                'efectivo' => "Facturado en Efectivo (Caja Principal)",
+                'transferencia' => "Facturado vía Transferencia (Ref: " . ($referencia ?: 'S/R') . ")",
+                'credito' => "Factura a Crédito ($diasCredito días de plazo)",
+                default => "Facturación O/S"
+            };
+
+            if ($cxc) {
+                $cxcId = (int)$cxc['id'];
+                $updCxc = $db->prepare("
+                    UPDATE cuentas_por_cobrar 
+                    SET saldo = :saldo, estado = :estado, fecha_vencimiento = :venc, 
+                        notas = CONCAT(IFNULL(notas, ''), ' | ', :nota)
+                    WHERE id = :id
+                ");
+                $updCxc->execute([
+                    'saldo' => $nuevoSaldo,
+                    'estado' => $estadoCxc,
+                    'venc' => $fechaVencimiento,
+                    'nota' => $notaMetodo . ' el ' . date('d/m/Y H:i'),
+                    'id' => $cxcId
+                ]);
+            } else {
+                $insCxc = $db->prepare("
+                    INSERT INTO cuentas_por_cobrar (id_cliente, factura_numero, monto, saldo, estado, fecha_emision, fecha_vencimiento, notas)
+                    VALUES (:id_cliente, :factura_numero, :monto, :saldo, :estado, :fecha, :venc, :notas)
+                ");
+                $insCxc->execute([
+                    'id_cliente' => $os['id_cliente'],
+                    'factura_numero' => $facturaNum,
+                    'monto' => $saldoTotal,
+                    'saldo' => $nuevoSaldo,
+                    'estado' => $estadoCxc,
+                    'fecha' => $fecha,
+                    'venc' => $fechaVencimiento,
+                    'notas' => $notaMetodo . ' el ' . date('d/m/Y H:i')
+                ]);
+                $cxcId = (int)$db->lastInsertId();
+            }
+
+            // 2. Si es transferencia, actualizar saldo en bancos_cuentas y registrar bancos_transacciones
+            $bancoInfo = null;
+            if ($metodoPago === 'transferencia') {
+                $stmtBco = $db->prepare("SELECT * FROM bancos_cuentas WHERE id = :id FOR UPDATE");
+                $stmtBco->execute(['id' => $idBancoCuenta]);
+                $bancoInfo = $stmtBco->fetch(PDO::FETCH_ASSOC);
+
+                if (!$bancoInfo) {
+                    throw new \Exception("La cuenta bancaria seleccionada no existe.");
+                }
+
+                // Incrementar saldo de la cuenta bancaria
+                $updBco = $db->prepare("UPDATE bancos_cuentas SET saldo_actual = saldo_actual + :monto WHERE id = :id");
+                $updBco->execute([
+                    'monto' => $monto,
+                    'id' => $idBancoCuenta
+                ]);
+
+                // Registrar transacción bancaria oficial
+                $insTx = $db->prepare("
+                    INSERT INTO bancos_transacciones (id_banco_cuenta, tipo_transaccion, numero_documento, beneficiario, monto, fecha, estado, descripcion)
+                    VALUES (:id_banco, 'TRANSFERENCIA', :doc, :beneficiario, :monto, :fecha, 'Cobrado', :desc)
+                ");
+                $insTx->execute([
+                    'id_banco' => $idBancoCuenta,
+                    'doc' => !empty($referencia) ? $referencia : ('TRANS-' . $facturaNum),
+                    'beneficiario' => $os['cliente_nombre'],
+                    'monto' => $monto,
+                    'fecha' => $fecha,
+                    'desc' => "Cobro de Factura " . $facturaNum . " (O/S " . $os['codigo_os'] . ") - Banco " . $bancoInfo['banco_nombre']
+                ]);
+            }
+
+            // 3. Registrar el Asiento Diario de Contabilidad (Partida Doble Balanceada)
+            // Debe:
+            // - Efectivo: Caja Principal (1010101, id=4)
+            // - Transferencia: Cuenta Contable del Banco ($bancoInfo['id_cuenta_contable'])
+            // - Crédito: Clientes Nacionales (1010201, id=13)
+            // Haber:
+            // - Ingresos por Laboratorio (4010106, id=208, o 206)
+            $idCuentaDebe = 4; // Caja Principal por defecto
+            if ($metodoPago === 'transferencia' && $bancoInfo && !empty($bancoInfo['id_cuenta_contable'])) {
+                $idCuentaDebe = (int)$bancoInfo['id_cuenta_contable'];
+            } elseif ($metodoPago === 'credito') {
+                $idCuentaDebe = 13; // Clientes Nacionales
+            }
+
+            $idCuentaHaber = 208; // Consultorías-Laboratorios (G)
+            $stmtCtaCheck = $db->prepare("SELECT id FROM cuentas_contables WHERE id = :id");
+            $stmtCtaCheck->execute(['id' => $idCuentaHaber]);
+            if (!$stmtCtaCheck->fetchColumn()) {
+                $stmtCtaAlt = $db->query("SELECT id FROM cuentas_contables WHERE codigo LIKE '40101%' AND tipo = 'DETALLE' LIMIT 1");
+                $idCuentaHaber = (int)($stmtCtaAlt->fetchColumn() ?: 206);
+            }
+
+            $conceptoPartida = match($metodoPago) {
+                'efectivo' => "Cobro Factura $facturaNum en Efectivo (Caja Principal) - O/S {$os['codigo_os']} - Cliente: {$os['cliente_nombre']}",
+                'transferencia' => "Cobro Factura $facturaNum vía Transferencia Bancaria ({$bancoInfo['banco_nombre']} {$bancoInfo['numero_cuenta']}) - Ref: " . ($referencia ?: 'S/R') . " - O/S {$os['codigo_os']}",
+                'credito' => "Emisión de Factura a Crédito $facturaNum ($diasCredito días) - O/S {$os['codigo_os']} - Cliente: {$os['cliente_nombre']}",
+                default => "Facturación O/S {$os['codigo_os']} - Factura $facturaNum"
+            };
+
+            $contabilidadModelo = new \Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo();
+            $lineasAsiento = [
+                ['id_cuenta_contable' => $idCuentaDebe, 'debe' => $monto, 'haber' => 0.0],
+                ['id_cuenta_contable' => $idCuentaHaber, 'debe' => 0.0, 'haber' => $monto]
+            ];
+
+            $partidaId = $contabilidadModelo->registrarAsientoContable(
+                $fecha,
+                $conceptoPartida,
+                'FACTURACION',
+                $cxcId,
+                $lineasAsiento
+            );
+
+            $db->commit();
+
+            // 4. Bitácora de Auditoría
+            $descBitacora = "Facturación registrada: Factura N° $facturaNum | O/S: {$os['codigo_os']} | Monto: C$" . number_format($monto, 2) . " | Método: " . ucfirst($metodoPago);
+            if ($partidaId) {
+                $descBitacora .= " | Asiento Diario: PD-" . str_pad($partidaId, 5, '0', STR_PAD_LEFT);
+            }
+            registrarBitacora('operaciones', 'facturacion', $descBitacora, $idOS);
+            registrarBitacora('contabilidad', 'facturacion', $descBitacora, $cxcId);
+
+            $_SESSION['exito'] = "¡Factura $facturaNum registrada y cobrada exitosamente! Se afectó la cuenta correspondiente y se registró el movimiento en el Libro Diario.";
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+
+        } catch (\Exception $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log("Error en procesarFacturacion: " . $e->getMessage());
+            $_SESSION['error'] = "Error al procesar la facturación: " . $e->getMessage();
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    /**
+     * Muestra la vista oficial e imprimible de la Factura Comercial / Laboratorio.
+     */
+    public function imprimirFactura(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $idOS = (int)($_GET['id_os'] ?? 0);
+        $facturaNumParam = trim($_GET['factura'] ?? '');
+
+        $db = Conexion::obtenerInstancia();
+        $os = null;
+
+        if ($idOS > 0) {
+            $stmtOS = $db->prepare("
+                SELECT os.*, 
+                       cot.codigo AS cot_codigo, cot.total AS cot_total, cot.id_cliente,
+                       cot.subtotal AS cot_subtotal, cot.impuesto AS cot_iva, cot.condicion_pago,
+                       cli.nombre_razon_social AS cliente_nombre, cli.numero_ruc AS cliente_ruc,
+                       cli.direccion AS cliente_direccion, cli.telefono AS cliente_telefono,
+                       cli.email AS cliente_email, cli.contacto_nombre
+                FROM ordenes_servicio os
+                JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+                JOIN clientes cli ON cot.id_cliente = cli.id
+                WHERE os.id = :id
+            ");
+            $stmtOS->execute(['id' => $idOS]);
+            $os = $stmtOS->fetch(PDO::FETCH_ASSOC);
+        } elseif (!empty($facturaNumParam)) {
+            $stmtOS = $db->prepare("
+                SELECT os.*, 
+                       cot.codigo AS cot_codigo, cot.total AS cot_total, cot.id_cliente,
+                       cot.subtotal AS cot_subtotal, cot.impuesto AS cot_iva, cot.condicion_pago,
+                       cli.nombre_razon_social AS cliente_nombre, cli.numero_ruc AS cliente_ruc,
+                       cli.direccion AS cliente_direccion, cli.telefono AS cliente_telefono,
+                       cli.email AS cliente_email, cli.contacto_nombre
+                FROM ordenes_servicio os
+                JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+                JOIN clientes cli ON cot.id_cliente = cli.id
+                JOIN cuentas_por_cobrar cxc ON cxc.id_cliente = cli.id
+                WHERE cxc.factura_numero = :fn
+                LIMIT 1
+            ");
+            $stmtOS->execute(['fn' => $facturaNumParam]);
+            $os = $stmtOS->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if (empty($os)) {
+            $_SESSION['error'] = 'Factura u Orden de Servicio no encontrada.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $facturaNum = !empty($facturaNumParam) ? $facturaNumParam : ('FAC-' . $os['cot_codigo']);
+
+        // Obtener el registro de la CXC
+        $stmtCxc = $db->prepare("SELECT * FROM cuentas_por_cobrar WHERE factura_numero = :fn LIMIT 1");
+        $stmtCxc->execute(['fn' => $facturaNum]);
+        $cxc = $stmtCxc->fetch(PDO::FETCH_ASSOC);
+
+        // Obtener los ítems facturados desde cotizacion_detalles
+        $stmtItems = $db->prepare("
+            SELECT cd.*, p.nombre_comercial
+            FROM cotizacion_detalles cd
+            LEFT JOIN productos p ON cd.id_producto = p.id
+            WHERE cd.id_cotizacion = :id_cot
+            ORDER BY cd.id ASC
+        ");
+        $stmtItems->execute(['id_cot' => $os['id_cotizacion']]);
+        $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+
+        // Si hay transacción bancaria o asiento de diario vinculado
+        $transaccionBancaria = null;
+        $asientoDiario = null;
+        if ($cxc) {
+            $stmtTx = $db->prepare("SELECT bt.*, bc.banco_nombre, bc.numero_cuenta, bc.moneda 
+                                    FROM bancos_transacciones bt 
+                                    JOIN bancos_cuentas bc ON bt.id_banco_cuenta = bc.id 
+                                    WHERE bt.descripcion LIKE :pat 
+                                    ORDER BY bt.id DESC LIMIT 1");
+            $stmtTx->execute(['pat' => "%" . $facturaNum . "%"]);
+            $transaccionBancaria = $stmtTx->fetch(PDO::FETCH_ASSOC);
+
+            $stmtAs = $db->prepare("SELECT pd.*, pdd.debe, pdd.haber, cc.codigo AS cuenta_codigo, cc.nombre AS cuenta_nombre 
+                                    FROM partidas_diario pd 
+                                    JOIN partidas_diario_detalles pdd ON pd.id = pdd.id_partida 
+                                    JOIN cuentas_contables cc ON pdd.id_cuenta_contable = cc.id 
+                                    WHERE pd.origen_id = :cxc_id 
+                                    ORDER BY pd.id DESC");
+            $stmtAs->execute(['cxc_id' => $cxc['id']]);
+            $asientoDiario = $stmtAs->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        require dirname(__DIR__) . '/Vistas/factura_print.php';
+        exit;
+    }
 }
+

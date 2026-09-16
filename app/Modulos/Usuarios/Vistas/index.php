@@ -146,10 +146,18 @@
                     </td>
                     <td style="text-align: right;">
                         <?php if ((int)($usuario['bloqueado'] ?? 0) === 1): ?>
-                            <a href="/Cycsa/publico/usuarios/desbloquear?id=<?= codificarId($usuario['id']) ?>" class="btn-accion" title="Desbloquear" style="color: #ea580c; margin-right: 5px;" onclick="return confirm('¿Estás seguro de que deseas desbloquear a este usuario y restablecer sus intentos de acceso?');"><i class="fa-solid fa-lock-open"></i></a>
+                            <form action="/Cycsa/publico/usuarios/desbloquear" method="POST" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que deseas desbloquear a este usuario y restablecer sus intentos de acceso?');">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="id" value="<?= codificarId($usuario['id']) ?>">
+                                <button type="submit" class="btn-accion" title="Desbloquear" style="background: none; border: none; color: #ea580c; margin-right: 5px; cursor: pointer; padding: 0;"><i class="fa-solid fa-lock-open"></i></button>
+                            </form>
                         <?php endif; ?>
                         <a href="/Cycsa/publico/usuarios/editar?id=<?= codificarId($usuario['id']) ?>" class="btn-accion btn-editar" title="Editar"><i class="fa-solid fa-pen-to-square"></i></a>
-                        <a href="/Cycsa/publico/usuarios/eliminar?id=<?= codificarId($usuario['id']) ?>" class="btn-accion btn-eliminar" title="Desactivar" onclick="return confirm('¿Estás seguro de que deseas desactivar a este usuario? Ya no podrá iniciar sesión.');"><i class="fa-solid fa-trash"></i></a>
+                        <form action="/Cycsa/publico/usuarios/eliminar" method="POST" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que deseas desactivar a este usuario? Ya no podrá iniciar sesión.');">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="id" value="<?= codificarId($usuario['id']) ?>">
+                            <button type="submit" class="btn-accion btn-eliminar" title="Desactivar" style="background: none; border: none; cursor: pointer; padding: 0;"><i class="fa-solid fa-trash"></i></button>
+                        </form>
                     </td>
                 </tr>
                 <?php endforeach; ?>

@@ -304,7 +304,7 @@ class ClientesControlador extends ControladorBase {
         $respuesta->enviarJson($resultados);
     }
 
-    // 🔍 BUSCAR CLIENTE POR RUC O CÉDULA VÍA AJAX (Público - Sin sesión)
+    // 🔍 BUSCAR CLIENTE POR RUC O CÉDULA VÍA AJAX (Público - Sanitizado contra fuga de PII)
     public function buscarPorIdentificacionPublico(Peticion $peticion, Respuesta $respuesta): void {
         $identificacion = trim($_GET['identificacion'] ?? '');
         if ($identificacion === '') {
@@ -314,21 +314,47 @@ class ClientesControlador extends ControladorBase {
         $modelo = new ClienteModelo();
         $cliente = $modelo->obtenerPorIdentificacion($identificacion);
         if ($cliente) {
+            $esAutenticado = isset($_SESSION['usuario_id']);
+            $email = $cliente['email'] ?? '';
+            
+            // Si la consulta es anónima, enmascarar correo para evitar harvesting de PII
+            if (!$esAutenticado && !empty($email)) {
+                $partes = explode('@', $email);
+                if (count($partes) === 2) {
+                    $nombreUsuario = $partes[0];
+                    $dominio = $partes[1];
+                    $len = strlen($nombreUsuario);
+                    if ($len <= 2) {
+                        $enmascarado = substr($nombreUsuario, 0, 1) . '***';
+                    } else {
+                        $enmascarado = substr($nombreUsuario, 0, 1) . str_repeat('*', min(5, $len - 2)) . substr($nombreUsuario, -1);
+                    }
+                    $email = $enmascarado . '@' . $dominio;
+                }
+            }
+
+            $payload = [
+                'id' => $cliente['id'],
+                'nombre_razon_social' => $cliente['nombre_razon_social'],
+                'email' => $email,
+                'numero_ruc' => $cliente['numero_ruc'] ?? '',
+                'numero_cedula' => $cliente['numero_cedula'] ?? '',
+                'identificacion' => $cliente['identificacion'] ?? $identificacion
+            ];
+
+            // Datos sensibles de contacto (PII) solo se exponen a operadores autenticados
+            if ($esAutenticado) {
+                $payload['nombre_cliente'] = $cliente['nombre_cliente'] ?? '';
+                $payload['primer_apellido'] = $cliente['primer_apellido'] ?? '';
+                $payload['segundo_apellido'] = $cliente['segundo_apellido'] ?? '';
+                $payload['tipo_cliente'] = $cliente['tipo_cliente'] ?? 'Jurídico';
+                $payload['direccion'] = $cliente['direccion'] ?? '';
+                $payload['telefono'] = $cliente['telefono'] ?? '';
+            }
+
             $respuesta->enviarJson([
                 'existe' => true,
-                'cliente' => [
-                    'id' => $cliente['id'],
-                    'nombre_razon_social' => $cliente['nombre_razon_social'],
-                    'nombre_cliente' => $cliente['nombre_cliente'] ?? '',
-                    'primer_apellido' => $cliente['primer_apellido'] ?? '',
-                    'segundo_apellido' => $cliente['segundo_apellido'] ?? '',
-                    'tipo_cliente' => $cliente['tipo_cliente'] ?? 'Jurídico',
-                    'direccion' => $cliente['direccion'] ?? '',
-                    'telefono' => $cliente['telefono'] ?? '',
-                    'email' => $cliente['email'] ?? '',
-                    'numero_ruc' => $cliente['numero_ruc'] ?? '',
-                    'numero_cedula' => $cliente['numero_cedula'] ?? ''
-                ]
+                'cliente' => $payload
             ]);
         } else {
             $respuesta->enviarJson(['existe' => false]);

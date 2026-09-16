@@ -1,6 +1,7 @@
 <?php
 namespace Database\Seeders;
 
+use Cycsa\Nucleo\Conexion;
 use PDO;
 
 /**
@@ -8,19 +9,13 @@ use PDO;
  */
 class PermisosSeeder
 {
-    /**
-     * Ejecuta el seeder.
-     *
-     * @return void
-     */
     public function run()
     {
-        global $pdo;
+        $pdo = Conexion::obtenerInstancia();
 
-        // Crear tabla de permisos si no existe
         $pdo->exec("CREATE TABLE IF NOT EXISTS permisos (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            nombre VARCHAR(100) NOT NULL,
+            nombre VARCHAR(100) NOT NULL UNIQUE,
             descripcion TEXT
         )");
 
@@ -28,8 +23,8 @@ class PermisosSeeder
             rol_id INT,
             permiso_id INT,
             PRIMARY KEY(rol_id, permiso_id),
-            FOREIGN KEY(rol_id) REFERENCES roles(id),
-            FOREIGN KEY(permiso_id) REFERENCES permisos(id)
+            FOREIGN KEY(rol_id) REFERENCES roles(id) ON DELETE CASCADE,
+            FOREIGN KEY(permiso_id) REFERENCES permisos(id) ON DELETE CASCADE
         )");
 
         $permisos = [
@@ -39,7 +34,7 @@ class PermisosSeeder
             ['nombre' => 'ver_reportes', 'descripcion' => 'Permite visualizar reportes gerenciales']
         ];
 
-        $stmt = $pdo->prepare("INSERT INTO permisos (nombre, descripcion) VALUES (:nombre, :descripcion)");
+        $stmt = $pdo->prepare("INSERT INTO permisos (nombre, descripcion) VALUES (:nombre, :descripcion) ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion)");
 
         foreach ($permisos as $permiso) {
             $stmt->execute([

@@ -8,7 +8,8 @@
             "Cycsa\\App\\": "app/",
             "Cycsa\\Config\\": "config/",
             "Cycsa\\Modulos\\": "app/Modulos/",
-            "Cycsa\\Nucleo\\": "app/Core/"
+            "Cycsa\\Nucleo\\": "app/Core/",
+            "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
             "app/Helpers/funciones.php"
@@ -17,5 +18,13 @@
     "require": {
         "phpmailer/phpmailer": "^7.1",
         "dompdf/dompdf": "^3.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0 || ^9.5"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
     }
 }

@@ -1,351 +1,229 @@
-# 🏗️ CYCSA ERP & LIMS v2.0 - Arquitectura, Módulos y Base de Datos
+# 🏗️ CYCSA ERP & LIMS — Sistema Integral de Gestión de Laboratorio y Operaciones
 
-> **Plataforma Corporativa Integral ERP & LIMS para Laboratorios de Ensayo de Concreto, Suelos, Asfaltos, Adoquines y Materiales de Construcción.**  
-> Diseñado bajo la norma internacional **ISO/IEC 17025**, arquitectura **Clean Architecture, Domain-Driven Design (DDD) y estándar PSR-4**.
-
----
-
-## 📋 Tabla de Contenidos
-1. [🌟 Descripción General del Sistema](#-descripción-general-del-sistema)
-2. [🏛️ Arquitectura de Software y Patrón MVC](#️-arquitectura-de-software-y-patrón-mvc)
-3. [📦 Módulos Principales del Negocio (Detalle por Dominio)](#-módulos-principales-del-negocio-detalle-por-dominio)
-4. [🗄️ Estructura de la Base de Datos y Diccionario de Entidades](#️-estructura-de-la-base-de-datos-y-diccionario-de-entidades)
-5. [🔄 Relaciones y Derivaciones Automáticas del Sistema](#-relaciones-y-derivaciones-automáticas-del-sistema)
-6. [🔬 Ciclo Operativo Completo (Flujo de Vida del Negocio)](#-ciclo-operativo-completo-flujo-de-vida-del-negocio)
-7. [🔒 Seguridad, Imparcialidad ISO 17025 y Muestra Ciega](#-seguridad-imparcialidad-iso-17025-y-muestra-ciega)
-8. [📁 Estructura del Directorio del Proyecto](#-estructura-del-directorio-del-proyecto)
-9. [🚀 Guía de Despliegue y Configuración](#-guía-de-despliegue-y-configuración)
+Sistema Integral de Planificación de Recursos Empresariales (**ERP**) y Sistema de Información para la Gestión de Laboratorios (**LIMS**) desarrollado a medida para **CYCSA (Control y Calidad S.A.)**, diseñado en estricto cumplimiento con la norma internacional **ISO/IEC 17025:2017** (Requisitos generales para la competencia de los laboratorios de ensayo y calibración).
 
 ---
 
-## 🌟 Descripción General del Sistema
-
-**CYCSA ERP & LIMS v2.0** es la solución tecnológica integral desarrollada para **CYCSA S.A.** para gestionar el ciclo de vida completo de un laboratorio de ensayo de materiales de construcción acreditado o en proceso de acreditación bajo la **Norma Internacional ISO/IEC 17025**.
-
-El sistema integra de forma nativa dos grandes áreas corporativas:
-1. **Gestión Comercial y Financiera (ERP):** Catálogo de clientes, cotizaciones con historial de versiones, órdenes de servicio, facturación en Cuentas por Cobrar (CxC), Cuentas por Pagar (CxP), gestión bancaria y contabilidad completa bajo partida doble (Libro Diario, Balance General y Estado de Resultados).
-2. **Gestión Técnica de Laboratorio (LIMS):** Recepción y sellado de muestras con codificación ciega (`MS-XXXX-YY` / `CAM-YY-XXXX`), programación de ensayos por edades de diseño (3, 7, 14, 28 días), captura de rupturas mecánicas bajo normas ASTM/AASHTO, detección de regresión de resistencia, formatos normativos (`CYCSA-RT-FM-13`, `CYCSA-RT-FM-07`) y emisión de informes técnicos certificados con firmas digitales y código QR.
-
----
-
-## 🏛️ Arquitectura de Software y Patrón MVC
-
-La plataforma implementa una arquitectura desacoplada y orientada a servicios:
-
-* **Motor Núcleo (`app/Core/`):**
-  * `Aplicacion.php`: Enrutamiento y ciclo de vida de la aplicación.
-  * `Conexion.php`: Conexión PDO Singleton con soporte para transacciones ACID y bloqueos concurrentes `GET_LOCK`.
-  * `Enrutador.php`: Despacho de rutas web y endpoints de API REST.
-  * `ControladorBase.php` & `ModeloBase.php`: Clases base con inyección de dependencias y utilidades de renderizado.
-* **Pipeline de Middlewares (`app/Middleware/`):**
-  * `AuthMiddleware`: Verificación de sesión activa.
-  * `AdminMiddleware` / `SupervisorMiddleware` / `ContabilidadMiddleware`: Autorización por roles y permisos (RBAC).
-  * `CsrfMiddleware`, `RateLimitMiddleware` y `SecurityHeadersMiddleware`: Mitigación de ataques CSRF, fuerza bruta e inyección de encabezados.
-* **Capa de Servicios y Repositorios (`app/Services/`, `app/Repositories/`):** Aislamiento de la lógica de negocio (`CotizacionService`, `LimsService`, `ClienteService`, `LogService`).
-* **Autocarga PSR-4:** Configuración modular en `composer.json` mapeando namespaces `Cycsa\...`.
-
-```mermaid
-graph TD
-    User([Cliente / Usuario]) --> Router[Enrutador Web / API]
-    Router --> MiddlewarePipeline[Middlewares: Auth, RBAC, CSRF, RateLimit]
-    MiddlewarePipeline --> Controllers[Controladores de Módulo]
-    Controllers --> Services[Capa de Servicios de Negocio]
-    Services --> Models[Modelos & Repositorios PDO]
-    Models --> DB[(MySQL / MariaDB)]
-    Services --> ViewEngine[Vistas & Dompdf Engine]
-    ViewEngine --> HTML[Render HTML / PDF Oficial con QR]
-```
+## 📑 TABLA DE CONTENIDOS
+1. [Resumen del Sistema](#-resumen-del-sistema)
+2. [Arquitectura y Tecnologías](#-arquitectura-y-tecnolog%C3%ADas)
+3. [Módulos del Sistema](#-m%C3%B3dulos-del-sistema)
+   - [1. Módulo Comercial y Cotizaciones](#1-m%C3%B3dulo-comercial-y-cotizaciones)
+   - [2. Órdenes de Servicio y Logística de Muestreo](#2-%C3%B3rdenes-de-servicio-y-log%C3%ADstica-de-muestreo)
+   - [3. Laboratorio LIMS y Tablero Kanban (Modo Ciego ISO 17025)](#3-laboratorio-lims-y-tablero-kanban-modo-ciego-iso-17025)
+   - [4. Operaciones y Matrices Técnicas (21 Ensayos ASTM)](#4-operaciones-y-matrices-t%C3%A9cnicas-21-ensayos-astm)
+   - [5. Módulo Contable y Financiero](#5-m%C3%B3dulo-contable-y-financiero)
+   - [6. Seguridad, Roles y Trazabilidad](#6-seguridad-roles-y-trazabilidad)
+4. [Catálogo Oficial de los 21 Ensayos Técnicos](#-cat%C3%A1logo-oficial-de-los-21-ensayos-t%C3%A9cnicos)
+5. [Estructura del Proyecto](#-estructura-del-proyecto)
+6. [Instalación y Despliegue en Producción](#-instalaci%C3%B3n-y-despliegue-en-producci%C3%B3n)
+7. [Mantenimiento y Soporte](#-mantenimiento-y-soporte)
 
 ---
 
-## 📦 Módulos Principales del Negocio (Detalle por Dominio)
+## 🌟 RESUMEN DEL SISTEMA
 
-```mermaid
-graph LR
-    subgraph Comercial
-        CLI[Clientes] --> COT[Cotizaciones]
-        COT --> OS[Órdenes de Servicio]
-    end
-    subgraph LIMS & Operaciones
-        OS --> CAMPO[Muestreo en Campo]
-        CAMPO --> FM13[Hojas Solicitud RT-FM-13]
-        FM13 --> REC[Recepción Muestra Ciega]
-        REC --> LAB[Laboratorio & Rupturas ASTM]
-        LAB --> INF[Informes Calidad Certificados]
-    end
-    subgraph Finanzas
-        COT --> CXC[Cuentas por Cobrar]
-        CXC --> BANCOS[Bancos & Tesorería]
-        BANCOS --> DIARIO[Libro Diario & Balances]
-    end
-```
+El sistema **CYCSA ERP & LIMS** centraliza y automatiza el ciclo de vida completo de los servicios de control de calidad de materiales de construcción (suelos, concretos, agregados, morteros, mezclas asfálticas y mampostería), desde la cotización comercial inicial hasta la emisión de informes técnicos oficiales certificados y el registro contable de las operaciones.
 
-### 1. 🔐 Autenticación (`app/Modulos/Autenticacion`)
-* Inicio de sesión seguro con hashing Bcrypt (`password_hash()`).
-* **Sesión Única Activa:** Comprobación de `session_id` para evitar sesiones simultáneas no autorizadas en distintos dispositivos.
-* Protección contra fuerza bruta con bloqueo por intentos fallidos.
-* Recuperación de contraseñas mediante tokens temporales y política de cambio obligatorio de clave.
-
-### 2. 👥 Usuarios, Roles y Auditoría (`app/Modulos/Usuarios`)
-* Control de acceso basado en roles (**RBAC**): *Administrador, Supervisor, Técnico de Laboratorio, Contador, Cliente*.
-* Permisos granulares configurables por módulo en formato JSON.
-* **Bitácora de Auditoría Global (`bitacora`):** Registro inmutable de cada acción crítica (usuario, IP, módulo, acción, fecha y hora).
-
-### 3. 🏢 Clientes (`app/Modulos/Clientes`)
-* Catálogo unificado de clientes *Naturales* y *Jurídicos* con validación de RUC / Cédula.
-* Condiciones comerciales: límites de crédito, días de crédito, prórrogas y cuentas contables asociadas.
-* Gestión de proyectos de construcción y contactos clave.
-
-### 4. 🔬 Catálogo de Productos y Ensayos (`app/Modulos/Productos`)
-* Catálogo de ensayos normalizados (*ASTM C39, AASHTO T22, ASTM C140, ASTM D422, ASTM D1557*, etc.).
-* Clasificación por matrices: *Concreto, Suelos, Adoquines, Agregados, Morteros, Asfaltos*.
-* Parámetros de resistencia mínima esperada a diferentes edades de curado (`ensayos_parametros`).
-* Vinculación a esquemas y plantillas de formatos analíticos (`formatos_ensayos`).
-
-### 5. 📄 Cotizaciones Comerciales (`app/Modulos/Cotizaciones`)
-* Generador de cotizaciones con numeración correlativa `COT-YYYY-XXXX`.
-* Cálculo de subtotales, descuentos, IVA (15%) o registro de exoneración fiscal.
-* **Flujo de Aprobación:** `Borrador` $\rightarrow$ `En Revisión` $\rightarrow$ `Observada` $\rightarrow$ `Aprobada Internamente` $\rightarrow$ `Enviada al Cliente` $\rightarrow$ `Aprobada/Rechazada`.
-* Historial completo de versiones (`cotizacion_versiones`).
-* **Portal del Cliente con Token Seguro:** Permite al cliente revisar el PDF oficial y aceptar/rechazar en línea seleccionando el método de pago (Contado, Crédito, Anticipo).
-
-### 6. 📋 Órdenes de Servicio (`app/Modulos/OrdenesServicio`)
-* Generación de la orden de trabajo `OS-YYYY-XXXX` al aprobarse una cotización.
-* Manejo de contratos puntuales y mensuales.
-* **Logística de Muestreo:** Asignación de fecha, hora, técnico responsable (`tecnicos`) y vehículo de la empresa (`vehiculos`).
-
-### 7. 📑 Hojas de Solicitud de Servicio (`app/Modulos/HojasServicio`)
-* Formato técnico oficial **`CYCSA-RT-FM-13`**.
-* Registro de procedencia de muestra, persona que entrega, persona que recibe y ensayos solicitados.
-* **Protección de Datos:** Edición restringida exclusivamente a *Estado 1: Recepción* y *Estado 2: Observada*.
-
-### 8. 🧪 Operaciones LIMS y Laboratorio (`app/Modulos/Operaciones`)
-* **Muestra Ciega y Sellado Inmutable:** Generación de códigos `MS-XXXX-YY` (Laboratorio) o `CAM-YY-XXXX` (Campo). El laboratorista trabaja sin conocer la identidad del cliente ni los precios.
-* **Especímenes y Programación:** Cálculo automático del calendario de rupturas (3, 7, 14, 28 días) a partir de la fecha de moldeo.
-* **Captura de Rupturas Mecánicas:** Cálculo en tiempo real de:
-  $$\text{Resistencia (PSI)} = \frac{\text{Carga (lbs)}}{\text{Área (in}^2\text{)}}$$
-  $$\text{Resistencia (Kg/cm}^2\text{)} = \text{PSI} \times 0.070307$$
-  $$\% \text{ de Diseño Alcanzado} = \frac{\text{Resistencia (PSI)}}{\text{Diseño (PSI)}} \times 100$$
-* **Alerta de Regresión de Resistencia:** Dispara una no conformidad automática si la resistencia a mayor edad resulta menor que a una edad inferior.
-* **Informes de Control de Calidad:** Generación de informes técnicos certificados (`informes_control`), versionados (`V0, V1...`), con firmas digitales y código QR de validación.
-
-### 9. 💼 Contabilidad y Bancos (`app/Modulos/Contabilidad`)
-* **Catálogo Contable:** Plan de cuentas jerárquico (Activo, Pasivo, Capital, Ingreso, Egreso) con cuentas de Mayor y Detalle.
-* **Cuentas por Cobrar (CxC):** Registro automático de facturas al aprobarse cotizaciones (`FAC-COT-YYYY-XXXX`), control de pagos parciales y saldos.
-* **Cuentas por Pagar (CxP):** Gestión de obligaciones y compras a proveedores.
-* **Bancos y Tesorería:** Cuentas bancarias en moneda nacional y extranjera, registro de depósitos, transferencias, cheques y retiros con saldos en tiempo real.
-* **Libro Diario y Estados Financieros:** Asientos de partida doble automáticos (`PD-XXXXX`) y generación en vivo de Balance General y Estado de Resultados.
-
-### 10. ⚙️ Configuración del Negocio (`app/Modulos/Configuracion`)
-* Parámetros comerciales por defecto (términos de pago, vigencias, condiciones).
-* Catálogo de técnicos y vehículos de campo.
+### Principales Beneficios:
+* **Garantía de Imparcialidad (ISO/IEC 17025):** Operación en **Modo Ciego** en el laboratorio mediante códigos unívocos de muestra (`MS-XXXX-AA` / `MC-XXXX-AA`), ocultando información comercial, precios y clientes a analistas técnicos.
+* **Cálculos Analíticos en Tiempo Real:** Eliminación de errores humanos mediante fórmulas automáticas integradas en matrices de ensayo.
+* **Diferenciación Inteligente de Flujos:** Ensayos de laboratorio convencionales con recepción física vs. Ensayos In Situ (Compactación con Densímetro Nuclear, Cono de Arena, Reemplazo de Agua) que avanzan directamente a captura de campo sin emitir custodias innecesarias de laboratorio.
+* **Contabilidad Integrada:** Libro Diario, Libro Mayor, Balanza de Comprobación, Cuentas por Cobrar y Conciliación Bancaria vinculadas a las órdenes de servicio.
 
 ---
 
-## 🗄️ Estructura de la Base de Datos y Diccionario de Entidades
+## 💻 ARQUITECTURA Y TECNOLOGÍAS
 
-```mermaid
-erDiagram
-    usuarios ||--o{ cotizaciones : "crea / revisa"
-    usuarios ||--o{ recepcion_muestras : "recibe"
-    usuarios ||--o{ ensayo_edades : "ensaya"
-    usuarios ||--o{ informes_control : "revisa / aprueba"
-    usuarios ||--o{ bitacora : "registra"
-    roles ||--o{ usuarios : "asigna rol"
-
-    clientes ||--o{ cotizaciones : "solicita"
-    clientes ||--o{ cuentas_por_cobrar : "adeuda"
-
-    cotizaciones ||--o{ cotizacion_detalles : "contiene"
-    cotizaciones ||--o{ cotizacion_versiones : "versiona"
-    cotizaciones ||--o{ ordenes_servicio : "origina"
-
-    productos ||--o{ cotizacion_detalles : "cotiza"
-    productos ||--o{ ensayos_parametros : "define normas"
-    formatos_ensayos ||--o{ productos : "formato reporte"
-
-    ordenes_servicio ||--o{ recepcion_muestras : "asocia muestras"
-    ordenes_servicio ||--o{ hojas_solicitud : "contiene hoja RT-FM-13"
-
-    recepcion_muestras ||--o{ lotes_muestras : "agrupa"
-    lotes_muestras ||--o{ ensayo_edades : "programa especimenes"
-    cotizacion_detalles ||--o{ ensayo_edades : "vincula ensayo"
-    lotes_muestras ||--o{ informes_control : "genera informe"
-
-    cuentas_contables ||--o{ cuentas_contables : "padre/hijo"
-    cuentas_contables ||--o{ bancos_cuentas : "asocia cuenta contable"
-    cuentas_contables ||--o{ cuentas_por_cobrar : "cuenta contable cxc"
-    cuentas_contables ||--o{ cuentas_por_pagar : "cuenta contable cxp"
-    cuentas_contables ||--o{ partidas_diario_detalles : "afecta debe/haber"
-
-    bancos_cuentas ||--o{ bancos_transacciones : "movimientos"
-    partidas_diario ||--o{ partidas_diario_detalles : "desglosa asiento"
-```
-
-### Tabla Resumen del Diccionario de Datos:
-
-| Entidad | Clave Primaria | Relaciones Principales | Descripción y Propósito |
-| :--- | :--- | :--- | :--- |
-| `usuarios` | `id` | `id_rol` $\rightarrow$ `roles(id)` | Usuarios del sistema, credenciales y permisos. |
-| `roles` | `id` | - | Perfiles de acceso al sistema (Admin, Técnico, etc.). |
-| `clientes` | `id` | - | Catálogo de clientes, información fiscal y créditos. |
-| `cotizaciones` | `id` | `id_cliente`, `id_usuario_creador` | Ofertas comerciales (`COT-YYYY-XXXX`). |
-| `cotizacion_detalles`| `id` | `id_cotizacion`, `id_producto` | Ensayos y servicios incluidos en la cotización. |
-| `cotizacion_versiones`| `id`| `id_cotizacion` | Historial de versiones y renegociaciones. |
-| `ordenes_servicio` | `id` | `id_cotizacion` | Órdenes de trabajo (`OS-YYYY-XXXX`). |
-| `hojas_solicitud` | `id` | `id_os` | Hoja técnica de recepción `CYCSA-RT-FM-13`. |
-| `recepcion_muestras` | `id`| `id_os`, `recibido_por` | Registro y sellado de muestras ciegas (`MS-XXXX-YY`). |
-| `lotes_muestras` | `id` | `id_recepcion` | Agrupación de especímenes con datos de moldeo. |
-| `ensayo_edades` | `id` | `id_lote`, `id_detalle_cotizacion` | Probetas individuales, cargas, áreas y PSI. |
-| `ensayos_parametros` | `id`| `id_producto` | % de resistencia mínima esperada por edad. |
-| `informes_control` | `id` | `id_lote`, `revisado_por`, `aprobado_por` | Informes de control de calidad certificados. |
-| `cuentas_contables` | `id` | `id_padre` $\rightarrow$ `cuentas_contables` | Plan de cuentas contables jerárquico. |
-| `cuentas_por_cobrar` | `id`| `id_cliente`, `id_cuenta_contable` | Facturas por cobrar y control de saldos. |
-| `cuentas_por_pagar` | `id` | `id_cuenta_contable` | Cuentas por pagar a proveedores. |
-| `bancos_cuentas` | `id` | `id_cuenta_contable` | Cuentas bancarias de la empresa. |
-| `bancos_transacciones`| `id`| `id_banco_cuenta` | Movimientos de tesorería y bancos. |
-| `partidas_diario` | `id` | - | Asientos contables de partida doble (`PD-XXXXX`). |
-| `partidas_diario_detalles`| `id`| `id_partida`, `id_cuenta_contable`| Desglose de Debe y Haber por cuenta. |
-| `bitacora` | `id` | `id_usuario` | Registro de auditoría y trazabilidad. |
+* **Lenguaje Backend:** PHP 8.1 / 8.2+ con Arquitectura Modelo-Vista-Controlador (MVC) pura, rápida y ligera.
+* **Base de Datos:** MySQL 5.7+ / MariaDB 10.4+ con motor transaccional InnoDB, claves foráneas y codificación `utf8mb4`.
+* **Frontend:** HTML5, CSS3 Moderno (Variables CSS, Flexbox, CSS Grid), JavaScript Vanilla ES6+ reactivo, SweetAlert2, FontAwesome 6 Pro.
+* **Motor de Generación PDF:** Dompdf con soporte de membrete institucional, marcas de agua oficiales y códigos QR de verificación.
+* **Motor de Hojas de Cálculo / Reportes:** PhpSpreadsheet para exportación/importación avanzada de matrices.
+* **Seguridad:** Tokens anti-CSRF, sanitización contra inyección SQL con PDO Prepared Statements, Hashids para ofuscación de URLs y protección de endpoints contra ataques XSS.
 
 ---
 
-## 🔄 Relaciones y Derivaciones Automáticas del Sistema
+## 📦 MÓDULOS DEL SISTEMA
 
-El sistema automatiza la propagación de datos entre módulos:
+### 1. Módulo Comercial y Cotizaciones
+* **Gestión de Clientes:** Directorio centralizado de clientes corporativos, proyectos y contactos.
+* **Cotizaciones Dinámicas:** Generación de cotizaciones con ítems del catálogo oficial, cálculo de subtotales, IVA y descuentos.
+* **Historial de Versiones:** Control de versiones de cotización con trazabilidad de cambios.
+* **Generación de PDF Oficial (`CYCSA-RG-FM-39`):** Cotizaciones formales listas para firma de aceptación del cliente.
+* **Aprobación Directa a Orden de Servicio (O/S):** Conversión automática a Orden de Servicio con solo un clic.
 
-1. **Aprobación de Cotización $\rightarrow$ Creación de OS y CxC:**  
-   Al registrarse la aprobación del cliente (`Aprobada por Cliente`):
-   * Se crea automáticamente la Orden de Servicio (`OS-YYYY-XXXX`) en estado *Recepción*.
-   * Se registra la Factura en `cuentas_por_cobrar` (`FAC-COT-YYYY-XXXX`).
-   * Si hubo pago de contado/anticipo, se registra el movimiento en `bancos_transacciones`, se incrementa el saldo bancario y se asienta la Partida de Diario.
-2. **Recepción $\rightarrow$ Programación Automática de Rupturas:**  
-   Al ingresar una muestra con fecha de moldeo $F_m$ y edades $[3, 7, 28]$ días:
-   * Se generan registros en `ensayo_edades` con fecha programada $F_m + N\text{ días}$.
-   * Se calculan los correlativos ciegos inmutables en `secuencias_muestras`.
-3. **Captura de Ruptura $\rightarrow$ Evaluación Normativa y Alertas:**  
-   Al ingresar carga y área:
-   * Se calculan $\text{PSI}$, $\text{Kg/cm}^2$ y $\% \text{ de diseño}$.
-   * Se compara contra `ensayos_parametros`. Si $\text{PSI}_{28d} < \text{PSI}_{7d}$, se dispara alerta de regresión y se registra en `bitacora`.
-4. **Cobros y Pagos $\rightarrow$ Contabilidad de Partida Doble:**  
-   Todo abono a CxC o pago de CxP genera automáticamente un asiento cuadrado en `partidas_diario` afectando las cuentas contables de Bancos y Clientes/Proveedores.
+### 2. Órdenes de Servicio y Logística de Muestreo
+* **Generación de Hoja de Servicio Oficial (`CYCSA-RT-FM-13`):** Registro de datos de muestreo en campo, coordenadas, observaciones ambientales y listado de especímenes declarados.
+* **Programación y Despacho:** Asignación de técnicos muestreadores, vehículos de flota (`vehiculos`) y calendario operativo de recolección.
+* **Segregación Automática:**
+  * *Ensayos Convencionales:* Generan solicitud técnica de muestras para custodia en laboratorio.
+  * *Ensayos de Compactación / In Situ:* Permiten acceso directo al llenado de matriz técnica sin bloquear la orden.
 
----
+### 3. Laboratorio LIMS y Tablero Kanban (Modo Ciego ISO 17025)
+* **Tablero Kanban de Trazabilidad:**
+  1. **Recién Llegadas:** Solicitudes recibidas en ventanilla técnica pendientes de revisión.
+  2. **En Revisión:** Inspección previa por parte de supervisores de calidad.
+  3. **Muestras Aceptadas / En Custodia:** Especímenes formalmente ingresados con código oficial `MS-XXXX-26` / `MC-XXXX-26`.
+  4. **Finalizadas:** Ensayos ejecutados y validados.
+* **Modo Ciego e Imparcialidad:** Las tarjetas de laboratorio ocultan totalmente números de orden de servicio (`OS-`), precios, facturas y nombres de clientes; el analista trabaja exclusivamente con el código de solicitud técnica (`CYCSA-RT-FM-60`) y el código de laboratorio de la muestra.
+* **Calendario de Rupturas Programadas:** Alertas automáticas para roturas de cilindros y especímenes de concreto a las edades normativas de diseño (ej. 3, 7, 14, 28 días).
 
-## 🔬 Ciclo Operativo Completo (Flujo de Vida del Negocio)
+### 4. Operaciones y Matrices Técnicas (21 Ensayos ASTM)
+* **Captura de Matriz Técnica Dinámica:** Cuadrícula de captura adaptada al esquema normativo exacto de cada ensayo.
+* **Motor de Autocalculado en Tiempo Real (JavaScript):**
+  * **Compactación / Densímetro Nuclear:** `% Compactación = (P.V.S. Sitio / P.V.S. Máx) * 100`.
+  * **Compresión (Cilindros, Mortero, Núcleos, Adoquines, Ladrillos):** Cálculo automático de Resistencia a la Compresión en $\text{lb/in}^2$ y $\text{kg/cm}^2$.
+  * **Flexión (Vigas):** Cálculo automático de Módulo de Ruptura ($MR$).
+  * **Edades Normativas:** Cálculo automático de días de curado entre la fecha de moldeo/fabricación y la fecha de ensaye.
+  * **Granulometrías:** Suma acumulada de pesos retenidos, porcentajes que pasan y verificación de pérdida por lavado ($\le 2\%$).
+* **Impresión Oficial de Matrices:** Documento técnico imprimible con membrete oficial, norma ASTM y firmas de responsabilidad técnica.
 
-```
-1. SOLICITUD & COTIZACIÓN
-   Cliente solicita ensayos -> Asesor crea COT-YYYY-XXXX -> Supervisor aprueba internamente -> 
-   Cliente recibe enlace seguro y aprueba con su condición de pago (Contado/Crédito).
+### 5. Módulo Contable y Financiero
+* **Catálogo de Cuentas:** Clasificación NIIF (Activos, Pasivos, Capital, Ingresos, Costos y Gastos).
+* **Libro Diario (Partidas de Diario):** Asientos contables automáticos vinculados a ventas y facturación, más generación de partidas manuales.
+* **Libro Mayor y Balanza de Comprobación:** Reportes financieros en tiempo real con cuadratura estricta de débito y crédito.
+* **Cuentas por Cobrar (CxC):** Registro de cobros, saldos pendientes y estado de cuenta por cliente.
+* **Cuentas por Pagar (CxP) y Bancos:** Control de proveedores y conciliación de movimientos bancarios.
 
-2. DISPARO AUTOMÁTICO DE ORDEN Y FINANZAS
-   - Se genera la Orden de Servicio (OS-YYYY-XXXX).
-   - Se crea la Factura en Cuentas por Cobrar (FAC-COT-YYYY-XXXX).
-   - Si hubo pago inmediato, se ingresa la transacción bancaria y se asienta la Partida de Diario.
-
-3. LOGÍSTICA DE MUESTREO Y RECEPCIÓN
-   - Se programa técnico y vehículo si requiere muestreo en campo.
-   - En ventanilla/laboratorio se llena la Hoja de Solicitud CYCSA-RT-FM-13.
-   - Se genera el código de MUESTRA CIEGA (MS-XXXX-YY) sellando la identidad del cliente.
-
-4. LABORATORIO & RUPTURA (LIMS)
-   - El laboratorista consulta el calendario de ensayes en vista ciega.
-   - Aplica carga mecánica a los cilindros según la edad (3d, 7d, 14d, 28d).
-   - El sistema calcula PSI, Kg/cm² y evalúa contra la norma ASTM.
-   - Si existe anomalía o regresión de resistencia, se dispara alerta de calidad.
-
-5. CONTROL DE CALIDAD Y EMISIÓN
-   - Se genera el Informe de Control de Calidad oficial en PDF.
-   - El supervisor revisa y aprueba digitalmente.
-   - El informe queda certificado y listo para entrega con código QR de verificación.
-
-6. CIERRE CONTABLE
-   - El cliente abona su saldo en banco -> Se actualiza CxC -> Se registra asiento contable ->
-   - Los saldos se reflejan automáticamente en el Balance General y Estado de Resultados.
-```
+### 6. Seguridad, Roles y Trazabilidad
+* **Control de Acceso Basado en Roles (RBAC):**
+  * *Administrador General*
+  * *Supervisor de Calidad / Laboratorio*
+  * *Técnico / Laboratorista*
+  * *Atención al Cliente / Ventas*
+  * *Contabilidad / Finanzas*
+* **Bitácora de Auditoría:** Registro de eventos del sistema (usuario, fecha/hora, acción, IP).
+* **Hashids:** Ofuscación reversible de IDs numéricos en URLs para prevenir enumeración maliciosa.
 
 ---
 
-## 🔒 Seguridad, Imparcialidad ISO 17025 y Muestra Ciega
+## 🔬 CATÁLOGO OFICIAL DE LOS 21 ENSAYOS TÉCNICOS
 
-* **Aislamiento Técnico LIMS:** El personal técnico de laboratorio únicamente visualiza el código ciego de la muestra y sus características físicas, sin acceso a nombres de clientes ni precios cotizados.
-* **Inmutabilidad de Registros:** Una vez ingresada una muestra y sellada (`is_sealed = 1`), los datos de origen no pueden ser alterados por el técnico.
-* **Control Concurrente:** Candados `GET_LOCK` a nivel de base de datos para garantizar correlativos secuenciales sin colisiones en entornos de alta concurrencia.
-* **Seguridad Web:** Protección CSRF en todas las rutas POST, sanitización de entradas contra inyecciones SQL (Prepared Statements en el 100% de consultas) y encabezados HTTP seguros (`X-Frame-Options`, `X-XSS-Protection`, `X-Content-Type-Options`).
+Todos los esquemas y columnas han sido calibrados y extraídos directamente de los documentos técnicos oficiales de CYCSA:
+
+| # | Archivo de Esquema (`.md` / JSON) | Nombre del Ensayo / Método | Norma ASTM / Referencia | Método Interno CYCSA |
+|---|-----------------------------------|----------------------------|-------------------------|----------------------|
+| **1** | `compactacion_densimetro_nuclear.md` | Densidad y Humedad In Situ (Densímetro Nuclear) | ASTM D6938-23 | `CYCSA-PE-25` |
+| **2** | `ensayos_varios.md` | Ensayos Varios / Muestreos Especiales | Métodos Específicos | `CYCSA-PE-19` |
+| **3** | `formato_de_compactacion_por_cono_de_arena.md` | Densidad In Situ por Cono de Arena | ASTM D1556/D1556M-24 | `CYCSA-PE-24` |
+| **4** | `formato_de_compactacion_por_reemplazo_de_agua_no_acreditado.md` | Densidad In Situ por Reemplazo de Agua | ASTM D5030/D5030M-21 | `CYCSA-PE-26` |
+| **5** | `granulometria.md` | Granulometría de Agregados y Suelos | ASTM C136 / ASTM D422 | `CYCSA-PE-18` |
+| **6** | `resistencia_a_la_compresion_de_cilindros_de_concreto.md` | Compresión de Cilindros de Concreto | ASTM C39/C39M-21 | `CYCSA-PE-01` |
+| **7** | `resistencia_a_la_compresion_de_mortero.md` | Resistencia a la Compresión de Mortero | ASTM C109/C109M-20 | `CYCSA-PE-03` |
+| **8** | `resistencia_a_la_flexion_del_concreto.md` | Resistencia a la Flexión de Vigas | ASTM C78/C78M-22 | `CYCSA-PE-02` |
+| **9** | `resistencia_a_la_compresion_de_adoquines.md` | Compresión de Adoquines de Concreto | ASTM C140/C140M-24 | `CYCSA-PE-05` |
+| **10** | `resistencia_a_la_compresion_de_bloques.md` | Compresión de Bloques y Ladrillos | ASTM C140/C140M-24 | `CYCSA-PE-04` |
+| **11** | `resistencia_a_la_compresion_de_nucleos_de_concreto.md` | Compresión de Núcleos de Concreto | ASTM C42/C42M-20 | `CYCSA-PE-06` |
+| **12** | `resistencia_a_la_compresion_de_lodo_concreto_relleno_fluido.md` | Compresión de Lodo Concreto / Relleno Fluido | ASTM D4832-16 | `CYCSA-PE-07` |
+| **13** | `limites_de_consistencia_limite_liquido_y_plastico.md` | Límites de Atterberg (Líquido y Plástico) | ASTM D4318-17 | `CYCSA-PE-20` |
+| **14** | `pesos_volumetricos.md` | Pesos Volumétricos Suelto y Varillado | ASTM C29/C29M-17a | `CYCSA-PE-15` |
+| **15** | `proctor_estandar.md` | Compactación Proctor Estándar y Modificado | ASTM D698-12 / ASTM D1557 | `CYCSA-PE-21` |
+| **16** | `densidad_relativa_gravedad_especifica_y_absorcion_de_agregados.md` | Gravedad Específica y Absorción de Agregados | ASTM C127 / ASTM C128 | `CYCSA-PE-16` |
+| **17** | `desgaste_por_abrasion_en_la_maquina_de_los_angeles.md` | Abrasión Máquina de Los Ángeles | ASTM C131/C131M-20 | `CYCSA-PE-17` |
+| **18** | `cbr_relacion_de_soporte_de_california.md` | CBR (Relación de Soporte de California) | ASTM D1883-21 | `CYCSA-PE-23` |
+| **19** | `equivalente_de_arena.md` | Equivalente de Arena | ASTM D2419-22 | `CYCSA-PE-22` |
+| **20** | `contenido_de_humedad_con_horno.md` | Contenido de Humedad en Suelos | ASTM D2216-19 | `CYCSA-PE-14` |
+| **21** | `material_mas_fino_que_el_tamiz_no_200_por_lavado.md` | Material que Pasa el Tamiz No. 200 por Lavado | ASTM C117-17 | `CYCSA-PE-13` |
 
 ---
 
-## 📁 Estructura del Directorio del Proyecto
+## 📁 ESTRUCTURA DEL PROYECTO
 
-```
+```text
 Cycsa/
 ├── app/
-│   ├── Controllers/          <-- Controladores API y generales
-│   ├── Core/                 <-- Motor MVC base (Aplicacion, Conexion, Enrutador, etc.)
-│   ├── Exceptions/           <-- AppException y control global de errores
-│   ├── Helpers/              <-- Helpers especializados (PDF, fechas, moneda, auth)
-│   ├── Middleware/           <-- Middlewares de seguridad y roles
-│   ├── Modulos/              <-- Módulos del negocio (10 dominios)
-│   │   ├── Autenticacion/
-│   │   ├── Clientes/
-│   │   ├── Configuracion/
-│   │   ├── Contabilidad/
-│   │   ├── Cotizaciones/
-│   │   ├── HojasServicio/
-│   │   ├── Operaciones/
-│   │   ├── OrdenesServicio/
-│   │   ├── Productos/
-│   │   └── Usuarios/
-│   ├── Repositories/         <-- Capa de acceso a datos PDO
-│   ├── Services/             <-- Capa de servicios de negocio
-│   └── Views/                <-- Plantillas de vistas maestras
-├── config/                   <-- Configuración global (database, app, mail, constants)
+│   ├── Core/                           # Núcleo MVC (Enrutador, Petición, Respuesta, ControladorBase, ModeloBase)
+│   ├── Helpers/                        # Funciones auxiliares globales, autenticación, Hashids y Dompdf
+│   └── Modulos/                        # Arquitectura modular desacoplada
+│       ├── Autenticacion/              # Inicio de sesión, control de acceso y contraseñas
+│       ├── Clientes/                   # Directorio de clientes y proyectos
+│       ├── Contabilidad/               # Partidas, Libro Diario, Mayor, Balanza y Catálogo de Cuentas
+│       ├── Cotizaciones/               # Cotizaciones, versiones y PDF
+│       ├── Finanzas/                   # CxC, CxP y Tesorería
+│       ├── Laboratorio/                # Portal LIMS y Gestión de Ensayos
+│       ├── Operaciones/                # Logística, Hojas de Muestreo, Kanban Lab y Matrices Técnicas
+│       ├── OrdenesServicio/            # Generación y control de O/S
+│       └── Usuarios/                   # Administración de usuarios y roles
+├── config/                             # Archivos de configuración (app, db, mail)
 ├── database/
-│   ├── backups/              <-- Respaldos SQL completos
-│   ├── catalogos/            <-- Catálogos de listas de precios y servicios
-│   ├── ensayos/              <-- Plantillas Markdown y esquemas de ensayos
-│   └── migrations/           <-- Scripts de migración SQL e índices
-├── prisma/
-│   └── schema.prisma         <-- Definición formal de modelos y relaciones
-├── publico/                  <-- DocumentRoot web (index.php, CSS, JS, imágenes)
-├── rutas/                    <-- web.php y api.php
-├── storage/                  <-- Logs del sistema, PDFs generados y uploads
-└── vendor/                   <-- Librerías de Composer (Dompdf, PHPMailer, etc.)
+│   ├── ensayos/                        # Esquemas JSON oficiales de los 21 ensayos
+│   │   ├── formatos_schema.json        # Esquema integral de columnas y fórmulas
+│   │   └── *.md                        # Plantillas individuales en formato Markdown
+│   ├── cycsa_produccion_limpia.sql     # Script SQL limpio para producción
+│   └── cycsa_respaldo_completo.sql     # Respaldo SQL completo
+├── publico/                            # Punto de entrada público HTTP y assets
+│   ├── css/                            # Hojas de estilo personalizadas
+│   ├── js/                             # Controladores reactivos JavaScript
+│   ├── img/                            # Logotipos oficiales y membretes CYCSA
+│   ├── uploads/                        # Directorio de archivos cargados
+│   ├── .htaccess                       # Reglas de reescritura para producción
+│   └── index.php                       # Front Controller
+├── storage/                            # Almacenamiento temporal
+│   ├── cache/                          # Caché de Dompdf y plantillas
+│   └── logs/                           # Bitácora de errores del sistema
+├── vendor/                             # Dependencias externas de Composer
+├── .env                                # Variables de entorno y credenciales
+├── .htaccess                           # Redirección en la raíz del servidor
+├── composer.json                       # Manifiesto de paquetes PHP
+└── README.md                           # Documentación general del sistema
 ```
 
 ---
 
-## 🚀 Guía de Despliegue y Configuración
+## 🚀 INSTALACIÓN Y DESPLIEGUE EN PRODUCCIÓN
 
 ### 1. Requisitos del Servidor
-* **PHP:** 8.1 o superior con extensiones `pdo_mysql`, `mbstring`, `openssl`, `gd`, `curl`, `json`.
-* **Base de Datos:** MySQL 5.7+ o MariaDB 10.4+.
-* **Servidor Web:** Apache con módulo `mod_rewrite` habilitado (o Nginx).
+* Servidor Web Apache / Nginx con módulo `mod_rewrite` habilitado.
+* PHP >= 8.1 con extensiones: `pdo_mysql`, `gd`, `mbstring`, `openssl`, `json`, `zip`, `fileinfo`.
+* Base de Datos MySQL >= 5.7 o MariaDB >= 10.4.
 
-### 2. Pasos de Instalación
-1. Clonar el repositorio:
-   ```bash
-   git clone https://github.com/Tomate25/CycsaV1.git
-   ```
-2. Importar el esquema y catálogo inicial de base de datos desde `database/cycsa_db_backup.sql`.
-3. Configurar el archivo `.env` en la raíz del proyecto:
-   ```env
-   APP_URL=http://localhost/Cycsa
-   DB_HOST=localhost
-   DB_NAME=cycsa_db
-   DB_USER=root
-   DB_PASS=
-   ```
-4. Asignar permisos de escritura en directorios de almacenamiento:
-   ```bash
-   chmod -R 775 storage/
-   ```
-5. Acceder a la plataforma desde el navegador web en `http://localhost/Cycsa/publico`.
+### 2. Configuración del Archivo `.env`
+Crear o verificar el archivo `.env` en la raíz del proyecto:
+```env
+APP_NAME="CYCSA ERP"
+APP_ENV=produccion
+APP_DEBUG=0
+APP_URL="https://tu-dominio.com/sistema"
+
+# BASE DE DATOS
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=tu_base_de_datos
+DB_USER=tu_usuario_db
+DB_PASS="tu_password_seguro_aqui"
+DB_CHARSET=utf8mb4
+
+# CORREO SALIENTE (SMTP)
+MAIL_DRIVER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=tu_correo@gmail.com
+MAIL_PASS="tu_app_password_aqui"
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=tu_correo@gmail.com
+MAIL_FROM_NAME="CYCSA ERP"
+```
+
+### 3. Permisos de Directorios
+Otorgar permisos de escritura a las siguientes carpetas en Linux/cPanel:
+```bash
+chmod -R 775 storage/
+chmod -R 775 publico/uploads/
+```
+
+### 4. Base de Datos
+Importar el archivo `database/cycsa_produccion_limpia.sql` en la base de datos de producción mediante phpMyAdmin o consola MySQL:
+```bash
+mysql -u tu_usuario_db -p tu_base_de_datos < database/cycsa_produccion_limpia.sql
+```
 
 ---
 
-## 📜 Créditos y Licencia
+## 📞 MANTENIMIENTO Y SOPORTE
 
-Desarrollado para **CYCSA S.A. - Laboratorio de Control de Calidad de Materiales de Construcción**.  
-*Plataforma refactorizada bajo arquitectura Enterprise 10/10.*
+* **Empresa:** Control y Calidad S.A. (CYCSA)
+* **Ubicación:** Km 83.5 Carretera León - Managua, León, Nicaragua.
+* **Área:** Laboratorio Central de Control de Calidad y Ensayos de Materiales.
+* **Cumplimiento:** ISO/IEC 17025:2017 & Normas ASTM International.
+* **Año:** 2026.

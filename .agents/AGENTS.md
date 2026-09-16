@@ -1,9 +1,13 @@
 # Reglas de Desarrollo del Proyecto Cycsa
 
-## Sensibilidad de Mayúsculas/Minúsculas en Producción (Linux)
+## Sensibilidad de Mayúsculas/Minúsculas en Producción (Linux / Bluehost)
 - El entorno de producción en Bluehost es un servidor Linux (sensible a mayúsculas/minúsculas).
-- Todas las carpetas físicas del proyecto están en minúsculas (ej. `nucleo/`, `modulos/`, `ayudantes/`, etc.).
-- Las declaraciones de namespaces de PHP usan mayúsculas iniciales (ej. `namespace Cycsa\Nucleo;`).
-- **IMPORTANTE**: No asumas que `"Cycsa\\": ""` resolverá automáticamente bajo Linux. Cada nuevo directorio de clases debe ser mapeado de forma explícita en `composer.json` (sección `"autoload" -> "psr-4"`) apuntando a su ruta en minúsculas.
-- Si se añaden nuevas clases o carpetas, actualiza `composer.json` y ejecuta siempre `composer dump-autoload -o` para regenerar la configuración antes de compilar o empaquetar para producción.
-- Lee siempre [README_DEPLOY.md](file:///C:/xampp/htdocs/Cycsa/README_DEPLOY.md) para más detalles.
+- La arquitectura del proyecto sigue el estándar **PSR-4**:
+  - `app/Core/` mapeado al namespace `Cycsa\Nucleo\`
+  - `app/Modulos/` mapeado al namespace `Cycsa\Modulos\`
+  - `app/` mapeado al namespace `Cycsa\App\`
+  - `config/` mapeado al namespace `Cycsa\Config\`
+- Todas las carpetas de módulos y sus subcarpetas (`Controladores/`, `Modelos/`, `Vistas/`) respetan la nomenclatura PascalCase en el sistema de archivos para garantizar compatibilidad con Linux.
+- Si se agregan nuevas clases o directorios, actualiza `composer.json` y ejecuta siempre `composer dump-autoload -o`.
+- No colocar contraseñas reales en archivos de repositorio ni en `.env.example`.
+- En caso de consultas sobre tareas o colaboración entre agentes, consulta siempre `COORDINATION.md`.

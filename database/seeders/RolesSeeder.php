@@ -1,6 +1,7 @@
 <?php
 namespace Database\Seeders;
 
+use Cycsa\Nucleo\Conexion;
 use PDO;
 
 /**
@@ -8,15 +9,9 @@ use PDO;
  */
 class RolesSeeder
 {
-    /**
-     * Ejecuta el seeder.
-     *
-     * @return void
-     */
     public function run()
     {
-        // Asumiendo una conexión PDO global o inyectada.
-        global $pdo;
+        $pdo = Conexion::obtenerInstancia();
 
         $roles = [
             ['nombre' => 'Administrador', 'descripcion' => 'Acceso total al sistema'],
@@ -25,7 +20,7 @@ class RolesSeeder
             ['nombre' => 'Ventas', 'descripcion' => 'Acceso a clientes y cotizaciones']
         ];
 
-        $stmt = $pdo->prepare("INSERT INTO roles (nombre, descripcion) VALUES (:nombre, :descripcion)");
+        $stmt = $pdo->prepare("INSERT INTO roles (nombre, descripcion) VALUES (:nombre, :descripcion) ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion)");
 
         foreach ($roles as $rol) {
             $stmt->execute([

@@ -135,7 +135,7 @@
     </div>
 <?php endif; ?>
 
-<form action="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" method="POST" id="form-cotizacion">
+<form action="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" method="POST" id="form-cotizacion" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
     <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
 
@@ -187,17 +187,6 @@
                 <input type="text" name="direccion_proyecto" class="form-control" value="<?= htmlspecialchars($cotizacion['direccion_proyecto'] ?? '', ENT_QUOTES, 'UTF-8') ?>" required>
             </div>
         </div>
-
-        <div class="grid-2" style="margin-top: 10px;">
-            <div class="form-group">
-                <label class="form-label">Fecha de Entrega (Operaciones)</label>
-                <input type="date" name="fecha_entrega" class="form-control" value="<?= htmlspecialchars($cotizacion['fecha_entrega'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Fecha de Seguimiento (Operaciones)</label>
-                <input type="date" name="fecha_seguimiento" class="form-control" value="<?= htmlspecialchars($cotizacion['fecha_seguimiento'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-            </div>
-        </div>
     </div>
 
     <div class="seccion-form">
@@ -239,55 +228,97 @@
     <div class="seccion-form">
         <h3 class="seccion-titulo"><i class="fa-solid fa-flask"></i> Detalle de Ensayos / Servicios</h3>
         
-        <table class="tabla-detalles" id="tabla-ensayos">
-            <thead>
-                <tr>
-                    <th style="width: 22%;">Ensayo / Servicio Técnico</th>
-                    <th style="width: 22%;">Detalle (BD)</th>
-                    <th style="width: 7%;">Cantidad</th>
-                    <th style="width: 10%;" id="th-precio-header">Precio Unit. (C$)</th>
-                    <th style="width: 27%;">Descripción (Escribir)</th>
-                    <th style="width: 8%;" id="th-subtotal-header">Subtotal (C$)</th>
-                    <th style="width: 4%; text-align: center;"><i class="fa-solid fa-trash"></i></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($detalles as $det): ?>
-                <?php 
-                $isCatalogo = !empty($det['id_producto']);
+    <div class="seccion-form">
+        <h3 class="seccion-titulo"><i class="fa-solid fa-flask"></i> Detalle de Ensayos / Servicios</h3>
+        
+        <div style="overflow-x: auto; width: 100%; margin-bottom: 15px;">
+            <table class="tabla-detalles" id="tabla-ensayos" style="min-width: 1050px;">
+                <thead>
+                    <tr>
+                        <th style="width: 45px; text-align: center;">Línea</th>
+                        <th style="width: 25%;">Descripción (Nombre comercial)</th>
+                        <th style="width: 23%;">Condiciones de muestra</th>
+                        <th style="width: 14%;">Procedimiento</th>
+                        <th style="width: 9%;">Unidad de medida</th>
+                        <th style="width: 7%; text-align: center;">Cantidad</th>
+                        <th style="width: 9%; text-align: right;" id="th-precio-header">Costo (C$)</th>
+                        <th style="width: 10%; text-align: right;" id="th-subtotal-header">Monto (C$)</th>
+                        <th style="width: 40px; text-align: center;"><i class="fa-solid fa-trash"></i></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($detalles as $idx => $det): ?>
+                    <?php 
+                    $isCatalogo = !empty($det['id_producto']);
+                    ?>
+                    <tr>
+                        <td style="text-align: center; vertical-align: middle; font-weight: 700; color: #0f172a;">
+                            <span class="linea-num"><?= $idx + 1 ?></span>
+                        </td>
+                        <td>
+                            <input type="hidden" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01" value="<?= htmlspecialchars($det['codigo_servicio'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39" value="<?= htmlspecialchars($det['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01" value="<?= htmlspecialchars($det['formato_reporte'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo entrega..." value="<?= htmlspecialchars($det['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" value="<?= htmlspecialchars($det['descripcion_adicional'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="ensayo_id_producto[]" value="<?= htmlspecialchars($det['id_producto'] ?? '', ENT_QUOTES, 'UTF-8') ?>" class="prod-id-input">
+                            <input type="text" name="ensayo_desc[]" class="form-control spec-desc" value="<?= htmlspecialchars($det['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?>" required placeholder="Nombre comercial / Ensayo..." autocomplete="off" list="productos-datalist" onchange="completarPrecio(this)" <?= $isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1;"' : '' ?>>
+                            <div style="margin-top: 3px; font-size: 10px;">
+                                <span class="badge-tipo-row" style="font-weight: bold; padding: 1px 4px; border-radius: 3px; background: <?= $isCatalogo ? '#e0f2fe' : '#fef3c7' ?>; color: <?= $isCatalogo ? '#0369a1' : '#d97706' ?>; transition: all 0.2s;">
+                                    <?= $isCatalogo ? '<i class="fa-solid fa-lock"></i> Catálogo (Bloqueado)' : '<i class="fa-solid fa-pen-fancy"></i> Campo Libre' ?>
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <textarea name="ensayo_condiciones[]" class="form-control spec-condiciones" rows="2" placeholder="Condiciones de muestra / empaque..." style="resize: vertical; font-size: 12px;"><?= htmlspecialchars($det['condiciones_muestra'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
+                        </td>
+                        <td>
+                            <input type="text" name="ensayo_procedimiento[]" class="form-control spec-procedimiento" placeholder="CYCSA-PE / ASTM..." style="font-size: 12px; font-family: monospace;" value="<?= htmlspecialchars($det['procedimiento'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                        </td>
+                        <td>
+                            <input type="text" name="ensayo_unidad[]" class="form-control spec-unidad" placeholder="Unidad" value="<?= htmlspecialchars($det['unidad_medida'] ?? 'Unidad', ENT_QUOTES, 'UTF-8') ?>" style="font-size: 12.5px;">
+                        </td>
+                        <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="<?= $det['cantidad'] ?>" required oninput="calcularFila(this)" style="text-align: center;"></td>
+                        <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="<?= $det['precio_unitario'] ?>" required oninput="calcularFila(this)" style="text-align: right;" <?= $isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1; text-align: right;"' : '' ?>></td>
+                        <td style="vertical-align: middle; font-weight: 700; text-align: right; color: #0f172a;" class="subtotal-texto">C$ <?= number_format($det['subtotal'], 2, '.', ',') ?></td>
+                        <td style="text-align: center; vertical-align: middle;">
+                            <button type="button" class="btn-remover" onclick="eliminarFila(this)"><i class="fa-solid fa-xmark"></i></button>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Datalist para autocompletado en escritura directa -->
+        <datalist id="productos-datalist">
+            <?php foreach ($productos as $prod): ?>
+                <?php
+                $nomComercial = !empty($prod['nombre_comercial']) ? trim($prod['nombre_comercial']) : trim($prod['ensayo_servicio']);
+                $ensayoTecnico = trim($prod['ensayo_servicio']);
+                $proc = !empty($prod['procedimiento_muestreo']) ? $prod['procedimiento_muestreo'] : ($prod['norma_astm'] ?? '');
+                $cond = $prod['condiciones_muestra'] ?? '';
+                $unidad = $prod['unidad_medida'] ?? 'Unidad';
                 ?>
-                <tr>
-                    <td>
-                        <input type="hidden" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01" value="<?= htmlspecialchars($det['codigo_servicio'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                        <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39" value="<?= htmlspecialchars($det['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                        <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01" value="<?= htmlspecialchars($det['formato_reporte'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                        <input type="hidden" name="ensayo_id_producto[]" value="<?= htmlspecialchars($det['id_producto'] ?? '', ENT_QUOTES, 'UTF-8') ?>" class="prod-id-input">
-                        <input type="text" name="ensayo_desc[]" class="form-control" value="<?= htmlspecialchars($det['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?>" required placeholder="Ensayo / Servicio Técnico..." autocomplete="off" onchange="completarPrecio(this)" <?= $isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1;"' : '' ?>>
-                        <div style="margin-top: 3px; font-size: 10px;">
-                            <span class="badge-tipo-row" style="font-weight: bold; padding: 1px 4px; border-radius: 3px; background: <?= $isCatalogo ? '#e0f2fe' : '#fef3c7' ?>; color: <?= $isCatalogo ? '#0369a1' : '#d97706' ?>; transition: all 0.2s;">
-                                <?= $isCatalogo ? '<i class="fa-solid fa-lock"></i> Catálogo (Bloqueado)' : '<i class="fa-solid fa-pen-fancy"></i> Campo Libre' ?>
-                            </span>
-                        </div>
-                    </td>
-                    <td>
-                        <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Detalle capturado de BD..." value="<?= htmlspecialchars($det['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>" <?= $isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #475569; cursor: not-allowed; border-color: #cbd5e1;"' : '' ?>>
-                    </td>
-                    <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="<?= $det['cantidad'] ?>" required oninput="calcularFila(this)"></td>
-                    <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="<?= $det['precio_unitario'] ?>" required oninput="calcularFila(this)" <?= $isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1;"' : '' ?>></td>
-                    <td>
-                        <textarea name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" rows="2" placeholder="Escribir descripción personalizada sin límite..." style="resize: vertical; font-family: inherit; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background-color: #ffffff; width: 100%;"><?= htmlspecialchars($det['descripcion_adicional'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
-                    </td>
-                    <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">C$ <?= number_format($det['subtotal'], 2, '.', ',') ?></td>
-                    <td style="text-align: center; vertical-align: middle;">
-                        <button type="button" class="btn-remover" onclick="eliminarFila(this)"><i class="fa-solid fa-xmark"></i></button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                <option value="<?= htmlspecialchars($nomComercial, ENT_QUOTES, 'UTF-8') ?>"
+                        data-id="<?= $prod['id'] ?>"
+                        data-nombre="<?= htmlspecialchars($nomComercial, ENT_QUOTES, 'UTF-8') ?>"
+                        data-ensayo-servicio="<?= htmlspecialchars($ensayoTecnico, ENT_QUOTES, 'UTF-8') ?>"
+                        data-condiciones="<?= htmlspecialchars($cond, ENT_QUOTES, 'UTF-8') ?>"
+                        data-procedimiento="<?= htmlspecialchars($proc, ENT_QUOTES, 'UTF-8') ?>"
+                        data-unidad="<?= htmlspecialchars($unidad, ENT_QUOTES, 'UTF-8') ?>"
+                        data-precio="<?= $prod['precio'] ?>"
+                        data-codigo="<?= htmlspecialchars($prod['codigo_servicio'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                        data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                        data-formato="<?= htmlspecialchars($prod['formato_reporte'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                        data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <?= htmlspecialchars($nomComercial . ' (' . $proc . ') - C$ ' . number_format($prod['precio'], 2), ENT_QUOTES, 'UTF-8') ?>
+                </option>
+            <?php endforeach; ?>
+        </datalist>
 
         <button type="button" onclick="abrirModalCatalogo()" style="background: var(--cycsa-azul); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; transition: all 0.2s; box-shadow: 0 4px 6px rgba(16, 52, 135, 0.15); display: inline-flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-magnifying-glass"></i> Buscar en Catálogo (221 Items)
+            <i class="fa-solid fa-magnifying-glass"></i> Buscar en Catálogo
         </button>
         <button type="button" onclick="agregarFilaPersonalizada()" style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; color: #475569; font-family: 'Inter', sans-serif; transition: all 0.2s; margin-left: 10px; display: inline-flex; align-items: center; gap: 8px;">
             <i class="fa-solid fa-pen-fancy"></i> + Ensayo Personalizado (Campo Libre)
@@ -336,12 +367,6 @@
                     </label>
                 </div>
 
-                <!-- N° Exoneración -->
-                <div id="wrapper-exoneracion" class="fila-total" style="display: <?= ($cotizacion['exonerado'] ?? 0) ? 'flex' : 'none' ?>; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 12px;">
-                    <span style="font-weight: 500; color: #475569; font-size: 12.5px;">N° Exoneración:</span>
-                    <input type="text" name="exoneracion_no" id="input-exoneracion-no" placeholder="Código / Aval" value="<?= htmlspecialchars($cotizacion['exoneracion_no'] ?? '', ENT_QUOTES, 'UTF-8') ?>" style="width: 140px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 13px; color: #1e293b;">
-                </div>
-
                 <!-- IVA -->
                 <div class="fila-total" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14.5px; color: #334155;">
                     <span style="font-weight: 500;">IVA (15%):</span>
@@ -362,9 +387,102 @@
         </div>
     </div>
 
+    <?php
+    $configNotas = json_decode($cotizacion['configuracion_notas'] ?? '', true) ?: [];
+    // Si no hay configuración previa, activar las 3 notas estándar por defecto
+    $notaPdf = isset($configNotas['digital_pdf']) ? (bool)$configNotas['digital_pdf'] : true;
+    $notaMov = isset($configNotas['no_movilizacion']) ? (bool)$configNotas['no_movilizacion'] : true;
+    $notaLab = isset($configNotas['entrega_laboratorio']) ? (bool)$configNotas['entrega_laboratorio'] : true;
+    $notaConcreto = !empty($configNotas['concreto']);
+    $notaLleno = !empty($configNotas['laboratorio_lleno']);
+
+    $incluirAnexo = !isset($cotizacion['incluir_anexo_tecnico']) || (int)$cotizacion['incluir_anexo_tecnico'] === 1 || !empty($cotizacion['anexo_tecnico']);
+    $archivoAdjunto = $cotizacion['archivo_adjunto'] ?? '';
+    ?>
+
     <div class="seccion-form" style="margin-top: 20px;">
-        <h3 class="seccion-titulo"><i class="fa-solid fa-address-book"></i> Contactos del Proyecto (Se mostrarán en el PDF)</h3>
-        <textarea name="contactos" class="form-control" rows="4" placeholder="Ej:&#10;Contacto 1: Ing. Noel Hernández +505 8732 4134&#10;Correo: jhernandez@incostas.com&#10;Contacto 2: Ing. Cristhian Sánchez -Cel: 505 7615 1706 csanchez@incostas.com" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; font-family: inherit; font-size: 13px; resize: vertical;"><?= htmlspecialchars($cotizacion['contactos'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
+        <h3 class="seccion-titulo"><i class="fa-solid fa-clipboard-list"></i> Notas y Condiciones de la Cotización (Para PDF)</h3>
+        
+        <label class="leyenda-item">
+            <input type="checkbox" name="notas[digital_pdf]" value="1" <?= $notaPdf ? 'checked' : '' ?>>
+            <span class="leyenda-texto">
+                <span class="leyenda-titulo">*** Informes Digitales en PDF</span>
+                Los informes de ensayo se entregan únicamente en formato digital (.PDF). Serán enviados al correo del contacto designado por el cliente.
+            </span>
+        </label>
+
+        <label class="leyenda-item">
+            <input type="checkbox" name="notas[no_movilizacion]" value="1" <?= $notaMov ? 'checked' : '' ?>>
+            <span class="leyenda-texto">
+                <span class="leyenda-titulo">*** Sin Movilización</span>
+                No incluye movilización por traslado de muestras.
+            </span>
+        </label>
+
+        <label class="leyenda-item">
+            <input type="checkbox" name="notas[entrega_laboratorio]" value="1" <?= $notaLab ? 'checked' : '' ?>>
+            <span class="leyenda-texto">
+                <span class="leyenda-titulo">* Entrega en Laboratorio CYCSA</span>
+                Cliente toma las muestras y las entrega en Laboratorio CYCSA ubicado Km 83.5 Carretera León Managua.
+            </span>
+        </label>
+
+        <label class="leyenda-item">
+            <input type="checkbox" name="notas[concreto]" value="1" <?= $notaConcreto ? 'checked' : '' ?>>
+            <span class="leyenda-texto">
+                <span class="leyenda-titulo">Muestreo de Concreto (Cilindros)</span>
+                Añade: "El cliente deberá entregar los cilindros debidamente identificados (Nombre, Ubicación, Resistencia, Revenimiento) y de dimensiones estándar CYCSA-PE-07..."
+            </span>
+        </label>
+
+        <label class="leyenda-item">
+            <input type="checkbox" name="notas[laboratorio_lleno]" value="1" <?= $notaLleno ? 'checked' : '' ?>>
+            <span class="leyenda-texto">
+                <span class="leyenda-titulo">Condicionante de Tiempo (Laboratorio lleno)</span>
+                Añade: "Los tiempos aplican a partir del ingreso... La disponibilidad deberá ser consultada al momento de la entrega."
+            </span>
+        </label>
+
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px 18px; margin-top: 15px; font-size: 13px; color: #1e3a8a;">
+            <strong style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13.5px; color: #103487;">
+                <i class="fa-solid fa-building-columns"></i> Cuentas Bancarias Oficiales para Pago (Impresas en la Cotización y PDF):
+            </strong>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; font-size: 12.5px; line-height: 1.4; color: #1e293b;">
+                <div><strong style="color:#0f172a;">BANPRO:</strong> C$ 10010207085164 / $ 10010210874512</div>
+                <div><strong style="color:#0f172a;">BAC:</strong> C$ 357-02445-4 / $ 363259490</div>
+                <div><strong style="color:#0f172a;">LAFISE:</strong> C$ 550-2000-11</div>
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: #2563eb; border-top: 1px dashed #bfdbfe; padding-top: 6px;">
+                Pago a nombre de <strong>CYC.S.A</strong> &bull; RUC: <strong>J0310000073465</strong> &bull; Validez de oferta: <strong>30 días</strong>.
+            </div>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <label class="form-label" style="font-weight: 600; margin-bottom: 6px; display: block;"><i class="fa-solid fa-address-book"></i> Contactos del Proyecto (Se mostrarán en el PDF)</label>
+            <textarea name="contactos" class="form-control" rows="5" placeholder="Ej:&#10;Contacto 1: Ing. Noel Hernández +505 8732 4134&#10;Correo: jhernandez@incostas.com" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; font-family: inherit; font-size: 13px; resize: vertical;"><?= htmlspecialchars($cotizacion['contactos'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
+        </div>
+    </div>
+
+    <!-- SECCIÓN DOCUMENTOS ADJUNTOS / ARCHIVO COMPLEMENTARIO -->
+    <div class="seccion-form" style="border: 1px solid #cbd5e1; border-top: 4px solid #103487; background: #ffffff;">
+        <h3 class="seccion-titulo" style="margin-bottom: 6px;"><i class="fa-solid fa-paperclip"></i> Documentos Adjuntos / Archivo Complementario</h3>
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+            Permite asociar y archivar un documento complementario (especificaciones, términos o anexos del cliente) a la cotización.
+        </p>
+
+        <div>
+            <label class="form-label" style="font-weight: 600; margin-bottom: 6px; display: block;"><i class="fa-solid fa-file-arrow-up"></i> Adjuntar Archivo Digital Adicional (Opcional - PDF, DOCX, XLSX)</label>
+            <?php 
+                $adjuntoActual = $archivoAdjunto ?? $cotizacion['archivo_adjunto'] ?? '';
+                if (!empty($adjuntoActual)): 
+            ?>
+                <div style="margin-bottom: 8px; font-size: 12.5px; color: #0284c7; background: #f0f9ff; padding: 6px 12px; border-radius: 4px; border: 1px solid #bae6fd; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-file-arrow-down"></i> Archivo actual: <a href="/Cycsa/publico/<?= htmlspecialchars($adjuntoActual, ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="color: #0369a1; font-weight: 600;">Ver adjunto actual</a>
+                </div>
+            <?php endif; ?>
+            <input type="file" name="archivo_adjunto" id="archivo_adjunto" class="form-control" style="padding: 8px; border: 1px solid #cbd5e1; background: white; font-size: 13px;" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg">
+            <span style="font-size: 11.5px; color: #64748b; margin-top: 4px; display: block;">Formatos aceptados: PDF, DOCX, XLSX, PNG, JPG (Máx. 10MB).</span>
+        </div>
     </div>
 
     <div style="display: flex; gap: 15px; justify-content: flex-end; margin-bottom: 50px;">
@@ -376,10 +494,24 @@
 </form>
 
 <script>
+    // Normalizador de texto para búsqueda flexible (remueve tildes, mayúsculas y diacríticos)
+    function normalizarTextoBusqueda(str) {
+        if (!str) return '';
+        return str
+            .toString()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+    }
+
     // Gestión del Modal de Clientes y Selección Premium y Pre-llenado en Edición
     function abrirModalClientes() {
         document.getElementById('modal-clientes').style.display = 'flex';
-        document.getElementById('modal-cliente-search-input').focus();
+        setTimeout(() => {
+            const input = document.getElementById('modal-cliente-search-input');
+            if (input) { input.focus(); input.select(); }
+        }, 50);
     }
 
     function cerrarModalClientes() {
@@ -389,16 +521,35 @@
     }
 
     function filtrarClientesModal() {
-        const query = document.getElementById('modal-cliente-search-input').value.toLowerCase().trim();
+        const inputEl = document.getElementById('modal-cliente-search-input');
+        const queryRaw = inputEl ? inputEl.value : '';
+        const queryNorm = normalizarTextoBusqueda(queryRaw);
+        const queryCompact = queryNorm.replace(/[^a-z0-9]/g, '');
+        const tokens = queryNorm.replace(/[-_/.,;:()+*]/g, ' ').split(/\s+/).filter(t => t.length > 0);
         const rows = document.querySelectorAll('#modal-tabla-clientes tbody tr');
-        
+
         rows.forEach(row => {
-            const text = row.getAttribute('data-text') || '';
-            if (text.includes(query)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+            if (!row._normText) {
+                const raw = (row.getAttribute('data-text') || '') + ' ' + (row.innerText || '');
+                const norm = normalizarTextoBusqueda(raw);
+                row._normText = norm;
+                row._spacedText = norm.replace(/[-_/.,;:()+*]/g, ' ');
+                row._compactText = norm.replace(/[^a-z0-9]/g, '');
             }
+
+            let matches = true;
+            if (queryNorm !== '') {
+                const matchesCompact = (queryCompact.length >= 2 && row._compactText.includes(queryCompact));
+                const matchesTokens = tokens.length > 0 && tokens.every(tok => {
+                    const tokCompact = tok.replace(/[^a-z0-9]/g, '');
+                    return row._spacedText.includes(tok) || 
+                           row._normText.includes(tok) || 
+                           (tokCompact.length >= 2 && row._compactText.includes(tokCompact));
+                });
+                matches = matchesCompact || matchesTokens;
+            }
+
+            row.style.display = matches ? '' : 'none';
         });
     }
 
@@ -521,19 +672,8 @@
         }
 
         const chkExonerado = document.getElementById('chk-exonerado');
-        const wrapperEx = document.getElementById('wrapper-exoneracion');
-        const inputEx = document.getElementById('input-exoneracion-no');
-        if (chkExonerado && wrapperEx && inputEx) {
+        if (chkExonerado) {
             chkExonerado.addEventListener('change', function() {
-                if (this.checked) {
-                    wrapperEx.style.display = 'flex';
-                    inputEx.setAttribute('required', 'required');
-                    inputEx.focus(); // Focus automatically!
-                } else {
-                    wrapperEx.style.display = 'none';
-                    inputEx.removeAttribute('required');
-                    inputEx.value = '';
-                }
                 calcularTotalesGenerales();
             });
         }
@@ -593,17 +733,32 @@
         calcularTotalesGenerales();
     }
 
+    function actualizarNumerosLinea() {
+        const filas = document.querySelectorAll('#tabla-ensayos tbody tr');
+        filas.forEach((fila, idx) => {
+            const numSpan = fila.querySelector('.linea-num');
+            if (numSpan) {
+                numSpan.textContent = idx + 1;
+            }
+        });
+    }
+
     function agregarFila(expandTechDetails = false) {
         const tbody = document.querySelector('#tabla-ensayos tbody');
         const nuevaFila = document.createElement('tr');
         
         nuevaFila.innerHTML = `
+            <td style="text-align: center; vertical-align: middle; font-weight: 700; color: #0f172a;">
+                <span class="linea-num">1</span>
+            </td>
             <td>
                 <input type="hidden" name="ensayo_codigo[]" class="form-control spec-codigo" placeholder="Ej: CYC-01">
                 <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
                 <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
+                <input type="hidden" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo entrega...">
+                <input type="hidden" name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" value="">
                 <input type="hidden" name="ensayo_id_producto[]" value="" class="prod-id-input">
-                <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." list="productos-datalist" onchange="completarPrecio(this)">
+                <input type="text" name="ensayo_desc[]" class="form-control spec-desc" required placeholder="Nombre comercial / Ensayo..." autocomplete="off" list="productos-datalist" onchange="completarPrecio(this)">
                 <div style="margin-top: 3px; font-size: 10px;">
                     <span class="badge-tipo-row" style="font-weight: bold; padding: 1px 4px; border-radius: 3px; background: #fef3c7; color: #d97706; transition: all 0.2s;">
                         <i class="fa-solid fa-pen-fancy"></i> Campo Libre
@@ -611,17 +766,28 @@
                 </div>
             </td>
             <td>
-                <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega...">
+                <textarea name="ensayo_condiciones[]" class="form-control spec-condiciones" rows="2" placeholder="Condiciones de muestra / empaque..." style="resize: vertical; font-size: 12px;"></textarea>
             </td>
-            <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)"></td>
-            <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="0.00" required oninput="calcularFila(this)"></td>
-            <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">C$ 0.00</td>
+            <td>
+                <input type="text" name="ensayo_procedimiento[]" class="form-control spec-procedimiento" placeholder="CYCSA-PE / ASTM..." style="font-size: 12px; font-family: monospace;">
+            </td>
+            <td>
+                <input type="text" name="ensayo_unidad[]" class="form-control spec-unidad" placeholder="Unidad" value="Unidad" style="font-size: 12.5px;">
+            </td>
+            <td>
+                <input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)" style="text-align: center;">
+            </td>
+            <td>
+                <input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="0.00" required oninput="calcularFila(this)" style="text-align: right;">
+            </td>
+            <td style="vertical-align: middle; font-weight: 700; text-align: right; color: #0f172a;" class="subtotal-texto">C$ 0.00</td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" class="btn-remover" onclick="eliminarFila(this)"><i class="fa-solid fa-xmark"></i></button>
             </td>
         `;
         tbody.appendChild(nuevaFila);
         actualizarBotonesRemover();
+        actualizarNumerosLinea();
 
         if (expandTechDetails) {
             setTimeout(() => {
@@ -643,23 +809,44 @@
             const fila = filas[0];
             const idInput = fila.querySelector('.prod-id-input');
             const descInput = fila.querySelector('input[name="ensayo_desc[]"]');
+            const condicionesInput = fila.querySelector('.spec-condiciones');
+            const procedimientoInput = fila.querySelector('.spec-procedimiento');
+            const unidadInput = fila.querySelector('.spec-unidad');
             const precioInput = fila.querySelector('input[name="ensayo_precio[]"]');
             const cantInput = fila.querySelector('.cant-input');
             const codigoInput = fila.querySelector('.spec-codigo');
             const normaInput = fila.querySelector('.spec-norma');
             const formatoInput = fila.querySelector('.spec-formato');
             const obsInput = fila.querySelector('.spec-obs');
+            const descAdicionalInput = fila.querySelector('.spec-desc-adicional');
             const subtotalTexto = fila.querySelector('.subtotal-texto');
             const badge = fila.querySelector('.badge-tipo-row');
 
             if (idInput) idInput.value = '';
-            if (descInput) descInput.value = '';
-            if (precioInput) precioInput.value = '0.00';
+            if (descInput) {
+                descInput.value = '';
+                descInput.removeAttribute('readonly');
+                descInput.style.backgroundColor = '#ffffff';
+                descInput.style.color = 'inherit';
+                descInput.style.fontWeight = 'normal';
+                descInput.style.cursor = 'text';
+            }
+            if (condicionesInput) condicionesInput.value = '';
+            if (procedimientoInput) procedimientoInput.value = '';
+            if (unidadInput) unidadInput.value = 'Unidad';
+            if (precioInput) {
+                precioInput.value = '0.00';
+                precioInput.removeAttribute('readonly');
+                precioInput.style.backgroundColor = '#ffffff';
+                precioInput.style.color = 'inherit';
+                precioInput.style.cursor = 'text';
+            }
             if (cantInput) cantInput.value = '1';
             if (codigoInput) codigoInput.value = '';
             if (normaInput) normaInput.value = '';
             if (formatoInput) formatoInput.value = '';
             if (obsInput) obsInput.value = '';
+            if (descAdicionalInput) descAdicionalInput.value = '';
             if (subtotalTexto) subtotalTexto.textContent = 'C$ 0.00';
             if (badge) {
                 badge.style.background = '#fef3c7';
@@ -671,6 +858,7 @@
             fila.remove();
         }
         actualizarBotonesRemover();
+        actualizarNumerosLinea();
         calcularTotalesGenerales();
     }
 
@@ -754,6 +942,7 @@
         const fila = input.closest('tr');
         const valor = input.value.trim();
         const datalist = document.getElementById('productos-datalist');
+        if (!datalist) return;
         
         const valorNorm = normalizarTexto(valor);
         
@@ -777,12 +966,15 @@
         }
         
         const idInput = fila.querySelector('.prod-id-input');
+        const condicionesInput = fila.querySelector('.spec-condiciones');
+        const procedimientoInput = fila.querySelector('.spec-procedimiento');
+        const unidadInput = fila.querySelector('.spec-unidad');
         const codigoInput = fila.querySelector('.spec-codigo');
         const normaInput = fila.querySelector('.spec-norma');
         const formatoInput = fila.querySelector('.spec-formato');
         const obsInput = fila.querySelector('.spec-obs');
         const badge = fila.querySelector('.badge-tipo-row');
-        
+
         if (opcion) {
             const idProd = opcion.getAttribute('data-id') || '';
             if (idInput) idInput.value = idProd;
@@ -790,16 +982,22 @@
             const precio = parseFloat(opcion.getAttribute('data-precio')) || 0;
             const precioInput = fila.querySelector('.precio-input');
             precioInput.value = precio.toFixed(2);
-
+            
             // Reemplazar la descripción con el nombre comercial o ensayo técnico seleccionado
-            input.value = opcion.getAttribute('data-ensayo-servicio') || opcion.value;
-
-            // Auto-rellenar info técnica
+            input.value = opcion.getAttribute('data-nombre') || opcion.getAttribute('data-ensayo-servicio') || opcion.value;
+            
+            // Auto-rellenar info técnica y condiciones
+            const condiciones = opcion.getAttribute('data-condiciones') || '';
+            const procedimiento = opcion.getAttribute('data-procedimiento') || '';
+            const unidad = opcion.getAttribute('data-unidad') || 'Unidad';
             const codigo = opcion.getAttribute('data-codigo') || '';
             const norma = opcion.getAttribute('data-norma') || '';
             const formato = opcion.getAttribute('data-formato') || '';
             const obs = opcion.getAttribute('data-obs') || '';
             
+            if (condicionesInput) condicionesInput.value = condiciones;
+            if (procedimientoInput) procedimientoInput.value = procedimiento;
+            if (unidadInput) unidadInput.value = unidad;
             if (codigoInput) codigoInput.value = codigo;
             if (normaInput) normaInput.value = norma;
             if (formatoInput) formatoInput.value = formato;
@@ -808,14 +1006,14 @@
             if (idProd) {
                 input.setAttribute('readonly', 'readonly');
                 input.style.backgroundColor = '#f1f5f9';
-                input.style.color = '#334155';
+                input.style.color = '#1e293b';
                 input.style.fontWeight = '600';
                 input.style.cursor = 'not-allowed';
                 input.style.borderColor = '#cbd5e1';
                 if (badge) {
                     badge.style.background = '#e0f2fe';
                     badge.style.color = '#0369a1';
-                    badge.innerHTML = '<i class="fa-solid fa-lock"></i> Catálogo (Nombre Bloqueado)';
+                    badge.innerHTML = '<i class="fa-solid fa-lock"></i> Catálogo (Bloqueado)';
                 }
             } else {
                 input.removeAttribute('readonly');
@@ -851,7 +1049,15 @@
     // --- FUNCIONALIDADES DEL MODAL PREMIUM ---
     function abrirModalCatalogo() {
         document.getElementById('modal-catalogo').style.display = 'flex';
-        document.getElementById('modal-search-input').focus();
+        actualizarContadorModal();
+        filtrarProductosModal();
+        setTimeout(() => {
+            const input = document.getElementById('modal-search-input');
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 50);
     }
 
     function cerrarModalCatalogo() {
@@ -862,24 +1068,88 @@
         filtrarProductosModal();
     }
 
+    function limpiarBusquedaProductosModal() {
+        const input = document.getElementById('modal-search-input');
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+        filtrarProductosModal();
+    }
+
     function filtrarProductosModal() {
-        const query = document.getElementById('modal-search-input').value.toLowerCase().trim();
-        const cat = document.getElementById('modal-filter-cat').value.toLowerCase().trim();
-        const rows = document.querySelectorAll('#modal-tabla-productos tbody tr');
+        const inputEl = document.getElementById('modal-search-input');
+        const queryRaw = inputEl ? inputEl.value : '';
+        const catSelect = document.getElementById('modal-filter-cat');
+        const cat = catSelect ? normalizarTextoBusqueda(catSelect.value) : '';
+        const rows = document.querySelectorAll('#modal-tabla-productos tbody tr:not(#modal-no-results-row)');
+        const noResultsRow = document.getElementById('modal-no-results-row');
+        const counterEl = document.getElementById('modal-product-counter');
+        const btnClear = document.getElementById('btn-clear-product-search');
+
+        if (btnClear) {
+            btnClear.style.display = queryRaw.trim().length > 0 ? 'inline-block' : 'none';
+        }
+
+        const queryNorm = normalizarTextoBusqueda(queryRaw);
+        // Versión compacta: solo letras y números (ej: "pe-25" o "pe 25" -> "pe25", "astm d6938" -> "astmd6938")
+        const queryCompact = queryNorm.replace(/[^a-z0-9]/g, '');
         
+        // Tokens de búsqueda separados por espacios, guiones o cualquier signo
+        const tokens = queryNorm
+            .replace(/[-_/.,;:()+*]/g, ' ')
+            .split(/\s+/)
+            .filter(t => t.length > 0);
+
+        let visibles = 0;
+
         rows.forEach(row => {
-            const text = row.getAttribute('data-text') || '';
-            const rowCat = row.getAttribute('data-cat') || '';
-            
-            const matchesQuery = text.includes(query);
-            const matchesCat = cat === '' || rowCat === cat;
-            
+            if (!row._normText) {
+                const raw = (row.getAttribute('data-text') || '') + ' ' + (row.innerText || '');
+                const norm = normalizarTextoBusqueda(raw);
+                row._normText = norm;
+                row._spacedText = norm.replace(/[-_/.,;:()+*]/g, ' ');
+                row._compactText = norm.replace(/[^a-z0-9]/g, '');
+            }
+
+            const rowCat = normalizarTextoBusqueda(row.getAttribute('data-cat') || '');
+            const matchesCat = (cat === '' || rowCat === cat || rowCat.includes(cat));
+
+            let matchesQuery = true;
+
+            if (queryNorm !== '') {
+                // 1. Coincidencia compacta directa (ej: "pe25", "pe-25", "d6938", "c39")
+                const matchesCompact = (queryCompact.length >= 2 && row._compactText.includes(queryCompact));
+
+                // 2. Coincidencia multi-token (todas las palabras buscadas deben encontrarse en el ensayo)
+                const matchesAllTokens = tokens.length > 0 && tokens.every(token => {
+                    const tokenCompact = token.replace(/[^a-z0-9]/g, '');
+                    return row._spacedText.includes(token) || 
+                           row._normText.includes(token) || 
+                           (tokenCompact.length >= 2 && row._compactText.includes(tokenCompact));
+                });
+
+                matchesQuery = matchesCompact || matchesAllTokens;
+            }
+
             if (matchesQuery && matchesCat) {
                 row.style.display = '';
+                visibles++;
             } else {
                 row.style.display = 'none';
             }
         });
+
+        if (noResultsRow) {
+            noResultsRow.style.display = (visibles === 0) ? '' : 'none';
+        }
+        if (counterEl) {
+            if (queryNorm !== '' || cat !== '') {
+                counterEl.innerHTML = `<i class="fa-solid fa-filter" style="color:var(--cycsa-azul);"></i> Mostrando <strong>${visibles}</strong> de ${rows.length} ensayos`;
+            } else {
+                counterEl.innerHTML = `Mostrando todos los ensayos (<strong>${rows.length}</strong>)`;
+            }
+        }
     }
 
     function seleccionarTodosModal(masterCb) {
@@ -891,6 +1161,7 @@
     }
 
     function toggleFilaCheck(row, event) {
+        // Si el usuario hace clic directo en el checkbox, no interferimos
         if (event.target.classList.contains('modal-prod-checkbox')) {
             actualizarContadorModal();
             return;
@@ -921,7 +1192,8 @@
     }
 
     function escapeHtml(text) {
-        return text
+        if (!text) return '';
+        return text.toString()
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -929,7 +1201,7 @@
             .replace(/'/g, "&#039;");
     }
 
-    function agregarFilaConDatos(descripcion, precio, idProducto = '', codigo = '', norma = '', formato = '', obs = '', descAdicional = '') {
+    function agregarFilaConDatos(descripcion, condiciones, procedimiento, unidad, precio, idProducto = '', codigo = '', norma = '', formato = '', obs = '', descAdicional = '') {
         const tbody = document.querySelector('#tabla-ensayos tbody');
         const isCatalogo = (idProducto !== '' && idProducto !== null && idProducto !== undefined);
         
@@ -938,6 +1210,9 @@
         if (filas.length === 1) {
             const idInput = filas[0].querySelector('.prod-id-input');
             const descInput = filas[0].querySelector('input[name="ensayo_desc[]"]');
+            const condicionesInput = filas[0].querySelector('.spec-condiciones');
+            const procedimientoInput = filas[0].querySelector('.spec-procedimiento');
+            const unidadInput = filas[0].querySelector('.spec-unidad');
             const obsInput = filas[0].querySelector('.spec-obs');
             const precioInput = filas[0].querySelector('input[name="ensayo_precio[]"]');
             const codigoInput = filas[0].querySelector('.spec-codigo');
@@ -949,6 +1224,9 @@
             if (descInput && descInput.value.trim() === "" && (parseFloat(precioInput.value) || 0) === 0) {
                 if (idInput) idInput.value = idProducto;
                 descInput.value = descripcion;
+                if (condicionesInput) condicionesInput.value = condiciones;
+                if (procedimientoInput) procedimientoInput.value = procedimiento;
+                if (unidadInput) unidadInput.value = unidad || 'Unidad';
                 precioInput.value = precio.toFixed(2);
                 
                 if (codigoInput) codigoInput.value = codigo;
@@ -964,19 +1242,6 @@
                     descInput.style.fontWeight = '600';
                     descInput.style.cursor = 'not-allowed';
 
-                    if (obsInput) {
-                        obsInput.setAttribute('readonly', 'readonly');
-                        obsInput.style.backgroundColor = '#f1f5f9';
-                        obsInput.style.color = '#475569';
-                        obsInput.style.cursor = 'not-allowed';
-                    }
-
-                    precioInput.setAttribute('readonly', 'readonly');
-                    precioInput.style.backgroundColor = '#f1f5f9';
-                    precioInput.style.color = '#1e293b';
-                    precioInput.style.fontWeight = '600';
-                    precioInput.style.cursor = 'not-allowed';
-
                     if (badge) {
                         badge.style.background = '#e0f2fe';
                         badge.style.color = '#0369a1';
@@ -989,19 +1254,6 @@
                     descInput.style.fontWeight = 'normal';
                     descInput.style.cursor = 'text';
 
-                    if (obsInput) {
-                        obsInput.removeAttribute('readonly');
-                        obsInput.style.backgroundColor = '#ffffff';
-                        obsInput.style.color = 'inherit';
-                        obsInput.style.cursor = 'text';
-                    }
-
-                    precioInput.removeAttribute('readonly');
-                    precioInput.style.backgroundColor = '#ffffff';
-                    precioInput.style.color = 'inherit';
-                    precioInput.style.fontWeight = 'normal';
-                    precioInput.style.cursor = 'text';
-
                     if (badge) {
                         badge.style.background = '#fef3c7';
                         badge.style.color = '#d97706';
@@ -1009,6 +1261,7 @@
                     }
                 }
                 
+                actualizarNumerosLinea();
                 calcularFila(precioInput);
                 return;
             }
@@ -1016,12 +1269,17 @@
         
         const nuevaFila = document.createElement('tr');
         nuevaFila.innerHTML = `
+            <td style="text-align: center; vertical-align: middle; font-weight: 700; color: #0f172a;">
+                <span class="linea-num">1</span>
+            </td>
             <td>
                 <input type="hidden" name="ensayo_codigo[]" class="form-control spec-codigo" value="${escapeHtml(codigo)}">
                 <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" value="${escapeHtml(norma)}">
                 <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" value="${escapeHtml(formato)}">
+                <input type="hidden" name="ensayo_obs[]" class="form-control spec-obs" value="${escapeHtml(obs)}">
+                <input type="hidden" name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" value="${escapeHtml(descAdicional)}">
                 <input type="hidden" name="ensayo_id_producto[]" value="${escapeHtml(idProducto.toString())}" class="prod-id-input">
-                <input type="text" name="ensayo_desc[]" class="form-control" required placeholder="Nombre Comercial..." autocomplete="off" onchange="completarPrecio(this)" value="${escapeHtml(descripcion)}" ${isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1;"' : ''}>
+                <input type="text" name="ensayo_desc[]" class="form-control spec-desc" required placeholder="Nombre comercial / Ensayo..." autocomplete="off" list="productos-datalist" onchange="completarPrecio(this)" value="${escapeHtml(descripcion)}" ${isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1;"' : ''}>
                 <div style="margin-top: 3px; font-size: 10px;">
                     <span class="badge-tipo-row" style="font-weight: bold; padding: 1px 4px; border-radius: 3px; background: ${isCatalogo ? '#e0f2fe' : '#fef3c7'}; color: ${isCatalogo ? '#0369a1' : '#d97706'}; transition: all 0.2s;">
                         ${isCatalogo ? '<i class="fa-solid fa-lock"></i> Catálogo (Bloqueado)' : '<i class="fa-solid fa-pen-fancy"></i> Campo Libre'}
@@ -1029,20 +1287,24 @@
                 </div>
             </td>
             <td>
-                <input type="text" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Detalle..." value="${escapeHtml(obs)}" ${isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #475569; cursor: not-allowed; border-color: #cbd5e1;"' : ''}>
+                <textarea name="ensayo_condiciones[]" class="form-control spec-condiciones" rows="2" placeholder="Condiciones de muestra / empaque..." style="resize: vertical; font-size: 12px;">${escapeHtml(condiciones)}</textarea>
             </td>
-            <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)"></td>
-            <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="${precio.toFixed(2)}" required oninput="calcularFila(this)" ${isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1;"' : ''}></td>
             <td>
-                <textarea name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" rows="2" placeholder="Escribir descripción personalizada sin límite..." style="resize: vertical; font-family: inherit; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background-color: #ffffff; width: 100%;">${escapeHtml(descAdicional)}</textarea>
+                <input type="text" name="ensayo_procedimiento[]" class="form-control spec-procedimiento" placeholder="CYCSA-PE / ASTM..." style="font-size: 12px; font-family: monospace;" value="${escapeHtml(procedimiento)}">
             </td>
-            <td style="vertical-align: middle; font-weight: 600;" class="subtotal-texto">${formatearMonto(precio)}</td>
+            <td>
+                <input type="text" name="ensayo_unidad[]" class="form-control spec-unidad" placeholder="Unidad" value="${escapeHtml(unidad || 'Unidad')}" style="font-size: 12.5px;">
+            </td>
+            <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)" style="text-align: center;"></td>
+            <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="${precio.toFixed(2)}" required oninput="calcularFila(this)" style="text-align: right;"></td>
+            <td style="vertical-align: middle; font-weight: 700; text-align: right; color: #0f172a;" class="subtotal-texto">${formatearMonto(precio)}</td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" class="btn-remover" onclick="eliminarFila(this)"><i class="fa-solid fa-xmark"></i></button>
             </td>
         `;
         tbody.appendChild(nuevaFila);
         actualizarBotonesRemover();
+        actualizarNumerosLinea();
         
         // Ejecutar los cálculos de fila
         const nuevoPrecioInput = nuevaFila.querySelector('.precio-input');
@@ -1058,13 +1320,16 @@
         
         checkboxes.forEach(cb => {
             const id = cb.getAttribute('data-id') || '';
-            const nombre = cb.getAttribute('data-nombre');
+            const nombre = cb.getAttribute('data-nombre') || '';
+            const condiciones = cb.getAttribute('data-condiciones') || '';
+            const procedimiento = cb.getAttribute('data-procedimiento') || '';
+            const unidad = cb.getAttribute('data-unidad') || 'Unidad';
             const precio = parseFloat(cb.getAttribute('data-precio')) || 0;
             const codigo = cb.getAttribute('data-codigo') || '';
             const norma = cb.getAttribute('data-norma') || '';
             const formato = cb.getAttribute('data-formato') || '';
             const obs = cb.getAttribute('data-obs') || '';
-            agregarFilaConDatos(nombre, precio, id, codigo, norma, formato, obs);
+            agregarFilaConDatos(nombre, condiciones, procedimiento, unidad, precio, id, codigo, norma, formato, obs);
             cb.checked = false; // reset
         });
         
@@ -1076,64 +1341,111 @@
     // Inicializar los cálculos al cargar
     document.addEventListener('DOMContentLoaded', () => {
         actualizarBotonesRemover();
+        actualizarNumerosLinea();
         calcularTotalesGenerales();
     });
 </script>
 
 <!-- MODAL DE BÚSQUEDA Y SELECCIÓN DE ENSAYOS -->
 <div class="modal-premium-bg" id="modal-catalogo" style="display:none;">
-    <div class="modal-premium-content">
+    <div class="modal-premium-content" style="max-width: 950px;">
         <div class="modal-header">
-            <h4 class="modal-title"><i class="fa-solid fa-flask"></i> Buscar Ensayos y Servicios (Catálogo Cycsa)</h4>
+            <h4 class="modal-title"><i class="fa-solid fa-flask"></i> Buscar Ensayos y Servicios</h4>
             <button type="button" class="modal-close" onclick="cerrarModalCatalogo()">&times;</button>
         </div>
-        <div class="modal-search-wrapper">
-            <input type="text" id="modal-search-input" class="form-control" placeholder="Buscar por código, nombre de ensayo, norma ASTM..." oninput="filtrarProductosModal()">
-            <select id="modal-filter-cat" class="form-control" style="max-width: 250px;" onchange="filtrarProductosModal()">
-                <option value="">Todas las Matrices</option>
-                <?php foreach ($categorias as $cat): ?>
-                    <option value="<?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-            </select>
+        <div class="modal-search-wrapper" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div style="position: relative; flex: 1;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; pointer-events: none;"></i>
+                    <input type="text" id="modal-search-input" class="form-control" placeholder="Escribe para buscar al instante: ej. 'pe 25', 'pe25', 'densimetro', 'astm 6938'..." style="padding-left: 38px; padding-right: 36px; height: 42px; font-size: 14px;" oninput="filtrarProductosModal()" autocomplete="off">
+                    <button type="button" id="btn-clear-product-search" onclick="limpiarBusquedaProductosModal()" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 4px; line-height: 1;" title="Limpiar búsqueda">&times;</button>
+                </div>
+                <select id="modal-filter-cat" class="form-control" style="max-width: 250px; height: 42px;" onchange="filtrarProductosModal()">
+                    <option value="">Todas las Matrices</option>
+                    <?php foreach ($categorias as $cat): ?>
+                        <option value="<?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div id="modal-product-counter" style="font-size: 12px; color: #64748b; padding: 0 4px; display: flex; align-items: center; gap: 6px;">
+                Mostrando todos los ensayos (<strong><?= count($productos) ?></strong>)
+            </div>
         </div>
         <div class="modal-tabla-container">
             <table class="modal-tabla" id="modal-tabla-productos">
                 <thead>
                     <tr>
                         <th style="width: 5%; text-align: center;"><input type="checkbox" id="modal-select-all" onchange="seleccionarTodosModal(this)"></th>
-                        <th style="width: 15%;">Código</th>
-                        <th style="width: 50%;">Ensayo / Servicio Técnico</th>
-                        <th style="width: 18%;">Matriz / Tipo</th>
-                        <th style="width: 12%; text-align: right;">Precio</th>
+                        <th style="width: 44%;">Descripción / Nombre Comercial</th>
+                        <th style="width: 27%;">Condiciones de Muestra</th>
+                        <th style="width: 12%;">Procedimiento</th>
+                        <th style="width: 12%; text-align: right;">Costo (C$)</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <tr id="modal-no-results-row" style="display: none;">
+                        <td colspan="5" style="text-align: center; padding: 35px 20px; color: #64748b; background: #f8fafc;">
+                            <i class="fa-solid fa-flask-vial" style="font-size: 32px; color: #cbd5e1; margin-bottom: 10px; display: block;"></i>
+                            <div style="font-weight: 600; font-size: 14px; color: #334155; margin-bottom: 4px;">No se encontraron ensayos coincidentes</div>
+                            <div style="font-size: 12px; color: #64748b;">Prueba buscando sin guiones, con números o palabras clave (ej: "pe 25", "densidad", "nuclear", "astm").</div>
+                            <button type="button" class="btn-premium-azul" style="margin-top: 12px; font-size: 12px; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;" onclick="limpiarBusquedaProductosModal()">
+                                <i class="fa-solid fa-arrow-rotate-left"></i> Restablecer búsqueda
+                            </button>
+                        </td>
+                    </tr>
                     <?php foreach ($productos as $prod): ?>
                         <?php 
-                        $ensayo_tecnico = !empty($prod['ensayo_servicio']) ? trim($prod['ensayo_servicio']) : trim($prod['nombre_comercial'] ?? '');
-                        $nombre_comercial = trim($prod['nombre_comercial'] ?? '');
+                        $nom_comercial = !empty($prod['nombre_comercial']) ? trim($prod['nombre_comercial']) : trim($prod['ensayo_servicio']);
+                        $ensayo_tecnico = trim($prod['ensayo_servicio']);
+                        $procedimiento_val = !empty($prod['procedimiento_muestreo']) ? $prod['procedimiento_muestreo'] : ($prod['norma_astm'] ?? '');
+                        $condiciones_val = $prod['condiciones_muestra'] ?? '';
+                        $unidad_val = $prod['unidad_medida'] ?? 'Unidad';
                         
                         $codigo_opcion = $prod['codigo_servicio'] ?? '';
                         $formato_opcion = (!empty($prod['codigo_servicio']) && strpos($prod['codigo_servicio'], 'CYCSA-RT-') !== false) ? $prod['codigo_servicio'] : ($prod['formato_reporte'] ?? '');
+                        $norma_astm_val = $prod['norma_astm'] ?? '';
+                        $matriz_val = $prod['matriz_tipo'] ?? '';
                         
-                        $busqueda_val = strtolower($ensayo_tecnico . ' ' . $nombre_comercial . ' ' . $codigo_opcion . ' ' . $formato_opcion . ' ' . ($prod['norma_astm'] ?? '') . ' ' . ($prod['matriz_tipo'] ?? ''));
+                        // Generar variantes con espacios y sin guiones para acelerar y asegurar coincidencia
+                        $procedimiento_spaced = str_replace(['-', '_', '/', '.'], ' ', $procedimiento_val);
+                        $codigo_spaced = str_replace(['-', '_', '/', '.'], ' ', $codigo_opcion);
+                        $norma_spaced = str_replace(['-', '_', '/', '.'], ' ', $norma_astm_val);
+                        
+                        $busqueda_val = strtolower($nom_comercial . ' ' . $ensayo_tecnico . ' ' . $codigo_opcion . ' ' . $codigo_spaced . ' ' . $formato_opcion . ' ' . $norma_astm_val . ' ' . $norma_spaced . ' ' . $matriz_val . ' ' . $condiciones_val . ' ' . $procedimiento_val . ' ' . $procedimiento_spaced);
                         ?>
                         <tr style="cursor: pointer;" onclick="toggleFilaCheck(this, event)" data-text="<?= htmlspecialchars($busqueda_val, ENT_QUOTES, 'UTF-8') ?>" data-cat="<?= htmlspecialchars(strtolower($prod['matriz_tipo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                             <td style="text-align: center;">
-                                <input type="checkbox" class="modal-prod-checkbox" data-id="<?= $prod['id'] ?>" data-nombre="<?= htmlspecialchars($ensayo_tecnico, ENT_QUOTES, 'UTF-8') ?>" data-precio="<?= $prod['precio'] ?>" data-codigo="<?= htmlspecialchars($codigo_opcion, ENT_QUOTES, 'UTF-8') ?>" data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-formato="<?= htmlspecialchars($formato_opcion, ENT_QUOTES, 'UTF-8') ?>" data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>" onchange="actualizarContadorModal()">
+                                <input type="checkbox" class="modal-prod-checkbox" 
+                                       data-id="<?= $prod['id'] ?>" 
+                                       data-nombre="<?= htmlspecialchars($nom_comercial, ENT_QUOTES, 'UTF-8') ?>" 
+                                       data-ensayo-servicio="<?= htmlspecialchars($ensayo_tecnico, ENT_QUOTES, 'UTF-8') ?>" 
+                                       data-condiciones="<?= htmlspecialchars($condiciones_val, ENT_QUOTES, 'UTF-8') ?>" 
+                                       data-procedimiento="<?= htmlspecialchars($procedimiento_val, ENT_QUOTES, 'UTF-8') ?>" 
+                                       data-unidad="<?= htmlspecialchars($unidad_val, ENT_QUOTES, 'UTF-8') ?>" 
+                                       data-precio="<?= $prod['precio'] ?>" 
+                                       data-codigo="<?= htmlspecialchars($codigo_opcion, ENT_QUOTES, 'UTF-8') ?>" 
+                                       data-norma="<?= htmlspecialchars($prod['norma_astm'] ?? '', ENT_QUOTES, 'UTF-8') ?>" 
+                                       data-formato="<?= htmlspecialchars($formato_opcion, ENT_QUOTES, 'UTF-8') ?>" 
+                                       data-obs="<?= htmlspecialchars($prod['observaciones'] ?? '', ENT_QUOTES, 'UTF-8') ?>" 
+                                       onchange="actualizarContadorModal()">
                             </td>
-                            <td style="font-family: monospace; font-weight: bold; color: #2d3748;"><?= htmlspecialchars($codigo_opcion !== '' ? $codigo_opcion : 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
                             <td>
-                                <strong style="color: #2d3748; line-height: 1.3; display: block;"><?= htmlspecialchars($ensayo_tecnico, ENT_QUOTES, 'UTF-8') ?></strong>
-                                <?php if (!empty($nombre_comercial) && $nombre_comercial !== $ensayo_tecnico): ?>
-                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;"><i class="fa-solid fa-tag"></i> Comercial: <?= htmlspecialchars($nombre_comercial, ENT_QUOTES, 'UTF-8') ?></div>
+                                <strong style="color: #0f172a; line-height: 1.3; font-size: 13px; display: block;"><?= htmlspecialchars($nom_comercial, ENT_QUOTES, 'UTF-8') ?></strong>
+                                <?php if ($nom_comercial !== $ensayo_tecnico): ?>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;"><i class="fa-solid fa-microscope"></i> <?= htmlspecialchars($ensayo_tecnico, ENT_QUOTES, 'UTF-8') ?></div>
                                 <?php endif; ?>
-                                <?php if (!empty($prod['norma_astm'])): ?>
-                                    <div style="font-size: 11px; color: var(--cycsa-azul); margin-top: 1px;"><i class="fa-solid fa-scroll"></i> Norma: <?= htmlspecialchars($prod['norma_astm'], ENT_QUOTES, 'UTF-8') ?></div>
-                                <?php endif; ?>
+                                <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600; display: inline-block; margin-top: 3px;"><?= htmlspecialchars($prod['matriz_tipo'] ?? 'Otros', ENT_QUOTES, 'UTF-8') ?></span>
                             </td>
-                            <td><span style="background: #ebf8ff; color: #2b6cb0; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; display: inline-block;"><?= htmlspecialchars($prod['matriz_tipo'] ?? 'Otros', ENT_QUOTES, 'UTF-8') ?></span></td>
-                            <td style="text-align: right; font-weight: bold; color: #2d3748;">C$ <?= number_format($prod['precio'], 2, '.', ',') ?></td>
+                            <td style="font-size: 11px; color: #78350f; background: #fffbeb; padding: 6px 8px; border-radius: 4px;">
+                                <?= !empty($condiciones_val) ? htmlspecialchars($condiciones_val, ENT_QUOTES, 'UTF-8') : '<em style="color:#94a3b8;">Sin condición especial</em>' ?>
+                            </td>
+                            <td style="font-size: 11.5px; font-family: monospace; color: #1e40af; font-weight: 600;">
+                                <?= htmlspecialchars($procedimiento_val ?: 'N/A', ENT_QUOTES, 'UTF-8') ?>
+                            </td>
+                            <td style="text-align: right; font-weight: 800; color: #0f172a; white-space: nowrap;">
+                                C$ <?= number_format($prod['precio'], 2, '.', ',') ?>
+                                <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">/ <?= htmlspecialchars($unidad_val, ENT_QUOTES, 'UTF-8') ?></span>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

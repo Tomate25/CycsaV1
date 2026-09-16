@@ -956,6 +956,9 @@
                 </div>
 
                 <form action="/Cycsa/publico/solicitar-cotizacion" method="POST" id="solicitudForm">
+                    <!-- TOKEN ANTI-CSRF -->
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token ?? ($_SESSION['csrf_token'] ?? '')) ?>">
+
                     <!-- HIDDEN FIELD FOR CLIENT ID (either 'new' or numeric id) -->
                     <input type="hidden" name="id_cliente" id="id_cliente" value="new">
 

@@ -238,7 +238,19 @@ class ProductosControlador extends ControladorBase {
             exit;
         }
         
-        $id = decodificarId($_GET['id'] ?? '');
+        if (!$peticion->esPost()) {
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            $_SESSION['productos_error'] = 'Token CSRF inválido o faltante.';
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            return;
+        }
+
+        $id = decodificarId($_POST['id'] ?? $_GET['id'] ?? '');
         if ($id) {
             $modelo = new ProductoModelo();
             $producto = $modelo->obtenerPorId((int)$id);

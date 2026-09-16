@@ -51,8 +51,8 @@ $app->enrutador->get('/usuarios/crear', [UsuariosControlador::class, 'crear'], [
 $app->enrutador->post('/usuarios/crear', [UsuariosControlador::class, 'guardar'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->get('/usuarios/editar', [UsuariosControlador::class, 'editar'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->post('/usuarios/editar', [UsuariosControlador::class, 'actualizar'], [AuthMiddleware::class, AdminMiddleware::class]);
-$app->enrutador->get('/usuarios/eliminar', [UsuariosControlador::class, 'eliminar'], [AuthMiddleware::class, AdminMiddleware::class]);
-$app->enrutador->get('/usuarios/desbloquear', [UsuariosControlador::class, 'desbloquear'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->post('/usuarios/eliminar', [UsuariosControlador::class, 'eliminar'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->post('/usuarios/desbloquear', [UsuariosControlador::class, 'desbloquear'], [AuthMiddleware::class, AdminMiddleware::class]);
 
 // 🔒 RUTAS DE ROLES Y PERMISOS (REQUERIDO: SESIÓN Y ROL ADMINISTRADOR)
 $app->enrutador->get('/roles', [RolesControlador::class, 'index'], [AuthMiddleware::class, AdminMiddleware::class]);
@@ -60,7 +60,7 @@ $app->enrutador->get('/roles/crear', [RolesControlador::class, 'crear'], [AuthMi
 $app->enrutador->post('/roles/crear', [RolesControlador::class, 'guardar'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->get('/roles/editar', [RolesControlador::class, 'editar'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->post('/roles/editar', [RolesControlador::class, 'actualizar'], [AuthMiddleware::class, AdminMiddleware::class]);
-$app->enrutador->get('/roles/eliminar', [RolesControlador::class, 'eliminar'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->post('/roles/eliminar', [RolesControlador::class, 'eliminar'], [AuthMiddleware::class, AdminMiddleware::class]);
 
 // 🔒 RUTAS DE CONFIGURACIÓN COMERCIAL (REQUERIDO: SESIÓN Y ROL ADMINISTRADOR)
 $app->enrutador->get('/configuracion', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'index'], [AuthMiddleware::class, AdminMiddleware::class]);
@@ -88,7 +88,7 @@ $app->enrutador->get('/productos/crear', [ProductosControlador::class, 'crear'],
 $app->enrutador->post('/productos/crear', [ProductosControlador::class, 'guardar'], [AuthMiddleware::class]);
 $app->enrutador->get('/productos/editar', [ProductosControlador::class, 'editar'], [AuthMiddleware::class]);
 $app->enrutador->post('/productos/editar', [ProductosControlador::class, 'actualizar'], [AuthMiddleware::class]);
-$app->enrutador->get('/productos/eliminar', [ProductosControlador::class, 'eliminar'], [AuthMiddleware::class]);
+$app->enrutador->post('/productos/eliminar', [ProductosControlador::class, 'eliminar'], [AuthMiddleware::class]);
 
 // 🔒 RUTAS DE COTIZACIONES (REQUERIDO: SESIÓN ACTIVA)
 $app->enrutador->get('/cotizaciones', [CotizacionesControlador::class, 'index'], [AuthMiddleware::class]);
@@ -113,6 +113,7 @@ $app->enrutador->post('/ordenes-servicio/guardar', [OrdenesServicioControlador::
 $app->enrutador->get('/ordenes-servicio/detalle', [OrdenesServicioControlador::class, 'detalle'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/programar-muestreo', [OrdenesServicioControlador::class, 'programarMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/guardar-muestreo', [OrdenesServicioControlador::class, 'guardarProgramacionMuestreo'], [AuthMiddleware::class]);
+$app->enrutador->get('/ordenes-servicio/imprimir-checklist', [OrdenesServicioControlador::class, 'imprimirListaChequeo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/finalizar-muestreo', [OrdenesServicioControlador::class, 'finalizarMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/marcar-ingreso-directo', [OrdenesServicioControlador::class, 'marcarIngresoDirectoAjax'], [AuthMiddleware::class]);
 
@@ -153,12 +154,19 @@ $app->enrutador->post('/operaciones/actualizar-estado', [OperacionesControlador:
 $app->enrutador->post('/operaciones/programar-muestreo', [OperacionesControlador::class, 'procesarProgramarMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/obtener-matriz-os', [OperacionesControlador::class, 'obtenerMatrizOSAjax'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/captura-matriz', [OperacionesControlador::class, 'capturaMatrizProducto'], [AuthMiddleware::class]);
+$app->enrutador->get('/operaciones/imprimir-matriz', [OperacionesControlador::class, 'imprimirMatrizProducto'], [AuthMiddleware::class]);
+$app->enrutador->get('/operaciones/descargar-matriz-pdf', [OperacionesControlador::class, 'descargarMatrizPDF'], [AuthMiddleware::class]);
+$app->enrutador->post('/operaciones/enviar-matriz-cliente', [OperacionesControlador::class, 'enviarMatrizCliente'], [AuthMiddleware::class]);
+$app->enrutador->get('/operaciones/enviar-matriz-cliente', [OperacionesControlador::class, 'enviarMatrizCliente'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/guardar-matriz-producto', [OperacionesControlador::class, 'guardarMatrizProductoPOST'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/guardar-hoja-campo', [OperacionesControlador::class, 'guardarHojaCampo'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/omitir-espera', [OperacionesControlador::class, 'omitirEsperaMuestreo'], [AuthMiddleware::class]);
+$app->enrutador->post('/operaciones/procesar-facturacion', [OperacionesControlador::class, 'procesarFacturacion'], [AuthMiddleware::class]);
+$app->enrutador->get('/operaciones/imprimir-factura', [OperacionesControlador::class, 'imprimirFactura'], [AuthMiddleware::class]);
     // 🔒 RUTAS DEL MÓDULO NUEVO HOJAS DE SERVICIO (CYCSA-RT-FM-13)
     $app->enrutador->get('/hojas-servicio', [HojasServicioControlador::class, 'index'], [AuthMiddleware::class]);
     $app->enrutador->get('/hojas-servicio/datos', [HojasServicioControlador::class, 'hojaSolicitudDatosAjax'], [AuthMiddleware::class]);
+    $app->enrutador->get('/hojas-servicio/datos-ajax', [HojasServicioControlador::class, 'hojaSolicitudDatosAjax'], [AuthMiddleware::class]);
     $app->enrutador->post('/hojas-servicio/guardar', [HojasServicioControlador::class, 'guardarHojaSolicitud'], [AuthMiddleware::class]);
     $app->enrutador->post('/hojas-servicio/enviar-revision', [HojasServicioControlador::class, 'enviarRevision'], [AuthMiddleware::class]);
     $app->enrutador->post('/hojas-servicio/procesar-revision', [HojasServicioControlador::class, 'procesarRevision'], [AuthMiddleware::class]);
@@ -172,8 +180,6 @@ $app->enrutador->post('/operaciones/omitir-espera', [OperacionesControlador::cla
 $app->enrutador->get('/laboratorio', [LaboratorioControlador::class, 'index'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/detalle-muestra', [LaboratorioControlador::class, 'detalleMuestra'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/guardar-ruptura', [LaboratorioControlador::class, 'guardarRuptura'], [AuthMiddleware::class]);
-
-// 🌐 REDIRECCIÓN DE RAÍZ
-$app->enrutador->get('/', function($peticion, $respuesta) {
-    $respuesta->redirigir('/Cycsa/publico/panel');
-});
+$app->enrutador->post('/laboratorio/aceptar-muestra', [LaboratorioControlador::class, 'aceptarMuestraRapida'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/cambiar-estado', [LaboratorioControlador::class, 'cambiarEstadoKanban'], [AuthMiddleware::class]);
+$app->enrutador->get('/laboratorio/imprimir-solicitud', [LaboratorioControlador::class, 'imprimirHojaSolicitud'], [AuthMiddleware::class]);

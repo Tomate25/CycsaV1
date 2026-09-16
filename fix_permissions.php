@@ -4,6 +4,11 @@
  * Ajusta carpetas a 755 y archivos a 644 de forma recursiva para evitar errores HTTP 500.
  */
 
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    die("Acceso denegado. Este script administrativo solo puede ejecutarse desde la terminal (CLI).");
+}
+
 // Desactivar almacenamiento en caché
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
