@@ -118,6 +118,16 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
+        if (in_array((int)($_SESSION['usuario_rol'] ?? 0), [1, 2], true)) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Plantillas de Ensayos',
+                'link' => '/Cycsa/publico/configuracion/plantillas-ensayos',
+                'icon' => 'fa-solid fa-flask',
+                'desc' => 'Versiones, columnas, notas y firmas de los informes.',
+                'color' => 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            ];
+        }
+
         // Si no tiene aplicaciones habilitadas, permitimos cargar el panel informando la falta de módulos asignados.
 
         // Valores por defecto

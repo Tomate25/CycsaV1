@@ -1,20 +1,16 @@
 <?php
 // Vista Imprimible Oficial de Matriz de Ensayo / Cálculo con Membrete Horizontal CYCSA (Estilo Sencillo y Sobrio con Espacio Amplio para Firmas)
 $archivoMd = $detalle['archivo_markdown'] ?? '';
-$formatosSchemaArray = json_decode($formatosSchemaJson ?? '{}', true);
-
-// Normalizar búsqueda en schema
-$schemaInfo = $formatosSchemaArray[$archivoMd] ?? [];
-if (empty($schemaInfo)) {
-    $archSinAcentos = strtr(utf8_decode($archivoMd), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
-    foreach ($formatosSchemaArray as $k => $v) {
-        $kSin = strtr(utf8_decode($k), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
-        if ($kSin === $archSinAcentos || strpos($kSin, $archSinAcentos) !== false || strpos($archSinAcentos, $kSin) !== false) {
-            $schemaInfo = $v;
-            break;
-        }
-    }
-}
+$schemaInfo = $schemaInfo ?? obtenerEsquemaPlantillaEnsayo($archivoMd, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
+$listaVersiones = $listaVersiones ?? [];
+$infoVersionImpresion = $infoVersionImpresion ?? ['version' => 1, 'es_actual' => true, 'motivo' => '', 'fecha' => '', 'usuario' => ''];
+$versionActual = $versionActual ?? 1;
+$columnas = $schemaInfo['columns'] ?? ($columnas ?? []);
+$tituloInforme = $schemaInfo['titulo_informe'] ?? 'INFORME DE ENSAYO';
+$subtituloLaboratorio = $schemaInfo['subtitulo_laboratorio'] ?? 'Laboratorio de Ensayos y Control de Calidad';
+$firmanteNombre = $schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira';
+$firmanteCargo = $schemaInfo['firmante_cargo'] ?? 'Gerente General';
+$normaOficial = $schemaInfo['norma'] ?? ($detalle['norma_astm'] ?? '');
 
 $codigoFormatoOficial = !empty($schemaInfo['codigo_formato']) ? $schemaInfo['codigo_formato'] : (!empty($detalle['codigo_documento']) ? $detalle['codigo_documento'] : 'CYCSA-RT-FM-22');
 $ensayoTituloOficial = !empty($schemaInfo['ensayo_titulo']) ? $schemaInfo['ensayo_titulo'] : $detalle['descripcion_ensayo'];
@@ -25,7 +21,7 @@ $colMethods = $schemaInfo['column_methods'] ?? [];
 $disclaimerOficial = !empty($schemaInfo['disclaimer']) ? $schemaInfo['disclaimer'] : 'Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.';
 $notasOficiales = !empty($schemaInfo['notas']) && is_array($schemaInfo['notas']) ? $schemaInfo['notas'] : [];
 
-if (empty($notasOficiales) && !empty($archivoMd)) {
+if (!array_key_exists('notas', $schemaInfo) && !empty($archivoMd)) {
     $rutaMdFallback = dirname(__DIR__, 4) . '/database/ensayos/' . $archivoMd;
     if (!file_exists($rutaMdFallback)) {
         $archSin = strtr(utf8_decode($archivoMd), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
@@ -60,9 +56,37 @@ if (empty($notasOficiales) && !empty($archivoMd)) {
 }
 
 $resultados = [];
+$metadatosGuardados = [];
 if (!empty($detalle['resultados_json'])) {
-    $resultados = json_decode($detalle['resultados_json'], true) ?: [];
+    $decoded = json_decode($detalle['resultados_json'], true) ?: [];
+    if (isset($decoded['filas'])) {
+        $resultados = $decoded['filas'];
+        $metadatosGuardados = $decoded['metadatos'] ?? [];
+    } else {
+        $resultados = $decoded;
+    }
 }
+
+if (empty($metadatos)) {
+    $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
+}
+
+$codigoFormatoOficial = $metadatos['codigo_formato'];
+$ensayoTituloOficial = $metadatos['ensayo_realizado'];
+$metodoMuestreoOficial = $metadatos['metodo_muestreo'];
+$tipoMuestraOficial = $metadatos['tipo_muestra'];
+$clienteNom = $metadatos['cliente_nombre'];
+$clienteDir = $metadatos['cliente_direccion'];
+$proyNom = $metadatos['proyecto'];
+$fechaIngreso = $metadatos['fecha_ingreso'];
+$fechaMuestreo = $metadatos['fecha_muestreo'];
+$fechaEjecucion = $metadatos['fecha_ejecucion'];
+$fechaEmision = $metadatos['fecha_emision'];
+$muestraTomadaPor = $metadatos['muestra_tomada_por'];
+$procedimientoMuestreo = $metadatos['procedimiento_muestreo'];
+$ubicacion = $metadatos['ubicacion'];
+$ensayoRealizado = $metadatos['ensayo_realizado'];
+$metodoMuestreo = $metadatos['metodo_muestreo'];
 
 // Si está vacío, cargar las muestras seteadas
 if (empty($resultados) && !empty($muestrasSeteadas)) {
@@ -76,6 +100,9 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
         $resultados[] = $row;
     }
 }
+
+$datosParaCodigo = !empty($resultados) ? $resultados : (!empty($muestrasSeteadas) ? $muestrasSeteadas : ($detalle['resultados_json'] ?? []));
+$codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null), $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -176,14 +203,12 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
         .zona-cabecera {
             position: absolute;
             top: 8mm;
-            left: 58mm; /* Libre de colisión con el logotipo CYCSA */
+            left: 56mm; /* Libre de colisión con el logotipo CYCSA */
             right: 14mm;
-            height: 33mm;
+            height: 28mm;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 3px;
-            border-bottom: 1.5px solid #000000;
             box-sizing: border-box;
         }
 
@@ -234,61 +259,43 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
             margin-top: 3px;
         }
 
-        /* 2. ZONA DE CONTENIDO: Inicia DEBAJO del logo (Top: 45mm) y termina ARRIBA del pie de página (Bottom: 22mm) */
+        /* 2. ZONA DE CONTENIDO: Inicia DEBAJO del logo (Top: 40mm) y termina ARRIBA del pie de página (Bottom: 32mm) */
         .zona-cuerpo {
             position: absolute;
-            top: 45mm;
+            top: 40mm;
             left: 14mm;
             right: 14mm;
-            bottom: 22mm;
+            bottom: 32mm;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start;
             box-sizing: border-box;
         }
 
-        /* Metadata de la Orden de Servicio - Tabla Sencilla */
-        .tabla-metadatos {
+        /* Metadata del Informe de Ensayo Oficial (Captura 144015) */
+        .tabla-metadatos-informe {
             width: 100%;
             border-collapse: collapse;
-            font-size: 8.5px;
-            background: #ffffff;
-            border: 1px solid #000000;
-            margin-bottom: 3px;
+            font-size: 8px;
+            background: transparent;
+            margin-bottom: 4px;
         }
 
-        .tabla-metadatos td {
-            padding: 2px 5px;
-            border: 1px solid #000000;
-            vertical-align: middle;
-            line-height: 1.15;
+        .tabla-metadatos-informe td {
+            padding: 1.5px 3px;
+            border: none;
+            vertical-align: top;
+            line-height: 1.25;
             color: #000000;
         }
 
-        .meta-header-cell {
-            background: #f3f4f6;
+        .lbl-informe {
             font-weight: bold;
             color: #000000;
-            width: 14%;
+            white-space: nowrap;
         }
 
-        .meta-val-cell {
-            color: #000000;
-            font-weight: normal;
-        }
-
-        /* Banner de Procedimiento y Norma - Caja Sencilla */
-        .banner-ensayo {
-            background: #ffffff;
-            border: 1px solid #000000;
-            padding: 2.5px 6px;
-            margin-bottom: 3px;
-            font-size: 8px;
-            line-height: 1.2;
-            color: #000000;
-        }
-
-        .banner-ensayo strong {
+        .val-informe {
             color: #000000;
         }
 
@@ -382,33 +389,42 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6px;
-            margin-bottom: 4px;
+            margin-top: 3px;
+            margin-bottom: 3px;
             font-size: 7.2px;
         }
 
         .caja-obs {
             border: 1px solid #000000;
             background: #ffffff;
-            padding: 2px 5px;
-            min-height: 20px;
+            padding: 3px 6px;
+            min-height: auto;
         }
 
         .caja-obs-titulo {
             font-weight: bold;
             color: #000000;
-            margin-bottom: 1px;
+            margin-bottom: 2px;
             text-transform: uppercase;
-            font-size: 7.2px;
-            border-bottom: 1px solid #cccccc;
-            padding-bottom: 1px;
+            font-size: 7px;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 2px;
         }
 
-        /* Bloque de Firmas Técnicas con Espacio Amplio para Firmar */
+        .linea-cierre-doc {
+            text-align: center;
+            font-size: 7.5px;
+            color: #333333;
+            margin: 3px 0 3px 0;
+            letter-spacing: 0.5px;
+        }
+
+        /* Bloque de Firmas Técnicas Calibrado sin solapamiento */
         .bloque-firmas {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: 25px;
-            margin-top: 4px;
+            gap: 20px;
+            margin-top: 2px;
         }
 
         .columna-firma {
@@ -418,24 +434,24 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
         }
 
         .espacio-para-firma {
-            height: 32px; /* Espacio libre para firmar y sellar físicamente */
+            height: 16px; /* Espacio sobrio para firma/sello sin desbordar */
             background: transparent;
         }
 
         .linea-firma {
             border-top: 1px solid #000000;
-            padding-top: 3px;
+            padding-top: 2px;
         }
 
         .firma-nombre {
             font-weight: bold;
             color: #000000;
-            font-size: 8.5px;
+            font-size: 8px;
         }
 
         .firma-cargo {
             color: #444444;
-            font-size: 7.5px;
+            font-size: 7px;
             text-transform: uppercase;
             margin-top: 1px;
         }
@@ -465,22 +481,49 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
     <!-- BARRA FLOTANTE EN PANTALLA -->
     <div class="barra-pantalla">
         <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-weight: bold; font-size: 15px; color: #60a5fa;">
+            <span style="font-weight: bold; font-size: 14.5px; color: #60a5fa; display: inline-flex; align-items: center; gap: 8px;">
                 <i class="fa-solid fa-file-invoice"></i> Registro Oficial de Ensayo
             </span>
-            <span style="background: #1e293b; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-family: monospace; color: #cbd5e1;">
+            <span style="background: #1e293b; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-family: monospace; color: #cbd5e1; border: 1px solid #334155;">
                 <?= htmlspecialchars($codigoFormatoOficial) ?> &bull; O/S: <?= htmlspecialchars($detalle['codigo_os']) ?>
             </span>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
-            <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $detalle['id'] ?>" class="btn-accion-top btn-volver">
+            <?php if (!empty($listaVersiones)): ?>
+                <div style="display: flex; gap: 6px; align-items: center; background: #0f172a; padding: 4px 10px; border-radius: 6px; border: 1px solid #334155;">
+                    <span style="font-size: 11px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-code-branch" style="color: #60a5fa;"></i> Revisiones:
+                    </span>
+                    <?php foreach ($listaVersiones as $lv): ?>
+                        <?php 
+                        $lvNum = (int)($lv['version'] ?? 1); 
+                        $esAct = (($infoVersionImpresion['version'] ?? 1) === $lvNum && empty($infoVersionImpresion['es_actual'])); 
+                        $fmtLvNum = sprintf('%02d', $lvNum);
+                        ?>
+                        <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $detalle['id'] ?>&version=<?= $lvNum ?>" 
+                           style="padding: 3px 8px; font-size: 11px; border-radius: 4px; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border: 1px solid <?= $esAct ? '#ef4444' : '#475569' ?>; color: <?= $esAct ? '#fee2e2' : '#cbd5e1' ?>; background: <?= $esAct ? '#b91c1c' : '#1e293b' ?>;">
+                            <i class="fa-solid fa-clock-rotate-left" style="font-size: 9px;"></i> Rev. <?= $fmtLvNum ?> (Dev)
+                        </a>
+                    <?php endforeach; ?>
+                    <?php 
+                    $esActv = !empty($infoVersionImpresion['es_actual']); 
+                    $fmtVAct = sprintf('%02d', (int)($versionActual ?? 1));
+                    ?>
+                    <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $detalle['id'] ?>" 
+                       style="padding: 3px 10px; font-size: 11px; border-radius: 4px; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; border: 1px solid <?= $esActv ? '#3b82f6' : '#475569' ?>; color: <?= $esActv ? '#ffffff' : '#cbd5e1' ?>; background: <?= $esActv ? '#1d4ed8' : '#1e293b' ?>;">
+                        <i class="fa-solid fa-circle-check" style="font-size: 10px; color: <?= $esActv ? '#93c5fd' : '#94a3b8' ?>;"></i> Rev. <?= $fmtVAct ?> (Vigente)
+                    </a>
+                </div>
+            <?php endif; ?>
+
+            <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $detalle['id'] ?><?= !empty($infoVersionImpresion['version']) && empty($infoVersionImpresion['es_actual']) ? '&version=' . $infoVersionImpresion['version'] : '' ?>" class="btn-accion-top btn-volver">
                 <i class="fa-solid fa-pen-to-square"></i> Volver a Matriz
             </a>
-            <a href="/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=<?= $detalle['id'] ?>" target="_blank" class="btn-accion-top" style="background: #334155; color: white;">
+            <a href="/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=<?= $detalle['id'] ?><?= !empty($infoVersionImpresion['version']) ? '&version=' . $infoVersionImpresion['version'] : '' ?>" target="_blank" class="btn-accion-top" style="background: #334155; color: white;">
                 <i class="fa-solid fa-file-pdf"></i> Descargar PDF
             </a>
             <button onclick="window.print()" class="btn-accion-top btn-imprimir">
-                <i class="fa-solid fa-print"></i> Imprimir Matriz (Horizontal)
+                <i class="fa-solid fa-print"></i> Imprimir Matriz
             </button>
             <?php if (!empty($resultados)): ?>
                 <button type="button" onclick="abrirModalEnviarPrint()" class="btn-accion-top" style="background: #059669; color: white; box-shadow: 0 2px 8px rgba(5,150,105,0.4);">
@@ -496,12 +539,19 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
         <!-- 1. ZONA SUPERIOR: Encabezado a la derecha del logo -->
         <div class="zona-cabecera">
             <div class="titulo-central">
-                <h1 class="titulo-empresa">Consultoría y Construcción S.A. (CYCSA)</h1>
-                <div class="subtitulo-doc">Registro Técnico de Ensayo / Matriz de Cálculo</div>
+                <h1 class="titulo-empresa" style="font-size: 16px; font-weight: 800; letter-spacing: 0.8px; margin: 0;"><?= htmlspecialchars($tituloInforme) ?></h1>
+                <div class="codigo-informe-consecutivo" style="font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; font-weight: 800; color: #103487; letter-spacing: 0.8px; margin-top: 2px; margin-bottom: 2px;">
+                    <?= htmlspecialchars($codigoInformeConsecutivo) ?>
+                </div>
+                <div class="subtitulo-doc" style="font-size: 9px; font-weight: 600; color: #475569; margin-top: 1px;"><?= htmlspecialchars($subtituloLaboratorio) ?> &bull; Orden de Servicio: <strong style="color: #103487; font-family: monospace;"><?= htmlspecialchars($detalle['codigo_os']) ?></strong></div>
+                <div class="subtitulo-doc" style="font-size: 8px;">Norma técnica: <?= htmlspecialchars($normaOficial) ?></div>
             </div>
             <div class="insignia-codigo-doc">
                 <div class="badge-doc-oficial"><?= htmlspecialchars($codigoFormatoOficial) ?></div>
                 <div class="version-doc">ISO/IEC 17025:2017</div>
+                <div style="font-size: 8px; font-weight: 800; color: <?= !empty($infoVersionImpresion['es_actual']) ? '#103487' : '#b91c1c' ?>; margin-top: 2px;">
+                    Versión: <?= sprintf("%02d", $infoVersionImpresion['version'] ?? 1) ?><?= !empty($infoVersionImpresion['es_actual']) ? ' (Actual)' : ' (Histórica Devuelta)' ?>
+                </div>
             </div>
         </div>
 
@@ -509,51 +559,57 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
         <div class="zona-cuerpo">
             
             <div>
-                <!-- METADATOS DE LA ORDEN DE SERVICIO -->
-                <table class="tabla-metadatos">
+                <?php if (!empty($infoVersionImpresion['motivo_devolucion'])): ?>
+                    <div style="background: #fff1f2; border: 1.5px solid #fecaca; border-radius: 4px; padding: 4px 8px; margin-bottom: 6px; font-size: 8px; color: #991b1b; line-height: 1.3;">
+                        <strong>⚠️ REGISTRO HISTÓRICO OBSERVADO / DEVUELTO (<?= htmlspecialchars($infoVersionImpresion['usuario_revisor'] ?? 'Supervisor') ?>):</strong> <?= htmlspecialchars($infoVersionImpresion['motivo_devolucion']) ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- METADATOS OFICIALES 2 COLUMNAS (Captura de pantalla 2026-09-17 144015.png) -->
+                <table class="tabla-metadatos-informe">
                     <tr>
-                        <td class="meta-header-cell">No. Orden Servicio:</td>
-                        <td class="meta-val-cell" style="font-family: monospace; font-weight: bold;">
-                            <?= htmlspecialchars($detalle['codigo_os']) ?>
-                        </td>
-                        <td class="meta-header-cell">Fecha de Ensaye:</td>
-                        <td class="meta-val-cell">
-                            <?= !empty($detalle['fecha_hora_toma_muestra']) ? date('d/m/Y H:i', strtotime($detalle['fecha_hora_toma_muestra'])) : date('d/m/Y') ?>
-                        </td>
+                        <td class="lbl-informe" style="width: 18%;">** Nombre del cliente:</td>
+                        <td class="val-informe" style="width: 32%;"><?= htmlspecialchars($clienteNom) ?></td>
+                        <td class="lbl-informe" style="width: 16%;">** Proyecto:</td>
+                        <td class="val-informe" style="width: 34%;"><?= htmlspecialchars($proyNom) ?></td>
                     </tr>
                     <tr>
-                        <td class="meta-header-cell">Cliente / Solicitante:</td>
-                        <td class="meta-val-cell">
-                            <?= htmlspecialchars($detalle['cliente_nombre'] ?? 'Cliente Confidencial (ISO 17025)') ?>
-                        </td>
-                        <td class="meta-header-cell">Responsable Técnico:</td>
-                        <td class="meta-val-cell">
-                            <?= htmlspecialchars(!empty($detalle['tecnico_muestreo']) ? $detalle['tecnico_muestreo'] : 'Personal Técnico Autorizado') ?>
-                        </td>
+                        <td class="lbl-informe">** Dirección:</td>
+                        <td class="val-informe"><?= htmlspecialchars($clienteDir) ?></td>
+                        <td class="lbl-informe">** Fecha muestreo:</td>
+                        <td class="val-informe"><?= htmlspecialchars($fechaMuestreo) ?></td>
                     </tr>
                     <tr>
-                        <td class="meta-header-cell">Nombre del Proyecto:</td>
-                        <td class="meta-val-cell">
-                            <?= htmlspecialchars($detalle['nombre_proyecto'] ?? 'Proyecto no especificado') ?>
-                        </td>
-                        <td class="meta-header-cell">Matriz / Muestra:</td>
-                        <td class="meta-val-cell">
-                            <?= htmlspecialchars($tipoMuestraOficial) ?>
-                        </td>
+                        <td class="lbl-informe">Fecha de ingreso:</td>
+                        <td class="val-informe"><?= htmlspecialchars($fechaIngreso) ?></td>
+                        <td class="lbl-informe">Fecha de ejecución:</td>
+                        <td class="val-informe"><?= htmlspecialchars($fechaEjecucion) ?></td>
                     </tr>
                     <tr>
-                        <td class="meta-header-cell">Punto / Procedencia:</td>
-                        <td class="meta-val-cell" colspan="3">
-                            <?= htmlspecialchars(!empty($detalle['procedencia_punto_muestreo']) ? $detalle['procedencia_punto_muestreo'] : ($detalle['nombre_proyecto'] ?? 'Sitio de Proyecto')) ?>
+                        <td class="lbl-informe">Tipo de muestra:</td>
+                        <td class="val-informe"><?= htmlspecialchars($tipoMuestraOficial) ?></td>
+                        <td class="lbl-informe">Fecha de emisión:</td>
+                        <td class="val-informe"><?= htmlspecialchars($fechaEmision) ?></td>
+                    </tr>
+                    <tr>
+                        <td class="lbl-informe">** Procedimiento de muestreo:</td>
+                        <td class="val-informe"><?= htmlspecialchars($procedimientoMuestreo) ?></td>
+                        <td class="lbl-informe">Muestra tomada por:</td>
+                        <td class="val-informe"><?= htmlspecialchars($muestraTomadaPor) ?></td>
+                    </tr>
+                    <tr>
+                        <td class="lbl-informe" style="vertical-align: top;">Ensayo realizado:</td>
+                        <td class="val-informe" style="vertical-align: top; line-height: 1.25;"><?= nl2br(htmlspecialchars($ensayoRealizado)) ?></td>
+                        <td class="lbl-informe" style="vertical-align: top;">
+                            <div>** Ubicación:</div>
+                            <div style="margin-top: 10px;">Método de muestreo:</div>
+                        </td>
+                        <td class="val-informe" style="vertical-align: top;">
+                            <div><?= htmlspecialchars($ubicacion) ?></div>
+                            <div style="margin-top: 10px; font-weight: bold; font-family: monospace;"><?= htmlspecialchars($metodoMuestreo) ?></div>
                         </td>
                     </tr>
                 </table>
-
-                <!-- BANNER DE PROCEDIMIENTO TÉCNICO Y NORMA -->
-                <div class="banner-ensayo">
-                    <div><strong>Procedimiento Técnico:</strong> <?= htmlspecialchars($ensayoTituloOficial) ?></div>
-                    <div style="margin-top: 1px;"><strong>Norma de Referencia:</strong> <span style="font-family: monospace; font-weight: bold;"><?= htmlspecialchars($metodoMuestreoOficial) ?></span></div>
-                </div>
 
                 <!-- TABLA DE RESULTADOS DE MATRIZ TÉCNICA (SENCILLA) -->
                 <div class="contenedor-tabla-matriz">
@@ -579,7 +635,7 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
                                     <tr>
                                         <td style="font-weight: bold;"><?= $idx + 1 ?></td>
                                         <?php foreach ($columnas as $col): 
-                                            $val = $fila[$col] ?? '';
+                                            $val = $fila[$col] ?? ($fila[$schemaInfo['column_aliases'][$col] ?? ''] ?? '');
                                             $isCode = ($col === 'Código laboratorio' || $col === 'Codigo Lab');
                                             $isNum = is_numeric(str_replace(['%', ',', ' '], '', (string)$val)) && !empty($val);
                                         ?>
@@ -618,45 +674,46 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
                 </div>
             </div>
 
-            <div>
-                <!-- OBSERVACIONES Y NOTAS ISO 17025 -->
-                <div class="seccion-observaciones">
-                    <div class="caja-obs">
-                        <div class="caja-obs-titulo">Observaciones y Condiciones del Ensayo</div>
-                        <div style="color: #000000; line-height: 1.2;">
-                            <?= !empty($detalle['observaciones']) ? htmlspecialchars($detalle['observaciones']) : 'Ensayos ejecutados bajo condiciones ambientales y parámetros establecidos en la norma técnica correspondiente. Equipos con calibración trazable vigente.' ?>
-                        </div>
-                    </div>
-                    <div class="caja-obs">
-                        <div class="caja-obs-titulo">Declaración de Conformidad e Imparcialidad (ISO/IEC 17025)</div>
-                        <div style="color: #333333; line-height: 1.2;">
-                            Los resultados expresados corresponden única y exclusivamente a los especímenes y puntos sometidos a prueba. Prohibida la reproducción parcial sin autorización escrita de CYCSA.
-                        </div>
+            <!-- OBSERVACIONES Y NOTAS ISO 17025 -->
+            <div class="seccion-observaciones">
+                <div class="caja-obs">
+                    <div class="caja-obs-titulo">Observaciones y Condiciones del Ensayo</div>
+                    <div style="color: #1e293b; line-height: 1.25;">
+                        <?= !empty($detalle['observaciones']) ? htmlspecialchars($detalle['observaciones']) : 'Ensayos ejecutados bajo condiciones ambientales y parámetros establecidos en la norma técnica correspondiente. Equipos con calibración trazable vigente.' ?>
                     </div>
                 </div>
+                <div class="caja-obs">
+                    <div class="caja-obs-titulo">Declaración de Conformidad e Imparcialidad (ISO/IEC 17025)</div>
+                    <div style="color: #333333; line-height: 1.25;">
+                        Los resultados expresados corresponden única y exclusivamente a los especímenes y puntos sometidos a prueba. Prohibida la reproducción parcial sin autorización escrita de CYCSA.
+                    </div>
+                </div>
+            </div>
 
-                <!-- BLOQUE DE FIRMAS TÉCNICAS CON ESPACIO REAL PARA FIRMA / SELLO -->
-                <div class="bloque-firmas">
-                    <div class="columna-firma">
-                        <div class="espacio-para-firma"></div>
-                        <div class="linea-firma">
-                            <div class="firma-nombre"><?= htmlspecialchars(!empty($detalle['tecnico_muestreo']) ? $detalle['tecnico_muestreo'] : 'Técnico de Ensayos') ?></div>
-                            <div class="firma-cargo">Ejecutado por (Técnico Responsable)</div>
-                        </div>
+            <!-- LÍNEA DE CIERRE OFICIAL (SERIE CYCSA-RT-FM-22) -->
+            <div class="linea-cierre-doc">-------------------------------- Última Línea ---------------------------------</div>
+
+            <!-- BLOQUE DE FIRMAS TÉCNICAS CON ESPACIO CALIBRADO -->
+            <div class="bloque-firmas">
+                <div class="columna-firma">
+                    <div class="espacio-para-firma"></div>
+                    <div class="linea-firma">
+                        <div class="firma-nombre"><?= htmlspecialchars(!empty($detalle['tecnico_muestreo']) ? $detalle['tecnico_muestreo'] : 'Técnico de Ensayos') ?></div>
+                        <div class="firma-cargo">Ejecutado por (Técnico Responsable)</div>
                     </div>
-                    <div class="columna-firma">
-                        <div class="espacio-para-firma"></div>
-                        <div class="linea-firma">
-                            <div class="firma-nombre">Supervisión de Ensayos</div>
-                            <div class="firma-cargo">Revisado por (Supervisor de Área)</div>
-                        </div>
+                </div>
+                <div class="columna-firma">
+                    <div class="espacio-para-firma"></div>
+                    <div class="linea-firma">
+                        <div class="firma-nombre">Supervisión de Ensayos</div>
+                        <div class="firma-cargo">Revisado por (Supervisor de Área)</div>
                     </div>
-                    <div class="columna-firma">
-                        <div class="espacio-para-firma"></div>
-                        <div class="linea-firma">
-                            <div class="firma-nombre">Gerencia Técnica / Calidad</div>
-                            <div class="firma-cargo">Aprobado (Aseguramiento Calidad ISO 17025)</div>
-                        </div>
+                </div>
+                <div class="columna-firma">
+                    <div class="espacio-para-firma"></div>
+                    <div class="linea-firma">
+                        <div class="firma-nombre"><?= htmlspecialchars($firmanteNombre) ?></div>
+                        <div class="firma-cargo">Aprobado (<?= htmlspecialchars($firmanteCargo) ?> / ISO 17025)</div>
                     </div>
                 </div>
             </div>

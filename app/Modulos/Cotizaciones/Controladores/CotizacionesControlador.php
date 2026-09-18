@@ -230,9 +230,15 @@ class CotizacionesControlador extends ControladorBase {
 
         $modelo = new CotizacionModelo();
 
-        // 1. Obtener estado previo para saber si era rechazada por el cliente
+        // 1. Obtener estado previo para saber si era rechazada por el cliente o si estaba observada
         $cotizacionPrev = $modelo->obtenerPorId($id);
-        $eraRechazada = ($cotizacionPrev && $cotizacionPrev['estado'] === 'Rechazada por Cliente');
+        if (!$cotizacionPrev) {
+            $_SESSION['error'] = 'La cotización solicitada no existe o fue eliminada.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            return;
+        }
+        $eraRechazada = ($cotizacionPrev['estado'] === 'Rechazada por Cliente');
+        $eraObservada = ($cotizacionPrev['estado'] === 'Observada');
 
         $notasJson = isset($datos['notas']) ? json_encode($datos['notas']) : null;
 
@@ -349,10 +355,20 @@ class CotizacionesControlador extends ControladorBase {
 
                     $_SESSION['envio_exitoso'] = "¡Cotización corregida (V" . $cot['version'] . ") guardada (Cliente sin correo registrado)!";
                 }
+            } elseif ($eraObservada) {
+                // Registrar en la bitácora cuando se corrige una cotización observada por Gerencia
+                registrarBitacora('cotizaciones', 'editar_reenviar', 'Corregida y re-enviada cotización a revisión interna: ' . $cot['codigo'] . ' (Nueva Versión: ' . $cot['version'] . ')', $id);
+                $_SESSION['envio_exitoso'] = "¡Cotización " . $cot['codigo'] . " corregida exitosamente (Nueva Versión " . $cot['version'] . ") y re-enviada a revisión!";
             } else {
                 registrarBitacora('cotizaciones', 'editar', 'Modificada/Corregida cotización: ' . $cot['codigo'] . ' (estado: En Revision)', $id);
+                $_SESSION['envio_exitoso'] = "¡Cotización " . $cot['codigo'] . " actualizada exitosamente!";
             }
-            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+            return;
+        } else {
+            $_SESSION['error'] = 'Ocurrió un error al guardar los cambios de la cotización. Por favor intente nuevamente.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+            return;
         }
     }
 
@@ -999,6 +1015,7 @@ class CotizacionesControlador extends ControladorBase {
         }
         $id = decodificarId($_GET['id'] ?? '') ?? (int)($_GET['id'] ?? 0);
         $completo = (int)($_GET['completo'] ?? 0);
+        $versionSolicitada = isset($_GET['version']) ? (int)$_GET['version'] : null;
 
         $modelo = new CotizacionModelo();
         $cotizacion = $modelo->obtenerPorId($id);
@@ -1006,8 +1023,26 @@ class CotizacionesControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/cotizaciones'); 
             return; 
         }
-        
-        $detalles = $modelo->obtenerDetalles($id);
+
+        $versionActual = max(1, (int)($cotizacion['version'] ?? 1));
+        $versionImpresa = $versionActual;
+
+        if ($versionSolicitada !== null && $versionSolicitada < $versionActual) {
+            $versionRow = $modelo->obtenerVersionHistorica($id, $versionSolicitada);
+            if ($versionRow && !empty($versionRow['datos_json'])) {
+                $snapshot = json_decode($versionRow['datos_json'], true) ?: [];
+                $detalles = $snapshot['detalles'] ?? [];
+                // Unir datos de snapshot con la cotización base para preservar todos los campos
+                $cotizacion = array_merge($cotizacion, $snapshot);
+                $cotizacion['version'] = $versionSolicitada;
+                $cotizacion['fecha_creacion'] = $versionRow['fecha_creacion'] ?? $cotizacion['fecha_creacion'];
+                $versionImpresa = $versionSolicitada;
+            } else {
+                $detalles = $modelo->obtenerDetalles($id);
+            }
+        } else {
+            $detalles = $modelo->obtenerDetalles($id);
+        }
         
         if ($completo === 1) {
             $pdfContenido = generarCotizacionCompletaPDF($cotizacion, $detalles);
@@ -1015,8 +1050,9 @@ class CotizacionesControlador extends ControladorBase {
             $pdfContenido = generarCotizacionPDF($cotizacion, $detalles);
         }
         
+        $sufijoVersion = "_V{$versionImpresa}";
         header('Content-Type: application/pdf');
-        header('Content-Disposition: inline; filename="Cotizacion_' . $cotizacion['codigo'] . ($completo ? '_Completa' : '') . '.pdf"');
+        header('Content-Disposition: inline; filename="Cotizacion_' . $cotizacion['codigo'] . $sufijoVersion . ($completo ? '_Completa' : '') . '.pdf"');
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
         header('Expires: 0');
@@ -1270,7 +1306,10 @@ class CotizacionesControlador extends ControladorBase {
                 $filas[] = $fila;
             }
         } else {
-            $filas = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+            $resultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+            $filas = isset($resultados['filas']) && is_array($resultados['filas'])
+                ? $resultados['filas']
+                : (array_is_list($resultados) ? $resultados : []);
         }
 
         $pdfContenido = generarReporteEnsayoPDF($cotizacion, $detalle, $columnas, $filas);

@@ -911,7 +911,7 @@
             filasExistentes = [];
         }
 
-        if (!Array.isArray(filasExistentes)) filasExistentes = [];
+        if (!Array.isArray(filasExistentes)) filasExistentes = Array.isArray(filasExistentes?.filas) ? filasExistentes.filas : [];
 
         // Determine default rows if empty
         const defaultRows = DEFAULT_ROWS_BY_FORMAT[archivoMarkdown] || [];

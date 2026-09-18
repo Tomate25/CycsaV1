@@ -76,6 +76,10 @@ $app->enrutador->post('/configuracion/eliminar-tecnico-ajax', [\Cycsa\Modulos\Co
 $app->enrutador->post('/configuracion/agregar-vehiculo-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'agregarVehiculoAjax'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->post('/configuracion/actualizar-vehiculo-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'actualizarVehiculoAjax'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->post('/configuracion/eliminar-vehiculo-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'eliminarVehiculoAjax'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->get('/configuracion/plantillas-ensayos', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'plantillasEnsayos'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->get('/configuracion/plantillas-ensayos/obtener-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'obtenerPlantillaAjax'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->post('/configuracion/plantillas-ensayos/guardar', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'guardarPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->post('/configuracion/plantillas-ensayos/restablecer', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'restablecerPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
 
 // 🔒 RUTAS DE CLIENTES (REQUERIDO: SESIÓN ACTIVA)
 $app->enrutador->get('/clientes', [ClientesControlador::class, 'index'], [AuthMiddleware::class]);
@@ -162,9 +166,12 @@ $app->enrutador->get('/operaciones/descargar-matriz-pdf', [OperacionesControlado
 $app->enrutador->post('/operaciones/enviar-matriz-cliente', [OperacionesControlador::class, 'enviarMatrizCliente'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/enviar-matriz-cliente', [OperacionesControlador::class, 'enviarMatrizCliente'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/guardar-matriz-producto', [OperacionesControlador::class, 'guardarMatrizProductoPOST'], [AuthMiddleware::class]);
+$app->enrutador->post('/operaciones/aprobar-matriz-producto', [OperacionesControlador::class, 'aprobarMatrizProducto'], [AuthMiddleware::class]);
+$app->enrutador->post('/operaciones/devolver-matriz-producto', [OperacionesControlador::class, 'devolverMatrizProducto'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/guardar-hoja-campo', [OperacionesControlador::class, 'guardarHojaCampo'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/omitir-espera', [OperacionesControlador::class, 'omitirEsperaMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/procesar-facturacion', [OperacionesControlador::class, 'procesarFacturacion'], [AuthMiddleware::class]);
+$app->enrutador->post('/operaciones/cerrar-operacion', [OperacionesControlador::class, 'cerrarOperacion'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/imprimir-factura', [OperacionesControlador::class, 'imprimirFactura'], [AuthMiddleware::class]);
     // 🔒 RUTAS DEL MÓDULO NUEVO HOJAS DE SERVICIO (CYCSA-RT-FM-13)
     $app->enrutador->get('/hojas-servicio', [HojasServicioControlador::class, 'index'], [AuthMiddleware::class]);

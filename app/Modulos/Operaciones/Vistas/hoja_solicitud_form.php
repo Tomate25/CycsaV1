@@ -360,9 +360,9 @@
                     <!-- Filas dinámicas -->
                     <?php
                     $identMuestras = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
+                    $prefijo = $prefijoMuestraOS ?? determinarPrefijoMuestraOS($os);
+                    $esCampo = ($prefijo === 'MC');
                     if (empty($identMuestras)) {
-                        $esCampo = !empty($os['tecnico_muestreo']) || (!empty($os['requiere_muestreo']) && $os['requiere_muestreo'] != 0);
-                        $prefijo = $esCampo ? 'MC' : 'MS';
                         $cantMuestras = max(1, (int)($os['cantidad_muestras_est'] ?? 1));
                         $anio2Dig = substr((string)$anioActual, -2);
                         for ($i = 0; $i < $cantMuestras; $i++) {
@@ -517,19 +517,23 @@
 </div>
 
 <script>
-    let siguienteConsecutivoMuestra = <?= $siguienteConsecutivo ?>;
-    const anioActualMuestra = <?= $anioActual ?>;
+    let siguienteConsecutivoMuestra = <?= (int)$siguienteConsecutivo ?>;
+    const anioActualMuestra = <?= (int)$anioActual ?>;
+    const anioActual2Dig = '<?= substr((string)$anioActual, -2) ?>';
+    const prefijoMuestraActual = '<?= $prefijo ?>';
 
     function agregarFilaMuestra() {
         const tbody = document.getElementById('tbody-muestras-dinamica');
         const tr = document.createElement('tr');
-        const nextCode = 'MC-' + String(siguienteConsecutivoMuestra).padStart(3, '0') + '-' + anioActualMuestra;
+        const nextCode = prefijoMuestraActual + '-' + String(siguienteConsecutivoMuestra).padStart(4, '0') + '-' + anioActual2Dig;
         siguienteConsecutivoMuestra++;
+        const defaultDesc = (prefijoMuestraActual === 'MC') ? 'Muestra tomada en campo' : 'Muestra entregada en laboratorio';
+        const defaultInfo = (prefijoMuestraActual === 'MC') ? 'Muestreo en Obra' : 'Recepción Lab Central';
 
         tr.innerHTML = `
             <td><input type="text" name="m_nombre[]" readonly class="form-control" style="width:100%; box-sizing:border-box; background:#f1f5f9; cursor:not-allowed;" value="${nextCode}"></td>
-            <td><input type="text" name="m_desc[]" required class="form-control" style="width:100%; box-sizing:border-box;" value="Cilindros de concreto"></td>
-            <td><input type="text" name="m_info[]" class="form-control" style="width:100%; box-sizing:border-box;" value="Estándar"></td>
+            <td><input type="text" name="m_desc[]" required class="form-control" style="width:100%; box-sizing:border-box;" value="${defaultDesc}"></td>
+            <td><input type="text" name="m_info[]" class="form-control" style="width:100%; box-sizing:border-box;" value="${defaultInfo}"></td>
             <td style="text-align: center;"><button type="button" class="btn-action btn-secondary btn-mini" style="background:#fee2e2; color:#b91c1c; border-color:#fecaca;" onclick="eliminarFilaMuestra(this)"><i class="fa-solid fa-trash"></i></button></td>
         `;
         tbody.appendChild(tr);

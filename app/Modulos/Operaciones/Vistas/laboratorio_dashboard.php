@@ -483,7 +483,7 @@ $totalKanban = count($kanban['recien_llegadas'] ?? []) +
         <div class="kanban-column col-finalizadas">
             <div class="kanban-column-header">
                 <div class="kanban-col-title" style="color: #475569;">
-                    <i class="fa-solid fa-circle-check"></i> 4. Finalizadas
+                    <i class="fa-solid fa-circle-check"></i> 4. Revisión y cierre
                 </div>
                 <span class="kanban-badge-count"><?= count($kanban['finalizadas'] ?? []) ?></span>
             </div>
@@ -497,10 +497,10 @@ $totalKanban = count($kanban['recien_llegadas'] ?? []) +
                                 </div>
                                 <div class="kanban-card-doc"><?= htmlspecialchars($sol['ensayos'][0]['descripcion_ensayo'] ?? 'Ensayo Concluido') ?></div>
                             </div>
-                            <span style="font-size: 10.5px; font-weight:700; background:#f1f5f9; color:#475569; padding:3px 7px; border-radius:12px;">Completada</span>
+                            <span style="font-size: 10.5px; font-weight:700; background:#f1f5f9; color:#475569; padding:3px 7px; border-radius:12px;"><?= (int)$sol['ensayos_aprobados'] ?>/<?= (int)$sol['total_ensayos'] ?> aprobados</span>
                         </div>
                         <div style="font-size: 11.5px; color:#64748b; margin-top:4px;">
-                            Ensayos y matrices capturados satisfactoriamente.
+                            <?= $sol['estado_os'] === 'Finalizado' ? 'Orden finalizada y archivada.' : 'Resultados en revisión técnica; pendiente de cierre en Operaciones.' ?>
                         </div>
                     </div>
                 <?php endforeach; ?>

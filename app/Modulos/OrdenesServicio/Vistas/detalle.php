@@ -117,7 +117,7 @@ if (!empty($os['contactos_json'])) {
         <div class="os-meta-grid">
             <div class="os-meta-row">
                 <span class="os-meta-label">Elaborado por:</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['elaborado_por'] ?: 'Tiana Grillo') ?></span>
+                <span class="os-meta-value"><?= htmlspecialchars($os['elaborado_por'] ?: (($os['cotizacion_creador_nombre'] ?? '') ?: 'Personal Autorizado'), ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             <div class="os-meta-row">
                 <span class="os-meta-label">Doc. Número:</span>
@@ -142,13 +142,22 @@ if (!empty($os['contactos_json'])) {
                 <span class="os-meta-value"><?= htmlspecialchars($os['cliente_rfc'] ?: 'N/A') ?></span>
             </div>
 
-            <div class="os-meta-row" style="grid-column: span 2;">
+            <div class="os-meta-row">
                 <span class="os-meta-label">Proyecto:</span>
                 <span class="os-meta-value"><?= htmlspecialchars($os['nombre_proyecto']) ?></span>
             </div>
-            <div class="os-meta-row" style="grid-column: span 2;">
+            <div class="os-meta-row">
                 <span class="os-meta-label">Forma de pago:</span>
                 <span class="os-meta-value"><?= htmlspecialchars($os['forma_pago'] ?: 'Pago contra entrega.') ?></span>
+            </div>
+
+            <div class="os-meta-row">
+                <span class="os-meta-label">Correo electrónico:</span>
+                <span class="os-meta-value"><?= htmlspecialchars($os['cliente_email'] ?: 'admon@cycsanic.com') ?></span>
+            </div>
+            <div class="os-meta-row">
+                <span class="os-meta-label">Teléfono:</span>
+                <span class="os-meta-value"><?= htmlspecialchars($os['cliente_telefono'] ?: '(505) 8209-6275') ?></span>
             </div>
         </div>
 
@@ -167,7 +176,12 @@ if (!empty($os['contactos_json'])) {
                         <tr>
                             <td style="text-align: center; font-weight: 700;"><?= $idx + 1 ?></td>
                             <td>
-                                <strong><?= htmlspecialchars($ensayo['codigo_servicio'] ?? 'CYCSA-PE-07') ?></strong> <?= htmlspecialchars($ensayo['descripcion_ensayo'] ?? $ensayo['nombre_ensayo'] ?? '') ?>
+                                <?= htmlspecialchars($ensayo['descripcion_ensayo'] ?? $ensayo['nombre_ensayo'] ?? '') ?>
+                                <?php if (!empty($ensayo['descripcion_adicional'])): ?>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 3px;">
+                                        <?= nl2br(htmlspecialchars($ensayo['descripcion_adicional'], ENT_QUOTES, 'UTF-8')) ?>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td style="text-align: center; font-weight: 700;">
                                 <?= number_format($ensayo['cantidad'], 1) ?>
@@ -177,7 +191,7 @@ if (!empty($os['contactos_json'])) {
                 <?php else: ?>
                     <tr>
                         <td style="text-align: center; font-weight: 700;">1</td>
-                        <td>CYCSA-PE-07 Determinación de la resistencia del concreto.</td>
+                        <td>Determinación de la resistencia del concreto.</td>
                         <td style="text-align: center; font-weight: 700;">1.0</td>
                     </tr>
                 <?php endif; ?>
@@ -189,7 +203,21 @@ if (!empty($os['contactos_json'])) {
             <p><strong>Nota:</strong></p>
             <p>***Los informes de ensayo se entregan únicamente en formato digital (.PDF). Serán enviados al correo del contacto designado por el cliente.</p>
             <br>
-            <p>Condiciones de las muestras: CYCSA-PE-07: Cilindros con dimensiones estándar de 4"X 8" ó 6" X 12" sin alteración física, en caso de encontrarse se notifica al cliente cualquier anomalía antes de proceder.</p>
+            <?php
+            $condicionesList = [];
+            if (!empty($os['ensayos'])) {
+                foreach ($os['ensayos'] as $ens) {
+                    if (!empty(trim($ens['condiciones_muestra'] ?? ''))) {
+                        $condicionesList[] = trim($ens['condiciones_muestra']);
+                    }
+                }
+            }
+            $condicionesList = array_unique($condicionesList);
+            $condicionesTexto = !empty($condicionesList) 
+                ? implode('; ', $condicionesList) 
+                : 'Muestras con dimensiones estándar sin alteración física, en caso de encontrarse se notifica al cliente cualquier anomalía antes de proceder.';
+            ?>
+            <p>Condiciones de las muestras: <?= htmlspecialchars($condicionesTexto, ENT_QUOTES, 'UTF-8') ?></p>
 
             <div class="os-contacts-list">
                 <?php if (!empty($contactos)): ?>

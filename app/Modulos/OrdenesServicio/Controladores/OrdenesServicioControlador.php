@@ -123,6 +123,7 @@ class OrdenesServicioControlador extends ControladorBase {
             'notas_condiciones' => trim($datos['notas_condiciones'] ?? ''),
             'contactos_json' => $datos['contactos'] ?? [],
             'requiere_muestreo' => $requiereMuestreo ? 1 : 0,
+            'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : 'Puntual',
             'estado' => $estadoInicial
         ]);
 

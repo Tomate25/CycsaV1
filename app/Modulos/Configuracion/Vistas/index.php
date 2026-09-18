@@ -45,6 +45,9 @@
 </div>
 
 <div class="tabs-container">
+    <a href="/Cycsa/publico/configuracion/plantillas-ensayos" class="tab-link">
+        <i class="fa-solid fa-flask"></i> Plantillas de Ensayos
+    </a>
     <a href="/Cycsa/publico/configuracion?tab=comercial" class="tab-link <?= $tabActual === 'comercial' ? 'active' : '' ?>">
         <i class="fa-solid fa-credit-card"></i> Condiciones Comerciales
     </a>

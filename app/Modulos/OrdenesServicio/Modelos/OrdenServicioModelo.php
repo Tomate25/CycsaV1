@@ -56,7 +56,10 @@ class OrdenServicioModelo {
                 LEFT JOIN programacion_muestreo pm ON pm.id_orden_servicio = os.id
                 LEFT JOIN tecnicos t ON pm.id_tecnico = t.id
                 LEFT JOIN (SELECT id, CONCAT(marca, ' ', modelo, ' (', placa, ')') AS vehiculo_info FROM vehiculos) v ON pm.id_vehiculo = v.id
-                LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id";
+                LEFT JOIN (
+                    SELECT hs1.* FROM hojas_solicitud hs1
+                    INNER JOIN (SELECT id_os, MAX(id) AS max_id FROM hojas_solicitud GROUP BY id_os) hs2 ON hs1.id = hs2.max_id
+                ) hs ON hs.id_os = os.id";
         
         if (!empty($busqueda)) {
             $sql .= " WHERE os.codigo_os LIKE :q OR cot.codigo LIKE :q OR cli.nombre_razon_social LIKE :q OR os.nombre_proyecto LIKE :q";
@@ -83,6 +86,25 @@ class OrdenServicioModelo {
             ");
             $stmtDet->execute(['id_cot' => $osItem['id_cotizacion']]);
             $osItem['items'] = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+
+            // Cargar todas las Hojas de Solicitud de la O/S (Soporte Contratos Activos y Múltiples RT-FM-13)
+            $stmtHojas = $this->db->prepare("
+                SELECT id, codigo_documento, numero_registro, fecha_creacion, fecha_hora_toma_muestra, fecha_hora_llegada_laboratorio,
+                       nombre_persona_toma_muestra, nombre_persona_entrega_muestra, muestras_json, procedencia_punto_muestreo
+                FROM hojas_solicitud 
+                WHERE id_os = :id_os 
+                ORDER BY id ASC
+            ");
+            $stmtHojas->execute(['id_os' => $osItem['id']]);
+            $hojasList = $stmtHojas->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($hojasList as &$hItem) {
+                $mArr = json_decode($hItem['muestras_json'] ?? '[]', true) ?: [];
+                $hItem['total_muestras'] = count($mArr);
+            }
+            unset($hItem);
+
+            $osItem['hojas_servicio'] = $hojasList;
+            $osItem['total_hojas'] = count($hojasList);
         }
         return $ordenes;
     }
@@ -94,6 +116,8 @@ class OrdenServicioModelo {
         $sql = "SELECT os.*, 
                        cot.codigo AS cotizacion_codigo, 
                        cot.version AS cotizacion_version,
+                       u_cot.nombre AS cotizacion_creador_nombre,
+                       COALESCE(NULLIF(os.elaborado_por, ''), u_cot.nombre, 'Personal Autorizado') AS elaborado_por,
                        cli.nombre_razon_social AS cliente_nombre,
                        COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
                        COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
@@ -105,6 +129,7 @@ class OrdenServicioModelo {
                        COALESCE(NULLIF(cli.email, ''), NULLIF(cli.contacto_correo, ''), '') AS cliente_email
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+                LEFT JOIN usuarios u_cot ON cot.id_usuario_creador = u_cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id
                 WHERE os.id = :id";
         $stmt = $this->db->prepare($sql);
@@ -152,11 +177,11 @@ class OrdenServicioModelo {
         $sql = "INSERT INTO ordenes_servicio (
                     codigo_os, id_cotizacion, id_cliente, elaborado_por, fecha_emision,
                     atencion_a, nombre_proyecto, forma_pago, notas_condiciones,
-                    contactos_json, requiere_muestreo, estado
+                    contactos_json, requiere_muestreo, tipo_contrato, estado
                 ) VALUES (
                     :codigo_os, :id_cotizacion, :id_cliente, :elaborado_por, :fecha_emision,
                     :atencion_a, :nombre_proyecto, :forma_pago, :notas_condiciones,
-                    :contactos_json, :requiere_muestreo, :estado
+                    :contactos_json, :requiere_muestreo, :tipo_contrato, :estado
                 )";
 
         $stmt = $this->db->prepare($sql);
@@ -172,6 +197,7 @@ class OrdenServicioModelo {
             'notas_condiciones' => $datos['notas_condiciones'] ?? '',
             'contactos_json' => is_array($datos['contactos_json'] ?? null) ? json_encode($datos['contactos_json']) : ($datos['contactos_json'] ?? '[]'),
             'requiere_muestreo' => !empty($datos['requiere_muestreo']) ? 1 : 0,
+            'tipo_contrato' => $datos['tipo_contrato'] ?? 'Puntual',
             'estado' => $datos['estado'] ?? 'Borrador'
         ]);
 

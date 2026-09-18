@@ -67,9 +67,9 @@ class OperacionModelo extends ModeloBase {
     }
 
     /**
-     * Obtiene el listado de Órdenes de Servicio (O/S) activas.
+     * Obtiene el listado de Órdenes de Servicio (O/S) con soporte de filtros por pestañas (Bandeja Activa vs Histórico/Archivo).
      */
-    public function obtenerOSActivas(string $busqueda = ''): array {
+    public function obtenerOSActivas(string $busqueda = '', string $tab = 'activas'): array {
         $sql = "SELECT os.*,
                        cot.codigo AS cot_codigo, cot.nombre_proyecto, cot.total AS cot_total,
                        cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre,
@@ -78,17 +78,72 @@ class OperacionModelo extends ModeloBase {
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id";
 
-        if ($busqueda !== '') {
-            $sql .= " WHERE os.codigo_os LIKE :q1 OR cot.nombre_proyecto LIKE :q2 OR cli.nombre_razon_social LIKE :q3
-                      ORDER BY os.id DESC";
-            $stmt = $this->db->prepare($sql);
-            $term = '%' . trim($busqueda) . '%';
-            $stmt->execute(['q1' => $term, 'q2' => $term, 'q3' => $term]);
+        $where = [];
+        $params = [];
+
+        if ($tab === 'historico' || $tab === 'archivo') {
+            $where[] = "os.estado IN ('Finalizado', 'Archivado', 'Cerrado')";
+        } elseif ($tab === 'todas') {
+            // Sin filtro de estado
+        } elseif ($tab === 'muestreo') {
+            $where[] = "(os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL)";
+            $where[] = "os.requiere_muestreo = 1 AND (os.tecnico_muestreo IS NULL OR os.tecnico_muestreo = '' OR os.fecha_muestreo IS NULL)";
         } else {
-            $sql .= " ORDER BY os.id DESC";
-            $stmt = $this->db->query($sql);
+            // Por defecto: Bandeja activa de operaciones pendientes
+            $where[] = "(os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL)";
         }
+
+        if ($busqueda !== '') {
+            $where[] = "(os.codigo_os LIKE :q1 OR cot.nombre_proyecto LIKE :q2 OR cli.nombre_razon_social LIKE :q3)";
+            $term = '%' . trim($busqueda) . '%';
+            $params['q1'] = $term;
+            $params['q2'] = $term;
+            $params['q3'] = $term;
+        }
+
+        if (!empty($where)) {
+            $sql .= " WHERE " . implode(' AND ', $where);
+        }
+
+        $sql .= " ORDER BY os.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Obtiene los conteos de órdenes de servicio por pestaña para navegación rápida.
+     */
+    public function obtenerConteosTabsOS(): array {
+        try {
+            $sql = "SELECT 
+                        COUNT(CASE WHEN (os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL) THEN 1 END) AS activas,
+                        COUNT(CASE WHEN (os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL) AND os.requiere_muestreo = 1 AND (os.tecnico_muestreo IS NULL OR os.tecnico_muestreo = '' OR os.fecha_muestreo IS NULL) THEN 1 END) AS muestreo,
+                        COUNT(CASE WHEN os.estado IN ('Finalizado', 'Archivado', 'Cerrado') THEN 1 END) AS historico,
+                        COUNT(*) AS todas
+                    FROM ordenes_servicio os";
+            $res = $this->db->query($sql)->fetch(PDO::FETCH_ASSOC);
+
+            // Conteo facturacion pendiente (cuentas por cobrar no pagadas o con saldo > 0)
+            $sqlFact = "SELECT COUNT(*) FROM ordenes_servicio os
+                        JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+                        LEFT JOIN cuentas_por_cobrar cxc ON cxc.factura_numero = CONCAT('FAC-', cot.codigo)
+                        WHERE (os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL)
+                        AND (cxc.estado IS NULL OR cxc.estado != 'Pagado' OR cxc.saldo > 0.01)";
+            $factPendiente = (int)$this->db->query($sqlFact)->fetchColumn();
+
+            return [
+                'activas' => (int)($res['activas'] ?? 0),
+                'muestreo' => (int)($res['muestreo'] ?? 0),
+                'facturacion' => $factPendiente,
+                'ensayos' => 0,
+                'historico' => (int)($res['historico'] ?? 0),
+                'todas' => (int)($res['todas'] ?? 0)
+            ];
+        } catch (\Throwable $e) {
+            return ['activas' => 0, 'muestreo' => 0, 'facturacion' => 0, 'ensayos' => 0, 'historico' => 0, 'todas' => 0];
+        }
     }
 
     /**
@@ -155,7 +210,7 @@ class OperacionModelo extends ModeloBase {
      * Obtiene los detalles de la cotización asociados.
      */
     public function obtenerDetallesCotizacion(int $idCotizacion): array {
-        $sql = "SELECT cd.id, cd.descripcion_ensayo, cd.cantidad, p.codigo_servicio, p.norma_astm, p.formato_id, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
+        $sql = "SELECT cd.id, cd.descripcion_ensayo, cd.cantidad, cd.resultados_json, p.codigo_servicio, p.norma_astm, p.formato_id, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
                 FROM cotizacion_detalles cd
                 LEFT JOIN productos p ON cd.id_producto = p.id
                 LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
@@ -244,20 +299,17 @@ class OperacionModelo extends ModeloBase {
 
                 // Formato de código consecutivo automático e inmutable por tipo (Regla Oficial CYCSA)
                 $replicaCodigo = null;
-                if ($tipoMuestra === 'Campo') {
-                    $codigoMuestra = sprintf("MC-%04d-%02d", $correlativo, $anioShort);
-                } else {
-                    $codigoMuestra = sprintf("MS-%04d-%02d", $correlativo, $anioShort);
-                }
+                $prefijoMuestraRec = ($tipoMuestra === 'Campo') ? 'MC' : 'MS';
+                $codigoMuestra = sprintf("{$prefijoMuestraRec}-%04d-%02d", $correlativo, $anioShort);
 
                 if ($isQaQc) {
                     $replicaCodigo = "-1";
                     $codigoMuestra .= $replicaCodigo;
                 }
 
-                // Si no se provee código de campo, lo generamos
+                // Si no se provee código de campo, lo generamos con el mismo prefijo
                 if (empty($codigoCampo)) {
-                    $codigoCampo = sprintf("MC-%04d-%02d", $correlativo, $anioShort);
+                    $codigoCampo = sprintf("{$prefijoMuestraRec}-%04d-%02d", $correlativo, $anioShort);
                 }
 
                 // 1. Insertar Recepción con inmutabilidad y sellado
@@ -758,11 +810,41 @@ class OperacionModelo extends ModeloBase {
         }
     }
 
+    public int $ultimoIdHoja = 0;
+
+    /**
+     * Obtiene todas las hojas de solicitud (CYCSA-RT-FM-13) asociadas a una O/S ordenadas cronológicamente.
+     */
+    public function obtenerHojasSolicitudPorOS(int $idOS): array {
+        $stmt = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os ORDER BY id ASC");
+        $stmt->execute(['id_os' => $idOS]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Obtiene una hoja de solicitud específica por su ID.
+     */
+    public function obtenerHojaSolicitudPorId(int $idHoja): ?array {
+        $stmt = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id = :id");
+        $stmt->execute(['id' => $idHoja]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $res ?: null;
+    }
+
     /**
      * Obtiene la hoja de solicitud (CYCSA-RT-FM-13) asociada a una O/S si existe.
+     * Si se pasa $idHoja se busca esa en específico; de lo contrario retorna la más reciente.
      */
-    public function obtenerHojaSolicitudPorOS(int $idOS): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os");
+    public function obtenerHojaSolicitudPorOS(int $idOS, ?int $idHoja = null): ?array {
+        if ($idHoja !== null && $idHoja > 0) {
+            $stmt = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id = :id AND id_os = :id_os");
+            $stmt->execute(['id' => $idHoja, 'id_os' => $idOS]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($res) {
+                return $res;
+            }
+        }
+        $stmt = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os ORDER BY id DESC LIMIT 1");
         $stmt->execute(['id_os' => $idOS]);
         $res = $stmt->fetch(PDO::FETCH_ASSOC);
         return $res ?: null;
@@ -770,10 +852,12 @@ class OperacionModelo extends ModeloBase {
 
     /**
      * Guarda o actualiza los datos de la Hoja de Solicitud de Servicio (CYCSA-RT-FM-13).
+     * Permite editar una hoja existente si se envía 'id_hoja' > 0, o crear una nueva para la O/S.
      */
-    public function guardarHojaSolicitud(array $datos): bool {
+    public function guardarHojaSolicitud(array $datos, ?int &$idGenerado = null): bool {
         try {
             $idOS = (int)$datos['id_os'];
+            $idHoja = (int)($datos['id_hoja'] ?? 0);
             $fechaHoraLlegada = !empty($datos['fecha_hora_llegada_laboratorio']) ? $datos['fecha_hora_llegada_laboratorio'] : null;
             $codigoDoc = trim($datos['codigo_documento'] ?? 'CYCSA-RT-FM-13');
             $numeroRegistro = trim($datos['numero_registro'] ?? '');
@@ -784,9 +868,15 @@ class OperacionModelo extends ModeloBase {
             $email = trim($datos['correo_electronico'] ?? '');
             $personaEntrega = trim($datos['nombre_persona_entrega_muestra'] ?? '');
             
-            // Set of checkboxes
-            $naturalezaArr = $datos['naturaleza_muestra'] ?? [];
-            $naturaleza = !empty($naturalezaArr) ? implode(',', $naturalezaArr) : null;
+            // Set of checkboxes or comma-separated string
+            $naturalezaVal = $datos['naturaleza_muestra'] ?? null;
+            if (is_array($naturalezaVal)) {
+                $naturaleza = !empty($naturalezaVal) ? implode(',', $naturalezaVal) : null;
+            } elseif (is_string($naturalezaVal)) {
+                $naturaleza = trim($naturalezaVal) !== '' ? trim($naturalezaVal) : null;
+            } else {
+                $naturaleza = null;
+            }
             
             $procedencia = trim($datos['procedencia_punto_muestreo'] ?? '');
             $personaToma = trim($datos['nombre_persona_toma_muestra'] ?? '');
@@ -824,24 +914,44 @@ class OperacionModelo extends ModeloBase {
             $firmaRecibeCycsa = (int)($datos['firma_recibe_cycsa'] ?? 0);
             $firmaCliente = (int)($datos['firma_cliente'] ?? 0);
 
-            // Check if exists
-            $existing = $this->obtenerHojaSolicitudPorOS($idOS);
+            // Verificar si es edición de una hoja existente o creación de nueva hoja
+            $existing = null;
+            if ($idHoja > 0) {
+                $existing = $this->obtenerHojaSolicitudPorId($idHoja);
+            }
             
             $lockAcquired = false;
             if (!$existing) {
                 // Adquirir candado para insertar nueva hoja de solicitud
                 $this->db->prepare("SELECT GET_LOCK('lock_hojas_solicitud', 10)")->execute();
                 $lockAcquired = true;
+
+                // Correlativo de número de registro si viene vacío
+                if (empty($numeroRegistro)) {
+                    $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM hojas_solicitud WHERE id_os = :id_os");
+                    $stmtCount->execute(['id_os' => $idOS]);
+                    $cantPrevias = (int)$stmtCount->fetchColumn();
+                    $numeroRegistro = ($cantPrevias > 0) 
+                        ? sprintf("%05d-%02d", $idOS, $cantPrevias + 1)
+                        : sprintf("%05d", $idOS);
+                }
                 
                 $anioActual = (int)date('Y');
                 $anioShort = date('y');
-                $siguienteConsecutivo = $this->obtenerSiguienteConsecutivoMuestra($anioActual, 'MC');
+                
+                // Determinar si la O/S envía técnicos a campo (MC) o la trae el cliente a sede (MS)
+                $stmtOsReq = $this->db->prepare("SELECT requiere_muestreo, tecnico_muestreo FROM ordenes_servicio WHERE id = :id_os");
+                $stmtOsReq->execute(['id_os' => $idOS]);
+                $osData = $stmtOsReq->fetch(\PDO::FETCH_ASSOC);
+                $prefijoMuestraOficial = determinarPrefijoMuestraOS($osData ?: []);
+
+                $siguienteConsecutivo = $this->obtenerSiguienteConsecutivoMuestra($anioActual, $prefijoMuestraOficial);
                 
                 $muestras = json_decode($muestrasJson, true) ?: [];
                 foreach ($muestras as &$m) {
                     $nombre = trim($m['nombre_muestra'] ?? '');
-                    if (empty($nombre) || preg_match('/^(muestra|m-|mc-0*1?$|cilindro)/i', $nombre)) {
-                        $m['nombre_muestra'] = sprintf("MC-%04d-%02d", $siguienteConsecutivo, $anioShort);
+                    if (empty($nombre) || preg_match('/^(muestra|m-|mc-0*1?$|ms-0*1?$|cilindro)/i', $nombre)) {
+                        $m['nombre_muestra'] = sprintf("{$prefijoMuestraOficial}-%04d-%02d", $siguienteConsecutivo, $anioShort);
                         $siguienteConsecutivo++;
                     }
                 }
@@ -887,7 +997,7 @@ class OperacionModelo extends ModeloBase {
                             nombre_recibe_cycsa = :n_recibe,
                             firma_recibe_cycsa = :f_recibe,
                             firma_cliente = :f_cliente
-                        WHERE id_os = :id_os";
+                        WHERE id = :id_hoja";
             } else {
                 $sql = "INSERT INTO hojas_solicitud (
                             id_os, fecha_hora_llegada_laboratorio, codigo_documento, numero_registro, nombre_empresa_o_cliente, razon_social, direccion_proyecto, telefono, correo_electronico, nombre_persona_entrega_muestra,
@@ -906,9 +1016,7 @@ class OperacionModelo extends ModeloBase {
                         )";
             }
             
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([
-                'id_os' => $idOS,
+            $params = [
                 'f_llegada' => $fechaHoraLlegada,
                 'cod_doc' => $codigoDoc,
                 'num_reg' => $numeroRegistro,
@@ -945,7 +1053,24 @@ class OperacionModelo extends ModeloBase {
                 'n_recibe' => $nombreRecibeCycsa,
                 'f_recibe' => $firmaRecibeCycsa,
                 'f_cliente' => $firmaCliente
-            ]);
+            ];
+
+            if ($existing) {
+                $params['id_hoja'] = $existing['id'];
+                $this->ultimoIdHoja = (int)$existing['id'];
+            } else {
+                $params['id_os'] = $idOS;
+            }
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            if (!$existing) {
+                $this->ultimoIdHoja = (int)$this->db->lastInsertId();
+            }
+            if ($idGenerado !== null) {
+                $idGenerado = $this->ultimoIdHoja;
+            }
 
             // Sincronizar fecha, hora y técnico de muestreo en ordenes_servicio
             if (!empty($fechaHoraToma)) {
@@ -1039,24 +1164,22 @@ class OperacionModelo extends ModeloBase {
         $stmtRec->execute(['anio' => $anio, 'tipo' => $tipo]);
         $corrRec = (int)$stmtRec->fetchColumn();
 
-        // 3. Consultar en hojas_solicitud si hay códigos MC declarados
+        // 3. Consultar en hojas_solicitud si hay códigos declarados con este prefijo (MC o MS)
         $maxHojas = 0;
-        if ($tipo === 'Campo' || $prefijo === 'MC') {
-            $sql = "SELECT muestras_json FROM hojas_solicitud WHERE YEAR(fecha_creacion) = :anio";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute(['anio' => $anio]);
-            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            $anio2Digitos = substr((string)$anio, -2);
-            foreach ($rows as $row) {
-                $arr = json_decode($row, true);
-                if (is_array($arr)) {
-                    foreach ($arr as $item) {
-                        $nombre = $item['nombre_muestra'] ?? '';
-                        if (preg_match('/' . preg_quote($prefijo, '/') . '-(\d+)-(?:' . $anio . '|' . $anio2Digitos . ')/', $nombre, $matches)) {
-                            $num = (int)$matches[1];
-                            if ($num > $maxHojas) {
-                                $maxHojas = $num;
-                            }
+        $sql = "SELECT muestras_json FROM hojas_solicitud WHERE YEAR(fecha_creacion) = :anio";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['anio' => $anio]);
+        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $anio2Digitos = substr((string)$anio, -2);
+        foreach ($rows as $row) {
+            $arr = json_decode($row, true);
+            if (is_array($arr)) {
+                foreach ($arr as $item) {
+                    $nombre = $item['nombre_muestra'] ?? '';
+                    if (preg_match('/' . preg_quote($prefijo, '/') . '-(\d+)-(?:' . $anio . '|' . $anio2Digitos . ')/i', $nombre, $matches)) {
+                        $num = (int)$matches[1];
+                        if ($num > $maxHojas) {
+                            $maxHojas = $num;
                         }
                     }
                 }
@@ -1067,4 +1190,3 @@ class OperacionModelo extends ModeloBase {
         return $max + 1;
     }
 }
-

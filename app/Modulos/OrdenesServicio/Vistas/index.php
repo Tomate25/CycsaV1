@@ -404,37 +404,72 @@
                                             <?php endif; ?>
                                         </div>
 
-                                        <!-- TARJETA 3: HOJA TÉCNICA CYCSA-RT-FM-13 -->
+                                        <!-- TARJETA 3: HOJA TÉCNICA CYCSA-RT-FM-13 (Soporte Múltiples Hojas y Contratos Activos) -->
                                         <div class="tarjeta-detalle-os">
-                                            <div class="tarjeta-detalle-titulo">
-                                                <i class="fa-solid fa-file-signature"></i> 3. Hoja de Servicio (RT-FM-13)
-                                            </div>
-                                            <?php if ($tieneHoja): ?>
-                                                <div class="dato-fila">
-                                                    <span class="dato-etiqueta">Código Doc:</span>
-                                                    <span class="dato-valor"><strong style="color:var(--cycsa-azul); font-family:monospace;"><?= htmlspecialchars($os['hoja_codigo']) ?></strong></span>
-                                                </div>
-                                                <div class="dato-fila">
-                                                    <span class="dato-etiqueta">Estado Hoja:</span>
-                                                    <span class="dato-valor"><strong><?= htmlspecialchars($os['estado']) ?></strong></span>
-                                                </div>
-                                                <div class="dato-fila">
-                                                    <span class="dato-etiqueta">Tomada por:</span>
-                                                    <span class="dato-valor"><?= htmlspecialchars($os['nombre_persona_toma_muestra'] ?? 'Cliente') ?></span>
-                                                </div>
-                                                <div class="dato-fila">
-                                                    <span class="dato-etiqueta">Fecha Toma:</span>
-                                                    <span class="dato-valor"><?= !empty($os['fecha_hora_toma_muestra']) ? date('d/m/Y H:i', strtotime($os['fecha_hora_toma_muestra'])) : 'N/A' ?></span>
-                                                </div>
-                                                <?php if ($os['estado'] === 'Estado 2: Observada' && !empty($os['motivo_observacion'])): ?>
-                                                    <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 6px; color: #991b1b; font-size: 11.5px; margin-top: 6px;">
-                                                        <strong><i class="fa-solid fa-triangle-exclamation"></i> Observación del Supervisor:</strong> <?= htmlspecialchars($os['motivo_observacion']) ?>
-                                                    </div>
+                                            <div class="tarjeta-detalle-titulo" style="display:flex; justify-content:space-between; align-items:center;">
+                                                <span><i class="fa-solid fa-file-signature"></i> 3. Hojas de Servicio (RT-FM-13)</span>
+                                                <?php if (!empty($os['tipo_contrato']) && in_array($os['tipo_contrato'], ['Marco', 'Contrato Activo', 'Abierto'])): ?>
+                                                    <span style="font-size:10px; background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:10px; text-transform:uppercase; font-weight:700;">
+                                                        <i class="fa-solid fa-calendar-days"></i> Contrato Activo
+                                                    </span>
                                                 <?php endif; ?>
+                                            </div>
+                                            <?php 
+                                            $listaHojas = $os['hojas_servicio'] ?? [];
+                                            if (empty($listaHojas) && $tieneHoja) {
+                                                $listaHojas = [[
+                                                    'id' => $os['id_hoja'],
+                                                    'numero_registro' => '00001',
+                                                    'codigo_documento' => $os['hoja_codigo'] ?? 'CYCSA-RT-FM-13',
+                                                    'nombre_persona_toma_muestra' => $os['nombre_persona_toma_muestra'] ?? 'Cliente',
+                                                    'fecha_hora_toma_muestra' => $os['fecha_hora_toma_muestra'] ?? '',
+                                                    'total_muestras' => !empty($os['muestras_json']) ? count(json_decode($os['muestras_json'], true) ?: []) : 1
+                                                ]];
+                                            }
+                                            ?>
+                                            <?php if (!empty($listaHojas)): ?>
+                                                <div style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
+                                                    <?php foreach ($listaHojas as $idxH => $hItem): ?>
+                                                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                                            <div>
+                                                                <div style="font-size:12px; font-weight:700; color:var(--cycsa-azul);">
+                                                                    <i class="fa-solid fa-file-invoice"></i> <?= htmlspecialchars($hItem['codigo_documento'] ?? 'CYCSA-RT-FM-13') ?> 
+                                                                    <span style="font-family:monospace; color:#0f172a; background:#e2e8f0; padding:1px 6px; border-radius:4px;">Reg: <?= htmlspecialchars($hItem['numero_registro'] ?? ('#' . $hItem['id'])) ?></span>
+                                                                </div>
+                                                                <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                                                                    <i class="fa-solid fa-vials"></i> <?= (int)($hItem['total_muestras'] ?? 0) ?> espécimen(es) • 
+                                                                    <i class="fa-solid fa-calendar-day"></i> <?= !empty($hItem['fecha_hora_toma_muestra']) ? date('d/m/Y H:i', strtotime($hItem['fecha_hora_toma_muestra'])) : (!empty($hItem['fecha_creacion']) ? date('d/m/Y H:i', strtotime($hItem['fecha_creacion'])) : 'N/A') ?>
+                                                                </div>
+                                                            </div>
+                                                            <div style="display:flex; gap:4px;">
+                                                                <button type="button" class="btn-cycsa btn-cycsa-secondary" style="padding:4px 8px; font-size:11px;"
+                                                                        onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', <?= $hItem['id'] ?>, false)"
+                                                                        title="Editar Hoja RT-FM-13">
+                                                                    <i class="fa-solid fa-pen"></i>
+                                                                </button>
+                                                                <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>&id_hoja=<?= $hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary" style="padding:4px 8px; font-size:11px;" title="Descargar PDF Oficial">
+                                                                    <i class="fa-solid fa-file-pdf"></i>
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                                <div style="margin-top:10px;">
+                                                    <button type="button" class="btn-cycsa btn-cycsa-success" style="width:100%; padding:6px 12px; font-size:11.5px;"
+                                                            onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', 0, true)">
+                                                        <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13 (Nueva Entrega)
+                                                    </button>
+                                                </div>
                                             <?php else: ?>
                                                 <div style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 8px; text-align: center; color: #64748b; font-size: 12.5px;">
                                                     <i class="fa-solid fa-file-circle-question" style="font-size: 24px; margin-bottom: 6px; color: #94a3b8; display: block;"></i>
                                                     Aún no se ha registrado la Hoja de Servicio técnica para esta orden.
+                                                    <div style="margin-top:10px;">
+                                                        <button type="button" class="btn-cycsa btn-cycsa-success" style="padding:6px 14px; font-size:12px;"
+                                                                onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', 0, true)">
+                                                            <i class="fa-solid fa-file-signature"></i> Registrar Primera Hoja RT-FM-13
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -467,10 +502,14 @@
                                                     data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
                                                     data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
                                                     onclick="iniciarRegistroHojaRTFM13(this)">
-                                                <i class="fa-solid fa-pen-to-square"></i> Editar Hoja RT-FM-13
+                                                <i class="fa-solid fa-pen-to-square"></i> Editar Última Hoja
+                                            </button>
+                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#0284c7;"
+                                                    onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', 0, true)">
+                                                <i class="fa-solid fa-plus"></i> Nueva Hoja RT-FM-13
                                             </button>
                                             <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary">
-                                                <i class="fa-solid fa-file-pdf"></i> Ver PDF RT-FM-13
+                                                <i class="fa-solid fa-file-pdf"></i> Ver PDF
                                             </a>
                                             <form method="POST" action="/Cycsa/publico/hojas-servicio/enviar-revision" style="margin: 0;">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -491,7 +530,7 @@
                                                 <i class="fa-solid fa-triangle-exclamation"></i> Corregir Hoja RT-FM-13
                                             </button>
                                             <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary">
-                                                <i class="fa-solid fa-file-pdf"></i> Ver PDF RT-FM-13
+                                                <i class="fa-solid fa-file-pdf"></i> Ver PDF
                                             </a>
                                             <form method="POST" action="/Cycsa/publico/hojas-servicio/enviar-revision" style="margin: 0;">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -502,7 +541,7 @@
                                             </form>
                                         <?php elseif ($os['estado'] === 'Estado 2: Revision'): ?>
                                             <span style="font-size:12.5px; color:#0369a1; background:#e0f2fe; padding:7px 14px; border-radius:6px; border:1px solid #bae6fd; display:inline-flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-lock"></i> En revisión por supervisión (No editable)
+                                                <i class="fa-solid fa-lock"></i> En revisión por supervisión
                                             </span>
                                             <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary">
                                                 <i class="fa-solid fa-file-pdf"></i> Ver PDF RT-FM-13
@@ -514,8 +553,12 @@
                                             <?php endif; ?>
                                         <?php else: ?>
                                             <span style="font-size:12.5px; color:#15803d; background:#dcfce7; padding:7px 14px; border-radius:6px; border:1px solid #86efac; display:inline-flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-circle-check"></i> Hoja Aprobada
+                                                <i class="fa-solid fa-circle-check"></i> Hoja(s) Registrada(s)
                                             </span>
+                                            <button type="button" class="btn-cycsa btn-cycsa-success"
+                                                    onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', 0, true)">
+                                                <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13
+                                            </button>
                                             <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary">
                                                 <i class="fa-solid fa-file-pdf"></i> Ver PDF RT-FM-13 Oficial
                                             </a>
@@ -558,6 +601,23 @@
         <div id="loading-hoja-solicitud" style="text-align:center; padding: 50px; display:none;">
             <i class="fa-solid fa-spinner fa-spin" style="font-size:36px; color:var(--cycsa-azul);"></i>
             <p style="color:#64748b; margin-top:12px; font-size:14px; font-weight:600;">Cargando datos de la O/S y plantilla RT-FM-13...</p>
+        </div>
+
+        <!-- SELECTOR DE HOJAS RT-FM-13 (Para Contratos Activos / Múltiples Entregas) -->
+        <div id="hs_selector_hojas_container" style="display:none; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px; margin-bottom:15px; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-size:12px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.5px;">
+                    <i class="fa-solid fa-layer-group" style="color:var(--cycsa-azul);"></i> Hojas / Entregas:
+                </span>
+                <div id="hs_lista_tabs_hojas" style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <!-- Tabs dinámicos inyectados por JS -->
+                </div>
+            </div>
+            <div>
+                <button type="button" id="hs_btn_nueva_entrega" onclick="cargarNuevaHojaEnModal()" class="btn-cycsa" style="background:#0284c7; color:white; font-size:12px; padding:6px 14px; border-radius:6px; font-weight:600; display:inline-flex; align-items:center; gap:6px; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                    <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13
+                </button>
+            </div>
         </div>
 
         <div id="wrapper-split-rt-fm-13" style="display:none; grid-template-columns: 460px 1fr; gap: 25px; align-items: flex-start;">
@@ -622,6 +682,7 @@
             <form method="POST" action="/Cycsa/publico/hojas-servicio/guardar" id="form-hoja-solicitud" style="display:block;">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id_os" id="hs_id_os">
+                <input type="hidden" name="id_hoja" id="hs_id_hoja" value="0">
 
                 <!-- 1. METADATOS Y CONTROL INTERNO -->
                 <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-clipboard-check"></i> A rellenar por el laboratorio (Control Interno)</div>
@@ -1126,13 +1187,28 @@
     const hsLoading = document.getElementById('loading-hoja-solicitud');
     const hsSplit = document.getElementById('wrapper-split-rt-fm-13');
 
-    function abrirModalHojaSolicitud(idOS, code) {
+    let idOSModalActual = 0;
+    let codigoOSModalActual = '';
+
+    function abrirModalHojaSolicitud(idOS, code, idHoja = 0, esNueva = false) {
+        idOSModalActual = idOS;
+        codigoOSModalActual = code;
         document.getElementById('hs_codigo_os_label').innerText = code;
         modHS.style.display = 'block';
         hsLoading.style.display = 'block';
         hsSplit.style.display = 'none';
+        const selCont = document.getElementById('hs_selector_hojas_container');
+        if (selCont) selCont.style.display = 'none';
 
-        fetch('/Cycsa/publico/hojas-servicio/datos?id_os=' + idOS)
+        let url = '/Cycsa/publico/hojas-servicio/datos?id_os=' + encodeURIComponent(idOS);
+        if (idHoja > 0) {
+            url += '&id_hoja=' + encodeURIComponent(idHoja);
+        }
+        if (esNueva) {
+            url += '&nueva=1';
+        }
+
+        fetch(url)
             .then(res => {
                 if (!res.ok) {
                     throw new Error('HTTP ' + res.status + ' (' + res.statusText + ')');
@@ -1156,6 +1232,11 @@
             });
     }
 
+    function cargarNuevaHojaEnModal() {
+        if (!idOSModalActual) return;
+        abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true);
+    }
+
     let prefijoMuestraActual = 'MC';
     let anioActual2Digitos = String(new Date().getFullYear()).slice(-2);
 
@@ -1163,6 +1244,51 @@
         const h = data.hoja;
         const os = data.os_referencia;
         prefijoMuestraActual = data.prefijo_muestra || 'MC';
+
+        // Set id_hoja hidden field
+        const elIdHoja = document.getElementById('hs_id_hoja');
+        if (elIdHoja) {
+            elIdHoja.value = data.es_nueva ? 0 : (h.id || 0);
+        }
+
+        // Renderizado del Selector de Hojas / Entregas
+        const selContainer = document.getElementById('hs_selector_hojas_container');
+        const tabsContainer = document.getElementById('hs_lista_tabs_hojas');
+        const btnNuevaEntrega = document.getElementById('hs_btn_nueva_entrega');
+        if (selContainer && tabsContainer) {
+            selContainer.style.display = 'flex';
+            tabsContainer.innerHTML = '';
+
+            const listaHojas = data.todas_las_hojas || [];
+            const idActual = data.id_hoja_actual || (h ? h.id : 0);
+            const esNuevaHoja = !!data.es_nueva;
+
+            if (listaHojas.length > 0) {
+                listaHojas.forEach((itemHoja, idx) => {
+                    const isSelected = (!esNuevaHoja && itemHoja.id == idActual);
+                    const btnTab = document.createElement('button');
+                    btnTab.type = 'button';
+                    btnTab.style.cssText = `padding: 5px 12px; font-size: 11.5px; font-weight: 600; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid ${isSelected ? '#0284c7' : '#cbd5e1'}; background: ${isSelected ? '#e0f2fe' : 'white'}; color: ${isSelected ? '#0369a1' : '#475569'}; transition: all 0.15s;`;
+                    btnTab.innerHTML = `<i class="fa-solid fa-file-lines" style="color:${isSelected ? '#0284c7' : '#94a3b8'};"></i> Hoja #${itemHoja.numero_secuencial} <span style="font-size:10px; font-family:monospace; background:${isSelected ? '#bae6fd' : '#f1f5f9'}; padding:1px 5px; border-radius:4px; font-weight:700;">${itemHoja.numero_registro || 'Sin Reg'}</span>`;
+                    btnTab.onclick = () => {
+                        abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, itemHoja.id, false);
+                    };
+                    tabsContainer.appendChild(btnTab);
+                });
+            }
+
+            if (esNuevaHoja) {
+                const badgeNueva = document.createElement('span');
+                badgeNueva.style.cssText = 'padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid #10b981; background: #d1fae5; color: #065f46;';
+                badgeNueva.innerHTML = '<i class="fa-solid fa-plus-circle"></i> Nueva Hoja (Borrador Entrega)';
+                tabsContainer.appendChild(badgeNueva);
+            }
+
+            if (btnNuevaEntrega) {
+                btnNuevaEntrega.style.opacity = esNuevaHoja ? '0.6' : '1';
+                btnNuevaEntrega.disabled = esNuevaHoja;
+            }
+        }
 
         // Referencia O/S
         if (os) {

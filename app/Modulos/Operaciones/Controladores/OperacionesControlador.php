@@ -6,6 +6,7 @@ use Cycsa\Nucleo\ControladorBase;
 use Cycsa\Nucleo\Peticion;
 use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\Operaciones\Modelos\OperacionModelo;
+use Cycsa\Modulos\Operaciones\Modelos\CierreOperacionLims;
 use Cycsa\Nucleo\Conexion;
 use PDO;
 
@@ -40,14 +41,18 @@ class OperacionesControlador extends ControladorBase {
 
         $modelo = new OperacionModelo();
         $busqueda = $_GET['q'] ?? '';
+        $tabActiva = $_GET['tab'] ?? 'activas';
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
-        // Obtener cotizaciones aprobadas listas para generar O/S, y las O/S activas
+        // Obtener cotizaciones aprobadas listas para generar O/S, y las O/S según pestaña
         $cotizacionesParaOS = $modelo->obtenerCotizacionesParaOS($busqueda);
-        $ordenesActivas = $modelo->obtenerOSActivas($busqueda);
+        $tabBusquedaModelo = in_array($tabActiva, ['facturacion', 'ensayos']) ? 'activas' : $tabActiva;
+        $ordenesActivas = $modelo->obtenerOSActivas($busqueda, $tabBusquedaModelo);
+        $conteosTabs = $modelo->obtenerConteosTabsOS();
+        
         $db = Conexion::obtenerInstancia();
         $stmtCxcCodes = $db->query("SELECT * FROM cuentas_por_cobrar");
         $cxcRecords = $stmtCxcCodes->fetchAll(PDO::FETCH_ASSOC);
@@ -60,6 +65,9 @@ class OperacionesControlador extends ControladorBase {
         $stmtBancos = $db->query("SELECT id, banco_nombre, numero_cuenta, moneda, saldo_actual, id_cuenta_contable FROM bancos_cuentas WHERE activo = 1 ORDER BY banco_nombre ASC");
         $bancos = $stmtBancos->fetchAll(PDO::FETCH_ASSOC);
         
+        $conteoFacturacionPendiente = 0;
+        $conteoEnsayosPendientes = 0;
+
         foreach ($ordenesActivas as &$o) {
             $o['items'] = $modelo->obtenerItemsOS((int)$o['id']);
             $o['hoja_solicitud'] = $modelo->obtenerHojaSolicitudPorOS((int)$o['id']);
@@ -73,8 +81,54 @@ class OperacionesControlador extends ControladorBase {
             $facturaNum = 'FAC-' . ($o['cot_codigo'] ?? '');
             $o['factura_numero'] = $facturaNum;
             $o['cxc'] = $cxcMap[$facturaNum] ?? null;
+
+            // Calcular métricas de progreso de calidad y cierre (Técnico + Comercial)
+            $totalEnsayos = count($o['items']);
+            $ensayosAprobados = 0;
+            $ensayosConResultados = 0;
+            foreach ($o['items'] as &$it) {
+                $it['revision_info'] = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
+                if ($it['revision_info']['estado'] === 'aprobada') {
+                    $ensayosAprobados++;
+                }
+                if ($it['revision_info']['tiene_resultados']) {
+                    $ensayosConResultados++;
+                }
+            }
+            unset($it);
+
+            $o['total_ensayos'] = $totalEnsayos;
+            $o['ensayos_aprobados'] = $ensayosAprobados;
+            $o['ensayos_con_resultados'] = $ensayosConResultados;
+            $o['tecnico_100'] = ($totalEnsayos > 0 && $ensayosAprobados === $totalEnsayos);
+
+            $montoOS = (float)($o['cot_total'] ?? 0.0);
+            $saldoOS = $o['cxc'] ? (float)$o['cxc']['saldo'] : $montoOS;
+            $estadoPago = $o['cxc'] ? $o['cxc']['estado'] : 'Pendiente';
+            $o['comercial_100'] = ($o['cxc'] !== null && $estadoPago === 'Pagado' && $saldoOS <= 0.01);
+            $o['saldo_os'] = $saldoOS;
+            $o['estado_pago'] = $estadoPago;
+
+            // Condición explícita de cierre (100% técnico + 100% comercial)
+            $o['puede_cerrar'] = ($o['tecnico_100'] && $o['comercial_100'] && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado']));
+
+            if (!$o['comercial_100']) {
+                $conteoFacturacionPendiente++;
+            }
+            if (!$o['tecnico_100']) {
+                $conteoEnsayosPendientes++;
+            }
         }
         unset($o);
+
+        $conteosTabs['facturacion'] = $conteoFacturacionPendiente;
+        $conteosTabs['ensayos'] = $conteoEnsayosPendientes;
+
+        if ($tabActiva === 'facturacion') {
+            $ordenesActivas = array_values(array_filter($ordenesActivas, fn($o) => !$o['comercial_100']));
+        } elseif ($tabActiva === 'ensayos') {
+            $ordenesActivas = array_values(array_filter($ordenesActivas, fn($o) => !$o['tecnico_100']));
+        }
         
         $bitacora_logs = obtenerBitacoraModulo('operaciones');
 
@@ -83,6 +137,8 @@ class OperacionesControlador extends ControladorBase {
             'cotizaciones' => $cotizacionesParaOS,
             'ordenes' => $ordenesActivas,
             'busqueda' => $busqueda,
+            'tabActiva' => $tabActiva,
+            'conteosTabs' => $conteosTabs,
             'tecnicos' => $modelo->obtenerTecnicosActivos(),
             'vehiculos' => $modelo->obtenerVehiculosActivos(),
             'bancos' => $bancos,
@@ -106,7 +162,7 @@ class OperacionesControlador extends ControladorBase {
             $datos = $peticion->obtenerDatos();
             $modelo = new OperacionModelo();
 
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            if (!isset($_SESSION['csrf_token'], $datos['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
                 $_SESSION['error'] = 'Token CSRF inválido.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
@@ -189,11 +245,19 @@ class OperacionesControlador extends ControladorBase {
         }
         unset($s);
 
-        $hojaSolicitud = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        $hojasSolicitud = $modelo->obtenerHojasSolicitudPorOS($idOS);
+        $hojaSolicitud = !empty($hojasSolicitud) ? end($hojasSolicitud) : null;
         
         $muestrasDeclaradas = [];
-        if ($hojaSolicitud && !empty($hojaSolicitud['muestras_json'])) {
-            $muestrasDeclaradas = json_decode($hojaSolicitud['muestras_json'], true) ?: [];
+        foreach ($hojasSolicitud as $hsItem) {
+            if (!empty($hsItem['muestras_json'])) {
+                $mArr = json_decode($hsItem['muestras_json'], true) ?: [];
+                foreach ($mArr as $mVal) {
+                    $mVal['hoja_numero_registro'] = $hsItem['numero_registro'] ?? ('#' . $hsItem['id']);
+                    $mVal['id_hoja'] = $hsItem['id'];
+                    $muestrasDeclaradas[] = $mVal;
+                }
+            }
         }
 
         // Fetch already received samples for this OS to map status
@@ -221,8 +285,9 @@ class OperacionesControlador extends ControladorBase {
         unset($md);
 
         $anio = date('Y');
-        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra((int)$anio);
-        $codigoCampoAuto = !empty($os['hoja_campo_codigo']) ? $os['hoja_campo_codigo'] : 'MC-' . sprintf("%03d", $siguienteConsecutivo) . '-' . $anio;
+        $prefijoMuestraOS = determinarPrefijoMuestraOS($os);
+        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra((int)$anio, $prefijoMuestraOS);
+        $codigoCampoAuto = !empty($os['hoja_campo_codigo']) ? $os['hoja_campo_codigo'] : $prefijoMuestraOS . '-' . sprintf("%03d", $siguienteConsecutivo) . '-' . $anio;
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -234,8 +299,10 @@ class OperacionesControlador extends ControladorBase {
             'servicios' => $servicios,
             'idDetalle' => $idDetalle,
             'hoja_solicitud' => $hojaSolicitud,
+            'hojas_solicitud' => $hojasSolicitud,
             'codigoCampoAuto' => $codigoCampoAuto,
             'siguienteConsecutivo' => $siguienteConsecutivo,
+            'prefijoMuestraOS' => $prefijoMuestraOS,
             'muestrasDeclaradas' => $muestrasDeclaradas,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
@@ -647,7 +714,10 @@ class OperacionesControlador extends ControladorBase {
                     $filas[] = $fila;
                 }
             } else {
-                $filas = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+                $resultadosGuardados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+                $filas = isset($resultadosGuardados['filas']) && is_array($resultadosGuardados['filas'])
+                    ? $resultadosGuardados['filas']
+                    : (array_is_list($resultadosGuardados) ? $resultadosGuardados : []);
             }
 
             // Versionado
@@ -817,13 +887,7 @@ class OperacionesControlador extends ControladorBase {
     }
 
     private function obtenerColumnasFormato(?string $archivo_markdown): array {
-        if (empty($archivo_markdown)) return [];
-        $rutaJson = dirname(__DIR__, 4) . '/database/ensayos/formatos_schema.json';
-        if (file_exists($rutaJson)) {
-            $data = json_decode(file_get_contents($rutaJson), true);
-            return $data[$archivo_markdown]['columns'] ?? [];
-        }
-        return [];
+        return obtenerEsquemaPlantillaEnsayo($archivo_markdown)['columns'] ?? [];
     }
 
     public function actualizarEstado(Peticion $peticion, Respuesta $respuesta): void {
@@ -1009,7 +1073,8 @@ class OperacionesControlador extends ControladorBase {
         $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
         
         $anioActual = (int)date('Y');
-        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra($anioActual);
+        $prefijoMuestraOS = determinarPrefijoMuestraOS($os);
+        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra($anioActual, $prefijoMuestraOS);
         $tecnicos = $modelo->obtenerTecnicosActivos();
 
         $detalles = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
@@ -1066,6 +1131,7 @@ class OperacionesControlador extends ControladorBase {
             'hoja' => $hoja,
             'tecnicos' => $tecnicos,
             'siguienteConsecutivo' => $siguienteConsecutivo,
+            'prefijoMuestraOS' => $prefijoMuestraOS,
             'anioActual' => $anioActual
         ]);
     }
@@ -1110,10 +1176,11 @@ class OperacionesControlador extends ControladorBase {
             }
             $datos['identificacion_muestras_json'] = json_encode($identMuestras);
 
-            if ($modelo->guardarHojaSolicitud($datos)) {
+            $idHojaGuardada = 0;
+            if ($modelo->guardarHojaSolicitud($datos, $idHojaGuardada)) {
                 // Generar PDF y guardarlo en almacenamiento/solicitudes/
                 $os = $modelo->obtenerOSPorId($idOS);
-                $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+                $hoja = $modelo->obtenerHojaSolicitudPorId($idHojaGuardada) ?: $modelo->obtenerHojaSolicitudPorOS($idOS, $idHojaGuardada);
                 
                 require_once dirname(__DIR__, 4) . '/app/Helpers/funciones.php';
                 $pdfContenido = generarHojaSolicitudPDF($hoja, $os);
@@ -1122,12 +1189,21 @@ class OperacionesControlador extends ControladorBase {
                 if (!file_exists($dirPdf)) {
                     mkdir($dirPdf, 0777, true);
                 }
+
+                // Guardar PDF individual por ID de hoja
+                if (!empty($hoja['id'])) {
+                    $nombrePdfHoja = "CYCSA-RT-FM-13-" . $os['codigo_os'] . "-H" . $hoja['id'] . ".pdf";
+                    file_put_contents($dirPdf . '/' . $nombrePdfHoja, $pdfContenido);
+                }
+
+                // Guardar/Actualizar copia genérica para retrocompatibilidad
                 $nombrePdf = "CYCSA-RT-FM-13-" . $os['codigo_os'] . ".pdf";
                 file_put_contents($dirPdf . '/' . $nombrePdf, $pdfContenido);
 
-                $codigoTexto = $os ? ($os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
+                $numReg = $hoja['numero_registro'] ?? ('#' . ($hoja['id'] ?? ''));
+                $codigoTexto = $os ? ($os['codigo_os'] . " (Hoja Reg: {$numReg})") : ('ID ' . $idOS);
                 registrarBitacora('operaciones', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada y PDF generado para Orden de Servicio ' . $codigoTexto, $idOS);
-                $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 guardada exitosamente y PDF generado. Estado de la O/S actualizado.';
+                $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado.';
             } else {
                 $_SESSION['error'] = 'Error al registrar la Hoja de Solicitud.';
             }
@@ -1240,10 +1316,10 @@ class OperacionesControlador extends ControladorBase {
             $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
             
             if ($decision === 'Aprobar') {
-                $exito = $modelo->actualizarEstadoOS($idOS, 'Finalizado', null);
+                $exito = $modelo->actualizarEstadoOS($idOS, 'Estado 7: Revision Resultados', null);
                 if ($exito) {
-                    registrarBitacora('operaciones', 'finalizar_os', 'Orden de Servicio ' . $codigoTexto . ' aprobada y finalizada.', $idOS);
-                    $_SESSION['exito'] = 'Resultados de ensayos aprobados y orden de servicio marcada como Finalizada.';
+                    registrarBitacora('operaciones', 'aprobar_revision_resultados', 'Revisión general de resultados aprobada para Orden de Servicio ' . $codigoTexto . '.', $idOS);
+                    $_SESSION['exito'] = 'Revisión general aprobada. El cierre de la orden requiere matrices aprobadas y factura pagada.';
                 }
             } else {
                 if (empty($motivo)) {
@@ -1336,15 +1412,49 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        $idHoja = (int)($_GET['id_hoja'] ?? 0);
+        $esNueva = !empty($_GET['nueva']);
+
+        $todasLasHojas = $modelo->obtenerHojasSolicitudPorOS($idOS);
+        $totalHojas = count($todasLasHojas);
+
+        $listaHojasFrontend = [];
+        foreach ($todasLasHojas as $idx => $hItem) {
+            $cantM = !empty($hItem['identificacion_muestras_json']) 
+                ? count(json_decode($hItem['identificacion_muestras_json'], true) ?: [])
+                : (!empty($hItem['muestras_json']) ? count(json_decode($hItem['muestras_json'], true) ?: []) : 1);
+
+            $listaHojasFrontend[] = [
+                'id' => (int)$hItem['id'],
+                'numero_secuencial' => $idx + 1,
+                'numero_registro' => $hItem['numero_registro'] ?? ('#' . $hItem['id']),
+                'codigo_documento' => $hItem['codigo_documento'] ?? 'CYCSA-RT-FM-13',
+                'fecha_hora_toma' => $hItem['fecha_hora_toma_muestra'] ?? '',
+                'total_muestras' => $cantM
+            ];
+        }
+
+        if ($esNueva) {
+            $hoja = null;
+        } elseif ($idHoja > 0) {
+            $hoja = $modelo->obtenerHojaSolicitudPorId($idHoja);
+            if (!$hoja || (int)$hoja['id_os'] !== $idOS) {
+                $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+            }
+        } else {
+            $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        }
         
         // Si no existe, creamos los valores predeterminados
         if (!$hoja) {
             $numCorrelativo = $modelo->obtenerSiguienteNumeroHojaSolicitud((int)$os['id_cotizacion']);
             $codigoDoc = "CYCSA-RT-FM-" . sprintf("%02d", $numCorrelativo);
+            $nuevoNumReg = sprintf("%05d-%02d", $idOS, $totalHojas + 1);
             
             $hoja = [
+                'id' => 0,
                 'id_os' => $idOS,
+                'numero_registro' => $nuevoNumReg,
                 'codigo_documento' => $codigoDoc,
                 'nombre_empresa_o_cliente' => $os['cliente_nombre'],
                 'direccion_proyecto' => $os['direccion_proyecto'],
@@ -1396,6 +1506,10 @@ class OperacionesControlador extends ControladorBase {
             'status' => 'success',
             'os' => $os,
             'hoja' => $hoja,
+            'todas_las_hojas' => $listaHojasFrontend,
+            'total_hojas' => $totalHojas,
+            'id_hoja_actual' => (int)($hoja['id'] ?? 0),
+            'es_nueva' => $esNueva,
             'siguiente_consecutivo' => $siguienteConsecutivo,
             'anio_actual' => $anioActual
         ]);
@@ -1417,6 +1531,10 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $items = $modelo->obtenerItemsOS($idOS);
+        foreach ($items as &$it) {
+            $it['revision_info'] = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
+        }
+        unset($it);
 
         $respuesta->enviarJson([
             'status' => 'success',
@@ -1440,12 +1558,15 @@ class OperacionesControlador extends ControladorBase {
 
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
         $stmt = $db->prepare("
-            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad,
-                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo,
-                   cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre,
-                   p.formato_id, p.nombre_comercial, p.ensayo_servicio,
-                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento,
-                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
+                   cot.id AS id_cotizacion, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   cli.id AS id_cliente, cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion, cli.email AS cliente_email, cli.telefono AS cliente_telefono,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
+                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio, hs.naturaleza_muestra, hs.observaciones,
+                   rm.fecha_recepcion,
+                   pm.fecha_ida AS pm_fecha_ida, pm.lugar_muestreo AS pm_lugar_muestreo
             FROM cotizacion_detalles cd
             JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
             JOIN cotizaciones cot ON os.id_cotizacion = cot.id
@@ -1453,6 +1574,8 @@ class OperacionesControlador extends ControladorBase {
             LEFT JOIN productos p ON cd.id_producto = p.id
             LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
             LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+            LEFT JOIN (SELECT id_os, MIN(fecha_recepcion) AS fecha_recepcion FROM recepcion_muestras GROUP BY id_os) rm ON rm.id_os = os.id
+            LEFT JOIN (SELECT id_orden_servicio, MIN(fecha_ida) AS fecha_ida, MIN(lugar_muestreo) AS lugar_muestreo FROM programacion_muestreo GROUP BY id_orden_servicio) pm ON pm.id_orden_servicio = os.id
             WHERE cd.id = :id
             LIMIT 1
         ");
@@ -1513,15 +1636,17 @@ class OperacionesControlador extends ControladorBase {
             $hoja = $modeloOp->obtenerHojaSolicitudPorOS((int)$detalle['id_os']);
             $muestrasDeclaradas = (!empty($hoja['muestras_json'])) ? (json_decode($hoja['muestras_json'], true) ?: []) : [];
 
-            if (!empty($muestrasDeclaradas)) {
-                foreach ($muestrasDeclaradas as $idx => $md) {
-                    $codLab = !empty($md['nombre_muestra']) ? $md['nombre_muestra'] : sprintf("MC-%04d-%02d", $idx + 1, date('y'));
-                    $muestrasSeteadas[] = [
-                        'codigo_lab' => $codLab,
-                        'codigo_campo' => $md['nombre_muestra'] ?? ('Punto ' . ($idx + 1)),
-                        'nombre_muestra' => !empty($md['descripcion']) ? $md['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Punto ' . ($idx + 1))
-                    ];
-                }
+        $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
+
+        if (!empty($muestrasDeclaradas)) {
+            foreach ($muestrasDeclaradas as $idx => $md) {
+                $codLab = !empty($md['nombre_muestra']) ? $md['nombre_muestra'] : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                $muestrasSeteadas[] = [
+                    'codigo_lab' => $codLab,
+                    'codigo_campo' => $md['nombre_muestra'] ?? ('Punto ' . ($idx + 1)),
+                    'nombre_muestra' => !empty($md['descripcion']) ? $md['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Punto ' . ($idx + 1))
+                ];
+            }
             } else {
                 $cantPuntos = max(1, (int)($detalle['cantidad'] ?? 1));
                 for ($k = 0; $k < $cantPuntos; $k++) {
@@ -1534,15 +1659,62 @@ class OperacionesControlador extends ControladorBase {
             }
         }
 
-        $rutaSchemaJson = dirname(__DIR__, 4) . '/database/ensayos/formatos_schema.json';
-        $formatosSchemaJson = file_exists($rutaSchemaJson) ? file_get_contents($rutaSchemaJson) : '{}';
+        $schemaInfo = obtenerEsquemaPlantillaEnsayo($detalle['archivo_markdown'] ?? null, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
+        $formatosSchemaJson = json_encode([$detalle['archivo_markdown'] ?? '' => $schemaInfo], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+        $metadatosGuardados = [];
+        $decResultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+        $versionActual = (int)($decResultados['version_actual'] ?? 1);
+        $listaVersiones = isset($decResultados['versiones']) && is_array($decResultados['versiones']) ? $decResultados['versiones'] : [];
+        $versionSolicitada = isset($_GET['version']) ? (int)$_GET['version'] : $versionActual;
+
+        $esHistorica = false;
+        $versionActivaInfo = null;
+
+        if ($versionSolicitada > 0 && $versionSolicitada !== $versionActual) {
+            foreach ($listaVersiones as $vItem) {
+                if ((int)($vItem['version'] ?? 0) === $versionSolicitada) {
+                    $versionActivaInfo = $vItem;
+                    $esHistorica = true;
+                    // Cargar snapshot histórico de la versión para visualización fiel
+                    $detalle['resultados_json'] = json_encode([
+                        'version_actual' => $versionActual,
+                        'filas' => $vItem['filas'] ?? [],
+                        'metadatos' => $vItem['metadatos'] ?? [],
+                        'revision' => [
+                            'estado' => $vItem['estado'] ?? 'devuelta',
+                            'usuario_revisor' => $vItem['usuario_revisor'] ?? '',
+                            'fecha_revision' => $vItem['fecha'] ?? '',
+                            'motivo_devolucion' => $vItem['motivo_devolucion'] ?? '',
+                            'historial' => []
+                        ],
+                        'versiones' => $listaVersiones
+                    ], JSON_UNESCAPED_UNICODE);
+
+                    if (isset($vItem['metadatos']) && is_array($vItem['metadatos'])) {
+                        $metadatosGuardados = $vItem['metadatos'];
+                    }
+                    break;
+                }
+            }
+        }
+
+        $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
 
         $this->renderizar('operaciones/vistas/captura_matriz', [
             'titulo' => 'Captura de Matriz Técnica - ' . $detalle['descripcion_ensayo'],
             'detalle' => $detalle,
             'columnas' => $columnas,
             'muestrasSeteadas' => $muestrasSeteadas,
-            'formatosSchemaJson' => $formatosSchemaJson
+            'formatosSchemaJson' => $formatosSchemaJson,
+            'metadatos' => $metadatos,
+            'schemaInfo' => $schemaInfo,
+            'versionActual' => $versionActual,
+            'versionSolicitada' => $versionSolicitada,
+            'esHistorica' => $esHistorica,
+            'listaVersiones' => $listaVersiones,
+            'versionActivaInfo' => $versionActivaInfo,
+            'prefijoMuestraOS' => $prefijoMuestraOS
         ]);
     }
 
@@ -1560,14 +1732,417 @@ class OperacionesControlador extends ControladorBase {
             }
 
             $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmtDet = $db->prepare("SELECT id, id_cotizacion, descripcion_ensayo, resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+            $stmtDet->execute(['id' => $idDetalle]);
+            $detalleActual = $stmtDet->fetch(PDO::FETCH_ASSOC);
+
+            if (!$detalleActual) {
+                $_SESSION['error'] = 'Detalle de ensayo no encontrado.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            // Desempaquetar filas y metadatos existentes
+            $filasDecodificadas = json_decode($resultadosJson, true) ?: [];
+            if (isset($filasDecodificadas['filas'])) {
+                $filasDecodificadas = $filasDecodificadas['filas'];
+            }
+
+            $decExistente = json_decode($detalleActual['resultados_json'] ?? '', true) ?: [];
+            $metadatos = !empty($datos['metadatos']) && is_array($datos['metadatos'])
+                ? $datos['metadatos']
+                : ($decExistente['metadatos'] ?? []);
+
+            $revisionExistente = isset($decExistente['revision']) && is_array($decExistente['revision'])
+                ? $decExistente['revision']
+                : [];
+            $prevEstado = $revisionExistente['estado'] ?? 'pendiente';
+            $historial = $revisionExistente['historial'] ?? [];
+
+            $usuarioSesion = $_SESSION['usuario_nombre'] ?? 'Personal de Laboratorio';
+            $usuarioIdSesion = (int)($_SESSION['usuario_id'] ?? 0);
+            $fechaActual = date('Y-m-d H:i:s');
+
+            if ($prevEstado === 'devuelta') {
+                $historial[] = [
+                    'accion' => 'corregido_y_reenviado',
+                    'fecha' => $fechaActual,
+                    'usuario' => $usuarioSesion,
+                    'usuario_id' => $usuarioIdSesion,
+                    'nota' => 'Matriz corregida tras observación de supervisión y reenviada a revisión.'
+                ];
+            } else {
+                $historial[] = [
+                    'accion' => 'enviado_revision',
+                    'fecha' => $fechaActual,
+                    'usuario' => $usuarioSesion,
+                    'usuario_id' => $usuarioIdSesion,
+                    'nota' => 'Matriz técnica guardada y enviada a revisión de supervisión.'
+                ];
+            }
+
+            $nuevaRevision = [
+                'estado' => 'en_revision',
+                'fecha_envio' => $fechaActual,
+                'usuario_envio' => $usuarioSesion,
+                'usuario_envio_id' => $usuarioIdSesion,
+                'fecha_revision' => null,
+                'usuario_revisor' => null,
+                'usuario_revisor_id' => null,
+                'motivo_devolucion' => ($prevEstado === 'devuelta') ? ($revisionExistente['motivo_devolucion'] ?? null) : null,
+                'historial' => $historial
+            ];
+
+            $versionesExistentes = isset($decExistente['versiones']) && is_array($decExistente['versiones'])
+                ? $decExistente['versiones']
+                : [];
+            $versionActual = (int)($decExistente['version_actual'] ?? 1);
+
+            $payloadCompleto = [
+                'version_actual' => $versionActual,
+                'filas' => $filasDecodificadas,
+                'metadatos' => $metadatos,
+                'revision' => $nuevaRevision,
+                'versiones' => $versionesExistentes
+            ];
+            $resultadosJsonFinal = json_encode($payloadCompleto, JSON_UNESCAPED_UNICODE);
+
             $stmt = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
             $stmt->execute([
-                'json' => $resultadosJson,
+                'json' => $resultadosJsonFinal,
                 'id' => $idDetalle
             ]);
 
-            $_SESSION['exito'] = 'Matriz técnica guardada correctamente.';
+            registrarBitacora(
+                'operaciones',
+                'guardar_matriz',
+                "Matriz técnica guardada y puesta En Revisión para '{$detalleActual['descripcion_ensayo']}' (Detalle #{$idDetalle})",
+                $idDetalle
+            );
+
+            $_SESSION['exito'] = 'Matriz técnica guardada correctamente y enviada a revisión de calidad.';
+            $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones';
+            $respuesta->redirigir($redir);
+        }
+    }
+
+    /**
+     * Aprueba la matriz técnica de un ensayo (Supervisión / Control de Calidad).
+     */
+    public function aprobarMatrizProducto(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        
+        // Roles autorizados: 1: Superadmin, 2: Administrador, 3: Supervisor
+        if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 2, 3])) {
+            $_SESSION['error'] = 'No tiene permisos de supervisión para aprobar matrices de ensayo.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idDetalle = (int)($datos['id_detalle'] ?? 0);
+            $nota = trim($datos['nota_aprobacion'] ?? '');
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            if ($idDetalle <= 0) {
+                $_SESSION['error'] = 'Detalle inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmt = $db->prepare("SELECT cd.*, os.codigo_os, os.id AS id_os 
+                                  FROM cotizacion_detalles cd
+                                  JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+                                  WHERE cd.id = :id LIMIT 1");
+            $stmt->execute(['id' => $idDetalle]);
+            $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$detalle) {
+                $_SESSION['error'] = 'Ensayo no encontrado.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $revInfo = obtenerEstadoRevisionMatriz($detalle['resultados_json'] ?? '');
+            if (!$revInfo['tiene_resultados']) {
+                $_SESSION['error'] = 'No se puede aprobar una matriz que aún no cuenta con resultados registrados.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $decoded = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+            $filas = isset($decoded['filas']) ? $decoded['filas'] : (isset($decoded[0]) ? $decoded : []);
+            $metadatos = $decoded['metadatos'] ?? [];
+            $revision = isset($decoded['revision']) && is_array($decoded['revision']) ? $decoded['revision'] : [];
+            $historial = $revision['historial'] ?? [];
+
+            $usuarioSesion = $_SESSION['usuario_nombre'] ?? 'Supervisor';
+            $usuarioIdSesion = (int)($_SESSION['usuario_id'] ?? 0);
+            $fechaActual = date('Y-m-d H:i:s');
+
+            $historial[] = [
+                'accion' => 'aprobada',
+                'fecha' => $fechaActual,
+                'usuario' => $usuarioSesion,
+                'usuario_id' => $usuarioIdSesion,
+                'nota' => !empty($nota) ? $nota : 'Matriz técnica aprobada satisfactoriamente conforme a requisitos.'
+            ];
+
+            $revision['estado'] = 'aprobada';
+            $revision['fecha_revision'] = $fechaActual;
+            $revision['usuario_revisor'] = $usuarioSesion;
+            $revision['usuario_revisor_id'] = $usuarioIdSesion;
+            $revision['nota_aprobacion'] = $nota;
+            $revision['motivo_devolucion'] = null;
+            $revision['historial'] = $historial;
+
+            $versiones = isset($decoded['versiones']) && is_array($decoded['versiones']) ? $decoded['versiones'] : [];
+            $versionActual = (int)($decoded['version_actual'] ?? 1);
+
+            $payload = [
+                'version_actual' => $versionActual,
+                'filas' => $filas,
+                'metadatos' => $metadatos,
+                'revision' => $revision,
+                'versiones' => $versiones
+            ];
+
+            $stmtUpdate = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+            $stmtUpdate->execute([
+                'json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                'id' => $idDetalle
+            ]);
+
+            registrarBitacora(
+                'operaciones',
+                'aprobar_matriz',
+                "Matriz técnica APROBADA para '{$detalle['descripcion_ensayo']}' en O/S {$detalle['codigo_os']}" . (!empty($nota) ? " Nota: {$nota}" : ''),
+                $detalle['id_os']
+            );
+
+            $_SESSION['exito'] = "Matriz técnica aprobada con éxito. Ya se encuentra habilitada para emisión y envío al cliente.";
+            $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones';
+            $respuesta->redirigir($redir);
+        }
+    }
+
+    /**
+     * Devuelve una matriz técnica al personal técnico por observaciones o correcciones.
+     */
+    public function devolverMatrizProducto(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        
+        // Roles autorizados: 1: Superadmin, 2: Administrador, 3: Supervisor
+        if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 2, 3])) {
+            $_SESSION['error'] = 'No tiene permisos de supervisión para devolver matrices de ensayo.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idDetalle = (int)($datos['id_detalle'] ?? 0);
+            $motivo = trim($datos['motivo_devolucion'] ?? '');
+
+            // CSRF
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            if ($idDetalle <= 0) {
+                $_SESSION['error'] = 'Detalle inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            if (empty($motivo)) {
+                $_SESSION['error'] = 'Debe indicar el motivo o las observaciones de la devolución técnica para que el personal de laboratorio sepa qué corregir.';
+                $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones';
+                $respuesta->redirigir($redir);
+                return;
+            }
+
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmt = $db->prepare("SELECT cd.*, os.codigo_os, os.id AS id_os 
+                                  FROM cotizacion_detalles cd
+                                  JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+                                  WHERE cd.id = :id LIMIT 1");
+            $stmt->execute(['id' => $idDetalle]);
+            $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$detalle) {
+                $_SESSION['error'] = 'Ensayo no encontrado.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $decoded = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+            $filas = isset($decoded['filas']) ? $decoded['filas'] : (isset($decoded[0]) ? $decoded : []);
+            $metadatos = $decoded['metadatos'] ?? [];
+            $revision = isset($decoded['revision']) && is_array($decoded['revision']) ? $decoded['revision'] : [];
+            $historial = $revision['historial'] ?? [];
+
+            $versiones = isset($decoded['versiones']) && is_array($decoded['versiones']) ? $decoded['versiones'] : [];
+            $versionActual = (int)($decoded['version_actual'] ?? 1);
+
+            $usuarioSesion = $_SESSION['usuario_nombre'] ?? 'Supervisor';
+            $usuarioIdSesion = (int)($_SESSION['usuario_id'] ?? 0);
+            $fechaActual = date('Y-m-d H:i:s');
+
+            $historial[] = [
+                'accion' => 'devuelta',
+                'version' => $versionActual,
+                'fecha' => $fechaActual,
+                'usuario' => $usuarioSesion,
+                'usuario_id' => $usuarioIdSesion,
+                'motivo' => $motivo
+            ];
+
+            // 1. Guardar snapshot inmutable de la versión actual que fue devuelta
+            $versiones[] = [
+                'version' => $versionActual,
+                'fecha' => $fechaActual,
+                'estado' => 'devuelta',
+                'usuario_envio' => $revision['usuario_envio'] ?? 'Laboratorio',
+                'usuario_revisor' => $usuarioSesion,
+                'usuario_revisor_id' => $usuarioIdSesion,
+                'motivo_devolucion' => $motivo,
+                'filas' => $filas,
+                'metadatos' => $metadatos
+            ];
+
+            $revision['estado'] = 'devuelta';
+            $revision['fecha_revision'] = $fechaActual;
+            $revision['usuario_revisor'] = $usuarioSesion;
+            $revision['usuario_revisor_id'] = $usuarioIdSesion;
+            $revision['motivo_devolucion'] = $motivo;
+            $revision['historial'] = $historial;
+
+            // 2. La versión de trabajo avanza a la siguiente para admitir correcciones independientes
+            $nuevaVersionActual = $versionActual + 1;
+
+            $payload = [
+                'version_actual' => $nuevaVersionActual,
+                'filas' => $filas,
+                'metadatos' => $metadatos,
+                'revision' => $revision,
+                'versiones' => $versiones
+            ];
+
+            $stmtUpdate = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+            $stmtUpdate->execute([
+                'json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                'id' => $idDetalle
+            ]);
+
+            registrarBitacora(
+                'operaciones',
+                'devolver_matriz',
+                "Matriz técnica DEVUELTA para '{$detalle['descripcion_ensayo']}' en O/S {$detalle['codigo_os']}. Observación: {$motivo}",
+                $detalle['id_os']
+            );
+
+            $_SESSION['exito'] = "Matriz técnica devuelta al laboratorio con las observaciones registradas.";
+            $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones';
+            $respuesta->redirigir($redir);
+        }
+    }
+
+    /**
+     * Cierra y archiva formalmente una Orden de Servicio (Doble validación: 100% Técnico + 100% Comercial).
+     */
+    public function cerrarOperacion(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        
+        // Roles autorizados: 1: Superadmin, 2: Administrador, 3: Supervisor
+        if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 2, 3])) {
+            $_SESSION['error'] = 'No tiene permisos de supervisión para cerrar o archivar órdenes de servicio.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+
+            // CSRF
+            if (!isset($_SESSION['csrf_token'], $datos['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            if ($idOS <= 0) {
+                $_SESSION['error'] = 'Orden de Servicio inválida.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $modelo = new OperacionModelo();
+            $os = $modelo->obtenerOSPorId($idOS);
+            if (!$os) {
+                $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            if (in_array($os['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+                $_SESSION['error'] = 'La Orden de Servicio ya está cerrada.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $db = Conexion::obtenerInstancia();
+            $facturaNum = 'FAC-' . ($os['cot_codigo'] ?? '');
+
+            try {
+                $db->beginTransaction();
+                $stmtOS = $db->prepare("SELECT estado FROM ordenes_servicio WHERE id = :id FOR UPDATE");
+                $stmtOS->execute(['id' => $idOS]);
+                $estadoActual = $stmtOS->fetchColumn();
+                if ($estadoActual === false || in_array($estadoActual, ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+                    $db->rollBack();
+                    $_SESSION['error'] = 'La Orden de Servicio no existe o ya está cerrada.';
+                    $respuesta->redirigir('/Cycsa/publico/operaciones');
+                    return;
+                }
+                $items = $modelo->obtenerItemsOS($idOS);
+                $stmtCxc = $db->prepare("SELECT saldo, estado FROM cuentas_por_cobrar WHERE factura_numero = :fact LIMIT 1 FOR UPDATE");
+                $stmtCxc->execute(['fact' => $facturaNum]);
+                $cxc = $stmtCxc->fetch(PDO::FETCH_ASSOC);
+                $error = CierreOperacionLims::cerrar(
+                    $items,
+                    $cxc ?: null,
+                    fn(string $estado): bool => $modelo->actualizarEstadoOS($idOS, $estado, 'Cierre formal 100% técnico y comercial por supervisión'),
+                    fn(): bool => registrarBitacora('operaciones', 'cerrar_orden', "Orden de Servicio {$os['codigo_os']} finalizada y archivada formalmente (100% Ensayos Aprobados y Pagada).", $idOS)
+                );
+                if ($error !== null) {
+                    $db->rollBack();
+                    $_SESSION['error'] = $error;
+                } else {
+                    $db->commit();
+                    $_SESSION['exito'] = "Orden de Servicio {$os['codigo_os']} cerrada y archivada exitosamente en el Histórico LIMS.";
+                }
+            } catch (\Throwable $e) {
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+                error_log('Error al cerrar O/S: ' . $e->getMessage());
+                $_SESSION['error'] = 'Ocurrió un error al cerrar la orden.';
+            }
+
+            $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones?tab=historico';
+            $respuesta->redirigir($redir);
         }
     }
 
@@ -1586,12 +2161,15 @@ class OperacionesControlador extends ControladorBase {
 
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
         $stmt = $db->prepare("
-            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad,
-                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo,
-                   cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre, cli.email AS cliente_email,
-                   p.formato_id, p.nombre_comercial, p.ensayo_servicio,
-                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento,
-                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.observaciones
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
+                   cot.id AS id_cotizacion, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   cli.id AS id_cliente, cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion, cli.email AS cliente_email, cli.telefono AS cliente_telefono,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
+                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio, hs.naturaleza_muestra, hs.observaciones,
+                   rm.fecha_recepcion,
+                   pm.fecha_ida AS pm_fecha_ida, pm.lugar_muestreo AS pm_lugar_muestreo
             FROM cotizacion_detalles cd
             JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
             JOIN cotizaciones cot ON os.id_cotizacion = cot.id
@@ -1599,6 +2177,8 @@ class OperacionesControlador extends ControladorBase {
             LEFT JOIN productos p ON cd.id_producto = p.id
             LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
             LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+            LEFT JOIN (SELECT id_os, MIN(fecha_recepcion) AS fecha_recepcion FROM recepcion_muestras GROUP BY id_os) rm ON rm.id_os = os.id
+            LEFT JOIN (SELECT id_orden_servicio, MIN(fecha_ida) AS fecha_ida, MIN(lugar_muestreo) AS lugar_muestreo FROM programacion_muestreo GROUP BY id_orden_servicio) pm ON pm.id_orden_servicio = os.id
             WHERE cd.id = :id
             LIMIT 1
         ");
@@ -1639,21 +2219,67 @@ class OperacionesControlador extends ControladorBase {
             }
         } else {
             $modeloOp = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
-            $siguienteCorr = $modeloOp->obtenerSiguienteConsecutivoMuestra((int)date('Y'), 'MS');
+            $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
+            $siguienteCorr = $modeloOp->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestraOS);
             $anioShort = date('y');
             $cantPuntos = max(1, (int)($detalle['cantidad'] ?? 1));
             for ($k = 0; $k < $cantPuntos; $k++) {
-                $codigoOficial = sprintf("MS-%04d-%02d", $siguienteCorr + $k, $anioShort);
+                $codigoOficial = sprintf("{$prefijoMuestraOS}-%04d-%02d", $siguienteCorr + $k, $anioShort);
                 $muestrasSeteadas[] = [
                     'codigo_lab' => $codigoOficial,
                     'codigo_campo' => 'Muestra ' . ($k + 1),
-                    'nombre_muestra' => 'Muestra tomada en campo #' . ($k + 1)
+                    'nombre_muestra' => ($prefijoMuestraOS === 'MC' ? 'Muestra tomada en campo #' : 'Muestra entregada en laboratorio #') . ($k + 1)
                 ];
             }
         }
 
-        $rutaSchemaJson = dirname(__DIR__, 4) . '/database/ensayos/formatos_schema.json';
-        $formatosSchemaJson = file_exists($rutaSchemaJson) ? file_get_contents($rutaSchemaJson) : '{}';
+        $schemaInfo = obtenerEsquemaPlantillaEnsayo($detalle['archivo_markdown'] ?? null, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
+        $formatosSchemaJson = json_encode([$detalle['archivo_markdown'] ?? '' => $schemaInfo], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+        $metadatosGuardados = [];
+        $decResultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+        $versionActual = (int)($decResultados['version_actual'] ?? 1);
+        $listaVersiones = isset($decResultados['versiones']) && is_array($decResultados['versiones']) ? $decResultados['versiones'] : [];
+        $versionSolicitada = isset($_GET['version']) ? (int)$_GET['version'] : (isset($_GET['v']) ? (int)$_GET['v'] : $versionActual);
+
+        $esVersionHistorica = false;
+        $infoVersionImpresion = [
+            'version' => $versionActual,
+            'estado' => $decResultados['revision']['estado'] ?? 'pendiente',
+            'es_actual' => true,
+            'motivo_devolucion' => $decResultados['revision']['motivo_devolucion'] ?? null,
+            'usuario_revisor' => $decResultados['revision']['usuario_revisor'] ?? null,
+            'fecha' => $decResultados['revision']['fecha_revision'] ?? null
+        ];
+
+        if ($versionSolicitada > 0 && $versionSolicitada !== $versionActual) {
+            foreach ($listaVersiones as $vItem) {
+                if ((int)($vItem['version'] ?? 0) === $versionSolicitada) {
+                    $esVersionHistorica = true;
+                    $infoVersionImpresion = [
+                        'version' => (int)$vItem['version'],
+                        'estado' => $vItem['estado'] ?? 'devuelta',
+                        'es_actual' => false,
+                        'motivo_devolucion' => $vItem['motivo_devolucion'] ?? null,
+                        'usuario_revisor' => $vItem['usuario_revisor'] ?? null,
+                        'fecha' => $vItem['fecha'] ?? null
+                    ];
+                    $detalle['resultados_json'] = json_encode([
+                        'filas' => $vItem['filas'] ?? [],
+                        'metadatos' => $vItem['metadatos'] ?? []
+                    ], JSON_UNESCAPED_UNICODE);
+
+                    if (isset($vItem['metadatos']) && is_array($vItem['metadatos'])) {
+                        $metadatosGuardados = $vItem['metadatos'];
+                    }
+                    break;
+                }
+            }
+        } elseif (!empty($decResultados['metadatos']) && is_array($decResultados['metadatos'])) {
+            $metadatosGuardados = $decResultados['metadatos'];
+        }
+
+        $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
 
         // Renderizado directo sin layout maestro para impresión limpia
         require dirname(__DIR__) . '/Vistas/matriz_print.php';
@@ -1674,12 +2300,15 @@ class OperacionesControlador extends ControladorBase {
 
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
         $stmt = $db->prepare("
-            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad,
-                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo,
-                   cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre, cli.email AS cliente_email,
-                   p.formato_id, p.nombre_comercial, p.ensayo_servicio,
-                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento,
-                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.observaciones
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
+                   cot.id AS id_cotizacion, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   cli.id AS id_cliente, cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion, cli.email AS cliente_email, cli.telefono AS cliente_telefono,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
+                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio, hs.naturaleza_muestra, hs.observaciones,
+                   rm.fecha_recepcion,
+                   pm.fecha_ida AS pm_fecha_ida, pm.lugar_muestreo AS pm_lugar_muestreo
             FROM cotizacion_detalles cd
             JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
             JOIN cotizaciones cot ON os.id_cotizacion = cot.id
@@ -1687,6 +2316,8 @@ class OperacionesControlador extends ControladorBase {
             LEFT JOIN productos p ON cd.id_producto = p.id
             LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
             LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+            LEFT JOIN (SELECT id_os, MIN(fecha_recepcion) AS fecha_recepcion FROM recepcion_muestras GROUP BY id_os) rm ON rm.id_os = os.id
+            LEFT JOIN (SELECT id_orden_servicio, MIN(fecha_ida) AS fecha_ida, MIN(lugar_muestreo) AS lugar_muestreo FROM programacion_muestreo GROUP BY id_orden_servicio) pm ON pm.id_orden_servicio = os.id
             WHERE cd.id = :id
             LIMIT 1
         ");
@@ -1702,10 +2333,28 @@ class OperacionesControlador extends ControladorBase {
         $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
         $muestrasSeteadas = [];
 
+        $decResultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+        $versionActual = (int)($decResultados['version_actual'] ?? 1);
+        $listaVersiones = isset($decResultados['versiones']) && is_array($decResultados['versiones']) ? $decResultados['versiones'] : [];
+        $versionSolicitada = isset($_GET['version']) ? (int)$_GET['version'] : (isset($_GET['v']) ? (int)$_GET['v'] : $versionActual);
+
+        if ($versionSolicitada > 0 && $versionSolicitada !== $versionActual) {
+            foreach ($listaVersiones as $vItem) {
+                if ((int)($vItem['version'] ?? 0) === $versionSolicitada) {
+                    $detalle['resultados_json'] = json_encode([
+                        'filas' => $vItem['filas'] ?? [],
+                        'metadatos' => $vItem['metadatos'] ?? []
+                    ], JSON_UNESCAPED_UNICODE);
+                    break;
+                }
+            }
+        }
+
         $pdfBytes = generarMatrizTecnicaPDF($detalle, $muestrasSeteadas, $columnas);
 
         $codigoLimpio = preg_replace('/[^a-zA-Z0-9_-]/', '_', $detalle['codigo_os']);
-        $nombreArchivo = "Matriz_Tecnica_{$codigoLimpio}_{$idDetalle}.pdf";
+        $sufijoVer = ($versionSolicitada > 0) ? "_v{$versionSolicitada}" : "";
+        $nombreArchivo = "Matriz_Tecnica_{$codigoLimpio}_{$idDetalle}{$sufijoVer}.pdf";
 
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="' . $nombreArchivo . '"');
@@ -1742,13 +2391,15 @@ class OperacionesControlador extends ControladorBase {
 
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
         $stmt = $db->prepare("
-            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad,
-                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo,
-                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.nombre_proyecto,
-                   cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre, cli.email AS cliente_email,
-                   p.formato_id, p.nombre_comercial, p.ensayo_servicio,
-                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento,
-                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.observaciones
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
+                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion, cli.email AS cliente_email, cli.telefono AS cliente_telefono,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
+                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio, hs.naturaleza_muestra, hs.observaciones,
+                   rm.fecha_recepcion,
+                   pm.fecha_ida AS pm_fecha_ida, pm.lugar_muestreo AS pm_lugar_muestreo
             FROM cotizacion_detalles cd
             JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
             JOIN cotizaciones cot ON os.id_cotizacion = cot.id
@@ -1756,6 +2407,8 @@ class OperacionesControlador extends ControladorBase {
             LEFT JOIN productos p ON cd.id_producto = p.id
             LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
             LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+            LEFT JOIN (SELECT id_os, MIN(fecha_recepcion) AS fecha_recepcion FROM recepcion_muestras GROUP BY id_os) rm ON rm.id_os = os.id
+            LEFT JOIN (SELECT id_orden_servicio, MIN(fecha_ida) AS fecha_ida, MIN(lugar_muestreo) AS lugar_muestreo FROM programacion_muestreo GROUP BY id_orden_servicio) pm ON pm.id_orden_servicio = os.id
             WHERE cd.id = :id
             LIMIT 1
         ");
@@ -1770,8 +2423,19 @@ class OperacionesControlador extends ControladorBase {
 
         // VALIDACIÓN CRUCIAL: Solo se puede enviar si la matriz TIENE RESULTADOS
         $resultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+        if (isset($resultados['filas'])) {
+            $resultados = $resultados['filas'];
+        }
         if (empty($resultados)) {
             $_SESSION['error'] = 'No se puede enviar el informe al cliente porque la matriz técnica aún no tiene resultados registrados.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        // VALIDACIÓN DE CONTROL DE CALIDAD: Solo se puede enviar si está APROBADA
+        $revInfo = obtenerEstadoRevisionMatriz($detalle['resultados_json'] ?? '');
+        if ($revInfo['estado'] !== 'aprobada') {
+            $_SESSION['error'] = 'No se puede enviar el informe al cliente porque la matriz técnica se encuentra en estado "' . $revInfo['estado_label'] . '". Requiere aprobación técnica previa por un supervisor.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
         }
@@ -2226,4 +2890,3 @@ class OperacionesControlador extends ControladorBase {
         exit;
     }
 }
-

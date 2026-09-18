@@ -46,6 +46,13 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         <?php unset($_SESSION['envio_exitoso']); ?>
     <?php endif; ?>
 
+    <?php if (isset($_SESSION['error'])): ?>
+        <div style="background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px;">
+            <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?>
+        </div>
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
+
     <div class="doc-header">
         <div>
             <h2 style="margin: 0; color: var(--cycsa-azul); font-size: 24px;">Cotización <?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?></h2>
@@ -59,19 +66,40 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         </div>
     </div>
 
-    <div class="info-grid">
-        <div class="info-box">
-            <span class="info-label">Datos del Cliente</span>
-            <div class="info-valor"><strong>Empresa:</strong> <?= htmlspecialchars($cotizacion['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?></div>
-            <div class="info-valor"><strong>RUC:</strong> <?= htmlspecialchars($cotizacion['cliente_ruc'], ENT_QUOTES, 'UTF-8') ?></div>
-            <div class="info-valor"><strong>Atención a:</strong> <?= htmlspecialchars($cotizacion['atencion_a'], ENT_QUOTES, 'UTF-8') ?></div>
-        </div>
-        <div class="info-box">
-            <span class="info-label">Datos del Proyecto</span>
-            <div class="info-valor"><strong>Proyecto:</strong> <?= htmlspecialchars($cotizacion['nombre_proyecto'], ENT_QUOTES, 'UTF-8') ?></div>
-            <div class="info-valor"><strong>Dirección:</strong> <?= htmlspecialchars($cotizacion['direccion_proyecto'], ENT_QUOTES, 'UTF-8') ?></div>
-            <div class="info-valor"><strong>Prioridad:</strong> <?= htmlspecialchars($cotizacion['prioridad'], ENT_QUOTES, 'UTF-8') ?></div>
-        </div>
+    <!-- METADATOS OFICIALES DE LA COTIZACIÓN (FORMATO OFICIAL CYCSA-RG-FM-31 V2R1) -->
+    <div style=\"margin-bottom: 25px; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.04);\">
+        <table style=\"width: 100%; border-collapse: collapse; font-size: 13px;\">
+            <tr style=\"border-bottom: 1px solid #e2e8f0;\">
+                <td style=\"width: 16%; font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Elaborado por:</td>
+                <td style=\"width: 34%; color: #1F4E79; font-weight: 700; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;\"><?= htmlspecialchars($cotizacion['creador_nombre'] ?? 'Asesor Comercial', ENT_QUOTES, 'UTF-8') ?></td>
+                <td style=\"width: 16%; font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Doc. Número:</td>
+                <td style=\"width: 34%; color: #0f172a; font-weight: 700; padding: 9px 12px;\"><?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?> <span style=\"font-size: 12px; color: #64748b; font-weight: normal;\">(v<?= max(1, (int)($cotizacion['version'] ?? 1)) ?>)</span></td>
+            </tr>
+            <tr style=\"border-bottom: 1px solid #e2e8f0;\">
+                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Cliente:</td>
+                <td style=\"color: #0f172a; font-weight: 700; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;\"><?= htmlspecialchars($cotizacion['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Fecha:</td>
+                <td style=\"color: #0f172a; padding: 9px 12px;\"><?= date('Y-m-d', strtotime($cotizacion['fecha_creacion'])) ?></td>
+            </tr>
+            <tr style=\"border-bottom: 1px solid #e2e8f0;\">
+                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Atención a:</td>
+                <td style=\"color: #0f172a; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;\"><?= htmlspecialchars($cotizacion['atencion_a'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Cédula/RUC:</td>
+                <td style=\"color: #0f172a; padding: 9px 12px;\"><?= htmlspecialchars($cotizacion['cliente_ruc'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr style=\"border-bottom: 1px solid #e2e8f0;\">
+                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Proyecto:</td>
+                <td style=\"color: #0f172a; font-weight: 600; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;\"><?= htmlspecialchars($cotizacion['nombre_proyecto'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Forma de pago:</td>
+                <td style=\"color: #0f172a; padding: 9px 12px;\"><?= htmlspecialchars($cotizacion['condicion_pago'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr>
+                <td style="font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;">Correo electrónico:</td>
+                <td style="color: #0f172a; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;"><?= htmlspecialchars(!empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : ($cotizacion['email'] ?? 'admon@cycsanic.com'), ENT_QUOTES, 'UTF-8') ?></td>
+                <td style="font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;">Teléfono:</td>
+                <td style="color: #0f172a; padding: 9px 12px;"><?= htmlspecialchars(!empty($cotizacion['cliente_tel']) ? $cotizacion['cliente_tel'] : ($cotizacion['telefono'] ?? '(505) 8209-6275'), ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+        </table>
     </div>
 
     <?php if ($cotizacion['estado'] === 'Aprobada por Cliente'): ?>
@@ -93,21 +121,28 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         </div>
     <?php endif; ?>
 
-    <h3 style="font-size: 16px; margin-bottom: 15px; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-        <i class="fa-solid fa-flask" style="color: var(--cycsa-azul);"></i> Detalle de Ensayos y Servicios
-    </h3>
-    <div style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; margin-bottom: 30px; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <?php 
+    $monedaSimbolo = ((int)($cotizacion['tipo_moneda'] ?? 1) === 2) ? '$' : 'C$';
+    $descuentoVal = (float)($cotizacion['descuento'] ?? 0);
+    $subtotalNeto = (float)$cotizacion['subtotal'] - $descuentoVal;
+    ?>
+
+    <!-- BANNER: DETALLE DE SERVICIOS COTIZADOS (#1F4E79) -->
+    <div style="background-color: #1F4E79; color: #ffffff; padding: 10px 16px; font-weight: 700; font-size: 13.5px; text-transform: uppercase; border-radius: 6px 6px 0 0; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-flask"></i> Detalle de servicios cotizados
+    </div>
+    <div style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; margin-bottom: 25px; border: 1.5px solid #cbd5e1; border-top: none; border-radius: 0 0 6px 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); background: white;">
         <table class="tabla-visual" style="margin-bottom: 0; min-width: 950px; width: 100%; border-collapse: collapse;">
             <thead>
-                <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                    <th style="width: 45px; text-align: center; padding: 10px 8px;">Línea</th>
-                    <th style="width: 25%; padding: 10px 12px;">Descripción (Nombre comercial)</th>
-                    <th style="width: 23%; padding: 10px 12px;">Condiciones de muestra</th>
-                    <th style="width: 14%; padding: 10px 12px;">Procedimiento</th>
-                    <th style="width: 10%; padding: 10px 10px; text-align: center;">Unidad de medida</th>
-                    <th style="width: 7%; padding: 10px 8px; text-align: center;">Cantidad</th>
-                    <th style="width: 9%; padding: 10px 10px; text-align: right;">Costo (C$)</th>
-                    <th style="width: 11%; padding: 10px 12px; text-align: right;">Monto (C$)</th>
+                <tr style="background: #f8fafc; border-bottom: 1.5px solid #cbd5e1;">
+                    <th style="width: 45px; text-align: center; padding: 10px 8px; font-weight: 700; color: #334155;">Línea</th>
+                    <th style="width: 25%; padding: 10px 12px; font-weight: 700; color: #334155;">Descripción (Nombre comercial)</th>
+                    <th style="width: 23%; padding: 10px 12px; font-weight: 700; color: #334155;">Condiciones de muestra</th>
+                    <th style="width: 14%; padding: 10px 12px; font-weight: 700; color: #334155;">Procedimiento</th>
+                    <th style="width: 10%; padding: 10px 10px; text-align: center; font-weight: 700; color: #334155;">Unidad de medida</th>
+                    <th style="width: 7%; padding: 10px 8px; text-align: center; font-weight: 700; color: #334155;">Cantidad</th>
+                    <th style="width: 9%; padding: 10px 10px; text-align: right; font-weight: 700; color: #334155;">Costo (<?= $monedaSimbolo ?>)</th>
+                    <th style="width: 11%; padding: 10px 12px; text-align: right; font-weight: 700; color: #334155;">Monto (<?= $monedaSimbolo ?>)</th>
                 </tr>
             </thead>
             <tbody>
@@ -150,10 +185,10 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                         <?= $detalle['cantidad'] ?>
                     </td>
                     <td style="vertical-align: top; padding: 12px 10px; text-align: right; color: #334155;">
-                        C$ <?= number_format($detalle['precio_unitario'], 2, '.', ',') ?>
+                        <?= $monedaSimbolo ?> <?= number_format($detalle['precio_unitario'], 2, '.', ',') ?>
                     </td>
                     <td style="vertical-align: top; padding: 12px; text-align: right; font-weight: 700; color: #0f172a;">
-                        C$ <?= number_format($detalle['subtotal'], 2, '.', ',') ?>
+                        <?= $monedaSimbolo ?> <?= number_format($detalle['subtotal'], 2, '.', ',') ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -161,22 +196,37 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         </table>
     </div>
 
-    <div style="display: flex; justify-content: flex-end;">
-        <div style="width: 350px; background: #f8f9fa; padding: 15px; border-radius: 6px; text-align: right;">
-            <div style="margin-bottom: 5px;">Subtotal: C$ <?= number_format($cotizacion['subtotal'], 2, '.', ',') ?></div>
-            <?php if ((float)($cotizacion['descuento'] ?? 0) > 0): ?>
-                <div style="margin-bottom: 5px; color: #dc2626;">Descuento: -C$ <?= number_format($cotizacion['descuento'], 2, '.', ',') ?></div>
+    <!-- TOTALES (FORMATO 1:1 EXCEL CYCSA) -->
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
+        <table style="width: 360px; border-collapse: collapse; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); font-size: 13px;">
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px 14px; color: #475569; font-weight: 600; text-align: right;">Total Bruto:</td>
+                <td style="padding: 8px 14px; font-weight: 700; color: #0f172a; text-align: right; width: 140px;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['subtotal'], 2, '.', ',') ?></td>
+            </tr>
+            <?php if ($descuentoVal > 0): ?>
+                <tr style="border-bottom: 1px solid #e2e8f0; color: #dc2626;">
+                    <td style="padding: 8px 14px; font-weight: 600; text-align: right;">Descuento:</td>
+                    <td style="padding: 8px 14px; font-weight: 700; text-align: right;">-<?= $monedaSimbolo ?> <?= number_format($descuentoVal, 2, '.', ',') ?></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 8px 14px; color: #475569; font-weight: 600; text-align: right;">Sub-total:</td>
+                    <td style="padding: 8px 14px; font-weight: 700; color: #0f172a; text-align: right;"><?= $monedaSimbolo ?> <?= number_format($subtotalNeto, 2, '.', ',') ?></td>
+                </tr>
             <?php endif; ?>
-            <div style="margin-bottom: 5px;">
-                IVA (15%): C$ <?= number_format($cotizacion['impuesto'], 2, '.', ',') ?>
-                <?php if ((int)($cotizacion['exonerado'] ?? 0)): ?>
-                    <span style="font-size: 11px; color: #16a34a; font-weight: 600; display: block;">(Exonerado<?= !empty($cotizacion['exoneracion_no']) ? ' - Aval: ' . htmlspecialchars($cotizacion['exoneracion_no'], ENT_QUOTES, 'UTF-8') : '' ?>)</span>
-                <?php endif; ?>
-            </div>
-            <div style="font-size: 18px; font-weight: 700; color: var(--cycsa-azul); margin-top: 10px; border-top: 1px solid #dee2e6; padding-top: 10px;">
-                TOTAL: C$ <?= number_format($cotizacion['total'], 2, '.', ',') ?>
-            </div>
-        </div>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px 14px; color: #475569; font-weight: 600; text-align: right;">
+                    Impuesto (15%):
+                    <?php if ((int)($cotizacion['exonerado'] ?? 0)): ?>
+                        <span style="font-size: 11px; color: #16a34a; font-weight: 600; display: block;">(Exonerado<?= !empty($cotizacion['exoneracion_no']) ? ' - Aval: ' . htmlspecialchars($cotizacion['exoneracion_no'], ENT_QUOTES, 'UTF-8') : '' ?>)</span>
+                    <?php endif; ?>
+                </td>
+                <td style="padding: 8px 14px; font-weight: 700; color: #0f172a; text-align: right;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['impuesto'], 2, '.', ',') ?></td>
+            </tr>
+            <tr style="background: #e6eefc; border-top: 1.5px solid #cbd5e1;">
+                <td style="padding: 10px 14px; font-size: 14.5px; font-weight: 800; color: #1F4E79; text-align: right;">Total:</td>
+                <td style="padding: 10px 14px; font-size: 15.5px; font-weight: 800; color: #1F4E79; text-align: right;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['total'], 2, '.', ',') ?></td>
+            </tr>
+        </table>
     </div>
 
     <?php
@@ -203,47 +253,53 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     $anexoContenido = trim($cotizacion['anexo_tecnico'] ?? '');
     ?>
 
-    <!-- CONDICIONES COMERCIALES, DATOS DE PAGO Y NOTAS -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 25px; margin-bottom: 25px;">
-        <!-- Condiciones Comerciales y Pago -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px;">
-            <h4 style="margin: 0 0 12px 0; color: #103487; font-size: 13.5px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-file-contract"></i> Condiciones Comerciales
-            </h4>
-            <div style="font-size: 13px; color: #334155; line-height: 1.6;">
-                <div><span style="color: #64748b;">Condición de Pago:</span> <strong><?= htmlspecialchars($cotizacion['condicion_pago'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
-                <div><span style="color: #64748b;">Tiempo de Entrega:</span> <strong><?= htmlspecialchars($cotizacion['tiempo_entrega'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
-                <div><span style="color: #64748b;">Vigencia de Oferta:</span> <strong><?= htmlspecialchars($cotizacion['vigencia_oferta'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+    <!-- NOTAS Y CONDICIONES / DATOS DE PAGO (FORMATO OFICIAL CYCSA #1F4E79) -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 15px; margin-bottom: 25px;">
+        <!-- Notas y Condiciones de la Cotización -->
+        <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="background-color: #1F4E79; color: #ffffff; padding: 10px 16px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-clipboard-list"></i> Notas y condiciones de la cotización
             </div>
+            <div style="padding: 16px 18px;">
+                <ul style="margin: 0; padding-left: 18px; font-size: 12.5px; color: #475569; line-height: 1.55;">
+                    <?php foreach ($configNotas as $clave => $seleccionada): ?>
+                        <?php if ($seleccionada && isset($notasDisponibles[$clave])): ?>
+                            <li style="margin-bottom: 7px;"><?= $notasDisponibles[$clave] ?></li>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </ul>
 
-            <div style="margin-top: 15px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #1e3a8a;">
-                <strong style="display: block; margin-bottom: 4px; color: #103487;"><i class="fa-solid fa-building-columns"></i> Cuentas Bancarias CYC.S.A:</strong>
-                <div>BANPRO: C$ 10010207085164 / $ 10010210874512</div>
-                <div>BAC: C$ 357-02445-4 / $ 363259490</div>
-                <div>LAFISE: C$ 550-2000-11</div>
-                <div style="margin-top: 4px; font-size: 11.5px; color: #2563eb;">RUC: J0310000073465 &bull; Validez de oferta: 30 días</div>
+                <?php if (!empty($cotizacion['contactos'])): ?>
+                    <div style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                        <strong style="font-size: 12px; color: #1F4E79; text-transform: uppercase; display: block; margin-bottom: 5px;"><i class="fa-solid fa-address-book"></i> Contactos de Seguimiento:</strong>
+                        <div style="font-size: 12.5px; color: #475569; line-height: 1.45;"><?= nl2br(htmlspecialchars($cotizacion['contactos'], ENT_QUOTES, 'UTF-8')) ?></div>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
-        <!-- Notas y Condiciones de Cotización -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px;">
-            <h4 style="margin: 0 0 12px 0; color: #103487; font-size: 13.5px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-clipboard-list"></i> Notas y Condiciones
-            </h4>
-            <ul style="margin: 0; padding-left: 18px; font-size: 12.5px; color: #475569; line-height: 1.5;">
-                <?php foreach ($configNotas as $clave => $seleccionada): ?>
-                    <?php if ($seleccionada && isset($notasDisponibles[$clave])): ?>
-                        <li style="margin-bottom: 6px;"><?= $notasDisponibles[$clave] ?></li>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </ul>
-
-            <?php if (!empty($cotizacion['contactos'])): ?>
-                <div style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-                    <strong style="font-size: 12px; color: #103487; text-transform: uppercase; display: block; margin-bottom: 4px;"><i class="fa-solid fa-address-book"></i> Contactos de Seguimiento:</strong>
-                    <div style="font-size: 12.5px; color: #475569; line-height: 1.4;"><?= nl2br(htmlspecialchars($cotizacion['contactos'], ENT_QUOTES, 'UTF-8')) ?></div>
+        <!-- Datos de Pago y Condiciones Comerciales -->
+        <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="background-color: #1F4E79; color: #ffffff; padding: 10px 16px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-credit-card"></i> Datos de pago
+            </div>
+            <div style="padding: 16px 18px;">
+                <div style="font-size: 12.5px; color: #334155; line-height: 1.6; margin-bottom: 14px;">
+                    <p style="margin: 0 0 6px 0; font-weight: 700; color: #0f172a;">Pago a nombre de CYC.S.A y/o depositar en las siguientes cuentas:</p>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; font-family: monospace; font-size: 12px; color: #1e293b;">
+                        <div><strong>BANPRO:</strong> C$ 10010207085164 / $ 10010210874512</div>
+                        <div><strong>BAC:</strong> C$ 357-02445-4 / $ 363259490</div>
+                        <div><strong>LAFISE:</strong> C$ 550-2000-11</div>
+                        <div style="margin-top: 4px; color: #64748b; font-family: sans-serif; font-size: 11.5px;"><strong>RUC:</strong> J0310000073465 &bull; Cotización válida por 30 días.</div>
+                    </div>
                 </div>
-            <?php endif; ?>
+
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 12.5px; color: #334155; line-height: 1.6;">
+                    <div><span style="color: #64748b;">Condición de Pago:</span> <strong><?= htmlspecialchars($cotizacion['condicion_pago'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+                    <div><span style="color: #64748b;">Tiempo de Entrega:</span> <strong><?= htmlspecialchars($cotizacion['tiempo_entrega'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+                    <div><span style="color: #64748b;">Vigencia de Oferta:</span> <strong><?= htmlspecialchars($cotizacion['vigencia_oferta'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -279,7 +335,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         </div>
     <?php endif; ?>
 
-    <?php if (tienePermiso('cotizaciones', 'crear_editar') && $cotizacion['estado'] == 'Borrador' && ($_SESSION['usuario_id'] == $cotizacion['id_usuario_creador'] || $_SESSION['usuario_rol'] == 1)): ?>
+    <?php if (tienePermiso('cotizaciones', 'crear_editar') && $cotizacion['estado'] == 'Borrador' && (($_SESSION['usuario_id'] ?? 0) == ($cotizacion['id_usuario_creador'] ?? 0) || ($_SESSION['usuario_rol'] ?? 0) == 1)): ?>
         <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; margin-top: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <div>
                 <h3 style="margin: 0 0 5px 0; color: #475569;"><i class="fa-solid fa-file-lines"></i> Cotización en Borrador</h3>
@@ -417,7 +473,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     $motivoAlerta = '';
     $claseAlerta = '';
     
-    if (tienePermiso('cotizaciones', 'crear_editar') && ($_SESSION['usuario_id'] == $cotizacion['id_usuario_creador'] || $_SESSION['usuario_rol'] == 1)) {
+    if (tienePermiso('cotizaciones', 'crear_editar') && ($_SESSION['usuario_id'] == ($cotizacion['id_usuario_creador'] ?? 0) || ($_SESSION['usuario_rol'] ?? 0) == 1)) {
         if ($cotizacion['estado'] === 'Observada') {
             $mostrarCajaAlerta = true;
             $tituloAlerta = '⚠️ Cotización Observada (Interna)';
@@ -452,66 +508,222 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         </div>
     <?php endif; ?>
 
-    <!-- 📄 HISTORIAL DE VERSIONES -->
-    <?php if (!empty($versiones) && count($versiones) > 0): ?>
-        <div style="margin-top: 40px; border-top: 2px solid #e2e8f0; padding-top: 30px;">
-            <h3 style="font-size: 18px; margin-bottom: 20px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-code-branch" style="color: var(--cycsa-azul);"></i> Historial de Versiones y Cambios
-            </h3>
-            
-            <div style="display: flex; flex-direction: column; gap: 15px;">
+    <!-- 📄 CONTROL Y DESGLOSE DE VERSIONES DE LA COTIZACIÓN -->
+    <?php 
+    $versionActualNum = max(1, (int)($cotizacion['version'] ?? 1));
+    $tieneVersionesPrevias = !empty($versiones) && count($versiones) > 0;
+    $simboloMonedaCot = ((int)($cotizacion['tipo_moneda'] ?? 1) === 2) ? '$' : 'C$';
+    $totalVersionesRegistradas = count($versiones) + 1;
+    ?>
+    <div style="margin-top: 40px; border-top: 2px solid #e2e8f0; padding-top: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div>
+                <h3 style="font-size: 18px; margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-code-branch" style="color: var(--cycsa-azul);"></i> Control y Desglose de Versiones de la Cotización
+                </h3>
+                <p style="margin: 4px 0 0 0; font-size: 12.5px; color: #64748b;">
+                    Registro y trazabilidad de revisiones emitidas. Cada versión puede desglosarse e imprimirse de forma independiente en PDF oficial.
+                </p>
+            </div>
+            <span style="font-size: 12px; font-weight: 700; color: #103487; background: #eff6ff; border: 1px solid #bfdbfe; padding: 5px 12px; border-radius: 20px;">
+                <i class="fa-solid fa-layer-group"></i> Total de Versiones: <?= $totalVersionesRegistradas ?>
+            </span>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 18px;">
+            <!-- VERSIÓN ACTUAL (VIGENTE) -->
+            <div style="border: 2px solid #bfdbfe; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 2px 6px rgba(16,52,135,0.06);">
+                <div style="background: #f0f7ff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #bfdbfe;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span style="background: #103487; color: white; padding: 4px 10px; border-radius: 4px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fa-solid fa-circle-check"></i> v<?= $versionActualNum ?>
+                        </span>
+                        <span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            ACTUAL / VIGENTE
+                        </span>
+                        <strong style="font-size: 14px; color: #1e293b;">Propuesta Vigente en el Sistema (<?= htmlspecialchars($cotizacion['estado'], ENT_QUOTES, 'UTF-8') ?>)</strong>
+                        <span style="font-size: 12px; color: #64748b;">
+                            &bull; <?= date('d/m/Y h:i A', strtotime($cotizacion['fecha_actualizacion'] ?? $cotizacion['fecha_creacion'])) ?>
+                        </span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <span style="font-weight: 800; color: #103487; font-size: 15px;">
+                            Total: <?= $simboloMonedaCot ?> <?= number_format($cotizacion['total'], 2, '.', ',') ?>
+                        </span>
+                        <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&version=<?= $versionActualNum ?>" target="_blank" style="background: #103487; color: white; padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(16,52,135,0.25);" title="Ver e imprimir PDF de la Versión Actual">
+                            <i class="fa-solid fa-print"></i> Imprimir Versión Actual (v<?= $versionActualNum ?>)
+                        </a>
+                        <button type="button" onclick="toggleVersion('actual')" style="background: white; border: 1px solid #cbd5e1; color: #334155; padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-list-check"></i> Ver Desglose <i class="fa-solid fa-chevron-down" id="icon-version-actual" style="transition: transform 0.2s;"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Desglose de la Versión Actual -->
+                <div id="body-version-actual" style="display: none; padding: 20px; border-top: 1px solid #e2e8f0; background: #ffffff;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 18px; font-size: 13px;">
+                        <div style="background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <span style="color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Atención a:</span>
+                            <strong><?= htmlspecialchars($cotizacion['atencion_a'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong>
+                        </div>
+                        <div style="background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <span style="color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Condiciones Comerciales:</span>
+                            <strong>Pago:</strong> <?= htmlspecialchars($cotizacion['condicion_pago'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?><br>
+                            <strong>Entrega:</strong> <?= htmlspecialchars($cotizacion['tiempo_entrega'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?><br>
+                            <strong>Vigencia:</strong> <?= htmlspecialchars($cotizacion['vigencia_oferta'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?>
+                        </div>
+                        <div style="background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <span style="color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Proyecto:</span>
+                            <strong><?= htmlspecialchars($cotizacion['nombre_proyecto'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong><br>
+                            <span style="font-size: 12px; color: #475569;"><?= htmlspecialchars($cotizacion['direccion_proyecto'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto; width: 100%; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 12px;">
+                        <table style="width: 100%; border-collapse: collapse; min-width: 600px; font-size: 13px; text-align: left;">
+                            <thead>
+                                <tr style="background: #f1f5f9;">
+                                    <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; width: 5%;">#</th>
+                                    <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1;">Descripción del Ensayo / Servicio</th>
+                                    <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; width: 10%; text-align: center;">Cant.</th>
+                                    <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; width: 18%; text-align: right;">Precio Unit.</th>
+                                    <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; width: 18%; text-align: right;">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($detalles)): ?>
+                                    <?php foreach ($detalles as $idxD => $det): ?>
+                                        <tr>
+                                            <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: 600; text-align: center;"><?= $idxD + 1 ?></td>
+                                            <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #1e293b;">
+                                                <?= htmlspecialchars($det['descripcion_ensayo'] ?? 'Servicio', ENT_QUOTES, 'UTF-8') ?>
+                                                <?php
+                                                $metaPartsAct = [];
+                                                if (!empty($det['codigo_servicio'])) $metaPartsAct[] = 'Código: <strong>' . htmlspecialchars($det['codigo_servicio'], ENT_QUOTES, 'UTF-8') . '</strong>';
+                                                if (!empty($det['norma_astm'])) $metaPartsAct[] = 'Norma: <strong>' . htmlspecialchars($det['norma_astm'], ENT_QUOTES, 'UTF-8') . '</strong>';
+                                                if (!empty($det['formato_reporte'])) $metaPartsAct[] = 'Formato: <strong>' . htmlspecialchars($det['formato_reporte'], ENT_QUOTES, 'UTF-8') . '</strong>';
+                                                if (!empty($det['observaciones'])) $metaPartsAct[] = 'Tiempo Entrega: <strong>' . htmlspecialchars($det['observaciones'], ENT_QUOTES, 'UTF-8') . '</strong>';
+                                                ?>
+                                                <?php if (!empty($metaPartsAct)): ?>
+                                                    <div style="margin-top: 4px; font-size: 11px; color: #475569;">
+                                                        <?= implode(' &bull; ', $metaPartsAct) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; text-align: center; font-weight: 600;">
+                                                <?= number_format($det['cantidad'], 2) ?>
+                                            </td>
+                                            <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #334155;">
+                                                <?= $simboloMonedaCot ?> <?= number_format($det['precio_unitario'], 2, '.', ',') ?>
+                                            </td>
+                                            <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #0f172a;">
+                                                <?= $simboloMonedaCot ?> <?= number_format($det['subtotal'], 2, '.', ',') ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end;">
+                        <div style="min-width: 260px; font-size: 13px;">
+                            <div style="display: flex; justify-content: space-between; padding: 3px 0; color: #475569;">
+                                <span>Subtotal:</span>
+                                <strong><?= $simboloMonedaCot ?> <?= number_format($cotizacion['subtotal'], 2, '.', ',') ?></strong>
+                            </div>
+                            <?php if ((float)($cotizacion['descuento'] ?? 0) > 0): ?>
+                                <div style="display: flex; justify-content: space-between; padding: 3px 0; color: #dc2626;">
+                                    <span>Descuento:</span>
+                                    <strong>-<?= $simboloMonedaCot ?> <?= number_format($cotizacion['descuento'], 2, '.', ',') ?></strong>
+                                </div>
+                            <?php endif; ?>
+                            <div style="display: flex; justify-content: space-between; padding: 3px 0; color: #475569;">
+                                <span>Impuesto (15%):</span>
+                                <strong><?= $simboloMonedaCot ?> <?= number_format($cotizacion['impuesto'], 2, '.', ',') ?></strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-top: 1.5px solid #cbd5e1; margin-top: 4px; font-size: 15px; color: #103487;">
+                                <strong>Total Versión Actual:</strong>
+                                <strong><?= $simboloMonedaCot ?> <?= number_format($cotizacion['total'], 2, '.', ',') ?></strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VERSIONES HISTÓRICAS / ANTERIORES -->
+            <?php if ($tieneVersionesPrevias): ?>
                 <?php foreach ($versiones as $v): 
                     $datos = json_decode($v['datos_json'], true);
                     $fecha = date('d/m/Y h:i A', strtotime($v['fecha_creacion']));
+                    $vNum = (int)$v['version'];
+                    $vMoneda = ((int)($datos['tipo_moneda'] ?? $cotizacion['tipo_moneda'] ?? 1) === 2) ? '$' : 'C$';
                 ?>
                     <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                        <!-- Cabecera de la versión -->
-                        <div onclick="toggleVersion(<?= $v['id'] ?>)" style="background: #f8fafc; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #e2e8f0;">
+                        <!-- Cabecera de la versión histórica -->
+                        <div style="background: #f8fafc; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #e2e8f0;">
                             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                <span style="background: var(--cycsa-azul); color: white; padding: 3px 10px; border-radius: 20px; font-weight: 700; font-size: 12px; text-transform: uppercase;">
-                                    v<?= $v['version'] ?>
+                                <span style="background: #64748b; color: white; padding: 4px 10px; border-radius: 4px; font-weight: 800; font-size: 12px; text-transform: uppercase;">
+                                    <i class="fa-solid fa-clock-rotate-left"></i> v<?= $vNum ?>
+                                </span>
+                                <span style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; text-transform: uppercase;">
+                                    HISTÓRICA
                                 </span>
                                 <strong style="font-size: 14px; color: #334155;"><?= htmlspecialchars($v['motivo_cambio'] ?: 'Cambio registrado', ENT_QUOTES, 'UTF-8') ?></strong>
-                                <span style="font-size: 12px; color: #64748b;"><?= $fecha ?></span>
+                                <span style="font-size: 12px; color: #64748b;">&bull; <?= $fecha ?></span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <span style="font-weight: 700; color: #0f172a; font-size: 14px;">Total: C$ <?= number_format($datos['total'] ?? 0, 2, '.', ',') ?></span>
-                                <i class="fa-solid fa-chevron-down" id="icon-version-<?= $v['id'] ?>" style="color: #64748b; transition: transform 0.2s;"></i>
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span style="font-weight: 700; color: #0f172a; font-size: 14.5px;">
+                                    Total: <?= $vMoneda ?> <?= number_format($datos['total'] ?? 0, 2, '.', ',') ?>
+                                </span>
+                                <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&version=<?= $vNum ?>" target="_blank" style="background: #e31837; color: white; padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(227,24,55,0.2);" title="Ver e imprimir PDF oficial de esta versión histórica">
+                                    <i class="fa-solid fa-file-pdf"></i> Imprimir Versión <?= $vNum ?>
+                                </a>
+                                <button type="button" onclick="toggleVersion(<?= $v['id'] ?>)" style="background: white; border: 1px solid #cbd5e1; color: #334155; padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-list-check"></i> Ver Desglose <i class="fa-solid fa-chevron-down" id="icon-version-<?= $v['id'] ?>" style="transition: transform 0.2s;"></i>
+                                </button>
                             </div>
                         </div>
                         
-                        <!-- Cuerpo de la versión (Desplegable) -->
+                        <!-- Cuerpo de la versión histórica (Desplegable) -->
                         <div id="body-version-<?= $v['id'] ?>" style="display: none; padding: 20px; border-top: 1px solid #edf2f7; background: #fff;">
-                            <!-- Info general de la versión -->
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; font-size: 13px;">
-                                <div style="background: #f8fafc; padding: 10px 15px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                    <span style="color: #64748b; font-weight: 500; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Atención a:</span>
+                            <!-- Info general de la versión histórica -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 18px; font-size: 13px;">
+                                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <span style="color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Atención a:</span>
                                     <strong><?= htmlspecialchars($datos['atencion_a'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></strong>
                                 </div>
-                                <div style="background: #f8fafc; padding: 10px 15px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                    <span style="color: #64748b; font-weight: 500; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Condiciones Comerciales:</span>
+                                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <span style="color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Condiciones Comerciales:</span>
                                     <strong>Pago:</strong> <?= htmlspecialchars($datos['condicion_pago'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?><br>
                                     <strong>Entrega:</strong> <?= htmlspecialchars($datos['tiempo_entrega'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?><br>
                                     <strong>Vigencia:</strong> <?= htmlspecialchars($datos['vigencia_oferta'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?>
                                 </div>
+                                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <span style="color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Proyecto Registrado:</span>
+                                    <strong><?= htmlspecialchars($datos['nombre_proyecto'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></strong><br>
+                                    <span style="font-size: 12px; color: #475569;"><?= htmlspecialchars($datos['direccion_proyecto'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?></span>
+                                </div>
                             </div>
                             
-                            <!-- Tabla de items de esta versión -->
-                            <div style="overflow-x: auto; width: 100%; border: 1px solid #e2e8f0; border-radius: 6px;">
+                            <!-- Tabla de items de esta versión histórica -->
+                            <div style="overflow-x: auto; width: 100%; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 12px;">
                                 <table style="width: 100%; border-collapse: collapse; min-width: 600px; font-size: 13px; text-align: left;">
                                     <thead>
                                         <tr style="background: #f1f5f9;">
-                                            <th style="padding: 10px 12px; font-weight: 600; color: #475569; border-bottom: 1px solid #cbd5e1;">Descripción del Ensayo / Servicio</th>
-                                            <th style="padding: 10px 12px; font-weight: 600; color: #475569; border-bottom: 1px solid #cbd5e1; width: 10%;">Cant.</th>
-                                            <th style="padding: 10px 12px; font-weight: 600; color: #475569; border-bottom: 1px solid #cbd5e1; width: 20%; text-align: right;">Precio Unit.</th>
-                                            <th style="padding: 10px 12px; font-weight: 600; color: #475569; border-bottom: 1px solid #cbd5e1; width: 20%; text-align: right;">Subtotal</th>
+                                            <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; width: 5%;">#</th>
+                                            <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1;">Descripción del Ensayo / Servicio</th>
+                                            <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; width: 10%; text-align: center;">Cant.</th>
+                                            <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; width: 18%; text-align: right;">Precio Unit.</th>
+                                            <th style="padding: 9px 12px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; width: 18%; text-align: right;">Subtotal</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($datos['detalles'])): ?>
-                                            <?php foreach ($datos['detalles'] as $det): ?>
+                                            <?php foreach ($datos['detalles'] as $idxHist => $det): ?>
                                                 <tr>
-                                                    <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 500; color: #334155;">
+                                                    <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: 600; text-align: center;"><?= $idxHist + 1 ?></td>
+                                                    <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #334155;">
                                                         <?= htmlspecialchars($det['descripcion_ensayo'] ?? 'Servicio', ENT_QUOTES, 'UTF-8') ?>
                                                         <?php
                                                         $metaPartsV = [];
@@ -529,50 +741,78 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                                                         }
                                                         ?>
                                                         <?php if (!empty($metaPartsV)): ?>
-                                                            <div style="margin-top: 5px; padding-top: 3px; border-top: 1px dashed #e2e8f0; font-size: 11px; color: #475569;">
+                                                            <div style="margin-top: 4px; padding-top: 2px; border-top: 1px dashed #e2e8f0; font-size: 11px; color: #475569;">
                                                                 <?= implode(' &bull; ', $metaPartsV) ?>
                                                             </div>
                                                         <?php endif; ?>
                                                     </td>
-                                                    <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">
-                                                        <?= $det['cantidad'] ?>
+                                                    <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; text-align: center; font-weight: 600;">
+                                                        <?= number_format($det['cantidad'], 2) ?>
                                                     </td>
-                                                    <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #334155;">
-                                                        C$ <?= number_format($det['precio_unitario'], 2, '.', ',') ?>
+                                                    <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #334155;">
+                                                        <?= $vMoneda ?> <?= number_format($det['precio_unitario'], 2, '.', ',') ?>
                                                     </td>
-                                                    <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #334155;">
-                                                        C$ <?= number_format($det['subtotal'], 2, '.', ',') ?>
+                                                    <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #334155;">
+                                                        <?= $vMoneda ?> <?= number_format($det['subtotal'], 2, '.', ',') ?>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
-                                                <td colspan="4" style="text-align: center; padding: 15px; color: #94a3b8;">Sin detalles registrados.</td>
+                                                <td colspan="5" style="text-align: center; padding: 15px; color: #94a3b8;">Sin detalles registrados.</td>
                                             </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
                             </div>
+
+                            <div style="display: flex; justify-content: flex-end;">
+                                <div style="min-width: 260px; font-size: 13px;">
+                                    <div style="display: flex; justify-content: space-between; padding: 3px 0; color: #475569;">
+                                        <span>Subtotal:</span>
+                                        <strong><?= $vMoneda ?> <?= number_format($datos['subtotal'] ?? 0, 2, '.', ',') ?></strong>
+                                    </div>
+                                    <?php if ((float)($datos['descuento'] ?? 0) > 0): ?>
+                                        <div style="display: flex; justify-content: space-between; padding: 3px 0; color: #dc2626;">
+                                            <span>Descuento:</span>
+                                            <strong>-<?= $vMoneda ?> <?= number_format($datos['descuento'], 2, '.', ',') ?></strong>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div style="display: flex; justify-content: space-between; padding: 3px 0; color: #475569;">
+                                        <span>Impuesto:</span>
+                                        <strong><?= $vMoneda ?> <?= number_format($datos['impuesto'] ?? 0, 2, '.', ',') ?></strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-top: 1.5px solid #cbd5e1; margin-top: 4px; font-size: 15px; color: #334155;">
+                                        <strong>Total Versión <?= $vNum ?>:</strong>
+                                        <strong><?= $vMoneda ?> <?= number_format($datos['total'] ?? 0, 2, '.', ',') ?></strong>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
-            </div>
+            <?php else: ?>
+                <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 12px 18px; font-size: 12.5px; color: #64748b;">
+                    <i class="fa-solid fa-circle-info" style="color: #3b82f6;"></i> Esta cotización se encuentra en su versión original inicial (<strong>v1</strong>). Si en el futuro es observada o devuelta por el cliente, cada versión anterior quedará archivada y desglosada automáticamente en este panel con su opción de impresión independiente.
+                </div>
+            <?php endif; ?>
         </div>
-        
-        <script>
-            function toggleVersion(id) {
-                const body = document.getElementById('body-version-' + id);
-                const icon = document.getElementById('icon-version-' + id);
-                if (body.style.display === 'none') {
-                    body.style.display = 'block';
-                    icon.style.transform = 'rotate(180deg)';
-                } else {
-                    body.style.display = 'none';
-                    icon.style.transform = 'rotate(0deg)';
-                }
+    </div>
+    
+    <script>
+        function toggleVersion(id) {
+            const body = document.getElementById('body-version-' + id);
+            const icon = document.getElementById('icon-version-' + id);
+            if (!body) return;
+            if (body.style.display === 'none' || body.style.display === '') {
+                body.style.display = 'block';
+                if (icon) icon.style.transform = 'rotate(180deg)';
+            } else {
+                body.style.display = 'none';
+                if (icon) icon.style.transform = 'rotate(0deg)';
             }
-        </script>
-    <?php endif; ?>
+        }
+    </script>
     </div>
 </div>
 

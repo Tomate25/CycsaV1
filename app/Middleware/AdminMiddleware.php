@@ -25,7 +25,11 @@ class AdminMiddleware
         }
         $panelUrl = $basePath . '/panel';
 
-        if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['usuario_rol']) || (int)$_SESSION['usuario_rol'] !== 1) {
+        $ruta = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
+        $plantillas = (bool)preg_match('~(?:^|/)configuracion/plantillas-ensayos(?:/(?:obtener-ajax|guardar|restablecer))?$~', $ruta);
+        $rol = (int)($_SESSION['usuario_rol'] ?? 0);
+        $autorizado = $rol === 1 || ($plantillas && $rol === 2);
+        if (!isset($_SESSION['usuario_id']) || !$autorizado) {
             $requestUri = $_SERVER['REQUEST_URI'] ?? '';
             if (strpos($requestUri, '/api/') !== false) {
                 header('Content-Type: application/json');

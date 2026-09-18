@@ -84,7 +84,7 @@
                 </div>
             </div>
 
-            <div class="form-grid-2">
+            <div class="form-grid-3">
                 <div class="form-group-cycsa">
                     <label>Atención a (Contacto Principal):</label>
                     <input type="text" name="atencion_a" class="form-control-cycsa" value="<?= htmlspecialchars($cotizacion['atencion_a'] ?? '') ?>" required>
@@ -92,6 +92,13 @@
                 <div class="form-group-cycsa">
                     <label>Forma de Pago:</label>
                     <input type="text" name="forma_pago" class="form-control-cycsa" value="<?= htmlspecialchars($cotizacion['condicion_pago'] ?? 'Pago contra entrega') ?>">
+                </div>
+                <div class="form-group-cycsa">
+                    <label>Modalidad de Contrato / Servicio:</label>
+                    <select name="tipo_contrato" class="form-control-cycsa" style="font-weight: 600;">
+                        <option value="Puntual">Puntual (Un solo evento/entrega)</option>
+                        <option value="Marco" selected>Marco / Contrato Activo (Meses, entregas continuas)</option>
+                    </select>
                 </div>
             </div>
 
@@ -121,7 +128,6 @@
                             <tr>
                                 <td style="text-align: center; font-weight: 700; color: #64748b;"><?= $index + 1 ?></td>
                                 <td>
-                                    <strong style="color: var(--cycsa-azul);"><?= htmlspecialchars($det['codigo_servicio'] ?? 'CYCSA-PE') ?></strong>: 
                                     <?= htmlspecialchars($det['descripcion_ensayo'] ?? $det['nombre_ensayo'] ?? '') ?>
                                     <?php if (!empty($det['norma_astm'])): ?>
                                         <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-left: 8px; border: 1px solid #7dd3fc;"><?= htmlspecialchars($det['norma_astm']) ?></span>

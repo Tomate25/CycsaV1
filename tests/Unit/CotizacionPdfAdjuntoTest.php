@@ -6,6 +6,27 @@ use PHPUnit\Framework\TestCase;
 
 class CotizacionPdfAdjuntoTest extends TestCase {
 
+    private function extraerTextoPdf(string $pdfBytes): string {
+        $cacheDir = dirname(__DIR__, 2) . '/storage/cache';
+        $tempPdf = tempnam($cacheDir, 'cotizacion_pdf_');
+        $tempScript = tempnam($cacheDir, 'extraer_pdf_');
+
+        file_put_contents($tempPdf, $pdfBytes);
+        file_put_contents(
+            $tempScript,
+            "import sys\nimport io\nimport pymupdf\nsys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')\ndoc = pymupdf.open(sys.argv[1])\nfor page in doc:\n    print(page.get_text())\n"
+        );
+
+        $output = [];
+        $exitCode = 1;
+        @exec('python ' . escapeshellarg($tempScript) . ' ' . escapeshellarg($tempPdf), $output, $exitCode);
+        @unlink($tempPdf);
+        @unlink($tempScript);
+
+        $this->assertSame(0, $exitCode, 'No fue posible extraer el texto del PDF para validar su contenido.');
+        return implode("\n", $output);
+    }
+
     public function testDecodificarIdSoportaEnterosHashesYBase64(): void {
         // 1. Entero puro
         $this->assertSame(1, decodificarId(1));
@@ -98,6 +119,54 @@ class CotizacionPdfAdjuntoTest extends TestCase {
         $this->assertGreaterThan(50000, strlen($pdfBytes), 'El PDF con el DOCX e imágenes adjuntas debe superar los 50KB.');
     }
 
+    public function testGenerarCotizacionPdfIncluyeElaboradorDinamico(): void {
+        $cotizacion = [
+            'id' => 9998,
+            'codigo' => 'COT-TEST-CREADOR',
+            'fecha_creacion' => '2026-09-17 10:00:00',
+            'tipo_moneda' => 1,
+            'subtotal' => 300.00,
+            'descuento' => 0.00,
+            'impuesto' => 45.00,
+            'total' => 345.00,
+            'cliente_nombre' => 'Cliente Prueba Creador',
+            'cliente_ruc' => 'J031000000001',
+            'atencion_a' => 'Contacto de Prueba',
+            'nombre_proyecto' => 'Proyecto Usuario Dinámico',
+            'direccion_proyecto' => 'León, Nicaragua',
+            'prioridad' => 'Normal',
+            'version' => 1,
+            'condicion_pago' => 'Contado',
+            'tiempo_entrega' => '3 días',
+            'vigencia_oferta' => '15 días',
+            'creador_nombre' => 'Usuario Dinamico PDF',
+            'incluir_anexo_tecnico' => 0,
+            'anexo_tecnico' => '',
+            'archivo_adjunto' => null
+        ];
+
+        $detalles = [[
+            'descripcion_ensayo' => 'Ensayo de prueba',
+            'nombre_comercial' => 'Servicio de prueba',
+            'condiciones_muestra' => 'Estándar',
+            'procedimiento' => 'ASTM C39',
+            'unidad_medida' => 'Unidad',
+            'cantidad' => 1,
+            'precio_unitario' => 300.00,
+            'subtotal' => 300.00
+        ]];
+
+        $textoPdf = $this->extraerTextoPdf(generarCotizacionPDF($cotizacion, $detalles));
+
+        $this->assertStringContainsString('ELABORADO POR:', $textoPdf);
+        $this->assertStringContainsString('Usuario Dinamico PDF', $textoPdf);
+        $this->assertMatchesRegularExpression('/detalle de servicios cotizados/iu', $textoPdf);
+        $this->assertMatchesRegularExpression('/datos de pago/iu', $textoPdf);
+        $this->assertMatchesRegularExpression('/notas y condiciones de la cotizaci[oó]n/iu', $textoPdf);
+        $this->assertStringContainsString('Total Bruto:', $textoPdf);
+        $this->assertStringContainsString('Total:', $textoPdf);
+    }
+
     public function testFusionarPdfConAdjuntoConcatenaCorrectamente(): void {
         $options = new \Dompdf\Options();
         $options->set('isHtml5ParserEnabled', true);
@@ -163,4 +232,3 @@ class CotizacionPdfAdjuntoTest extends TestCase {
         $this->assertStringContainsString('Resguardado y Vinculado en Expediente Digital CYCSA', $resultado['html']);
     }
 }
-

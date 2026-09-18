@@ -146,7 +146,7 @@
             </div>
             <div class="form-group">
                 <label>Vendedor</label>
-                <input type="text" name="vendedor" value="<?= htmlspecialchars($valores['vendedor'] ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control" placeholder="Ej: CYCSA- FR12-003--Tiana Grillo">
+                <input type="text" name="vendedor" value="<?= htmlspecialchars($valores['vendedor'] ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control" placeholder="Ej: CYCSA-FR12-003 - Nombre del vendedor">
             </div>
         </div>
 

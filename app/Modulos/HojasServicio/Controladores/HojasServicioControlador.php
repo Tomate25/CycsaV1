@@ -44,6 +44,9 @@ class HojasServicioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         
         $idOS = (int)($_GET['id_os'] ?? 0);
+        $idHoja = (int)($_GET['id_hoja'] ?? 0);
+        $esNueva = !empty($_GET['nueva']);
+
         if ($idOS <= 0) {
             $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio inválida.']);
             return;
@@ -56,7 +59,15 @@ class HojasServicioControlador extends ControladorBase {
             return;
         }
 
-        $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        $todasHojas = $modelo->obtenerHojasSolicitudPorOS($idOS);
+        $totalHojas = count($todasHojas);
+
+        $hoja = null;
+        if ($idHoja > 0) {
+            $hoja = $modelo->obtenerHojaSolicitudPorId($idHoja);
+        } elseif (!$esNueva && $totalHojas > 0) {
+            $hoja = end($todasHojas);
+        }
         
         $osModelo = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
         $osCompleta = $osModelo->obtenerPorId($idOS);
@@ -93,11 +104,16 @@ class HojasServicioControlador extends ControladorBase {
             $fechaLlegadaLab = date('Y-m-d H:i', strtotime($osCompleta['programacion_muestreo']['fecha_llegada']));
         }
 
-        if (!$hoja) {
+        $proximoNumeroRegistro = ($totalHojas > 0)
+            ? sprintf("%05d-%02d", $idOS, $totalHojas + 1)
+            : sprintf("%05d", $idOS);
+
+        if (!$hoja || $esNueva) {
             $hoja = array_merge([
+                'id' => 0,
                 'id_os' => $idOS,
                 'codigo_documento' => 'CYCSA-RT-FM-13',
-                'numero_registro' => sprintf("%05d", $idOS),
+                'numero_registro' => $proximoNumeroRegistro,
                 'nombre_empresa_o_cliente' => $nombreCliente,
                 'razon_social' => $nombreCliente,
                 'direccion_proyecto' => $direccionProyecto,
@@ -130,18 +146,37 @@ class HojasServicioControlador extends ControladorBase {
             if (empty($hoja['naturaleza_muestra'])) $hoja['naturaleza_muestra'] = $detectado['naturaleza_muestra_str'];
         }
 
-        $esCampo = !empty($osCompleta['programacion_muestreo']) || ($osCompleta['requiere_muestreo'] ?? $os['requiere_muestreo']) === 1 || ($osCompleta['requiere_muestreo'] ?? $os['requiere_muestreo']) === '1';
-        $prefijoMuestra = $esCampo ? 'MC' : 'MS';
+        $prefijoMuestra = determinarPrefijoMuestraOS($osCompleta ?: $os);
+        $esCampo = ($prefijoMuestra === 'MC');
         $tipoOrigen = $esCampo ? 'campo' : 'laboratorio';
         $cantSugerida = $esCampo ? ($cantEstimadaProg > 0 ? $cantEstimadaProg : 1) : 1;
+
+        // Simplificar lista de todas las hojas para el selector del frontend
+        $listaHojasFrontend = [];
+        foreach ($todasHojas as $th) {
+            $mArr = json_decode($th['muestras_json'] ?? '[]', true) ?: [];
+            $listaHojasFrontend[] = [
+                'id' => (int)$th['id'],
+                'numero_registro' => $th['numero_registro'] ?? ('ID ' . $th['id']),
+                'fecha_creacion' => $th['fecha_creacion'] ?? '',
+                'fecha_toma' => $th['fecha_hora_toma_muestra'] ?? '',
+                'toma_por' => $th['nombre_persona_toma_muestra'] ?? 'Cliente',
+                'total_muestras' => count($mArr)
+            ];
+        }
 
         $respuesta->enviarJson([
             'status' => 'success',
             'hoja' => $hoja,
+            'todas_las_hojas' => $listaHojasFrontend,
+            'total_hojas' => $totalHojas,
+            'id_hoja_actual' => (int)($hoja['id'] ?? 0),
+            'es_nueva' => $esNueva,
             'os' => [
                 'id' => $os['id'],
                 'codigo_os' => $os['codigo_os'],
-                'requiere_muestreo' => $os['requiere_muestreo']
+                'requiere_muestreo' => $os['requiere_muestreo'],
+                'tipo_contrato' => $os['tipo_contrato'] ?? 'Puntual'
             ],
             'prefijo_muestra' => $prefijoMuestra,
             'tipo_origen' => $tipoOrigen,
@@ -158,6 +193,7 @@ class HojasServicioControlador extends ControladorBase {
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
             $idOS = (int)($datos['id_os'] ?? 0);
+            $idHoja = (int)($datos['id_hoja'] ?? 0);
 
             if ($idOS <= 0) {
                 $_SESSION['error'] = 'Orden de Servicio inválida.';
@@ -180,14 +216,9 @@ class HojasServicioControlador extends ControladorBase {
                 return;
             }
 
-            if ($os['estado'] === 'Estado 2: Revision') {
-                $_SESSION['error'] = 'La Hoja de Servicio se encuentra en revisión de supervisor y no puede ser modificada hasta que sea observada.';
-                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
-                return;
-            }
-
-            if (in_array($os['estado'], ['Estado 3: Ingreso Directo', 'Estado 3A: Programacion Muestreo', 'Muestreo Completado'])) {
-                $_SESSION['error'] = 'La Hoja de Servicio ya ha sido aprobada formalmente y no admite modificaciones.';
+            // Si la O/S ya está finalizada o archivada, no admite alteraciones
+            if (in_array($os['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+                $_SESSION['error'] = 'La Orden de Servicio está cerrada o archivada y no admite modificaciones.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
@@ -209,10 +240,10 @@ class HojasServicioControlador extends ControladorBase {
             }
             $datos['identificacion_muestras_json'] = json_encode($identMuestras);
 
-            if ($modelo->guardarHojaSolicitud($datos)) {
-                // Generar PDF y guardarlo en almacenamiento/solicitudes/
+            $idHojaGuardada = 0;
+            if ($modelo->guardarHojaSolicitud($datos, $idHojaGuardada)) {
                 $os = $modelo->obtenerOSPorId($idOS);
-                $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+                $hoja = $modelo->obtenerHojaSolicitudPorId($idHojaGuardada) ?: $modelo->obtenerHojaSolicitudPorOS($idOS, $idHojaGuardada);
                 
                 require_once dirname(__DIR__, 4) . '/app/Helpers/funciones.php';
                 $pdfContenido = generarHojaSolicitudPDF($hoja, $os);
@@ -221,18 +252,25 @@ class HojasServicioControlador extends ControladorBase {
                 if (!file_exists($dirPdf)) {
                     mkdir($dirPdf, 0777, true);
                 }
-                $nombrePdf = "CYCSA-RT-FM-13-" . $os['codigo_os'] . ".pdf";
-                file_put_contents($dirPdf . '/' . $nombrePdf, $pdfContenido);
 
-                $codigoTexto = $os ? ($os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
-                registrarBitacora('hojas_servicio', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada y PDF generado para Orden de Servicio ' . $codigoTexto, $idOS);
+                // Guardar PDF individual por ID de hoja
+                $nombrePdfHoja = "CYCSA-RT-FM-13-" . $os['codigo_os'] . "-H" . $hoja['id'] . ".pdf";
+                file_put_contents($dirPdf . '/' . $nombrePdfHoja, $pdfContenido);
+
+                // Guardar/Actualizar copia genérica para retrocompatibilidad
+                $nombrePdfGenerico = "CYCSA-RT-FM-13-" . $os['codigo_os'] . ".pdf";
+                file_put_contents($dirPdf . '/' . $nombrePdfGenerico, $pdfContenido);
+
+                $numReg = $hoja['numero_registro'] ?? ('#' . $hoja['id']);
+                $codigoTexto = $os['codigo_os'] . " (Hoja Reg: {$numReg})";
+                registrarBitacora('hojas_servicio', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada/actualizada y PDF generado para Orden de Servicio ' . $codigoTexto, $idOS);
                 
                 // Si la O/S estaba "Observada", al guardar cambios la devolvemos a "Estado 1: Recepcion" para que puedan enviarla a revisión
                 if ($os['estado'] === 'Estado 2: Observada') {
                     $modelo->actualizarEstadoOS($idOS, 'Estado 1: Recepcion');
                 }
 
-                $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 guardada exitosamente y PDF generado.';
+                $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado.';
             } else {
                 $_SESSION['error'] = 'Error al registrar la Hoja de Solicitud.';
             }
@@ -356,6 +394,8 @@ class HojasServicioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         
         $idOS = (int)($_GET['id_os'] ?? 0);
+        $idHoja = (int)($_GET['id_hoja'] ?? 0);
+
         if ($idOS <= 0) {
             $_SESSION['error'] = 'Orden de Servicio inválida.';
             $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
@@ -370,40 +410,62 @@ class HojasServicioControlador extends ControladorBase {
             return;
         }
 
+        $hoja = null;
+        if ($idHoja > 0) {
+            $hoja = $modelo->obtenerHojaSolicitudPorId($idHoja);
+        }
+        if (!$hoja) {
+            $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        }
+        if (!$hoja) {
+            $_SESSION['error'] = 'No se encontró la Hoja de Servicio técnica solicitada.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
         $baseAlmacenamiento = realpath(dirname(__DIR__, 4) . '/almacenamiento');
         $codigoSanitizado = preg_replace('/[^a-zA-Z0-9_-]/', '_', $os['codigo_os']);
-        $nombrePdf = "CYCSA-RT-FM-13-" . $codigoSanitizado . ".pdf";
-        $rutaPdf = dirname(__DIR__, 4) . '/almacenamiento/solicitudes/' . $nombrePdf;
-        $rutaReal = realpath($rutaPdf);
-
-        if ($baseAlmacenamiento && $rutaReal && strpos($rutaReal, $baseAlmacenamiento) === 0 && file_exists($rutaReal)) {
-            header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="' . basename($rutaReal) . '"');
-            readfile($rutaReal);
-            exit;
-        } else {
-            // Si el archivo no existe físicamente pero los datos están en BD, lo generamos al vuelo
-            $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
-            if ($hoja) {
-                require_once dirname(__DIR__, 4) . '/app/Helpers/funciones.php';
-                $pdfContenido = generarHojaSolicitudPDF($hoja, $os);
-                
-                // Guardarlo en almacenamiento para futuras descargas
-                $dirPdf = dirname($rutaPdf);
-                if (!file_exists($dirPdf)) {
-                    mkdir($dirPdf, 0777, true);
-                }
-                file_put_contents($rutaPdf, $pdfContenido);
-                
+        
+        // 1. Probar ruta específica con ID de hoja
+        $nombrePdfHoja = "CYCSA-RT-FM-13-" . $codigoSanitizado . "-H" . $hoja['id'] . ".pdf";
+        $rutaPdfHoja = dirname(__DIR__, 4) . '/almacenamiento/solicitudes/' . $nombrePdfHoja;
+        if (file_exists($rutaPdfHoja)) {
+            $rutaReal = realpath($rutaPdfHoja);
+            if ($baseAlmacenamiento && $rutaReal && strpos($rutaReal, $baseAlmacenamiento) === 0) {
                 header('Content-Type: application/pdf');
-                header('Content-Disposition: inline; filename="' . $nombrePdf . '"');
-                echo $pdfContenido;
+                header('Content-Disposition: inline; filename="' . basename($rutaReal) . '"');
+                readfile($rutaReal);
                 exit;
             }
-            
-            $_SESSION['error'] = 'El PDF de la solicitud no ha sido generado y no se pudo crear.';
-            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
         }
+
+        // 2. Probar ruta genérica
+        $nombrePdfGenerico = "CYCSA-RT-FM-13-" . $codigoSanitizado . ".pdf";
+        $rutaPdfGenerico = dirname(__DIR__, 4) . '/almacenamiento/solicitudes/' . $nombrePdfGenerico;
+        if (file_exists($rutaPdfGenerico) && ($idHoja === 0 || count($modelo->obtenerHojasSolicitudPorOS($idOS)) <= 1)) {
+            $rutaReal = realpath($rutaPdfGenerico);
+            if ($baseAlmacenamiento && $rutaReal && strpos($rutaReal, $baseAlmacenamiento) === 0) {
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: inline; filename="' . basename($rutaReal) . '"');
+                readfile($rutaReal);
+                exit;
+            }
+        }
+
+        // 3. Generar al vuelo si no existiera físicamente
+        require_once dirname(__DIR__, 4) . '/app/Helpers/funciones.php';
+        $pdfContenido = generarHojaSolicitudPDF($hoja, $os);
+        
+        $dirPdf = dirname(__DIR__, 4) . '/almacenamiento/solicitudes';
+        if (!file_exists($dirPdf)) {
+            mkdir($dirPdf, 0777, true);
+        }
+        file_put_contents($rutaPdfHoja, $pdfContenido);
+        
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $nombrePdfHoja . '"');
+        echo $pdfContenido;
+        exit;
     }
 
     /**

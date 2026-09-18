@@ -767,15 +767,15 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
             <td style=\"text-align: right; font-weight: bold; color: #dc2626; padding: 3px 6px; font-size: 9px;\">- {$simboloMoneda} {$descuentoVal}</td>
         </tr>
         <tr>
-            <td style=\"text-align: right; color: #64748b; padding: 3px 6px; font-size: 9px;\">Subtotal Neto:</td>
+            <td style=\"text-align: right; color: #64748b; padding: 3px 6px; font-size: 9px;\">Sub-total:</td>
             <td style=\"text-align: right; font-weight: bold; padding: 3px 6px; font-size: 9px;\">{$simboloMoneda} {$neto}</td>
         </tr>";
     }
 
-    $ivaLabel = "IVA (15%):";
+    $ivaLabel = "Impuesto (15%):";
     if (isset($cotizacion['exonerado']) && (int)$cotizacion['exonerado'] === 1) {
         $exNo = !empty($cotizacion['exoneracion_no']) ? " (No. " . htmlspecialchars($cotizacion['exoneracion_no'], ENT_QUOTES, 'UTF-8') . ")" : "";
-        $ivaLabel = "IVA Exonerado{$exNo}:";
+        $ivaLabel = "Impuesto Exonerado{$exNo}:";
     }
 
     $rowsHtml = '';
@@ -843,9 +843,11 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     $notasSeccion = '';
     if (!empty($htmlNotas)) {
         $notasSeccion = "
-        <div class=\"no-split\" style=\"margin-bottom: 8px;\">
-            <strong style=\"color: #103487; font-size: 8.5px; text-transform: uppercase; display: block; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 3px;\">Notas y Condiciones de la Cotización</strong>
-            <ul style=\"margin: 0; padding-left: 14px; font-size: 8px; color: #475569; line-height: 1.3;\">
+        <div class=\"no-split\" style=\"margin-top: 6px; margin-bottom: 6px;\">
+            <div style=\"background-color: #1F4E79; color: #ffffff; padding: 2.5px 6px; font-weight: bold; font-size: 8px; text-transform: uppercase; margin-bottom: 4px; border-radius: 2px; letter-spacing: 0.5px;\">
+                Notas y condiciones de la cotización
+            </div>
+            <ul style=\"margin: 0; padding-left: 14px; font-size: 8px; color: #475569; line-height: 1.35;\">
                 {$htmlNotas}
             </ul>
         </div>";
@@ -884,6 +886,8 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     $tiempoEntrega = htmlspecialchars($cotizacion['tiempo_entrega'] ?? '', ENT_QUOTES, 'UTF-8');
     $vigenciaOferta = htmlspecialchars($cotizacion['vigencia_oferta'] ?? '', ENT_QUOTES, 'UTF-8');
     $creadorNombre = htmlspecialchars($cotizacion['creador_nombre'] ?? 'Asesor Comercial', ENT_QUOTES, 'UTF-8');
+    $clienteEmail = htmlspecialchars($cotizacion['cliente_email'] ?? ($cotizacion['email'] ?? 'admon@cycsanic.com'), ENT_QUOTES, 'UTF-8');
+    $clienteTel = htmlspecialchars($cotizacion['cliente_tel'] ?? ($cotizacion['telefono'] ?? '(505) 8209-6275'), ENT_QUOTES, 'UTF-8');
 
     // Procesar Anexo Técnico (Garantiza formatos oficiales CYCSA-RG-FM-31)
     $anexoTecnicoSeccion = '';
@@ -1010,41 +1014,44 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
             </table>
         </div>
 
-        <!-- Fecha y Validez arriba de Datos del Cliente -->
-        <div style=\"margin-bottom: 8px; padding: 3px 0; border-bottom: 1px solid #e2e8f0;\">
-            <table style=\"width: 100%;\">
-                <tr>
-                    <td style=\"font-size: 8.5px; color: #1e293b;\">
-                        <span style=\"color: #64748b;\">FECHA DE EMISIÓN:</span> <strong>{$fecha}</strong>
-                    </td>
-                    <td style=\"text-align: right; font-size: 8.5px; color: #1e293b;\">
-                        <span style=\"color: #64748b;\">VALIDEZ DE OFERTA:</span> <strong>{$vigenciaOferta}</strong>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- Info Cards Side by Side -->
-        <table style=\"width: 100%; margin-bottom: 10px;\">
+        <!-- Metadatos Oficiales CYCSA (CYCSA-RG-FM-31 V2R1) -->
+        <table style=\"width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 8px; border: 1px solid #cbd5e1;\">
             <tr>
-                <td style=\"width: 50%; padding-right: 6px; vertical-align: top;\">
-                    <div style=\"background: #f8fafc; padding: 6px 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 8.5px;\">
-                        <strong style=\"color: #103487; text-transform: uppercase; font-size: 9px; display: block; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 4px;\">Datos del Cliente</strong>
-                        <span style=\"color: #64748b;\">CLIENTE:</span> <strong style=\"color: #1e293b;\">{$clienteNombre}</strong><br>
-                        <span style=\"color: #64748b;\">RUC / CÉDULA:</span> <span style=\"color: #1e293b;\">{$clienteRuc}</span><br>
-                        <span style=\"color: #64748b;\">ATENCIÓN A:</span> <span style=\"color: #1e293b;\">{$atencionA}</span>
-                    </div>
-                </td>
-                <td style=\"width: 50%; padding-left: 6px; vertical-align: top;\">
-                    <div style=\"background: #f8fafc; padding: 6px 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 8.5px;\">
-                        <strong style=\"color: #103487; text-transform: uppercase; font-size: 9px; display: block; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 4px;\">Datos del Proyecto</strong>
-                        <span style=\"color: #64748b;\">PROYECTO:</span> <strong style=\"color: #1e293b;\">{$proyectoNombre}</strong><br>
-                        <span style=\"color: #64748b;\">DIRECCIÓN:</span> <span style=\"color: #1e293b;\">{$proyectoDireccion}</span><br>
-                        <span style=\"color: #64748b;\">PRIORIDAD:</span> <span style=\"color: #1e293b;\">{$prioridad}</span>
-                    </div>
-                </td>
+                <td style=\"width: 15%; font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">ELABORADO POR:</td>
+                <td style=\"width: 35%; color: #103487; font-weight: bold; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #cbd5e1;\">{$creadorNombre}</td>
+                <td style=\"width: 15%; font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">DOC. NÚMERO:</td>
+                <td style=\"width: 35%; color: #1e293b; font-weight: bold; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0;\">{$codigo} <span style=\"font-size: 7.5px; color: #64748b; font-weight: normal;\">(v{$version})</span></td>
+            </tr>
+            <tr>
+                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">CLIENTE:</td>
+                <td style=\"color: #1e293b; font-weight: bold; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #cbd5e1;\">{$clienteNombre}</td>
+                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">FECHA:</td>
+                <td style=\"color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0;\">{$fecha}</td>
+            </tr>
+            <tr>
+                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">ATENCIÓN A:</td>
+                <td style=\"color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #cbd5e1;\">{$atencionA}</td>
+                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">CÉDULA/RUC:</td>
+                <td style=\"color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0;\">{$clienteRuc}</td>
+            </tr>
+            <tr>
+                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">PROYECTO:</td>
+                <td style=\"color: #1e293b; font-weight: bold; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #cbd5e1;\">{$proyectoNombre}</td>
+                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">FORMA DE PAGO:</td>
+                <td style=\"color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0;\">{$condicionPago}</td>
+            </tr>
+            <tr>
+                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-right: 1px solid #e2e8f0; background: #f8fafc;\">CORREO ELECTRÓNICO:</td>
+                <td style=\"color: #1e293b; padding: 2.5px 5px; border-right: 1px solid #cbd5e1;\">{$clienteEmail}</td>
+                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-right: 1px solid #e2e8f0; background: #f8fafc;\">TELÉFONO:</td>
+                <td style=\"color: #1e293b; padding: 2.5px 5px;\">{$clienteTel}</td>
             </tr>
         </table>
+
+        <!-- Banner Detalle de Servicios Cotizados -->
+        <div style=\"background-color: #1F4E79; color: #ffffff; padding: 3px 6px; font-weight: bold; font-size: 8px; text-transform: uppercase; margin-bottom: 4px; border-radius: 2px; letter-spacing: 0.5px;\">
+            Detalle de servicios cotizados
+        </div>
 
         <!-- Table of Items (8 Columns) -->
         <table class=\"tabla-items\">
@@ -1070,12 +1077,15 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
             <table style=\"width: 100%; margin-bottom: 8px;\">
                 <tr>
                     <td style=\"width: 58%; vertical-align: top; padding-right: 15px;\">
+                        <div style=\"background-color: #1F4E79; color: #ffffff; padding: 2.5px 6px; font-weight: bold; font-size: 8px; text-transform: uppercase; margin-bottom: 4px; border-radius: 2px; letter-spacing: 0.5px;\">
+                            Datos de pago
+                        </div>
                         <div style=\"font-size: 8px; color: #475569; line-height: 1.35;\">
                             <strong>Pago a nombre de CYC.S.A y/o depositar en las siguientes cuentas:</strong><br>
                             BANPRO: C$ 10010207085164 / $ 10010210874512<br>
                             BAC: C$ 357-02445-4 / $ 363259490<br>
                             LAFISE: C$ 550-2000-11<br>
-                            RUC: J0310000073465
+                            RUC: J0310000073465. Cotización válida por 30 días.
                         </div>
                         <div style=\"margin-top: 6px;\">
                             <table style=\"border-collapse: collapse;\">
@@ -1094,7 +1104,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
                     <td style=\"width: 42%; vertical-align: top;\">
                         <table class=\"totals-table\" style=\"width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;\">
                             <tr>
-                                <td style=\"text-align: right; color: #64748b; padding: 3px 6px;\">Precio Base (Subtotal):</td>
+                                <td style=\"text-align: right; color: #64748b; padding: 3px 6px;\">Total Bruto:</td>
                                 <td style=\"text-align: right; font-weight: bold; width: 90px; padding: 3px 6px;\">{$simboloMoneda} {$subtotal}</td>
                             </tr>
                             {$descuentoHtml}
@@ -1103,7 +1113,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
                                 <td style=\"text-align: right; font-weight: bold; padding: 3px 6px;\">{$simboloMoneda} {$impuesto}</td>
                             </tr>
                             <tr style=\"background: #e6eefc; border-top: 1px solid #cbd5e1;\">
-                                <td style=\"text-align: right; color: #103487; font-weight: bold; padding: 4px 6px;\">TOTAL:</td>
+                                <td style=\"text-align: right; color: #103487; font-weight: bold; padding: 4px 6px;\">Total:</td>
                                 <td style=\"text-align: right; color: #103487; font-weight: bold; padding: 4px 6px;\">{$simboloMoneda} {$total}</td>
                             </tr>
                         </table>
@@ -1712,6 +1722,214 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
  * tabla de resultados técnicos calculados, notas de acreditación ISO/IEC 17025, firmas de responsabilidad técnica
  * y numeración protegida oficial.
  *
+/**
+ * Resuelve y unifica los metadatos oficiales del informe de ensayo (ISO/IEC 17025)
+ * capturando datos dinámicos de los procesos anteriores (Cotización, OS, Muestreo, Recepción, Hoja de Campo)
+ * o de los valores previamente guardados.
+ */
+function obtenerEsquemaPlantillaEnsayo(?string $archivoMd, ?int $formatoId = null): array {
+    $ruta = dirname(__DIR__, 2) . '/database/ensayos/formatos_schema.json';
+    $base = is_file($ruta) ? (json_decode(file_get_contents($ruta), true) ?: []) : [];
+    $archivo = basename($archivoMd ?? '');
+    $esquemaBase = $base[$archivo] ?? [];
+    if (!$esquemaBase && $archivo !== '') {
+        $normalizar = static fn(string $texto): string => strtolower(strtr($texto, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ñ' => 'n'
+        ]));
+        foreach ($base as $nombre => $esquema) {
+            if ($normalizar($nombre) === $normalizar($archivo)) {
+                $esquemaBase = $esquema;
+                break;
+            }
+        }
+    }
+    if ($formatoId === null && $archivo === '') return $esquemaBase;
+    try {
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        if ($formatoId !== null && $formatoId > 0) {
+            $stmt = $db->prepare('SELECT configuracion_json FROM formatos_ensayos WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $formatoId]);
+        } else {
+            $stmt = $db->prepare('SELECT configuracion_json FROM formatos_ensayos WHERE archivo_markdown = :archivo LIMIT 1');
+            $stmt->execute(['archivo' => $archivo]);
+        }
+        $json = $stmt->fetchColumn();
+        $config = is_string($json) ? json_decode($json, true) : null;
+        if (is_array($config) && $config) return array_replace($esquemaBase, $config);
+    } catch (\Throwable $e) {
+        // Instalaciones aún sin migrar siguen utilizando el esquema de fábrica.
+    }
+    return $esquemaBase;
+}
+
+function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $metadatosGuardados = []): array {
+    $clienteNom = !empty($metadatosGuardados['cliente_nombre']) ? $metadatosGuardados['cliente_nombre'] : (!empty($detalle['cliente_nombre']) ? $detalle['cliente_nombre'] : (!empty($detalle['nombre_razon_social']) ? $detalle['nombre_razon_social'] : ($detalle['atencion_a'] ?? 'Cliente Confidencial (ISO 17025)')));
+    $clienteDir = !empty($metadatosGuardados['cliente_direccion']) ? $metadatosGuardados['cliente_direccion'] : (!empty($detalle['cliente_direccion']) ? $detalle['cliente_direccion'] : (!empty($detalle['direccion']) ? $detalle['direccion'] : ($detalle['direccion_proyecto'] ?? '')));
+    $proyectoNom = !empty($metadatosGuardados['proyecto']) ? $metadatosGuardados['proyecto'] : (!empty($detalle['nombre_proyecto']) ? $detalle['nombre_proyecto'] : (!empty($detalle['proyecto']) ? $detalle['proyecto'] : 'Proyecto no especificado'));
+    $fechaIngreso = !empty($metadatosGuardados['fecha_ingreso']) ? $metadatosGuardados['fecha_ingreso'] : (!empty($detalle['fecha_ingreso']) ? substr($detalle['fecha_ingreso'], 0, 10) : (!empty($detalle['fecha_recepcion']) ? substr($detalle['fecha_recepcion'], 0, 10) : (!empty($detalle['fecha_hora_llegada_laboratorio']) ? substr($detalle['fecha_hora_llegada_laboratorio'], 0, 10) : (!empty($detalle['fecha_registro_campo']) ? $detalle['fecha_registro_campo'] : substr($detalle['os_created_at'] ?? date('Y-m-d'), 0, 10)))));
+    $fechaMuestreo = !empty($metadatosGuardados['fecha_muestreo']) ? $metadatosGuardados['fecha_muestreo'] : (!empty($detalle['fecha_muestreo']) ? substr($detalle['fecha_muestreo'], 0, 10) : (!empty($detalle['pm_fecha_ida']) ? substr($detalle['pm_fecha_ida'], 0, 10) : (!empty($detalle['fecha_hora_toma_muestra']) ? substr($detalle['fecha_hora_toma_muestra'], 0, 10) : date('Y-m-d'))));
+    $fechaEjecucion = !empty($metadatosGuardados['fecha_ejecucion']) ? $metadatosGuardados['fecha_ejecucion'] : (!empty($detalle['fecha_ejecucion']) ? substr($detalle['fecha_ejecucion'], 0, 10) : date('Y-m-d'));
+    $fechaEmision = !empty($metadatosGuardados['fecha_emision']) ? $metadatosGuardados['fecha_emision'] : (!empty($detalle['fecha_emision']) ? substr($detalle['fecha_emision'], 0, 10) : (!empty($detalle['os_fecha_emision']) ? substr($detalle['os_fecha_emision'], 0, 10) : date('Y-m-d')));
+    $tipoMuestra = !empty($metadatosGuardados['tipo_muestra']) ? $metadatosGuardados['tipo_muestra'] : (!empty($detalle['tipo_muestra']) ? $detalle['tipo_muestra'] : (!empty($detalle['prod_tipo_muestra']) ? $detalle['prod_tipo_muestra'] : (!empty($schemaInfo['tipo_muestra']) ? $schemaInfo['tipo_muestra'] : (!empty($detalle['condiciones_muestra']) ? $detalle['condiciones_muestra'] : (!empty($detalle['naturaleza_muestra']) ? $detalle['naturaleza_muestra'] : 'Especímenes / Muestras')))));
+    $muestraTomadaPor = !empty($metadatosGuardados['muestra_tomada_por']) ? $metadatosGuardados['muestra_tomada_por'] : (!empty($detalle['muestra_tomada_por']) ? $detalle['muestra_tomada_por'] : (!empty($detalle['requiere_muestreo']) ? 'Laboratorio - Consultoría y Construcción S.A. CYCSA.' : 'El Cliente y entrega en Laboratorio'));
+    $procedimientoMuestreo = !empty($metadatosGuardados['procedimiento_muestreo']) ? $metadatosGuardados['procedimiento_muestreo'] : (!empty($detalle['procedimiento_muestreo']) ? $detalle['procedimiento_muestreo'] : (!empty($detalle['procedimiento']) ? $detalle['procedimiento'] : (!empty($detalle['prod_procedimiento']) ? $detalle['prod_procedimiento'] : (!empty($detalle['formato_procedimiento']) ? $detalle['formato_procedimiento'] : 'Aleatorio Procedimiento A (TD)'))));
+    $ubicacion = !empty($metadatosGuardados['ubicacion']) ? $metadatosGuardados['ubicacion'] : (!empty($detalle['ubicacion']) ? $detalle['ubicacion'] : (!empty($detalle['procedencia_punto_muestreo']) ? $detalle['procedencia_punto_muestreo'] : (!empty($detalle['direccion_proyecto']) ? $detalle['direccion_proyecto'] : (!empty($detalle['pm_lugar_muestreo']) ? $detalle['pm_lugar_muestreo'] : 'Sitio de Proyecto'))));
+    $ensayoRealizado = !empty($schemaInfo['ensayo_titulo']) ? $schemaInfo['ensayo_titulo'] : (!empty($metadatosGuardados['ensayo_realizado']) ? $metadatosGuardados['ensayo_realizado'] : (!empty($detalle['ensayo_realizado']) ? $detalle['ensayo_realizado'] : ($detalle['descripcion_ensayo'] ?? 'Ensayo de Laboratorio')));
+    $metodoMuestreo = !empty($schemaInfo['metodo_muestreo']) ? $schemaInfo['metodo_muestreo'] : (!empty($metadatosGuardados['metodo_muestreo']) ? $metadatosGuardados['metodo_muestreo'] : (!empty($detalle['metodo_muestreo']) ? $detalle['metodo_muestreo'] : (!empty($detalle['norma_astm']) ? $detalle['norma_astm'] : (!empty($detalle['prod_norma_astm']) ? $detalle['prod_norma_astm'] : 'DE-ASTM D6938-23'))));
+    $codigoFormato = !empty($schemaInfo['codigo_formato']) ? $schemaInfo['codigo_formato'] : (!empty($detalle['codigo_formato']) ? $detalle['codigo_formato'] : (!empty($detalle['codigo_documento']) ? $detalle['codigo_documento'] : 'CYCSA-RT-FM-22'));
+
+    return [
+        'cliente_nombre' => $clienteNom,
+        'cliente_direccion' => $clienteDir,
+        'proyecto' => $proyectoNom,
+        'fecha_ingreso' => $fechaIngreso,
+        'fecha_muestreo' => $fechaMuestreo,
+        'fecha_ejecucion' => $fechaEjecucion,
+        'fecha_emision' => $fechaEmision,
+        'tipo_muestra' => $tipoMuestra,
+        'muestra_tomada_por' => $muestraTomadaPor,
+        'procedimiento_muestreo' => $procedimientoMuestreo,
+        'ubicacion' => $ubicacion,
+        'ensayo_realizado' => $ensayoRealizado,
+        'metodo_muestreo' => $metodoMuestreo,
+        'codigo_formato' => $codigoFormato,
+    ];
+}
+
+/**
+ * Genera el código institucional oficial del informe de ensayo conforme a la regla CYCSA:
+ * - Consecutivos: CYCSA-INF-[TIPO]-[DESDE]-[HASTA]-[AÑO] (ej. CYCSA-INF-MS-0001-0005-26)
+ * - No consecutivos: CYCSA-INF-[TIPO]-[NUM1], [NUM2], [NUM3]-[AÑO] (ej. CYCSA-INF-MS-0001, 0005, 0007, 0009-26)
+ * - Muestra única: CYCSA-INF-[TIPO]-[NUM]-[AÑO] (ej. CYCSA-INF-MS-0001-26)
+ * Detecta prefijos MS (Muestra Suelo / Simple) y MC (Muestra Concreto / Campo) y año de dos dígitos.
+ */
+function generarCodigoInformeEnsayo($datosMuestrasOFilas = [], ?string $fechaRef = null, ?string $tipoMuestra = null): string {
+    $codigos = [];
+
+    if (is_string($datosMuestrasOFilas)) {
+        $dec = json_decode($datosMuestrasOFilas, true);
+        if (is_array($dec)) {
+            $datosMuestrasOFilas = $dec['filas'] ?? $dec;
+        } else {
+            $datosMuestrasOFilas = [$datosMuestrasOFilas];
+        }
+    }
+
+    if (is_array($datosMuestrasOFilas)) {
+        if (isset($datosMuestrasOFilas['filas']) && is_array($datosMuestrasOFilas['filas'])) {
+            $datosMuestrasOFilas = $datosMuestrasOFilas['filas'];
+        }
+        foreach ($datosMuestrasOFilas as $item) {
+            if (is_string($item)) {
+                $codigos[] = trim($item);
+            } elseif (is_array($item)) {
+                $posibles = [
+                    $item['codigo_lab'] ?? null,
+                    $item['codigo_muestra'] ?? null,
+                    $item['Código laboratorio'] ?? null,
+                    $item['Codigo laboratorio'] ?? null,
+                    $item['codigo_laboratorio'] ?? null,
+                    $item['Nombre muestra'] ?? null,
+                    $item['codigo_campo'] ?? null,
+                ];
+                $encontrado = false;
+                foreach ($posibles as $val) {
+                    if (!empty($val) && is_string($val)) {
+                        if (preg_match('/(?:MS|MC)[-_]\d+/i', $val)) {
+                            $codigos[] = trim($val);
+                            $encontrado = true;
+                            break;
+                        }
+                    }
+                }
+                if (!$encontrado) {
+                    $codigoDirecto = $item['Código laboratorio'] ?? ($item['codigo_lab'] ?? ($item['codigo_muestra'] ?? null));
+                    if (!empty($codigoDirecto) && is_string($codigoDirecto)) {
+                        $codigos[] = trim($codigoDirecto);
+                    }
+                }
+            }
+        }
+    }
+
+    $anioRef = '26';
+    if (!empty($fechaRef) && strtotime($fechaRef) !== false) {
+        $anioRef = date('y', strtotime($fechaRef));
+    } else {
+        $anioRef = date('y');
+    }
+
+    $prefijoDefault = 'MS';
+    if (!empty($tipoMuestra)) {
+        $tipoLower = strtolower($tipoMuestra);
+        if (strpos($tipoLower, 'concreto') !== false || strpos($tipoLower, 'cilindro') !== false || strpos($tipoLower, 'vigueta') !== false || strpos($tipoLower, 'nucleo') !== false || strpos($tipoLower, 'mortero') !== false) {
+            $prefijoDefault = 'MC';
+        }
+    }
+
+    $grupos = [];
+    foreach ($codigos as $cod) {
+        if (preg_match('/([A-Za-z]{2,3})[-_](\d+)(?:[-_](\d{2,4}))?/i', $cod, $matches)) {
+            $pref = strtoupper($matches[1]);
+            $num = (int)$matches[2];
+            $anio = !empty($matches[3]) ? substr($matches[3], -2) : $anioRef;
+            $grupos[$pref][$anio][] = $num;
+        } elseif (preg_match('/(\d+)/', $cod, $matches)) {
+            $num = (int)$matches[1];
+            $grupos[$prefijoDefault][$anioRef][] = $num;
+        }
+    }
+
+    if (empty($grupos)) {
+        return "CYCSA-INF-{$prefijoDefault}-0001-{$anioRef}";
+    }
+
+    $bloquesInforme = [];
+    foreach ($grupos as $pref => $anios) {
+        foreach ($anios as $anio => $numeros) {
+            $numeros = array_values(array_unique($numeros));
+            sort($numeros, SORT_NUMERIC);
+            $total = count($numeros);
+
+            if ($total === 0) {
+                continue;
+            }
+
+            if ($total === 1) {
+                $numStr = sprintf('%04d', $numeros[0]);
+                $bloquesInforme[] = "CYCSA-INF-{$pref}-{$numStr}-{$anio}";
+                continue;
+            }
+
+            $esConsecutivo = true;
+            for ($i = 0; $i < $total - 1; $i++) {
+                if ($numeros[$i + 1] !== $numeros[$i] + 1) {
+                    $esConsecutivo = false;
+                    break;
+                }
+            }
+
+            if ($esConsecutivo) {
+                $desdeStr = sprintf('%04d', $numeros[0]);
+                $hastaStr = sprintf('%04d', $numeros[$total - 1]);
+                $bloquesInforme[] = "CYCSA-INF-{$pref}-{$desdeStr}-{$hastaStr}-{$anio}";
+            } else {
+                $numsStr = array_map(static fn($n) => sprintf('%04d', $n), $numeros);
+                $lista = implode(', ', $numsStr);
+                $bloquesInforme[] = "CYCSA-INF-{$pref}-{$lista}-{$anio}";
+            }
+        }
+    }
+
+    return !empty($bloquesInforme) ? implode(' / ', $bloquesInforme) : "CYCSA-INF-{$prefijoDefault}-0001-{$anioRef}";
+}
+
+/**
+ * Genera el contenido binario de la Matriz Técnica Oficial de Resultados en formato PDF (Letter Landscape) usando Dompdf,
+ * incorporando el membrete oficial horizontal CYCSA, tabla de metadatos, banner de procedimiento y norma ASTM,
+ * tabla de resultados técnicos calculados, notas de acreditación ISO/IEC 17025, firmas de responsabilidad técnica
+ * y numeración protegida oficial.
+ *
  * @param array $detalle Registro de cotizacion_detalles con datos de la O/S y cliente
  * @param array $muestrasSeteadas Muestras por defecto si la matriz aún no tiene resultados (opcional)
  * @param array $columnas Nombres de columnas de ensayo (opcional)
@@ -1732,24 +1950,8 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     }
     $bgBase64 = file_exists($bgPath) ? base64_encode(file_get_contents($bgPath)) : '';
 
-    if (empty($formatosSchemaJson)) {
-        $rutaSchemaJson = dirname(__DIR__, 2) . '/database/ensayos/formatos_schema.json';
-        $formatosSchemaJson = file_exists($rutaSchemaJson) ? file_get_contents($rutaSchemaJson) : '{}';
-    }
-    $formatosSchemaArray = json_decode($formatosSchemaJson, true) ?: [];
-
     $archivoMd = $detalle['archivo_markdown'] ?? '';
-    $schemaInfo = $formatosSchemaArray[$archivoMd] ?? [];
-    if (empty($schemaInfo) && !empty($archivoMd)) {
-        $archSinAcentos = strtr(utf8_decode($archivoMd), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
-        foreach ($formatosSchemaArray as $k => $v) {
-            $kSin = strtr(utf8_decode($k), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
-            if ($kSin === $archSinAcentos || strpos($kSin, $archSinAcentos) !== false || strpos($archSinAcentos, $kSin) !== false) {
-                $schemaInfo = $v;
-                break;
-            }
-        }
-    }
+    $schemaInfo = obtenerEsquemaPlantillaEnsayo($archivoMd, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
 
     $codigoFormatoOficial = !empty($schemaInfo['codigo_formato']) ? $schemaInfo['codigo_formato'] : (!empty($detalle['codigo_documento']) ? $detalle['codigo_documento'] : 'CYCSA-RT-FM-22');
     $ensayoTituloOficial = !empty($schemaInfo['ensayo_titulo']) ? $schemaInfo['ensayo_titulo'] : ($detalle['descripcion_ensayo'] ?? 'Ensayo de Laboratorio');
@@ -1760,7 +1962,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $disclaimerOficial = !empty($schemaInfo['disclaimer']) ? $schemaInfo['disclaimer'] : 'Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.';
     $notasOficiales = !empty($schemaInfo['notas']) && is_array($schemaInfo['notas']) ? $schemaInfo['notas'] : [];
 
-    if (empty($notasOficiales) && !empty($archivoMd)) {
+    if (!array_key_exists('notas', $schemaInfo) && !empty($archivoMd)) {
         $rutaMdFallback = dirname(__DIR__, 2) . '/database/ensayos/' . $archivoMd;
         if (!file_exists($rutaMdFallback)) {
             $archSin = strtr(utf8_decode($archivoMd), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
@@ -1794,17 +1996,54 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         }
     }
 
-    if (empty($columnas)) {
-        $columnas = $schemaInfo['columns'] ?? [];
-    }
+    $columnas = $schemaInfo['columns'] ?? $columnas;
     if (empty($columnas)) {
         $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
     }
 
     $resultados = [];
+    $metadatosGuardados = [];
     if (!empty($detalle['resultados_json'])) {
-        $resultados = json_decode($detalle['resultados_json'], true) ?: [];
+        $decoded = json_decode($detalle['resultados_json'], true) ?: [];
+        if (isset($decoded['filas'])) {
+            $resultados = $decoded['filas'];
+            $metadatosGuardados = $decoded['metadatos'] ?? [];
+        } else {
+            $resultados = $decoded;
+        }
     }
+
+    $metaOficial = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
+
+    $codigoFormatoOficial = $metaOficial['codigo_formato'];
+    $codigoFormatoOficial = htmlspecialchars($codigoFormatoOficial, ENT_QUOTES, 'UTF-8');
+    $tituloInforme = htmlspecialchars($schemaInfo['titulo_informe'] ?? 'INFORME DE ENSAYO', ENT_QUOTES, 'UTF-8');
+    $subtituloLaboratorio = htmlspecialchars($schemaInfo['subtitulo_laboratorio'] ?? 'Laboratorio de Ensayos y Control de Calidad', ENT_QUOTES, 'UTF-8');
+    $firmanteNombre = htmlspecialchars($schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira', ENT_QUOTES, 'UTF-8');
+    $firmanteCargo = htmlspecialchars($schemaInfo['firmante_cargo'] ?? 'Gerente General', ENT_QUOTES, 'UTF-8');
+    $normaOficial = htmlspecialchars($schemaInfo['norma'] ?? ($detalle['norma_astm'] ?? ''), ENT_QUOTES, 'UTF-8');
+    $ensayoTituloOficial = $metaOficial['ensayo_realizado'];
+    $metodoMuestreoOficial = $metaOficial['metodo_muestreo'];
+    $tipoMuestraOficial = $metaOficial['tipo_muestra'];
+
+    $clienteNom = htmlspecialchars($metaOficial['cliente_nombre'], ENT_QUOTES, 'UTF-8');
+    $clienteDir = htmlspecialchars($metaOficial['cliente_direccion'], ENT_QUOTES, 'UTF-8');
+    $proyNom = htmlspecialchars($metaOficial['proyecto'], ENT_QUOTES, 'UTF-8');
+    $fechaIngreso = htmlspecialchars($metaOficial['fecha_ingreso'], ENT_QUOTES, 'UTF-8');
+    $fechaMuestreo = htmlspecialchars($metaOficial['fecha_muestreo'], ENT_QUOTES, 'UTF-8');
+    $fechaEjecucion = htmlspecialchars($metaOficial['fecha_ejecucion'], ENT_QUOTES, 'UTF-8');
+    $fechaEmision = htmlspecialchars($metaOficial['fecha_emision'], ENT_QUOTES, 'UTF-8');
+    $muestraTomadaPor = htmlspecialchars($metaOficial['muestra_tomada_por'], ENT_QUOTES, 'UTF-8');
+    $procedimientoMuestreo = htmlspecialchars($metaOficial['procedimiento_muestreo'], ENT_QUOTES, 'UTF-8');
+    $ubicacion = htmlspecialchars($metaOficial['ubicacion'], ENT_QUOTES, 'UTF-8');
+    $ensayoRealizado = nl2br(htmlspecialchars($metaOficial['ensayo_realizado'], ENT_QUOTES, 'UTF-8'));
+    $metodoMuestreo = htmlspecialchars($metaOficial['metodo_muestreo'], ENT_QUOTES, 'UTF-8');
+    $codigoOS = htmlspecialchars($detalle['codigo_os'] ?? 'OS-S/N', ENT_QUOTES, 'UTF-8');
+    $tecnicoNom = htmlspecialchars(!empty($detalle['tecnico_muestreo']) ? $detalle['tecnico_muestreo'] : 'Personal Técnico Autorizado', ENT_QUOTES, 'UTF-8');
+    $obs = !empty($detalle['observaciones']) ? htmlspecialchars($detalle['observaciones'], ENT_QUOTES, 'UTF-8') : 'Ensayos ejecutados bajo condiciones ambientales y parámetros establecidos en la norma técnica correspondiente. Equipos con calibración trazable vigente.';
+
+    $datosParaCodigo = !empty($resultados) ? $resultados : (!empty($muestrasSeteadas) ? $muestrasSeteadas : ($detalle['resultados_json'] ?? []));
+    $codigoInformeConsecutivo = htmlspecialchars(generarCodigoInformeEnsayo($datosParaCodigo, $metaOficial['fecha_muestreo'] ?? ($metaOficial['fecha_ingreso'] ?? null), $metaOficial['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? '')), ENT_QUOTES, 'UTF-8');
 
     if (empty($resultados) && !empty($muestrasSeteadas)) {
         foreach ($muestrasSeteadas as $ms) {
@@ -1830,7 +2069,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             $tbodyTrs .= '<tr>';
             $tbodyTrs .= '<td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-weight: bold;">' . ($idx + 1) . '</td>';
             foreach ($columnas as $col) {
-                $val = $fila[$col] ?? '';
+                $val = $fila[$col] ?? ($fila[$schemaInfo['column_aliases'][$col] ?? ''] ?? '');
                 $isCode = ($col === 'Código laboratorio' || $col === 'Codigo Lab');
                 $isNum = is_numeric(str_replace(['%', ',', ' '], '', (string)$val)) && !empty($val);
                 $align = $isNum ? 'right' : ($col === 'Nombre muestra' ? 'left' : 'center');
@@ -1849,14 +2088,6 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             $tbodyTrs .= '</tr>';
         }
     }
-
-    $fechaEnsaye = !empty($detalle['fecha_hora_toma_muestra']) ? date('d/m/Y H:i', strtotime($detalle['fecha_hora_toma_muestra'])) : date('d/m/Y');
-    $clienteNom = htmlspecialchars($detalle['cliente_nombre'] ?? 'Cliente Confidencial (ISO 17025)', ENT_QUOTES, 'UTF-8');
-    $tecnicoNom = htmlspecialchars(!empty($detalle['tecnico_muestreo']) ? $detalle['tecnico_muestreo'] : 'Personal Técnico Autorizado', ENT_QUOTES, 'UTF-8');
-    $proyNom = htmlspecialchars($detalle['nombre_proyecto'] ?? 'Proyecto no especificado', ENT_QUOTES, 'UTF-8');
-    $puntoNom = htmlspecialchars(!empty($detalle['procedencia_punto_muestreo']) ? $detalle['procedencia_punto_muestreo'] : ($detalle['nombre_proyecto'] ?? 'Sitio de Proyecto'), ENT_QUOTES, 'UTF-8');
-    $codigoOS = htmlspecialchars($detalle['codigo_os'] ?? 'OS-S/N', ENT_QUOTES, 'UTF-8');
-    $obs = !empty($detalle['observaciones']) ? htmlspecialchars($detalle['observaciones'], ENT_QUOTES, 'UTF-8') : 'Ensayos ejecutados bajo condiciones ambientales y parámetros establecidos en la norma técnica correspondiente. Equipos con calibración trazable vigente.';
 
     $bgCss = !empty($bgBase64) ? 'background-image: url("data:image/jpeg;base64,' . $bgBase64 . '"); background-size: 279.4mm 215.9mm; background-repeat: no-repeat;' : '';
 
@@ -1890,77 +2121,87 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     .zona-cabecera {
         position: absolute;
         top: 8mm;
-        left: 58mm;
+        left: 56mm;
         right: 14mm;
-        height: 33mm;
-        border-bottom: 1.5px solid #000000;
+        height: 28mm;
     }
     .zona-cuerpo {
         position: absolute;
-        top: 45mm;
+        top: 40mm;
         left: 14mm;
         right: 14mm;
-        bottom: 16mm;
+        bottom: 32mm;
     }
-    table.meta-tbl {
+    table.meta-informe-tbl {
         width: 100%;
         border-collapse: collapse;
-        font-size: 8.5px;
-        margin-bottom: 3px;
-        border: 1px solid #000;
-    }
-    table.meta-tbl td {
-        padding: 2.5px 5px;
-        border: 1px solid #000;
-        vertical-align: middle;
-    }
-    .banner {
-        border: 1px solid #000;
-        padding: 2.5px 6px;
+        font-size: 7.5px;
         margin-bottom: 4px;
-        font-size: 8px;
+    }
+    table.meta-informe-tbl td {
+        padding: 1.2px 3px;
+        vertical-align: top;
+        font-size: 7.5px;
+        color: #000000;
+        line-height: 1.2;
+    }
+    .lbl-col {
+        font-weight: bold;
+        color: #000000;
+        white-space: nowrap;
+    }
+    .val-col {
+        color: #000000;
     }
     table.matriz-tbl {
         width: 100%;
         border-collapse: collapse;
-        font-size: 7.5px;
+        font-size: 7.2px;
         border: 1px solid #000;
         margin-bottom: 3px;
     }
     .bloque-normativo {
         margin-top: 2px;
-        margin-bottom: 3px;
-        font-size: 7.2px;
+        margin-bottom: 2px;
+        font-size: 6.8px;
         line-height: 1.2;
     }
     .disclaimer-normativo {
         font-style: italic;
         color: #222222;
         text-align: justify;
-        margin-bottom: 2px;
+        margin-bottom: 1.5px;
     }
     .notas-normativas {
         color: #000000;
         font-weight: normal;
     }
     .nota-linea {
-        margin-bottom: 1.5px;
+        margin-bottom: 1px;
     }
     table.obs-tbl {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 4px;
+        margin-top: 2px;
+        margin-bottom: 3px;
     }
     table.obs-tbl td {
         border: 1px solid #000;
-        padding: 2.5px 5px;
+        padding: 3px 6px;
         vertical-align: top;
-        font-size: 7.2px;
+        font-size: 7px;
+    }
+    .linea-cierre-doc {
+        text-align: center;
+        font-size: 7.5px;
+        color: #333333;
+        margin: 2px 0 3px 0;
+        letter-spacing: 0.5px;
     }
     table.firmas-tbl {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 6px;
+        margin-top: 2px;
     }
     table.firmas-tbl td {
         width: 33.33%;
@@ -1973,50 +2214,67 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
 <body>
 
 <div class="zona-cabecera">
-    <table style="width: 100%; height: 32mm; border-collapse: collapse;">
+    <table style="width: 100%; height: 18mm; border-collapse: collapse;">
         <tr>
             <td style="text-align: center; vertical-align: middle;">
-                <div style="font-size: 14px; font-weight: bold; text-transform: uppercase;">Consultoría y Construcción S.A. (CYCSA)</div>
-                <div style="font-size: 11px; font-weight: bold; color: #333333; text-transform: uppercase; margin-top: 2px;">Registro Técnico de Ensayo / Matriz de Cálculo</div>
+                <div style="font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">{$tituloInforme}</div>
+                <div style="font-family: 'Courier New', Courier, monospace; font-size: 11px; font-weight: bold; color: #103487; letter-spacing: 0.5px; margin-top: 2px; margin-bottom: 2px;">{$codigoInformeConsecutivo}</div>
+                <div style="font-size: 8.5px; font-weight: bold; color: #475569; margin-top: 1px;">{$subtituloLaboratorio} &bull; O/S: {$codigoOS}</div>
+                <div style="font-size: 7.5px; color: #475569;">Norma técnica: {$normaOficial}</div>
             </td>
             <td style="width: 50mm; text-align: right; vertical-align: middle;">
-                <div style="border: 1.5px solid #000; padding: 3px 8px; font-weight: bold; font-size: 11px; display: inline-block; font-family: monospace;">{$codigoFormatoOficial}</div>
-                <div style="font-size: 8.5px; font-weight: bold; color: #333; margin-top: 3px;">ISO/IEC 17025:2017</div>
+                <div style="border: 1.5px solid #000; padding: 2px 7px; font-weight: bold; font-size: 10px; display: inline-block; font-family: monospace;">{$codigoFormatoOficial}</div>
+                <div style="font-size: 7.5px; font-weight: bold; color: #475569; margin-top: 2px;">ISO/IEC 17025:2017</div>
             </td>
         </tr>
     </table>
 </div>
 
 <div class="zona-cuerpo">
-    <table class="meta-tbl">
+    <table class="meta-informe-tbl">
         <tr>
-            <td style="background: #f3f4f6; font-weight: bold; width: 14%;">No. Orden Servicio:</td>
-            <td style="font-family: monospace; font-weight: bold; width: 36%;">{$codigoOS}</td>
-            <td style="background: #f3f4f6; font-weight: bold; width: 14%;">Fecha de Ensaye:</td>
-            <td style="width: 36%;">{$fechaEnsaye}</td>
+            <td class="lbl-col" style="width: 18%;">** Nombre del cliente:</td>
+            <td class="val-col" style="width: 32%;">{$clienteNom}</td>
+            <td class="lbl-col" style="width: 16%;">** Proyecto:</td>
+            <td class="val-col" style="width: 34%;">{$proyNom}</td>
         </tr>
         <tr>
-            <td style="background: #f3f4f6; font-weight: bold;">Cliente / Solicitante:</td>
-            <td>{$clienteNom}</td>
-            <td style="background: #f3f4f6; font-weight: bold;">Responsable Técnico:</td>
-            <td>{$tecnicoNom}</td>
+            <td class="lbl-col">** Dirección:</td>
+            <td class="val-col">{$clienteDir}</td>
+            <td class="lbl-col">** Fecha muestreo:</td>
+            <td class="val-col">{$fechaMuestreo}</td>
         </tr>
         <tr>
-            <td style="background: #f3f4f6; font-weight: bold;">Nombre del Proyecto:</td>
-            <td>{$proyNom}</td>
-            <td style="background: #f3f4f6; font-weight: bold;">Matriz / Muestra:</td>
-            <td>{$tipoMuestraOficial}</td>
+            <td class="lbl-col">Fecha de ingreso:</td>
+            <td class="val-col">{$fechaIngreso}</td>
+            <td class="lbl-col">Fecha de ejecución:</td>
+            <td class="val-col">{$fechaEjecucion}</td>
         </tr>
         <tr>
-            <td style="background: #f3f4f6; font-weight: bold;">Punto / Procedencia:</td>
-            <td colspan="3">{$puntoNom}</td>
+            <td class="lbl-col">Tipo de muestra:</td>
+            <td class="val-col">{$tipoMuestraOficial}</td>
+            <td class="lbl-col">Fecha de emisión:</td>
+            <td class="val-col">{$fechaEmision}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">** Procedimiento de muestreo:</td>
+            <td class="val-col">{$procedimientoMuestreo}</td>
+            <td class="lbl-col">Muestra tomada por:</td>
+            <td class="val-col">{$muestraTomadaPor}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col" style="vertical-align: top;">Ensayo realizado:</td>
+            <td class="val-col" style="vertical-align: top; line-height: 1.25;">{$ensayoRealizado}</td>
+            <td class="lbl-col" style="vertical-align: top;">
+                <div>** Ubicación:</div>
+                <div style="margin-top: 10px;">Método de muestreo:</div>
+            </td>
+            <td class="val-col" style="vertical-align: top;">
+                <div>{$ubicacion}</div>
+                <div style="margin-top: 10px; font-weight: bold; font-family: monospace;">{$metodoMuestreo}</div>
+            </td>
         </tr>
     </table>
-
-    <div class="banner">
-        <div><strong>Procedimiento Técnico:</strong> {$ensayoTituloOficial}</div>
-        <div style="margin-top: 1px;"><strong>Norma de Referencia:</strong> <span style="font-family: monospace; font-weight: bold;">{$metodoMuestreoOficial}</span></div>
-    </div>
 
     <table class="matriz-tbl">
         <thead><tr>{$theadThs}</tr></thead>
@@ -2031,37 +2289,39 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     <table class="obs-tbl">
         <tr>
             <td style="width: 50%;">
-                <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 1px; margin-bottom: 2px; text-transform: uppercase;">Observaciones y Condiciones del Ensayo</div>
-                <div style="line-height: 1.2;">{$obs}</div>
+                <div style="font-weight: bold; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; margin-bottom: 3px; text-transform: uppercase;">Observaciones y Condiciones del Ensayo</div>
+                <div style="line-height: 1.25; color: #1e293b;">{$obs}</div>
             </td>
             <td style="width: 50%;">
-                <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 1px; margin-bottom: 2px; text-transform: uppercase;">Declaración de Conformidad e Imparcialidad (ISO/IEC 17025)</div>
-                <div style="color: #333; line-height: 1.2;">Los resultados expresados corresponden única y exclusivamente a los especímenes y puntos sometidos a prueba. Prohibida la reproducción parcial sin autorización escrita de CYCSA.</div>
+                <div style="font-weight: bold; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; margin-bottom: 3px; text-transform: uppercase;">Declaración de Conformidad e Imparcialidad (ISO/IEC 17025)</div>
+                <div style="color: #333; line-height: 1.25;">Los resultados expresados corresponden única y exclusivamente a los especímenes y puntos sometidos a prueba. Prohibida la reproducción parcial sin autorización escrita de CYCSA.</div>
             </td>
         </tr>
     </table>
 
+    <div class="linea-cierre-doc">-------------------------------- Última Línea ---------------------------------</div>
+
     <table class="firmas-tbl">
         <tr>
             <td>
-                <div style="height: 30px;"></div>
-                <div style="border-top: 1px solid #000; padding-top: 3px;">
-                    <div style="font-weight: bold; font-size: 8.5px;">{$tecnicoNom}</div>
-                    <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">Ejecutado por (Técnico Responsable)</div>
+                <div style="height: 14px;"></div>
+                <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="font-weight: bold; font-size: 8px;">{$tecnicoNom}</div>
+                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Ejecutado por (Técnico Responsable)</div>
                 </div>
             </td>
             <td>
-                <div style="height: 30px;"></div>
-                <div style="border-top: 1px solid #000; padding-top: 3px;">
-                    <div style="font-weight: bold; font-size: 8.5px;">Supervisión de Ensayos</div>
-                    <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">Revisado por (Supervisor de Área)</div>
+                <div style="height: 14px;"></div>
+                <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="font-weight: bold; font-size: 8px;">Supervisión de Ensayos</div>
+                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Revisado por (Supervisor de Área)</div>
                 </div>
             </td>
             <td>
-                <div style="height: 30px;"></div>
-                <div style="border-top: 1px solid #000; padding-top: 3px;">
-                    <div style="font-weight: bold; font-size: 8.5px;">Gerencia Técnica / Calidad</div>
-                    <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">Aprobado (Aseguramiento Calidad ISO 17025)</div>
+                <div style="height: 14px;"></div>
+                <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="font-weight: bold; font-size: 8px;">{$firmanteNombre}</div>
+                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Aprobado ({$firmanteCargo} / ISO 17025)</div>
                 </div>
             </td>
         </tr>
@@ -2269,6 +2529,7 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
                         <tr><td style=\"color: #64748b; padding: 2px 0;\">Cliente:</td><td style=\"font-weight: bold;\">{$clienteNombre}</td></tr>
                         <tr><td style=\"color: #64748b; padding: 2px 0;\">RUC:</td><td>{$clienteRuc}</td></tr>
                         <tr><td style=\"color: #64748b; padding: 2px 0;\">Atención a:</td><td>{$atencionA}</td></tr>
+                        <tr><td style=\"color: #64748b; padding: 2px 0;\">Elaborado por:</td><td style=\"font-weight: bold; color: #103487;\">{$creadorNombre}</td></tr>
                     </table>
                 </td>
                 <td style=\"width: 4%;\"></td>
@@ -2387,6 +2648,9 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
             $archivoMd = $det['archivo_markdown'];
             $columns = $schemaData[$archivoMd]['columns'] ?? ["Código laboratorio", "Nombre muestra", "Resultado"];
             $filas = json_decode($det['resultados_json'] ?? '', true) ?: [];
+            if (isset($filas['filas'])) {
+                $filas = $filas['filas'];
+            }
 
             // Render table columns
             $theadHtml = '';
@@ -3135,5 +3399,139 @@ function numeroALetras(float $numero, string $moneda = 'C$'): string {
     return mb_strtoupper($letras, 'UTF-8') . " CON " . sprintf('%02d/100', $centavos) . " " . $nomMoneda;
 }
 
+/**
+ * Obtiene el estado de revisión y control de calidad de una matriz técnica (cotizacion_detalles.resultados_json).
+ *
+ * Ciclo de vida:
+ * - pendiente: Aún no se han guardado resultados.
+ * - en_revision: Guardado por el laboratorista/técnico, pendiente de revisión y aprobación por supervisión.
+ * - devuelta: Observada y devuelta por el supervisor al técnico para correcciones (con motivo_devolucion).
+ * - aprobada: Aprobada formalmente por el supervisor. Habilita el envío oficial al cliente y cierre de calidad.
+ *
+ * @param string|null $resultadosJson
+ * @return array
+ */
+function obtenerEstadoRevisionMatriz(?string $resultadosJson): array {
+    $defecto = [
+        'estado' => 'pendiente',
+        'estado_label' => 'PENDIENTE MATRIZ',
+        'badge_clase' => 'badge-pendiente',
+        'badge_bg' => '#f1f5f9',
+        'badge_color' => '#475569',
+        'badge_border' => '#cbd5e1',
+        'badge_icono' => 'fa-solid fa-hourglass',
+        'fecha_envio' => null,
+        'usuario_envio' => null,
+        'fecha_revision' => null,
+        'usuario_revisor' => null,
+        'motivo_devolucion' => null,
+        'puede_enviar_cliente' => false,
+        'puede_aprobar' => false,
+        'puede_devolver' => false,
+        'tiene_resultados' => false,
+        'historial' => []
+    ];
 
+    if (empty($resultadosJson) || $resultadosJson === '[]') {
+        return $defecto;
+    }
 
+    $data = json_decode($resultadosJson, true);
+    if (!is_array($data)) {
+        return $defecto;
+    }
+
+    $filas = isset($data['filas']) ? $data['filas'] : (isset($data[0]) ? $data : []);
+    $revision = isset($data['revision']) && is_array($data['revision']) ? $data['revision'] : [];
+
+    // Si no hay filas y no hay revisión registrada, sigue pendiente
+    if (empty($filas) && empty($revision)) {
+        return $defecto;
+    }
+
+    $defecto['tiene_resultados'] = true;
+    $estado = $revision['estado'] ?? 'en_revision';
+
+    switch ($estado) {
+        case 'aprobada':
+            $label = 'APROBADA';
+            $badgeClase = 'badge-aprobada';
+            $badgeBg = '#dcfce7';
+            $badgeColor = '#15803d';
+            $badgeBorder = '#bbf7d0';
+            $badgeIcono = 'fa-solid fa-circle-check';
+            $puedeEnviar = true;
+            $puedeAprobar = false;
+            $puedeDevolver = false; // Sellada: Una vez aprobada formalmente no se muestra botón devolver en flujo normal
+            break;
+
+        case 'devuelta':
+            $label = 'DEVUELTA';
+            $badgeClase = 'badge-devuelta';
+            $badgeBg = '#fee2e2';
+            $badgeColor = '#b91c1c';
+            $badgeBorder = '#fca5a5';
+            $badgeIcono = 'fa-solid fa-circle-exclamation';
+            $puedeEnviar = false;
+            $puedeAprobar = true;
+            $puedeDevolver = false;
+            break;
+
+        case 'en_revision':
+        default:
+            $estado = 'en_revision';
+            $label = 'EN REVISIÓN';
+            $badgeClase = 'badge-revision';
+            $badgeBg = '#fef3c7';
+            $badgeColor = '#b45309';
+            $badgeBorder = '#fde68a';
+            $badgeIcono = 'fa-solid fa-clock-rotate-left';
+            $puedeEnviar = false;
+            $puedeAprobar = true;
+            $puedeDevolver = true;
+            break;
+    }
+
+    return [
+        'estado' => $estado,
+        'estado_label' => $label,
+        'badge_clase' => $badgeClase,
+        'badge_bg' => $badgeBg,
+        'badge_color' => $badgeColor,
+        'badge_border' => $badgeBorder,
+        'badge_icono' => $badgeIcono,
+        'fecha_envio' => $revision['fecha_envio'] ?? null,
+        'usuario_envio' => $revision['usuario_envio'] ?? null,
+        'fecha_revision' => $revision['fecha_revision'] ?? null,
+        'usuario_revisor' => $revision['usuario_revisor'] ?? null,
+        'motivo_devolucion' => $revision['motivo_devolucion'] ?? null,
+        'puede_enviar_cliente' => $puedeEnviar,
+        'puede_aprobar' => $puedeAprobar,
+        'puede_devolver' => $puedeDevolver,
+        'tiene_resultados' => true,
+        'historial' => $revision['historial'] ?? []
+    ];
+}
+
+/**
+ * Determina el prefijo oficial de muestra según la Orden de Servicio de CYCSA:
+ * - 'MC': Muestra en Campo (requiere salida de campo / envío de técnicos).
+ * - 'MS': Muestra en Sede (el cliente trae las muestras al laboratorio).
+ *
+ * @param array|object|null $os O datos que contengan 'requiere_muestreo' y/o 'tecnico_muestreo'
+ * @return string 'MC' o 'MS'
+ */
+function determinarPrefijoMuestraOS($os): string {
+    if (is_array($os)) {
+        $req = $os['requiere_muestreo'] ?? null;
+        $tec = trim($os['tecnico_muestreo'] ?? '');
+    } elseif (is_object($os)) {
+        $req = $os->requiere_muestreo ?? null;
+        $tec = trim($os->tecnico_muestreo ?? '');
+    } else {
+        return 'MS';
+    }
+
+    $esCampo = ($req === 1 || $req === '1' || $req === true || !empty($tec));
+    return $esCampo ? 'MC' : 'MS';
+}

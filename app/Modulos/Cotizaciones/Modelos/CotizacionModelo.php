@@ -32,10 +32,16 @@ class CotizacionModelo extends ModeloBase {
     }
 
     public function obtenerPorId(int $id) {
-        $sql = "SELECT c.*, cl.nombre_razon_social AS cliente_nombre, cl.identificacion AS cliente_ruc, cl.email AS cliente_email, cl.telefono AS cliente_tel, u.nombre AS creador_nombre, u.email AS creador_email 
+        $sql = "SELECT c.*, 
+                       cl.nombre_razon_social AS cliente_nombre, 
+                       cl.identificacion AS cliente_ruc, 
+                       COALESCE(NULLIF(cl.email, ''), NULLIF(cl.contacto_correo, ''), '') AS cliente_email, 
+                       COALESCE(NULLIF(cl.telefono, ''), '') AS cliente_tel, 
+                       COALESCE(NULLIF(u.nombre, ''), 'Personal Autorizado') AS creador_nombre, 
+                       COALESCE(NULLIF(u.email, ''), 'admon@cycsanic.com') AS creador_email 
                 FROM cotizaciones c 
                 INNER JOIN clientes cl ON c.id_cliente = cl.id 
-                INNER JOIN usuarios u ON c.id_usuario_creador = u.id 
+                LEFT JOIN usuarios u ON c.id_usuario_creador = u.id 
                 WHERE c.id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $id]);
@@ -258,46 +264,29 @@ class CotizacionModelo extends ModeloBase {
 
     // Actualizar (Corrección)
     public function actualizarCotizacionCompleta(int $id, array $cabecera, array $detalles): bool {
+        $yaEnTransaccion = $this->db->inTransaction();
         try {
-            $this->db->beginTransaction();
+            if (!$yaEnTransaccion) {
+                $this->db->beginTransaction();
+            }
 
             // 1. Obtener la cotización actual antes de sobrescribirla
-            $oldStmt = $this->db->prepare("SELECT * FROM cotizaciones WHERE id = :id");
-            $oldStmt->execute(['id' => $id]);
-            $oldCot = $oldStmt->fetch(PDO::FETCH_ASSOC);
+            $oldCot = $this->obtenerPorId($id);
 
-            // 2. Si el estado actual es 'Rechazada por Cliente', guardamos la versión histórica (versión anterior)
+            // 2. Si el estado actual es 'Rechazada por Cliente' u 'Observada', guardamos la versión histórica (versión anterior)
             $token = $oldCot['token_seguridad'] ?? null;
             $nuevoEstado = 'En Revision';
-            $nuevaVersion = $oldCot['version'] ?? 0;
+            $vNumParaArchivar = max(1, (int)($oldCot['version'] ?? 1));
+            $nuevaVersion = $vNumParaArchivar;
             $motivoRechazo = $oldCot['motivo_rechazo_cliente'] ?? null;
+            $motivoObs = $oldCot['motivo_observacion'] ?? null;
 
-            if ($oldCot && $oldCot['estado'] === 'Rechazada por Cliente') {
-                $detStmt = $this->db->prepare("SELECT * FROM cotizacion_detalles WHERE id_cotizacion = :id");
-                $detStmt->execute(['id' => $id]);
-                $oldDets = $detStmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($oldCot && ($oldCot['estado'] === 'Rechazada por Cliente' || $oldCot['estado'] === 'Observada')) {
+                $oldDets = $this->obtenerDetalles($id);
 
-                $snapshot = [
-                    'atencion_a' => $oldCot['atencion_a'],
-                    'nombre_proyecto' => $oldCot['nombre_proyecto'],
-                    'direccion_proyecto' => $oldCot['direccion_proyecto'],
-                    'prioridad' => $oldCot['prioridad'],
-                    'fecha_limite' => $oldCot['fecha_limite'],
-                    'condicion_pago' => $oldCot['condicion_pago'],
-                    'tiempo_entrega' => $oldCot['tiempo_entrega'],
-                    'vigencia_oferta' => $oldCot['vigencia_oferta'],
-                    'subtotal' => $oldCot['subtotal'],
-                    'impuesto' => $oldCot['impuesto'],
-                    'total' => $oldCot['total'],
-                    'fecha_entrega' => $oldCot['fecha_entrega'] ?? null,
-                    'fecha_seguimiento' => $oldCot['fecha_seguimiento'] ?? null,
-                    'incluir_anexo_tecnico' => $oldCot['incluir_anexo_tecnico'] ?? 0,
-                    'anexo_tecnico' => $oldCot['anexo_tecnico'] ?? null,
-                    'archivo_adjunto' => $oldCot['archivo_adjunto'] ?? null,
-                    'detalles' => []
-                ];
+                $detallesSnapshot = [];
                 foreach ($oldDets as $d) {
-                    $snapshot['detalles'][] = [
+                    $detallesSnapshot[] = [
                         'id_producto' => $d['id_producto'],
                         'descripcion_ensayo' => $d['descripcion_ensayo'],
                         'condiciones_muestra' => $d['condiciones_muestra'] ?? null,
@@ -314,31 +303,44 @@ class CotizacionModelo extends ModeloBase {
                     ];
                 }
 
+                $snapshot = array_merge($oldCot, [
+                    'detalles' => $detallesSnapshot
+                ]);
+
+                $motivoCambio = ($oldCot['estado'] === 'Rechazada por Cliente')
+                    ? ('Devuelta por cliente: ' . ($oldCot['motivo_rechazo_cliente'] ?? 'Rechazo'))
+                    : ('Observada por gerencia: ' . ($oldCot['motivo_observacion'] ?? 'Observación'));
+
                 $insStmt = $this->db->prepare("INSERT INTO cotizacion_versiones (id_cotizacion, version, datos_json, motivo_cambio) VALUES (:id_cotizacion, :version, :datos_json, :motivo)");
-                $motivoCambio = 'Devuelta por cliente: ' . ($oldCot['motivo_rechazo_cliente'] ?? 'Rechazo');
                 $insStmt->execute([
                     'id_cotizacion' => $id,
-                    'version' => $oldCot['version'],
+                    'version' => $vNumParaArchivar,
                     'datos_json' => json_encode($snapshot),
                     'motivo' => $motivoCambio
                 ]);
 
-                // Si el cliente la rechazó, al corregirla se envía directamente al cliente de nuevo
-                $nuevaVersion = $oldCot['version'] + 1;
-                $nuevoEstado = 'Enviada al Cliente';
-                $token = bin2hex(random_bytes(32));
-                $motivoRechazo = null; // Se limpia la observación/motivo de rechazo de la versión vieja
+                // Al corregir una cotización observada o rechazada, se incrementa la versión oficial
+                $nuevaVersion = $vNumParaArchivar + 1;
+                if ($oldCot['estado'] === 'Rechazada por Cliente') {
+                    $nuevoEstado = 'Enviada al Cliente';
+                    $token = bin2hex(random_bytes(32));
+                    $motivoRechazo = null; // Se limpia la observación/motivo de rechazo de la versión vieja
+                } elseif ($oldCot['estado'] === 'Observada') {
+                    $nuevoEstado = 'En Revision';
+                    $motivoObs = null; // Se limpia la observación al guardar y re-enviar la nueva versión
+                }
             }
 
             // 3. Sobrescribir los datos de la cotización actual
-            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, tipo_moneda = :tipo_moneda, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, incluir_anexo_tecnico = :incluir_anexo_tecnico, anexo_tecnico = :anexo_tecnico, archivo_adjunto = :archivo_adjunto, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
+            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, tipo_moneda = :tipo_moneda, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, motivo_observacion = :motivo_observacion, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, incluir_anexo_tecnico = :incluir_anexo_tecnico, anexo_tecnico = :anexo_tecnico, archivo_adjunto = :archivo_adjunto, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute(array_merge($cabecera, [
                 'id' => $id,
                 'estado' => $nuevoEstado,
                 'version' => $nuevaVersion,
                 'token' => $token,
-                'motivo_rechazo' => $motivoRechazo
+                'motivo_rechazo' => $motivoRechazo,
+                'motivo_observacion' => $motivoObs
             ]));
 
             // 4. Eliminar los detalles antiguos para guardar los corregidos
@@ -347,97 +349,96 @@ class CotizacionModelo extends ModeloBase {
 
             $sqlDetalle = "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, condiciones_muestra, procedimiento, unidad_medida, codigo_servicio, norma_astm, formato_reporte, observaciones, descripcion_adicional, cantidad, precio_unitario, subtotal) VALUES (:id_cotizacion, :id_producto, :descripcion, :condiciones_muestra, :procedimiento, :unidad_medida, :codigo_servicio, :norma_astm, :formato_reporte, :observaciones, :descripcion_adicional, :cantidad, :precio, :subtotal)";
             $stmtDetalle = $this->db->prepare($sqlDetalle);
-            foreach ($detalles as $detalle) {
+            foreach ($detalles as $det) {
                 $stmtDetalle->execute([
                     'id_cotizacion' => $id,
-                    'id_producto' => $detalle['id_producto'],
-                    'descripcion' => $detalle['descripcion'],
-                    'condiciones_muestra' => $detalle['condiciones_muestra'] ?? null,
-                    'procedimiento' => $detalle['procedimiento'] ?? null,
-                    'unidad_medida' => $detalle['unidad_medida'] ?? 'Unidad',
-                    'codigo_servicio' => $detalle['codigo_servicio'] ?? null,
-                    'norma_astm' => $detalle['norma_astm'] ?? null,
-                    'formato_reporte' => $detalle['formato_reporte'] ?? null,
-                    'observaciones' => $detalle['observaciones'] ?? null,
-                    'descripcion_adicional' => $detalle['descripcion_adicional'] ?? null,
-                    'cantidad' => $detalle['cantidad'],
-                    'precio' => $detalle['precio'],
-                    'subtotal' => $detalle['subtotal']
+                    'id_producto' => $det['id_producto'],
+                    'descripcion' => $det['descripcion'],
+                    'condiciones_muestra' => $det['condiciones_muestra'] ?? null,
+                    'procedimiento' => $det['procedimiento'] ?? null,
+                    'unidad_medida' => $det['unidad_medida'] ?? 'Unidad',
+                    'codigo_servicio' => $det['codigo_servicio'] ?? null,
+                    'norma_astm' => $det['norma_astm'] ?? null,
+                    'formato_reporte' => $det['formato_reporte'] ?? null,
+                    'observaciones' => $det['observaciones'] ?? null,
+                    'descripcion_adicional' => $det['descripcion_adicional'] ?? null,
+                    'cantidad' => $det['cantidad'],
+                    'precio' => $det['precio'],
+                    'subtotal' => $det['subtotal']
                 ]);
             }
 
-            $this->db->commit();
+            if (!$yaEnTransaccion && $this->db->inTransaction()) {
+                $this->db->commit();
+            }
             return true;
         } catch (\Throwable $e) {
-            $this->db->rollBack();
-            error_log("FATAL: Error al actualizar cotizacion completa: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
+            if (!$yaEnTransaccion && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("FATAL: Error al actualizar cotización completa: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             return false;
         }
     }
 
     // Re-enviar una cotización rechazada por el cliente (creando una nueva versión sin cambios manuales en la edición)
     public function volverEnviarRechazada(int $id): bool {
+        $yaEnTransaccion = $this->db->inTransaction();
         try {
-            $this->db->beginTransaction();
+            if (!$yaEnTransaccion) {
+                $this->db->beginTransaction();
+            }
 
-            // 1. Obtener la cotización actual
-            $oldStmt = $this->db->prepare("SELECT * FROM cotizaciones WHERE id = :id");
-            $oldStmt->execute(['id' => $id]);
-            $oldCot = $oldStmt->fetch(PDO::FETCH_ASSOC);
+            // 1. Obtener la cotización actual con datos completos de cliente y creador
+            $oldCot = $this->obtenerPorId($id);
 
             if (!$oldCot || $oldCot['estado'] !== 'Rechazada por Cliente') {
-                $this->db->rollBack();
+                if (!$yaEnTransaccion && $this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
                 return false;
             }
 
             // 2. Obtener detalles de la cotización actual
-            $detStmt = $this->db->prepare("SELECT * FROM cotizacion_detalles WHERE id_cotizacion = :id");
-            $detStmt->execute(['id' => $id]);
-            $oldDets = $detStmt->fetchAll(PDO::FETCH_ASSOC);
+            $oldDets = $this->obtenerDetalles($id);
 
             // 3. Crear el snapshot de la versión que el cliente rechazó
-            $snapshot = [
-                'atencion_a' => $oldCot['atencion_a'],
-                'nombre_proyecto' => $oldCot['nombre_proyecto'],
-                'direccion_proyecto' => $oldCot['direccion_proyecto'],
-                'prioridad' => $oldCot['prioridad'],
-                'fecha_limite' => $oldCot['fecha_limite'],
-                'condicion_pago' => $oldCot['condicion_pago'],
-                'tiempo_entrega' => $oldCot['tiempo_entrega'],
-                'vigencia_oferta' => $oldCot['vigencia_oferta'],
-                'subtotal' => $oldCot['subtotal'],
-                'impuesto' => $oldCot['impuesto'],
-                'total' => $oldCot['total'],
-                'fecha_entrega' => $oldCot['fecha_entrega'] ?? null,
-                'fecha_seguimiento' => $oldCot['fecha_seguimiento'] ?? null,
-                'detalles' => []
-            ];
+            $detallesSnapshot = [];
             foreach ($oldDets as $d) {
-                $snapshot['detalles'][] = [
+                $detallesSnapshot[] = [
                     'id_producto' => $d['id_producto'],
                     'descripcion_ensayo' => $d['descripcion_ensayo'],
+                    'condiciones_muestra' => $d['condiciones_muestra'] ?? null,
+                    'procedimiento' => $d['procedimiento'] ?? null,
+                    'unidad_medida' => $d['unidad_medida'] ?? 'Unidad',
                     'codigo_servicio' => $d['codigo_servicio'] ?? null,
                     'norma_astm' => $d['norma_astm'] ?? null,
                     'formato_reporte' => $d['formato_reporte'] ?? null,
                     'observaciones' => $d['observaciones'] ?? null,
+                    'descripcion_adicional' => $d['descripcion_adicional'] ?? null,
                     'cantidad' => $d['cantidad'],
                     'precio_unitario' => $d['precio_unitario'],
                     'subtotal' => $d['subtotal']
                 ];
             }
 
+            $snapshot = array_merge($oldCot, [
+                'detalles' => $detallesSnapshot
+            ]);
+
             // 4. Guardar en cotizacion_versiones
+            $vNumParaArchivar = max(1, (int)($oldCot['version'] ?? 1));
             $insStmt = $this->db->prepare("INSERT INTO cotizacion_versiones (id_cotizacion, version, datos_json, motivo_cambio) VALUES (:id_cotizacion, :version, :datos_json, :motivo)");
             $motivoCambio = 'Devuelta por cliente: ' . ($oldCot['motivo_rechazo_cliente'] ?? 'Rechazo');
             $insStmt->execute([
                 'id_cotizacion' => $id,
-                'version' => $oldCot['version'],
+                'version' => $vNumParaArchivar,
                 'datos_json' => json_encode($snapshot),
                 'motivo' => $motivoCambio
             ]);
 
             // 5. Actualizar la cotización actual a 'Enviada al Cliente', incrementando la versión y limpiando rechazo
-            $nuevaVersion = $oldCot['version'] + 1;
+            $nuevaVersion = $vNumParaArchivar + 1;
             $nuevoToken = bin2hex(random_bytes(32));
 
             $sqlUpd = "UPDATE cotizaciones 
@@ -453,10 +454,15 @@ class CotizacionModelo extends ModeloBase {
                 'id' => $id
             ]);
 
-            $this->db->commit();
+            if (!$yaEnTransaccion && $this->db->inTransaction()) {
+                $this->db->commit();
+            }
             return true;
-        } catch (Exception $e) {
-            $this->db->rollBack();
+        } catch (\Throwable $e) {
+            if (!$yaEnTransaccion && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("FATAL: Error al volver a enviar cotización rechazada: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             return false;
         }
     }
@@ -467,6 +473,15 @@ class CotizacionModelo extends ModeloBase {
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $id_cotizacion]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Obtener una versión histórica específica por número de versión
+    public function obtenerVersionHistorica(int $id_cotizacion, int $version): ?array {
+        $sql = "SELECT * FROM cotizacion_versiones WHERE id_cotizacion = :id AND version = :version LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['id' => $id_cotizacion, 'version' => $version]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
     }
 
     // Obtener un detalle individual con sus datos de formato

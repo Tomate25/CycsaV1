@@ -125,6 +125,13 @@
 
 <h2 style="margin: 0 0 20px 0; color: #333; font-size: 22px;">Editar Cotización <?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?></h2>
 
+<?php if (isset($_SESSION['error'])): ?>
+    <div style="background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px;">
+        <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?>
+    </div>
+    <?php unset($_SESSION['error']); ?>
+<?php endif; ?>
+
 <?php if ($cotizacion['estado'] === 'Observada' && !empty($cotizacion['motivo_observacion'])): ?>
     <div style="background: #fffbeb; border: 1px solid #fcd34d; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #b45309; font-size: 14px; font-family: 'Inter', sans-serif;">
         <strong><i class="fa-solid fa-circle-exclamation"></i> Devuelta por Gerencia (Observaciones):</strong> <?= htmlspecialchars($cotizacion['motivo_observacion'], ENT_QUOTES, 'UTF-8') ?>

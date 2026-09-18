@@ -62,6 +62,13 @@ class LaboratorioControlador extends ControladorBase {
 
         foreach ($todasOrdenes as &$o) {
             $o['ensayos'] = $modelo->obtenerDetallesCotizacion((int)$o['id_cotizacion']);
+            $o['total_ensayos'] = count($o['ensayos']);
+            $o['ensayos_aprobados'] = 0;
+            foreach ($o['ensayos'] as $ensayo) {
+                if (obtenerEstadoRevisionMatriz($ensayo['resultados_json'] ?? '')['estado'] === 'aprobada') {
+                    $o['ensayos_aprobados']++;
+                }
+            }
             
             // Si la orden contiene exclusivamente ensayos in situ de compactación, no requiere recepción física de muestras en lab
             if (!empty($o['ensayos']) && esOrdenSoloCompactacion($o['ensayos'])) {
@@ -243,7 +250,7 @@ class LaboratorioControlador extends ControladorBase {
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
 
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            if (!isset($_SESSION['csrf_token'], $datos['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
                 $_SESSION['error'] = 'Token CSRF inválido.';
                 $respuesta->redirigir('/Cycsa/publico/laboratorio');
                 return;
@@ -312,7 +319,12 @@ class LaboratorioControlador extends ControladorBase {
             $stmtCheck = $db->prepare("SELECT COUNT(*) FROM ensayo_edades ee 
                                        JOIN lotes_muestras lm ON ee.id_lote = lm.id 
                                        JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id 
-                                       WHERE rm.id_os = :id_os AND (ee.ensayado = 1 OR ee.resistencia_calculada_psi > 0)");
+                                       WHERE rm.id_os = :id_os 
+                                         AND (ee.fecha_ensaye_real IS NOT NULL 
+                                              OR ee.carga_lbs IS NOT NULL 
+                                              OR (ee.resistencia_psi IS NOT NULL AND ee.resistencia_psi > 0)
+                                              OR ee.usuario_ensayador IS NOT NULL 
+                                              OR (ee.edad_dias > 0 AND ee.estado = 'Completado'))");
             $stmtCheck->execute(['id_os' => $idOS]);
             if ((int)$stmtCheck->fetchColumn() > 0) {
                 $_SESSION['error'] = 'No se pueden re-procesar las muestras: esta Orden de Servicio ya cuenta con ensayos ejecutados o validados.';
@@ -380,7 +392,8 @@ class LaboratorioControlador extends ControladorBase {
             ];
 
             if ($modelo->registrarRecepcion($payloadRecepcion)) {
-                $_SESSION['exito'] = 'Muestras aceptadas e ingresadas formalmente al Laboratorio. Se asignaron los códigos técnicos (MS-XXXX-26).';
+                $prefijoAsignado = ($tipoMuestraCalculado === 'Campo') ? 'MC' : 'MS';
+                $_SESSION['exito'] = "Muestras aceptadas e ingresadas formalmente al Laboratorio. Se asignaron los códigos técnicos ({$prefijoAsignado}-XXXX-" . date('y') . ").";
             } else {
                 $_SESSION['error'] = 'Ocurrió un error al registrar el ingreso de muestras al laboratorio.';
             }
@@ -434,12 +447,13 @@ class LaboratorioControlador extends ControladorBase {
         if (empty($muestrasLote) && $hoja && !empty($hoja['muestras_json'])) {
             $declaradas = json_decode($hoja['muestras_json'], true) ?: [];
             $anioShort = date('y');
-            $siguienteCorr = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'));
+            $prefijoOS = determinarPrefijoMuestraOS($os);
+            $siguienteCorr = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoOS);
 
             foreach ($declaradas as $idx => $dec) {
                 $muestrasLote[] = [
-                    'codigo_muestra' => sprintf("MS-%04d-%02d", $siguienteCorr + $idx, $anioShort),
-                    'codigo_campo' => $dec['nombre_muestra'] ?? ('MC-' . ($idx + 1)),
+                    'codigo_muestra' => sprintf("{$prefijoOS}-%04d-%02d", $siguienteCorr + $idx, $anioShort),
+                    'codigo_campo' => $dec['nombre_muestra'] ?? ($prefijoOS . '-' . ($idx + 1)),
                     'fecha_recepcion' => date('Y-m-d'),
                     'fecha_elaboracion' => !empty($hoja['fecha_hora_toma_muestra']) ? date('Y-m-d', strtotime($hoja['fecha_hora_toma_muestra'])) : date('Y-m-d'),
                     'nombre_ensayo' => $ensayos[0]['descripcion_ensayo'] ?? 'Ensayo Estándar'
@@ -508,6 +522,16 @@ class LaboratorioControlador extends ControladorBase {
                 }
                 $_SESSION['error'] = 'Estado de destino no válido.';
                 $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
+                return;
+            }
+
+            if ($nuevoEstado === 'Finalizado') {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'El cierre requiere aprobación de todas las matrices y factura pagada en Operaciones.']);
+                } else {
+                    $_SESSION['error'] = 'El cierre requiere aprobación de todas las matrices y factura pagada en Operaciones.';
+                    $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
+                }
                 return;
             }
 

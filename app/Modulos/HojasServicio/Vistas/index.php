@@ -489,6 +489,23 @@
             <p style="color:#64748b; margin-top:12px; font-size:14px; font-weight:600;">Cargando datos de la O/S y plantilla RT-FM-13...</p>
         </div>
 
+        <!-- SELECTOR DE HOJAS RT-FM-13 (Para Contratos Activos / Múltiples Entregas) -->
+        <div id="hs_selector_hojas_container" style="display:none; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px; margin-bottom:15px; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-size:12px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.5px;">
+                    <i class="fa-solid fa-layer-group" style="color:var(--cycsa-azul);"></i> Hojas / Entregas:
+                </span>
+                <div id="hs_lista_tabs_hojas" style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <!-- Tabs dinámicos inyectados por JS -->
+                </div>
+            </div>
+            <div>
+                <button type="button" id="hs_btn_nueva_entrega" onclick="cargarNuevaHojaEnModal()" class="btn-cycsa" style="background:#0284c7; color:white; font-size:12px; padding:6px 14px; border-radius:6px; font-weight:600; display:inline-flex; align-items:center; gap:6px; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                    <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13
+                </button>
+            </div>
+        </div>
+
         <div id="wrapper-split-rt-fm-13" style="display:none; grid-template-columns: 460px 1fr; gap: 25px; align-items: flex-start;">
             
             <!-- PANEL LATERAL IZQUIERDO: REFERENCIA VISUAL DE LA ORDEN DE SERVICIO (SOLO LECTURA) -->
@@ -555,6 +572,7 @@
             <form method="POST" action="/Cycsa/publico/hojas-servicio/guardar" id="form-hoja-solicitud" style="display:block;">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id_os" id="hs_id_os">
+                <input type="hidden" name="id_hoja" id="hs_id_hoja" value="0">
 
             <!-- 1. METADATOS Y CONTROL INTERNO -->
             <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px; margin-top: 15px;"><i class="fa-solid fa-clipboard-check"></i> 1. Metadatos y Control Interno</div>
@@ -1092,18 +1110,33 @@
         abrirModalDecisionMuestreo(idOS, codigoOS);
     }
 
-    function abrirModalHojaSolicitud(idOS, code) {
+    let idOSModalActual = 0;
+    let codigoOSModalActual = '';
+
+    function abrirModalHojaSolicitud(idOS, code, idHoja = 0, esNueva = false) {
+        idOSModalActual = idOS;
+        codigoOSModalActual = code;
         document.getElementById('hs_codigo_os_label').innerText = code;
         modHS.style.display = 'block';
         hsLoading.style.display = 'block';
         const splitWrapper = document.getElementById('wrapper-split-rt-fm-13');
         if (splitWrapper) splitWrapper.style.display = 'none';
+        const selCont = document.getElementById('hs_selector_hojas_container');
+        if (selCont) selCont.style.display = 'none';
 
         // Limpiar especímenes y resetear contador
         document.getElementById('hs-tbody-muestras').innerHTML = '';
         siguienteConsecutivoMuestra = 1;
 
-        fetch('/Cycsa/publico/hojas-servicio/datos?id_os=' + idOS)
+        let url = '/Cycsa/publico/hojas-servicio/datos?id_os=' + encodeURIComponent(idOS);
+        if (idHoja > 0) {
+            url += '&id_hoja=' + encodeURIComponent(idHoja);
+        }
+        if (esNueva) {
+            url += '&nueva=1';
+        }
+
+        fetch(url)
             .then(res => {
                 if (!res.ok) {
                     throw new Error('Respuesta HTTP ' + res.status + ' (' + res.statusText + ')');
@@ -1118,6 +1151,51 @@
                 }
                 
                 const hoja = data.hoja;
+
+                // 0. Set id_hoja hidden field
+                const elIdHoja = document.getElementById('hs_id_hoja');
+                if (elIdHoja) {
+                    elIdHoja.value = data.es_nueva ? 0 : (hoja.id || 0);
+                }
+
+                // 0.1 Render Selector de Hojas / Entregas
+                const selContainer = document.getElementById('hs_selector_hojas_container');
+                const tabsContainer = document.getElementById('hs_lista_tabs_hojas');
+                const btnNuevaEntrega = document.getElementById('hs_btn_nueva_entrega');
+                if (selContainer && tabsContainer) {
+                    selContainer.style.display = 'flex';
+                    tabsContainer.innerHTML = '';
+
+                    const listaHojas = data.todas_las_hojas || [];
+                    const idActual = data.id_hoja_actual || (hoja ? hoja.id : 0);
+                    const esNuevaHoja = !!data.es_nueva;
+
+                    if (listaHojas.length > 0) {
+                        listaHojas.forEach((itemHoja, idx) => {
+                            const isSelected = (!esNuevaHoja && itemHoja.id == idActual);
+                            const btnTab = document.createElement('button');
+                            btnTab.type = 'button';
+                            btnTab.style.cssText = `padding: 5px 12px; font-size: 11.5px; font-weight: 600; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid ${isSelected ? '#0284c7' : '#cbd5e1'}; background: ${isSelected ? '#e0f2fe' : 'white'}; color: ${isSelected ? '#0369a1' : '#475569'}; transition: all 0.15s;`;
+                            btnTab.innerHTML = `<i class="fa-solid fa-file-lines" style="color:${isSelected ? '#0284c7' : '#94a3b8'};"></i> Hoja #${itemHoja.numero_secuencial} <span style="font-size:10px; font-family:monospace; background:${isSelected ? '#bae6fd' : '#f1f5f9'}; padding:1px 5px; border-radius:4px; font-weight:700;">${itemHoja.numero_registro || 'Sin Reg'}</span>`;
+                            btnTab.onclick = () => {
+                                abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, itemHoja.id, false);
+                            };
+                            tabsContainer.appendChild(btnTab);
+                        });
+                    }
+
+                    if (esNuevaHoja) {
+                        const badgeNueva = document.createElement('span');
+                        badgeNueva.style.cssText = 'padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid #10b981; background: #d1fae5; color: #065f46;';
+                        badgeNueva.innerHTML = '<i class="fa-solid fa-plus-circle"></i> Nueva Hoja (Borrador Entrega)';
+                        tabsContainer.appendChild(badgeNueva);
+                    }
+
+                    if (btnNuevaEntrega) {
+                        btnNuevaEntrega.style.opacity = esNuevaHoja ? '0.6' : '1';
+                        btnNuevaEntrega.disabled = esNuevaHoja;
+                    }
+                }
 
                 // 1. POBLAR PANEL LATERAL DE REFERENCIA VISUAL O/S (CYCSA-RG-FM-39)
                 if (data.os_referencia) {
@@ -1288,6 +1366,11 @@
                 alert('Error al obtener datos del servidor.');
                 cerrarModalHojaSolicitud();
             });
+    }
+
+    function cargarNuevaHojaEnModal() {
+        if (!idOSModalActual) return;
+        abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true);
     }
 
     function cerrarModalHojaSolicitud() {

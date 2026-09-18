@@ -6,6 +6,55 @@ use Cycsa\Nucleo\ModeloBase;
 use PDO;
 
 class ConfiguracionModelo extends ModeloBase {
+
+    public function obtenerPlantillasEnsayos(): array {
+        $filas = $this->db->query('SELECT id, nombre, codigo_formato, procedimientos, archivo_markdown, configuracion_json, version_formato, fecha_actualizacion FROM formatos_ensayos ORDER BY nombre')->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($filas as &$fila) {
+            $config = json_decode($fila['configuracion_json'] ?? '', true);
+            $fila['norma'] = is_array($config) ? ($config['norma'] ?? '') : '';
+            $fila['codigo_vigente'] = is_array($config) ? ($config['codigo_formato'] ?? $fila['codigo_formato']) : $fila['codigo_formato'];
+        }
+        unset($fila);
+        return $filas;
+    }
+
+    public function obtenerPlantillaPorId(int $id): ?array {
+        $stmt = $this->db->prepare('SELECT id, nombre, codigo_formato, procedimientos, archivo_markdown, configuracion_json, version_formato, fecha_actualizacion FROM formatos_ensayos WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $id]);
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$fila) return null;
+        $fila['configuracion'] = obtenerEsquemaPlantillaEnsayo($fila['archivo_markdown'], $id);
+        return $fila;
+    }
+
+    public function guardarPlantillaEnsayo(int $id, array $config): bool {
+        $stmt = $this->db->prepare('UPDATE formatos_ensayos SET configuracion_json = :json, codigo_formato = :codigo, procedimientos = :procedimientos, version_formato = :version, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = :id');
+        $stmt->execute([
+            'json' => json_encode($config, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            'codigo' => $config['codigo_formato'],
+            'procedimientos' => $config['ensayo_titulo'],
+            'version' => $config['version_documento'],
+            'id' => $id,
+        ]);
+        return true;
+    }
+
+    public function restablecerPlantillaOriginal(int $id): bool {
+        $stmt = $this->db->prepare('SELECT archivo_markdown FROM formatos_ensayos WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        $archivo = $stmt->fetchColumn();
+        if (!$archivo) return false;
+        $ruta = dirname(__DIR__, 4) . '/database/ensayos/formatos_schema.json';
+        $base = json_decode(file_get_contents($ruta), true, 512, JSON_THROW_ON_ERROR);
+        if (!isset($base[$archivo])) return false;
+        $config = $base[$archivo];
+        $config['version_documento'] = 'V1R2';
+        $config['titulo_informe'] = 'INFORME DE ENSAYO';
+        $config['subtitulo_laboratorio'] = 'Laboratorio de Ensayos y Control de Calidad';
+        $config['firmante_nombre'] = 'Ing. Noel Quintana Lira';
+        $config['firmante_cargo'] = 'Gerente General';
+        return $this->guardarPlantillaEnsayo($id, $config);
+    }
     
     /**
      * Obtiene todos los valores de configuración comercial filtrados por tipo.

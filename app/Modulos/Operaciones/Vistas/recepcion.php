@@ -286,12 +286,16 @@
             </div>
         </div>
 
+        <?php
+        $esCampoOS = (!empty($os['requiere_muestreo']) && $os['requiere_muestreo'] == 1) || !empty($os['tecnico_muestreo']);
+        $tipoMuestraSelect = $esCampoOS ? 'Campo' : 'Laboratorio';
+        ?>
         <div class="grid-3" style="margin-top: 10px;">
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Tipo / Origen de Muestra</label>
                 <select name="tipo_muestra" required class="form-control" style="background-color: #f8fafc; font-weight: 600; border-color: #93c5fd;">
-                    <option value="Laboratorio" selected>Laboratorio (MS-XXXX-YY) - Consecutivo Automático</option>
-                    <option value="Campo">Campo (CAM-YY-XXXX) - Muestreo In-Situ Inmutable</option>
+                    <option value="Campo" <?= $tipoMuestraSelect === 'Campo' ? 'selected' : '' ?>>Muestra en Campo (MC-XXXX-YY) - Salida de Técnicos</option>
+                    <option value="Laboratorio" <?= $tipoMuestraSelect === 'Laboratorio' ? 'selected' : '' ?>>Muestra en Sede (MS-XXXX-YY) - Entregada por Cliente</option>
                 </select>
             </div>
         </div>
@@ -751,7 +755,9 @@
         clon.querySelector('.lbl-n-muestra').innerText = '#' + muestraIndexCount;
         
         // Generar y asignar código correlativo dinámico para que no se repitan
-        const nextCode = 'MC-' + String(siguienteConsecutivoMuestra).padStart(3, '0') + '-' + anioActualMuestra;
+        const prefijoRec = '<?= $prefijoMuestraOS ?? ($esCampoOS ? "MC" : "MS") ?>';
+        const anio2DigRec = String(anioActualMuestra).slice(-2);
+        const nextCode = prefijoRec + '-' + String(siguienteConsecutivoMuestra).padStart(4, '0') + '-' + anio2DigRec;
         clon.querySelector('.input-codigo-campo').value = nextCode;
         clon.querySelector('.input-id-cilindro').value = nextCode;
         siguienteConsecutivoMuestra++;
