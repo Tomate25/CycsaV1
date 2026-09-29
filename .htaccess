@@ -17,7 +17,7 @@ Options -Indexes
     RewriteEngine On
 
     # Denegar acceso directo a código fuente y carpetas internas
-    RewriteRule ^(app|config|database|rutas|storage|almacenamiento|scratch|vendor|prisma|\.agents)(/.*)?$ - [F,L]
+    RewriteRule ^(app|config|database|rutas|storage|almacenamiento|scratch|vendor|prisma|\.agents|scripts|tests)(/.*)?$ - [F,L]
 
     # Mapeo directo de assets estáticos a la carpeta publico/
     RewriteRule ^(css|js|img|uploads)/(.*)$ publico/$1/$2 [L]

@@ -123,6 +123,7 @@ $app->enrutador->post('/ordenes-servicio/guardar-muestreo', [OrdenesServicioCont
 $app->enrutador->get('/ordenes-servicio/imprimir-checklist', [OrdenesServicioControlador::class, 'imprimirListaChequeo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/finalizar-muestreo', [OrdenesServicioControlador::class, 'finalizarMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/marcar-ingreso-directo', [OrdenesServicioControlador::class, 'marcarIngresoDirectoAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/aprobar', [OrdenesServicioControlador::class, 'aprobarOS'], [AuthMiddleware::class]);
 
 // 🔒 RUTAS DEL MÓDULO CONTABLE (REQUERIDO: SESIÓN Y PERMISO DE CONTABILIDAD)
 $app->enrutador->get('/contabilidad', function($peticion, $respuesta) {
@@ -131,15 +132,18 @@ $app->enrutador->get('/contabilidad', function($peticion, $respuesta) {
 $app->enrutador->get('/contabilidad/cuentas', [ContabilidadControlador::class, 'cuentas'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-cuenta', [ContabilidadControlador::class, 'guardarCuenta'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/cxc', [ContabilidadControlador::class, 'cxc'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
+$app->enrutador->get('/contabilidad/cxc/exportar', [ContabilidadControlador::class, 'exportarCxcCsv'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-cxc', [ContabilidadControlador::class, 'guardarCxc'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/pagar-cxc', [ContabilidadControlador::class, 'pagarCxc'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/cxp', [ContabilidadControlador::class, 'cxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
+$app->enrutador->get('/contabilidad/cxp/exportar', [ContabilidadControlador::class, 'exportarCxpCsv'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-cxp', [ContabilidadControlador::class, 'guardarCxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/pagar-cxp', [ContabilidadControlador::class, 'pagarCxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/bancos', [ContabilidadControlador::class, 'bancos'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-banco', [ContabilidadControlador::class, 'guardarBanco'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-transaccion', [ContabilidadControlador::class, 'guardarTransaccion'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/diario', [ContabilidadControlador::class, 'diario'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
+$app->enrutador->get('/contabilidad/diario/exportar', [ContabilidadControlador::class, 'exportarDiarioCsv'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-partida', [ContabilidadControlador::class, 'guardarPartida'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/sincronizar-diario', [ContabilidadControlador::class, 'sincronizarDiario'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/balance', [ContabilidadControlador::class, 'balance'], [AuthMiddleware::class, ContabilidadMiddleware::class]);

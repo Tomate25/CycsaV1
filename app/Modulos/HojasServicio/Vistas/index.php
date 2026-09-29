@@ -919,16 +919,17 @@
     const hsForm = document.getElementById('form-hoja-solicitud');
 
     let siguienteConsecutivoMuestra = 1;
+    let siguienteConsecutivoMuestraInicial = 1;
     let anioActualMuestra = new Date().getFullYear();
     let prefijoMuestraActual = 'MC';
     let anioActual2Digitos = String(new Date().getFullYear()).slice(-2);
 
-    // Detecta el máximo consecutivo usado en las filas actuales del tbody según el prefijo (MC o MS)
+    // Detecta el máximo consecutivo usado en las filas actuales del tbody en cualquier prefijo
     function recalcularConsecutivoMuestra(prefix = prefijoMuestraActual) {
         const tbody = document.getElementById('hs-tbody-muestras');
-        if (!tbody) return 1;
+        if (!tbody) return siguienteConsecutivoMuestraInicial;
         let max = 0;
-        const regex = new RegExp(`^${prefix}-(\\d+)-(\\d{2}|\\d{4})$`, 'i');
+        const regex = new RegExp(`^[A-Za-z]+-(\\d+)-(\\d{2}|\\d{4})$`, 'i');
         tbody.querySelectorAll('input[name="m_nombre[]"]').forEach(input => {
             const val = (input.value || '').trim();
             const m = val.match(regex);
@@ -937,7 +938,7 @@
                 if (num > max) max = num;
             }
         });
-        return max + 1;
+        return Math.max(max + 1, siguienteConsecutivoMuestraInicial);
     }
 
     // Variables de control para el modal de decisión
@@ -965,10 +966,10 @@
         cerrarModalDecisionMuestreo();
 
         if (requiereMuestreo) {
-            // Redirige a Programar Muestreo en Campo
-            window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
+            // Abrir directamente con prefijo MC en modo nueva hoja
+            abrirModalHojaSolicitud(idOS, codigoOS, 0, true, 'MC');
         } else {
-            // Ingreso directo: Marcar en BD y abrir modal RT-FM-13
+            // Ingreso directo: Marcar en BD y abrir modal RT-FM-13 con prefijo MS
             const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
             fetch('/Cycsa/publico/ordenes-servicio/marcar-ingreso-directo', {
                 method: 'POST',
@@ -983,7 +984,7 @@
             const btns = document.querySelectorAll(`button[data-id-os="${idOS}"]`);
             btns.forEach(b => b.setAttribute('data-estado-muestreo', 'no_aplica'));
 
-            abrirModalHojaSolicitud(idOS, codigoOS);
+            abrirModalHojaSolicitud(idOS, codigoOS, 0, true, 'MS');
         }
     }
 
@@ -1113,7 +1114,7 @@
     let idOSModalActual = 0;
     let codigoOSModalActual = '';
 
-    function abrirModalHojaSolicitud(idOS, code, idHoja = 0, esNueva = false) {
+    function abrirModalHojaSolicitud(idOS, code, idHoja = 0, esNueva = false, prefijo = '') {
         idOSModalActual = idOS;
         codigoOSModalActual = code;
         document.getElementById('hs_codigo_os_label').innerText = code;
@@ -1134,6 +1135,9 @@
         }
         if (esNueva) {
             url += '&nueva=1';
+        }
+        if (prefijo) {
+            url += '&prefijo=' + encodeURIComponent(prefijo);
         }
 
         fetch(url)
@@ -1266,27 +1270,33 @@
                 }
 
                 // 2. LLENAR FORMULARIO EDITABLE CYCSA-RT-FM-13
-                document.getElementById('hs_id_os').value = hoja.id_os;
-                document.getElementById('hs_codigo_documento').value = hoja.codigo_documento || 'CYCSA-RT-FM-13';
+                const elIdOs = document.getElementById('hs_id_os');
+                if (elIdOs) elIdOs.value = hoja.id_os || '';
+                const elCodDoc = document.getElementById('hs_codigo_documento');
+                if (elCodDoc) elCodDoc.value = hoja.codigo_documento || 'CYCSA-RT-FM-13';
                 const elReg = document.getElementById('hs_numero_registro');
                 if (elReg) elReg.value = hoja.numero_registro || '';
-                document.getElementById('hs_fecha_llegada').value = hoja.fecha_hora_llegada_laboratorio ? hoja.fecha_hora_llegada_laboratorio.replace(' ', 'T') : '';
-                document.getElementById('hs_nombre_empresa').value = hoja.nombre_empresa_o_cliente || '';
-                document.getElementById('hs_razon_social').value = hoja.razon_social || '';
-                document.getElementById('hs_direccion').value = hoja.direccion_proyecto || '';
-                document.getElementById('hs_telefono').value = hoja.telefono || '';
-                document.getElementById('hs_email').value = hoja.correo_electronico || '';
-                document.getElementById('hs_persona_entrega').value = hoja.nombre_persona_entrega_muestra || '';
-                document.getElementById('hs_procedencia').value = hoja.procedencia_punto_muestreo || '';
+                const elFechaLlegada = document.getElementById('hs_fecha_llegada');
+                if (elFechaLlegada) elFechaLlegada.value = hoja.fecha_hora_llegada_laboratorio ? hoja.fecha_hora_llegada_laboratorio.replace(' ', 'T') : '';
+                const elEmpresa = document.getElementById('hs_nombre_empresa');
+                if (elEmpresa) elEmpresa.value = hoja.nombre_empresa_o_cliente || '';
+                const elRazon = document.getElementById('hs_razon_social');
+                if (elRazon) elRazon.value = hoja.razon_social || '';
+                const elDir = document.getElementById('hs_direccion');
+                if (elDir) elDir.value = hoja.direccion_proyecto || '';
+                const elTel = document.getElementById('hs_telefono');
+                if (elTel) elTel.value = hoja.telefono || '';
+                const elEmail = document.getElementById('hs_email');
+                if (elEmail) elEmail.value = hoja.correo_electronico || '';
+                const elEntrega = document.getElementById('hs_persona_entrega');
+                if (elEntrega) elEntrega.value = hoja.nombre_persona_entrega_muestra || '';
+                const elProcedencia = document.getElementById('hs_procedencia');
+                if (elProcedencia) elProcedencia.value = hoja.procedencia_punto_muestreo || '';
                 const valToma = hoja.nombre_persona_toma_muestra || '';
-                document.getElementById('hs_persona_toma').value = valToma;
-
-                const selTec = document.getElementById('hs_select_tecnico_cycsa');
-                const tipoSelect = document.getElementById('hs_tipo_toma_select');
-                const wrapperTec = document.getElementById('wrapper_select_tecnico');
-
-                document.getElementById('hs_persona_toma').value = valToma || '';
-                document.getElementById('hs_fecha_toma').value = hoja.fecha_hora_toma_muestra ? hoja.fecha_hora_toma_muestra.replace(' ', 'T') : '';
+                const elPersonaToma = document.getElementById('hs_persona_toma');
+                if (elPersonaToma) elPersonaToma.value = valToma || '';
+                const elFechaToma = document.getElementById('hs_fecha_toma');
+                if (elFechaToma) elFechaToma.value = hoja.fecha_hora_toma_muestra ? hoja.fecha_hora_toma_muestra.replace(' ', 'T') : '';
                 
                 // Naturalezas
                 const natureList = (hoja.naturaleza_muestra || '').split(',').map(s => s.trim());
@@ -1295,33 +1305,54 @@
                 });
 
                 // Parámetros Concreto
-                document.getElementById('hs_req_resistencia_concreto').checked = parseInt(hoja.req_resistencia_concreto) === 1;
-                document.getElementById('hs_req_resistencia_adoquin').checked = parseInt(hoja.req_resistencia_adoquin) === 1;
-                document.getElementById('hs_req_resistencia_bloques').checked = parseInt(hoja.req_resistencia_bloques) === 1;
-                document.getElementById('hs_req_otros_concreto').value = hoja.req_otros_concreto || '';
+                const elConc = document.getElementById('hs_req_resistencia_concreto') || document.getElementById('hs_req_concreto');
+                if (elConc) elConc.checked = parseInt(hoja.req_resistencia_concreto) === 1;
+                const elAdo = document.getElementById('hs_req_resistencia_adoquin') || document.getElementById('hs_req_adoquin');
+                if (elAdo) elAdo.checked = parseInt(hoja.req_resistencia_adoquin) === 1;
+                const elBlo = document.getElementById('hs_req_resistencia_bloques') || document.getElementById('hs_req_bloques');
+                if (elBlo) elBlo.checked = parseInt(hoja.req_resistencia_bloques) === 1;
+                const elOtCon = document.getElementById('hs_req_otros_concreto');
+                if (elOtCon) elOtCon.value = hoja.req_otros_concreto || '';
 
                 // Parámetros Suelo
-                document.getElementById('hs_req_granulometria').checked = parseInt(hoja.req_granulometria) === 1;
-                document.getElementById('hs_req_limites_atterberg').checked = parseInt(hoja.req_limites_atterberg) === 1;
-                document.getElementById('hs_req_humedad').checked = parseInt(hoja.req_humedad) === 1;
-                document.getElementById('hs_req_resistencia_corte').checked = parseInt(hoja.req_resistencia_corte) === 1;
-                document.getElementById('hs_req_clasificacion_sucs_hr').checked = parseInt(hoja.req_clasificacion_sucs_hr) === 1;
-                document.getElementById('hs_req_proctor_sm').checked = parseInt(hoja.req_proctor_sm) === 1;
-                document.getElementById('hs_req_infiltracion').checked = parseInt(hoja.req_infiltracion) === 1;
-                document.getElementById('hs_req_cbr').checked = parseInt(hoja.req_cbr) === 1;
-                document.getElementById('hs_req_densidad').checked = parseInt(hoja.req_densidad) === 1;
-                document.getElementById('hs_req_otros_suelo').value = hoja.req_otros_suelo || '';
+                const elGran = document.getElementById('hs_req_granulometria');
+                if (elGran) elGran.checked = parseInt(hoja.req_granulometria) === 1;
+                const elLim = document.getElementById('hs_req_limites_atterberg') || document.getElementById('hs_req_limites');
+                if (elLim) elLim.checked = parseInt(hoja.req_limites_atterberg) === 1;
+                const elHum = document.getElementById('hs_req_humedad');
+                if (elHum) elHum.checked = parseInt(hoja.req_humedad) === 1;
+                const elCorte = document.getElementById('hs_req_resistencia_corte') || document.getElementById('hs_req_corte');
+                if (elCorte) elCorte.checked = parseInt(hoja.req_resistencia_corte) === 1;
+                const elSucs = document.getElementById('hs_req_clasificacion_sucs_hr') || document.getElementById('hs_req_sucs');
+                if (elSucs) elSucs.checked = parseInt(hoja.req_clasificacion_sucs_hr) === 1;
+                const elProc = document.getElementById('hs_req_proctor_sm') || document.getElementById('hs_req_proctor');
+                if (elProc) elProc.checked = parseInt(hoja.req_proctor_sm) === 1;
+                const elInf = document.getElementById('hs_req_infiltracion');
+                if (elInf) elInf.checked = parseInt(hoja.req_infiltracion) === 1;
+                const elCbr = document.getElementById('hs_req_cbr');
+                if (elCbr) elCbr.checked = parseInt(hoja.req_cbr) === 1;
+                const elDens = document.getElementById('hs_req_densidad');
+                if (elDens) elDens.checked = parseInt(hoja.req_densidad) === 1;
+                const elOtSuel = document.getElementById('hs_req_otros_suelo');
+                if (elOtSuel) elOtSuel.value = hoja.req_otros_suelo || '';
 
                 // Otros
-                document.getElementById('hs_req_otros_materiales').checked = parseInt(hoja.req_otros_materiales) === 1;
-                document.getElementById('hs_descripcion_otros').value = hoja.descripcion_otros_analisis || '';
+                const elOtMat = document.getElementById('hs_req_otros_materiales') || document.getElementById('hs_req_otros_mat');
+                if (elOtMat) elOtMat.checked = parseInt(hoja.req_otros_materiales) === 1;
+                const elDescOt = document.getElementById('hs_descripcion_otros');
+                if (elDescOt) elDescOt.value = hoja.descripcion_otros_analisis || '';
 
                 // Footer
-                document.getElementById('hs_analisis_adicionales').value = hoja.analisis_adicionales || '';
-                document.getElementById('hs_observaciones').value = hoja.observaciones || '';
-                document.getElementById('hs_nombre_recibe').value = hoja.nombre_recibe_cycsa || '';
-                document.getElementById('hs_firma_recibe_cycsa').checked = parseInt(hoja.firma_recibe_cycsa) === 1;
-                document.getElementById('hs_firma_cliente').checked = parseInt(hoja.firma_cliente) === 1;
+                const elAnAd = document.getElementById('hs_analisis_adicionales');
+                if (elAnAd) elAnAd.value = hoja.analisis_adicionales || '';
+                const elObs = document.getElementById('hs_observaciones');
+                if (elObs) elObs.value = hoja.observaciones || '';
+                const elRecibe = document.getElementById('hs_nombre_recibe');
+                if (elRecibe) elRecibe.value = hoja.nombre_recibe_cycsa || '';
+                const elFirmaRecibe = document.getElementById('hs_firma_recibe_cycsa');
+                if (elFirmaRecibe) elFirmaRecibe.checked = parseInt(hoja.firma_recibe_cycsa) === 1;
+                const elFirmaCli = document.getElementById('hs_firma_cliente');
+                if (elFirmaCli) elFirmaCli.checked = parseInt(hoja.firma_cliente) === 1;
 
                 // Especímenes / muestras
                 let muestras = [];
@@ -1333,6 +1364,8 @@
 
                 // Establecer prefijo automático: MC para campo, MS para laboratorio central
                 prefijoMuestraActual = data.prefijo_muestra || 'MC';
+                siguienteConsecutivoMuestra = parseInt(data.siguiente_consecutivo_muestra || 1, 10) || 1;
+                siguienteConsecutivoMuestraInicial = siguienteConsecutivoMuestra;
 
                 // Si ya existen muestras guardadas, cargarlas; de lo contrario pre-poblar las N muestras según programación
                 if (Array.isArray(muestras) && muestras.length > 0) {
@@ -1346,16 +1379,17 @@
                     const puntoMuestreo = hoja.procedencia_punto_muestreo || data.lugar_muestreo || data.os_referencia?.nombre_proyecto || '';
                     const primerEnsayo = (data.os_referencia?.ensayos && data.os_referencia.ensayos.length > 0) ? (data.os_referencia.ensayos[0].nombre_ensayo || data.os_referencia.ensayos[0].descripcion_ensayo || '') : '';
                     const desc = primerEnsayo ? (primerEnsayo.length > 50 ? primerEnsayo.substring(0, 50) + '...' : primerEnsayo) : ((prefijoMuestraActual === 'MC') ? 'Muestra tomada en campo' : 'Muestra entregada en laboratorio');
-                    let infoPunto = puntoMuestreo ? `Punto: ${puntoMuestreo}` : '';
+                    let infoPunto = puntoMuestreo ? `Ubicación: ${puntoMuestreo}` : '';
                     if (data.os_referencia?.nombre_proyecto && (!puntoMuestreo || !puntoMuestreo.includes(data.os_referencia.nombre_proyecto))) {
                         infoPunto += (infoPunto ? ' - ' : '') + `Proy: ${data.os_referencia.nombre_proyecto}`;
                     }
                     const info = infoPunto || ((prefijoMuestraActual === 'MC') ? 'Muestreo en Obra' : 'Recepción Lab Central');
-                    for (let i = 1; i <= cantSugerida; i++) {
-                        const consecutiveStr = String(i).padStart(4, '0');
+                    for (let i = 0; i < cantSugerida; i++) {
+                        const consecutiveStr = String(siguienteConsecutivoMuestra + i).padStart(4, '0');
                         const nom = `${prefijoMuestraActual}-${consecutiveStr}-${anioActual2Digitos}`;
                         agregarFilaMuestraModal(prefijoMuestraActual, nom, desc, info);
                     }
+                    siguienteConsecutivoMuestra += cantSugerida;
                 }
 
                 hsLoading.style.display = 'none';
@@ -1370,23 +1404,11 @@
 
     function cargarNuevaHojaEnModal() {
         if (!idOSModalActual) return;
-        abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true);
+        abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true, prefijoMuestraActual);
     }
 
     function cerrarModalHojaSolicitud() {
         modHS.style.display = 'none';
-    }
-
-
-    function resecuenciarMuestras(prefix = prefijoMuestraActual) {
-        const tbody = document.getElementById('hs-tbody-muestras');
-        if (!tbody) return;
-        let idx = 1;
-        tbody.querySelectorAll('input[name="m_nombre[]"]').forEach(input => {
-            const consecutiveStr = String(idx).padStart(4, '0');
-            input.value = `${prefix}-${consecutiveStr}-${anioActual2Digitos}`;
-            idx++;
-        });
     }
 
     function agregarFilaMuestraModal(tipo = null, nombre = '', desc = '', info = '') {
@@ -1399,6 +1421,7 @@
             const nextNum = recalcularConsecutivoMuestra(prefijo);
             const consecutiveStr = String(nextNum).padStart(4, '0');
             nombre = `${prefijo}-${consecutiveStr}-${anioActual2Digitos}`;
+            siguienteConsecutivoMuestra = nextNum + 1;
             if (desc === '') {
                 desc = (prefijo === 'MS') ? 'Muestra entregada en laboratorio' : 'Muestra tomada en campo';
             }
@@ -1410,7 +1433,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td style="padding:8px;">
-                <input type="text" name="m_nombre[]" value="${nombre}" readonly required class="form-control" style="font-size:12.5px; padding:6px 10px; font-weight:700; font-family:monospace; color:var(--cycsa-azul); background:#f8fafc; cursor:not-allowed; border-color:#cbd5e1;" title="Código consecutivo bloqueado por el sistema">
+                <input type="text" name="m_nombre[]" value="${nombre}" readonly required class="form-control" style="font-size:12.5px; padding:6px 10px; font-weight:700; font-family:monospace; color:var(--cycsa-azul); background:#f8fafc; cursor:not-allowed; border-color:#cbd5e1;" title="Código consecutivo asignado por el sistema">
             </td>
             <td style="padding:8px;">
                 <input type="text" name="m_desc[]" value="${desc}" class="form-control" style="font-size:12.5px; padding:6px 10px;" required placeholder="Ej: Columnas Eje C-3 / Banco de préstamo">
@@ -1427,26 +1450,39 @@
 
     function eliminarFilaMuestraModal(btn) {
         btn.closest('tr').remove();
-        resecuenciarMuestras();
+        siguienteConsecutivoMuestra = recalcularConsecutivoMuestra();
     }
 
     // Modal de Revisión por Supervisor
     const modRev = document.getElementById('modalRevision');
 
     function abrirModalRevision(id, code) {
-        document.getElementById('rev_id_os').value = id;
-        document.getElementById('rev_codigo_os').innerText = code;
-        document.getElementById('radio-muestreo-si').checked = false;
-        document.getElementById('radio-muestreo-no').checked = false;
-        document.getElementById('card-muestreo-si').style.borderColor = '#cbd5e1';
-        document.getElementById('card-muestreo-si').style.background = 'white';
-        document.getElementById('card-muestreo-no').style.borderColor = '#cbd5e1';
-        document.getElementById('card-muestreo-no').style.background = 'white';
+        const elRevId = document.getElementById('rev_id_os');
+        if (elRevId) elRevId.value = id;
+        const elRevCod = document.getElementById('rev_codigo_os');
+        if (elRevCod) elRevCod.innerText = code;
+        const elRadSi = document.getElementById('radio-muestreo-si');
+        if (elRadSi) elRadSi.checked = false;
+        const elRadNo = document.getElementById('radio-muestreo-no');
+        if (elRadNo) elRadNo.checked = false;
+        const elCardSi = document.getElementById('card-muestreo-si');
+        if (elCardSi) {
+            elCardSi.style.borderColor = '#cbd5e1';
+            elCardSi.style.background = 'white';
+        }
+        const elCardNo = document.getElementById('card-muestreo-no');
+        if (elCardNo) {
+            elCardNo.style.borderColor = '#cbd5e1';
+            elCardNo.style.background = 'white';
+        }
         
-        document.getElementById('btn-aprobar-submit').style.display = 'none';
-        document.getElementById('group-motivo-obs').style.display = 'none';
-        document.getElementById('rev_motivo').value = '';
-        modRev.style.display = 'block';
+        const elBtnAprobar = document.getElementById('btn-aprobar-submit');
+        if (elBtnAprobar) elBtnAprobar.style.display = 'none';
+        const elGroupMotivo = document.getElementById('group-motivo-obs');
+        if (elGroupMotivo) elGroupMotivo.style.display = 'none';
+        const elRevMotivo = document.getElementById('rev_motivo');
+        if (elRevMotivo) elRevMotivo.value = '';
+        if (modRev) modRev.style.display = 'block';
 
         // Pre-seleccionar SÍ o NO requiere muestreo según lo indicado en la Hoja de Servicio
         fetch('/Cycsa/publico/hojas-servicio/datos?id_os=' + id)

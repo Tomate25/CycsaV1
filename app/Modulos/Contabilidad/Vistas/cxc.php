@@ -1,14 +1,12 @@
 <?php
 // Cuentas por Cobrar (CXC) View
-// Calcular totales
-$totalPendiente = 0;
-$totalCobrado = 0;
-$totalRegistrado = 0;
-foreach ($cxcList as $item) {
-    $totalPendiente += $item['saldo'];
-    $totalCobrado += ($item['monto'] - $item['saldo']);
-    $totalRegistrado += $item['monto'];
-}
+// Totales y métricas de antigüedad provistas por el modelo
+$totalPendiente = $resumenAntiguedad['total_saldo_pendiente'] ?? 0;
+$totalCobrado = $resumenAntiguedad['total_cobrado'] ?? 0;
+$totalRegistrado = $resumenAntiguedad['total_registrado'] ?? 0;
+$totalVencido = $resumenAntiguedad['total_vencido'] ?? 0;
+$porcentajeVencido = $resumenAntiguedad['porcentaje_vencido'] ?? 0;
+$filtroAntiguedad = $filtroAntiguedad ?? 'todas';
 ?>
 <style>
     .tabla-cycsa { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
@@ -21,9 +19,34 @@ foreach ($cxcList as $item) {
     .badge-parcial { background-color: #dbeafe; color: #2563eb; }
     .badge-pagado { background-color: #dcfce7; color: #166534; }
     .badge-vencido { background-color: #fee2e2; color: #dc2626; }
+
+    /* Badges de Antigüedad y Mora */
+    .badge-ant { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+    .badge-ant-corriente { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .badge-ant-1-30 { background-color: #fefce8; color: #b45309; border: 1px solid #fde68a; }
+    .badge-ant-31-60 { background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+    .badge-ant-mas-60 { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 700; }
+    .badge-ant-pagado { background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+    /* Aging Cards Grid */
+    .aging-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .aging-card { background: #ffffff; border-radius: 10px; padding: 14px 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02); position: relative; overflow: hidden; border-left-width: 4px; }
+    .aging-card.corriente { border-left-color: #10b981; }
+    .aging-card.mora-1-30 { border-left-color: #f59e0b; }
+    .aging-card.mora-31-60 { border-left-color: #f97316; }
+    .aging-card.mora-mas-60 { border-left-color: #ef4444; }
+    .aging-card.vencido-total { border-left-color: #b91c1c; background: #fffbfa; }
+
+    /* Quick Aging Filter Bar */
+    .aging-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; background: #f8fafc; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .aging-filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 12.5px; font-weight: 600; color: #475569; background: #ffffff; border: 1px solid #cbd5e1; transition: all 0.2s; }
+    .aging-filter-chip:hover { border-color: var(--cycsa-azul); color: var(--cycsa-azul); }
+    .aging-filter-chip.active { background: var(--cycsa-azul); color: #ffffff; border-color: var(--cycsa-azul); }
+    .aging-filter-chip .chip-count { background: rgba(0,0,0,0.08); padding: 1px 6px; border-radius: 10px; font-size: 11px; }
+    .aging-filter-chip.active .chip-count { background: rgba(255,255,255,0.25); color: #ffffff; }
     
-    .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
-    .kpi-card { background: white; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .kpi-card { background: white; padding: 18px 20px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
     .kpi-icon { width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
     
     .modal-premium { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
@@ -65,21 +88,29 @@ foreach ($cxcList as $item) {
     <div class="header-flex" style="margin-bottom: 20px;">
         <div>
             <h2 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700;">Cuentas por Cobrar (CXC)</h2>
-            <p style="color: #64748b; margin-top: 5px; font-size: 14px;">Administración de facturas y cobros pendientes de clientes.</p>
+            <p style="color: #64748b; margin-top: 5px; font-size: 14px;">Administración de facturas, análisis de antigüedad de saldos y gestión de cobranza.</p>
         </div>
         
-        <div class="actions-flex">
-            <!-- Buscador -->
+        <div class="actions-flex" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <!-- Buscador con conservación de filtro de antigüedad -->
             <form method="GET" action="/Cycsa/publico/contabilidad/cxc" style="display: flex;">
-                <input type="text" name="q" placeholder="Buscar por cliente o factura..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" style="padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px 0 0 6px; font-family: 'Inter', sans-serif; width: 250px; outline: none; font-size: 14px;">
-                <button type="submit" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-left: none; padding: 10px 18px; border-radius: 0 6px 6px 0; cursor: pointer; color: #475569; font-size: 14px;"><i class="fa-solid fa-magnifying-glass"></i></button>
+                <input type="text" name="q" placeholder="Buscar por cliente o factura..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" style="padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px 0 0 6px; font-family: 'Inter', sans-serif; width: 230px; outline: none; font-size: 14px;">
+                <?php if(!empty($filtroAntiguedad) && $filtroAntiguedad !== 'todas'): ?>
+                    <input type="hidden" name="antiguedad" value="<?= htmlspecialchars($filtroAntiguedad, ENT_QUOTES, 'UTF-8') ?>">
+                <?php endif; ?>
+                <button type="submit" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-left: none; padding: 10px 16px; border-radius: 0 6px 6px 0; cursor: pointer; color: #475569; font-size: 14px;"><i class="fa-solid fa-magnifying-glass"></i></button>
                 <?php if(!empty($busqueda)): ?>
-                    <a href="/Cycsa/publico/contabilidad/cxc" style="margin-left: 10px; color: var(--cycsa-rojo); text-decoration: none; padding-top: 10px; font-size: 14px; font-weight: 500;"><i class="fa-solid fa-xmark"></i> Limpiar</a>
+                    <a href="/Cycsa/publico/contabilidad/cxc?antiguedad=<?= urlencode($filtroAntiguedad) ?>" style="margin-left: 8px; color: var(--cycsa-rojo); text-decoration: none; padding-top: 10px; font-size: 13.5px; font-weight: 500;"><i class="fa-solid fa-xmark"></i> Limpiar</a>
                 <?php endif; ?>
             </form>
 
+            <!-- Botón de Exportación preparado para TAREA-022 (ChatGPT CLI) -->
+            <a href="/Cycsa/publico/contabilidad/cxc/exportar<?= !empty($busqueda) ? '?q=' . urlencode($busqueda) : '' ?><?= ($filtroAntiguedad !== 'todas') ? (!empty($busqueda) ? '&' : '?') . 'antiguedad=' . urlencode($filtroAntiguedad) : '' ?>" class="btn-exportar" style="background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; transition: background 0.2s;" title="Exportar reporte de cobranza a Excel / CSV">
+                <i class="fa-solid fa-file-excel"></i> Exportar
+            </a>
+
             <?php if (tienePermiso('contabilidad', 'crear_editar')): ?>
-            <button id="btnAbrirModal" style="background: var(--cycsa-azul); color: white; border: none; padding: 11px 22px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: background 0.3s; margin-left: 10px; font-size: 14px;">
+            <button id="btnAbrirModal" style="background: var(--cycsa-azul); color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: background 0.3s; font-size: 13.5px;">
                 <i class="fa-solid fa-plus"></i> Registrar CXC
             </button>
             <?php endif; ?>
@@ -97,7 +128,7 @@ foreach ($cxcList as $item) {
         <a href="/Cycsa/publico/contabilidad/resultados" class="tab-link" style="padding: 8px 14px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 13.5px; background-color: #f1f5f9; color: #475569;"><i class="fa-solid fa-chart-line"></i> Estado de Resultados</a>
     </div>
 
-    <!-- KPIs -->
+    <!-- KPIs Globales -->
     <div class="kpi-container">
         <div class="kpi-card">
             <div class="kpi-icon" style="background-color: #e0e7ff; color: #4338ca;"><i class="fa-solid fa-file-invoice"></i></div>
@@ -122,7 +153,124 @@ foreach ($cxcList as $item) {
         </div>
     </div>
 
-    <!-- Tabla de Cuentas por Cobrar -->
+    <!-- Panel de Antigüedad de Saldos / Aging Analysis -->
+    <div style="margin-bottom: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 12.5px; font-weight: 700; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; display: flex; align-items: center; gap: 7px;">
+                <i class="fa-solid fa-chart-pie" style="color: var(--cycsa-azul);"></i> Desglose de Antigüedad de Cartera
+            </span>
+            <span style="font-size: 12px; color: #64748b; background: #fff1f2; padding: 4px 10px; border-radius: 6px; border: 1px solid #fecdd3;">
+                Riesgo de Cartera Vencida: <strong style="color: #be123c;"><?= number_format($porcentajeVencido, 1) ?>%</strong> de la deuda total
+            </span>
+        </div>
+
+        <div class="aging-grid">
+            <!-- Al Día / Corriente -->
+            <div class="aging-card corriente">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #047857;">Al Día / Corriente</div>
+                        <div style="font-size: 17px; font-weight: 800; color: #065f46; margin-top: 3px;">C$ <?= number_format($resumenAntiguedad['total_corriente'] ?? 0, 2, '.', ',') ?></div>
+                    </div>
+                    <span style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 12px;">
+                        <?= (int)($resumenAntiguedad['cant_corriente'] ?? 0) ?> doc(s)
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: #6b7280; margin-top: 6px;">Crédito vigente en plazo</div>
+            </div>
+
+            <!-- Mora 1 - 30 Días -->
+            <div class="aging-card mora-1-30">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #b45309;">Mora 1 - 30 Días</div>
+                        <div style="font-size: 17px; font-weight: 800; color: #92400e; margin-top: 3px;">C$ <?= number_format($resumenAntiguedad['total_mora_1_30'] ?? 0, 2, '.', ',') ?></div>
+                    </div>
+                    <span style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 12px;">
+                        <?= (int)($resumenAntiguedad['cant_1_30'] ?? 0) ?> doc(s)
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: #6b7280; margin-top: 6px;">Recordatorio inicial</div>
+            </div>
+
+            <!-- Mora 31 - 60 Días -->
+            <div class="aging-card mora-31-60">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #c2410c;">Mora 31 - 60 Días</div>
+                        <div style="font-size: 17px; font-weight: 800; color: #9a3412; margin-top: 3px;">C$ <?= number_format($resumenAntiguedad['total_mora_31_60'] ?? 0, 2, '.', ',') ?></div>
+                    </div>
+                    <span style="background: #ffedd5; color: #9a3412; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 12px;">
+                        <?= (int)($resumenAntiguedad['cant_31_60'] ?? 0) ?> doc(s)
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: #6b7280; margin-top: 6px;">Gestión de cobranza activa</div>
+            </div>
+
+            <!-- Mora +60 Días -->
+            <div class="aging-card mora-mas-60">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #b91c1c;">Mora +60 Días</div>
+                        <div style="font-size: 17px; font-weight: 800; color: #991b1b; margin-top: 3px;">C$ <?= number_format($resumenAntiguedad['total_mora_mas_60'] ?? 0, 2, '.', ',') ?></div>
+                    </div>
+                    <span style="background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 12px;">
+                        <?= (int)($resumenAntiguedad['cant_mas_60'] ?? 0) ?> doc(s)
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: #6b7280; margin-top: 6px;">Cobranza crítica / legal</div>
+            </div>
+
+            <!-- Total Vencido Consolidado -->
+            <div class="aging-card vencido-total">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #dc2626;">Total Vencido</div>
+                        <div style="font-size: 17px; font-weight: 800; color: #dc2626; margin-top: 3px;">C$ <?= number_format($totalVencido, 2, '.', ',') ?></div>
+                    </div>
+                    <span style="background: #fee2e2; color: #dc2626; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 12px;">
+                        <?= (int)($resumenAntiguedad['cant_vencido'] ?? 0) ?> doc(s)
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: #b91c1c; margin-top: 6px; font-weight: 600;">Saldo en mora acumulado</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de Filtros Rápidos por Antigüedad -->
+    <div class="aging-filter-bar">
+        <span style="font-size: 12px; font-weight: 700; color: #64748b; margin-right: 4px; text-transform: uppercase;">
+            <i class="fa-solid fa-filter"></i> Cubeta:
+        </span>
+        <a href="?q=<?= urlencode($busqueda ?? '') ?>&antiguedad=todas" class="aging-filter-chip <?= ($filtroAntiguedad === 'todas') ? 'active' : '' ?>">
+            Todas las Cuentas
+        </a>
+        <a href="?q=<?= urlencode($busqueda ?? '') ?>&antiguedad=corriente" class="aging-filter-chip <?= ($filtroAntiguedad === 'corriente') ? 'active' : '' ?>">
+            <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Al Día / Corriente
+            <span class="chip-count"><?= (int)($resumenAntiguedad['cant_corriente'] ?? 0) ?></span>
+        </a>
+        <a href="?q=<?= urlencode($busqueda ?? '') ?>&antiguedad=1_30" class="aging-filter-chip <?= ($filtroAntiguedad === '1_30') ? 'active' : '' ?>">
+            <i class="fa-solid fa-clock" style="color: #f59e0b;"></i> Mora 1-30d
+            <span class="chip-count"><?= (int)($resumenAntiguedad['cant_1_30'] ?? 0) ?></span>
+        </a>
+        <a href="?q=<?= urlencode($busqueda ?? '') ?>&antiguedad=31_60" class="aging-filter-chip <?= ($filtroAntiguedad === '31_60') ? 'active' : '' ?>">
+            <i class="fa-solid fa-triangle-exclamation" style="color: #f97316;"></i> Mora 31-60d
+            <span class="chip-count"><?= (int)($resumenAntiguedad['cant_31_60'] ?? 0) ?></span>
+        </a>
+        <a href="?q=<?= urlencode($busqueda ?? '') ?>&antiguedad=mas_60" class="aging-filter-chip <?= ($filtroAntiguedad === 'mas_60') ? 'active' : '' ?>">
+            <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> Mora +60d
+            <span class="chip-count"><?= (int)($resumenAntiguedad['cant_mas_60'] ?? 0) ?></span>
+        </a>
+        <a href="?q=<?= urlencode($busqueda ?? '') ?>&antiguedad=vencido" class="aging-filter-chip <?= ($filtroAntiguedad === 'vencido') ? 'active' : '' ?>">
+            <i class="fa-solid fa-fire" style="color: #dc2626;"></i> Todo Vencido
+            <span class="chip-count"><?= (int)($resumenAntiguedad['cant_vencido'] ?? 0) ?></span>
+        </a>
+        <a href="?q=<?= urlencode($busqueda ?? '') ?>&antiguedad=pagado" class="aging-filter-chip <?= ($filtroAntiguedad === 'pagado') ? 'active' : '' ?>">
+            <i class="fa-solid fa-check-double"></i> Pagadas
+        </a>
+    </div>
+
+    <!-- Tabla de Cuentas por Cobrar con Antigüedad -->
     <div style="overflow-x: auto;">
         <table class="tabla-cycsa">
             <thead>
@@ -133,8 +281,8 @@ foreach ($cxcList as $item) {
                     <th>Monto Original</th>
                     <th>Saldo Pendiente</th>
                     <th>Estado</th>
-                    <th>Emisión</th>
-                    <th>Vencimiento</th>
+                    <th>Emisión / Vencimiento</th>
+                    <th>Antigüedad / Mora</th>
                     <?php if (tienePermiso('contabilidad', 'crear_editar')): ?>
                     <th style="text-align: right;">Acciones</th>
                     <?php endif; ?>
@@ -160,8 +308,23 @@ foreach ($cxcList as $item) {
                     <td>
                         <span class="badge-estado <?= $estClass ?>"><?= htmlspecialchars($cxc['estado'], ENT_QUOTES, 'UTF-8') ?></span>
                     </td>
-                    <td style="font-size: 13px; color: #64748b;"><?= htmlspecialchars($cxc['fecha_emision'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td style="font-size: 13px; color: #64748b;"><?= htmlspecialchars($cxc['fecha_vencimiento'] ?? 'Sin Venc.', ENT_QUOTES, 'UTF-8') ?></td>
+                    <td style="font-size: 12.5px; color: #475569;">
+                        <div><strong><?= htmlspecialchars($cxc['fecha_emision'], ENT_QUOTES, 'UTF-8') ?></strong></div>
+                        <div style="color: #64748b; font-size: 11.5px; margin-top: 2px;">
+                            Vence: <?= htmlspecialchars($cxc['fecha_vencimiento_calculada'] ?? ($cxc['fecha_vencimiento'] ?? '—'), ENT_QUOTES, 'UTF-8') ?>
+                            <?php if (!empty($cxc['tiene_vencimiento_explicito'])): ?>
+                                <span title="Fecha de vencimiento establecida contractualmente" style="color: var(--cycsa-azul); margin-left: 2px;"><i class="fa-solid fa-calendar-check"></i></span>
+                            <?php else: ?>
+                                <span title="Plazo estimado comercial a 30 días" style="color: #94a3b8; margin-left: 2px;"><i class="fa-regular fa-calendar"></i></span>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge-ant <?= htmlspecialchars($cxc['antiguedad_badge_class'] ?? 'badge-ant-corriente', ENT_QUOTES, 'UTF-8') ?>">
+                            <i class="<?= htmlspecialchars($cxc['antiguedad_icono'] ?? 'fa-solid fa-circle-check', ENT_QUOTES, 'UTF-8') ?>"></i>
+                            <?= htmlspecialchars($cxc['antiguedad_label'] ?? 'Al Día', ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+                    </td>
                     <?php if (tienePermiso('contabilidad', 'crear_editar')): ?>
                     <td style="text-align: right;">
                         <?php if ($cxc['saldo'] > 0): ?>
@@ -178,7 +341,10 @@ foreach ($cxcList as $item) {
                 
                 <?php if (empty($cxcList)): ?>
                 <tr>
-                    <td colspan="9" style="text-align: center; padding: 40px; color: #64748b;">No se encontraron cuentas por cobrar registradas.</td>
+                    <td colspan="9" style="text-align: center; padding: 40px; color: #64748b;">
+                        <i class="fa-solid fa-inbox" style="font-size: 28px; color: #cbd5e1; display: block; margin-bottom: 8px;"></i>
+                        No se encontraron cuentas por cobrar para el criterio o cubeta seleccionada.
+                    </td>
                 </tr>
                 <?php endif; ?>
             </tbody>

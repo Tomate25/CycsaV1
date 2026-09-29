@@ -6,6 +6,7 @@ use Cycsa\Nucleo\ControladorBase;
 use Cycsa\Nucleo\Peticion;
 use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo;
+use Cycsa\Modulos\Contabilidad\Servicios\ExportadorCsv;
 use Cycsa\Modulos\Clientes\Modelos\ClienteModelo;
 
 class ContabilidadControlador extends ControladorBase {
@@ -101,15 +102,25 @@ class ContabilidadControlador extends ControladorBase {
 
         $modelo = new ContabilidadModelo();
         $clienteModelo = new ClienteModelo();
-        $busqueda = $_GET['q'] ?? '';
+        $busqueda = trim($_GET['q'] ?? '');
+        $antiguedad = trim($_GET['antiguedad'] ?? '');
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
+        // Obtener listado base para métricas de resumen
+        $todasCxc = $modelo->obtenerCxc($busqueda);
+        $resumenAntiguedad = $modelo->obtenerResumenAntiguedadCxc($todasCxc);
+
+        // Filtrar si el usuario seleccionó una cubeta de antigüedad específica
+        $cxcList = ($antiguedad !== '') ? $modelo->obtenerCxc($busqueda, $antiguedad) : $todasCxc;
+
         $this->renderizar('contabilidad/vistas/cxc', [
             'titulo' => 'Cuentas por Cobrar (CXC) - Cycsa',
-            'cxcList' => $modelo->obtenerCxc($busqueda),
+            'cxcList' => $cxcList,
+            'resumenAntiguedad' => $resumenAntiguedad,
+            'filtroAntiguedad' => $antiguedad,
             'clientes' => $clienteModelo->obtenerTodos(),
             'cuentasDetalle' => $modelo->obtenerCuentasDetalle(),
             'bancos' => $modelo->obtenerCuentasBancarias(),
@@ -451,6 +462,123 @@ class ContabilidadControlador extends ControladorBase {
         }
 
         $respuesta->redirigir('/Cycsa/publico/contabilidad/diario');
+    }
+
+    // ==========================================
+    // Exportaciones CSV para conciliación
+    // ==========================================
+
+    public function exportarCxcCsv(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $busqueda = trim((string)($_GET['q'] ?? ''));
+        $antiguedad = trim((string)($_GET['antiguedad'] ?? ''));
+        $filtrosPermitidos = ['', 'corriente', '1_30', '31_60', 'mas_60', 'pagado', 'vencido'];
+        if (!in_array($antiguedad, $filtrosPermitidos, true)) {
+            $antiguedad = '';
+        }
+
+        $filas = [];
+        foreach ((new ContabilidadModelo())->obtenerCxc($busqueda, $antiguedad) as $cxc) {
+            $filas[] = [
+                $cxc['cliente_nombre'] ?? 'Cliente desconocido',
+                $cxc['factura_numero'] ?? '',
+                trim(($cxc['cuenta_codigo'] ?? '') . ' - ' . ($cxc['cuenta_nombre'] ?? ''), ' -'),
+                number_format((float)($cxc['monto'] ?? 0), 2, '.', ''),
+                number_format((float)($cxc['saldo'] ?? 0), 2, '.', ''),
+                $cxc['estado'] ?? '',
+                $cxc['fecha_emision'] ?? '',
+                $cxc['fecha_vencimiento_calculada'] ?? ($cxc['fecha_vencimiento'] ?? ''),
+                $cxc['antiguedad_label'] ?? '',
+                $cxc['notas'] ?? '',
+            ];
+        }
+
+        $this->enviarCsv(
+            'cuentas_por_cobrar_' . date('Ymd_His') . '.csv',
+            ['Cliente', 'Factura', 'Cuenta contable', 'Monto original', 'Saldo pendiente', 'Estado', 'Fecha de emisión', 'Fecha de vencimiento', 'Antigüedad', 'Notas'],
+            $filas
+        );
+    }
+
+    public function exportarCxpCsv(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $busqueda = trim((string)($_GET['q'] ?? ''));
+        $filas = [];
+        foreach ((new ContabilidadModelo())->obtenerCxp($busqueda) as $cxp) {
+            $filas[] = [
+                $cxp['proveedor_nombre'] ?? '',
+                $cxp['factura_numero'] ?? '',
+                trim(($cxp['cuenta_codigo'] ?? '') . ' - ' . ($cxp['cuenta_nombre'] ?? ''), ' -'),
+                number_format((float)($cxp['monto'] ?? 0), 2, '.', ''),
+                number_format((float)($cxp['saldo'] ?? 0), 2, '.', ''),
+                $cxp['estado'] ?? '',
+                $cxp['fecha_emision'] ?? '',
+                $cxp['fecha_vencimiento'] ?? '',
+                $cxp['notas'] ?? '',
+            ];
+        }
+
+        $this->enviarCsv(
+            'cuentas_por_pagar_' . date('Ymd_His') . '.csv',
+            ['Proveedor', 'Factura', 'Cuenta contable', 'Monto original', 'Saldo pendiente', 'Estado', 'Fecha de emisión', 'Fecha de vencimiento', 'Notas'],
+            $filas
+        );
+    }
+
+    public function exportarDiarioCsv(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $busqueda = trim((string)($_GET['q'] ?? ''));
+        $modelo = new ContabilidadModelo();
+        $filas = [];
+
+        foreach ($modelo->obtenerAsientos($busqueda) as $asiento) {
+            $referencia = $modelo->obtenerReferenciaOrigen($asiento['origen'], $asiento['origen_id']);
+            $banco = $modelo->obtenerBancoAfectado((int)$asiento['id']);
+            $detalles = $modelo->obtenerAsientoDetalles((int)$asiento['id']);
+
+            if ($detalles === []) {
+                $detalles = [[]];
+            }
+
+            foreach ($detalles as $detalle) {
+                $filas[] = [
+                    $asiento['num_partida'] ?? '',
+                    $asiento['fecha'] ?? '',
+                    $asiento['concepto'] ?? '',
+                    $asiento['origen'] ?? '',
+                    $referencia['tercero'] ?? '',
+                    $referencia['documento'] ?? '',
+                    $banco ? trim(($banco['banco_nombre'] ?? '') . ' - ' . ($banco['numero_cuenta'] ?? ''), ' -') : '',
+                    $detalle['cuenta_codigo'] ?? '',
+                    $detalle['cuenta_nombre'] ?? '',
+                    $detalle['categoria'] ?? '',
+                    number_format((float)($detalle['debe'] ?? 0), 2, '.', ''),
+                    number_format((float)($detalle['haber'] ?? 0), 2, '.', ''),
+                ];
+            }
+        }
+
+        $this->enviarCsv(
+            'libro_diario_' . date('Ymd_His') . '.csv',
+            ['Partida', 'Fecha', 'Concepto', 'Origen', 'Tercero', 'Documento', 'Banco/Caja', 'Código de cuenta', 'Nombre de cuenta', 'Categoría', 'Debe', 'Haber'],
+            $filas
+        );
+    }
+
+    private function enviarCsv(string $nombreArchivo, array $encabezados, array $filas): void {
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        header('X-Content-Type-Options: nosniff');
+
+        echo ExportadorCsv::generar($encabezados, $filas);
+        exit;
     }
 
     // ==========================================

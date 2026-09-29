@@ -90,7 +90,7 @@ class ContabilidadModelo extends ModeloBase {
     // 2. Cuentas por Cobrar (CXC)
     // ==========================================
 
-    public function obtenerCxc(string $busqueda = ''): array {
+    public function obtenerCxc(string $busqueda = '', string $filtroAntiguedad = ''): array {
         $sql = "SELECT cxc.*, cl.nombre_razon_social AS cliente_nombre, cc.nombre AS cuenta_nombre, cc.codigo AS cuenta_codigo
                 FROM cuentas_por_cobrar cxc
                 LEFT JOIN clientes cl ON cxc.id_cliente = cl.id
@@ -113,8 +113,184 @@ class ContabilidadModelo extends ModeloBase {
             $stmt = $this->db->prepare($sql);
             $stmt->execute();
         }
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Procesar antigüedad para cada cuenta por cobrar
+        $procesadas = [];
+        foreach ($filas as $fila) {
+            $proc = $this->procesarAntiguedadFila($fila);
+            if ($filtroAntiguedad !== '') {
+                if ($filtroAntiguedad === 'vencido') {
+                    if (($proc['dias_mora'] ?? 0) <= 0 || ($proc['saldo'] ?? 0) <= 0) {
+                        continue;
+                    }
+                } elseif ($proc['antiguedad_categoria'] !== $filtroAntiguedad) {
+                    continue;
+                }
+            }
+            $procesadas[] = $proc;
+        }
+
+        return $procesadas;
     }
+
+    /**
+     * Procesa y clasifica una cuenta por cobrar en cubetas de antigüedad (Al día, 1-30d, 31-60d, +60d).
+     */
+    public function procesarAntiguedadFila(array $cxc): array {
+        $hoy = date('Y-m-d');
+        $saldo = (float)($cxc['saldo'] ?? 0);
+        $estado = $cxc['estado'] ?? 'Pendiente';
+        $tieneVencimientoExplicito = !empty($cxc['fecha_vencimiento']);
+
+        // Determinar fecha de vencimiento real o comercial (30 días estándar si no se asignó fecha específica)
+        $fechaEmision = !empty($cxc['fecha_emision']) ? substr($cxc['fecha_emision'], 0, 10) : $hoy;
+        if ($tieneVencimientoExplicito) {
+            $fechaVenc = substr($cxc['fecha_vencimiento'], 0, 10);
+        } else {
+            $fechaVenc = date('Y-m-d', strtotime($fechaEmision . ' + 30 days'));
+        }
+
+        $cxc['fecha_vencimiento_calculada'] = $fechaVenc;
+        $cxc['tiene_vencimiento_explicito'] = $tieneVencimientoExplicito;
+
+        if ($saldo <= 0.001 || $estado === 'Pagado') {
+            $cxc['dias_mora'] = 0;
+            $cxc['dias_faltantes'] = 0;
+            $cxc['antiguedad_categoria'] = 'pagado';
+            $cxc['antiguedad_cat'] = 'pagado';
+            $cxc['antiguedad_label'] = 'Pagado';
+            $cxc['antiguedad_badge_class'] = 'badge-ant-pagado';
+            $cxc['antiguedad_icono'] = 'fa-solid fa-check-double';
+            return $cxc;
+        }
+
+        $diffSegundos = strtotime($hoy) - strtotime($fechaVenc);
+        $diasDiff = (int)floor($diffSegundos / 86400);
+
+        if ($diasDiff <= 0) {
+            // Corriente / Al Día
+            $diasFaltantes = abs($diasDiff);
+            $cxc['dias_mora'] = 0;
+            $cxc['dias_faltantes'] = $diasFaltantes;
+            $cxc['antiguedad_categoria'] = 'corriente';
+            $cxc['antiguedad_cat'] = 'corriente';
+            $cxc['antiguedad_label'] = ($diasFaltantes === 0) ? 'Vence Hoy' : "Al Día ({$diasFaltantes}d)";
+            $cxc['antiguedad_badge_class'] = 'badge-ant-corriente';
+            $cxc['antiguedad_icono'] = 'fa-solid fa-circle-check';
+        } else {
+            // Vencido en mora
+            $diasMora = $diasDiff;
+            $cxc['dias_mora'] = $diasMora;
+            $cxc['dias_faltantes'] = 0;
+
+            if ($diasMora <= 30) {
+                $cxc['antiguedad_categoria'] = '1_30';
+                $cxc['antiguedad_cat'] = '1_30';
+                $cxc['antiguedad_label'] = "Mora {$diasMora}d (1-30)";
+                $cxc['antiguedad_badge_class'] = 'badge-ant-1-30';
+                $cxc['antiguedad_icono'] = 'fa-solid fa-clock';
+            } elseif ($diasMora <= 60) {
+                $cxc['antiguedad_categoria'] = '31_60';
+                $cxc['antiguedad_cat'] = '31_60';
+                $cxc['antiguedad_label'] = "Mora {$diasMora}d (31-60)";
+                $cxc['antiguedad_badge_class'] = 'badge-ant-31-60';
+                $cxc['antiguedad_icono'] = 'fa-solid fa-triangle-exclamation';
+            } else {
+                $cxc['antiguedad_categoria'] = 'mas_60';
+                $cxc['antiguedad_cat'] = 'mas_60';
+                $cxc['antiguedad_label'] = "Mora {$diasMora}d (+60)";
+                $cxc['antiguedad_badge_class'] = 'badge-ant-mas-60';
+                $cxc['antiguedad_icono'] = 'fa-solid fa-triangle-exclamation';
+            }
+        }
+
+        return $cxc;
+    }
+
+    /**
+     * Genera un resumen analítico con las métricas consolidadas de antigüedad de saldos.
+     */
+    public function obtenerResumenAntiguedadCxc(array $todasCxc): array {
+        $resumen = [
+            'total_registrado' => 0.0,
+            'total_cobrado' => 0.0,
+            'total_saldo_pendiente' => 0.0,
+            'total_corriente' => 0.0,
+            'conteo_corriente' => 0,
+            'cant_corriente' => 0,
+            'total_mora_1_30' => 0.0,
+            'conteo_mora_1_30' => 0,
+            'cant_1_30' => 0,
+            'total_mora_31_60' => 0.0,
+            'conteo_mora_31_60' => 0,
+            'cant_31_60' => 0,
+            'total_mora_mas_60' => 0.0,
+            'conteo_mora_mas_60' => 0,
+            'cant_mas_60' => 0,
+            'total_vencido' => 0.0,
+            'conteo_vencido' => 0,
+            'cant_vencido' => 0,
+            'total_pagado' => 0.0,
+            'conteo_pagado' => 0,
+            'cant_pagado' => 0,
+            'porcentaje_vencido' => 0.0,
+            'conteo_total' => count($todasCxc)
+        ];
+
+        foreach ($todasCxc as $cxc) {
+            if (!isset($cxc['antiguedad_categoria'])) {
+                $cxc = $this->procesarAntiguedadFila($cxc);
+            }
+
+            $monto = (float)($cxc['monto'] ?? 0);
+            $saldo = (float)($cxc['saldo'] ?? 0);
+            $cobrado = $monto - $saldo;
+            $cat = $cxc['antiguedad_categoria'] ?? 'corriente';
+
+            $resumen['total_registrado'] += $monto;
+            $resumen['total_saldo_pendiente'] += $saldo;
+            $resumen['total_cobrado'] += $cobrado;
+
+            if ($cat === 'corriente') {
+                $resumen['total_corriente'] += $saldo;
+                $resumen['conteo_corriente']++;
+            } elseif ($cat === '1_30') {
+                $resumen['total_mora_1_30'] += $saldo;
+                $resumen['conteo_mora_1_30']++;
+                $resumen['total_vencido'] += $saldo;
+                $resumen['conteo_vencido']++;
+            } elseif ($cat === '31_60') {
+                $resumen['total_mora_31_60'] += $saldo;
+                $resumen['conteo_mora_31_60']++;
+                $resumen['total_vencido'] += $saldo;
+                $resumen['conteo_vencido']++;
+            } elseif ($cat === 'mas_60') {
+                $resumen['total_mora_mas_60'] += $saldo;
+                $resumen['conteo_mora_mas_60']++;
+                $resumen['total_vencido'] += $saldo;
+                $resumen['conteo_vencido']++;
+            } elseif ($cat === 'pagado') {
+                $resumen['total_pagado'] += $monto;
+                $resumen['conteo_pagado']++;
+            }
+        }
+
+        // Aliases de cantidad para conveniencia en vistas y reportes
+        $resumen['cant_corriente'] = $resumen['conteo_corriente'];
+        $resumen['cant_1_30'] = $resumen['conteo_mora_1_30'];
+        $resumen['cant_31_60'] = $resumen['conteo_mora_31_60'];
+        $resumen['cant_mas_60'] = $resumen['conteo_mora_mas_60'];
+        $resumen['cant_vencido'] = $resumen['conteo_vencido'];
+        $resumen['cant_pagado'] = $resumen['conteo_pagado'];
+
+        if ($resumen['total_saldo_pendiente'] > 0.001) {
+            $resumen['porcentaje_vencido'] = round(($resumen['total_vencido'] / $resumen['total_saldo_pendiente']) * 100, 1);
+        }
+
+        return $resumen;
+    }
+
 
     public function guardarCxc(array $datos): bool {
         try {

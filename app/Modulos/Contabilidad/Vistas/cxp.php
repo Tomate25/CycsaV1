@@ -68,18 +68,22 @@ foreach ($cxpList as $item) {
             <p style="color: #64748b; margin-top: 5px; font-size: 14px;">Administración de facturas y obligaciones pendientes de pago con proveedores.</p>
         </div>
         
-        <div class="actions-flex">
+        <div class="actions-flex" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <!-- Buscador -->
             <form method="GET" action="/Cycsa/publico/contabilidad/cxp" style="display: flex;">
-                <input type="text" name="q" placeholder="Buscar por proveedor o factura..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" style="padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px 0 0 6px; font-family: 'Inter', sans-serif; width: 250px; outline: none; font-size: 14px;">
-                <button type="submit" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-left: none; padding: 10px 18px; border-radius: 0 6px 6px 0; cursor: pointer; color: #475569; font-size: 14px;"><i class="fa-solid fa-magnifying-glass"></i></button>
+                <input type="text" name="q" placeholder="Buscar por proveedor o factura..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" style="padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px 0 0 6px; font-family: 'Inter', sans-serif; width: 230px; outline: none; font-size: 14px;">
+                <button type="submit" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-left: none; padding: 10px 16px; border-radius: 0 6px 6px 0; cursor: pointer; color: #475569; font-size: 14px;"><i class="fa-solid fa-magnifying-glass"></i></button>
                 <?php if(!empty($busqueda)): ?>
-                    <a href="/Cycsa/publico/contabilidad/cxp" style="margin-left: 10px; color: var(--cycsa-rojo); text-decoration: none; padding-top: 10px; font-size: 14px; font-weight: 500;"><i class="fa-solid fa-xmark"></i> Limpiar</a>
+                    <a href="/Cycsa/publico/contabilidad/cxp" style="margin-left: 8px; color: var(--cycsa-rojo); text-decoration: none; padding-top: 10px; font-size: 13.5px; font-weight: 500;"><i class="fa-solid fa-xmark"></i> Limpiar</a>
                 <?php endif; ?>
             </form>
 
+            <a href="/Cycsa/publico/contabilidad/cxp/exportar<?= !empty($busqueda) ? '?q=' . urlencode($busqueda) : '' ?>" class="btn-exportar" style="background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; transition: background 0.2s;" title="Exportar cuentas por pagar a Excel / CSV">
+                <i class="fa-solid fa-file-excel"></i> Exportar
+            </a>
+
             <?php if (tienePermiso('contabilidad', 'crear_editar')): ?>
-            <button id="btnAbrirModal" style="background: var(--cycsa-azul); color: white; border: none; padding: 11px 22px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: background 0.3s; margin-left: 10px; font-size: 14px;">
+            <button id="btnAbrirModal" style="background: var(--cycsa-azul); color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: background 0.3s; font-size: 13.5px;">
                 <i class="fa-solid fa-plus"></i> Registrar CXP
             </button>
             <?php endif; ?>

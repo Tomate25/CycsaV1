@@ -85,7 +85,7 @@ class MuestreoWorkflowTest extends TestCase {
         $os = $stmtOs->fetch(PDO::FETCH_ASSOC);
 
         $this->assertEquals(1, (int)$os['requiere_muestreo']);
-        $this->assertEquals('Estado 1: Recepcion', $os['estado']);
+        $this->assertEquals('Estado 3B: Ejecucion Muestreo', $os['estado']);
     }
 
     public function testObtenerTodasIncluyeDatosMuestreoFinalizado(): void {

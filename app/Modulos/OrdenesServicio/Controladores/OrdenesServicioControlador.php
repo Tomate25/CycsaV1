@@ -38,6 +38,8 @@ class OrdenesServicioControlador extends ControladorBase {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
+        require_once dirname(__DIR__, 3) . '/Helpers/funciones.php';
+
         $this->renderizar('OrdenesServicio/Vistas/index', [
             'titulo' => 'Órdenes de Servicio & Hojas de Recepción - CYCSA',
             'ordenes' => $ordenes,
@@ -362,5 +364,62 @@ class OrdenesServicioControlador extends ControladorBase {
             'titulo' => 'Orden de Servicio ' . $os['codigo_os'],
             'os' => $os
         ]);
+    }
+
+    /**
+     * Aprueba formalmente la Orden de Servicio para autorizar la emisión de Hojas RT-FM-13
+     */
+    public function aprobarOS(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        // Rol supervisor (3) o administrador (1)
+        $rol = (int)($_SESSION['usuario_rol'] ?? 0);
+        if ($rol !== 1 && $rol !== 3) {
+            $_SESSION['error'] = 'No tiene permisos de supervisor para aprobar la Orden de Servicio.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idOS = (int)($datos['id_os'] ?? 0);
+
+            // Validar CSRF
+            $csrfToken = $datos['csrf_token'] ?? '';
+            if (empty($csrfToken) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            if ($idOS <= 0) {
+                $_SESSION['error'] = 'Orden de Servicio inválida.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            $opModelo = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
+            $os = $opModelo->obtenerOSPorId($idOS);
+            if (!$os) {
+                $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmt = $db->prepare("UPDATE ordenes_servicio SET estado = 'Aprobada', motivo_observacion = NULL WHERE id = :id");
+            $exito = $stmt->execute(['id' => $idOS]);
+
+            if ($exito) {
+                require_once dirname(__DIR__, 3) . '/Helpers/funciones.php';
+                $codigoTexto = $os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '');
+                registrarBitacora('ordenes_servicio', 'aprobar', 'Orden de Servicio ' . $codigoTexto . ' aprobada formalmente por supervisor ' . ($_SESSION['usuario_nombre'] ?? 'Supervisor'), $idOS);
+                $_SESSION['exito'] = 'Orden de Servicio ' . ($os['codigo_os'] ?? '') . ' aprobada con éxito. Ya puede registrar Hojas de Solicitud CYCSA-RT-FM-13.';
+            } else {
+                $_SESSION['error'] = 'Error al aprobar la Orden de Servicio.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+        }
     }
 }

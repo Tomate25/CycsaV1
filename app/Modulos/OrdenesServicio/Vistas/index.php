@@ -48,7 +48,7 @@
     .fila-desplegable.mostrar { display: table-row; }
     .acordeon-contenido { padding: 20px 25px; border-bottom: 2px solid #cbd5e1; }
     
-    .grid-info-os { display: grid; grid-template-columns: 1.1fr 1.1fr 1.1fr; gap: 20px; margin-bottom: 20px; }
+    .grid-info-os { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 20px; }
     @media (max-width: 1024px) {
         .grid-info-os { grid-template-columns: 1fr; }
     }
@@ -195,31 +195,36 @@
                                     </span>
                                 <?php endif; ?>
                             </td>
+                            <?php 
+                            $esOSAprobada = !in_array($os['estado'], ['Estado 1: Recepcion', 'Pendiente', 'Borrador'])
+                                            || count($os['hojas_servicio'] ?? []) > 0
+                                            || !empty($os['id_hoja'])
+                                            || !empty($os['id_pm'])
+                                            || ($os['requiere_muestreo'] !== null && $os['requiere_muestreo'] !== '')
+                                            || in_array($os['estado'], [
+                                                'Aprobada', 'Estado 3: Aprobada', 'Estado 3: Ingreso Directo', 
+                                                'Estado 3A: Programacion Muestreo', 'Estado 3B: Ejecucion Muestreo', 
+                                                'Estado 4: Ingreso Laboratorio', 'Estado 5: Solicitud Tecnicos', 
+                                                'Estado 6: Ejecucion Ensayos', 'Estado 7: Revision Resultados', 
+                                                'Finalizado', 'En Proceso'
+                                            ]);
+                            $cantHojas = count($os['hojas_servicio'] ?? []);
+                            ?>
                             <td>
-                                <?php if (!$tieneHoja): ?>
+                                <?php if (!$esOSAprobada): ?>
+                                    <span class="badge-premium" style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">
+                                        <i class="fa-solid fa-hourglass-half"></i> O/S Por Aprobar
+                                    </span>
+                                <?php elseif ($cantHojas === 0): ?>
                                     <span class="badge-premium badge-hoja-sin">
                                         <i class="fa-solid fa-file-circle-plus"></i> Sin Registrar
                                     </span>
                                 <?php else: ?>
-                                    <?php if ($estadoOS === 'Estado 1: Recepcion'): ?>
-                                        <span class="badge-premium badge-hoja-borrador">
-                                            <i class="fa-solid fa-pen-to-square"></i> Borrador
-                                        </span>
-                                    <?php elseif ($estadoOS === 'Estado 2: Revision'): ?>
-                                        <span class="badge-premium badge-hoja-revision">
-                                            <i class="fa-solid fa-hourglass-half"></i> En Revisión
-                                        </span>
-                                    <?php elseif ($estadoOS === 'Estado 2: Observada'): ?>
-                                        <span class="badge-premium badge-hoja-observada">
-                                            <i class="fa-solid fa-triangle-exclamation"></i> Observada
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="badge-premium badge-hoja-aprobada">
-                                            <i class="fa-solid fa-circle-check"></i> Aprobada
-                                        </span>
-                                    <?php endif; ?>
+                                    <span class="badge-premium badge-hoja-aprobada">
+                                        <i class="fa-solid fa-circle-check"></i> <?= $cantHojas ?> Hoja(s)
+                                    </span>
                                     <div style="font-family: monospace; font-size: 10.5px; color: #64748b; margin-top: 2px;">
-                                        <?= htmlspecialchars($os['hoja_codigo'] ?? '') ?>
+                                        <?= htmlspecialchars($os['hoja_codigo'] ?? 'CYCSA-RT-FM-13') ?>
                                     </div>
                                 <?php endif; ?>
                             </td>
@@ -229,53 +234,44 @@
                                         <i class="fa-solid fa-print" style="color: var(--cycsa-azul);"></i> O/S
                                     </a>
 
-                                    <?php if (!$tieneHoja): ?>
-                                        <button type="button" class="btn-cycsa btn-cycsa-success"
-                                                data-id-os="<?= $os['id'] ?>"
-                                                data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                onclick="iniciarRegistroHojaRTFM13(this)">
-                                            <i class="fa-solid fa-file-signature"></i> Registrar Hoja
-                                        </button>
-                                    <?php elseif ($estadoOS === 'Estado 1: Recepcion'): ?>
-                                        <button type="button" class="btn-cycsa btn-cycsa-success"
-                                                data-id-os="<?= $os['id'] ?>"
-                                                data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                onclick="iniciarRegistroHojaRTFM13(this)">
-                                            <i class="fa-solid fa-pen-to-square"></i> Editar RT-FM-13
-                                        </button>
-                                    <?php elseif ($estadoOS === 'Estado 2: Observada'): ?>
-                                        <button type="button" class="btn-cycsa btn-cycsa-warning"
-                                                data-id-os="<?= $os['id'] ?>"
-                                                data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                onclick="iniciarRegistroHojaRTFM13(this)">
-                                            <i class="fa-solid fa-triangle-exclamation"></i> Corregir RT-FM-13
-                                        </button>
-                                    <?php elseif ($estadoOS === 'Estado 2: Revision'): ?>
+                                    <?php if (!$esOSAprobada): ?>
                                         <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669;" onclick="abrirModalRevision(<?= $os['id'] ?>, '<?= $os['codigo_os'] ?>')">
-                                                <i class="fa-solid fa-check-double"></i> Revisar
+                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669;" 
+                                                    onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>')">
+                                                <i class="fa-solid fa-check-double"></i> Aprobar O/S
                                             </button>
                                         <?php else: ?>
-                                            <span class="btn-cycsa btn-cycsa-secondary" style="opacity:0.75; cursor:not-allowed;" title="En revisión por supervisor - No editable">
-                                                <i class="fa-solid fa-hourglass-half"></i> En Revisión
+                                            <span class="btn-cycsa btn-cycsa-secondary" style="opacity:0.75; cursor:not-allowed;" title="Pendiente de aprobación por supervisor">
+                                                <i class="fa-solid fa-lock"></i> Por Aprobar
                                             </span>
                                         <?php endif; ?>
                                     <?php else: ?>
-                                        <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary" title="Ver PDF Oficial RT-FM-13">
-                                            <i class="fa-solid fa-file-pdf"></i> Ver PDF
-                                        </a>
+                                        <?php if ($cantHojas === 0): ?>
+                                            <button type="button" class="btn-cycsa btn-cycsa-success"
+                                                    data-id-os="<?= $os['id'] ?>"
+                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
+                                                    onclick="iniciarRegistroHojaRTFM13(this)">
+                                                <i class="fa-solid fa-file-signature"></i> Registrar Hoja
+                                            </button>
+                                        <?php else: ?>
+                                            <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="toggleFilaDesplegable(<?= $os['id'] ?>, event)" title="Ver Hojas RT-FM-13 registradas">
+                                                <i class="fa-solid fa-layer-group"></i> Hojas (<?= $cantHojas ?>)
+                                            </button>
+                                            <button type="button" class="btn-cycsa btn-cycsa-success" style="padding: 5px 10px; font-size: 12px;"
+                                                    data-id-os="<?= $os['id'] ?>"
+                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
+                                                    onclick="iniciarRegistroHojaRTFM13(this)" title="Añadir nueva entrega RT-FM-13">
+                                                <i class="fa-solid fa-plus"></i> Hoja
+                                            </button>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -394,12 +390,19 @@
                                                 </div>
                                             <?php else: ?>
                                                 <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 12px; border-radius: 8px; color: #92400e; font-size: 12.5px;">
-                                                    <i class="fa-solid fa-circle-question"></i> <strong>Por Definir:</strong> Aún no se ha especificado si requiere muestreo en campo o ingreso directo en ventanilla.
-                                                    <div style="margin-top: 8px;">
-                                                        <button type="button" class="btn-cycsa btn-cycsa-primary" style="padding: 5px 12px; font-size: 12px;" onclick="abrirModalDecisionMuestreo(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>')">
-                                                            <i class="fa-solid fa-hand-pointer"></i> Definir Tipo de Ingreso
-                                                        </button>
-                                                    </div>
+                                                    <i class="fa-solid fa-circle-question"></i> <strong>Por Definir:</strong> La modalidad (Muestreo en Obra o Ventanilla Lab) se define al emitir cada Hoja RT-FM-13.
+                                                    <?php if ($esOSAprobada): ?>
+                                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="padding: 5px 12px; font-size: 12px;"
+                                                                    data-id-os="<?= $os['id'] ?>"
+                                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
+                                                                    onclick="iniciarRegistroHojaRTFM13(this)">
+                                                                <i class="fa-solid fa-file-circle-plus"></i> Registrar Hoja RT-FM-13
+                                                            </button>
+                                                    <?php endif; ?>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -427,7 +430,21 @@
                                                 ]];
                                             }
                                             ?>
-                                            <?php if (!empty($listaHojas)): ?>
+                                            <?php if (!$esOSAprobada): ?>
+                                                <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 15px; border-radius: 8px; text-align: center; color: #92400e; font-size: 12.5px;">
+                                                    <i class="fa-solid fa-lock" style="font-size: 24px; margin-bottom: 6px; color: #d97706; display: block;"></i>
+                                                    <strong>Aprobación de O/S Requerida</strong><br>
+                                                    Esta Orden de Servicio aún no ha sido aprobada. Debe aprobarse formalmente antes de registrar Hojas de Solicitud CYCSA-RT-FM-13.
+                                                    <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
+                                                        <div style="margin-top:10px;">
+                                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669; font-size:12px; padding:6px 14px;"
+                                                                    onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>')">
+                                                                <i class="fa-solid fa-check-double"></i> Aprobar Orden de Servicio Ahora
+                                                            </button>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php elseif (!empty($listaHojas)): ?>
                                                 <div style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
                                                     <?php foreach ($listaHojas as $idxH => $hItem): ?>
                                                         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
@@ -456,6 +473,12 @@
                                                 </div>
                                                 <div style="margin-top:10px;">
                                                     <button type="button" class="btn-cycsa btn-cycsa-success" style="width:100%; padding:6px 12px; font-size:11.5px;"
+                                                            data-id-os="<?= $os['id'] ?>"
+                                                            data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                            data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                            data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                            data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                            data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
                                                             onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', 0, true)">
                                                         <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13 (Nueva Entrega)
                                                     </button>
@@ -466,10 +489,94 @@
                                                     Aún no se ha registrado la Hoja de Servicio técnica para esta orden.
                                                     <div style="margin-top:10px;">
                                                         <button type="button" class="btn-cycsa btn-cycsa-success" style="padding:6px 14px; font-size:12px;"
-                                                                onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', 0, true)">
+                                                                data-id-os="<?= $os['id'] ?>"
+                                                                data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                                data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                                data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                                data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                                data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
+                                                                onclick="iniciarRegistroHojaRTFM13(this)">
                                                             <i class="fa-solid fa-file-signature"></i> Registrar Primera Hoja RT-FM-13
                                                         </button>
                                                     </div>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <!-- TARJETA 4: ENSAYOS, MATRIZ TÉCNICA Y CÓDIGO DE INFORME (LIMS) -->
+                                        <div class="tarjeta-detalle-os">
+                                            <div class="tarjeta-detalle-titulo" style="display:flex; justify-content:space-between; align-items:center;">
+                                                <span><i class="fa-solid fa-microscope"></i> 4. Ensayos y Matriz Técnica</span>
+                                                <a href="/Cycsa/publico/operaciones" class="btn-cycsa btn-cycsa-secondary" style="padding:2px 8px; font-size:10px;" title="Ir al módulo de Operaciones">
+                                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Operaciones
+                                                </a>
+                                            </div>
+                                            <?php 
+                                            $itemsEnsayos = $os['items'] ?? [];
+                                            ?>
+                                            <?php if (!empty($itemsEnsayos)): ?>
+                                                <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto; padding-right:4px;">
+                                                    <?php foreach ($itemsEnsayos as $it): ?>
+                                                        <?php 
+                                                        $tieneMatriz = !empty($it['resultados_json']);
+                                                        $revInfo = ($tieneMatriz && function_exists('obtenerEstadoRevisionMatriz')) ? obtenerEstadoRevisionMatriz($it['resultados_json']) : null;
+                                                        $codInf = ($tieneMatriz && function_exists('generarCodigoInformeEnsayo')) ? generarCodigoInformeEnsayo($it['resultados_json'], $os['fecha_muestreo'] ?? null, $it['descripcion_ensayo']) : null;
+                                                        ?>
+                                                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                                                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                                                                <div style="font-size:12px; font-weight:700; color:#0f172a;">
+                                                                    <i class="fa-solid fa-vial-virus" style="color:var(--cycsa-azul);"></i> <?= htmlspecialchars($it['descripcion_ensayo']) ?>
+                                                                </div>
+                                                                <?php if ($tieneMatriz && $revInfo): ?>
+                                                                    <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; background:<?= $revInfo['badge_bg'] ?>; color:<?= $revInfo['badge_color'] ?>; border:1px solid <?= $revInfo['badge_border'] ?>;">
+                                                                        <?= htmlspecialchars($revInfo['estado_label']) ?>
+                                                                    </span>
+                                                                <?php elseif ($tieneMatriz): ?>
+                                                                    <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; background:#dcfce7; color:#15803d; border:1px solid #86efac;">
+                                                                        Registrada
+                                                                    </span>
+                                                                <?php elseif ($cantHojas === 0): ?>
+                                                                    <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; background:#fef2f2; color:#991b1b; border:1px solid #fecaca;">
+                                                                        <i class="fa-solid fa-lock"></i> Requiere RT-FM-13
+                                                                    </span>
+                                                                <?php else: ?>
+                                                                    <span style="font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">
+                                                                        Sin Matriz
+                                                                    </span>
+                                                                <?php endif; ?>
+                                                            </div>
+
+                                                            <?php if ($tieneMatriz && !empty($codInf)): ?>
+                                                                <div style="font-size:11.5px; background:white; border:1px solid #bfdbfe; padding:5px 8px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                                                                    <span style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase;">Informe Oficial:</span>
+                                                                    <strong style="font-family:monospace; color:var(--cycsa-azul); font-size:11.5px; letter-spacing:0.3px;"><?= htmlspecialchars($codInf) ?></strong>
+                                                                </div>
+                                                            <?php endif; ?>
+
+                                                            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
+                                                                <?php if ($tieneMatriz): ?>
+                                                                    <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $it['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary" style="padding:3px 8px; font-size:11px;" title="Ver e imprimir formato técnico con membrete horizontal CYCSA">
+                                                                        <i class="fa-solid fa-print"></i> Ver Informe
+                                                                    </a>
+                                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" class="btn-cycsa btn-cycsa-secondary" style="padding:3px 8px; font-size:11px;" title="Editar lecturas y matriz técnica">
+                                                                        <i class="fa-solid fa-pen-to-square"></i> Editar Matriz
+                                                                    </a>
+                                                                <?php elseif ($cantHojas === 0): ?>
+                                                                    <button type="button" class="btn-cycsa btn-cycsa-secondary" disabled style="padding:3px 8px; font-size:11px; opacity:0.6; cursor:not-allowed;" title="Bloqueado: La Orden de Servicio aún no tiene registrada la Hoja RT-FM-13. Debe registrar la RT-FM-13 primero.">
+                                                                        <i class="fa-solid fa-lock"></i> Matriz Bloqueada
+                                                                    </button>
+                                                                <?php else: ?>
+                                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" class="btn-cycsa btn-cycsa-success" style="padding:3px 8px; font-size:11px;" title="Rellenar matriz técnica in situ / laboratorio">
+                                                                        <i class="fa-solid fa-pen"></i> Rellenar Matriz
+                                                                    </a>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php else: ?>
+                                                <div style="background:#f8fafc; border:1px dashed #cbd5e1; padding:15px; border-radius:8px; text-align:center; color:#64748b; font-size:12px;">
+                                                    No hay ensayos registrados para esta cotización/orden.
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -482,42 +589,17 @@
                                             <i class="fa-solid fa-circle-info" style="color:var(--cycsa-azul);"></i> Estado técnico: <strong><?= htmlspecialchars($os['estado']) ?></strong>
                                         </div>
 
-                                        <?php if (!$tieneHoja): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-success"
-                                                    data-id-os="<?= $os['id'] ?>"
-                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                    onclick="iniciarRegistroHojaRTFM13(this)">
-                                                <i class="fa-solid fa-file-signature"></i> Registrar Hoja RT-FM-13
-                                            </button>
-                                        <?php elseif ($os['estado'] === 'Estado 1: Recepcion'): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-success"
-                                                    data-id-os="<?= $os['id'] ?>"
-                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                    onclick="iniciarRegistroHojaRTFM13(this)">
-                                                <i class="fa-solid fa-pen-to-square"></i> Editar Última Hoja
-                                            </button>
-                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#0284c7;"
-                                                    onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', 0, true)">
-                                                <i class="fa-solid fa-plus"></i> Nueva Hoja RT-FM-13
-                                            </button>
-                                            <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary">
-                                                <i class="fa-solid fa-file-pdf"></i> Ver PDF
-                                            </a>
-                                            <form method="POST" action="/Cycsa/publico/hojas-servicio/enviar-revision" style="margin: 0;">
-                                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                                                <input type="hidden" name="id_os" value="<?= $os['id'] ?>">
-                                                <button type="submit" class="btn-cycsa btn-cycsa-primary" style="background:#4f46e5;">
-                                                    <i class="fa-solid fa-paper-plane"></i> Enviar a Revisión Supervisor
+                                        <?php if (!$esOSAprobada): ?>
+                                            <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
+                                                <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669;"
+                                                        onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>')">
+                                                    <i class="fa-solid fa-check-double"></i> Aprobar Orden de Servicio
                                                 </button>
-                                            </form>
+                                            <?php else: ?>
+                                                <span class="btn-cycsa btn-cycsa-secondary" style="opacity:0.7; cursor:not-allowed;">
+                                                    <i class="fa-solid fa-lock"></i> O/S Pendiente de Aprobación
+                                                </span>
+                                            <?php endif; ?>
                                         <?php elseif ($os['estado'] === 'Estado 2: Observada'): ?>
                                             <button type="button" class="btn-cycsa btn-cycsa-warning"
                                                     data-id-os="<?= $os['id'] ?>"
@@ -551,17 +633,36 @@
                                                     <i class="fa-solid fa-check-double"></i> Decisión Supervisor (Aprobar / Observar)
                                                 </button>
                                             <?php endif; ?>
+                                        <?php elseif ($cantHojas === 0): ?>
+                                            <button type="button" class="btn-cycsa btn-cycsa-success"
+                                                    data-id-os="<?= $os['id'] ?>"
+                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
+                                                    onclick="iniciarRegistroHojaRTFM13(this)">
+                                                <i class="fa-solid fa-file-signature"></i> Registrar Primera Hoja RT-FM-13
+                                            </button>
                                         <?php else: ?>
                                             <span style="font-size:12.5px; color:#15803d; background:#dcfce7; padding:7px 14px; border-radius:6px; border:1px solid #86efac; display:inline-flex; align-items:center; gap:6px;">
                                                 <i class="fa-solid fa-circle-check"></i> Hoja(s) Registrada(s)
                                             </span>
                                             <button type="button" class="btn-cycsa btn-cycsa-success"
+                                                    data-id-os="<?= $os['id'] ?>"
+                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
                                                     onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', 0, true)">
                                                 <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13
                                             </button>
-                                            <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary">
-                                                <i class="fa-solid fa-file-pdf"></i> Ver PDF RT-FM-13 Oficial
-                                            </a>
+                                            <?php if ($cantHojas > 0): ?>
+                                                <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary">
+                                                    <i class="fa-solid fa-file-pdf"></i> Ver PDF RT-FM-13 Oficial
+                                                </a>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -929,6 +1030,45 @@
     </div>
 </div>
 
+<!-- =========================================================================
+     MODAL DE APROBACIÓN DE ORDEN DE SERVICIO (PASO OBLIGATORIO PREVIO A RT-FM-13)
+     ========================================================================= -->
+<div id="modalAprobarOS" class="modal-premium" style="display:none; z-index:10000; align-items:center; justify-content:center;">
+    <div class="modal-premium-content" style="max-width: 550px; border-radius: 12px; padding: 25px 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); background:white;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">
+            <div style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #0f172a; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-clipboard-check" style="color: #059669;"></i> Aprobación Formal de Orden de Servicio
+            </div>
+            <button type="button" onclick="cerrarModalAprobarOS()" style="background: none; border: none; font-size: 24px; color: #94a3b8; cursor: pointer; line-height: 1;">&times;</button>
+        </div>
+
+        <form method="POST" action="/Cycsa/publico/ordenes-servicio/aprobar" id="form-aprobar-os">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id_os" id="aprobar_os_id" value="0">
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 15px; margin-bottom:15px; font-size:13px; color:#334155;">
+                <div style="margin-bottom:6px;"><strong style="color:#0f172a;">Orden de Servicio:</strong> <span id="aprobar_os_codigo" style="font-family:monospace; font-weight:700; color:var(--cycsa-azul);">OS-2026-XXXX</span></div>
+                <div style="margin-bottom:6px;"><strong style="color:#0f172a;">Cliente:</strong> <span id="aprobar_os_cliente">--</span></div>
+                <div><strong style="color:#0f172a;">Proyecto:</strong> <span id="aprobar_os_proyecto">--</span></div>
+            </div>
+
+            <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:12px 15px; margin-bottom:20px; font-size:13px; color:#065f46; line-height:1.5;">
+                <i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>
+                Al aprobar formalmente esta Orden de Servicio, el equipo técnico y de laboratorio quedará habilitado para registrar las <strong>Hojas de Solicitud CYCSA-RT-FM-13</strong> y proceder con la recepción o muestreo de especímenes.
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" onclick="cerrarModalAprobarOS()" class="btn-cycsa btn-cycsa-secondary">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-cycsa btn-cycsa-primary" style="background:#059669;">
+                    <i class="fa-solid fa-check-double"></i> Confirmar y Aprobar O/S
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- MODAL ELECCIÓN DE MUESTREO VS INGRESO DIRECTO -->
 <div id="modalDecisionMuestreoGlobal" class="modal-premium" style="display:none; z-index:10000; align-items:center; justify-content:center;">
     <div class="modal-premium-content" style="max-width: 650px; border-radius: 12px; padding: 25px 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); background:white;">
@@ -956,14 +1096,19 @@
                     <div style="width: 44px; height: 44px; border-radius: 8px; background: #eff6ff; color: var(--cycsa-azul); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;">
                         <i class="fa-solid fa-truck-pickup"></i>
                     </div>
-                    <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">Sí, Muestreo en Campo</h4>
+                    <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">Sí, Muestreo en Campo (MC)</h4>
                     <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
-                        Asignar técnico muestreador, vehículo, fecha de salida y llenar la <strong>Lista de Chequeo Oficial CYCSA-RT-FM-40 B</strong>.
+                        Los especímenes son tomados en obra por técnicos de CYCSA. Se asignará el prefijo oficial <strong>MC</strong> y los números correlativos disponibles.
                     </p>
                 </div>
-                <button type="button" class="btn-cycsa btn-cycsa-primary" style="width: 100%; padding: 10px; font-size: 13px;" onclick="confirmarDecisionMuestreo(true)">
-                    <i class="fa-solid fa-calendar-plus"></i> Programar Muestreo
-                </button>
+                <div>
+                    <button type="button" class="btn-cycsa btn-cycsa-primary" style="width: 100%; padding: 10px; font-size: 13px;" onclick="confirmarDecisionMuestreo(true)">
+                        <i class="fa-solid fa-file-signature"></i> Abrir Hoja RT-FM-13 (Campo MC)
+                    </button>
+                    <a id="link_logistica_os" href="#" style="display:block; text-align:center; font-size:11px; color:var(--cycsa-azul); margin-top:8px; text-decoration:none;">
+                        <i class="fa-solid fa-calendar-plus"></i> O programar vehículo / brigada
+                    </a>
+                </div>
             </div>
 
             <!-- OPCIÓN 2: NO REQUIERE MUESTREO (INGRESO DIRECTO AL LAB) -->
@@ -972,13 +1117,13 @@
                     <div style="width: 44px; height: 44px; border-radius: 8px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;">
                         <i class="fa-solid fa-flask"></i>
                     </div>
-                    <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">No, Ingreso Directo</h4>
+                    <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">No, Ingreso Directo (MS)</h4>
                     <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
-                        Los especímenes fueron entregados directamente por el cliente en el Laboratorio Central (sin salida a campo).
+                        Los especímenes fueron entregados directamente por el cliente en el Laboratorio Central (sin salida a campo). Prefijo <strong>MS</strong>.
                     </p>
                 </div>
                 <button type="button" class="btn-cycsa btn-cycsa-success" style="width: 100%; padding: 10px; font-size: 13px;" onclick="confirmarDecisionMuestreo(false)">
-                    <i class="fa-solid fa-file-signature"></i> Abrir Hoja RT-FM-13
+                    <i class="fa-solid fa-file-signature"></i> Abrir Hoja RT-FM-13 (Ventanilla MS)
                 </button>
             </div>
 
@@ -993,7 +1138,24 @@
 </div>
 
 <script>
-    // Variables de control para el modal de decisión
+    // =========================================================================
+    // 0. APROBACIÓN DE ORDEN DE SERVICIO (PASO PREVIO OBLIGATORIO)
+    // =========================================================================
+    function abrirModalAprobarOS(idOS, codigoOS, cliente, proyecto) {
+        document.getElementById('aprobar_os_id').value = idOS;
+        document.getElementById('aprobar_os_codigo').innerText = codigoOS;
+        document.getElementById('aprobar_os_cliente').innerText = cliente || '--';
+        document.getElementById('aprobar_os_proyecto').innerText = proyecto || '--';
+        const m = document.getElementById('modalAprobarOS');
+        if (m) m.style.display = 'flex';
+    }
+
+    function cerrarModalAprobarOS() {
+        const m = document.getElementById('modalAprobarOS');
+        if (m) m.style.display = 'none';
+    }
+
+    // Variables de control para el modal de decisión tradicional
     let decisionOSId = null;
     let decisionOSCodigo = '';
 
@@ -1007,6 +1169,8 @@
         decisionOSCodigo = codigoOS;
         const lbl = document.getElementById('decision_codigo_os');
         if (lbl) lbl.innerText = codigoOS;
+        const linkLog = document.getElementById('link_logistica_os');
+        if (linkLog) linkLog.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
         const m = document.getElementById('modalDecisionMuestreoGlobal');
         if (m) m.style.display = 'flex';
     }
@@ -1018,10 +1182,10 @@
         cerrarModalDecisionMuestreo();
 
         if (requiereMuestreo) {
-            // Redirige a Programar Muestreo en Campo
-            window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
+            // Abrir directamente con prefijo MC en modo nueva hoja
+            abrirModalHojaSolicitud(idOS, codigoOS, 0, true, 'MC');
         } else {
-            // Ingreso directo: Marcar en BD y abrir modal RT-FM-13
+            // Ingreso directo: Marcar en BD y abrir modal RT-FM-13 con prefijo MS
             const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
             fetch('/Cycsa/publico/ordenes-servicio/marcar-ingreso-directo', {
                 method: 'POST',
@@ -1036,7 +1200,7 @@
             const btns = document.querySelectorAll(`button[data-id-os="${idOS}"]`);
             btns.forEach(b => b.setAttribute('data-estado-muestreo', 'no_aplica'));
 
-            abrirModalHojaSolicitud(idOS, codigoOS);
+            abrirModalHojaSolicitud(idOS, codigoOS, 0, true, 'MS');
         }
     }
 
@@ -1176,7 +1340,7 @@
             return;
         }
 
-        // CASO A: NUEVA ORDEN (Abrir Modal Interactivo Garantizado)
+        // CASO A: NUEVA ORDEN (Abrir Modal de Decisión Muestreo en Campo vs Ingreso Directo)
         abrirModalDecisionMuestreo(idOS, codigoOS);
     }
 
@@ -1190,7 +1354,7 @@
     let idOSModalActual = 0;
     let codigoOSModalActual = '';
 
-    function abrirModalHojaSolicitud(idOS, code, idHoja = 0, esNueva = false) {
+    function abrirModalHojaSolicitud(idOS, code, idHoja = 0, esNueva = false, prefijo = '') {
         idOSModalActual = idOS;
         codigoOSModalActual = code;
         document.getElementById('hs_codigo_os_label').innerText = code;
@@ -1206,6 +1370,9 @@
         }
         if (esNueva) {
             url += '&nueva=1';
+        }
+        if (prefijo) {
+            url += '&prefijo=' + encodeURIComponent(prefijo);
         }
 
         fetch(url)
@@ -1234,16 +1401,20 @@
 
     function cargarNuevaHojaEnModal() {
         if (!idOSModalActual) return;
-        abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true);
+        abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true, prefijoMuestraActual);
     }
 
     let prefijoMuestraActual = 'MC';
+    let siguienteConsecutivoMuestra = 1;
+    let siguienteConsecutivoMuestraInicial = 1;
     let anioActual2Digitos = String(new Date().getFullYear()).slice(-2);
 
     function llenarModalHojaSolicitud(data) {
         const h = data.hoja;
         const os = data.os_referencia;
         prefijoMuestraActual = data.prefijo_muestra || 'MC';
+        siguienteConsecutivoMuestra = parseInt(data.siguiente_consecutivo_muestra || 1, 10) || 1;
+        siguienteConsecutivoMuestraInicial = siguienteConsecutivoMuestra;
 
         // Set id_hoja hidden field
         const elIdHoja = document.getElementById('hs_id_hoja');
@@ -1269,7 +1440,7 @@
                     const btnTab = document.createElement('button');
                     btnTab.type = 'button';
                     btnTab.style.cssText = `padding: 5px 12px; font-size: 11.5px; font-weight: 600; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid ${isSelected ? '#0284c7' : '#cbd5e1'}; background: ${isSelected ? '#e0f2fe' : 'white'}; color: ${isSelected ? '#0369a1' : '#475569'}; transition: all 0.15s;`;
-                    btnTab.innerHTML = `<i class="fa-solid fa-file-lines" style="color:${isSelected ? '#0284c7' : '#94a3b8'};"></i> Hoja #${itemHoja.numero_secuencial} <span style="font-size:10px; font-family:monospace; background:${isSelected ? '#bae6fd' : '#f1f5f9'}; padding:1px 5px; border-radius:4px; font-weight:700;">${itemHoja.numero_registro || 'Sin Reg'}</span>`;
+                    btnTab.innerHTML = `<i class="fa-solid fa-file-lines" style="color:${isSelected ? '#0284c7' : '#94a3b8'};"></i> Hoja #${itemHoja.numero_secuencial || (idx + 1)} <span style="font-size:10px; font-family:monospace; background:${isSelected ? '#bae6fd' : '#f1f5f9'}; padding:1px 5px; border-radius:4px; font-weight:700;">${itemHoja.numero_registro || 'Sin Reg'}</span>`;
                     btnTab.onclick = () => {
                         abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, itemHoja.id, false);
                     };
@@ -1353,20 +1524,32 @@
         }
 
         // Formulario RT-FM-13
-        document.getElementById('hs_id_os').value = h.id_os;
+        const elIdOs = document.getElementById('hs_id_os');
+        if (elIdOs) elIdOs.value = h.id_os || '';
         const elReg = document.getElementById('hs_numero_registro');
         if (elReg) elReg.value = h.numero_registro || '';
-        document.getElementById('hs_fecha_llegada').value = h.fecha_hora_llegada_laboratorio ? h.fecha_hora_llegada_laboratorio.replace(' ', 'T').substring(0, 16) : '';
-        document.getElementById('hs_codigo_documento').value = h.codigo_documento || 'CYCSA-RT-FM-13';
-        document.getElementById('hs_nombre_empresa').value = h.nombre_empresa_o_cliente || '';
-        document.getElementById('hs_razon_social').value = h.razon_social || '';
-        document.getElementById('hs_direccion').value = h.direccion_proyecto || '';
-        document.getElementById('hs_telefono').value = h.telefono || '';
-        document.getElementById('hs_email').value = h.correo_electronico || '';
-        document.getElementById('hs_persona_entrega').value = h.nombre_persona_entrega_muestra || '';
-        document.getElementById('hs_procedencia').value = h.procedencia_punto_muestreo || '';
-        document.getElementById('hs_persona_toma').value = h.nombre_persona_toma_muestra || '';
-        document.getElementById('hs_fecha_toma').value = h.fecha_hora_toma_muestra ? h.fecha_hora_toma_muestra.replace(' ', 'T').substring(0, 16) : '';
+        const elFechaLlegada = document.getElementById('hs_fecha_llegada');
+        if (elFechaLlegada) elFechaLlegada.value = h.fecha_hora_llegada_laboratorio ? h.fecha_hora_llegada_laboratorio.replace(' ', 'T').substring(0, 16) : '';
+        const elCodDoc = document.getElementById('hs_codigo_documento');
+        if (elCodDoc) elCodDoc.value = h.codigo_documento || 'CYCSA-RT-FM-13';
+        const elEmpresa = document.getElementById('hs_nombre_empresa');
+        if (elEmpresa) elEmpresa.value = h.nombre_empresa_o_cliente || '';
+        const elRazon = document.getElementById('hs_razon_social');
+        if (elRazon) elRazon.value = h.razon_social || '';
+        const elDir = document.getElementById('hs_direccion');
+        if (elDir) elDir.value = h.direccion_proyecto || '';
+        const elTel = document.getElementById('hs_telefono');
+        if (elTel) elTel.value = h.telefono || '';
+        const elEmail = document.getElementById('hs_email');
+        if (elEmail) elEmail.value = h.correo_electronico || '';
+        const elEntrega = document.getElementById('hs_persona_entrega');
+        if (elEntrega) elEntrega.value = h.nombre_persona_entrega_muestra || '';
+        const elProcedencia = document.getElementById('hs_procedencia');
+        if (elProcedencia) elProcedencia.value = h.procedencia_punto_muestreo || '';
+        const elPersonaToma = document.getElementById('hs_persona_toma');
+        if (elPersonaToma) elPersonaToma.value = h.nombre_persona_toma_muestra || '';
+        const elFechaToma = document.getElementById('hs_fecha_toma');
+        if (elFechaToma) elFechaToma.value = h.fecha_hora_toma_muestra ? h.fecha_hora_toma_muestra.replace(' ', 'T').substring(0, 16) : '';
 
         // Naturaleza Checkboxes
         const natureList = (h.naturaleza_muestra || '').split(',').map(s => s.trim());
@@ -1376,7 +1559,7 @@
 
         // Especímenes / Muestras Dinámicas
         const tbodyM = document.getElementById('hs-tbody-muestras');
-        tbodyM.innerHTML = '';
+        if (tbodyM) tbodyM.innerHTML = '';
         let muestrasArr = [];
         try {
             if (h.identificacion_muestras_json) {
@@ -1393,51 +1576,64 @@
                 agregarFilaMuestraModal(tipo, nom, m.descripcion || m.ubicacion || '', m.info_importante || m.observaciones || '');
             });
         } else {
-            // Pre-cargar automáticamente las N muestras estimadas en campo o sede con contexto del ensayo
+            // Pre-cargar automáticamente las N muestras disponibles (sin repetir números)
             const cantSugerida = parseInt(data.cantidad_muestras_sugerida || os?.programacion_muestreo?.cantidad_muestras_est || 1) || 1;
             const puntoMuestreo = h.procedencia_punto_muestreo || data.lugar_muestreo || os?.nombre_proyecto || '';
             const primerEnsayo = (os?.ensayos && os.ensayos.length > 0) ? (os.ensayos[0].nombre_ensayo || os.ensayos[0].descripcion_ensayo || '') : '';
             const desc = primerEnsayo ? (primerEnsayo.length > 50 ? primerEnsayo.substring(0, 50) + '...' : primerEnsayo) : ((prefijoMuestraActual === 'MC') ? 'Muestra tomada en campo' : 'Muestra entregada en laboratorio');
-            let infoPunto = puntoMuestreo ? `Punto: ${puntoMuestreo}` : '';
+            let infoPunto = puntoMuestreo ? `Ubicación: ${puntoMuestreo}` : '';
             if (os?.nombre_proyecto && (!puntoMuestreo || !puntoMuestreo.includes(os.nombre_proyecto))) {
                 infoPunto += (infoPunto ? ' - ' : '') + `Proy: ${os.nombre_proyecto}`;
             }
             const info = infoPunto || ((prefijoMuestraActual === 'MC') ? 'Muestreo en Obra' : 'Recepción Lab Central');
-            for (let i = 1; i <= cantSugerida; i++) {
-                const consecutiveStr = String(i).padStart(4, '0');
+            for (let i = 0; i < cantSugerida; i++) {
+                const consecutiveStr = String(siguienteConsecutivoMuestra + i).padStart(4, '0');
                 const nom = `${prefijoMuestraActual}-${consecutiveStr}-${anioActual2Digitos}`;
                 agregarFilaMuestraModal(prefijoMuestraActual, nom, desc, info);
             }
+            siguienteConsecutivoMuestra += cantSugerida;
         }
 
-        // Checkboxes de Análisis
-        document.getElementById('hs_req_concreto').checked = (parseInt(h.req_resistencia_concreto) === 1);
-        document.getElementById('hs_req_adoquin').checked = (parseInt(h.req_resistencia_adoquin) === 1);
-        document.getElementById('hs_req_bloques').checked = (parseInt(h.req_resistencia_bloques) === 1);
-        document.getElementById('hs_req_otros_concreto').value = h.req_otros_concreto || '';
-        document.getElementById('hs_req_granulometria').checked = (parseInt(h.req_granulometria) === 1);
-        document.getElementById('hs_req_limites').checked = (parseInt(h.req_limites_atterberg) === 1);
-        document.getElementById('hs_req_humedad').checked = (parseInt(h.req_humedad) === 1);
-        const elCorte = document.getElementById('hs_req_resistencia_corte');
+        // Checkboxes de Análisis con comprobación segura de nulidad
+        const elConc = document.getElementById('hs_req_concreto') || document.getElementById('hs_req_resistencia_concreto');
+        if (elConc) elConc.checked = (parseInt(h.req_resistencia_concreto) === 1);
+        const elAdo = document.getElementById('hs_req_adoquin') || document.getElementById('hs_req_resistencia_adoquin');
+        if (elAdo) elAdo.checked = (parseInt(h.req_resistencia_adoquin) === 1);
+        const elBlo = document.getElementById('hs_req_bloques') || document.getElementById('hs_req_resistencia_bloques');
+        if (elBlo) elBlo.checked = (parseInt(h.req_resistencia_bloques) === 1);
+        const elOtCon = document.getElementById('hs_req_otros_concreto');
+        if (elOtCon) elOtCon.value = h.req_otros_concreto || '';
+
+        const elGran = document.getElementById('hs_req_granulometria');
+        if (elGran) elGran.checked = (parseInt(h.req_granulometria) === 1);
+        const elLim = document.getElementById('hs_req_limites') || document.getElementById('hs_req_limites_atterberg');
+        if (elLim) elLim.checked = (parseInt(h.req_limites_atterberg) === 1);
+        const elHum = document.getElementById('hs_req_humedad');
+        if (elHum) elHum.checked = (parseInt(h.req_humedad) === 1);
+        const elCorte = document.getElementById('hs_req_resistencia_corte') || document.getElementById('hs_req_corte');
         if (elCorte) elCorte.checked = (parseInt(h.req_resistencia_corte) === 1);
-        const elSucs = document.getElementById('hs_req_clasificacion_sucs_hr');
+        const elSucs = document.getElementById('hs_req_clasificacion_sucs_hr') || document.getElementById('hs_req_sucs');
         if (elSucs) elSucs.checked = (parseInt(h.req_clasificacion_sucs_hr) === 1);
-        document.getElementById('hs_req_proctor').checked = (parseInt(h.req_proctor_sm) === 1);
+        const elProc = document.getElementById('hs_req_proctor') || document.getElementById('hs_req_proctor_sm');
+        if (elProc) elProc.checked = (parseInt(h.req_proctor_sm) === 1);
         const elInf = document.getElementById('hs_req_infiltracion');
         if (elInf) elInf.checked = (parseInt(h.req_infiltracion) === 1);
-        document.getElementById('hs_req_cbr').checked = (parseInt(h.req_cbr) === 1);
-        document.getElementById('hs_req_densidad').checked = (parseInt(h.req_densidad) === 1);
-        const elOtSuelo = document.getElementById('hs_req_otros_suelo');
-        if (elOtSuelo) elOtSuelo.value = h.req_otros_suelo || '';
-        
-        const elOtMat = document.getElementById('hs_req_otros_materiales');
+        const elCbr = document.getElementById('hs_req_cbr');
+        if (elCbr) elCbr.checked = (parseInt(h.req_cbr) === 1);
+        const elDens = document.getElementById('hs_req_densidad');
+        if (elDens) elDens.checked = (parseInt(h.req_densidad) === 1);
+        const elOtSuel = document.getElementById('hs_req_otros_suelo');
+        if (elOtSuel) elOtSuel.value = h.req_otros_suelo || '';
+
+        const elOtMat = document.getElementById('hs_req_otros_materiales') || document.getElementById('hs_req_otros_mat');
         if (elOtMat) elOtMat.checked = (parseInt(h.req_otros_materiales) === 1);
         const elDescOt = document.getElementById('hs_descripcion_otros');
         if (elDescOt) elDescOt.value = h.descripcion_otros_analisis || '';
         
         const elAnAd = document.getElementById('hs_analisis_adicionales');
         if (elAnAd) elAnAd.value = h.analisis_adicionales || '';
-        document.getElementById('hs_observaciones').value = h.observaciones || '';
+        const elObs = document.getElementById('hs_observaciones');
+        if (elObs) elObs.value = h.observaciones || '';
         
         const elRecibe = document.getElementById('hs_nombre_recibe');
         if (elRecibe) elRecibe.value = h.nombre_recibe_cycsa || '';
@@ -1450,9 +1646,9 @@
 
     function recalcularConsecutivoMuestra(prefix = prefijoMuestraActual) {
         const tbody = document.getElementById('hs-tbody-muestras');
-        if (!tbody) return 1;
+        if (!tbody) return siguienteConsecutivoMuestraInicial;
         let max = 0;
-        const regex = new RegExp(`^${prefix}-(\\d+)-(\\d{2}|\\d{4})$`, 'i');
+        const regex = new RegExp(`^[A-Za-z]+-(\\d+)-(\\d{2}|\\d{4})$`, 'i');
         tbody.querySelectorAll('input[name="m_nombre[]"]').forEach(input => {
             const val = (input.value || '').trim();
             const m = val.match(regex);
@@ -1461,18 +1657,7 @@
                 if (num > max) max = num;
             }
         });
-        return max + 1;
-    }
-
-    function resecuenciarMuestras(prefix = prefijoMuestraActual) {
-        const tbody = document.getElementById('hs-tbody-muestras');
-        if (!tbody) return;
-        let idx = 1;
-        tbody.querySelectorAll('input[name="m_nombre[]"]').forEach(input => {
-            const consecutiveStr = String(idx).padStart(4, '0');
-            input.value = `${prefix}-${consecutiveStr}-${anioActual2Digitos}`;
-            idx++;
-        });
+        return Math.max(max + 1, siguienteConsecutivoMuestraInicial);
     }
 
     function agregarFilaMuestraModal(tipo = null, nom = '', desc = '', info = '') {
@@ -1485,6 +1670,7 @@
             const nextNum = recalcularConsecutivoMuestra(prefijo);
             const consecutiveStr = String(nextNum).padStart(4, '0');
             nom = `${prefijo}-${consecutiveStr}-${anioActual2Digitos}`;
+            siguienteConsecutivoMuestra = nextNum + 1;
             if (desc === '') {
                 desc = (prefijo === 'MS') ? 'Muestra entregada en laboratorio' : 'Muestra tomada en campo';
             }
@@ -1505,7 +1691,7 @@
                 <input type="text" name="m_info[]" value="${info}" class="form-control-cycsa" style="padding:6px 10px; font-size:12px;" placeholder="Revenimiento / Edad">
             </td>
             <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center;">
-                <button type="button" class="btn-cycsa btn-cycsa-danger" style="padding:4px 8px; font-size:11px;" onclick="this.closest('tr').remove(); resecuenciarMuestras();" title="Eliminar muestra"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" class="btn-cycsa btn-cycsa-danger" style="padding:4px 8px; font-size:11px;" onclick="this.closest('tr').remove(); siguienteConsecutivoMuestra = recalcularConsecutivoMuestra();" title="Eliminar muestra"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -1577,9 +1763,6 @@
             filaDesplegable.classList.add('mostrar');
             filaPrincipal.classList.add('expandida');
             filaPrincipal.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        if (typeof abrirModalHojaSolicitud === 'function') {
-            abrirModalHojaSolicitud(idAuto, <?= json_encode($codigoOSAuto) ?>);
         }
     });
     <?php endif; ?>

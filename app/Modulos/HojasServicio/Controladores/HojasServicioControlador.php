@@ -146,10 +146,56 @@ class HojasServicioControlador extends ControladorBase {
             if (empty($hoja['naturaleza_muestra'])) $hoja['naturaleza_muestra'] = $detectado['naturaleza_muestra_str'];
         }
 
-        $prefijoMuestra = determinarPrefijoMuestraOS($osCompleta ?: $os);
+        $prefijoParam = strtoupper(trim($_GET['prefijo'] ?? ''));
+        if ($prefijoParam === 'MC' || $prefijoParam === 'MS') {
+            $prefijoMuestra = $prefijoParam;
+        } else {
+            $prefijoMuestra = determinarPrefijoMuestraOS($osCompleta ?: $os);
+        }
+
         $esCampo = ($prefijoMuestra === 'MC');
         $tipoOrigen = $esCampo ? 'campo' : 'laboratorio';
-        $cantSugerida = $esCampo ? ($cantEstimadaProg > 0 ? $cantEstimadaProg : 1) : 1;
+
+        // Calcular muestras totales contratadas en la O/S vs las ya registradas en hojas previas
+        $totalContratado = 0;
+        if (!empty($osCompleta['ensayos']) && is_array($osCompleta['ensayos'])) {
+            foreach ($osCompleta['ensayos'] as $ens) {
+                $totalContratado += (float)($ens['cantidad'] ?? 1);
+            }
+        }
+        $totalYaRegistrado = 0;
+        foreach ($todasHojas as $th) {
+            // Si estamos visualizando/editando una hoja existente, no contamos las de esa hoja
+            if (!$esNueva && $hoja && (int)$th['id'] === (int)($hoja['id'] ?? 0)) {
+                continue;
+            }
+            $mArr = json_decode($th['muestras_json'] ?? '[]', true) ?: [];
+            $totalYaRegistrado += count($mArr);
+        }
+        $disponiblesOS = max(0, (int)round($totalContratado - $totalYaRegistrado));
+
+        if ($esNueva) {
+            $cantSugerida = ($disponiblesOS > 0) ? $disponiblesOS : ($cantEstimadaProg > 0 ? $cantEstimadaProg : 5);
+        } else {
+            $muestrasActuales = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
+            $cantSugerida = count($muestrasActuales) > 0 ? count($muestrasActuales) : ($disponiblesOS > 0 ? $disponiblesOS : 5);
+        }
+
+        $siguienteConsecutivoMuestra = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestra);
+
+        if ($esNueva) {
+            if ($esCampo) {
+                $hoja['condicion_muestreo_datos'] = 'Muestreo realizado por técnicos de CYCSA';
+                if (!empty($tecnicoMuestreo)) {
+                    $hoja['nombre_persona_toma_muestra'] = $tecnicoMuestreo;
+                }
+            } else {
+                $hoja['condicion_muestreo_datos'] = 'Muestra tomada y entregada por el cliente';
+                if (empty($hoja['nombre_persona_toma_muestra'])) {
+                    $hoja['nombre_persona_toma_muestra'] = $atencionA ?: ($os['cliente_nombre'] ?? 'Cliente');
+                }
+            }
+        }
 
         // Simplificar lista de todas las hojas para el selector del frontend
         $listaHojasFrontend = [];
@@ -179,8 +225,12 @@ class HojasServicioControlador extends ControladorBase {
                 'tipo_contrato' => $os['tipo_contrato'] ?? 'Puntual'
             ],
             'prefijo_muestra' => $prefijoMuestra,
+            'siguiente_consecutivo_muestra' => $siguienteConsecutivoMuestra,
             'tipo_origen' => $tipoOrigen,
             'cantidad_muestras_sugerida' => $cantSugerida,
+            'total_contratado' => $totalContratado,
+            'total_registrado' => $totalYaRegistrado,
+            'cantidad_disponible' => $disponiblesOS,
             'lugar_muestreo' => $lugarMuestreo,
             'os_referencia' => $osCompleta
         ]);
@@ -202,8 +252,8 @@ class HojasServicioControlador extends ControladorBase {
             }
 
             // CSRF
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-                $_SESSION['error'] = 'Token CSRF inválido.';
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
@@ -265,10 +315,7 @@ class HojasServicioControlador extends ControladorBase {
                 $codigoTexto = $os['codigo_os'] . " (Hoja Reg: {$numReg})";
                 registrarBitacora('hojas_servicio', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada/actualizada y PDF generado para Orden de Servicio ' . $codigoTexto, $idOS);
                 
-                // Si la O/S estaba "Observada", al guardar cambios la devolvemos a "Estado 1: Recepcion" para que puedan enviarla a revisión
-                if ($os['estado'] === 'Estado 2: Observada') {
-                    $modelo->actualizarEstadoOS($idOS, 'Estado 1: Recepcion');
-                }
+                // Nota: Si la O/S estaba "Observada", se mantiene su estado para que el usuario pueda enviarla a revisión formal con el botón correspondiente.
 
                 $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado.';
             } else {
@@ -294,8 +341,8 @@ class HojasServicioControlador extends ControladorBase {
             }
 
             // CSRF
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-                $_SESSION['error'] = 'Token CSRF inválido.';
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
@@ -336,7 +383,9 @@ class HojasServicioControlador extends ControladorBase {
             $idOS = (int)($datos['id_os'] ?? 0);
             $nuevoEstado = trim($datos['estado'] ?? '');
             $motivo = trim($datos['motivo_observacion'] ?? '');
-            $reqMuestreo = isset($datos['requiere_muestreo']) ? (int)$datos['requiere_muestreo'] : 0;
+            $reqMuestreo = array_key_exists('requiere_muestreo', $datos)
+                ? (int)$datos['requiere_muestreo']
+                : null;
 
             if ($idOS <= 0 || !in_array($nuevoEstado, ['Estado 3: Ingreso Directo', 'Estado 3A: Programacion Muestreo', 'Estado 2: Observada'])) {
                 $_SESSION['error'] = 'Datos de revisión inválidos.';
@@ -345,8 +394,8 @@ class HojasServicioControlador extends ControladorBase {
             }
 
             // CSRF
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-                $_SESSION['error'] = 'Token CSRF inválido.';
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
@@ -358,6 +407,10 @@ class HojasServicioControlador extends ControladorBase {
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
+
+            // Si el formulario de revisión no cambia explícitamente la modalidad,
+            // conservar la decisión ya registrada durante la programación de campo.
+            $reqMuestreo = $reqMuestreo ?? (int)($os['requiere_muestreo'] ?? 0);
 
             $db = Conexion::obtenerInstancia();
             $exito = false;

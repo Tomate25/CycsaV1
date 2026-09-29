@@ -204,10 +204,14 @@ class CotizacionVersionamientoTest extends TestCase {
             $modelo = new CotizacionModelo();
 
             // 1. Obtener cotización existente para simular observación
-            $cotOriginal = $modelo->obtenerPorId(5);
-            $this->assertNotNull($cotOriginal);
+            $stmtC = $db->query("SELECT id FROM cotizaciones ORDER BY id ASC LIMIT 1");
+            $idCot = (int)$stmtC->fetchColumn();
+            if ($idCot <= 0) {
+                $this->markTestSkipped('No hay cotizaciones para probar versionamiento.');
+            }
+            $cotOriginal = $modelo->obtenerPorId($idCot);
+            $this->assertNotEmpty($cotOriginal);
 
-            $idCot = 5;
             $db->prepare("UPDATE cotizaciones SET estado = 'Observada', version = 1, motivo_observacion = 'Corregir precios de ensayo' WHERE id = :id")
                ->execute(['id' => $idCot]);
 

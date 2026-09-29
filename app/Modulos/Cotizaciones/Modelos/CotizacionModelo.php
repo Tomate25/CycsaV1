@@ -8,27 +8,80 @@ use Exception;
 
 class CotizacionModelo extends ModeloBase {
     
-    public function obtenerTodas(string $busqueda = ''): array {
-        $sql = "SELECT c.id, c.codigo, c.version, c.estado, c.total, c.fecha_creacion, 
-                       c.id_usuario_creador,
+    public function obtenerTodas(string $busqueda = '', array $filtros = []): array {
+        $sql = "SELECT c.id, c.codigo, c.version, c.estado, c.total, c.fecha_creacion,
+                       c.id_cliente, c.id_usuario_creador,
                        cl.nombre_razon_social AS cliente, 
                        u.nombre AS creador
                 FROM cotizaciones c
                 INNER JOIN clientes cl ON c.id_cliente = cl.id
-                INNER JOIN usuarios u ON c.id_usuario_creador = u.id ";
-                
+                INNER JOIN usuarios u ON c.id_usuario_creador = u.id";
+
+        $condiciones = [];
+        $parametros = [];
+
         if ($busqueda !== '') {
-            $sql .= "WHERE c.codigo LIKE :q1 OR cl.nombre_razon_social LIKE :q2 OR c.estado LIKE :q3 ";
-            $sql .= "ORDER BY c.id DESC";
-            $stmt = $this->db->prepare($sql);
             $termino = '%' . trim($busqueda) . '%';
-            $stmt->execute(['q1' => $termino, 'q2' => $termino, 'q3' => $termino]);
-        } else {
-            $sql .= "ORDER BY c.id DESC";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute();
+            $condiciones[] = '(c.codigo LIKE :q1 OR cl.nombre_razon_social LIKE :q2 OR c.estado LIKE :q3)';
+            $parametros['q1'] = $termino;
+            $parametros['q2'] = $termino;
+            $parametros['q3'] = $termino;
         }
+
+        $fechaDesde = trim((string)($filtros['fecha_desde'] ?? ''));
+        if ($this->esFechaFiltroValida($fechaDesde)) {
+            $condiciones[] = 'DATE(c.fecha_creacion) >= :fecha_desde';
+            $parametros['fecha_desde'] = $fechaDesde;
+        }
+
+        $fechaHasta = trim((string)($filtros['fecha_hasta'] ?? ''));
+        if ($this->esFechaFiltroValida($fechaHasta)) {
+            $condiciones[] = 'DATE(c.fecha_creacion) <= :fecha_hasta';
+            $parametros['fecha_hasta'] = $fechaHasta;
+        }
+
+        $idCliente = (int)($filtros['id_cliente'] ?? 0);
+        if ($idCliente > 0) {
+            $condiciones[] = 'c.id_cliente = :id_cliente';
+            $parametros['id_cliente'] = $idCliente;
+        }
+
+        $gruposEstado = [
+            'borradores' => ['Borrador'],
+            'revision' => ['En Revision'],
+            'observadas' => ['Observada'],
+            'aprobadas' => ['Aprobada Internamente', 'Enviada al Cliente', 'Aprobada por Cliente'],
+            'rechazadas' => ['Rechazada por Cliente'],
+        ];
+        $estado = trim((string)($filtros['estado'] ?? ''));
+        if (isset($gruposEstado[$estado])) {
+            $marcadores = [];
+            foreach ($gruposEstado[$estado] as $indice => $valorEstado) {
+                $clave = 'estado_filtro_' . $indice;
+                $marcadores[] = ':' . $clave;
+                $parametros[$clave] = $valorEstado;
+            }
+            $condiciones[] = 'c.estado IN (' . implode(', ', $marcadores) . ')';
+        }
+
+        if ($condiciones !== []) {
+            $sql .= ' WHERE ' . implode(' AND ', $condiciones);
+        }
+
+        $sql .= ' ORDER BY c.id DESC';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($parametros);
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private function esFechaFiltroValida(string $fecha): bool {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha) !== 1) {
+            return false;
+        }
+
+        [$anio, $mes, $dia] = array_map('intval', explode('-', $fecha));
+        return checkdate($mes, $dia, $anio);
     }
 
     public function obtenerPorId(int $id) {

@@ -25,15 +25,35 @@ class CotizacionesControlador extends ControladorBase {
         }
         $modelo = new CotizacionModelo();
         
-        $busqueda = $_GET['q'] ?? '';
-        $tab = $_GET['tab'] ?? '';
+        $busqueda = trim((string)($_GET['q'] ?? ''));
+        $tab = trim((string)($_GET['tab'] ?? ''));
         
         // Tab por defecto: siempre 'todas'
         if (empty($tab)) {
             $tab = 'todas';
         }
+        $tabsPermitidos = ['todas', 'borradores', 'revision', 'observadas', 'aprobadas'];
+        if (!in_array($tab, $tabsPermitidos, true)) {
+            $tab = 'todas';
+        }
         
-        $todas = $modelo->obtenerTodas($busqueda);
+        $filtros = [
+            'fecha_desde' => $this->normalizarFechaFiltro($_GET['fecha_desde'] ?? ''),
+            'fecha_hasta' => $this->normalizarFechaFiltro($_GET['fecha_hasta'] ?? ''),
+            'id_cliente' => max(0, (int)($_GET['id_cliente'] ?? 0)),
+            'estado' => trim((string)($_GET['estado'] ?? '')),
+        ];
+
+        $estadosPermitidos = ['', 'borradores', 'revision', 'observadas', 'aprobadas', 'rechazadas'];
+        if (!in_array($filtros['estado'], $estadosPermitidos, true)) {
+            $filtros['estado'] = '';
+        }
+
+        if ($filtros['fecha_desde'] !== '' && $filtros['fecha_hasta'] !== '' && $filtros['fecha_desde'] > $filtros['fecha_hasta']) {
+            [$filtros['fecha_desde'], $filtros['fecha_hasta']] = [$filtros['fecha_hasta'], $filtros['fecha_desde']];
+        }
+
+        $todas = $modelo->obtenerTodas($busqueda, $filtros);
         $cotizaciones = [];
         
         foreach ($todas as $cot) {
@@ -78,8 +98,20 @@ class CotizacionesControlador extends ControladorBase {
             'cotizaciones' => $cotizaciones,
             'busqueda' => $busqueda,
             'tabActual' => $tab,
+            'filtros' => $filtros,
+            'clientes' => (new ClienteModelo())->obtenerTodos(),
             'bitacora_logs' => $bitacora_logs
         ]);
+    }
+
+    private function normalizarFechaFiltro(mixed $valor): string {
+        $fecha = trim((string)$valor);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha) !== 1) {
+            return '';
+        }
+
+        [$anio, $mes, $dia] = array_map('intval', explode('-', $fecha));
+        return checkdate($mes, $dia, $anio) ? $fecha : '';
     }
 
     public function crear(Peticion $peticion, Respuesta $respuesta): void {

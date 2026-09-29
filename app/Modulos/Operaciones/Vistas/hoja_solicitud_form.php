@@ -370,7 +370,7 @@
                             $identMuestras[] = [
                                 'nombre_muestra' => $nombreDefecto, 
                                 'descripcion' => $esCampo ? 'Muestra tomada en campo' : 'Muestra entregada en laboratorio', 
-                                'info_importante' => $esCampo ? (!empty($hoja['procedencia_punto_muestreo']) ? 'Punto: ' . $hoja['procedencia_punto_muestreo'] : 'Muestreo en Obra') : 'Recepción Lab Central'
+                                'info_importante' => $esCampo ? (!empty($hoja['procedencia_punto_muestreo']) ? 'Ubicación: ' . $hoja['procedencia_punto_muestreo'] : 'Muestreo en Obra') : 'Recepción Lab Central'
                             ];
                             $siguienteConsecutivo++;
                         }

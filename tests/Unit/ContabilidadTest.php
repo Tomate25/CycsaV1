@@ -213,4 +213,165 @@ class ContabilidadTest extends TestCase {
             $this->modelo->eliminarAsiento($partidaId);
         }
     }
+
+    /**
+     * TAREA-021: Validar cálculo de antigüedad para cuenta corriente (sin vencer).
+     */
+    public function testProcesarAntiguedadFilaCorriente(): void {
+        $fechaEmision = date('Y-m-d', strtotime('-5 days'));
+        $fechaVencimiento = date('Y-m-d', strtotime('+25 days'));
+
+        $fila = [
+            'id' => 101,
+            'factura_numero' => 'FAC-TEST-01',
+            'monto' => 1500.00,
+            'saldo' => 1500.00,
+            'estado' => 'Pendiente',
+            'fecha_emision' => $fechaEmision,
+            'fecha_vencimiento' => $fechaVencimiento,
+        ];
+
+        $procesada = $this->modelo->procesarAntiguedadFila($fila);
+
+        $this->assertEquals('corriente', $procesada['antiguedad_cat'], "La cuenta vigente debe clasificarse como corriente.");
+        $this->assertEquals(0, $procesada['dias_mora'], "Una cuenta corriente debe tener 0 días de mora.");
+        $this->assertGreaterThan(0, $procesada['dias_faltantes'], "Debe tener días faltantes para su vencimiento.");
+        $this->assertEquals('badge-ant-corriente', $procesada['antiguedad_badge_class']);
+        $this->assertTrue($procesada['tiene_vencimiento_explicito']);
+    }
+
+    /**
+     * TAREA-021: Validar cálculo de cubetas de mora (1-30, 31-60 y +60 días).
+     */
+    public function testProcesarAntiguedadFilaMora(): void {
+        // Caso 1: Mora 1-30 (10 días de vencida)
+        $fila1 = [
+            'id' => 102,
+            'factura_numero' => 'FAC-TEST-02',
+            'monto' => 2000.00,
+            'saldo' => 2000.00,
+            'estado' => 'Pendiente',
+            'fecha_emision' => date('Y-m-d', strtotime('-40 days')),
+            'fecha_vencimiento' => date('Y-m-d', strtotime('-10 days')),
+        ];
+        $res1 = $this->modelo->procesarAntiguedadFila($fila1);
+        $this->assertEquals('1_30', $res1['antiguedad_cat']);
+        $this->assertEquals(10, $res1['dias_mora']);
+        $this->assertEquals('badge-ant-1-30', $res1['antiguedad_badge_class']);
+
+        // Caso 2: Mora 31-60 (45 días de vencida)
+        $fila2 = [
+            'id' => 103,
+            'factura_numero' => 'FAC-TEST-03',
+            'monto' => 3500.00,
+            'saldo' => 3500.00,
+            'estado' => 'Pendiente',
+            'fecha_emision' => date('Y-m-d', strtotime('-75 days')),
+            'fecha_vencimiento' => date('Y-m-d', strtotime('-45 days')),
+        ];
+        $res2 = $this->modelo->procesarAntiguedadFila($fila2);
+        $this->assertEquals('31_60', $res2['antiguedad_cat']);
+        $this->assertEquals(45, $res2['dias_mora']);
+        $this->assertEquals('badge-ant-31-60', $res2['antiguedad_badge_class']);
+
+        // Caso 3: Mora +60 (90 días de vencida sin fecha explícita, emision hace 120 días -> venció hace 90 días)
+        $fila3 = [
+            'id' => 104,
+            'factura_numero' => 'FAC-TEST-04',
+            'monto' => 5000.00,
+            'saldo' => 5000.00,
+            'estado' => 'Pendiente',
+            'fecha_emision' => date('Y-m-d', strtotime('-120 days')),
+            'fecha_vencimiento' => null, // Sin vencimiento explícito: 120 - 30 = 90 días de mora
+        ];
+        $res3 = $this->modelo->procesarAntiguedadFila($fila3);
+        $this->assertEquals('mas_60', $res3['antiguedad_cat']);
+        $this->assertFalse($res3['tiene_vencimiento_explicito']);
+        $this->assertEquals(90, $res3['dias_mora']);
+        $this->assertEquals('badge-ant-mas-60', $res3['antiguedad_badge_class']);
+    }
+
+    /**
+     * TAREA-021: Validar que cuentas saldadas o con saldo <= 0 se clasifiquen como pagado sin mora.
+     */
+    public function testProcesarAntiguedadFilaPagada(): void {
+        $filaPagada = [
+            'id' => 105,
+            'factura_numero' => 'FAC-TEST-05',
+            'monto' => 1000.00,
+            'saldo' => 0.00,
+            'estado' => 'Pagado',
+            'fecha_emision' => date('Y-m-d', strtotime('-100 days')),
+            'fecha_vencimiento' => date('Y-m-d', strtotime('-70 days')),
+        ];
+
+        $res = $this->modelo->procesarAntiguedadFila($filaPagada);
+        $this->assertEquals('pagado', $res['antiguedad_cat'], "Una factura con saldo cero debe ser tratada como pagada.");
+        $this->assertEquals(0, $res['dias_mora'], "Una factura pagada no genera días de mora.");
+        $this->assertEquals('badge-ant-pagado', $res['antiguedad_badge_class']);
+    }
+
+    /**
+     * TAREA-021: Validar el cálculo consolidado del resumen financiero de antigüedad y porcentajes de morosidad.
+     */
+    public function testResumenAntiguedadCxcCalculos(): void {
+        $cxcList = [
+            // Corriente: saldo 1000
+            [
+                'id' => 1, 'monto' => 1000.0, 'saldo' => 1000.0, 'estado' => 'Pendiente',
+                'fecha_emision' => date('Y-m-d'), 'fecha_vencimiento' => date('Y-m-d', strtotime('+30 days'))
+            ],
+            // Mora 1-30: saldo 2000
+            [
+                'id' => 2, 'monto' => 2000.0, 'saldo' => 2000.0, 'estado' => 'Pendiente',
+                'fecha_emision' => date('Y-m-d', strtotime('-40 days')), 'fecha_vencimiento' => date('Y-m-d', strtotime('-10 days'))
+            ],
+            // Mora 31-60: saldo 3000
+            [
+                'id' => 3, 'monto' => 3000.0, 'saldo' => 3000.0, 'estado' => 'Pendiente',
+                'fecha_emision' => date('Y-m-d', strtotime('-75 days')), 'fecha_vencimiento' => date('Y-m-d', strtotime('-45 days'))
+            ],
+            // Mora +60: saldo 4000
+            [
+                'id' => 4, 'monto' => 5000.0, 'saldo' => 4000.0, 'estado' => 'Parcial',
+                'fecha_emision' => date('Y-m-d', strtotime('-100 days')), 'fecha_vencimiento' => date('Y-m-d', strtotime('-70 days'))
+            ],
+            // Pagado: saldo 0 (monto 1500)
+            [
+                'id' => 5, 'monto' => 1500.0, 'saldo' => 0.0, 'estado' => 'Pagado',
+                'fecha_emision' => date('Y-m-d', strtotime('-50 days')), 'fecha_vencimiento' => date('Y-m-d', strtotime('-20 days'))
+            ],
+        ];
+
+        $resumen = $this->modelo->obtenerResumenAntiguedadCxc($cxcList);
+
+        $this->assertEquals(1000.0, $resumen['total_corriente']);
+        $this->assertEquals(1, $resumen['cant_corriente']);
+
+        $this->assertEquals(2000.0, $resumen['total_mora_1_30']);
+        $this->assertEquals(1, $resumen['cant_1_30']);
+
+        $this->assertEquals(3000.0, $resumen['total_mora_31_60']);
+        $this->assertEquals(1, $resumen['cant_31_60']);
+
+        $this->assertEquals(4000.0, $resumen['total_mora_mas_60']);
+        $this->assertEquals(1, $resumen['cant_mas_60']);
+
+        // Total vencido = 2000 + 3000 + 4000 = 9000
+        $this->assertEquals(9000.0, $resumen['total_vencido']);
+        $this->assertEquals(3, $resumen['cant_vencido']);
+
+        // Saldo pendiente total = 1000 + 2000 + 3000 + 4000 = 10000
+        $this->assertEquals(10000.0, $resumen['total_saldo_pendiente']);
+
+        // Porcentaje vencido = 9000 / 10000 * 100 = 90%
+        $this->assertEquals(90.0, $resumen['porcentaje_vencido']);
+
+        // Total cobrado = 1000 (de abono parcial) + 1500 (de pagado) = 2500
+        $this->assertEquals(2500.0, $resumen['total_cobrado']);
+
+        // Total registrado = 1000 + 2000 + 3000 + 5000 + 1500 = 12500
+        $this->assertEquals(12500.0, $resumen['total_registrado']);
+    }
 }
+

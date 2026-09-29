@@ -511,7 +511,11 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                                 <?php 
                                 $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                                 ?>
-                                <?php if ($esSoloCompactacion): ?>
+                                <?php if (!$tieneHojaServicio && $o['ensayos_con_resultados'] == 0): ?>
+                                    <span class="badge-progreso badge-progreso-rojo" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca;" title="Bloqueado: Falta registrar la Hoja RT-FM-13 oficial">
+                                        <i class="fa-solid fa-lock"></i> Falta Hoja RT-FM-13
+                                    </span>
+                                <?php elseif ($esSoloCompactacion): ?>
                                     <span class="badge-progreso badge-progreso-azul" title="Ensayo de densidad / compactación in situ">
                                         <i class="fa-solid fa-gauge-high"></i> Compactación In Situ
                                     </span>
@@ -707,8 +711,13 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                                                     <?php endif; ?>
                                                 <?php endif; ?>
 
-                                                <?php if ($esCompactacion): ?>
-                                                    <!-- COMPACTACIÓN / DENSIDAD IN SITU: DIRECTO A LLENADO DE MATRIZ SIN SOLICITUD DE MUESTRAS -->
+                                                <?php if (!$tieneHojaServicio && !$tieneRes): ?>
+                                                    <!-- BLOQUEADO PORQUE FALTA HOJA RT-FM-13 -->
+                                                    <span style="padding: 6px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 5px;" title="Bloqueado: Falta registrar la Hoja de Solicitud CYCSA-RT-FM-13 oficial">
+                                                        <i class="fa-solid fa-lock"></i> Bloqueado: Falta Hoja RT-FM-13
+                                                    </span>
+                                                <?php elseif ($esCompactacion): ?>
+                                                    <!-- COMPACTACIÓN / DENSIDAD IN SITU: DIRECTO A LLENADO DE MATRIZ TRAS REGISTRAR HOJA RT-FM-13 -->
                                                     <span style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 12px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; display: inline-flex; align-items: center; gap: 4px;">
                                                         <i class="fa-solid fa-gauge-high"></i> In Situ
                                                     </span>
@@ -742,8 +751,8 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                                                         </button>
                                                     <?php endif; ?>
                                                 <?php elseif (!$tieneHojaServicio): ?>
-                                                    <span style="padding: 6px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 5px;">
-                                                        <i class="fa-solid fa-lock"></i> Requiere Hoja RT-FM-13
+                                                    <span style="padding: 6px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 5px;" title="Bloqueado: Falta registrar la Hoja de Solicitud CYCSA-RT-FM-13 oficial">
+                                                        <i class="fa-solid fa-lock"></i> Bloqueado: Falta Hoja RT-FM-13
                                                     </span>
                                                 <?php elseif (!$tieneMuestrasAceptadas): ?>
                                                     <span style="padding: 6px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 5px;">
@@ -1135,14 +1144,11 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
 
     function intentarRellenarMatrizProducto(tieneHoja, tieneAceptacionLab, idOS, codigoOS, idDetalle) {
         if (!tieneHoja) {
-            alert('Debe llenar y registrar primero la Hoja de Solicitud de Servicio (CYCSA-RT-FM-13) para la Orden ' + codigoOS + ' antes de rellenar la matriz.');
             window.location.href = '/Cycsa/publico/ordenes-servicio?id_os=' + idOS;
             return;
         }
         if (!tieneAceptacionLab) {
-            if (confirm('Las muestras de la Orden ' + codigoOS + ' aún no han sido aceptadas e ingresadas en el Laboratorio.\n\n¿Desea ir al Portal de Laboratorio para aceptarlas y asignar los códigos oficiales (MS-XXXX-26)?')) {
-                window.location.href = '/Cycsa/publico/laboratorio?tab=kanban';
-            }
+            window.location.href = '/Cycsa/publico/laboratorio?tab=kanban';
             return;
         }
         window.location.href = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' + idDetalle;
@@ -1449,9 +1455,16 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                         };
                         const badgeHtml = `<span style="background-color:${rev.badge_bg}; color:${rev.badge_color}; border:1px solid ${rev.badge_border}; margin-right:8px; font-size:11px; padding:4px 8px; border-radius:12px; font-weight:700;"><i class="${rev.badge_icono}"></i> ${rev.estado_label}</span>`;
 
-                        const btnMatrizHtml = tieneTecnicoOS
-                            ? `<a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=${it.id}" class="btn-accion-hs btn-registrar" style="text-decoration:none; padding:7px 14px; font-size:12px; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:6px;"><i class="fa-solid fa-pen-to-square"></i> ${tieneResultados ? 'Editar Matriz' : 'Capturar Matriz'}</a>`
-                            : `<button type="button" onclick="intentarRellenarMatrizProducto(false, ${idOS}, '${code}', ${it.id})" class="btn-accion-hs btn-editar" style="padding:7px 14px; font-size:12px; font-weight:700; border-radius:6px; cursor:pointer; background:#fffbeb; color:#b45309; border:1px solid #fde68a;"><i class="fa-solid fa-user-lock"></i> Asignar Técnico Primero</button>`;
+                        const tieneResultados = !!(it.resultados_json && it.resultados_json !== '[]');
+                        const tieneHojaOS = !!(data.tiene_hoja);
+                        let btnMatrizHtml = '';
+                        if (!tieneHojaOS && !tieneResultados) {
+                            btnMatrizHtml = `<span style="padding:6px 12px; font-size:11.5px; font-weight:700; border-radius:6px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; display:inline-flex; align-items:center; gap:5px;" title="Bloqueado: Falta registrar la Hoja de Solicitud CYCSA-RT-FM-13 oficial"><i class="fa-solid fa-lock"></i> Bloqueado: Falta Hoja RT-FM-13</span>`;
+                        } else if (tieneTecnicoOS || tieneResultados) {
+                            btnMatrizHtml = `<a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=${it.id}" class="btn-accion-hs btn-registrar" style="text-decoration:none; padding:7px 14px; font-size:12px; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:6px;"><i class="fa-solid fa-pen-to-square"></i> ${tieneResultados ? 'Editar Matriz' : 'Capturar Matriz'}</a>`;
+                        } else {
+                            btnMatrizHtml = `<span style="padding:6px 12px; font-size:11.5px; font-weight:700; border-radius:6px; background:#fffbeb; color:#b45309; border:1px solid #fde68a; display:inline-flex; align-items:center; gap:5px;"><i class="fa-solid fa-user-lock"></i> Asignar Técnico Primero</span>`;
+                        }
 
                         tr.innerHTML = `
                             <td style="padding:12px 14px; font-weight:700; color:#0f172a;">${it.descripcion_ensayo}</td>

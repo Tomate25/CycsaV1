@@ -160,4 +160,120 @@ class MultiplesHojasServicioTest extends TestCase {
             $this->assertEquals('Marco / Contrato Activo', $stmtCheck->fetchColumn());
         }
     }
+
+    public function testConcurrenciaAsignacionMuestrasSinDuplicados(): void {
+        $stmtOS = $this->db->query("SELECT os.id, os.codigo_os, c.nombre_razon_social as cliente_nombre FROM ordenes_servicio os LEFT JOIN clientes c ON c.id = os.id_cliente LIMIT 1");
+        $os = $stmtOS->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotEmpty($os);
+        $idOS = (int)$os['id'];
+
+        // Simular dos usuarios A y B guardando simultáneamente 3 muestras cada uno
+        // Ambos formularios frontend envían los mismos nombres sugeridos: 'MC-0001-26', 'MC-0002-26', 'MC-0003-26'
+        $datosUsuarioA = [
+            'id_os' => $idOS,
+            'id_hoja' => 0,
+            'numero_registro' => 'CONCURR-A',
+            'codigo_documento' => 'CYCSA-RT-FM-13',
+            'nombre_empresa_o_cliente' => $os['cliente_nombre'] ?? 'Cliente A',
+            'fecha_hora_llegada_laboratorio' => date('Y-m-d H:i:s'),
+            'identificacion_muestras_json' => json_encode([
+                ['nombre_muestra' => 'MC-0001-26', 'descripcion' => 'Muestra Concurrente A1'],
+                ['nombre_muestra' => 'MC-0002-26', 'descripcion' => 'Muestra Concurrente A2'],
+                ['nombre_muestra' => 'MC-0003-26', 'descripcion' => 'Muestra Concurrente A3'],
+            ])
+        ];
+
+        $datosUsuarioB = [
+            'id_os' => $idOS,
+            'id_hoja' => 0,
+            'numero_registro' => 'CONCURR-B',
+            'codigo_documento' => 'CYCSA-RT-FM-13',
+            'nombre_empresa_o_cliente' => $os['cliente_nombre'] ?? 'Cliente B',
+            'fecha_hora_llegada_laboratorio' => date('Y-m-d H:i:s'),
+            'identificacion_muestras_json' => json_encode([
+                ['nombre_muestra' => 'MC-0001-26', 'descripcion' => 'Muestra Concurrente B1'],
+                ['nombre_muestra' => 'MC-0002-26', 'descripcion' => 'Muestra Concurrente B2'],
+                ['nombre_muestra' => 'MC-0003-26', 'descripcion' => 'Muestra Concurrente B3'],
+            ])
+        ];
+
+        $idHojaA = 0;
+        $idHojaB = 0;
+
+        $okA = $this->opModelo->guardarHojaSolicitud($datosUsuarioA, $idHojaA);
+        $okB = $this->opModelo->guardarHojaSolicitud($datosUsuarioB, $idHojaB);
+
+        $this->assertTrue($okA, 'Hoja de Usuario A debe guardarse exitosamente.');
+        $this->assertTrue($okB, 'Hoja de Usuario B debe guardarse exitosamente.');
+
+        $hojaA = $this->opModelo->obtenerHojaSolicitudPorId($idHojaA);
+        $hojaB = $this->opModelo->obtenerHojaSolicitudPorId($idHojaB);
+
+        $muestrasA = json_decode($hojaA['muestras_json'], true) ?: [];
+        $muestrasB = json_decode($hojaB['muestras_json'], true) ?: [];
+
+        $nombresA = array_column($muestrasA, 'nombre_muestra');
+        $nombresB = array_column($muestrasB, 'nombre_muestra');
+
+        $this->assertCount(3, $nombresA);
+        $this->assertCount(3, $nombresB);
+
+        // Ningún código de muestra de B puede estar en A (Cero duplicados)
+        $interseccion = array_intersect($nombresA, $nombresB);
+        $this->assertEmpty($interseccion, 'No deben existir códigos de muestras repetidos entre hojas concurrentes.');
+
+        // Limpieza de prueba
+        $this->db->exec("DELETE FROM hojas_solicitud WHERE id IN ({$idHojaA}, {$idHojaB})");
+    }
+
+    public function testConsecutivoGlobalSinColisionEntrePrefijosMCyMS(): void {
+        $stmtOS = $this->db->query("SELECT os.id, os.codigo_os, c.nombre_razon_social as cliente_nombre FROM ordenes_servicio os LEFT JOIN clientes c ON c.id = os.id_cliente LIMIT 1");
+        $os = $stmtOS->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotEmpty($os);
+        $idOS = (int)$os['id'];
+
+        $anio = (int)date('Y');
+        $anio2D = date('y');
+
+        // Obtener siguiente correlativo disponible
+        $siguienteInicial = $this->opModelo->obtenerSiguienteConsecutivoMuestra($anio, 'MS');
+        $this->assertGreaterThan(0, $siguienteInicial);
+
+        // Crear una hoja con prefijo MS intentando usar números ya existentes si los hubiera
+        $datos = [
+            'id_os' => $idOS,
+            'id_hoja' => 0,
+            'numero_registro' => 'TEST-COLLISION-CHECK',
+            'codigo_documento' => 'CYCSA-RT-FM-13',
+            'nombre_empresa_o_cliente' => $os['cliente_nombre'] ?? 'Cliente Global Test',
+            'fecha_hora_llegada_laboratorio' => date('Y-m-d H:i:s'),
+            'identificacion_muestras_json' => json_encode([
+                ['nombre_muestra' => 'MS-0001-' . $anio2D, 'descripcion' => 'Muestra 1'],
+                ['nombre_muestra' => 'MS-0002-' . $anio2D, 'descripcion' => 'Muestra 2']
+            ])
+        ];
+
+        $idHoja = 0;
+        $ok = $this->opModelo->guardarHojaSolicitud($datos, $idHoja);
+        $this->assertTrue($ok);
+        $this->assertGreaterThan(0, $idHoja);
+
+        $hoja = $this->opModelo->obtenerHojaSolicitudPorId($idHoja);
+        $muestras = json_decode($hoja['muestras_json'], true) ?: [];
+        $this->assertCount(2, $muestras);
+
+        // Los números asignados deben ser >= $siguienteInicial y distintos entre sí
+        $numerosAsignados = [];
+        foreach ($muestras as $m) {
+            if (preg_match('/^[A-Za-z]+-(\d+)-/', $m['nombre_muestra'], $match)) {
+                $num = (int)$match[1];
+                $this->assertGreaterThanOrEqual($siguienteInicial, $num, "El número asignado ($num) debe ser mayor o igual al consecutivo disponible ($siguienteInicial)");
+                $numerosAsignados[] = $num;
+            }
+        }
+        $this->assertCount(2, array_unique($numerosAsignados), 'No debe haber números duplicados dentro de la hoja guardada');
+
+        // Limpieza de prueba
+        $this->db->exec("DELETE FROM hojas_solicitud WHERE id = {$idHoja}");
+    }
 }

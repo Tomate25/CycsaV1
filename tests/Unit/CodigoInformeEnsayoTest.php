@@ -48,6 +48,19 @@ class CodigoInformeEnsayoTest extends TestCase {
         $this->assertSame('CYCSA-INF-MC-0002, 0008-26', $codigo);
     }
 
+    public function testCodigoInformeNoConsecutivosDensimetroNuclearE2E(): void {
+        $muestras = [
+            ['Código laboratorio' => 'MC-0004-26'],
+            ['Código laboratorio' => 'MC-0006-26'],
+            ['Código laboratorio' => 'MC-0007-26'],
+            ['Código laboratorio' => 'MC-0010-26'],
+        ];
+
+        $codigo = generarCodigoInformeEnsayo($muestras, '2026-09-20');
+
+        $this->assertSame('CYCSA-INF-MC-0004, 0006, 0007, 0010-26', $codigo);
+    }
+
     public function testCodigoInformeMuestraUnica(): void {
         $muestras = [
             ['Código laboratorio' => 'MS-0001-26'],

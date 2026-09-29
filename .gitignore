@@ -1,5 +1,4 @@
-# Archivos de variables de entorno (contienen contraseñas)
-.env
+# Variables de entorno locales (NO subir a git; .env contiene las credenciales base de Bluehost)
 .env.local
 
 # Dependencias de Composer
@@ -21,6 +20,11 @@ storage/pdf/*
 storage/temp/*
 almacenamiento/logs/*
 almacenamiento/cache/*
+
+# Archivos subidos por clientes/usuarios (evitar fuga de información en git)
+publico/uploads/*
+!publico/uploads/.htaccess
+!publico/uploads/**/.gitkeep
 
 # Archivos del sistema operativo y herramientas
 .DS_Store

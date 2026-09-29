@@ -261,8 +261,8 @@ class OrdenServicioModelo {
             'checklist_json' => $datos['checklist_json'] ?? null
         ]);
 
-        // Actualizar estado de la Orden de Servicio
-        $estadoOS = $esFinalizado ? 'Estado 1: Recepcion' : 'Pendiente de Muestreo';
+        // Actualizar estado de la Orden de Servicio (manteniendo la aprobación y avanzando en el ciclo)
+        $estadoOS = $esFinalizado ? 'Estado 3B: Ejecucion Muestreo' : 'Estado 3A: Programacion Muestreo';
         $stmtState = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = :estado WHERE id = :id");
         $stmtState->execute([
             'estado' => $estadoOS,
@@ -276,7 +276,7 @@ class OrdenServicioModelo {
      * Marcar la orden como que requiere muestreo en campo
      */
     public function marcarRequiereMuestreo(int $idOS): bool {
-        $stmt = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 1 WHERE id = :id");
+        $stmt = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = 'Estado 3A: Programacion Muestreo' WHERE id = :id");
         return $stmt->execute(['id' => $idOS]);
     }
 
@@ -284,7 +284,7 @@ class OrdenServicioModelo {
      * Marcar la orden como ingreso directo (sin muestreo en campo)
      */
     public function establecerIngresoDirecto(int $idOS): bool {
-        $stmt = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 0, estado = 'Estado 1: Recepcion' WHERE id = :id");
+        $stmt = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 0, estado = 'Estado 3: Ingreso Directo' WHERE id = :id");
         return $stmt->execute(['id' => $idOS]);
     }
 
@@ -326,8 +326,8 @@ class OrdenServicioModelo {
             ]);
         }
 
-        // 2. Cambiar el estado de la Orden de Servicio a 'Estado 1: Recepcion' (para Hoja de Servicio)
-        $sqlOs = "UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = 'Estado 1: Recepcion' WHERE id = :id_os";
+        // 2. Cambiar el estado de la Orden de Servicio a 'Estado 3B: Ejecucion Muestreo' (para registrar Hoja RT-FM-13)
+        $sqlOs = "UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = 'Estado 3B: Ejecucion Muestreo' WHERE id = :id_os";
         $stmtOs = $this->db->prepare($sqlOs);
         return $stmtOs->execute(['id_os' => $idOS]);
     }

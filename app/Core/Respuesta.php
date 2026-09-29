@@ -8,10 +8,24 @@ class Respuesta {
     }
 
     public function redirigir(string $url): void {
-        // Si ya es una URL absoluta externa (http:// o https://), redirigir directamente
+        // 🔒 1. Sanitizar contra CRLF / Header Injection
+        $url = str_replace(["\r", "\n"], '', trim($url));
+
+        // 🔒 2. Mitigar Open Redirect: Si es URL absoluta externa, validar que pertenezca al mismo host
         if (preg_match('#^https?://#i', $url)) {
-            header('Location: ' . $url);
-            exit;
+            $hostActual = $_SERVER['HTTP_HOST'] ?? '';
+            $partesUrl = parse_url($url);
+            if (!empty($partesUrl['host']) && $partesUrl['host'] === $hostActual) {
+                header('Location: ' . $url);
+                exit;
+            }
+            // Si intenta redirigir a un host externo, forzar a ruta interna segura
+            $url = '/';
+        }
+
+        // 🔒 3. Bloquear redirecciones maliciosas de protocolo relativo (ej. //evil.com o /\evil.com)
+        if (strpos($url, '//') === 0 || strpos($url, '/\\') === 0 || strpos($url, '\\') === 0) {
+            $url = '/';
         }
 
         $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';

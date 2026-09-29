@@ -1536,10 +1536,14 @@ class OperacionesControlador extends ControladorBase {
         }
         unset($it);
 
+        $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        $tieneHoja = !empty($hoja);
+
         $respuesta->enviarJson([
             'status' => 'success',
             'os' => $os,
-            'items' => $items
+            'items' => $items,
+            'tiene_hoja' => $tieneHoja
         ]);
     }
 
@@ -1631,31 +1635,32 @@ class OperacionesControlador extends ControladorBase {
             }
         } else {
             // Caso especial: Ensayos in situ / Compactación sin muestras físicas en lab
-            // Si existe hoja RT-FM-13, usar las muestras declaradas en ella
+            // Requiere OBLIGATORIAMENTE que exista al menos una Hoja RT-FM-13 registrada
             $modeloOp = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
-            $hoja = $modeloOp->obtenerHojaSolicitudPorOS((int)$detalle['id_os']);
-            $muestrasDeclaradas = (!empty($hoja['muestras_json'])) ? (json_decode($hoja['muestras_json'], true) ?: []) : [];
+            $hojas = $modeloOp->obtenerHojasSolicitudPorOS((int)$detalle['id_os']);
+            $muestrasDeclaradas = [];
+            foreach ($hojas as $h) {
+                $mList = json_decode($h['muestras_json'] ?? '[]', true) ?: [];
+                foreach ($mList as $mItem) {
+                    $muestrasDeclaradas[] = $mItem;
+                }
+            }
 
-        $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
+            // Si la O/S no tiene registrada ninguna Hoja RT-FM-13: Redirigir limpiamente a O/S sin alertas intrusivas
+            if (empty($muestrasDeclaradas)) {
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . (int)$detalle['id_os']);
+                return;
+            }
 
-        if (!empty($muestrasDeclaradas)) {
+            $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
+
             foreach ($muestrasDeclaradas as $idx => $md) {
                 $codLab = !empty($md['nombre_muestra']) ? $md['nombre_muestra'] : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
                 $muestrasSeteadas[] = [
                     'codigo_lab' => $codLab,
-                    'codigo_campo' => $md['nombre_muestra'] ?? ('Punto ' . ($idx + 1)),
-                    'nombre_muestra' => !empty($md['descripcion']) ? $md['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Punto ' . ($idx + 1))
+                    'codigo_campo' => $codLab,
+                    'nombre_muestra' => !empty($md['descripcion']) ? $md['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
                 ];
-            }
-            } else {
-                $cantPuntos = max(1, (int)($detalle['cantidad'] ?? 1));
-                for ($k = 0; $k < $cantPuntos; $k++) {
-                    $muestrasSeteadas[] = [
-                        'codigo_lab' => 'Punto-' . ($k + 1),
-                        'codigo_campo' => 'Punto ' . ($k + 1),
-                        'nombre_muestra' => 'Punto de ensayo in situ #' . ($k + 1)
-                    ];
-                }
             }
         }
 
@@ -1845,8 +1850,8 @@ class OperacionesControlador extends ControladorBase {
             $nota = trim($datos['nota_aprobacion'] ?? '');
 
             // CSRF
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-                $_SESSION['error'] = 'Token CSRF inválido.';
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
             }
@@ -1929,7 +1934,7 @@ class OperacionesControlador extends ControladorBase {
             );
 
             $_SESSION['exito'] = "Matriz técnica aprobada con éxito. Ya se encuentra habilitada para emisión y envío al cliente.";
-            $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones';
+            $redir = $this->resolverRedireccionSegura($datos['redirect_to'] ?? null, '/Cycsa/publico/operaciones');
             $respuesta->redirigir($redir);
         }
     }
@@ -1953,8 +1958,8 @@ class OperacionesControlador extends ControladorBase {
             $motivo = trim($datos['motivo_devolucion'] ?? '');
 
             // CSRF
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-                $_SESSION['error'] = 'Token CSRF inválido.';
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
             }
@@ -1967,7 +1972,7 @@ class OperacionesControlador extends ControladorBase {
 
             if (empty($motivo)) {
                 $_SESSION['error'] = 'Debe indicar el motivo o las observaciones de la devolución técnica para que el personal de laboratorio sepa qué corregir.';
-                $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones';
+                $redir = $this->resolverRedireccionSegura($datos['redirect_to'] ?? null, '/Cycsa/publico/operaciones');
                 $respuesta->redirigir($redir);
                 return;
             }
@@ -2053,7 +2058,7 @@ class OperacionesControlador extends ControladorBase {
             );
 
             $_SESSION['exito'] = "Matriz técnica devuelta al laboratorio con las observaciones registradas.";
-            $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones';
+            $redir = $this->resolverRedireccionSegura($datos['redirect_to'] ?? null, '/Cycsa/publico/operaciones');
             $respuesta->redirigir($redir);
         }
     }
@@ -2219,17 +2224,38 @@ class OperacionesControlador extends ControladorBase {
             }
         } else {
             $modeloOp = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
+            $hojas = $modeloOp->obtenerHojasSolicitudPorOS((int)$detalle['id_os']);
+            $muestrasDeclaradas = [];
+            foreach ($hojas as $h) {
+                $mList = json_decode($h['muestras_json'] ?? '[]', true) ?: [];
+                foreach ($mList as $mItem) {
+                    $muestrasDeclaradas[] = $mItem;
+                }
+            }
+
             $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
-            $siguienteCorr = $modeloOp->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestraOS);
-            $anioShort = date('y');
-            $cantPuntos = max(1, (int)($detalle['cantidad'] ?? 1));
-            for ($k = 0; $k < $cantPuntos; $k++) {
-                $codigoOficial = sprintf("{$prefijoMuestraOS}-%04d-%02d", $siguienteCorr + $k, $anioShort);
-                $muestrasSeteadas[] = [
-                    'codigo_lab' => $codigoOficial,
-                    'codigo_campo' => 'Muestra ' . ($k + 1),
-                    'nombre_muestra' => ($prefijoMuestraOS === 'MC' ? 'Muestra tomada en campo #' : 'Muestra entregada en laboratorio #') . ($k + 1)
-                ];
+
+            if (!empty($muestrasDeclaradas)) {
+                foreach ($muestrasDeclaradas as $idx => $md) {
+                    $codLab = !empty($md['nombre_muestra']) ? $md['nombre_muestra'] : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => $codLab,
+                        'codigo_campo' => $codLab,
+                        'nombre_muestra' => !empty($md['descripcion']) ? $md['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                    ];
+                }
+            } else {
+                $siguienteCorr = $modeloOp->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestraOS);
+                $anioShort = date('y');
+                $cantMuestras = max(1, (int)($detalle['cantidad'] ?? 1));
+                for ($k = 0; $k < $cantMuestras; $k++) {
+                    $codigoOficial = sprintf("{$prefijoMuestraOS}-%04d-%02d", $siguienteCorr + $k, $anioShort);
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => $codigoOficial,
+                        'codigo_campo' => $codigoOficial,
+                        'nombre_muestra' => ($prefijoMuestraOS === 'MC' ? 'Muestra de campo #' : 'Muestra de laboratorio #') . ($k + 1)
+                    ];
+                }
             }
         }
 
@@ -2888,5 +2914,18 @@ class OperacionesControlador extends ControladorBase {
 
         require dirname(__DIR__) . '/Vistas/factura_print.php';
         exit;
+    }
+
+    /**
+     * Valida y sanitiza una URL de redirección para evitar vulnerabilidades de Open Redirect.
+     */
+    private function resolverRedireccionSegura(?string $redir, string $fallback = '/Cycsa/publico/operaciones'): string {
+        if (!empty($redir) && is_string($redir)) {
+            $cand = trim($redir);
+            if (strpos($cand, '/') === 0 && strpos($cand, '//') !== 0 && strpos($cand, '/\\') !== 0 && !preg_match('#^https?://#i', $cand)) {
+                return $cand;
+            }
+        }
+        return $fallback;
     }
 }
