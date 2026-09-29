@@ -1,9 +1,6 @@
 # Variables de entorno locales (NO subir a git; .env contiene las credenciales base de Bluehost)
 .env.local
 
-# Dependencias de Composer
-vendor/
-
 # Carpetas de desarrollo temporal y respaldos
 scratch/
 *.zip
@@ -13,13 +10,19 @@ database/backups/*.sql
 cloudflared.exe
 *.bat
 
-# Almacenamiento interno de logs y temporales
+# Almacenamiento interno de logs y temporales (conservar carpetas con .gitkeep)
 storage/logs/*
+!storage/logs/.gitkeep
 storage/cache/*
+!storage/cache/.gitkeep
 storage/pdf/*
+!storage/pdf/.gitkeep
 storage/temp/*
+!storage/temp/.gitkeep
 almacenamiento/logs/*
+!almacenamiento/logs/.gitkeep
 almacenamiento/cache/*
+!almacenamiento/cache/.gitkeep
 
 # Archivos subidos por clientes/usuarios (evitar fuga de información en git)
 publico/uploads/*

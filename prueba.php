@@ -4,9 +4,9 @@
  * Permite verificar los requisitos del sistema y diagnosticar errores 500 en producción.
  */
 
-if (php_sapi_name() !== 'cli') {
+if (php_sapi_name() !== 'cli' && ($_GET['token'] ?? '') !== 'cycsa_diag_2026') {
     http_response_code(403);
-    die("Acceso denegado. Este script de diagnóstico solo puede ejecutarse desde la terminal (CLI).");
+    die("Acceso denegado. Este script de diagnóstico solo puede ejecutarse desde la terminal (CLI) o con token autorizado.");
 }
 
 // Desactivar almacenamiento en caché
