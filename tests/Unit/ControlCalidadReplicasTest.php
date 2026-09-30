@@ -98,4 +98,65 @@ class ControlCalidadReplicasTest extends TestCase {
         $this->assertStringContainsString('Guardar evaluación', $html);
         $this->assertStringContainsString('csrf-prueba', $html);
     }
+
+    public function testVistaControlCalidadRenderizaInformeCompletoConMatrizYMetadatos(): void {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        $_SESSION['csrf_token'] = 'csrf-token-123';
+        $informes = [[
+            'detalle' => [
+                'id' => 45,
+                'codigo_os' => 'OS-2026-0099',
+                'descripcion_ensayo' => 'Compresión de Cilindros ASTM C39',
+                'norma_astm' => 'ASTM C39'
+            ],
+            'schemaInfo' => [],
+            'metaOficial' => [
+                'cliente_nombre' => 'CEMEX Nicaragua S.A.',
+                'proyecto' => 'Planta San Rafael',
+                'cliente_direccion' => 'Carretera Norte Km 11',
+                'ubicacion' => 'Punto A-10',
+                'fecha_muestreo' => '2026-09-29',
+                'fecha_ingreso' => '2026-09-29',
+                'fecha_ejecucion' => '2026-09-30',
+                'fecha_emision' => '2026-09-30',
+                'tipo_muestra' => 'Cilindros de Concreto 6x12',
+                'procedimiento_muestreo' => 'CYCSA-PE-05',
+                'muestra_tomada_por' => 'Personal CYCSA',
+                'metodo_muestreo' => 'ASTM C39',
+                'codigo_formato' => 'CYCSA-RT-FM-22 A',
+                'ensayo_realizado' => 'Compresión de Cilindros de Concreto'
+            ],
+            'codigoInformeConsecutivo' => 'CYCSA-INF-MC-0001-0002-26',
+            'columnas' => ['Código laboratorio', 'Nombre muestra', 'Carga (lb)', 'R. Compresión (lb/in²)'],
+            'filas' => [
+                ['Código laboratorio' => 'MC-0001-26', 'Nombre muestra' => 'Cilindro 1', 'Carga (lb)' => '95000', 'R. Compresión (lb/in²)' => '3360'],
+                ['Código laboratorio' => 'MC-0001-26-CR', 'Nombre muestra' => 'Cilindro 1 (Réplica CR)', '_es_replica' => true, '_muestra_origen' => 'MC-0001-26', 'Carga (lb)' => '95800', 'R. Compresión (lb/in²)' => '3388'],
+                ['Código laboratorio' => 'MC-0002-26', 'Nombre muestra' => 'Cilindro 2', 'Carga (lb)' => '98000', 'R. Compresión (lb/in²)' => '3466'],
+            ],
+            'pares' => [[
+                'id' => 45,
+                'codigo_original' => 'MC-0001-26',
+                'codigo_replica' => 'MC-0001-26-CR',
+                'diferencias' => [
+                    'Carga (lb)' => ['original' => 95000.0, 'replica' => 95800.0, 'diferencia' => 800.0, 'diferencia_porcentual' => 0.84],
+                ],
+                'evaluacion' => ['estado' => 'conforme', 'observaciones' => 'Dentro de tolerancia de repetibilidad ASTM', 'usuario' => 'Ing. Supervisor', 'fecha' => '2026-09-30 13:00:00']
+            ]]
+        ]];
+
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/control_calidad_replicas.php';
+        $html = ob_get_clean();
+
+        $this->assertStringContainsString('CEMEX Nicaragua S.A.', $html);
+        $this->assertStringContainsString('Planta San Rafael', $html);
+        $this->assertStringContainsString('CYCSA-INF-MC-0001-0002-26', $html);
+        $this->assertStringContainsString('MC-0001-26-CR', $html);
+        $this->assertStringContainsString('MC-0002-26', $html);
+        $this->assertStringContainsString('RÉPLICA', $html);
+        $this->assertStringContainsString('OS-2026-0099', $html);
+        $this->assertStringContainsString('CYCSA-RT-FM-22 A', $html);
+    }
 }

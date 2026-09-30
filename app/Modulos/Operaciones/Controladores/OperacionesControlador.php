@@ -2775,9 +2775,14 @@ class OperacionesControlador extends ControladorBase {
 
         $db = Conexion::obtenerInstancia();
         $stmt = $db->query("
-            SELECT cd.id, cd.descripcion_ensayo, cd.norma_astm, cd.resultados_json,
-                   os.codigo_os, cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre
+            SELECT cd.id, cd.descripcion_ensayo, cd.norma_astm, cd.resultados_json, cd.formato_reporte,
+                   cd.procedimiento, cd.tipo_muestra, cd.condiciones_muestra,
+                   p.archivo_markdown, p.formato_id,
+                   os.id AS id_os, os.codigo_os, os.created_at AS os_created_at,
+                   cot.nombre_proyecto, cot.id_cliente,
+                   cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion
             FROM cotizacion_detalles cd
+            LEFT JOIN productos p ON p.id = cd.id_producto
             JOIN cotizaciones cot ON cot.id = cd.id_cotizacion
             JOIN ordenes_servicio os ON os.id_cotizacion = cot.id
             JOIN clientes cli ON cli.id = cot.id_cliente
@@ -2785,22 +2790,53 @@ class OperacionesControlador extends ControladorBase {
             ORDER BY cd.id DESC
         ");
 
+        $informes = [];
         $comparaciones = [];
+
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $detalle) {
             $dec = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
             $filas = isset($dec['filas']) && is_array($dec['filas']) ? $dec['filas'] : (isset($dec[0]) ? $dec : []);
+            $metadatos = $dec['metadatos'] ?? [];
+            $schemaInfo = obtenerEsquemaPlantillaEnsayo($detalle['archivo_markdown'] ?? null, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
+            $metaOficial = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatos);
+            $columnas = $schemaInfo['columns'] ?? [];
+            if (empty($columnas) && !empty($filas)) {
+                $columnas = array_values(array_filter(array_keys($filas[0]), fn($c) => !str_starts_with($c, '_')));
+            }
+            $pares = obtenerParesControlCalidad($filas);
+            if (empty($pares)) {
+                continue;
+            }
             $evaluaciones = $dec['control_calidad']['replicas'] ?? [];
-            foreach (obtenerParesControlCalidad($filas) as $par) {
+            foreach ($pares as &$par) {
                 $clave = strtoupper((string)$par['codigo_original']);
                 $par['evaluacion'] = is_array($evaluaciones[$clave] ?? null)
                     ? $evaluaciones[$clave]
                     : ['estado' => 'pendiente', 'observaciones' => '', 'usuario' => '', 'fecha' => ''];
                 $comparaciones[] = array_merge($detalle, $par);
             }
+            unset($par);
+
+            $codigoInformeConsecutivo = generarCodigoInformeEnsayo(
+                $filas,
+                $metaOficial['fecha_muestreo'] ?? ($metaOficial['fecha_ingreso'] ?? null),
+                $metaOficial['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? '')
+            );
+
+            $informes[] = [
+                'detalle' => $detalle,
+                'schemaInfo' => $schemaInfo,
+                'metaOficial' => $metaOficial,
+                'codigoInformeConsecutivo' => $codigoInformeConsecutivo,
+                'columnas' => $columnas,
+                'filas' => $filas,
+                'pares' => $pares
+            ];
         }
 
         $this->renderizar('operaciones/vistas/control_calidad_replicas', [
-            'titulo' => 'Control de Calidad de Réplicas',
+            'titulo' => 'Control de Calidad de Réplicas (ISO/IEC 17025)',
+            'informes' => $informes,
             'comparaciones' => $comparaciones,
         ]);
     }
