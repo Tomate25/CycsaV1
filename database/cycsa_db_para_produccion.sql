@@ -1,6 +1,6 @@
 -- ==============================================================================
 -- BASE DE DATOS OFICIAL CYCSA ERP & LIMS (PRODUCCIÓN LIMPIA)
--- Generado automáticamente: 2026-09-30 22:12:02
+-- Generado automáticamente: 2026-09-30 22:44:10
 -- Base de datos destino: cycsanic_cycsa_db (Bluehost cPanel / phpMyAdmin)
 -- Total de tablas: 28
 --
@@ -1372,15 +1372,14 @@ CREATE TABLE `secuencias_muestras` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Volcado de datos para la tabla `secuencias_muestras` (3 registros)
+-- Volcado de datos para la tabla `secuencias_muestras` (2 registros)
 --
 
 LOCK TABLES `secuencias_muestras` WRITE;
 /*!40000 ALTER TABLE `secuencias_muestras` DISABLE KEYS */;
 INSERT INTO `secuencias_muestras` (`anio`, `tipo_muestra`, `ultimo_correlativo`) VALUES
-(2026, '', 10),
-(2026, 'Campo', 660),
-(2026, 'Laboratorio', 662);
+(2026, 'Campo', 0),
+(2026, 'Laboratorio', 0);
 /*!40000 ALTER TABLE `secuencias_muestras` ENABLE KEYS */;
 UNLOCK TABLES;
 

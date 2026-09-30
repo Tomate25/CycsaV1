@@ -13,12 +13,25 @@ class MultiplesHojasServicioTest extends TestCase {
     private PDO $db;
     private OperacionModelo $opModelo;
     private OrdenServicioModelo $osModelo;
+    private array $secuenciasBackup = [];
 
     protected function setUp(): void {
         parent::setUp();
         $this->db = Conexion::obtenerInstancia();
         $this->opModelo = new OperacionModelo();
         $this->osModelo = new OrdenServicioModelo();
+        $this->secuenciasBackup = $this->db->query("SELECT anio, tipo_muestra, ultimo_correlativo FROM secuencias_muestras")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    protected function tearDown(): void {
+        if (!empty($this->secuenciasBackup)) {
+            $this->db->exec("DELETE FROM secuencias_muestras");
+            $stmtInsert = $this->db->prepare("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) VALUES (:anio, :tipo, :corr)");
+            foreach ($this->secuenciasBackup as $row) {
+                $stmtInsert->execute(['anio' => $row['anio'], 'tipo' => $row['tipo_muestra'], 'corr' => $row['ultimo_correlativo']]);
+            }
+        }
+        parent::tearDown();
     }
 
     public function testCrearYActualizarMultiplesHojasEnMismaOS(): void {

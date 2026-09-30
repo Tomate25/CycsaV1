@@ -1490,7 +1490,8 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $anioActual = (int)date('Y');
-        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra($anioActual);
+        $prefijoMuestraOS = determinarPrefijoMuestraOS($os);
+        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra($anioActual, $prefijoMuestraOS);
 
         $respuesta->enviarJson([
             'status' => 'success',

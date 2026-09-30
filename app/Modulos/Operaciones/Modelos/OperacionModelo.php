@@ -950,7 +950,7 @@ class OperacionModelo extends ModeloBase {
 
                 $siguienteConsecutivo = $this->obtenerSiguienteConsecutivoMuestra($anioActual, $prefijoParaAsignar);
                 $requiereReasignacion = false;
-                $numerosUsados = $this->obtenerNumerosMuestrasUsados($anioActual);
+                $numerosUsados = $this->obtenerNumerosMuestrasUsados($anioActual, $prefijoParaAsignar);
 
                 // Si alguna muestra viene vacía, con placeholder o si su código ya está ocupado en la BD o repetido en el lote
                 $numerosEnLote = [];
@@ -960,9 +960,9 @@ class OperacionModelo extends ModeloBase {
                         $requiereReasignacion = true;
                         break;
                     }
-                    if (preg_match('/^[A-Za-z]+-(\d+)-/i', $nombre, $mat)) {
+                    if (preg_match('/^' . preg_quote($prefijoParaAsignar, '/') . '-(\d+)-/i', $nombre, $mat)) {
                         $num = (int)$mat[1];
-                        if (in_array($num, $numerosUsados, true) || in_array($num, $numerosEnLote, true)) {
+                        if ($num < $siguienteConsecutivo || in_array($num, $numerosUsados, true) || in_array($num, $numerosEnLote, true)) {
                             $requiereReasignacion = true;
                             break;
                         }
@@ -1145,15 +1145,16 @@ class OperacionModelo extends ModeloBase {
             // Sincronizar el correlativo más alto asignado en secuencias_muestras para blindaje global
             $muestrasFinales = json_decode($muestrasJson, true) ?: [];
             $maxMuestraGuardada = 0;
+            $prefijoFinal = (!empty($prefijoParaAsignar) && strtoupper($prefijoParaAsignar) === 'MS') ? 'MS' : 'MC';
             foreach ($muestrasFinales as $mf) {
-                if (preg_match('/^[A-Za-z]+-(\d+)-/i', $mf['nombre_muestra'] ?? '', $mMat)) {
+                if (preg_match('/^' . preg_quote($prefijoFinal, '/') . '-(\d+)-/i', $mf['nombre_muestra'] ?? '', $mMat)) {
                     $numMF = (int)$mMat[1];
                     if ($numMF > $maxMuestraGuardada) $maxMuestraGuardada = $numMF;
                 }
             }
             if ($maxMuestraGuardada > 0) {
                 $anioActualSeq = (int)date('Y');
-                $tipoSeq = (!empty($prefijoParaAsignar) && $prefijoParaAsignar === 'MC') ? 'Campo' : 'Laboratorio';
+                $tipoSeq = ($prefijoFinal === 'MS') ? 'Laboratorio' : 'Campo';
                 $stmtSecUpsert = $this->db->prepare("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) VALUES (:anio, :tipo, :corr) ON DUPLICATE KEY UPDATE ultimo_correlativo = GREATEST(ultimo_correlativo, :corr2)");
                 $stmtSecUpsert->execute(['anio' => $anioActualSeq, 'tipo' => $tipoSeq, 'corr' => $maxMuestraGuardada, 'corr2' => $maxMuestraGuardada]);
             }
@@ -1194,33 +1195,40 @@ class OperacionModelo extends ModeloBase {
     }
 
     /**
-     * Obtiene el siguiente número disponible consecutivo para las muestras en un año determinado.
-     * Garantiza que los números de muestra sean únicos y secuenciales (sin repetir entre hojas ni modalidades).
+     * Obtiene el siguiente número disponible consecutivo para las muestras en un año determinado y prefijo ('MC' o 'MS').
+     * Garantiza que los números de muestra sean independientes y secuenciales entre Campo (MC) y Laboratorio (MS).
      */
     public function obtenerSiguienteConsecutivoMuestra(int $anio, ?string $prefijo = null): int {
-        // 1. Consultar el máximo correlativo registrado en secuencias_muestras
-        $stmtSec = $this->db->prepare("SELECT MAX(ultimo_correlativo) FROM secuencias_muestras WHERE anio = :anio");
-        $stmtSec->execute(['anio' => $anio]);
+        $prefijo = strtoupper(trim($prefijo ?? ''));
+        if ($prefijo !== 'MC' && $prefijo !== 'MS') {
+            $prefijo = 'MC';
+        }
+        $tipoMuestra = ($prefijo === 'MS') ? 'Laboratorio' : 'Campo';
+
+        // 1. Consultar el máximo correlativo registrado en secuencias_muestras para este tipo
+        $stmtSec = $this->db->prepare("SELECT MAX(ultimo_correlativo) FROM secuencias_muestras WHERE anio = :anio AND tipo_muestra = :tipo");
+        $stmtSec->execute(['anio' => $anio, 'tipo' => $tipoMuestra]);
         $corrSec = (int)$stmtSec->fetchColumn();
 
-        // 2. Consultar el máximo correlativo registrado en recepcion_muestras
-        $stmtRec = $this->db->prepare("SELECT MAX(correlativo_anual) FROM recepcion_muestras WHERE anio = :anio");
-        $stmtRec->execute(['anio' => $anio]);
+        // 2. Consultar el máximo correlativo registrado en recepcion_muestras para este tipo
+        $stmtRec = $this->db->prepare("SELECT MAX(correlativo_anual) FROM recepcion_muestras WHERE anio = :anio AND tipo_muestra = :tipo");
+        $stmtRec->execute(['anio' => $anio, 'tipo' => $tipoMuestra]);
         $corrRec = (int)$stmtRec->fetchColumn();
 
-        // 3. Consultar en hojas_solicitud todos los códigos declarados en ese año (sin repetir números)
+        // 3. Consultar en hojas_solicitud todos los códigos declarados en ese año con este prefijo
         $maxHojas = 0;
         $sql = "SELECT muestras_json FROM hojas_solicitud WHERE YEAR(fecha_creacion) = :anio OR fecha_creacion IS NULL";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['anio' => $anio]);
         $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
         $anio2Digitos = substr((string)$anio, -2);
+        $regex = '/^' . preg_quote($prefijo, '/') . '-(\d+)-(?:' . $anio . '|' . $anio2Digitos . ')$/i';
         foreach ($rows as $row) {
             $arr = json_decode($row, true);
             if (is_array($arr)) {
                 foreach ($arr as $item) {
                     $nombre = trim($item['nombre_muestra'] ?? '');
-                    if (preg_match('/^[A-Za-z]+-(\d+)-(?:' . $anio . '|' . $anio2Digitos . ')$/i', $nombre, $matches)) {
+                    if (preg_match($regex, $nombre, $matches)) {
                         $num = (int)$matches[1];
                         if ($num > $maxHojas) {
                             $maxHojas = $num;
@@ -1235,34 +1243,66 @@ class OperacionModelo extends ModeloBase {
     }
 
     /**
-     * Obtiene la lista completa de números de muestras enteros ya utilizados en el año en BD.
+     * Obtiene la lista completa de números de muestras enteros ya utilizados en el año en BD para el prefijo indicado.
      */
-    public function obtenerNumerosMuestrasUsados(int $anio): array {
+    public function obtenerNumerosMuestrasUsados(int $anio, ?string $prefijo = null): array {
         $usados = [];
-        // 1. En recepcion_muestras
-        $stmtRec = $this->db->prepare("SELECT correlativo_anual FROM recepcion_muestras WHERE anio = :anio AND correlativo_anual > 0");
-        $stmtRec->execute(['anio' => $anio]);
-        foreach ($stmtRec->fetchAll(PDO::FETCH_COLUMN) as $n) {
-            $usados[(int)$n] = true;
-        }
+        $prefijo = !empty($prefijo) ? strtoupper(trim($prefijo)) : null;
 
-        // 2. En hojas_solicitud
-        $sql = "SELECT muestras_json FROM hojas_solicitud WHERE YEAR(fecha_creacion) = :anio OR fecha_creacion IS NULL";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['anio' => $anio]);
-        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        $anio2Digitos = substr((string)$anio, -2);
-        foreach ($rows as $row) {
-            $arr = json_decode($row, true);
-            if (is_array($arr)) {
-                foreach ($arr as $item) {
-                    $nombre = trim($item['nombre_muestra'] ?? '');
-                    if (preg_match('/^[A-Za-z]+-(\d+)-(?:' . $anio . '|' . $anio2Digitos . ')$/i', $nombre, $matches)) {
-                        $usados[(int)$matches[1]] = true;
+        if ($prefijo === 'MC' || $prefijo === 'MS') {
+            $tipoMuestra = ($prefijo === 'MS') ? 'Laboratorio' : 'Campo';
+
+            // 1. En recepcion_muestras
+            $stmtRec = $this->db->prepare("SELECT correlativo_anual FROM recepcion_muestras WHERE anio = :anio AND tipo_muestra = :tipo AND correlativo_anual > 0");
+            $stmtRec->execute(['anio' => $anio, 'tipo' => $tipoMuestra]);
+            foreach ($stmtRec->fetchAll(PDO::FETCH_COLUMN) as $n) {
+                $usados[(int)$n] = true;
+            }
+
+            // 2. En hojas_solicitud
+            $sql = "SELECT muestras_json FROM hojas_solicitud WHERE YEAR(fecha_creacion) = :anio OR fecha_creacion IS NULL";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['anio' => $anio]);
+            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $anio2Digitos = substr((string)$anio, -2);
+            $regex = '/^' . preg_quote($prefijo, '/') . '-(\d+)-(?:' . $anio . '|' . $anio2Digitos . ')$/i';
+            foreach ($rows as $row) {
+                $arr = json_decode($row, true);
+                if (is_array($arr)) {
+                    foreach ($arr as $item) {
+                        $nombre = trim($item['nombre_muestra'] ?? '');
+                        if (preg_match($regex, $nombre, $matches)) {
+                            $usados[(int)$matches[1]] = true;
+                        }
+                    }
+                }
+            }
+        } else {
+            // Modo global (fallback)
+            $stmtRec = $this->db->prepare("SELECT correlativo_anual FROM recepcion_muestras WHERE anio = :anio AND correlativo_anual > 0");
+            $stmtRec->execute(['anio' => $anio]);
+            foreach ($stmtRec->fetchAll(PDO::FETCH_COLUMN) as $n) {
+                $usados[(int)$n] = true;
+            }
+
+            $sql = "SELECT muestras_json FROM hojas_solicitud WHERE YEAR(fecha_creacion) = :anio OR fecha_creacion IS NULL";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['anio' => $anio]);
+            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $anio2Digitos = substr((string)$anio, -2);
+            foreach ($rows as $row) {
+                $arr = json_decode($row, true);
+                if (is_array($arr)) {
+                    foreach ($arr as $item) {
+                        $nombre = trim($item['nombre_muestra'] ?? '');
+                        if (preg_match('/^[A-Za-z]+-(\d+)-(?:' . $anio . '|' . $anio2Digitos . ')$/i', $nombre, $matches)) {
+                            $usados[(int)$matches[1]] = true;
+                        }
                     }
                 }
             }
         }
+
         return array_keys($usados);
     }
 }
