@@ -224,4 +224,16 @@ class ControlCalidadReplicasTest extends TestCase {
             $this->fail("La consulta SQL de controlCalidadReplicas falló con error: " . $e->getMessage());
         }
     }
+
+    public function testPeticionObtenerParametroResuelveClavesCorrectamente(): void {
+        $_GET['test_param_1'] = 'valor_get';
+        $_POST['test_param_2'] = 'valor_post';
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+
+        $peticion = new \Cycsa\Nucleo\Peticion();
+        $this->assertSame('valor_get', $peticion->obtenerParametro('test_param_1'));
+        $this->assertSame('default_val', $peticion->obtenerParametro('clave_inexistente', 'default_val'));
+
+        unset($_GET['test_param_1'], $_POST['test_param_2']);
+    }
 }

@@ -73,4 +73,9 @@ class Peticion {
         }
         return $datos;
     }
+
+    public function obtenerParametro(string $clave, mixed $defecto = null): mixed {
+        $datos = $this->obtenerDatos();
+        return $datos[$clave] ?? $_GET[$clave] ?? $_POST[$clave] ?? $defecto;
+    }
 }

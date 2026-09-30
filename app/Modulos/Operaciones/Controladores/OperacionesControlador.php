@@ -2857,7 +2857,7 @@ class OperacionesControlador extends ControladorBase {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
-        $idDetalle = (int)($peticion->obtenerParametro('id_detalle') ?? $peticion->obtenerParametro('id') ?? 0);
+        $idDetalle = (int)($_GET['id_detalle'] ?? $_GET['id'] ?? $peticion->obtenerParametro('id_detalle') ?? $peticion->obtenerParametro('id') ?? 0);
         if ($idDetalle <= 0) {
             $_SESSION['error'] = 'Debe especificar un control de calidad válido.';
             $respuesta->redirigir('/Cycsa/publico/control-calidad');
