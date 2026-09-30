@@ -873,7 +873,7 @@
                     </p>
                 </div>
                 <button type="button" class="btn-accion-hs" style="background: var(--cycsa-azul); color: white; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; border:none; cursor:pointer;" onclick="confirmarDecisionMuestreo(true)">
-                    <i class="fa-solid fa-calendar-plus"></i> Programar Muestreo
+                    <i class="fa-solid fa-list-check"></i> Llenar Lista de Chequeo (CYCSA-RT-FM-40 B)
                 </button>
             </div>
 
@@ -966,8 +966,8 @@
         cerrarModalDecisionMuestreo();
 
         if (requiereMuestreo) {
-            // Abrir directamente con prefijo MC en modo nueva hoja
-            abrirModalHojaSolicitud(idOS, codigoOS, 0, true, 'MC');
+            // Redirigir a Programación de Muestreo y Lista de Chequeo Oficial (CYCSA-RT-FM-40 B)
+            window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + encodeURIComponent(idOS);
         } else {
             // Ingreso directo: Marcar en BD y abrir modal RT-FM-13 con prefijo MS
             const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';

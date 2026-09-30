@@ -172,6 +172,14 @@
                                     <?php if (!empty($os['tecnico_nombre'])): ?>
                                         <div style="color: #64748b; font-size: 11px; margin-top: 3px; font-weight: 500;">Téc: <?= htmlspecialchars($os['tecnico_nombre']) ?></div>
                                     <?php endif; ?>
+                                    <div style="margin-top: 3px; display:flex; gap:6px; flex-wrap:wrap;">
+                                        <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank" style="font-size: 10.5px; color: var(--cycsa-azul); text-decoration: none;" title="Imprimir Lista de Chequeo CYCSA-RT-FM-40 B">
+                                            <i class="fa-solid fa-print"></i> FM-40 B
+                                        </a>
+                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" style="font-size: 10.5px; color: #475569; text-decoration: none;" title="Editar Lista de Chequeo">
+                                            <i class="fa-solid fa-pen-to-square"></i> Editar
+                                        </a>
+                                    </div>
                                 <?php elseif ($estadoMuestreo === 'finalizado' && !empty($os['id_pm'])): ?>
                                     <span class="badge-premium badge-muestreo-fin">
                                         <i class="fa-solid fa-circle-check"></i> Muestreo Finalizado
@@ -181,10 +189,23 @@
                                             <i class="fa-solid fa-person-walking-arrow-right"></i> Retornó: <?= htmlspecialchars($os['tecnico_nombre']) ?>
                                         </div>
                                     <?php endif; ?>
+                                    <div style="margin-top: 3px; display:flex; gap:6px; flex-wrap:wrap;">
+                                        <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank" style="font-size: 10.5px; color: #166534; text-decoration: none;" title="Ver Lista de Chequeo CYCSA-RT-FM-40 B">
+                                            <i class="fa-solid fa-clipboard-check"></i> FM-40 B
+                                        </a>
+                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" style="font-size: 10.5px; color: #475569; text-decoration: none;" title="Ver/Editar Datos de Muestreo">
+                                            <i class="fa-solid fa-pen-to-square"></i> Ver
+                                        </a>
+                                    </div>
                                 <?php elseif ($estadoMuestreo === 'pendiente_programar'): ?>
                                     <span class="badge-premium badge-hoja-borrador">
                                         <i class="fa-solid fa-truck-pickup"></i> Requiere Muestreo
                                     </span>
+                                    <div style="margin-top: 3px;">
+                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" style="font-size: 11px; color: var(--cycsa-azul); font-weight:600; text-decoration: none;">
+                                            <i class="fa-solid fa-list-check"></i> Llenar FM-40 B
+                                        </a>
+                                    </div>
                                 <?php elseif ($estadoMuestreo === 'no_aplica'): ?>
                                     <span class="badge-premium badge-muestreo-no">
                                         <i class="fa-solid fa-flask"></i> Ingreso Directo
@@ -655,7 +676,7 @@
                                                     data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
                                                     data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
                                                     data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                    onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', 0, true)">
+                                                    onclick="iniciarRegistroHojaRTFM13(this)">
                                                 <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13
                                             </button>
                                             <?php if ($cantHojas > 0): ?>
@@ -1098,16 +1119,13 @@
                     </div>
                     <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">Sí, Muestreo en Campo (MC)</h4>
                     <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
-                        Los especímenes son tomados en obra por técnicos de CYCSA. Se asignará el prefijo oficial <strong>MC</strong> y los números correlativos disponibles.
+                        Los técnicos de CYCSA van a obra a tomar las muestras. Debe llenar y firmar la <strong>Lista de Chequeo de Campo CYCSA-RT-FM-40 B</strong> (equipos, EPP y densímetro). Prefijo oficial <strong>MC</strong>.
                     </p>
                 </div>
                 <div>
                     <button type="button" class="btn-cycsa btn-cycsa-primary" style="width: 100%; padding: 10px; font-size: 13px;" onclick="confirmarDecisionMuestreo(true)">
-                        <i class="fa-solid fa-file-signature"></i> Abrir Hoja RT-FM-13 (Campo MC)
+                        <i class="fa-solid fa-list-check"></i> Llenar Lista de Chequeo (CYCSA-RT-FM-40 B)
                     </button>
-                    <a id="link_logistica_os" href="#" style="display:block; text-align:center; font-size:11px; color:var(--cycsa-azul); margin-top:8px; text-decoration:none;">
-                        <i class="fa-solid fa-calendar-plus"></i> O programar vehículo / brigada
-                    </a>
                 </div>
             </div>
 
@@ -1182,8 +1200,8 @@
         cerrarModalDecisionMuestreo();
 
         if (requiereMuestreo) {
-            // Abrir directamente con prefijo MC en modo nueva hoja
-            abrirModalHojaSolicitud(idOS, codigoOS, 0, true, 'MC');
+            // Redirigir a Programación de Muestreo y Lista de Chequeo Oficial (CYCSA-RT-FM-40 B)
+            window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + encodeURIComponent(idOS);
         } else {
             // Ingreso directo: Marcar en BD y abrir modal RT-FM-13 con prefijo MS
             const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
@@ -1764,6 +1782,11 @@
             filaPrincipal.classList.add('expandida');
             filaPrincipal.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+        <?php if (!empty($_GET['abrir_hoja'])): ?>
+        if (typeof abrirModalHojaSolicitud === 'function') {
+            abrirModalHojaSolicitud(idAuto, '<?= htmlspecialchars($codigoOSAuto, ENT_QUOTES, 'UTF-8') ?>', 0, true, '<?= htmlspecialchars($_GET['prefijo'] ?? 'MC', ENT_QUOTES, 'UTF-8') ?>');
+        }
+        <?php endif; ?>
     });
     <?php endif; ?>
 </script>

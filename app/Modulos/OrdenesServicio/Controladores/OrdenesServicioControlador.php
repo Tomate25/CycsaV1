@@ -228,7 +228,7 @@ class OrdenesServicioControlador extends ControladorBase {
             if ($esFinalizar) {
                 registrarBitacora('ordenes_servicio', 'finalizar_muestreo', "Muestreo finalizado (retorno al lab) y guardado para la Orden de Servicio ID: {$idOS}", $idOS);
                 $_SESSION['exito'] = 'Muestreo en campo finalizado con éxito. El técnico retornó con los especímenes al laboratorio. Abriendo Hoja de Servicio (CYCSA-RT-FM-13)...';
-                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS . '&abrir_hoja=1&prefijo=MC');
                 return;
             } else {
                 registrarBitacora('ordenes_servicio', 'programar_muestreo', "Programación de muestreo y checklist guardados para la Orden de Servicio ID: {$idOS}", $idOS);
