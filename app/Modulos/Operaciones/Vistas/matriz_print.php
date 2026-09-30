@@ -59,11 +59,25 @@ $resultados = [];
 $metadatosGuardados = [];
 if (!empty($detalle['resultados_json'])) {
     $decoded = json_decode($detalle['resultados_json'], true) ?: [];
-    if (isset($decoded['filas'])) {
-        $resultados = $decoded['filas'];
-        $metadatosGuardados = $decoded['metadatos'] ?? [];
-    } else {
-        $resultados = $decoded;
+    if (is_array($decoded)) {
+        if (isset($decoded['filas']) && is_array($decoded['filas'])) {
+            $resultados = $decoded['filas'];
+            $metadatosGuardados = (isset($decoded['metadatos']) && is_array($decoded['metadatos'])) ? $decoded['metadatos'] : [];
+        } elseif (isset($decoded['metadatos']) && is_array($decoded['metadatos'])) {
+            $metadatosGuardados = $decoded['metadatos'];
+            $resultados = [];
+        } elseif (function_exists('array_is_list') ? array_is_list($decoded) : ($decoded === [] || array_keys($decoded) === range(0, count($decoded) - 1))) {
+            $resultados = $decoded;
+        } else {
+            $sonClavesNumericas = true;
+            foreach (array_keys($decoded) as $k) {
+                if (!is_numeric($k)) {
+                    $sonClavesNumericas = false;
+                    break;
+                }
+            }
+            $resultados = $sonClavesNumericas ? array_values($decoded) : [];
+        }
     }
 }
 
@@ -638,11 +652,15 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         </thead>
                         <tbody>
                             <?php if (!empty($resultados)): ?>
-                                <?php foreach ($resultados as $idx => $fila): ?>
+                                <?php 
+                                $numFila = 0;
+                                foreach ($resultados as $fila): 
+                                    $numFila++;
+                                ?>
                                     <tr>
-                                        <td style="font-weight: bold;"><?= $idx + 1 ?></td>
+                                        <td style="font-weight: bold;"><?= $numFila ?></td>
                                         <?php foreach ($columnas as $col): 
-                                            $val = $fila[$col] ?? ($fila[$schemaInfo['column_aliases'][$col] ?? ''] ?? '');
+                                            $val = is_array($fila) ? ($fila[$col] ?? ($fila[$schemaInfo['column_aliases'][$col] ?? ''] ?? '')) : '';
                                             $isCode = ($col === 'Código laboratorio' || $col === 'Codigo Lab');
                                             $isNum = is_numeric(str_replace(['%', ',', ' '], '', (string)$val)) && !empty($val);
                                         ?>

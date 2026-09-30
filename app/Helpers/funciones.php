@@ -4,7 +4,14 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-
+if (!function_exists('array_is_list')) {
+    function array_is_list(array $arr): bool {
+        if ($arr === []) {
+            return true;
+        }
+        return array_keys($arr) === range(0, count($arr) - 1);
+    }
+}
 /**
  * Envía un correo electrónico utilizando PHPMailer.
  * Si MAIL_HOST está configurado en .env, usa SMTP (ideal para desarrollo local).
@@ -2007,11 +2014,25 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $metadatosGuardados = [];
     if (!empty($detalle['resultados_json'])) {
         $decoded = json_decode($detalle['resultados_json'], true) ?: [];
-        if (isset($decoded['filas'])) {
-            $resultados = $decoded['filas'];
-            $metadatosGuardados = $decoded['metadatos'] ?? [];
-        } else {
-            $resultados = $decoded;
+        if (is_array($decoded)) {
+            if (isset($decoded['filas']) && is_array($decoded['filas'])) {
+                $resultados = $decoded['filas'];
+                $metadatosGuardados = (isset($decoded['metadatos']) && is_array($decoded['metadatos'])) ? $decoded['metadatos'] : [];
+            } elseif (isset($decoded['metadatos']) && is_array($decoded['metadatos'])) {
+                $metadatosGuardados = $decoded['metadatos'];
+                $resultados = [];
+            } elseif (function_exists('array_is_list') ? array_is_list($decoded) : ($decoded === [] || array_keys($decoded) === range(0, count($decoded) - 1))) {
+                $resultados = $decoded;
+            } else {
+                $sonClavesNumericas = true;
+                foreach (array_keys($decoded) as $k) {
+                    if (!is_numeric($k)) {
+                        $sonClavesNumericas = false;
+                        break;
+                    }
+                }
+                $resultados = $sonClavesNumericas ? array_values($decoded) : [];
+            }
         }
     }
 
@@ -2067,11 +2088,13 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
 
     $tbodyTrs = '';
     if (!empty($resultados)) {
-        foreach ($resultados as $idx => $fila) {
+        $numFila = 0;
+        foreach ($resultados as $fila) {
+            $numFila++;
             $tbodyTrs .= '<tr>';
-            $tbodyTrs .= '<td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-weight: bold;">' . ($idx + 1) . '</td>';
+            $tbodyTrs .= '<td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-weight: bold;">' . $numFila . '</td>';
             foreach ($columnas as $col) {
-                $val = $fila[$col] ?? ($fila[$schemaInfo['column_aliases'][$col] ?? ''] ?? '');
+                $val = is_array($fila) ? ($fila[$col] ?? ($fila[$schemaInfo['column_aliases'][$col] ?? ''] ?? '')) : '';
                 $isCode = ($col === 'Código laboratorio' || $col === 'Codigo Lab');
                 $isNum = is_numeric(str_replace(['%', ',', ' '], '', (string)$val)) && !empty($val);
                 $align = $isNum ? 'right' : ($col === 'Nombre muestra' ? 'left' : 'center');

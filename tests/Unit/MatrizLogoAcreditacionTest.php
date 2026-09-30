@@ -111,4 +111,36 @@ class MatrizLogoAcreditacionTest extends TestCase {
         $this->assertStringContainsString('/operaciones/subir-logo-acreditacion', $rutas);
         $this->assertStringContainsString('/operaciones/eliminar-logo-acreditacion', $rutas);
     }
+
+    public function testMatrizPrintNoLanzaErrorCuandoSoloExistenMetadatosEnResultadosJson(): void {
+        $detalle = [
+            'id' => 99,
+            'codigo_os' => 'OS-2026-0001',
+            'descripcion_ensayo' => 'Resistencia de Cilindros',
+            'codigo_documento' => 'CYCSA-RT-FM-22',
+            'archivo_markdown' => 'formato_de_resistencia_de_cilindros_de_concreto.md',
+            'resultados_json' => json_encode([
+                'metadatos' => [
+                    'logo_acreditacion' => '/Cycsa/publico/uploads/acreditaciones/prueba.png'
+                ]
+            ])
+        ];
+        $muestrasSeteadas = [
+            ['codigo_lab' => 'MC-0001-26', 'nombre_muestra' => 'Viga 1']
+        ];
+        $columnas = ['Código laboratorio', 'Nombre muestra', 'Área (in²)', 'Carga (lb)', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)'];
+
+        ob_start();
+        try {
+            require dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php';
+            $salida = ob_get_clean();
+        } catch (\Throwable $e) {
+            ob_end_clean();
+            $this->fail("matriz_print.php lanzó excepción con resultados_json solo metadatos: " . $e->getMessage());
+        }
+
+        $this->assertNotEmpty($salida);
+        $this->assertStringContainsString('MC-0001-26', $salida);
+        $this->assertStringContainsString('<td style="font-weight: bold;">1</td>', $salida);
+    }
 }

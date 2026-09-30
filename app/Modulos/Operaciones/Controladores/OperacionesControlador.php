@@ -1906,8 +1906,27 @@ class OperacionesControlador extends ControladorBase {
             $rowDet = $stmtDet->fetch(\PDO::FETCH_ASSOC);
             if ($rowDet) {
                 $dec = json_decode($rowDet['resultados_json'] ?? '', true) ?: [];
-                if (!isset($dec['metadatos']) || !is_array($dec['metadatos'])) {
-                    $dec['metadatos'] = [];
+                if (!is_array($dec)) {
+                    $dec = [];
+                }
+                if (isset($dec['filas'])) {
+                    if (!isset($dec['metadatos']) || !is_array($dec['metadatos'])) {
+                        $dec['metadatos'] = [];
+                    }
+                } elseif (isset($dec['metadatos'])) {
+                    if (!isset($dec['filas']) || !is_array($dec['filas'])) {
+                        $dec['filas'] = [];
+                    }
+                } elseif (!empty($dec)) {
+                    $dec = [
+                        'filas' => array_values($dec),
+                        'metadatos' => []
+                    ];
+                } else {
+                    $dec = [
+                        'filas' => [],
+                        'metadatos' => []
+                    ];
                 }
                 $dec['metadatos']['logo_acreditacion'] = $urlPublica;
                 $stmtUpd = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
@@ -2598,8 +2617,10 @@ class OperacionesControlador extends ControladorBase {
 
         // VALIDACIÓN CRUCIAL: Solo se puede enviar si la matriz TIENE RESULTADOS
         $resultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
-        if (isset($resultados['filas'])) {
+        if (isset($resultados['filas']) && is_array($resultados['filas'])) {
             $resultados = $resultados['filas'];
+        } elseif (isset($resultados['metadatos'])) {
+            $resultados = [];
         }
         if (empty($resultados)) {
             $_SESSION['error'] = 'No se puede enviar el informe al cliente porque la matriz técnica aún no tiene resultados registrados.';
