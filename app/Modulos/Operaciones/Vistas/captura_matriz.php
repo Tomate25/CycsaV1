@@ -190,6 +190,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     .informe-titulo-box {
         text-align: center;
         flex-grow: 1;
+        min-width: 0;
     }
     .informe-titulo-texto {
         font-size: 20px;
@@ -240,12 +241,14 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         display: flex;
         flex-direction: column;
         gap: 8px;
+        min-width: 0;
     }
     .meta-row {
         display: grid;
         grid-template-columns: 215px 1fr;
         align-items: center;
         gap: 8px;
+        min-width: 0;
     }
     @media (max-width: 1200px) {
         .meta-row { grid-template-columns: 185px 1fr; }
@@ -259,9 +262,11 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     }
     .meta-field-wrap {
         width: 100%;
+        min-width: 0;
     }
     .meta-input-web {
         width: 100%;
+        max-width: 100%;
         border: 1.5px solid #cbd5e1;
         border-radius: 6px;
         padding: 5px 9px;
@@ -685,6 +690,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         <input type="text" name="metadatos[metodo_muestreo]" id="meta_metodo_muestreo" class="meta-input-web" style="font-family: monospace; font-weight: bold; color: #103487;" value="<?= htmlspecialchars($metadatos['metodo_muestreo'], ENT_QUOTES, 'UTF-8') ?>">
                     </div>
                 </div>
+            </div>
+        </div>
+
         <!-- Apartado Oficial para Sello / Logotipo de Acreditación (ISO/IEC 17025 / ONA) -->
         <div class="apartado-acreditacion-box" style="margin-top: 18px; padding: 14px 18px; background: #f8fafc; border: 1.5px dashed #94a3b8; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
             <div style="display: flex; align-items: center; gap: 14px; max-width: 65%;">
@@ -801,8 +809,8 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                     <?php endif; ?>
                 </div>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 
 <script>
     const ARCHIVO_MARKDOWN = <?= json_encode($archivoMd, JSON_UNESCAPED_UNICODE) ?>;
