@@ -273,7 +273,10 @@ class ProductosControlador extends ControladorBase {
             exit;
         }
 
-        $csv = ImportadorProductosCsv::generarPlantillaCsv();
+        $delimitadorParam = $_GET['delimitador'] ?? $_GET['formato'] ?? 'punto_y_coma';
+        $delimitador = ($delimitadorParam === 'coma') ? ',' : ';';
+
+        $csv = ImportadorProductosCsv::generarPlantillaCsv($delimitador);
         header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="CYCSA_Plantilla_Productos_Oficial.csv"');
         header('Cache-Control: no-cache, no-store, must-revalidate');
@@ -292,8 +295,11 @@ class ProductosControlador extends ControladorBase {
             exit;
         }
 
+        $delimitadorParam = $_GET['delimitador'] ?? $_GET['formato'] ?? 'punto_y_coma';
+        $delimitador = ($delimitadorParam === 'coma') ? ',' : ';';
+
         $modelo = new ProductoModelo();
-        $csv = ImportadorProductosCsv::generarCatalogoCompletoCsv($modelo);
+        $csv = ImportadorProductosCsv::generarCatalogoCompletoCsv($modelo, $delimitador);
         $fecha = date('Y-m-d');
 
         header('Content-Type: text/csv; charset=UTF-8');

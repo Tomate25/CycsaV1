@@ -33,15 +33,22 @@ final class ImportadorProductosCsv {
 
     /**
      * Genera el contenido de la plantilla oficial descargable en formato CSV UTF-8.
+     * Usa punto y coma (;) por defecto para compatibilidad directa con Microsoft Excel en español.
      */
-    public static function generarPlantillaCsv(): string {
+    public static function generarPlantillaCsv(string $delimitador = ';'): string {
         $flujo = fopen('php://temp', 'w+b');
         if ($flujo === false) {
             throw new \RuntimeException('No fue posible inicializar el flujo para la plantilla.');
         }
 
         fwrite($flujo, self::BOM_UTF8);
-        fputcsv($flujo, self::ENCABEZADOS, ',', '"', '\\');
+        fputcsv($flujo, self::ENCABEZADOS, $delimitador, '"', '\\');
+
+        $limpiar = static function(?string $valor): string {
+            if ($valor === null) return '';
+            $v = str_replace(["\r\n", "\r", "\n", "\t"], ' ', $valor);
+            return trim((string)preg_replace('/[ ]{2,}/', ' ', $v));
+        };
 
         // Filas de ejemplo reales basadas en el catálogo de CYCSA (con y sin ID)
         $ejemplos = [
@@ -105,7 +112,8 @@ final class ImportadorProductosCsv {
         ];
 
         foreach ($ejemplos as $fila) {
-            fputcsv($flujo, $fila, ',', '"', '\\');
+            $filaLimpia = array_map($limpiar, $fila);
+            fputcsv($flujo, $filaLimpia, $delimitador, '"', '\\');
         }
 
         rewind($flujo);
@@ -117,40 +125,47 @@ final class ImportadorProductosCsv {
 
     /**
      * Exporta el catálogo completo de productos con sus IDs e identificadores
-     * en formato CSV UTF-8 con BOM para visualización perfecta en Excel y re-importación directa.
+     * en formato CSV UTF-8 con BOM y punto y coma (;) para visualización perfecta en Excel
+     * (sin saltos de línea internos en celdas, 1 producto por fila exacta).
      */
-    public static function generarCatalogoCompletoCsv(ProductoModelo $modelo): string {
+    public static function generarCatalogoCompletoCsv(ProductoModelo $modelo, string $delimitador = ';'): string {
         $flujo = fopen('php://temp', 'w+b');
         if ($flujo === false) {
             throw new \RuntimeException('No fue posible inicializar el flujo para la exportación.');
         }
 
+        $limpiar = static function(?string $valor): string {
+            if ($valor === null) return '';
+            $v = str_replace(["\r\n", "\r", "\n", "\t"], ' ', $valor);
+            return trim((string)preg_replace('/[ ]{2,}/', ' ', $v));
+        };
+
         fwrite($flujo, self::BOM_UTF8);
-        fputcsv($flujo, self::ENCABEZADOS, ',', '"', '\\');
+        fputcsv($flujo, self::ENCABEZADOS, $delimitador, '"', '\\');
 
         $productos = $modelo->obtenerTodos('', '', 1);
 
         foreach ($productos as $p) {
             $fila = [
                 (string)$p['id'],
-                (string)($p['no_item'] ?? ''),
-                (string)($p['codigo_servicio'] ?? ''),
-                (string)($p['nombre_comercial'] ?? ''),
-                (string)($p['ensayo_servicio'] ?? ''),
-                (string)($p['matriz_tipo'] ?? ''),
-                (string)($p['tipo_muestra'] ?? ''),
-                (string)($p['tipo_muestreo'] ?? ''),
-                (string)($p['estatus'] ?? 'No acreditado'),
-                (string)($p['norma_astm'] ?? ''),
-                (string)($p['procedimiento_muestreo'] ?? ''),
-                (string)($p['codigo_hoja_campo'] ?? ''),
-                (string)($p['unidad_medida'] ?? 'Unidad'),
+                $limpiar($p['no_item'] ?? ''),
+                $limpiar($p['codigo_servicio'] ?? ''),
+                $limpiar($p['nombre_comercial'] ?? ''),
+                $limpiar($p['ensayo_servicio'] ?? ''),
+                $limpiar($p['matriz_tipo'] ?? ''),
+                $limpiar($p['tipo_muestra'] ?? ''),
+                $limpiar($p['tipo_muestreo'] ?? ''),
+                $limpiar($p['estatus'] ?? 'No acreditado'),
+                $limpiar($p['norma_astm'] ?? ''),
+                $limpiar($p['procedimiento_muestreo'] ?? ''),
+                $limpiar($p['codigo_hoja_campo'] ?? ''),
+                $limpiar($p['unidad_medida'] ?? 'Unidad'),
                 number_format((float)($p['precio'] ?? 0), 2, '.', ''),
-                (string)($p['condiciones_muestra'] ?? ''),
-                (string)($p['observaciones'] ?? ''),
-                (string)($p['formato_reporte'] ?? '')
+                $limpiar($p['condiciones_muestra'] ?? ''),
+                $limpiar($p['observaciones'] ?? ''),
+                $limpiar($p['formato_reporte'] ?? '')
             ];
-            fputcsv($flujo, $fila, ',', '"', '\\');
+            fputcsv($flujo, $fila, $delimitador, '"', '\\');
         }
 
         rewind($flujo);
@@ -191,7 +206,13 @@ final class ImportadorProductosCsv {
         }
 
         $primeraLinea = $lineas[0];
-        $delimitador = (substr_count($primeraLinea, ';') > substr_count($primeraLinea, ',')) ? ';' : ',';
+        if (preg_match('/^sep=([;,])/i', trim($primeraLinea), $mSep)) {
+            $delimitador = $mSep[1];
+            array_shift($lineas);
+            $contenidoCsv = implode("\r\n", $lineas);
+        } else {
+            $delimitador = (substr_count($primeraLinea, ';') > substr_count($primeraLinea, ',')) ? ';' : ',';
+        }
 
         $flujo = fopen('php://temp', 'w+b');
         fwrite($flujo, $contenidoCsv);

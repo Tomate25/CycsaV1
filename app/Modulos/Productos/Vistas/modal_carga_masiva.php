@@ -74,12 +74,17 @@
                                 </p>
                             </div>
                             <div class="d-flex flex-column gap-2 mt-2">
-                                <a href="/Cycsa/publico/productos/exportar-catalogo-csv" class="btn btn-primary btn-sm w-100 fw-bold">
-                                    <i class="fas fa-file-excel me-1"></i> Exportar Catálogo Completo con IDs (.csv)
+                                <a href="/Cycsa/publico/productos/exportar-catalogo-csv" class="btn btn-primary btn-sm w-100 fw-bold" title="Recomendado: Abre directamente ordenado en columnas en Excel">
+                                    <i class="fas fa-file-excel me-1"></i> Exportar Catálogo para Excel (.csv)
                                 </a>
-                                <a href="/Cycsa/publico/productos/descargar-plantilla" class="btn btn-outline-secondary btn-sm w-100">
-                                    <i class="fas fa-file-csv me-1"></i> Descargar Plantilla Vacía de Ejemplo (.csv)
-                                </a>
+                                <div class="d-flex gap-2">
+                                    <a href="/Cycsa/publico/productos/exportar-catalogo-csv?delimitador=coma" class="btn btn-outline-primary btn-sm w-50" title="Exportar con delimitador de coma estándar">
+                                        <i class="fas fa-file-csv me-1"></i> Formato Comas (,)
+                                    </a>
+                                    <a href="/Cycsa/publico/productos/descargar-plantilla" class="btn btn-outline-secondary btn-sm w-50" title="Descargar plantilla de ejemplo vacía">
+                                        <i class="fas fa-file-alt me-1"></i> Plantilla Vacía
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>

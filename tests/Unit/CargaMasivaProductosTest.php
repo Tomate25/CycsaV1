@@ -190,7 +190,7 @@ class CargaMasivaProductosTest extends TestCase {
         rewind($flujo);
         $totalFilasCsv = 0;
         $primeraFila = null;
-        while (($row = fgetcsv($flujo, 0, ',', '"', '\\')) !== false) {
+        while (($row = fgetcsv($flujo, 0, ';', '"', '\\')) !== false) {
             if ($primeraFila === null) {
                 $primeraFila = $row;
             }
