@@ -66,6 +66,7 @@ class ControlCalidadReplicasTest extends TestCase {
         $this->assertStringContainsString('_muestra_origen', $vista);
         $this->assertStringContainsString('normalizarReplicasMatriz', $controlador);
         $this->assertStringContainsString("'/control-calidad'", $rutas);
+        $this->assertStringContainsString("'/control-calidad/ver'", $rutas);
         $this->assertStringContainsString("'/control-calidad/evaluar-replica'", $rutas);
     }
 
@@ -74,13 +75,26 @@ class ControlCalidadReplicasTest extends TestCase {
             @session_start();
         }
         $_SESSION['csrf_token'] = 'csrf-prueba';
-        $comparaciones = [[
+        $detalle = [
             'id' => 10,
             'codigo_os' => 'OS-2026-001',
-            'cliente_nombre' => 'Cliente Prueba',
-            'nombre_proyecto' => 'Proyecto Interno',
             'descripcion_ensayo' => 'Compresión',
             'norma_astm' => 'ASTM C39',
+        ];
+        $metaOficial = [
+            'cliente_nombre' => 'Cliente Prueba',
+            'proyecto' => 'Proyecto Interno',
+            'ensayo_realizado' => 'Compresión',
+            'codigo_formato' => 'CYCSA-RT-FM-22'
+        ];
+        $codigoInformeConsecutivo = 'CYCSA-INF-MC-0001-26';
+        $columnas = ['Código laboratorio', 'Carga (lb)'];
+        $filas = [
+            ['Código laboratorio' => 'MC-0001-26', 'Carga (lb)' => '100.0'],
+            ['Código laboratorio' => 'MC-0001-26-CR', '_es_replica' => true, '_muestra_origen' => 'MC-0001-26', 'Carga (lb)' => '102.0']
+        ];
+        $pares = [[
+            'id' => 10,
             'codigo_original' => 'MC-0001-26',
             'codigo_replica' => 'MC-0001-26-CR',
             'diferencias' => [
@@ -90,13 +104,14 @@ class ControlCalidadReplicasTest extends TestCase {
         ]];
 
         ob_start();
-        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/control_calidad_replicas.php';
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/control_calidad_detalle.php';
         $html = ob_get_clean();
 
         $this->assertStringContainsString('MC-0001-26-CR', $html);
         $this->assertStringContainsString('Carga (lb)', $html);
         $this->assertStringContainsString('Guardar evaluación', $html);
         $this->assertStringContainsString('csrf-prueba', $html);
+        $this->assertStringContainsString('Volver a la Lista de Controles', $html);
     }
 
     public function testVistaControlCalidadRenderizaInformeCompletoConMatrizYMetadatos(): void {
@@ -146,23 +161,39 @@ class ControlCalidadReplicasTest extends TestCase {
             ]]
         ]];
 
+        // 1. Probar que el listado maestro de controles renderiza la tabla y los enlaces de redirección
         ob_start();
         include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/control_calidad_replicas.php';
-        $html = ob_get_clean();
+        $htmlLista = ob_get_clean();
 
-        $this->assertStringContainsString('CEMEX Nicaragua S.A.', $html);
-        $this->assertStringContainsString('Planta San Rafael', $html);
-        $this->assertStringContainsString('CYCSA-INF-MC-0001-0002-26', $html);
-        $this->assertStringContainsString('MC-0001-26-CR', $html);
-        $this->assertStringContainsString('MC-0002-26', $html);
-        $this->assertStringContainsString('RÉPLICA', $html);
-        $this->assertStringContainsString('OS-2026-0099', $html);
-        $this->assertStringContainsString('CYCSA-RT-FM-22 A', $html);
-        $this->assertStringContainsString('tablaMaestraControles', $html);
-        $this->assertStringContainsString('row-control-45', $html);
-        $this->assertStringContainsString('detail-row-45', $html);
-        $this->assertStringContainsString('toggleControlRow(45)', $html);
-        $this->assertStringContainsString('filtroTextoControles', $html);
+        $this->assertStringContainsString('CEMEX Nicaragua S.A.', $htmlLista);
+        $this->assertStringContainsString('Planta San Rafael', $htmlLista);
+        $this->assertStringContainsString('CYCSA-INF-MC-0001-0002-26', $htmlLista);
+        $this->assertStringContainsString('OS-2026-0099', $htmlLista);
+        $this->assertStringContainsString('CYCSA-RT-FM-22 A', $htmlLista);
+        $this->assertStringContainsString('tablaMaestraControles', $htmlLista);
+        $this->assertStringContainsString('row-control-45', $htmlLista);
+        $this->assertStringContainsString('/control-calidad/ver?id_detalle=45', $htmlLista);
+        $this->assertStringContainsString('filtroTextoControles', $htmlLista);
+
+        // 2. Probar que la vista dedicada de detalle renderiza la matriz técnica oficial completa con réplicas
+        $detalle = $informes[0]['detalle'];
+        $metaOficial = $informes[0]['metaOficial'];
+        $codigoInformeConsecutivo = $informes[0]['codigoInformeConsecutivo'];
+        $columnas = $informes[0]['columnas'];
+        $filas = $informes[0]['filas'];
+        $pares = $informes[0]['pares'];
+
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/control_calidad_detalle.php';
+        $htmlDetalle = ob_get_clean();
+
+        $this->assertStringContainsString('CEMEX Nicaragua S.A.', $htmlDetalle);
+        $this->assertStringContainsString('MC-0001-26-CR', $htmlDetalle);
+        $this->assertStringContainsString('MC-0002-26', $htmlDetalle);
+        $this->assertStringContainsString('RÉPLICA', $htmlDetalle);
+        $this->assertStringContainsString('Volver a la Lista de Controles', $htmlDetalle);
+        $this->assertStringContainsString('Guardar evaluación', $htmlDetalle);
     }
 
     public function testConsultaControlCalidadEjecutaSinErroresDeColumna(): void {
