@@ -46,28 +46,40 @@ class OperacionesFacturacionTest extends TestCase {
         $propRutas->setAccessible(true);
         $rutas = $propRutas->getValue($enrutador);
 
-        // Validar ruta POST de procesar facturación
+        // La facturación pertenece al módulo Ventas, nunca a Operaciones.
         $this->assertArrayHasKey('POST', $rutas);
-        $this->assertArrayHasKey('/operaciones/procesar-facturacion', $rutas['POST']);
+        $this->assertArrayNotHasKey('/operaciones/procesar-facturacion', $rutas['POST']);
+        $this->assertArrayHasKey('/ventas/procesar-facturacion', $rutas['POST']);
         $this->assertEquals(
-            'Cycsa\Modulos\Operaciones\Controladores\OperacionesControlador',
-            $rutas['POST']['/operaciones/procesar-facturacion']['callback'][0]
+            'Cycsa\Modulos\Ventas\Controladores\VentasControlador',
+            $rutas['POST']['/ventas/procesar-facturacion']['callback'][0]
         );
         $this->assertEquals(
             'procesarFacturacion',
-            $rutas['POST']['/operaciones/procesar-facturacion']['callback'][1]
+            $rutas['POST']['/ventas/procesar-facturacion']['callback'][1]
         );
 
-        // Validar ruta GET de imprimir factura
+        // Validar pantalla y ruta de impresión propias de Ventas.
         $this->assertArrayHasKey('GET', $rutas);
-        $this->assertArrayHasKey('/operaciones/imprimir-factura', $rutas['GET']);
+        $this->assertArrayHasKey('/ventas', $rutas['GET']);
+        $this->assertArrayNotHasKey('/operaciones/imprimir-factura', $rutas['GET']);
+        $this->assertArrayHasKey('/ventas/imprimir-factura', $rutas['GET']);
         $this->assertEquals(
-            'Cycsa\Modulos\Operaciones\Controladores\OperacionesControlador',
-            $rutas['GET']['/operaciones/imprimir-factura']['callback'][0]
+            'Cycsa\Modulos\Ventas\Controladores\VentasControlador',
+            $rutas['GET']['/ventas/imprimir-factura']['callback'][0]
         );
         $this->assertEquals(
             'imprimirFactura',
-            $rutas['GET']['/operaciones/imprimir-factura']['callback'][1]
+            $rutas['GET']['/ventas/imprimir-factura']['callback'][1]
+        );
+
+        $vistaOperaciones = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/index.php');
+        $this->assertStringNotContainsString('Pendientes de Cobro', $vistaOperaciones);
+        $this->assertStringNotContainsString('Facturación / Cobro</th>', $vistaOperaciones);
+        $this->assertMatchesRegularExpression(
+            '/<script>\s*function verObservacionDevolucion/s',
+            $vistaOperaciones,
+            'Las funciones de revisión de matrices deben permanecer dentro de una etiqueta script.'
         );
     }
 

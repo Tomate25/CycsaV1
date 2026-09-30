@@ -532,11 +532,11 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         </div>
     </div>
 <?php elseif ($revisionInfo['estado'] === 'en_revision'): ?>
-    <!-- BANNER MATRIZ EN REVISIÓN -->
+    <!-- BANNER MATRIZ PENDIENTE DE REVISIÓN -->
     <div style="background: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 10px; padding: 14px 20px; margin-bottom: 22px; display: flex; gap: 14px; align-items: center; box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.08);">
         <i class="fa-solid fa-clock-rotate-left" style="color: #d97706; font-size: 24px;"></i>
         <div style="flex: 1;">
-            <strong style="color: #92400e; font-size: 15px;"><i class="fa-solid fa-hourglass-half"></i> MATRIZ EN REVISIÓN DE CALIDAD</strong>
+            <strong style="color: #92400e; font-size: 15px;"><i class="fa-solid fa-hourglass-half"></i> MATRIZ PENDIENTE DE REVISIÓN</strong>
             <div style="font-size: 12.5px; color: #b45309; margin-top: 3px;">
                 Remitida por: <strong><?= htmlspecialchars($revisionInfo['usuario_envio'] ?? 'Laboratorio') ?></strong> el <?= htmlspecialchars($revisionInfo['fecha_envio'] ?? '') ?>. Pendiente de verificación y visto bueno por supervisión técnica para habilitar su envío al cliente.
             </div>

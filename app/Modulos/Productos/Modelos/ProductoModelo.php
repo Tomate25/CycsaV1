@@ -208,5 +208,99 @@ class ProductoModelo extends ModeloBase {
         $stmt = $this->db->prepare($sql);
         return $stmt->execute(['id' => $id]);
     }
-}
 
+    // 🔍 OBTENER PRODUCTO POR NO_ITEM
+    public function obtenerPorNoItem(string $noItem): ?array {
+        $sql = "SELECT * FROM productos WHERE no_item = :no_item AND activo = 1 LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['no_item' => trim($noItem)]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $res ?: null;
+    }
+
+    // 🔍 OBTENER PRODUCTO POR NOMBRE COMERCIAL (INSENSIBLE A MAYÚSCULAS/ESPACIOS)
+    public function obtenerPorNombreComercial(string $nombre): ?array {
+        $sql = "SELECT * FROM productos WHERE LOWER(TRIM(nombre_comercial)) = LOWER(TRIM(:nombre)) AND activo = 1 LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['nombre' => $nombre]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $res ?: null;
+    }
+
+    // ⚡ OBTENER ÍNDICE COMPLETO DE MAPEO EN MEMORIA (OPTIMIZACIÓN PARA CARGA MASIVA)
+    public function obtenerIndiceMapeo(): array {
+        $sql = "SELECT id, no_item, formato_id, tipo_muestra, matriz_tipo, tipo_muestreo,
+                       ensayo_servicio, nombre_comercial, condiciones_muestra, codigo_servicio,
+                       estatus, norma_astm, procedimiento_muestreo, codigo_hoja_campo,
+                       unidad_medida, precio, observaciones, activo
+                FROM productos WHERE activo = 1";
+        $stmt = $this->db->query($sql);
+        $todos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $porId = [];
+        $porNoItem = [];
+        $porNombre = [];
+
+        foreach ($todos as $prod) {
+            $porId[$prod['id']] = $prod;
+            if (!empty($prod['no_item'])) {
+                $porNoItem[trim($prod['no_item'])] = $prod;
+            }
+            if (!empty($prod['nombre_comercial'])) {
+                $claveNombre = mb_strtolower(trim($prod['nombre_comercial']), 'UTF-8');
+                $porNombre[$claveNombre] = $prod;
+            }
+        }
+
+        return [
+            'por_id'      => $porId,
+            'por_no_item' => $porNoItem,
+            'por_nombre'  => $porNombre
+        ];
+    }
+
+    // 📋 MAPEO DE FORMATOS DE ENSAYO (CÓDIGO/NOMBRE => ID)
+    public function obtenerMapeoFormatos(): array {
+        $sql = "SELECT id, codigo_formato, nombre FROM formatos_ensayos";
+        $stmt = $this->db->query($sql);
+        $formatos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $mapeo = [];
+        foreach ($formatos as $f) {
+            if (!empty($f['codigo_formato'])) {
+                $mapeo[mb_strtoupper(trim($f['codigo_formato']), 'UTF-8')] = (int)$f['id'];
+            }
+            if (!empty($f['nombre'])) {
+                $mapeo[mb_strtolower(trim($f['nombre']), 'UTF-8')] = (int)$f['id'];
+            }
+        }
+        return $mapeo;
+    }
+
+    // 🔒 MANEJO TRANSACCIONAL
+    public function iniciarTransaccion(): void {
+        if (!$this->db->inTransaction()) {
+            $this->db->beginTransaction();
+        }
+    }
+
+    public function confirmarTransaccion(): void {
+        if ($this->db->inTransaction()) {
+            $this->db->commit();
+        }
+    }
+
+    public function revertirTransaccion(): void {
+        if ($this->db->inTransaction()) {
+            $this->db->rollBack();
+        }
+    }
+
+    // 💾 INSERTAR Y OBTENER ID GENERADO
+    public function guardarYRetornarId(array $datos): int {
+        if ($this->guardar($datos)) {
+            return (int)$this->db->lastInsertId();
+        }
+        return 0;
+    }
+}

@@ -461,6 +461,12 @@
             <li class="menu-categoria">Módulos</li>
             <?php if (tienePermiso('cotizaciones', 'ver')): ?>
             <li>
+                <a href="/Cycsa/publico/ventas" class="<?= strpos($rutaActual, '/ventas') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-cash-register"></i>
+                    <span class="menu-texto">Ventas</span>
+                </a>
+            </li>
+            <li>
                 <a href="/Cycsa/publico/cotizaciones" class="<?= strpos($rutaActual, '/cotizaciones') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
                     <span class="menu-texto">Cotizaciones</span>

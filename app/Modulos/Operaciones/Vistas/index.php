@@ -363,10 +363,6 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                     <i class="fa-solid fa-flask"></i> En Ensayos / Lab
                     <span class="quick-tab-badge"><?= $conteosTabs['ensayos'] ?? 0 ?></span>
                 </a>
-                <a href="/Cycsa/publico/operaciones?tab=facturacion" class="quick-tab-link <?= ($tabActiva === 'facturacion') ? 'active' : '' ?>">
-                    <i class="fa-solid fa-file-invoice-dollar"></i> Pendientes de Cobro
-                    <span class="quick-tab-badge"><?= $conteosTabs['facturacion'] ?? 0 ?></span>
-                </a>
                 <a href="/Cycsa/publico/operaciones?tab=historico" class="quick-tab-link <?= ($tabActiva === 'historico') ? 'active' : '' ?>" style="<?= ($tabActiva === 'historico') ? '' : 'color: #64748b;' ?>">
                     <i class="fa-solid fa-box-archive"></i> Histórico / Archivo LIMS
                     <span class="quick-tab-badge"><?= $conteosTabs['historico'] ?? 0 ?></span>
@@ -395,7 +391,6 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                         <th>Cliente / Proyecto</th>
                         <th>Fecha Emisión</th>
                         <th>Modalidad / Muestreo</th>
-                        <th style="text-align: center;">Facturación / Cobro</th>
                         <th style="text-align: right;">Matriz / Calidad LIMS</th>
                     </tr>
                 </thead>
@@ -414,11 +409,6 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                         $requiereMuestreo = !empty($o['requiere_muestreo']);
                         $tieneMuestrasAceptadas = !empty($o['muestras_aceptadas_lab']) && $o['muestras_aceptadas_lab'] > 0;
                         
-                        $cxcOS = $o['cxc'] ?? null;
-                        $montoOS = (float)($o['cot_total'] ?? 0.0);
-                        $saldoOS = $cxcOS ? (float)$cxcOS['saldo'] : $montoOS;
-                        $estadoOS = $cxcOS ? $cxcOS['estado'] : 'Pendiente';
-                        $pagadaOS = ($estadoOS === 'Pagado' && $saldoOS <= 0.01);
                     ?>
                     <tr id="os-row-<?= $o['id'] ?>" data-detail-id="os-detail-<?= $o['id'] ?>" class="fila-os-lims">
                         <td style="text-align: center; width: 44px;">
@@ -470,42 +460,6 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                             <?php endif; ?>
                         </td>
 
-                        <!-- Columna Facturación y Cobro -->
-                        <td style="text-align: center; vertical-align: middle; white-space: nowrap;">
-                            <div style="display: inline-flex; align-items: center; gap: 6px;">
-                                <?php if ($pagadaOS): ?>
-                                    <span style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                                        <i class="fa-solid fa-circle-check"></i> Pagada (<?= htmlspecialchars($o['factura_numero']) ?>)
-                                    </span>
-                                    <a href="/Cycsa/publico/operaciones/imprimir-factura?id_os=<?= $o['id'] ?>" target="_blank" class="btn-accion-hs btn-pdf" style="text-decoration: none; padding: 5px 9px; font-size: 11.5px; display: inline-flex; align-items: center; gap: 4px;" title="Ver e Imprimir Factura Oficial">
-                                        <i class="fa-solid fa-print"></i> Factura
-                                    </a>
-                                <?php elseif ($estadoOS === 'Parcial'): ?>
-                                    <span style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                                        <i class="fa-solid fa-clock"></i> Parcial (Saldo: C$ <?= number_format($saldoOS, 2) ?>)
-                                    </span>
-                                    <button type="button" 
-                                            onclick="abrirModalFacturarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>', '<?= htmlspecialchars(addslashes($o['factura_numero'])) ?>', <?= $saldoOS ?>, '<?= htmlspecialchars(addslashes($o['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($o['condicion_pago'] ?? '')) ?>')" 
-                                            class="btn-accion-hs btn-registrar" 
-                                            style="padding: 5px 10px; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" 
-                                            title="Cobrar Saldo Pendiente">
-                                        <i class="fa-solid fa-money-bill-transfer"></i> Abonar
-                                    </button>
-                                <?php else: ?>
-                                    <span style="background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                                        <i class="fa-solid fa-hourglass"></i> Pendiente (C$ <?= number_format($montoOS, 2) ?>)
-                                    </span>
-                                    <button type="button" 
-                                            onclick="abrirModalFacturarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>', '<?= htmlspecialchars(addslashes($o['factura_numero'])) ?>', <?= $saldoOS ?>, '<?= htmlspecialchars(addslashes($o['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($o['condicion_pago'] ?? '')) ?>')" 
-                                            class="btn-accion-hs btn-registrar" 
-                                            style="background-color: #0f3b68; border-color: #0f3b68; color: white; padding: 5px 10px; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" 
-                                            title="Facturar y Registrar Cobro Inmediato (Efectivo o Transferencia)">
-                                        <i class="fa-solid fa-file-invoice-dollar"></i> Facturar
-                                    </button>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-
                         <td style="text-align: right; white-space: nowrap; vertical-align: middle;">
                             <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px;">
                                 <?php 
@@ -529,7 +483,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                                     </span>
                                 <?php elseif ($o['ensayos_con_resultados'] > 0): ?>
                                     <span class="badge-progreso badge-progreso-ambar" title="<?= $o['ensayos_con_resultados'] ?> de <?= $o['total_ensayos'] ?> en revisión de calidad">
-                                        <i class="fa-solid fa-pen-ruler"></i> <?= $o['ensayos_con_resultados'] ?>/<?= $o['total_ensayos'] ?> en Revisión
+                                        <i class="fa-solid fa-pen-ruler"></i> <?= $o['ensayos_con_resultados'] ?>/<?= $o['total_ensayos'] ?> pendientes de revisión
                                     </span>
                                 <?php elseif ($tieneMuestrasAceptadas): ?>
                                     <span class="badge-progreso badge-progreso-verde" title="Muestras aceptadas en custodia de laboratorio">
@@ -545,7 +499,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                                         onclick="abrirDetalleOS(<?= $o['id'] ?>, document.querySelector('#os-row-<?= $o['id'] ?> .btn-toggle-detail'))" 
                                         class="btn-accion btn-detalle" 
                                         style="background-color: #eff6ff; color: #1e40af; border-color: #bfdbfe; padding: 5px 10px; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;"
-                                        title="Abrir panel con factura, matriz técnica e ingreso de resultados">
+                                        title="Abrir panel con matriz técnica e ingreso de resultados">
                                     <i class="fa-solid fa-folder-open"></i> Detalle
                                 </button>
                             </div>
@@ -554,69 +508,9 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                     
                     <!-- Sub-fila para detalles desplegables (Acordeón / Viñetas) -->
                     <tr class="detalle-os-row" id="os-detail-<?= $o['id'] ?>" style="display: none; background-color: #f8fafc;">
-                        <td colspan="7" style="padding: 15px 25px; border-bottom: 1.5px solid #cbd5e1;">
+                        <td colspan="6" style="padding: 15px 25px; border-bottom: 1.5px solid #cbd5e1;">
                             <div class="detalle-os-card" style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
                                 
-                                <!-- APARTADO DE FACTURACIÓN Y REGISTRO CONTABLE DIARIO -->
-                                <div style="background: #ffffff; border: 1.5px solid <?= $pagadaOS ? '#a7f3d0' : '#cbd5e1' ?>; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-                                        <div style="font-family: 'Outfit'; font-size: 14px; font-weight: 700; color: #0f3b68; display: flex; align-items: center; gap: 8px;">
-                                            <i class="fa-solid fa-file-invoice-dollar" style="color: #059669; font-size: 17px;"></i>
-                                            Apartado de Facturación y Registro Contable Diario
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <?php if ($pagadaOS): ?>
-                                                <span style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">
-                                                    <i class="fa-solid fa-circle-check"></i> Factura Pagada (100%)
-                                                </span>
-                                            <?php elseif ($estadoOS === 'Parcial'): ?>
-                                                <span style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">
-                                                    <i class="fa-solid fa-clock"></i> Cobro Parcial (Pendiente: C$ <?= number_format($saldoOS, 2) ?>)
-                                                </span>
-                                            <?php else: ?>
-                                                <span style="background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">
-                                                    <i class="fa-solid fa-clock"></i> Pendiente de Cobro
-                                                </span>
-                                            <?php endif; ?>
-                                            <a href="/Cycsa/publico/operaciones/imprimir-factura?id_os=<?= $o['id'] ?>" target="_blank" class="btn-accion-hs btn-pdf" style="text-decoration: none; padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
-                                                <i class="fa-solid fa-print"></i> Ver / Imprimir Factura Oficial
-                                            </a>
-                                            <?php if (!$pagadaOS): ?>
-                                                <button type="button" onclick="abrirModalFacturarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>', '<?= htmlspecialchars(addslashes($o['factura_numero'])) ?>', <?= $saldoOS ?>, '<?= htmlspecialchars(addslashes($o['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($o['condicion_pago'] ?? '')) ?>')" class="btn-accion-hs btn-registrar" style="background: #0f3b68; border-color: #0f3b68; color: white; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                                                    <i class="fa-solid fa-cash-register"></i> Facturar / Cobrar Ahora
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; font-size: 12px;">
-                                        <div>
-                                            <span style="color: #64748b;">N° Factura:</span> 
-                                            <strong style="font-family: monospace; color: #0f3b68;"><?= htmlspecialchars($o['factura_numero']) ?></strong>
-                                        </div>
-                                        <div>
-                                            <span style="color: #64748b;">Monto Facturado:</span> 
-                                            <strong style="color: #0f172a;">C$ <?= number_format($montoOS, 2) ?></strong>
-                                        </div>
-                                        <div>
-                                            <span style="color: #64748b;">Saldo Pendiente:</span> 
-                                            <strong style="color: <?= $saldoOS > 0 ? '#b91c1c' : '#059669' ?>;">C$ <?= number_format($saldoOS, 2) ?></strong>
-                                        </div>
-                                        <div>
-                                            <span style="color: #64748b;">Condición de Pago:</span> 
-                                            <span><?= htmlspecialchars($o['condicion_pago'] ?? 'Contado') ?></span>
-                                        </div>
-                                    </div>
-                                    <?php if (!empty($cxcOS['notas'])): ?>
-                                        <div style="margin-top: 8px; font-size: 11.5px; color: #475569; background: #f8fafc; border-radius: 4px; padding: 6px 10px; border-left: 3px solid #059669;">
-                                            <i class="fa-solid fa-receipt" style="color: #059669;"></i> <?= htmlspecialchars($cxcOS['notas']) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                    <div style="margin-top: 6px; font-size: 11px; color: #64748b; font-style: italic;">
-                                        <i class="fa-solid fa-info-circle"></i> La facturación y el cobro se pueden emitir en cualquier momento del proceso sin restricciones por ensayos o resultados pendientes.
-                                    </div>
-                                </div>
-
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
                                     <h4 style="margin: 0; font-family: 'Outfit'; font-size: 15px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
                                         <i class="fa-solid fa-table-cells" style="color: var(--cycsa-azul);"></i> 
@@ -844,7 +738,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                     <?php endforeach; ?>
                     <?php if (empty($ordenes)): ?>
                     <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: var(--color-slate-600);">No se encontraron órdenes de servicio en esta bandeja.</td>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: var(--color-slate-600);">No se encontraron órdenes de servicio en esta bandeja.</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>
@@ -1861,179 +1755,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     </div>
 </div>
 
-<!-- MODAL FACTURACIÓN Y COBRO INMEDIATO (EFECTIVO O TRANSFERENCIA) -->
-<div id="modalFacturarOS" class="modal-premium" style="display:none; position:fixed; z-index:10006; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
-    <div class="modal-premium-content" style="width: 50%; max-width:640px; background:white; margin:4% auto; padding:25px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.25);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 12px;">
-            <h3 style="margin: 0; color: #0f3b68; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-file-invoice-dollar" style="color: #059669;"></i> Facturación y Cobro de Orden de Servicio
-            </h3>
-            <button type="button" onclick="cerrarModalFacturarOS()" class="btn-cerrar">&times;</button>
-        </div>
-
-        <form method="POST" action="/Cycsa/publico/operaciones/procesar-facturacion" id="form-facturar-os">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <input type="hidden" name="id_os" id="fact_id_os" value="">
-
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Orden de Servicio:</div>
-                        <div style="font-size: 15px; font-weight: 800; color: #0f3b68; font-family: monospace;" id="fact_txt_os"></div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Cliente:</div>
-                        <div style="font-size: 13.5px; font-weight: 700; color: #1e293b;" id="fact_txt_cliente"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 16px;">
-                <div class="form-group">
-                    <label style="font-size: 12.5px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 5px;">
-                        Número de Factura:
-                    </label>
-                    <input type="text" name="factura_numero" id="fact_input_factura_num" class="form-control" required style="font-family: monospace; font-weight: 700; color: #0f3b68; width: 100%; padding: 9px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px;">
-                </div>
-                <div class="form-group">
-                    <label style="font-size: 12.5px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 5px;">
-                        Monto a Facturar / Cobrar (C$):
-                    </label>
-                    <input type="number" step="0.01" min="0.01" name="monto" id="fact_input_monto" class="form-control" required style="font-weight: 700; font-size: 15px; color: #0f172a; width: 100%; padding: 9px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px;">
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label style="font-size: 12.5px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
-                    Método de Pago / Facturación:
-                </label>
-                <div style="display: flex; gap: 18px; background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; flex-wrap: wrap;">
-                    <label style="display: flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; font-size: 13px;">
-                        <input type="radio" name="metodo_pago" value="efectivo" checked onchange="toggleMetodoPagoFacturacion('efectivo')">
-                        💵 Efectivo (Caja Principal)
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; font-size: 13px;">
-                        <input type="radio" name="metodo_pago" value="transferencia" onchange="toggleMetodoPagoFacturacion('transferencia')">
-                        🏦 Transferencia Bancaria
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; font-size: 13px;">
-                        <input type="radio" name="metodo_pago" value="credito" onchange="toggleMetodoPagoFacturacion('credito')">
-                        📑 Crédito
-                    </label>
-                </div>
-            </div>
-
-            <!-- Sección Transferencia Bancaria -->
-            <div id="seccion-transferencia-banco" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                    <div class="form-group">
-                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 5px;">
-                            Cuenta Bancaria Receptora:
-                        </label>
-                        <select name="id_banco_cuenta" id="fact_select_banco" class="form-control" style="width: 100%; padding: 9px 12px; font-size: 12.5px; border-radius: 6px; border: 1.5px solid #86efac;">
-                            <option value="">-- Seleccionar Banco --</option>
-                            <?php foreach (($bancos ?? []) as $b): ?>
-                                <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['banco_nombre']) ?> - <?= htmlspecialchars($b['numero_cuenta']) ?> (<?= $b['moneda'] ?>)</option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 5px;">
-                            N° Referencia / Transferencia:
-                        </label>
-                        <input type="text" name="referencia" id="fact_input_ref" class="form-control" placeholder="Ej: TRANS-982341" style="width: 100%; padding: 9px 12px; font-size: 12.5px; border-radius: 6px; border: 1.5px solid #86efac;">
-                    </div>
-                </div>
-                <small style="color: #166534; font-size: 11px; margin-top: 6px; display: block;">
-                    * Se incrementará el saldo de la cuenta bancaria y se registrará la transacción en Bancos y en el Libro Diario.
-                </small>
-            </div>
-
-            <!-- Sección Efectivo -->
-            <div id="seccion-efectivo-caja" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: #1e40af;">
-                <i class="fa-solid fa-circle-info"></i> El cobro se debitará en <strong>Caja Principal (Cuenta 1010101)</strong> y se acreditará a <strong>Ingresos por Laboratorio (Cuenta 4010106)</strong> en el registro diario contable.
-            </div>
-
-            <!-- Sección Crédito -->
-            <div id="seccion-credito-plazo" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-                <div class="form-group">
-                    <label style="font-size: 12px; font-weight: 700; color: #b45309; display: block; margin-bottom: 5px;">
-                        Plazo de Crédito (Días):
-                    </label>
-                    <input type="number" name="dias_credito" id="fact_dias_credito" value="30" min="1" max="180" class="form-control" style="width: 120px; padding: 8px 12px; font-size: 13px; border-radius: 6px; border: 1.5px solid #fcd34d;">
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label style="font-size: 12.5px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 5px;">
-                    Fecha de Facturación:
-                </label>
-                <input type="date" name="fecha" id="fact_input_fecha" value="<?= date('Y-m-d') ?>" class="form-control" required style="width: 100%; padding: 9px 12px; font-size: 13px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
-                <button type="button" onclick="cerrarModalFacturarOS()" class="btn-accion-hs btn-editar" style="padding: 9px 20px; font-size: 13px; cursor: pointer; border-radius: 6px;">
-                    Cancelar
-                </button>
-                <button type="submit" class="btn-accion-hs btn-registrar" style="background: #0f3b68; border-color: #0f3b68; color: white; padding: 9px 24px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; border-radius: 6px;">
-                    <i class="fa-solid fa-check-circle"></i> Emitir Factura y Registrar en Diario
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <script>
-    function abrirModalFacturarOS(idOS, codigoOS, facturaNum, saldoPendiente, clienteNombre, condicionPago) {
-        document.getElementById('fact_id_os').value = idOS;
-        document.getElementById('fact_txt_os').innerText = codigoOS;
-        document.getElementById('fact_txt_cliente').innerText = clienteNombre;
-        document.getElementById('fact_input_factura_num').value = facturaNum;
-        document.getElementById('fact_input_monto').value = parseFloat(saldoPendiente || 0).toFixed(2);
-        document.getElementById('fact_input_fecha').value = new Date().toISOString().split('T')[0];
-
-        // Reset radios
-        const radEfectivo = document.querySelector('input[name="metodo_pago"][value="efectivo"]');
-        if (radEfectivo) radEfectivo.checked = true;
-        toggleMetodoPagoFacturacion('efectivo');
-
-        const modal = document.getElementById('modalFacturarOS');
-        if (modal) {
-            modal.style.display = 'block';
-        }
-    }
-
-    function cerrarModalFacturarOS() {
-        const modal = document.getElementById('modalFacturarOS');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    }
-
-    function toggleMetodoPagoFacturacion(metodo) {
-        const secTransf = document.getElementById('seccion-transferencia-banco');
-        const secEfec = document.getElementById('seccion-efectivo-caja');
-        const secCred = document.getElementById('seccion-credito-plazo');
-        const selBanco = document.getElementById('fact_select_banco');
-
-        if (metodo === 'transferencia') {
-            secTransf.style.display = 'block';
-            secEfec.style.display = 'none';
-            secCred.style.display = 'none';
-            if (selBanco) selBanco.setAttribute('required', 'required');
-        } else if (metodo === 'credito') {
-            secTransf.style.display = 'none';
-            secEfec.style.display = 'none';
-            secCred.style.display = 'block';
-            if (selBanco) selBanco.removeAttribute('required');
-        } else {
-            secTransf.style.display = 'none';
-            secEfec.style.display = 'block';
-            secCred.style.display = 'none';
-            if (selBanco) selBanco.removeAttribute('required');
-        }
-    }
-
     function verObservacionDevolucion(idDetalle, nombreEnsayo, motivo, supervisor, fecha) {
         document.getElementById('ver_obs_ensayo').innerText = nombreEnsayo;
         document.getElementById('ver_obs_motivo').innerText = motivo || 'Sin observaciones detalladas.';

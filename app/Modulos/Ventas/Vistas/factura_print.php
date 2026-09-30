@@ -378,7 +378,7 @@ $logoBase64 = file_exists($rutaLogo) ? 'data:image/png;base64,' . base64_encode(
     <!-- Barra de acciones en pantalla (Oculta al imprimir) -->
     <div class="no-print-bar">
         <div style="display: flex; align-items: center; gap: 10px;">
-            <a href="/Cycsa/publico/operaciones" class="btn-back">
+            <a href="/Cycsa/publico/ventas" class="btn-back">
                 <i class="fa-solid fa-arrow-left"></i> Volver a Operaciones LIMS
             </a>
             <span style="font-size: 12px; color: #64748b;">

@@ -28,7 +28,7 @@ class MatrizRevisionAprobacionTest extends TestCase {
         ]);
         $res = obtenerEstadoRevisionMatriz($jsonPlano);
         $this->assertEquals('en_revision', $res['estado']);
-        $this->assertEquals('EN REVISIÓN', $res['estado_label']);
+        $this->assertEquals('PENDIENTE DE REVISIÓN', $res['estado_label']);
         $this->assertTrue($res['tiene_resultados']);
         $this->assertFalse($res['puede_enviar_cliente']);
         $this->assertTrue($res['puede_aprobar']);

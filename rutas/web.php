@@ -13,6 +13,7 @@ use Cycsa\Modulos\Operaciones\Controladores\OperacionesControlador;
 use Cycsa\Modulos\Operaciones\Controladores\LaboratorioControlador;
 use Cycsa\Modulos\HojasServicio\Controladores\HojasServicioControlador;
 use Cycsa\Modulos\OrdenesServicio\Controladores\OrdenesServicioControlador;
+use Cycsa\Modulos\Ventas\Controladores\VentasControlador;
 
 // Importar Middlewares
 use Cycsa\App\Middleware\AuthMiddleware;
@@ -96,6 +97,9 @@ $app->enrutador->post('/productos/crear', [ProductosControlador::class, 'guardar
 $app->enrutador->get('/productos/editar', [ProductosControlador::class, 'editar'], [AuthMiddleware::class]);
 $app->enrutador->post('/productos/editar', [ProductosControlador::class, 'actualizar'], [AuthMiddleware::class]);
 $app->enrutador->post('/productos/eliminar', [ProductosControlador::class, 'eliminar'], [AuthMiddleware::class]);
+$app->enrutador->get('/productos/descargar-plantilla', [ProductosControlador::class, 'descargarPlantilla'], [AuthMiddleware::class]);
+$app->enrutador->post('/productos/previsualizar-carga', [ProductosControlador::class, 'previsualizarCarga'], [AuthMiddleware::class]);
+$app->enrutador->post('/productos/confirmar-carga', [ProductosControlador::class, 'confirmarCarga'], [AuthMiddleware::class]);
 
 // 🔒 RUTAS DE COTIZACIONES (REQUERIDO: SESIÓN ACTIVA)
 $app->enrutador->get('/cotizaciones', [CotizacionesControlador::class, 'index'], [AuthMiddleware::class]);
@@ -174,9 +178,12 @@ $app->enrutador->post('/operaciones/aprobar-matriz-producto', [OperacionesContro
 $app->enrutador->post('/operaciones/devolver-matriz-producto', [OperacionesControlador::class, 'devolverMatrizProducto'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/guardar-hoja-campo', [OperacionesControlador::class, 'guardarHojaCampo'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/omitir-espera', [OperacionesControlador::class, 'omitirEsperaMuestreo'], [AuthMiddleware::class]);
-$app->enrutador->post('/operaciones/procesar-facturacion', [OperacionesControlador::class, 'procesarFacturacion'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/cerrar-operacion', [OperacionesControlador::class, 'cerrarOperacion'], [AuthMiddleware::class]);
-$app->enrutador->get('/operaciones/imprimir-factura', [OperacionesControlador::class, 'imprimirFactura'], [AuthMiddleware::class]);
+
+// 🔒 RUTAS DEL MÓDULO DE VENTAS (FACTURACIÓN Y COBRO)
+$app->enrutador->get('/ventas', [VentasControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->post('/ventas/procesar-facturacion', [VentasControlador::class, 'procesarFacturacion'], [AuthMiddleware::class]);
+$app->enrutador->get('/ventas/imprimir-factura', [VentasControlador::class, 'imprimirFactura'], [AuthMiddleware::class]);
     // 🔒 RUTAS DEL MÓDULO NUEVO HOJAS DE SERVICIO (CYCSA-RT-FM-13)
     $app->enrutador->get('/hojas-servicio', [HojasServicioControlador::class, 'index'], [AuthMiddleware::class]);
     $app->enrutador->get('/hojas-servicio/datos', [HojasServicioControlador::class, 'hojaSolicitudDatosAjax'], [AuthMiddleware::class]);

@@ -38,6 +38,13 @@ class PanelControlador extends ControladorBase {
                 'desc' => 'Gestión de órdenes CYCSA-RG-FM-39 V1, logística de campo y registro de Hojas RT-FM-13.',
                 'color' => 'linear-gradient(135deg, #103487, #1e40af)', // Azul CYCSA
             ];
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Ventas',
+                'link' => '/Cycsa/publico/ventas',
+                'icon' => 'fa-solid fa-cash-register',
+                'desc' => 'Facturación, cobros y seguimiento de saldos de órdenes de servicio.',
+                'color' => 'linear-gradient(135deg, #059669, #047857)',
+            ];
         }
         // 2. Operaciones LIMS (Programación y Muestras)
         if (tienePermiso('operaciones', 'ver')) {

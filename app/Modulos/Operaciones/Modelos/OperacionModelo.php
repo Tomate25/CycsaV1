@@ -125,24 +125,15 @@ class OperacionModelo extends ModeloBase {
                     FROM ordenes_servicio os";
             $res = $this->db->query($sql)->fetch(PDO::FETCH_ASSOC);
 
-            // Conteo facturacion pendiente (cuentas por cobrar no pagadas o con saldo > 0)
-            $sqlFact = "SELECT COUNT(*) FROM ordenes_servicio os
-                        JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-                        LEFT JOIN cuentas_por_cobrar cxc ON cxc.factura_numero = CONCAT('FAC-', cot.codigo)
-                        WHERE (os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL)
-                        AND (cxc.estado IS NULL OR cxc.estado != 'Pagado' OR cxc.saldo > 0.01)";
-            $factPendiente = (int)$this->db->query($sqlFact)->fetchColumn();
-
             return [
                 'activas' => (int)($res['activas'] ?? 0),
                 'muestreo' => (int)($res['muestreo'] ?? 0),
-                'facturacion' => $factPendiente,
                 'ensayos' => 0,
                 'historico' => (int)($res['historico'] ?? 0),
                 'todas' => (int)($res['todas'] ?? 0)
             ];
         } catch (\Throwable $e) {
-            return ['activas' => 0, 'muestreo' => 0, 'facturacion' => 0, 'ensayos' => 0, 'historico' => 0, 'todas' => 0];
+            return ['activas' => 0, 'muestreo' => 0, 'ensayos' => 0, 'historico' => 0, 'todas' => 0];
         }
     }
 

@@ -3480,7 +3480,7 @@ function obtenerEstadoRevisionMatriz(?string $resultadosJson): array {
         case 'en_revision':
         default:
             $estado = 'en_revision';
-            $label = 'EN REVISIÓN';
+            $label = 'PENDIENTE DE REVISIÓN';
             $badgeClase = 'badge-revision';
             $badgeBg = '#fef3c7';
             $badgeColor = '#b45309';

@@ -6,6 +6,7 @@ use Cycsa\Nucleo\ControladorBase;
 use Cycsa\Nucleo\Peticion;
 use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\Productos\Modelos\ProductoModelo;
+use Cycsa\Modulos\Productos\Servicios\ImportadorProductosCsv;
 
 class ProductosControlador extends ControladorBase {
     
@@ -262,5 +263,113 @@ class ProductosControlador extends ControladorBase {
         
         $respuesta->redirigir('/Cycsa/publico/productos');
         return;
+    }
+
+    // 📥 DESCARGAR PLANTILLA OFICIAL CSV PARA CARGA MASIVA
+    public function descargarPlantilla(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'ver') && !tienePermiso('productos', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            exit;
+        }
+
+        $csv = ImportadorProductosCsv::generarPlantillaCsv();
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="CYCSA_Plantilla_Productos_Oficial.csv"');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        header('Content-Length: ' . strlen($csv));
+        echo $csv;
+        exit;
+    }
+
+    // 🔍 PREVISUALIZAR Y VALIDAR ARCHIVO CSV/EXCEL
+    public function previsualizarCarga(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'crear_editar')) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'No tiene permisos para importar productos.'], 403);
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'Token CSRF inválido o expirado.'], 403);
+            return;
+        }
+
+        $contenido = '';
+        if (isset($_FILES['archivo_csv']) && is_uploaded_file($_FILES['archivo_csv']['tmp_name'])) {
+            $archivo = $_FILES['archivo_csv'];
+            if (($archivo['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+                $respuesta->enviarJson(['exito' => false, 'error' => 'El archivo no pudo cargarse correctamente.'], 400);
+                return;
+            }
+            if (($archivo['size'] ?? 0) > 5 * 1024 * 1024) {
+                $respuesta->enviarJson(['exito' => false, 'error' => 'El archivo supera el límite permitido de 5 MB.'], 413);
+                return;
+            }
+            if (strtolower(pathinfo((string)($archivo['name'] ?? ''), PATHINFO_EXTENSION)) !== 'csv') {
+                $respuesta->enviarJson(['exito' => false, 'error' => 'Formato no permitido. Guarde el archivo de Excel como CSV.'], 415);
+                return;
+            }
+            $contenido = (string)file_get_contents($archivo['tmp_name']);
+        } elseif (!empty($_POST['contenido_csv'])) {
+            $contenido = (string)$_POST['contenido_csv'];
+        }
+
+        if (empty(trim($contenido))) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'No se recibió ningún archivo o el archivo está vacío.'], 400);
+            return;
+        }
+
+        $modelo = new ProductoModelo();
+        $resultado = ImportadorProductosCsv::parsearYValidar($contenido, $modelo);
+
+        if ($resultado['exito'] && !empty($resultado['filas'])) {
+            $tokenLote = bin2hex(random_bytes(16));
+            $_SESSION['carga_masiva_token'] = $tokenLote;
+            $_SESSION['carga_masiva_filas'] = $resultado['filas'];
+            $resultado['token_lote'] = $tokenLote;
+        }
+
+        $respuesta->enviarJson($resultado);
+    }
+
+    // 💾 CONFIRMAR TRANSACCIÓN DE CARGA MASIVA (UPSERT)
+    public function confirmarCarga(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'crear_editar')) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'No tiene permisos para importar productos.'], 403);
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'Token CSRF inválido o expirado.'], 403);
+            return;
+        }
+
+        $tokenLote = $_POST['token_lote'] ?? '';
+        $filas = [];
+
+        if (!empty($tokenLote) && isset($_SESSION['carga_masiva_token']) && hash_equals($_SESSION['carga_masiva_token'], $tokenLote)) {
+            $filas = $_SESSION['carga_masiva_filas'] ?? [];
+        }
+
+        if (empty($filas)) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'No hay filas en cola de carga o la sesión expiró. Por favor previsualice el archivo nuevamente.'], 400);
+            return;
+        }
+
+        $modelo = new ProductoModelo();
+        $resultado = ImportadorProductosCsv::ejecutarImportacion($filas, $modelo);
+
+        if ($resultado['exito']) {
+            unset($_SESSION['carga_masiva_token'], $_SESSION['carga_masiva_filas']);
+            registrarBitacora('productos', 'importacion_masiva', "Carga masiva completada: {$resultado['creados']} creados, {$resultado['actualizados']} actualizados ({$resultado['total']} total).");
+        }
+
+        $respuesta->enviarJson($resultado);
     }
 }

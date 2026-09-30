@@ -42,6 +42,9 @@ class OperacionesControlador extends ControladorBase {
         $modelo = new OperacionModelo();
         $busqueda = $_GET['q'] ?? '';
         $tabActiva = $_GET['tab'] ?? 'activas';
+        if (!in_array($tabActiva, ['activas', 'muestreo', 'ensayos', 'historico'], true)) {
+            $tabActiva = 'activas';
+        }
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -49,7 +52,7 @@ class OperacionesControlador extends ControladorBase {
 
         // Obtener cotizaciones aprobadas listas para generar O/S, y las O/S según pestaña
         $cotizacionesParaOS = $modelo->obtenerCotizacionesParaOS($busqueda);
-        $tabBusquedaModelo = in_array($tabActiva, ['facturacion', 'ensayos']) ? 'activas' : $tabActiva;
+        $tabBusquedaModelo = $tabActiva === 'ensayos' ? 'activas' : $tabActiva;
         $ordenesActivas = $modelo->obtenerOSActivas($busqueda, $tabBusquedaModelo);
         $conteosTabs = $modelo->obtenerConteosTabsOS();
         
@@ -61,11 +64,6 @@ class OperacionesControlador extends ControladorBase {
             $cxcMap[$r['factura_numero']] = $r;
         }
 
-        // Obtener cuentas bancarias activas para cobro / transferencia
-        $stmtBancos = $db->query("SELECT id, banco_nombre, numero_cuenta, moneda, saldo_actual, id_cuenta_contable FROM bancos_cuentas WHERE activo = 1 ORDER BY banco_nombre ASC");
-        $bancos = $stmtBancos->fetchAll(PDO::FETCH_ASSOC);
-        
-        $conteoFacturacionPendiente = 0;
         $conteoEnsayosPendientes = 0;
 
         foreach ($ordenesActivas as &$o) {
@@ -112,21 +110,15 @@ class OperacionesControlador extends ControladorBase {
             // Condición explícita de cierre (100% técnico + 100% comercial)
             $o['puede_cerrar'] = ($o['tecnico_100'] && $o['comercial_100'] && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado']));
 
-            if (!$o['comercial_100']) {
-                $conteoFacturacionPendiente++;
-            }
             if (!$o['tecnico_100']) {
                 $conteoEnsayosPendientes++;
             }
         }
         unset($o);
 
-        $conteosTabs['facturacion'] = $conteoFacturacionPendiente;
         $conteosTabs['ensayos'] = $conteoEnsayosPendientes;
 
-        if ($tabActiva === 'facturacion') {
-            $ordenesActivas = array_values(array_filter($ordenesActivas, fn($o) => !$o['comercial_100']));
-        } elseif ($tabActiva === 'ensayos') {
+        if ($tabActiva === 'ensayos') {
             $ordenesActivas = array_values(array_filter($ordenesActivas, fn($o) => !$o['tecnico_100']));
         }
         
@@ -141,8 +133,6 @@ class OperacionesControlador extends ControladorBase {
             'conteosTabs' => $conteosTabs,
             'tecnicos' => $modelo->obtenerTecnicosActivos(),
             'vehiculos' => $modelo->obtenerVehiculosActivos(),
-            'bancos' => $bancos,
-            'cxcMap' => $cxcMap,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null,
             'bitacora_logs' => $bitacora_logs
@@ -1774,7 +1764,7 @@ class OperacionesControlador extends ControladorBase {
                     'fecha' => $fechaActual,
                     'usuario' => $usuarioSesion,
                     'usuario_id' => $usuarioIdSesion,
-                    'nota' => 'Matriz corregida tras observación de supervisión y reenviada a revisión.'
+                    'nota' => 'Matriz corregida tras observación de supervisión y marcada Pendiente de revisión.'
                 ];
             } else {
                 $historial[] = [
@@ -1782,7 +1772,7 @@ class OperacionesControlador extends ControladorBase {
                     'fecha' => $fechaActual,
                     'usuario' => $usuarioSesion,
                     'usuario_id' => $usuarioIdSesion,
-                    'nota' => 'Matriz técnica guardada y enviada a revisión de supervisión.'
+                    'nota' => 'Matriz técnica guardada con estado Pendiente de revisión.'
                 ];
             }
 
@@ -1821,11 +1811,11 @@ class OperacionesControlador extends ControladorBase {
             registrarBitacora(
                 'operaciones',
                 'guardar_matriz',
-                "Matriz técnica guardada y puesta En Revisión para '{$detalleActual['descripcion_ensayo']}' (Detalle #{$idDetalle})",
+                "Matriz técnica guardada como Pendiente de revisión para '{$detalleActual['descripcion_ensayo']}' (Detalle #{$idDetalle})",
                 $idDetalle
             );
 
-            $_SESSION['exito'] = 'Matriz técnica guardada correctamente y enviada a revisión de calidad.';
+            $_SESSION['exito'] = 'Matriz técnica guardada correctamente con estado Pendiente de revisión.';
             $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones';
             $respuesta->redirigir($redir);
         }
@@ -2583,337 +2573,6 @@ class OperacionesControlador extends ControladorBase {
         } else {
             $respuesta->redirigir('/Cycsa/publico/operaciones');
         }
-    }
-
-    /**
-     * Procesa la facturación oficial de una Orden de Servicio (O/S).
-     * Permite facturar en cualquier momento del proceso sin restricciones de hojas o resultados.
-     * Soporta: Efectivo (Caja Principal), Transferencia Bancaria o Crédito.
-     * Afecta cuentas contables, saldos de bancos/caja, CXC y registra el asiento en el Libro Diario.
-     */
-    public function procesarFacturacion(Peticion $peticion, Respuesta $respuesta): void {
-        $this->verificarSesion($respuesta);
-        $this->verificarPermiso($respuesta, 'crear_editar');
-
-        if (!$peticion->esPost()) {
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-            return;
-        }
-
-        $datos = $peticion->obtenerDatos();
-
-        if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-            return;
-        }
-
-        $idOS = (int)($datos['id_os'] ?? 0);
-        $metodoPago = strtolower(trim($datos['metodo_pago'] ?? 'efectivo'));
-        $monto = (float)($datos['monto'] ?? 0.0);
-        $fecha = !empty($datos['fecha']) ? trim($datos['fecha']) : date('Y-m-d');
-        $idBancoCuenta = (int)($datos['id_banco_cuenta'] ?? 0);
-        $referencia = trim($datos['referencia'] ?? '');
-        $diasCredito = max(0, (int)($datos['dias_credito'] ?? 0));
-        $facturaNumeroPersonalizada = trim($datos['factura_numero'] ?? '');
-
-        if ($idOS <= 0) {
-            $_SESSION['error'] = 'Identificador de Orden de Servicio no válido.';
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-            return;
-        }
-
-        if ($monto <= 0) {
-            $_SESSION['error'] = 'El monto a facturar debe ser mayor a cero.';
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-            return;
-        }
-
-        if ($metodoPago === 'transferencia' && $idBancoCuenta <= 0) {
-            $_SESSION['error'] = 'Debe seleccionar una cuenta bancaria para el cobro por transferencia.';
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-            return;
-        }
-
-        $db = Conexion::obtenerInstancia();
-
-        // Obtener datos completos de la O/S, cotización y cliente
-        $stmtOS = $db->prepare("
-            SELECT os.*, 
-                   cot.codigo AS cot_codigo, cot.total AS cot_total, cot.id_cliente,
-                   cli.nombre_razon_social AS cliente_nombre, cli.numero_ruc AS cliente_ruc, cli.cuenta_cxc
-            FROM ordenes_servicio os
-            JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-            JOIN clientes cli ON cot.id_cliente = cli.id
-            WHERE os.id = :id
-        ");
-        $stmtOS->execute(['id' => $idOS]);
-        $os = $stmtOS->fetch(PDO::FETCH_ASSOC);
-
-        if (!$os) {
-            $_SESSION['error'] = 'Orden de Servicio no encontrada.';
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-            return;
-        }
-
-        $facturaNum = !empty($facturaNumeroPersonalizada) ? $facturaNumeroPersonalizada : ('FAC-' . $os['cot_codigo']);
-
-        try {
-            $db->beginTransaction();
-
-            // 1. Obtener o crear el registro en cuentas_por_cobrar
-            $stmtCxc = $db->prepare("SELECT * FROM cuentas_por_cobrar WHERE factura_numero = :fn FOR UPDATE");
-            $stmtCxc->execute(['fn' => $facturaNum]);
-            $cxc = $stmtCxc->fetch(PDO::FETCH_ASSOC);
-
-            $saldoTotal = (float)$os['cot_total'];
-            $saldoActual = $cxc ? (float)$cxc['saldo'] : $saldoTotal;
-            $nuevoSaldo = max(0.0, $saldoActual - $monto);
-
-            if ($metodoPago === 'credito') {
-                $estadoCxc = 'Pendiente';
-            } else {
-                $estadoCxc = ($nuevoSaldo <= 0.01) ? 'Pagado' : 'Parcial';
-            }
-
-            $fechaVencimiento = ($metodoPago === 'credito' && $diasCredito > 0) 
-                ? date('Y-m-d', strtotime("+$diasCredito days", strtotime($fecha)))
-                : $fecha;
-
-            $notaMetodo = match($metodoPago) {
-                'efectivo' => "Facturado en Efectivo (Caja Principal)",
-                'transferencia' => "Facturado vía Transferencia (Ref: " . ($referencia ?: 'S/R') . ")",
-                'credito' => "Factura a Crédito ($diasCredito días de plazo)",
-                default => "Facturación O/S"
-            };
-
-            if ($cxc) {
-                $cxcId = (int)$cxc['id'];
-                $updCxc = $db->prepare("
-                    UPDATE cuentas_por_cobrar 
-                    SET saldo = :saldo, estado = :estado, fecha_vencimiento = :venc, 
-                        notas = CONCAT(IFNULL(notas, ''), ' | ', :nota)
-                    WHERE id = :id
-                ");
-                $updCxc->execute([
-                    'saldo' => $nuevoSaldo,
-                    'estado' => $estadoCxc,
-                    'venc' => $fechaVencimiento,
-                    'nota' => $notaMetodo . ' el ' . date('d/m/Y H:i'),
-                    'id' => $cxcId
-                ]);
-            } else {
-                $insCxc = $db->prepare("
-                    INSERT INTO cuentas_por_cobrar (id_cliente, factura_numero, monto, saldo, estado, fecha_emision, fecha_vencimiento, notas)
-                    VALUES (:id_cliente, :factura_numero, :monto, :saldo, :estado, :fecha, :venc, :notas)
-                ");
-                $insCxc->execute([
-                    'id_cliente' => $os['id_cliente'],
-                    'factura_numero' => $facturaNum,
-                    'monto' => $saldoTotal,
-                    'saldo' => $nuevoSaldo,
-                    'estado' => $estadoCxc,
-                    'fecha' => $fecha,
-                    'venc' => $fechaVencimiento,
-                    'notas' => $notaMetodo . ' el ' . date('d/m/Y H:i')
-                ]);
-                $cxcId = (int)$db->lastInsertId();
-            }
-
-            // 2. Si es transferencia, actualizar saldo en bancos_cuentas y registrar bancos_transacciones
-            $bancoInfo = null;
-            if ($metodoPago === 'transferencia') {
-                $stmtBco = $db->prepare("SELECT * FROM bancos_cuentas WHERE id = :id FOR UPDATE");
-                $stmtBco->execute(['id' => $idBancoCuenta]);
-                $bancoInfo = $stmtBco->fetch(PDO::FETCH_ASSOC);
-
-                if (!$bancoInfo) {
-                    throw new \Exception("La cuenta bancaria seleccionada no existe.");
-                }
-
-                // Incrementar saldo de la cuenta bancaria
-                $updBco = $db->prepare("UPDATE bancos_cuentas SET saldo_actual = saldo_actual + :monto WHERE id = :id");
-                $updBco->execute([
-                    'monto' => $monto,
-                    'id' => $idBancoCuenta
-                ]);
-
-                // Registrar transacción bancaria oficial
-                $insTx = $db->prepare("
-                    INSERT INTO bancos_transacciones (id_banco_cuenta, tipo_transaccion, numero_documento, beneficiario, monto, fecha, estado, descripcion)
-                    VALUES (:id_banco, 'TRANSFERENCIA', :doc, :beneficiario, :monto, :fecha, 'Cobrado', :desc)
-                ");
-                $insTx->execute([
-                    'id_banco' => $idBancoCuenta,
-                    'doc' => !empty($referencia) ? $referencia : ('TRANS-' . $facturaNum),
-                    'beneficiario' => $os['cliente_nombre'],
-                    'monto' => $monto,
-                    'fecha' => $fecha,
-                    'desc' => "Cobro de Factura " . $facturaNum . " (O/S " . $os['codigo_os'] . ") - Banco " . $bancoInfo['banco_nombre']
-                ]);
-            }
-
-            // 3. Registrar el Asiento Diario de Contabilidad (Partida Doble Balanceada)
-            // Debe:
-            // - Efectivo: Caja Principal (1010101, id=4)
-            // - Transferencia: Cuenta Contable del Banco ($bancoInfo['id_cuenta_contable'])
-            // - Crédito: Clientes Nacionales (1010201, id=13)
-            // Haber:
-            // - Ingresos por Laboratorio (4010106, id=208, o 206)
-            $idCuentaDebe = 4; // Caja Principal por defecto
-            if ($metodoPago === 'transferencia' && $bancoInfo && !empty($bancoInfo['id_cuenta_contable'])) {
-                $idCuentaDebe = (int)$bancoInfo['id_cuenta_contable'];
-            } elseif ($metodoPago === 'credito') {
-                $idCuentaDebe = 13; // Clientes Nacionales
-            }
-
-            $idCuentaHaber = 208; // Consultorías-Laboratorios (G)
-            $stmtCtaCheck = $db->prepare("SELECT id FROM cuentas_contables WHERE id = :id");
-            $stmtCtaCheck->execute(['id' => $idCuentaHaber]);
-            if (!$stmtCtaCheck->fetchColumn()) {
-                $stmtCtaAlt = $db->query("SELECT id FROM cuentas_contables WHERE codigo LIKE '40101%' AND tipo = 'DETALLE' LIMIT 1");
-                $idCuentaHaber = (int)($stmtCtaAlt->fetchColumn() ?: 206);
-            }
-
-            $conceptoPartida = match($metodoPago) {
-                'efectivo' => "Cobro Factura $facturaNum en Efectivo (Caja Principal) - O/S {$os['codigo_os']} - Cliente: {$os['cliente_nombre']}",
-                'transferencia' => "Cobro Factura $facturaNum vía Transferencia Bancaria ({$bancoInfo['banco_nombre']} {$bancoInfo['numero_cuenta']}) - Ref: " . ($referencia ?: 'S/R') . " - O/S {$os['codigo_os']}",
-                'credito' => "Emisión de Factura a Crédito $facturaNum ($diasCredito días) - O/S {$os['codigo_os']} - Cliente: {$os['cliente_nombre']}",
-                default => "Facturación O/S {$os['codigo_os']} - Factura $facturaNum"
-            };
-
-            $contabilidadModelo = new \Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo();
-            $lineasAsiento = [
-                ['id_cuenta_contable' => $idCuentaDebe, 'debe' => $monto, 'haber' => 0.0],
-                ['id_cuenta_contable' => $idCuentaHaber, 'debe' => 0.0, 'haber' => $monto]
-            ];
-
-            $partidaId = $contabilidadModelo->registrarAsientoContable(
-                $fecha,
-                $conceptoPartida,
-                'FACTURACION',
-                $cxcId,
-                $lineasAsiento
-            );
-
-            $db->commit();
-
-            // 4. Bitácora de Auditoría
-            $descBitacora = "Facturación registrada: Factura N° $facturaNum | O/S: {$os['codigo_os']} | Monto: C$" . number_format($monto, 2) . " | Método: " . ucfirst($metodoPago);
-            if ($partidaId) {
-                $descBitacora .= " | Asiento Diario: PD-" . str_pad($partidaId, 5, '0', STR_PAD_LEFT);
-            }
-            registrarBitacora('operaciones', 'facturacion', $descBitacora, $idOS);
-            registrarBitacora('contabilidad', 'facturacion', $descBitacora, $cxcId);
-
-            $_SESSION['exito'] = "¡Factura $facturaNum registrada y cobrada exitosamente! Se afectó la cuenta correspondiente y se registró el movimiento en el Libro Diario.";
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-
-        } catch (\Exception $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            error_log("Error en procesarFacturacion: " . $e->getMessage());
-            $_SESSION['error'] = "Error al procesar la facturación: " . $e->getMessage();
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-        }
-    }
-
-    /**
-     * Muestra la vista oficial e imprimible de la Factura Comercial / Laboratorio.
-     */
-    public function imprimirFactura(Peticion $peticion, Respuesta $respuesta): void {
-        $this->verificarSesion($respuesta);
-        $this->verificarPermiso($respuesta, 'ver');
-
-        $idOS = (int)($_GET['id_os'] ?? 0);
-        $facturaNumParam = trim($_GET['factura'] ?? '');
-
-        $db = Conexion::obtenerInstancia();
-        $os = null;
-
-        if ($idOS > 0) {
-            $stmtOS = $db->prepare("
-                SELECT os.*, 
-                       cot.codigo AS cot_codigo, cot.total AS cot_total, cot.id_cliente,
-                       cot.subtotal AS cot_subtotal, cot.impuesto AS cot_iva, cot.condicion_pago,
-                       cli.nombre_razon_social AS cliente_nombre, cli.numero_ruc AS cliente_ruc,
-                       cli.direccion AS cliente_direccion, cli.telefono AS cliente_telefono,
-                       cli.email AS cliente_email, cli.contacto_nombre
-                FROM ordenes_servicio os
-                JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-                JOIN clientes cli ON cot.id_cliente = cli.id
-                WHERE os.id = :id
-            ");
-            $stmtOS->execute(['id' => $idOS]);
-            $os = $stmtOS->fetch(PDO::FETCH_ASSOC);
-        } elseif (!empty($facturaNumParam)) {
-            $stmtOS = $db->prepare("
-                SELECT os.*, 
-                       cot.codigo AS cot_codigo, cot.total AS cot_total, cot.id_cliente,
-                       cot.subtotal AS cot_subtotal, cot.impuesto AS cot_iva, cot.condicion_pago,
-                       cli.nombre_razon_social AS cliente_nombre, cli.numero_ruc AS cliente_ruc,
-                       cli.direccion AS cliente_direccion, cli.telefono AS cliente_telefono,
-                       cli.email AS cliente_email, cli.contacto_nombre
-                FROM ordenes_servicio os
-                JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-                JOIN clientes cli ON cot.id_cliente = cli.id
-                JOIN cuentas_por_cobrar cxc ON cxc.id_cliente = cli.id
-                WHERE cxc.factura_numero = :fn
-                LIMIT 1
-            ");
-            $stmtOS->execute(['fn' => $facturaNumParam]);
-            $os = $stmtOS->fetch(PDO::FETCH_ASSOC);
-        }
-
-        if (empty($os)) {
-            $_SESSION['error'] = 'Factura u Orden de Servicio no encontrada.';
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-            return;
-        }
-
-        $facturaNum = !empty($facturaNumParam) ? $facturaNumParam : ('FAC-' . $os['cot_codigo']);
-
-        // Obtener el registro de la CXC
-        $stmtCxc = $db->prepare("SELECT * FROM cuentas_por_cobrar WHERE factura_numero = :fn LIMIT 1");
-        $stmtCxc->execute(['fn' => $facturaNum]);
-        $cxc = $stmtCxc->fetch(PDO::FETCH_ASSOC);
-
-        // Obtener los ítems facturados desde cotizacion_detalles
-        $stmtItems = $db->prepare("
-            SELECT cd.*, p.nombre_comercial
-            FROM cotizacion_detalles cd
-            LEFT JOIN productos p ON cd.id_producto = p.id
-            WHERE cd.id_cotizacion = :id_cot
-            ORDER BY cd.id ASC
-        ");
-        $stmtItems->execute(['id_cot' => $os['id_cotizacion']]);
-        $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
-
-        // Si hay transacción bancaria o asiento de diario vinculado
-        $transaccionBancaria = null;
-        $asientoDiario = null;
-        if ($cxc) {
-            $stmtTx = $db->prepare("SELECT bt.*, bc.banco_nombre, bc.numero_cuenta, bc.moneda 
-                                    FROM bancos_transacciones bt 
-                                    JOIN bancos_cuentas bc ON bt.id_banco_cuenta = bc.id 
-                                    WHERE bt.descripcion LIKE :pat 
-                                    ORDER BY bt.id DESC LIMIT 1");
-            $stmtTx->execute(['pat' => "%" . $facturaNum . "%"]);
-            $transaccionBancaria = $stmtTx->fetch(PDO::FETCH_ASSOC);
-
-            $stmtAs = $db->prepare("SELECT pd.*, pdd.debe, pdd.haber, cc.codigo AS cuenta_codigo, cc.nombre AS cuenta_nombre 
-                                    FROM partidas_diario pd 
-                                    JOIN partidas_diario_detalles pdd ON pd.id = pdd.id_partida 
-                                    JOIN cuentas_contables cc ON pdd.id_cuenta_contable = cc.id 
-                                    WHERE pd.origen_id = :cxc_id 
-                                    ORDER BY pd.id DESC");
-            $stmtAs->execute(['cxc_id' => $cxc['id']]);
-            $asientoDiario = $stmtAs->fetchAll(PDO::FETCH_ASSOC);
-        }
-
-        require dirname(__DIR__) . '/Vistas/factura_print.php';
-        exit;
     }
 
     /**
