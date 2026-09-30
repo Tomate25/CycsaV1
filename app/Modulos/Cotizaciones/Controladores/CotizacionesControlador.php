@@ -1342,6 +1342,7 @@ class CotizacionesControlador extends ControladorBase {
             $filas = isset($resultados['filas']) && is_array($resultados['filas'])
                 ? $resultados['filas']
                 : (array_is_list($resultados) ? $resultados : []);
+            $filas = filtrarFilasPublicasMatriz($filas);
         }
 
         $pdfContenido = generarReporteEnsayoPDF($cotizacion, $detalle, $columnas, $filas);

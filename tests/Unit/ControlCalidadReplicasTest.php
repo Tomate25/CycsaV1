@@ -68,4 +68,34 @@ class ControlCalidadReplicasTest extends TestCase {
         $this->assertStringContainsString("'/control-calidad'", $rutas);
         $this->assertStringContainsString("'/control-calidad/evaluar-replica'", $rutas);
     }
+
+    public function testVistaControlCalidadRenderizaComparacionInterna(): void {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        $_SESSION['csrf_token'] = 'csrf-prueba';
+        $comparaciones = [[
+            'id' => 10,
+            'codigo_os' => 'OS-2026-001',
+            'cliente_nombre' => 'Cliente Prueba',
+            'nombre_proyecto' => 'Proyecto Interno',
+            'descripcion_ensayo' => 'Compresión',
+            'norma_astm' => 'ASTM C39',
+            'codigo_original' => 'MC-0001-26',
+            'codigo_replica' => 'MC-0001-26-CR',
+            'diferencias' => [
+                'Carga (lb)' => ['original' => 100.0, 'replica' => 102.0, 'diferencia' => 2.0, 'diferencia_porcentual' => 2.0],
+            ],
+            'evaluacion' => ['estado' => 'pendiente', 'observaciones' => '', 'usuario' => '', 'fecha' => ''],
+        ]];
+
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/control_calidad_replicas.php';
+        $html = ob_get_clean();
+
+        $this->assertStringContainsString('MC-0001-26-CR', $html);
+        $this->assertStringContainsString('Carga (lb)', $html);
+        $this->assertStringContainsString('Guardar evaluación', $html);
+        $this->assertStringContainsString('csrf-prueba', $html);
+    }
 }

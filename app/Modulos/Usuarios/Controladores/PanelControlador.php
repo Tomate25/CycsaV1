@@ -55,6 +55,8 @@ class PanelControlador extends ControladorBase {
                 'desc' => 'Órdenes de servicio, asignación técnica y captura matricial.',
                 'color' => 'linear-gradient(135deg, #0284c7, #0369a1)', // Celeste
             ];
+        }
+        if (tienePermiso('operaciones', 'ver') || tienePermiso('laboratorio', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Control de Calidad',
                 'link' => '/Cycsa/publico/control-calidad',

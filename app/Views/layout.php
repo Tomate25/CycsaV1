@@ -486,6 +486,8 @@
                     <span class="menu-texto">Operaciones LIMS</span>
                 </a>
             </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('operaciones', 'ver') || tienePermiso('laboratorio', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/control-calidad" class="<?= strpos($rutaActual, '/control-calidad') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-code-compare"></i>
