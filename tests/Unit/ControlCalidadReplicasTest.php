@@ -158,6 +158,11 @@ class ControlCalidadReplicasTest extends TestCase {
         $this->assertStringContainsString('RÉPLICA', $html);
         $this->assertStringContainsString('OS-2026-0099', $html);
         $this->assertStringContainsString('CYCSA-RT-FM-22 A', $html);
+        $this->assertStringContainsString('tablaMaestraControles', $html);
+        $this->assertStringContainsString('row-control-45', $html);
+        $this->assertStringContainsString('detail-row-45', $html);
+        $this->assertStringContainsString('toggleControlRow(45)', $html);
+        $this->assertStringContainsString('filtroTextoControles', $html);
     }
 
     public function testConsultaControlCalidadEjecutaSinErroresDeColumna(): void {

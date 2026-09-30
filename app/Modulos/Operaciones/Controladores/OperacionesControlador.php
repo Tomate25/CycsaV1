@@ -2915,7 +2915,7 @@ class OperacionesControlador extends ControladorBase {
         ]);
         registrarBitacora('control_calidad', 'evaluar_replica', "Réplica {$codigoOriginal}-CR evaluada como {$estado}", $idDetalle);
         $_SESSION['exito'] = 'Evaluación de la réplica guardada correctamente.';
-        $respuesta->redirigir('/Cycsa/publico/control-calidad');
+        $respuesta->redirigir('/Cycsa/publico/control-calidad?abrir=' . $idDetalle . '#control-' . $idDetalle);
     }
 
     /**
