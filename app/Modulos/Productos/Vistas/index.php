@@ -71,6 +71,9 @@ foreach (($productos ?? []) as $productoResumen) {
             <p style="margin:5px 0 0;color:#64748b;font-size:13px;">Catálogo oficial en una sola vista. Presione cualquier producto para desplegar su ficha técnica completa.</p>
         </div>
         <div class="inventario-actions">
+            <?php if (tienePermiso('productos', 'ver') || tienePermiso('productos', 'crear_editar')): ?>
+                <a href="/Cycsa/publico/productos/exportar-catalogo-csv" class="btn-inv btn-inv-secondary" title="Exportar catálogo completo a CSV / Excel con IDs"><i class="fa-solid fa-file-arrow-down text-primary"></i> Exportar catálogo (.csv)</a>
+            <?php endif; ?>
             <?php if (tienePermiso('productos', 'crear_editar')): ?>
                 <button type="button" class="btn-inv btn-inv-secondary" onclick="abrirModalCargaMasiva()"><i class="fa-solid fa-file-excel text-success"></i> Carga masiva</button>
                 <a href="/Cycsa/publico/productos/crear" class="btn-inv btn-inv-primary"><i class="fa-solid fa-plus"></i> Nuevo producto</a>

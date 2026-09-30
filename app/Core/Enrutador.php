@@ -30,7 +30,7 @@ class Enrutador {
         $metodo = $this->peticion->obtenerMetodo();
         $ruta = $this->peticion->obtenerRuta();
         
-        $rutaConfig = $this->rutas[$metodo][$ruta] ?? false;
+        $rutaConfig = $this->rutas[$metodo][$ruta] ?? ($metodo === 'HEAD' ? ($this->rutas['GET'][$ruta] ?? false) : false);
 
         // Si la ruta no existe, devolvemos un error 404
         if ($rutaConfig === false) {

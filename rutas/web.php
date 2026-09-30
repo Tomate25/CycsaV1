@@ -98,6 +98,7 @@ $app->enrutador->get('/productos/editar', [ProductosControlador::class, 'editar'
 $app->enrutador->post('/productos/editar', [ProductosControlador::class, 'actualizar'], [AuthMiddleware::class]);
 $app->enrutador->post('/productos/eliminar', [ProductosControlador::class, 'eliminar'], [AuthMiddleware::class]);
 $app->enrutador->get('/productos/descargar-plantilla', [ProductosControlador::class, 'descargarPlantilla'], [AuthMiddleware::class]);
+$app->enrutador->get('/productos/exportar-catalogo-csv', [ProductosControlador::class, 'exportarCatalogoCsv'], [AuthMiddleware::class]);
 $app->enrutador->post('/productos/previsualizar-carga', [ProductosControlador::class, 'previsualizarCarga'], [AuthMiddleware::class]);
 $app->enrutador->post('/productos/confirmar-carga', [ProductosControlador::class, 'confirmarCarga'], [AuthMiddleware::class]);
 

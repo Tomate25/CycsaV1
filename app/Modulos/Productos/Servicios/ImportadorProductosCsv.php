@@ -9,9 +9,10 @@ final class ImportadorProductosCsv {
     private const BOM_UTF8 = "\xEF\xBB\xBF";
 
     /**
-     * Encabezados canónicos de la plantilla oficial.
+     * Encabezados canónicos de la plantilla y exportación oficial.
      */
     public const ENCABEZADOS = [
+        'ID',
         'No_Item',
         'Codigo_Servicio',
         'Nombre_Comercial',
@@ -42,9 +43,10 @@ final class ImportadorProductosCsv {
         fwrite($flujo, self::BOM_UTF8);
         fputcsv($flujo, self::ENCABEZADOS, ',', '"', '\\');
 
-        // Filas de ejemplo reales basadas en el catálogo de CYCSA
+        // Filas de ejemplo reales basadas en el catálogo de CYCSA (con y sin ID)
         $ejemplos = [
             [
+                '1',
                 '1',
                 'CYCSA-RT-FM-22 G',
                 'Humedad en agregados, ASTM C566-25',
@@ -64,6 +66,7 @@ final class ImportadorProductosCsv {
             ],
             [
                 '29',
+                '29',
                 'CYCSA-RT-FM-22 B',
                 'Densidad y Humedad In Situ (Densímetro Nuclear) – ASTM D6938-23',
                 '*CYCSA-PE-25-Metodo estándar para la determinación de densidad in situ y contenido de agua',
@@ -81,6 +84,7 @@ final class ImportadorProductosCsv {
                 'CYCSA-RT-FM-22 B'
             ],
             [
+                '',
                 '63',
                 'CYCSA-026-1',
                 'Movilización Managua Urbano',
@@ -101,6 +105,51 @@ final class ImportadorProductosCsv {
         ];
 
         foreach ($ejemplos as $fila) {
+            fputcsv($flujo, $fila, ',', '"', '\\');
+        }
+
+        rewind($flujo);
+        $contenido = stream_get_contents($flujo);
+        fclose($flujo);
+
+        return preg_replace('/(?<!\r)\n/', "\r\n", (string)$contenido);
+    }
+
+    /**
+     * Exporta el catálogo completo de productos con sus IDs e identificadores
+     * en formato CSV UTF-8 con BOM para visualización perfecta en Excel y re-importación directa.
+     */
+    public static function generarCatalogoCompletoCsv(ProductoModelo $modelo): string {
+        $flujo = fopen('php://temp', 'w+b');
+        if ($flujo === false) {
+            throw new \RuntimeException('No fue posible inicializar el flujo para la exportación.');
+        }
+
+        fwrite($flujo, self::BOM_UTF8);
+        fputcsv($flujo, self::ENCABEZADOS, ',', '"', '\\');
+
+        $productos = $modelo->obtenerTodos('', '', 1);
+
+        foreach ($productos as $p) {
+            $fila = [
+                (string)$p['id'],
+                (string)($p['no_item'] ?? ''),
+                (string)($p['codigo_servicio'] ?? ''),
+                (string)($p['nombre_comercial'] ?? ''),
+                (string)($p['ensayo_servicio'] ?? ''),
+                (string)($p['matriz_tipo'] ?? ''),
+                (string)($p['tipo_muestra'] ?? ''),
+                (string)($p['tipo_muestreo'] ?? ''),
+                (string)($p['estatus'] ?? 'No acreditado'),
+                (string)($p['norma_astm'] ?? ''),
+                (string)($p['procedimiento_muestreo'] ?? ''),
+                (string)($p['codigo_hoja_campo'] ?? ''),
+                (string)($p['unidad_medida'] ?? 'Unidad'),
+                number_format((float)($p['precio'] ?? 0), 2, '.', ''),
+                (string)($p['condiciones_muestra'] ?? ''),
+                (string)($p['observaciones'] ?? ''),
+                (string)($p['formato_reporte'] ?? '')
+            ];
             fputcsv($flujo, $fila, ',', '"', '\\');
         }
 
@@ -177,6 +226,7 @@ final class ImportadorProductosCsv {
         $erroresCount = 0;
         $nuevosCount = 0;
         $actualizacionesCount = 0;
+        $sinCambiosCount = 0;
         $numeroFilaFisica = 1; // Fila 1 = Encabezados
 
         while (($datosFila = fgetcsv($flujo, 0, $delimitador, '"', '\\')) !== false) {
@@ -217,8 +267,10 @@ final class ImportadorProductosCsv {
                 $validas++;
                 if ($evaluacion['accion'] === 'crear') {
                     $nuevosCount++;
-                } else {
+                } elseif ($evaluacion['accion'] === 'actualizar') {
                     $actualizacionesCount++;
+                } else {
+                    $sinCambiosCount++;
                 }
             } else {
                 $erroresCount++;
@@ -236,6 +288,8 @@ final class ImportadorProductosCsv {
             'errores'         => $erroresCount,
             'nuevos'          => $nuevosCount,
             'actualizaciones' => $actualizacionesCount,
+            'modificados'     => $actualizacionesCount,
+            'sin_cambios'     => $sinCambiosCount,
             'filas'           => $filasProcesadas
         ];
     }
@@ -250,6 +304,8 @@ final class ImportadorProductosCsv {
                 'error' => 'No hay filas válidas para procesar.',
                 'creados' => 0,
                 'actualizados' => 0,
+                'modificados' => 0,
+                'sin_cambios' => 0,
                 'total' => 0
             ];
         }
@@ -257,6 +313,7 @@ final class ImportadorProductosCsv {
         $modelo->iniciarTransaccion();
         $creados = 0;
         $actualizados = 0;
+        $sinCambios = 0;
         $errores = [];
 
         try {
@@ -277,6 +334,8 @@ final class ImportadorProductosCsv {
                     } else {
                         $errores[] = "Error al actualizar producto ID {$idProducto} (Fila {$item['fila_excel']})";
                     }
+                } elseif ($accion === 'sin_cambios') {
+                    $sinCambios++;
                 } elseif ($accion === 'crear') {
                     $nuevoId = $modelo->guardarYRetornarId($datos);
                     if ($nuevoId > 0) {
@@ -294,6 +353,8 @@ final class ImportadorProductosCsv {
                     'error' => 'Se presentaron errores durante la transacción: ' . implode('; ', $errores),
                     'creados' => 0,
                     'actualizados' => 0,
+                    'modificados' => 0,
+                    'sin_cambios' => 0,
                     'total' => 0
                 ];
             }
@@ -304,7 +365,9 @@ final class ImportadorProductosCsv {
                 'exito' => true,
                 'creados' => $creados,
                 'actualizados' => $actualizados,
-                'total' => $creados + $actualizados
+                'modificados' => $actualizados,
+                'sin_cambios' => $sinCambios,
+                'total' => $creados + $actualizados + $sinCambios
             ];
 
         } catch (\Throwable $e) {
@@ -470,7 +533,7 @@ final class ImportadorProductosCsv {
             $estatusFinal = 'No acreditado';
         }
 
-        // 4. Resolver formato_id si se especificó
+        // 4. Resolver formato_id si se especificó o preservar el existente
         $formatoId = null;
         $formatoCodigo = trim($fila['formato_codigo']);
         if ($formatoCodigo !== '') {
@@ -481,29 +544,8 @@ final class ImportadorProductosCsv {
             } elseif (isset($formatosMapeo[$claveLower])) {
                 $formatoId = $formatosMapeo[$claveLower];
             }
-        }
-
-        $accion = $productoExistente ? 'actualizar' : 'crear';
-        $diferencias = [];
-
-        if ($productoExistente) {
-            $precioAnterior = (float)$productoExistente['precio'];
-            if (abs($precioAnterior - $precioFinal) > 0.001) {
-                $diferencias['precio'] = [
-                    'anterior' => $precioAnterior,
-                    'nuevo'    => $precioFinal
-                ];
-            }
-            if ($productoExistente['estatus'] !== $estatusFinal) {
-                $diferencias['estatus'] = [
-                    'anterior' => $productoExistente['estatus'],
-                    'nuevo'    => $estatusFinal
-                ];
-            }
-            // Si el formato_id no se indicó en la fila, preservar el que ya tenía el producto existente
-            if ($formatoId === null && !empty($productoExistente['formato_id'])) {
-                $formatoId = (int)$productoExistente['formato_id'];
-            }
+        } elseif ($productoExistente && !empty($productoExistente['formato_id'])) {
+            $formatoId = (int)$productoExistente['formato_id'];
         }
 
         $valor = static function(string $campo, mixed $predeterminado = null) use ($fila, $productoExistente, $estaPresente): mixed {
@@ -533,6 +575,58 @@ final class ImportadorProductosCsv {
             'observaciones'          => $valor('observaciones', null),
             'activo'                 => 1
         ];
+
+        $diferencias = [];
+        $accion = 'crear';
+
+        if ($productoExistente) {
+            // Comparar precio
+            $precioAnterior = (float)$productoExistente['precio'];
+            if (abs($precioAnterior - $precioFinal) > 0.001) {
+                $diferencias['precio'] = [
+                    'etiqueta' => 'Precio',
+                    'anterior' => $precioAnterior,
+                    'nuevo'    => $precioFinal
+                ];
+            }
+
+            // Comparar estatus
+            if ((string)$productoExistente['estatus'] !== (string)$estatusFinal) {
+                $diferencias['estatus'] = [
+                    'etiqueta' => 'Estatus',
+                    'anterior' => $productoExistente['estatus'],
+                    'nuevo'    => $estatusFinal
+                ];
+            }
+
+            // Comparar campos técnicos y descriptivos
+            $camposComparar = [
+                'no_item'                => 'No. Ítem',
+                'codigo_servicio'        => 'Código Servicio',
+                'nombre_comercial'       => 'Nombre Comercial',
+                'ensayo_servicio'        => 'Ensayo/Servicio',
+                'matriz_tipo'            => 'Matriz',
+                'norma_astm'             => 'Norma ASTM',
+                'unidad_medida'          => 'Unidad de Medida',
+                'procedimiento_muestreo' => 'Procedimiento',
+                'condiciones_muestra'    => 'Condiciones Muestra',
+                'observaciones'          => 'Observaciones'
+            ];
+
+            foreach ($camposComparar as $campoKey => $campoEtiqueta) {
+                $valAnterior = trim((string)($productoExistente[$campoKey] ?? ''));
+                $valNuevo = trim((string)($datosLimpios[$campoKey] ?? ''));
+                if ($valAnterior !== $valNuevo) {
+                    $diferencias[$campoKey] = [
+                        'etiqueta' => $campoEtiqueta,
+                        'anterior' => $valAnterior,
+                        'nuevo'    => $valNuevo
+                    ];
+                }
+            }
+
+            $accion = !empty($diferencias) ? 'actualizar' : 'sin_cambios';
+        }
 
         return [
             'fila_excel'             => $filaExcel,

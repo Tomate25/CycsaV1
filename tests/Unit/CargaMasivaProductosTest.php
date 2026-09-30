@@ -161,6 +161,7 @@ class CargaMasivaProductosTest extends TestCase {
         $this->assertNotFalse($contenidoRutas);
 
         $this->assertStringContainsString("'/productos/descargar-plantilla'", $contenidoRutas);
+        $this->assertStringContainsString("'/productos/exportar-catalogo-csv'", $contenidoRutas);
         $this->assertStringContainsString("'/productos/previsualizar-carga'", $contenidoRutas);
         $this->assertStringContainsString("'/productos/confirmar-carga'", $contenidoRutas);
     }
@@ -174,5 +175,95 @@ class CargaMasivaProductosTest extends TestCase {
         $this->assertStringNotContainsString("POST['filas_json']", $controlador);
         $this->assertStringContainsString('escapeHtml', $vista);
         $this->assertStringNotContainsString('JSON.stringify(filasValidadasActuales)', $vista);
+        $this->assertStringContainsString('resumenSinCambios', $vista);
+    }
+
+    public function testGenerarCatalogoCompletoCsvExportaTodosLosProductosConIdsYBOM(): void {
+        $csv = ImportadorProductosCsv::generarCatalogoCompletoCsv($this->modelo);
+
+        // Debe iniciar con BOM UTF-8
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
+
+        // Contar registros parseando con fgetcsv (para respetar celdas con saltos de línea internos)
+        $flujo = fopen('php://temp', 'r+b');
+        fwrite($flujo, $csv);
+        rewind($flujo);
+        $totalFilasCsv = 0;
+        $primeraFila = null;
+        while (($row = fgetcsv($flujo, 0, ',', '"', '\\')) !== false) {
+            if ($primeraFila === null) {
+                $primeraFila = $row;
+            }
+            $totalFilasCsv++;
+        }
+        fclose($flujo);
+
+        // Primera fila debe contener ID y encabezados canónicos
+        $primerHeader = str_starts_with($primeraFila[0], "\xEF\xBB\xBF") ? substr($primeraFila[0], 3) : $primeraFila[0];
+        $this->assertSame('ID', $primerHeader);
+        $this->assertSame('No_Item', $primeraFila[1]);
+        $this->assertSame('Precio', $primeraFila[13]);
+
+        // Debe contener la misma cantidad de filas que productos activos en BD (+1 encabezado)
+        $activos = $this->modelo->obtenerTodos('', '', 1);
+        $totalEsperado = count($activos) + 1;
+        $this->assertSame($totalEsperado, $totalFilasCsv);
+    }
+
+    public function testParsearCsvDistingueModificadosDeSinCambios(): void {
+        $existentes = $this->modelo->obtenerTodos('', '', 1);
+        if (count($existentes) < 2) {
+            $this->markTestSkipped('Se requieren al menos 2 productos para probar sin_cambios vs modificado.');
+        }
+
+        $prod1 = $existentes[0]; // Se mantendrá idéntico
+        $prod2 = $existentes[1]; // Se modificará el precio
+
+        $nuevoPrecio = (float)$prod2['precio'] + 50.00;
+
+        $csv = "\xEF\xBB\xBFID,No_Item,Codigo_Servicio,Nombre_Comercial,Ensayo_Servicio,Matriz_Tipo,Precio\r\n";
+        // Fila 1: Idéntica (Sin cambios)
+        $csv .= sprintf('"%d","%s","%s","%s","%s","%s",%.2f' . "\r\n",
+            $prod1['id'],
+            $prod1['no_item'] ?? '',
+            $prod1['codigo_servicio'] ?? '',
+            $prod1['nombre_comercial'],
+            $prod1['ensayo_servicio'],
+            $prod1['matriz_tipo'] ?? 'Otros',
+            (float)$prod1['precio']
+        );
+        // Fila 2: Modificado (Precio diferente)
+        $csv .= sprintf('"%d","%s","%s","%s","%s","%s",%.2f' . "\r\n",
+            $prod2['id'],
+            $prod2['no_item'] ?? '',
+            $prod2['codigo_servicio'] ?? '',
+            $prod2['nombre_comercial'],
+            $prod2['ensayo_servicio'],
+            $prod2['matriz_tipo'] ?? 'Otros',
+            $nuevoPrecio
+        );
+        // Fila 3: Nuevo
+        $csv .= '"","ITEM-NUEVO","CYCSA-NEW","Ensayo Nuevo Masivo","Ensayo Nuevo Masivo","Suelo",500.00' . "\r\n";
+
+        $resultado = ImportadorProductosCsv::parsearYValidar($csv, $this->modelo);
+
+        $this->assertTrue($resultado['exito']);
+        $this->assertSame(3, $resultado['total_filas']);
+        $this->assertSame(3, $resultado['validas']);
+        $this->assertSame(0, $resultado['errores']);
+        $this->assertSame(1, $resultado['sin_cambios'], 'Debe detectar 1 producto sin cambios.');
+        $this->assertSame(1, $resultado['modificados'], 'Debe detectar 1 producto modificado.');
+        $this->assertSame(1, $resultado['actualizaciones'], 'Debe sincronizar actualizaciones con modificados.');
+        $this->assertSame(1, $resultado['nuevos'], 'Debe detectar 1 producto nuevo.');
+
+        // Verificar acciones de cada fila
+        $this->assertSame('sin_cambios', $resultado['filas'][0]['accion']);
+        $this->assertEmpty($resultado['filas'][0]['diferencias']);
+
+        $this->assertSame('actualizar', $resultado['filas'][1]['accion']);
+        $this->assertNotEmpty($resultado['filas'][1]['diferencias']);
+        $this->assertArrayHasKey('precio', $resultado['filas'][1]['diferencias']);
+
+        $this->assertSame('crear', $resultado['filas'][2]['accion']);
     }
 }

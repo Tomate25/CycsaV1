@@ -284,6 +284,28 @@ class ProductosControlador extends ControladorBase {
         exit;
     }
 
+    // 📊 EXPORTAR CATÁLOGO COMPLETO CON IDENTIFICADORES PARA EDICIÓN EN EXCEL
+    public function exportarCatalogoCsv(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('productos', 'ver') && !tienePermiso('productos', 'crear_editar')) {
+            $respuesta->redirigir('/Cycsa/publico/productos');
+            exit;
+        }
+
+        $modelo = new ProductoModelo();
+        $csv = ImportadorProductosCsv::generarCatalogoCompletoCsv($modelo);
+        $fecha = date('Y-m-d');
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header("Content-Disposition: attachment; filename=\"CYCSA_Catalogo_Productos_Completo_{$fecha}.csv\"");
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        header('Content-Length: ' . strlen($csv));
+        echo $csv;
+        exit;
+    }
+
     // 🔍 PREVISUALIZAR Y VALIDAR ARCHIVO CSV/EXCEL
     public function previsualizarCarga(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
