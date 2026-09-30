@@ -2776,13 +2776,15 @@ class OperacionesControlador extends ControladorBase {
         $db = Conexion::obtenerInstancia();
         $stmt = $db->query("
             SELECT cd.id, cd.descripcion_ensayo, cd.norma_astm, cd.resultados_json, cd.formato_reporte,
-                   cd.procedimiento, cd.tipo_muestra, cd.condiciones_muestra,
-                   p.archivo_markdown, p.formato_id,
-                   os.id AS id_os, os.codigo_os, os.created_at AS os_created_at,
-                   cot.nombre_proyecto, cot.id_cliente,
+                   cd.procedimiento, cd.condiciones_muestra,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
+                   fe.archivo_markdown, fe.nombre AS formato_nombre, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
+                   os.id AS id_os, os.codigo_os, os.created_at AS os_created_at, os.fecha_muestreo, os.fecha_emision AS os_fecha_emision,
+                   cot.nombre_proyecto, cot.direccion_proyecto, cot.id_cliente, cot.atencion_a,
                    cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion
             FROM cotizacion_detalles cd
             LEFT JOIN productos p ON p.id = cd.id_producto
+            LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
             JOIN cotizaciones cot ON cot.id = cd.id_cotizacion
             JOIN ordenes_servicio os ON os.id_cotizacion = cot.id
             JOIN clientes cli ON cli.id = cot.id_cliente
