@@ -544,7 +544,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     </div>
 <?php endif; ?>
 
-<form id="form-matriz-completa" method="POST" action="/Cycsa/publico/operaciones/guardar-matriz-producto" onsubmit="prepararEnvioMatriz(event)">
+<form id="form-matriz-completa" method="POST" action="/Cycsa/publico/operaciones/guardar-matriz-producto" enctype="multipart/form-data" onsubmit="prepararEnvioMatriz(event)">
     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
     <input type="hidden" name="id_detalle" value="<?= $detalle['id'] ?>">
     <input type="hidden" name="resultados_json" id="input_resultados_json" value="">
@@ -553,8 +553,11 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     <div class="informe-oficial-card">
         <!-- Barra Superior Oficial con Logotipo CYCSA, Título Centrado y Código -->
         <div class="informe-cabecera-row">
-            <div class="informe-logo-box">
+            <div class="informe-logo-box" style="display: flex; align-items: center; gap: 12px;">
                 <img src="/Cycsa/publico/img/logo.png" alt="CYCSA" style="height: 52px; max-width: 190px; object-fit: contain;">
+                <div id="wrapper-header-logo-acreditacion" style="<?= !empty($metadatos['logo_acreditacion']) ? 'display: flex;' : 'display: none;' ?> align-items: center; border-left: 2px solid #cbd5e1; padding-left: 10px;">
+                    <img id="header-logo-acreditacion-preview" src="<?= !empty($metadatos['logo_acreditacion']) ? htmlspecialchars($metadatos['logo_acreditacion'], ENT_QUOTES, 'UTF-8') : '' ?>" alt="Acreditación" style="height: 52px; max-width: 140px; object-fit: contain;" title="Sello / Logotipo de Acreditación">
+                </div>
             </div>
             <div class="informe-titulo-box">
                 <h1 class="informe-titulo-texto"><?= htmlspecialchars($schemaInfo['titulo_informe'] ?? 'INFORME DE ENSAYO') ?></h1>
@@ -682,6 +685,37 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         <input type="text" name="metadatos[metodo_muestreo]" id="meta_metodo_muestreo" class="meta-input-web" style="font-family: monospace; font-weight: bold; color: #103487;" value="<?= htmlspecialchars($metadatos['metodo_muestreo'], ENT_QUOTES, 'UTF-8') ?>">
                     </div>
                 </div>
+        <!-- Apartado Oficial para Sello / Logotipo de Acreditación (ISO/IEC 17025 / ONA) -->
+        <div class="apartado-acreditacion-box" style="margin-top: 18px; padding: 14px 18px; background: #f8fafc; border: 1.5px dashed #94a3b8; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 14px; max-width: 65%;">
+                <div style="background: #e0f2fe; color: #0284c7; width: 44px; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                <div>
+                    <div style="font-weight: 700; font-size: 13.5px; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span>Sello / Logotipo de Acreditación</span>
+                        <span style="font-size: 11px; background: #e2e8f0; color: #334155; padding: 2px 7px; border-radius: 4px; font-weight: 600;">ISO/IEC 17025</span>
+                    </div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                        Cargue la imagen del organismo acreditador (ej. ONA). Se presentará a la par del logo de CYCSA con el mismo tamaño (52px de alto) en la cabecera, al imprimir y en el PDF enviado al cliente.
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <input type="file" id="input_file_acreditacion" name="logo_acreditacion_file" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" style="display: none;" onchange="manejarSubidaLogoAcreditacion(this)">
+                <input type="hidden" name="metadatos[logo_acreditacion]" id="input_hidden_logo_acreditacion" value="<?= htmlspecialchars($metadatos['logo_acreditacion'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+
+                <div id="badge-acreditacion-estado" style="<?= !empty($metadatos['logo_acreditacion']) ? '' : 'display: none;' ?> font-size: 12px; color: #059669; font-weight: 600; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 5px 10px; border-radius: 6px;">
+                    <i class="fa-solid fa-circle-check"></i> Logo asignado
+                </div>
+
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="document.getElementById('input_file_acreditacion').click()" style="padding: 6px 14px; font-size: 12.5px; cursor: pointer; border-radius: 6px; background: #fff; border: 1.5px solid #2563eb; color: #2563eb;">
+                    <i class="fa-solid fa-cloud-arrow-up me-1"></i> <span id="lbl-btn-subir-acreditacion"><?= !empty($metadatos['logo_acreditacion']) ? 'Cambiar imagen' : 'Subir imagen de acreditación' ?></span>
+                </button>
+
+                <button type="button" id="btn_quitar_acreditacion" class="btn btn-sm btn-outline-danger" style="<?= !empty($metadatos['logo_acreditacion']) ? '' : 'display: none;' ?> padding: 6px 12px; font-size: 12.5px; cursor: pointer; border-radius: 6px; background: #fff; border: 1.5px solid #dc2626; color: #dc2626;" onclick="quitarLogoAcreditacion()">
+                    <i class="fa-solid fa-trash-can me-1"></i> Quitar
+                </button>
             </div>
         </div>
     </div>
@@ -1522,7 +1556,8 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             muestra_tomada_por: document.getElementById('meta_muestra_tomada_por') ? document.getElementById('meta_muestra_tomada_por').value : '',
             ubicacion: document.getElementById('meta_ubicacion') ? document.getElementById('meta_ubicacion').value : '',
             metodo_muestreo: document.getElementById('meta_metodo_muestreo') ? document.getElementById('meta_metodo_muestreo').value : '',
-            codigo_formato: <?= json_encode($metadatos['codigo_formato'], JSON_UNESCAPED_UNICODE) ?>
+            codigo_formato: <?= json_encode($metadatos['codigo_formato'], JSON_UNESCAPED_UNICODE) ?>,
+            logo_acreditacion: document.getElementById('input_hidden_logo_acreditacion') ? document.getElementById('input_hidden_logo_acreditacion').value : ''
         };
 
         const payload = {
@@ -1536,6 +1571,97 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     function guardarMatrizFullSubmit() {
         document.getElementById('form-matriz-completa').dispatchEvent(new Event('submit', { cancelable: true }));
         document.getElementById('form-matriz-completa').submit();
+    }
+
+    function manejarSubidaLogoAcreditacion(input) {
+        if (!input.files || input.files.length === 0) return;
+        const file = input.files[0];
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('La imagen no puede exceder 5 MB.');
+            input.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('header-logo-acreditacion-preview');
+            const wrapper = document.getElementById('wrapper-header-logo-acreditacion');
+            if (preview && wrapper) {
+                preview.src = e.target.result;
+                wrapper.style.display = 'flex';
+            }
+        };
+        reader.readAsDataURL(file);
+
+        const fd = new FormData();
+        fd.append('archivo_logo', file);
+        fd.append('id_detalle', '<?= (int)$detalle['id'] ?>');
+        fd.append('csrf_token', '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>');
+
+        const btnSubir = document.getElementById('lbl-btn-subir-acreditacion');
+        if (btnSubir) btnSubir.textContent = 'Subiendo...';
+
+        fetch('/Cycsa/publico/operaciones/subir-logo-acreditacion', {
+            method: 'POST',
+            body: fd
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.exito) {
+                document.getElementById('input_hidden_logo_acreditacion').value = data.url;
+                const preview = document.getElementById('header-logo-acreditacion-preview');
+                const wrapper = document.getElementById('wrapper-header-logo-acreditacion');
+                if (preview && wrapper) {
+                    preview.src = data.url;
+                    wrapper.style.display = 'flex';
+                }
+                const btnQuitar = document.getElementById('btn_quitar_acreditacion');
+                if (btnQuitar) btnQuitar.style.display = 'inline-block';
+                const badge = document.getElementById('badge-acreditacion-estado');
+                if (badge) badge.style.display = 'inline-block';
+                if (btnSubir) btnSubir.textContent = 'Cambiar imagen';
+            } else {
+                alert('Error al subir logotipo: ' + (data.error || 'Error inesperado'));
+                if (btnSubir) btnSubir.textContent = 'Subir imagen de acreditación';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Error en la comunicación con el servidor al subir la imagen.');
+            if (btnSubir) btnSubir.textContent = 'Subir imagen de acreditación';
+        });
+    }
+
+    function quitarLogoAcreditacion() {
+        if (!confirm('¿Desea retirar el logotipo de acreditación de este informe?')) return;
+
+        document.getElementById('input_hidden_logo_acreditacion').value = '';
+        const input = document.getElementById('input_file_acreditacion');
+        if (input) input.value = '';
+
+        const wrapper = document.getElementById('wrapper-header-logo-acreditacion');
+        const preview = document.getElementById('header-logo-acreditacion-preview');
+        if (wrapper && preview) {
+            wrapper.style.display = 'none';
+            preview.src = '';
+        }
+
+        const btnQuitar = document.getElementById('btn_quitar_acreditacion');
+        if (btnQuitar) btnQuitar.style.display = 'none';
+        const badge = document.getElementById('badge-acreditacion-estado');
+        if (badge) badge.style.display = 'none';
+        const btnSubir = document.getElementById('lbl-btn-subir-acreditacion');
+        if (btnSubir) btnSubir.textContent = 'Subir imagen de acreditación';
+
+        const fd = new FormData();
+        fd.append('id_detalle', '<?= (int)$detalle['id'] ?>');
+        fd.append('csrf_token', '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>');
+
+        fetch('/Cycsa/publico/operaciones/eliminar-logo-acreditacion', {
+            method: 'POST',
+            body: fd
+        });
     }
 
     document.addEventListener('DOMContentLoaded', inicializarMatriz);

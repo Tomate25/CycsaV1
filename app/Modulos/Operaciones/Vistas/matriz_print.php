@@ -203,7 +203,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         .zona-cabecera {
             position: absolute;
             top: 8mm;
-            left: 56mm; /* Libre de colisión con el logotipo CYCSA */
+            left: <?= !empty($metadatos['logo_acreditacion']) ? '83mm' : '56mm' ?>; /* Ajuste automático si existe logo de acreditación */
             right: 14mm;
             height: 28mm;
             display: flex;
@@ -536,6 +536,13 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     <!-- PÁGINA IMPRIMIBLE CON MEMBRETE AJUSTADA -->
     <div class="pagina-hoja">
         
+        <?php if (!empty($metadatos['logo_acreditacion'])): ?>
+            <!-- Sello / Logotipo Oficial de Acreditación (a la par del logotipo CYCSA) -->
+            <div class="logo-acreditacion-print" style="position: absolute; top: 6mm; left: 47mm; height: 26mm; width: 34mm; display: flex; align-items: center; justify-content: center; z-index: 10;">
+                <img src="<?= htmlspecialchars($metadatos['logo_acreditacion']) ?>" alt="Acreditación" style="max-height: 24mm; max-width: 34mm; object-fit: contain;">
+            </div>
+        <?php endif; ?>
+
         <!-- 1. ZONA SUPERIOR: Encabezado a la derecha del logo -->
         <div class="zona-cabecera">
             <div class="titulo-central">

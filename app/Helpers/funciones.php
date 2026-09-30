@@ -1777,6 +1777,7 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
     $ensayoRealizado = !empty($schemaInfo['ensayo_titulo']) ? $schemaInfo['ensayo_titulo'] : (!empty($metadatosGuardados['ensayo_realizado']) ? $metadatosGuardados['ensayo_realizado'] : (!empty($detalle['ensayo_realizado']) ? $detalle['ensayo_realizado'] : ($detalle['descripcion_ensayo'] ?? 'Ensayo de Laboratorio')));
     $metodoMuestreo = !empty($schemaInfo['metodo_muestreo']) ? $schemaInfo['metodo_muestreo'] : (!empty($metadatosGuardados['metodo_muestreo']) ? $metadatosGuardados['metodo_muestreo'] : (!empty($detalle['metodo_muestreo']) ? $detalle['metodo_muestreo'] : (!empty($detalle['norma_astm']) ? $detalle['norma_astm'] : (!empty($detalle['prod_norma_astm']) ? $detalle['prod_norma_astm'] : 'DE-ASTM D6938-23'))));
     $codigoFormato = !empty($schemaInfo['codigo_formato']) ? $schemaInfo['codigo_formato'] : (!empty($detalle['codigo_formato']) ? $detalle['codigo_formato'] : (!empty($detalle['codigo_documento']) ? $detalle['codigo_documento'] : 'CYCSA-RT-FM-22'));
+    $logoAcreditacion = !empty($metadatosGuardados['logo_acreditacion']) ? $metadatosGuardados['logo_acreditacion'] : (!empty($detalle['logo_acreditacion']) ? $detalle['logo_acreditacion'] : '');
 
     return [
         'cliente_nombre' => $clienteNom,
@@ -1793,6 +1794,7 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
         'ensayo_realizado' => $ensayoRealizado,
         'metodo_muestreo' => $metodoMuestreo,
         'codigo_formato' => $codigoFormato,
+        'logo_acreditacion' => $logoAcreditacion,
     ];
 }
 
@@ -2101,6 +2103,23 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     }
     $disclaimerEsc = htmlspecialchars($disclaimerOficial, ENT_QUOTES, 'UTF-8');
 
+    $logoAcredHtml = '';
+    $leftZonaCabecera = '56mm';
+    if (!empty($metaOficial['logo_acreditacion'])) {
+        $urlAcred = $metaOficial['logo_acreditacion'];
+        $cleanPath = preg_replace('#^/Cycsa/publico/#', '', $urlAcred);
+        $cleanPath = preg_replace('#^/publico/#', '', $cleanPath);
+        $cleanPath = ltrim($cleanPath, '/');
+        $rutaAcredAbs = dirname(__DIR__, 2) . '/publico/' . $cleanPath;
+        if (file_exists($rutaAcredAbs) && is_file($rutaAcredAbs)) {
+            $extImg = strtolower(pathinfo($rutaAcredAbs, PATHINFO_EXTENSION));
+            $mimeImg = ($extImg === 'svg') ? 'image/svg+xml' : (($extImg === 'png') ? 'image/png' : (($extImg === 'webp') ? 'image/webp' : 'image/jpeg'));
+            $base64Acred = 'data:' . $mimeImg . ';base64,' . base64_encode((string)file_get_contents($rutaAcredAbs));
+            $logoAcredHtml = '<div style="position: absolute; top: 6mm; left: 47mm; height: 26mm; width: 34mm; text-align: center;"><img src="' . $base64Acred . '" style="max-height: 24mm; max-width: 34mm; object-fit: contain;"></div>';
+            $leftZonaCabecera = '83mm';
+        }
+    }
+
     $html = <<<HTML
 <!DOCTYPE html>
 <html lang="es">
@@ -2121,7 +2140,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     .zona-cabecera {
         position: absolute;
         top: 8mm;
-        left: 56mm;
+        left: {$leftZonaCabecera};
         right: 14mm;
         height: 28mm;
     }
@@ -2212,6 +2231,8 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
 </style>
 </head>
 <body>
+
+{$logoAcredHtml}
 
 <div class="zona-cabecera">
     <table style="width: 100%; height: 18mm; border-collapse: collapse;">

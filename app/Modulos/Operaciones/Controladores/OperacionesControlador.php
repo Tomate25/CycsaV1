@@ -1808,6 +1808,20 @@ class OperacionesControlador extends ControladorBase {
                 'id' => $idDetalle
             ]);
 
+            if (isset($_FILES['logo_acreditacion_file']) && is_uploaded_file($_FILES['logo_acreditacion_file']['tmp_name'])) {
+                $dirDestino = dirname(__DIR__, 4) . '/publico/uploads/acreditaciones';
+                if (!is_dir($dirDestino)) mkdir($dirDestino, 0755, true);
+                $ext = strtolower(pathinfo((string)$_FILES['logo_acreditacion_file']['name'], PATHINFO_EXTENSION));
+                if (in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'svg'], true)) {
+                    $nombreFinal = 'acred_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    if (move_uploaded_file($_FILES['logo_acreditacion_file']['tmp_name'], $dirDestino . '/' . $nombreFinal)) {
+                        $metadatos['logo_acreditacion'] = '/Cycsa/publico/uploads/acreditaciones/' . $nombreFinal;
+                    }
+                }
+            } elseif (!isset($metadatos['logo_acreditacion']) && !empty($decExistente['metadatos']['logo_acreditacion'])) {
+                $metadatos['logo_acreditacion'] = $decExistente['metadatos']['logo_acreditacion'];
+            }
+
             registrarBitacora(
                 'operaciones',
                 'guardar_matriz',
@@ -1819,6 +1833,151 @@ class OperacionesControlador extends ControladorBase {
             $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones';
             $respuesta->redirigir($redir);
         }
+    }
+
+    /**
+     * Sube y asocia un logotipo o sello de acreditación (ISO/IEC 17025) a la matriz técnica
+     */
+    public function subirLogoAcreditacionAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!$peticion->esPost()) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'Método no permitido.'], 405);
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'Token CSRF inválido o sesión expirada.'], 403);
+            return;
+        }
+
+        if (!isset($_FILES['archivo_logo']) || !is_uploaded_file($_FILES['archivo_logo']['tmp_name'])) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'No se recibió ningún archivo de imagen.'], 400);
+            return;
+        }
+
+        $archivo = $_FILES['archivo_logo'];
+        if (($archivo['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'Error durante la subida del archivo.'], 400);
+            return;
+        }
+
+        if (($archivo['size'] ?? 0) > 5 * 1024 * 1024) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'El archivo supera el tamaño máximo permitido (5 MB).'], 413);
+            return;
+        }
+
+        $ext = strtolower(pathinfo((string)($archivo['name'] ?? ''), PATHINFO_EXTENSION));
+        $extPermitidas = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
+        if (!in_array($ext, $extPermitidas, true)) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'Formato no permitido. Solo se permiten imágenes PNG, JPG, WEBP o SVG.'], 415);
+            return;
+        }
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $archivo['tmp_name']);
+        finfo_close($finfo);
+        $mimesPermitidos = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+        if ($mime !== false && !in_array($mime, $mimesPermitidos, true) && $ext !== 'svg') {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'Tipo de archivo no válido.'], 415);
+            return;
+        }
+
+        $dirDestino = dirname(__DIR__, 4) . '/publico/uploads/acreditaciones';
+        if (!is_dir($dirDestino)) {
+            mkdir($dirDestino, 0755, true);
+        }
+
+        $nombreFinal = 'acred_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $rutaFisica = $dirDestino . '/' . $nombreFinal;
+
+        if (!move_uploaded_file($archivo['tmp_name'], $rutaFisica)) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'No fue posible guardar el archivo en el servidor.'], 500);
+            return;
+        }
+
+        $urlPublica = '/Cycsa/publico/uploads/acreditaciones/' . $nombreFinal;
+        $idDetalle = (int)($_POST['id_detalle'] ?? 0);
+
+        if ($idDetalle > 0) {
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmtDet = $db->prepare("SELECT id, descripcion_ensayo, resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+            $stmtDet->execute(['id' => $idDetalle]);
+            $rowDet = $stmtDet->fetch(\PDO::FETCH_ASSOC);
+            if ($rowDet) {
+                $dec = json_decode($rowDet['resultados_json'] ?? '', true) ?: [];
+                if (!isset($dec['metadatos']) || !is_array($dec['metadatos'])) {
+                    $dec['metadatos'] = [];
+                }
+                $dec['metadatos']['logo_acreditacion'] = $urlPublica;
+                $stmtUpd = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+                $stmtUpd->execute([
+                    'json' => json_encode($dec, JSON_UNESCAPED_UNICODE),
+                    'id' => $idDetalle
+                ]);
+
+                registrarBitacora(
+                    'operaciones',
+                    'subir_logo_acreditacion',
+                    "Asignado sello/logo de acreditación para '{$rowDet['descripcion_ensayo']}' (Detalle #{$idDetalle})",
+                    $idDetalle
+                );
+            }
+        }
+
+        $respuesta->enviarJson([
+            'exito' => true,
+            'mensaje' => 'Logotipo de acreditación subido y asignado correctamente.',
+            'url' => $urlPublica
+        ]);
+    }
+
+    /**
+     * Retira el logotipo de acreditación de la matriz técnica
+     */
+    public function eliminarLogoAcreditacionAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!$peticion->esPost()) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'Método no permitido.'], 405);
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            $respuesta->enviarJson(['exito' => false, 'error' => 'Token CSRF inválido o expirado.'], 403);
+            return;
+        }
+
+        $idDetalle = (int)($_POST['id_detalle'] ?? 0);
+        if ($idDetalle > 0) {
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmtDet = $db->prepare("SELECT id, descripcion_ensayo, resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+            $stmtDet->execute(['id' => $idDetalle]);
+            $rowDet = $stmtDet->fetch(\PDO::FETCH_ASSOC);
+            if ($rowDet) {
+                $dec = json_decode($rowDet['resultados_json'] ?? '', true) ?: [];
+                if (isset($dec['metadatos']) && is_array($dec['metadatos'])) {
+                    $dec['metadatos']['logo_acreditacion'] = '';
+                }
+                $stmtUpd = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+                $stmtUpd->execute([
+                    'json' => json_encode($dec, JSON_UNESCAPED_UNICODE),
+                    'id' => $idDetalle
+                ]);
+
+                registrarBitacora(
+                    'operaciones',
+                    'eliminar_logo_acreditacion',
+                    "Retirado sello/logo de acreditación para '{$rowDet['descripcion_ensayo']}' (Detalle #{$idDetalle})",
+                    $idDetalle
+                );
+            }
+        }
+
+        $respuesta->enviarJson([
+            'exito' => true,
+            'mensaje' => 'Logotipo de acreditación retirado.'
+        ]);
     }
 
     /**
