@@ -1,6 +1,6 @@
 -- ==============================================================================
 -- BASE DE DATOS OFICIAL CYCSA ERP & LIMS (PRODUCCIÓN LIMPIA)
--- Generado automáticamente: 2026-09-30 22:44:10
+-- Generado automáticamente: 2026-09-30 22:48:00
 -- Base de datos destino: cycsanic_cycsa_db (Bluehost cPanel / phpMyAdmin)
 -- Total de tablas: 28
 --

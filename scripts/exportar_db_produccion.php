@@ -156,7 +156,14 @@ foreach ($todasLasTablas as $tabla) {
 
     // Si es catálogo, exportar sus datos
     if (in_array($tabla, $tablasCatalogos)) {
-        $rows = $pdo->query("SELECT * FROM `$tabla`")->fetchAll();
+        if ($tabla === 'secuencias_muestras') {
+            $rows = [
+                ['anio' => (int)date('Y'), 'tipo_muestra' => 'Campo', 'ultimo_correlativo' => 0],
+                ['anio' => (int)date('Y'), 'tipo_muestra' => 'Laboratorio', 'ultimo_correlativo' => 0]
+            ];
+        } else {
+            $rows = $pdo->query("SELECT * FROM `$tabla`")->fetchAll();
+        }
         $totalRows = count($rows);
         echo " ($totalRows registros exportados)\n";
 
@@ -224,8 +231,24 @@ $archivoParaProd = __DIR__ . '/../database/cycsa_db_para_produccion.sql';
 file_put_contents($archivoLimpia, $outSql);
 file_put_contents($archivoParaProd, $outSql);
 
+// Copias de conveniencia para subida rápida
+$rutaDownloads = 'C:/Users/abdia/Downloads/cycsa_db_produccion_limpia.sql';
+if (is_dir('C:/Users/abdia/Downloads')) {
+    file_put_contents($rutaDownloads, $outSql);
+}
+$rutaDesktop = 'C:/Users/abdia/Desktop/cycsa_db_produccion_limpia.sql';
+if (is_dir('C:/Users/abdia/Desktop')) {
+    file_put_contents($rutaDesktop, $outSql);
+}
+
 echo "\n========================================================\n";
 echo "EXPORTACIÓN EXITOSA:\n";
 echo "1. " . realpath($archivoLimpia) . " (" . number_format(filesize($archivoLimpia) / 1024, 2) . " KB)\n";
 echo "2. " . realpath($archivoParaProd) . " (" . number_format(filesize($archivoParaProd) / 1024, 2) . " KB)\n";
+if (file_exists($rutaDownloads)) {
+    echo "3. " . realpath($rutaDownloads) . " (" . number_format(filesize($rutaDownloads) / 1024, 2) . " KB)\n";
+}
+if (file_exists($rutaDesktop)) {
+    echo "4. " . realpath($rutaDesktop) . " (" . number_format(filesize($rutaDesktop) / 1024, 2) . " KB)\n";
+}
 echo "========================================================\n";
