@@ -30,7 +30,7 @@ function enviarCorreo(string $para, string $asunto, string $cuerpoHTML, string $
 
         // Configuraciones generales
         $mail->CharSet = 'UTF-8';
-        $remitenteCorreo = $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_FROM'] ?? ($mailConfig['from']['address'] ?? 'notificaciones@cycsanicaragua.com');
+        $remitenteCorreo = $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_FROM'] ?? ($mailConfig['from']['address'] ?? 'asistente@cycsanic.com');
         $remitenteNombre = $_ENV['MAIL_FROM_NAME'] ?? $_ENV['APP_NAME'] ?? ($mailConfig['from']['name'] ?? 'CYCSA ERP');
 
         $mail->setFrom($remitenteCorreo, $remitenteNombre);

@@ -24,13 +24,13 @@ foreach ($envFiles as $envFile) {
 
 return [
     'driver' => $_ENV['MAIL_DRIVER'] ?? 'smtp',
-    'host' => $_ENV['MAIL_HOST'] ?? 'smtp.gmail.com',
-    'port' => (int)($_ENV['MAIL_PORT'] ?? 587),
-    'username' => $_ENV['MAIL_USER'] ?? '',
-    'password' => $_ENV['MAIL_PASS'] ?? '',
-    'encryption' => $_ENV['MAIL_ENCRYPTION'] ?? $_ENV['MAIL_SECURE'] ?? 'tls',
+    'host' => $_ENV['MAIL_HOST'] ?? 'mail.cycsanic.com',
+    'port' => (int)($_ENV['MAIL_PORT'] ?? 465),
+    'username' => $_ENV['MAIL_USER'] ?? 'asistente@cycsanic.com',
+    'password' => $_ENV['MAIL_PASS'] ?? 'Cycsa73465@',
+    'encryption' => $_ENV['MAIL_ENCRYPTION'] ?? $_ENV['MAIL_SECURE'] ?? 'ssl',
     'from' => [
-        'address' => $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_FROM'] ?? 'notificaciones@cycsanicaragua.com',
+        'address' => $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_FROM'] ?? 'asistente@cycsanic.com',
         'name' => $_ENV['MAIL_FROM_NAME'] ?? $_ENV['APP_NAME'] ?? 'CYCSA ERP'
     ]
 ];
