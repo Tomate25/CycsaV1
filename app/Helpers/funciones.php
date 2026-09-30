@@ -2036,6 +2036,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         }
     }
 
+    $resultados = filtrarFilasPublicasMatriz($resultados);
     $metaOficial = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
 
     $codigoFormatoOficial = $metaOficial['codigo_formato'];
@@ -2695,6 +2696,9 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
             if (isset($filas['filas'])) {
                 $filas = $filas['filas'];
             }
+            $resultados = is_array($filas) ? $filas : [];
+            $resultados = filtrarFilasPublicasMatriz($resultados);
+            $filas = $resultados;
 
             // Render table columns
             $theadHtml = '';
@@ -3555,6 +3559,150 @@ function obtenerEstadoRevisionMatriz(?string $resultadosJson): array {
         'tiene_resultados' => true,
         'historial' => $revision['historial'] ?? []
     ];
+}
+
+/**
+ * Devuelve la columna que contiene el código oficial de la muestra.
+ */
+function obtenerColumnaCodigoMuestra(array $fila): ?string {
+    foreach (['Código laboratorio', 'Codigo laboratorio', 'codigo_lab', 'codigo_muestra'] as $columna) {
+        if (array_key_exists($columna, $fila)) {
+            return $columna;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Indica si una fila corresponde a una réplica interna de Control de Calidad.
+ */
+function esFilaReplicaMatriz(array $fila): bool {
+    if (!empty($fila['_es_replica'])) {
+        return true;
+    }
+    $columna = obtenerColumnaCodigoMuestra($fila);
+    $codigo = $columna !== null ? trim((string)($fila[$columna] ?? '')) : '';
+    return $codigo !== '' && preg_match('/-CR$/i', $codigo) === 1;
+}
+
+/**
+ * Filtra las réplicas internas para documentos, PDF y comunicaciones al cliente.
+ */
+function filtrarFilasPublicasMatriz(array $filas): array {
+    return array_values(array_filter($filas, static function ($fila): bool {
+        return is_array($fila) && !esFilaReplicaMatriz($fila);
+    }));
+}
+
+/**
+ * Normaliza las filas de réplica de una matriz.
+ * Solo admite una réplica por muestra original y fuerza el sufijo oficial -CR.
+ */
+function normalizarReplicasMatriz(array $filas): array {
+    $codigosOriginales = [];
+    foreach ($filas as $fila) {
+        if (!is_array($fila)) {
+            continue;
+        }
+        $columna = obtenerColumnaCodigoMuestra($fila);
+        $codigo = $columna !== null ? trim((string)($fila[$columna] ?? '')) : '';
+        $esReplica = esFilaReplicaMatriz($fila);
+        if ($codigo !== '' && !$esReplica) {
+            $codigosOriginales[strtoupper($codigo)] = $codigo;
+        }
+    }
+
+    $resultado = [];
+    $replicasAgregadas = [];
+    foreach ($filas as $fila) {
+        if (!is_array($fila)) {
+            continue;
+        }
+
+        $columna = obtenerColumnaCodigoMuestra($fila);
+        $codigo = $columna !== null ? trim((string)($fila[$columna] ?? '')) : '';
+        $esReplica = esFilaReplicaMatriz($fila);
+        if (!$esReplica) {
+            unset($fila['_es_replica'], $fila['_muestra_origen']);
+            $resultado[] = $fila;
+            continue;
+        }
+
+        $origen = trim((string)($fila['_muestra_origen'] ?? preg_replace('/-CR$/i', '', $codigo)));
+        $origenKey = strtoupper($origen);
+        if ($columna === null || $origen === '' || !isset($codigosOriginales[$origenKey]) || isset($replicasAgregadas[$origenKey])) {
+            continue;
+        }
+
+        $origenCanonico = $codigosOriginales[$origenKey];
+        $fila[$columna] = $origenCanonico . '-CR';
+        $fila['_es_replica'] = true;
+        $fila['_muestra_origen'] = $origenCanonico;
+        $resultado[] = $fila;
+        $replicasAgregadas[$origenKey] = true;
+    }
+
+    return $resultado;
+}
+
+/**
+ * Agrupa las filas normales y sus réplicas para el tablero de Control de Calidad.
+ */
+function obtenerParesControlCalidad(array $filas): array {
+    $originales = [];
+    $replicas = [];
+
+    foreach (normalizarReplicasMatriz($filas) as $fila) {
+        $columna = obtenerColumnaCodigoMuestra($fila);
+        if ($columna === null) {
+            continue;
+        }
+        $codigo = trim((string)($fila[$columna] ?? ''));
+        if ($codigo === '') {
+            continue;
+        }
+        if (!empty($fila['_es_replica'])) {
+            $replicas[strtoupper((string)$fila['_muestra_origen'])] = $fila;
+        } else {
+            $originales[strtoupper($codigo)] = $fila;
+        }
+    }
+
+    $pares = [];
+    foreach ($replicas as $origenKey => $replica) {
+        if (!isset($originales[$origenKey])) {
+            continue;
+        }
+        $original = $originales[$origenKey];
+        $columna = obtenerColumnaCodigoMuestra($original);
+        $diferencias = [];
+        foreach ($original as $campo => $valorOriginal) {
+            if ($campo === $columna || str_starts_with((string)$campo, '_') || !array_key_exists($campo, $replica)) {
+                continue;
+            }
+            $valorReplica = $replica[$campo];
+            if (is_numeric($valorOriginal) && is_numeric($valorReplica) && (string)$valorOriginal !== '' && (string)$valorReplica !== '') {
+                $base = (float)$valorOriginal;
+                $rep = (float)$valorReplica;
+                $diferencias[$campo] = [
+                    'original' => $base,
+                    'replica' => $rep,
+                    'diferencia' => $rep - $base,
+                    'diferencia_porcentual' => abs($base) > 0.0000001 ? (($rep - $base) / abs($base)) * 100 : null,
+                ];
+            }
+        }
+        $pares[] = [
+            'codigo_original' => $original[$columna],
+            'codigo_replica' => $replica[$columna],
+            'original' => $original,
+            'replica' => $replica,
+            'diferencias' => $diferencias,
+        ];
+    }
+
+    return $pares;
 }
 
 /**

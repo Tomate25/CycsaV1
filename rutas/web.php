@@ -170,6 +170,8 @@ $app->enrutador->post('/operaciones/actualizar-estado', [OperacionesControlador:
 $app->enrutador->post('/operaciones/programar-muestreo', [OperacionesControlador::class, 'procesarProgramarMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/obtener-matriz-os', [OperacionesControlador::class, 'obtenerMatrizOSAjax'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/captura-matriz', [OperacionesControlador::class, 'capturaMatrizProducto'], [AuthMiddleware::class]);
+$app->enrutador->get('/control-calidad', [OperacionesControlador::class, 'controlCalidadReplicas'], [AuthMiddleware::class]);
+$app->enrutador->post('/control-calidad/evaluar-replica', [OperacionesControlador::class, 'evaluarReplicaControlCalidad'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/imprimir-matriz', [OperacionesControlador::class, 'imprimirMatrizProducto'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/descargar-matriz-pdf', [OperacionesControlador::class, 'descargarMatrizPDF'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/enviar-matriz-cliente', [OperacionesControlador::class, 'enviarMatrizCliente'], [AuthMiddleware::class]);

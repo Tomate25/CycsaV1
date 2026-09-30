@@ -47,8 +47,27 @@ class ProductoModelo extends ModeloBase {
             foreach ($tokens as $tok) {
                 $i++;
                 $pName = "q_{$i}";
-                $tokenClauses[] = "{$concatCampos} LIKE :{$pName}";
+                $subClauses = ["{$concatCampos} LIKE :{$pName}"];
                 $params[$pName] = '%' . $tok . '%';
+
+                if (preg_match('/[aeiouáéíóú]/ui', $tok)) {
+                    $regTok = preg_replace_callback('/[aeiouáéíóú]/ui', function($m) {
+                        $v = mb_strtolower($m[0]);
+                        $map = [
+                            'a' => '(a|á|Ã¡)',
+                            'e' => '(e|é|Ã©)',
+                            'i' => '(i|í|Ã­)',
+                            'o' => '(o|ó|Ã³)',
+                            'u' => '(u|ú|Ãº)'
+                        ];
+                        return $map[$v] ?? $v;
+                    }, preg_quote($tok, '/'));
+                    $pRegName = "q_reg_{$i}";
+                    $subClauses[] = "{$concatCampos} REGEXP :{$pRegName}";
+                    $params[$pRegName] = $regTok;
+                }
+
+                $tokenClauses[] = '(' . implode(' OR ', $subClauses) . ')';
             }
             
             $whereParts = [];
@@ -83,7 +102,24 @@ class ProductoModelo extends ModeloBase {
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([self::class, 'sanitizarFila'], $filas);
+    }
+
+    public static function sanitizarFila(array $fila): array {
+        static $reemplazos = [
+            'Ã¡' => 'á', 'Ã©' => 'é', 'Ã­' => 'í', 'Ã³' => 'ó', 'Ãº' => 'ú',
+            'Ã ' => 'Á', 'Ã‰' => 'É', 'Ã ' => 'Í', 'Ã“' => 'Ó', 'Ãš' => 'Ú',
+            'Ã±' => 'ñ', 'Ã‘' => 'Ñ', 'â€“' => '–', 'â€”' => '—',
+            'Â°' => '°', 'Â«' => '«', 'Â»' => '»', 'Â¿' => '¿', 'Â¡' => '¡',
+            'Ã¼' => 'ü', 'Ãœ' => 'Ü'
+        ];
+        foreach ($fila as $k => $v) {
+            if (is_string($v)) {
+                $fila[$k] = strtr($v, $reemplazos);
+            }
+        }
+        return $fila;
     }
     
     // 📂 OBTENER CATEGORÍAS ÚNICAS
@@ -110,7 +146,8 @@ class ProductoModelo extends ModeloBase {
                 WHERE p.id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $fila ? self::sanitizarFila($fila) : null;
     }
     
     // 🛡️ CONTROL DE DUPLICADOS: Verificar si un código de servicio ya existe (Soporta exclusión al editar)
@@ -215,7 +252,7 @@ class ProductoModelo extends ModeloBase {
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['no_item' => trim($noItem)]);
         $res = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $res ?: null;
+        return $res ? self::sanitizarFila($res) : null;
     }
 
     // 🔍 OBTENER PRODUCTO POR NOMBRE COMERCIAL (INSENSIBLE A MAYÚSCULAS/ESPACIOS)
@@ -224,7 +261,7 @@ class ProductoModelo extends ModeloBase {
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['nombre' => $nombre]);
         $res = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $res ?: null;
+        return $res ? self::sanitizarFila($res) : null;
     }
 
     // ⚡ OBTENER ÍNDICE COMPLETO DE MAPEO EN MEMORIA (OPTIMIZACIÓN PARA CARGA MASIVA)
@@ -235,7 +272,7 @@ class ProductoModelo extends ModeloBase {
                        unidad_medida, precio, observaciones, activo
                 FROM productos WHERE activo = 1";
         $stmt = $this->db->query($sql);
-        $todos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $todos = array_map([self::class, 'sanitizarFila'], $stmt->fetchAll(PDO::FETCH_ASSOC));
 
         $porId = [];
         $porNoItem = [];

@@ -1742,6 +1742,7 @@ class OperacionesControlador extends ControladorBase {
             if (isset($filasDecodificadas['filas'])) {
                 $filasDecodificadas = $filasDecodificadas['filas'];
             }
+            $filasDecodificadas = normalizarReplicasMatriz(is_array($filasDecodificadas) ? $filasDecodificadas : []);
 
             $decExistente = json_decode($detalleActual['resultados_json'] ?? '', true) ?: [];
             $metadatos = !empty($datos['metadatos']) && is_array($datos['metadatos'])
@@ -1798,7 +1799,10 @@ class OperacionesControlador extends ControladorBase {
                 'filas' => $filasDecodificadas,
                 'metadatos' => $metadatos,
                 'revision' => $nuevaRevision,
-                'versiones' => $versionesExistentes
+                'versiones' => $versionesExistentes,
+                'control_calidad' => isset($decExistente['control_calidad']) && is_array($decExistente['control_calidad'])
+                    ? $decExistente['control_calidad']
+                    : []
             ];
             $resultadosJsonFinal = json_encode($payloadCompleto, JSON_UNESCAPED_UNICODE);
 
@@ -2622,6 +2626,7 @@ class OperacionesControlador extends ControladorBase {
         } elseif (isset($resultados['metadatos'])) {
             $resultados = [];
         }
+        $resultados = filtrarFilasPublicasMatriz(is_array($resultados) ? $resultados : []);
         if (empty($resultados)) {
             $_SESSION['error'] = 'No se puede enviar el informe al cliente porque la matriz técnica aún no tiene resultados registrados.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
@@ -2753,6 +2758,126 @@ class OperacionesControlador extends ControladorBase {
         } else {
             $respuesta->redirigir('/Cycsa/publico/operaciones');
         }
+    }
+
+    /**
+     * Tablero de comparación entre muestras originales y réplicas de control (-CR).
+     */
+    public function controlCalidadReplicas(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('operaciones', 'ver') && !tienePermiso('laboratorio', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            return;
+        }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        $db = Conexion::obtenerInstancia();
+        $stmt = $db->query("
+            SELECT cd.id, cd.descripcion_ensayo, cd.norma_astm, cd.resultados_json,
+                   os.codigo_os, cot.nombre_proyecto, cli.nombre_razon_social AS cliente_nombre
+            FROM cotizacion_detalles cd
+            JOIN cotizaciones cot ON cot.id = cd.id_cotizacion
+            JOIN ordenes_servicio os ON os.id_cotizacion = cot.id
+            JOIN clientes cli ON cli.id = cot.id_cliente
+            WHERE cd.resultados_json LIKE '%-CR%'
+            ORDER BY cd.id DESC
+        ");
+
+        $comparaciones = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $detalle) {
+            $dec = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+            $filas = isset($dec['filas']) && is_array($dec['filas']) ? $dec['filas'] : (isset($dec[0]) ? $dec : []);
+            $evaluaciones = $dec['control_calidad']['replicas'] ?? [];
+            foreach (obtenerParesControlCalidad($filas) as $par) {
+                $clave = strtoupper((string)$par['codigo_original']);
+                $par['evaluacion'] = is_array($evaluaciones[$clave] ?? null)
+                    ? $evaluaciones[$clave]
+                    : ['estado' => 'pendiente', 'observaciones' => '', 'usuario' => '', 'fecha' => ''];
+                $comparaciones[] = array_merge($detalle, $par);
+            }
+        }
+
+        $this->renderizar('operaciones/vistas/control_calidad_replicas', [
+            'titulo' => 'Control de Calidad de Réplicas',
+            'comparaciones' => $comparaciones,
+        ]);
+    }
+
+    /**
+     * Guarda el dictamen del responsable de Control de Calidad sin alterar las lecturas.
+     */
+    public function evaluarReplicaControlCalidad(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('operaciones', 'ver') && !tienePermiso('laboratorio', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+        if (!isset($_SESSION['csrf_token'], $datos['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+            $_SESSION['error'] = 'La sesión de seguridad expiró. Recargue la página.';
+            $respuesta->redirigir('/Cycsa/publico/control-calidad');
+            return;
+        }
+
+        $idDetalle = (int)($datos['id_detalle'] ?? 0);
+        $codigoOriginal = trim((string)($datos['codigo_original'] ?? ''));
+        $estado = (string)($datos['estado'] ?? 'pendiente');
+        $observaciones = trim((string)($datos['observaciones'] ?? ''));
+        if (!in_array($estado, ['pendiente', 'conforme', 'no_conforme'], true)) {
+            $estado = 'pendiente';
+        }
+        if (function_exists('mb_substr')) {
+            $observaciones = mb_substr($observaciones, 0, 2000, 'UTF-8');
+        } else {
+            $observaciones = substr($observaciones, 0, 2000);
+        }
+
+        $db = Conexion::obtenerInstancia();
+        $stmt = $db->prepare('SELECT resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $idDetalle]);
+        $jsonActual = $stmt->fetchColumn();
+        $dec = json_decode((string)$jsonActual, true) ?: [];
+        $filas = isset($dec['filas']) && is_array($dec['filas']) ? $dec['filas'] : (isset($dec[0]) ? $dec : []);
+
+        $parValido = false;
+        foreach (obtenerParesControlCalidad($filas) as $par) {
+            if (strcasecmp((string)$par['codigo_original'], $codigoOriginal) === 0) {
+                $codigoOriginal = (string)$par['codigo_original'];
+                $parValido = true;
+                break;
+            }
+        }
+        if (!$parValido) {
+            $_SESSION['error'] = 'No se encontró la relación entre la muestra original y su réplica.';
+            $respuesta->redirigir('/Cycsa/publico/control-calidad');
+            return;
+        }
+
+        if (!isset($dec['control_calidad']) || !is_array($dec['control_calidad'])) {
+            $dec['control_calidad'] = [];
+        }
+        if (!isset($dec['control_calidad']['replicas']) || !is_array($dec['control_calidad']['replicas'])) {
+            $dec['control_calidad']['replicas'] = [];
+        }
+        $dec['control_calidad']['replicas'][strtoupper($codigoOriginal)] = [
+            'estado' => $estado,
+            'observaciones' => $observaciones,
+            'usuario' => $_SESSION['usuario_nombre'] ?? 'Control de Calidad',
+            'usuario_id' => (int)($_SESSION['usuario_id'] ?? 0),
+            'fecha' => date('Y-m-d H:i:s'),
+        ];
+
+        $upd = $db->prepare('UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id');
+        $upd->execute([
+            'json' => json_encode($dec, JSON_UNESCAPED_UNICODE),
+            'id' => $idDetalle,
+        ]);
+        registrarBitacora('control_calidad', 'evaluar_replica', "Réplica {$codigoOriginal}-CR evaluada como {$estado}", $idDetalle);
+        $_SESSION['exito'] = 'Evaluación de la réplica guardada correctamente.';
+        $respuesta->redirigir('/Cycsa/publico/control-calidad');
     }
 
     /**

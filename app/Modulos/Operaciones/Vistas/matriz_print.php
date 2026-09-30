@@ -80,6 +80,7 @@ if (!empty($detalle['resultados_json'])) {
         }
     }
 }
+$resultados = filtrarFilasPublicasMatriz($resultados);
 
 if (empty($metadatos)) {
     $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);

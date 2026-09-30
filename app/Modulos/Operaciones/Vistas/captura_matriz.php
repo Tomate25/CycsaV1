@@ -768,6 +768,17 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             </div>
 
             <!-- CONTENEDOR DE LA TABLA DINÁMICA -->
+            <div id="replicas-control-bar" style="display:none; margin: 0 0 14px; padding: 13px 15px; border: 1px solid #99f6e4; background: #f0fdfa; border-radius: 9px; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+                <div style="font-size: 12.5px; color: #115e59; line-height: 1.45;">
+                    <strong><i class="fa-solid fa-code-compare"></i> Réplicas de Control de Calidad</strong><br>
+                    Marque la casilla de las muestras que requieren réplica. Se cargará automáticamente una fila duplicada con el sufijo <strong>-CR</strong> para capturar sus mediciones de forma independiente.
+                </div>
+                <?php if (!$esModoHistorico): ?>
+                <button type="button" class="btn-matriz-secondary" onclick="sincronizarReplicasSeleccionadas()" style="background:#0f766e; color:#fff; border-color:#0f766e;">
+                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar réplicas
+                </button>
+                <?php endif; ?>
+            </div>
             <div class="tabla-matriz-wrapper">
                 <table class="tabla-matriz" id="tabla-captura-matriz">
                     <thead id="tabla-header">
@@ -820,6 +831,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     const MUESTRAS_SETEADAS = <?= json_encode($muestrasSeteadas ?? [], JSON_UNESCAPED_UNICODE) ?>;
     const ES_MODO_HISTORICO = <?= $esModoHistorico ? 'true' : 'false' ?>;
     const PREFIJO_OFICIAL = <?= json_encode($prefijoMuestraOS ?? determinarPrefijoMuestraOS($detalle)) ?>;
+    let replicasHabilitadas = false;
+    let columnaCodigoReplica = null;
+    let columnaNombreReplica = null;
 
     const DEFAULT_ROWS_BY_FORMAT = {
         "formato_de_granulometria_de_suelo.md": [
@@ -973,6 +987,15 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         columnasActuales = (schema.columns && schema.columns.length > 0) 
             ? schema.columns 
             : ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
+        const aliases = schema.column_aliases || {};
+        columnaCodigoReplica = columnasActuales.find(col => ['Código laboratorio', 'Codigo laboratorio', 'codigo_lab', 'codigo_muestra'].includes(aliases[col] || col)) || null;
+        columnaNombreReplica = columnasActuales.find(col => (aliases[col] || col) === 'Nombre muestra') || null;
+        replicasHabilitadas = !!columnaCodigoReplica
+            && !ARCHIVO_MARKDOWN.includes('granulometria')
+            && !ARCHIVO_MARKDOWN.includes('granulomnetria')
+            && !ARCHIVO_MARKDOWN.includes('bloques');
+        const barraReplicas = document.getElementById('replicas-control-bar');
+        if (barraReplicas) barraReplicas.style.display = replicasHabilitadas ? 'flex' : 'none';
 
         // 1. Renderizar encabezado
         const thead = document.getElementById('tabla-header');
@@ -986,7 +1009,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             trMethods.style.borderBottom = '1px solid #cbd5e1';
 
             const thMethodTitle = document.createElement('th');
-            thMethodTitle.colSpan = 3;
+            thMethodTitle.colSpan = 3 + (replicasHabilitadas ? 1 : 0);
             thMethodTitle.style.textAlign = 'left';
             thMethodTitle.style.padding = '8px 12px';
             thMethodTitle.style.fontWeight = '700';
@@ -1025,6 +1048,14 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         thNum.innerText = 'N°';
         trH.appendChild(thNum);
 
+        if (replicasHabilitadas) {
+            const thReplica = document.createElement('th');
+            thReplica.style.width = '110px';
+            thReplica.style.textAlign = 'center';
+            thReplica.innerText = 'Réplica CR';
+            trH.appendChild(thReplica);
+        }
+
         columnasActuales.forEach(col => {
             const th = document.createElement('th');
             th.innerText = col;
@@ -1034,7 +1065,6 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
         // 2. Determinar filas iniciales
         let filas = [];
-        const aliases = schema.column_aliases || {};
         const codigoCol = columnasActuales.find(col => (aliases[col] || col) === 'Código laboratorio') || 'Código laboratorio';
         const nombreCol = columnasActuales.find(col => (aliases[col] || col) === 'Nombre muestra') || 'Nombre muestra';
         if (Array.isArray(DATOS_INICIALES) && DATOS_INICIALES.length > 0) {
@@ -1086,6 +1116,12 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
         filas.forEach((rowData, rIdx) => {
             const tr = document.createElement('tr');
+            const esReplica = rowData._es_replica === true || /-CR$/i.test(String(rowData[columnaCodigoReplica] || ''));
+            tr.dataset.esReplica = esReplica ? '1' : '0';
+            tr.dataset.muestraOrigen = esReplica ? String(rowData._muestra_origen || String(rowData[columnaCodigoReplica] || '').replace(/-CR$/i, '')) : '';
+            if (esReplica) {
+                tr.style.background = '#f0fdfa';
+            }
             
             // Columna de numeración
             const tdNum = document.createElement('td');
@@ -1094,6 +1130,35 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             tdNum.style.color = '#64748b';
             tdNum.innerText = rIdx + 1;
             tr.appendChild(tdNum);
+
+            if (replicasHabilitadas) {
+                const tdReplica = document.createElement('td');
+                tdReplica.style.textAlign = 'center';
+                if (esReplica) {
+                    const origenCode = tr.dataset.muestraOrigen || '';
+                    tdReplica.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:12px;background:#ccfbf1;color:#115e59;font-size:11px;font-weight:800;"><i class="fa-solid fa-vials"></i> RÉPLICA</span>';
+                    if (!ES_MODO_HISTORICO) {
+                        const btnQuitar = document.createElement('button');
+                        btnQuitar.type = 'button';
+                        btnQuitar.style.cssText = 'margin-left:6px;border:none;background:none;color:#ef4444;cursor:pointer;padding:2px 4px;font-size:12px;';
+                        btnQuitar.title = 'Quitar esta réplica';
+                        btnQuitar.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                        btnQuitar.addEventListener('click', () => quitarReplicaDe(origenCode));
+                        tdReplica.appendChild(btnQuitar);
+                    }
+                } else {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'replica-selector';
+                    checkbox.checked = filas.some(f => (f._es_replica === true || /-CR$/i.test(String(f[columnaCodigoReplica] || ''))) && String(f._muestra_origen || String(f[columnaCodigoReplica] || '').replace(/-CR$/i, '')).toUpperCase() === String(rowData[columnaCodigoReplica] || '').toUpperCase());
+                    checkbox.disabled = ES_MODO_HISTORICO;
+                    checkbox.title = 'Generar réplica de control para esta muestra';
+                    checkbox.style.cssText = 'width:18px;height:18px;accent-color:#0f766e;cursor:pointer;';
+                    checkbox.addEventListener('change', sincronizarReplicasSeleccionadas);
+                    tdReplica.appendChild(checkbox);
+                }
+                tr.appendChild(tdReplica);
+            }
 
             const isGranulo = (ARCHIVO_MARKDOWN.includes('granulometria') || ARCHIVO_MARKDOWN.includes('granulomnetria'));
             const aliases = (FORMATOS_SCHEMA[ARCHIVO_MARKDOWN] || {}).column_aliases || {};
@@ -1202,6 +1267,82 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 el.style.cursor = 'not-allowed';
             });
         }
+    }
+
+    function leerFilasMatrizActual() {
+        const filas = [];
+        document.querySelectorAll('#tabla-body tr').forEach(tr => {
+            const fila = {};
+            tr.querySelectorAll('input[data-col]').forEach(inp => {
+                fila[inp.dataset.saveCol || inp.dataset.col] = inp.value;
+            });
+            if (tr.dataset.esReplica === '1') {
+                fila._es_replica = true;
+                fila._muestra_origen = tr.dataset.muestraOrigen || '';
+            }
+            filas.push(fila);
+        });
+        return filas;
+    }
+
+    function sincronizarReplicasSeleccionadas() {
+        if (!replicasHabilitadas || ES_MODO_HISTORICO) return;
+
+        const seleccionadas = new Set();
+        document.querySelectorAll('#tabla-body tr').forEach(tr => {
+            const selector = tr.querySelector('.replica-selector');
+            const codigoInput = tr.querySelector(`input[data-save-col="${CSS.escape(columnaCodigoReplica)}"]`)
+                || tr.querySelector('input[data-col="Código laboratorio"]');
+            if (selector && selector.checked && codigoInput && codigoInput.value.trim()) {
+                seleccionadas.add(codigoInput.value.trim().toUpperCase());
+            }
+        });
+
+        const actuales = leerFilasMatrizActual();
+        const originales = actuales.filter(f => !f._es_replica && !/-CR$/i.test(String(f[columnaCodigoReplica] || '')));
+        const replicasExistentes = new Map();
+        actuales.filter(f => f._es_replica || /-CR$/i.test(String(f[columnaCodigoReplica] || ''))).forEach(f => {
+            const origen = String(f._muestra_origen || String(f[columnaCodigoReplica] || '').replace(/-CR$/i, '')).toUpperCase();
+            if (origen && !replicasExistentes.has(origen)) replicasExistentes.set(origen, f);
+        });
+
+        const nuevasFilas = [];
+        originales.forEach(original => {
+            nuevasFilas.push(original);
+            const codigo = String(original[columnaCodigoReplica] || '').trim();
+            const clave = codigo.toUpperCase();
+            if (!codigo || !seleccionadas.has(clave)) return;
+
+            let replica = replicasExistentes.get(clave);
+            if (!replica) {
+                replica = {};
+                columnasActuales.forEach(col => { replica[col] = ''; });
+                if (columnaNombreReplica) {
+                    const nombre = String(original[columnaNombreReplica] || '').trim();
+                    replica[columnaNombreReplica] = nombre ? `${nombre} (Réplica CR)` : 'Réplica de control';
+                }
+            }
+            replica[columnaCodigoReplica] = codigo + '-CR';
+            replica._es_replica = true;
+            replica._muestra_origen = codigo;
+            nuevasFilas.push(replica);
+        });
+
+        renderizarFilas(nuevasFilas);
+        recalculateAll();
+    }
+
+    function quitarReplicaDe(origenCode) {
+        if (!origenCode || ES_MODO_HISTORICO) return;
+        document.querySelectorAll('#tabla-body tr').forEach(tr => {
+            const selector = tr.querySelector('.replica-selector');
+            const inp = tr.querySelector(`input[data-save-col="${(window.CSS && CSS.escape) ? CSS.escape(columnaCodigoReplica) : columnaCodigoReplica.replace(/"/g, '\\"')}"]`)
+                || tr.querySelector('input[data-col="Código laboratorio"]');
+            if (selector && inp && inp.value.trim().toUpperCase() === origenCode.toUpperCase()) {
+                selector.checked = false;
+            }
+        });
+        sincronizarReplicasSeleccionadas();
     }
 
     function aplicarLimitesMaterial(matName) {
@@ -1537,7 +1678,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         rows.forEach(tr => {
             const rowObj = {};
             let hasAnyVal = false;
-            tr.querySelectorAll('input').forEach(inp => {
+            tr.querySelectorAll('input[data-col]').forEach(inp => {
                 const colName = inp.dataset.saveCol || inp.dataset.col;
                 const val = inp.value;
                 rowObj[colName] = val;
@@ -1546,6 +1687,10 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 }
             });
             if (hasAnyVal) {
+                if (tr.dataset.esReplica === '1') {
+                    rowObj._es_replica = true;
+                    rowObj._muestra_origen = tr.dataset.muestraOrigen || '';
+                }
                 resultados.push(rowObj);
             }
         });

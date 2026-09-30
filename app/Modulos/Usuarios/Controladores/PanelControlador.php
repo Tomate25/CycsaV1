@@ -55,6 +55,13 @@ class PanelControlador extends ControladorBase {
                 'desc' => 'Órdenes de servicio, asignación técnica y captura matricial.',
                 'color' => 'linear-gradient(135deg, #0284c7, #0369a1)', // Celeste
             ];
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Control de Calidad',
+                'link' => '/Cycsa/publico/control-calidad',
+                'icon' => 'fa-solid fa-code-compare',
+                'desc' => 'Comparación y dictamen de muestras originales contra sus réplicas -CR.',
+                'color' => 'linear-gradient(135deg, #0f766e, #115e59)',
+            ];
         }
         // 4. Laboratorio (Ensayes y Rupturas)
         if (tienePermiso('laboratorio', 'ver')) {
