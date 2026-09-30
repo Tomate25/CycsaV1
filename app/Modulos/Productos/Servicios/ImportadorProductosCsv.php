@@ -42,6 +42,7 @@ final class ImportadorProductosCsv {
         }
 
         fwrite($flujo, self::BOM_UTF8);
+        fwrite($flujo, "sep={$delimitador}\r\n");
         fputcsv($flujo, self::ENCABEZADOS, $delimitador, '"', '\\');
 
         $limpiar = static function(?string $valor): string {
@@ -141,6 +142,7 @@ final class ImportadorProductosCsv {
         };
 
         fwrite($flujo, self::BOM_UTF8);
+        fwrite($flujo, "sep={$delimitador}\r\n");
         fputcsv($flujo, self::ENCABEZADOS, $delimitador, '"', '\\');
 
         $productos = $modelo->obtenerTodos('', '', 1);

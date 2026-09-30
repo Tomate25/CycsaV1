@@ -181,33 +181,19 @@ class CargaMasivaProductosTest extends TestCase {
     public function testGenerarCatalogoCompletoCsvExportaTodosLosProductosConIdsYBOM(): void {
         $csv = ImportadorProductosCsv::generarCatalogoCompletoCsv($this->modelo);
 
-        // Debe iniciar con BOM UTF-8
-        $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
+        // Debe iniciar con BOM UTF-8 y la directiva universal sep=; para compatibilidad total con Excel
+        $this->assertStringStartsWith("\xEF\xBB\xBFsep=;\r\n", $csv);
 
-        // Contar registros parseando con fgetcsv (para respetar celdas con saltos de línea internos)
-        $flujo = fopen('php://temp', 'r+b');
-        fwrite($flujo, $csv);
-        rewind($flujo);
-        $totalFilasCsv = 0;
-        $primeraFila = null;
-        while (($row = fgetcsv($flujo, 0, ';', '"', '\\')) !== false) {
-            if ($primeraFila === null) {
-                $primeraFila = $row;
-            }
-            $totalFilasCsv++;
-        }
-        fclose($flujo);
+        // Al parsear y validar con el servicio de importación, debe procesar todos los productos sin errores
+        $resultado = ImportadorProductosCsv::parsearYValidar($csv, $this->modelo);
+        $this->assertTrue($resultado['exito']);
+        $this->assertSame(0, $resultado['errores']);
 
-        // Primera fila debe contener ID y encabezados canónicos
-        $primerHeader = str_starts_with($primeraFila[0], "\xEF\xBB\xBF") ? substr($primeraFila[0], 3) : $primeraFila[0];
-        $this->assertSame('ID', $primerHeader);
-        $this->assertSame('No_Item', $primeraFila[1]);
-        $this->assertSame('Precio', $primeraFila[13]);
-
-        // Debe contener la misma cantidad de filas que productos activos en BD (+1 encabezado)
         $activos = $this->modelo->obtenerTodos('', '', 1);
-        $totalEsperado = count($activos) + 1;
-        $this->assertSame($totalEsperado, $totalFilasCsv);
+        $this->assertSame(count($activos), $resultado['total_filas']);
+        $this->assertSame(count($activos), $resultado['validas']);
+        $this->assertSame(count($activos), $resultado['sin_cambios']);
+        $this->assertSame(0, $resultado['actualizaciones']);
     }
 
     public function testParsearCsvDistingueModificadosDeSinCambios(): void {
