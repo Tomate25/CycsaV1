@@ -1059,7 +1059,15 @@ class LaboratorioControlador extends ControladorBase {
         $ensayos = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
 
         if ($idHoja > 0) {
-            $stmtRec = $db->prepare("SELECT * FROM recepcion_muestras WHERE id_os = :id_os AND (id_hoja = :id_hoja OR (id_hoja IS NULL AND :id_hoja = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = :id_os))) ORDER BY id DESC LIMIT 1");
+            $stmtMin = $db->prepare("SELECT MIN(id) FROM hojas_solicitud WHERE id_os = :id_os");
+            $stmtMin->execute(['id_os' => $idOS]);
+            $minHojaId = (int)$stmtMin->fetchColumn();
+
+            if ($idHoja === $minHojaId) {
+                $stmtRec = $db->prepare("SELECT * FROM recepcion_muestras WHERE id_os = :id_os AND (id_hoja = :id_hoja OR id_hoja IS NULL) ORDER BY id DESC LIMIT 1");
+            } else {
+                $stmtRec = $db->prepare("SELECT * FROM recepcion_muestras WHERE id_os = :id_os AND id_hoja = :id_hoja ORDER BY id DESC LIMIT 1");
+            }
             $stmtRec->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
         } else {
             $stmtRec = $db->prepare("SELECT * FROM recepcion_muestras WHERE id_os = :id_os ORDER BY id DESC LIMIT 1");
@@ -1068,12 +1076,13 @@ class LaboratorioControlador extends ControladorBase {
         $recepcion = $stmtRec->fetch(PDO::FETCH_ASSOC);
 
         if ($idHoja > 0) {
+            $sqlHojaCond = ($idHoja === $minHojaId) ? "(rm.id_hoja = :id_hoja OR rm.id_hoja IS NULL)" : "rm.id_hoja = :id_hoja";
             $stmtMuestras = $db->prepare("
                 SELECT rm.codigo_muestra, rm.codigo_campo, rm.fecha_recepcion, lm.fecha_moldeo AS fecha_elaboracion,
                        (SELECT descripcion_ensayo FROM cotizacion_detalles cd WHERE cd.id = (SELECT id_detalle_cotizacion FROM ensayo_edades ee WHERE ee.id_lote = lm.id LIMIT 1)) AS nombre_ensayo
                 FROM recepcion_muestras rm
                 LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
-                WHERE rm.id_os = :id_os AND (rm.id_hoja = :id_hoja OR (rm.id_hoja IS NULL AND :id_hoja = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = :id_os)))
+                WHERE rm.id_os = :id_os AND {$sqlHojaCond}
                 ORDER BY rm.id ASC
             ");
             $stmtMuestras->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
