@@ -471,7 +471,7 @@
 
 <!-- MODAL REGISTRAR/EDITAR HOJA DE SOLICITUD DE SERVICIO (CYCSA-RT-FM-13) CON REFERENCIA O/S -->
 <div id="modalHojaSolicitud" class="modal-premium" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5); backdrop-filter:blur(4px);">
-    <div class="modal-premium-content" style="width: 95%; max-width: 1350px; max-height: 90vh; overflow-y: auto; padding: 25px 30px; background: white; margin: 2% auto; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+    <div class="modal-premium-content" style="width: 96%; max-width: 1540px; max-height: 92vh; overflow-y: auto; padding: 25px 30px; background: white; margin: 2% auto; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
             <div>
                 <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; display:flex; align-items:center; gap:10px;">
@@ -506,18 +506,18 @@
             </div>
         </div>
 
-        <div id="wrapper-split-rt-fm-13" style="display:none; grid-template-columns: 460px 1fr; gap: 25px; align-items: flex-start;">
+        <div id="wrapper-split-rt-fm-13" style="display:none; grid-template-columns: 340px 1fr; gap: 20px; align-items: flex-start;">
             
             <!-- PANEL LATERAL IZQUIERDO: REFERENCIA VISUAL DE LA ORDEN DE SERVICIO (SOLO LECTURA) -->
-            <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 18px; position: sticky; top: 0; max-height: 75vh; overflow-y: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 16px; position: sticky; top: 0; max-height: 78vh; overflow-y: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
                 <div style="display:flex; align-items:center; justify-content:space-between; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 12px;">
-                    <span style="font-family:'Outfit'; font-weight:700; color:var(--cycsa-azul); font-size:13px; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
-                        <i class="fa-solid fa-file-contract"></i> Referencia O/S (CYCSA-RG-FM-39)
+                    <span style="font-family:'Outfit'; font-weight:700; color:var(--cycsa-azul); font-size:12.5px; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-file-contract"></i> Referencia O/S
                     </span>
                     <span id="ref_os_badge_estado" style="font-size:10px; font-weight:700; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:10px; text-transform:uppercase;">Solo Lectura</span>
                 </div>
 
-                <div style="font-size: 12.5px; color: #334155; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 12px; color: #334155; display: flex; flex-direction: column; gap: 7px;">
                     <div><strong style="color:#0f172a;">Cliente:</strong> <span id="ref_os_cliente">--</span></div>
                     <div><strong style="color:#0f172a;">RUC / Cédula:</strong> <span id="ref_os_rfc" style="font-family:monospace;">--</span></div>
                     <div><strong style="color:#0f172a;">Atención a:</strong> <span id="ref_os_atencion">--</span></div>
@@ -541,7 +541,7 @@
 
                 <!-- Tabla de Ensayos Solicitados por el Cliente -->
                 <div style="margin-top: 15px;">
-                    <strong style="font-size:11.5px; color:#0f172a; text-transform:uppercase; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                    <strong style="font-size:11px; color:#0f172a; text-transform:uppercase; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
                         <i class="fa-solid fa-vials" style="color:var(--cycsa-azul);"></i> Ensayos Solicitados (O/S)
                     </strong>
                     <div style="overflow-x:auto; border:1px solid #cbd5e1; border-radius:6px; background:white;">
@@ -549,10 +549,7 @@
                             <thead>
                                 <tr style="background:#f1f5f9; font-size:10px; text-transform:uppercase; color:#475569;">
                                     <th style="padding:6px 4px; text-align:center; border-bottom:1px solid #cbd5e1; width:20px;">#</th>
-                                    <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1; min-width:120px;">Descripción (Nombre comercial)</th>
-                                    <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1; min-width:130px;">Condiciones de muestra</th>
-                                    <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1; min-width:70px;">Procedimiento</th>
-                                    <th style="padding:6px; text-align:center; border-bottom:1px solid #cbd5e1; width:35px;">U/M</th>
+                                    <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1;">Descripción</th>
                                     <th style="padding:6px; text-align:center; border-bottom:1px solid #cbd5e1; width:35px;">Cant</th>
                                 </tr>
                             </thead>
@@ -562,70 +559,66 @@
                         </table>
                     </div>
                 </div>
-
-                <div style="margin-top: 12px; font-size: 11px; color: #64748b; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px;">
-                    <i class="fa-solid fa-lightbulb" style="color:#f59e0b;"></i> <em>Referencia para cotejar los especímenes recibidos y los análisis que deben marcarse en la sección 3.</em>
-                </div>
             </div>
 
             <!-- PANEL DERECHO: FORMULARIO EDITABLE RT-FM-13 -->
-            <form method="POST" action="/Cycsa/publico/hojas-servicio/guardar" id="form-hoja-solicitud" style="display:block;">
+            <form method="POST" action="/Cycsa/publico/hojas-servicio/guardar" id="form-hoja-solicitud" style="display:block; min-width:0;">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id_os" id="hs_id_os">
                 <input type="hidden" name="id_hoja" id="hs_id_hoja" value="0">
 
             <!-- 1. METADATOS Y CONTROL INTERNO -->
-            <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px; margin-top: 15px;"><i class="fa-solid fa-clipboard-check"></i> 1. Metadatos y Control Interno</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label>No. Registro Laboratorio</label>
-                    <input type="text" name="numero_registro" id="hs_numero_registro" class="form-control" style="font-size:13px; padding:8px 12px; font-weight:700;" placeholder="Ej: 23896">
+            <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-clipboard-check"></i> A rellenar por el laboratorio (Control Interno)</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; margin-bottom: 15px; align-items:flex-end;">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">No. Registro Laboratorio</label>
+                    <input type="text" name="numero_registro" id="hs_numero_registro" class="form-control" style="font-size:13px; font-weight:700; height:38px; box-sizing:border-box;" placeholder="Ej: 23896">
                 </div>
-                <div class="form-group">
-                    <label>Fecha/Hora de Llegada al Lab</label>
-                    <input type="datetime-local" name="fecha_hora_llegada_laboratorio" id="hs_fecha_llegada" required class="form-control" style="font-size:13px; padding:8px 12px;">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Fecha/Hora de Llegada al Lab</label>
+                    <input type="datetime-local" name="fecha_hora_llegada_laboratorio" id="hs_fecha_llegada" required class="form-control" style="font-size:13px; height:38px; box-sizing:border-box;">
                 </div>
-                <div class="form-group">
-                    <label>Código del Documento</label>
-                    <input type="text" name="codigo_documento" id="hs_codigo_documento" readonly class="form-control" style="background:#f1f5f9; font-weight:700; font-size:13px; padding:8px 12px;" value="CYCSA-RT-FM-13">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Código del Documento</label>
+                    <input type="text" name="codigo_documento" id="hs_codigo_documento" readonly class="form-control" style="background:#f1f5f9; font-weight:700; font-size:13px; height:38px; box-sizing:border-box;" value="CYCSA-RT-FM-13">
                 </div>
             </div>
 
             <!-- 2. DATOS DEL CLIENTE -->
             <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-user-tie"></i> 1. Empresa o Cliente que Solicita el Servicio</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom: 12px;">
-                <div class="form-group">
-                    <label>Nombre Empresa/Cliente</label>
-                    <input type="text" name="nombre_empresa_o_cliente" id="hs_nombre_empresa" required class="form-control" style="font-size:13px; padding:8px 12px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; margin-bottom: 12px; align-items:flex-end;">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Nombre Empresa/Cliente</label>
+                    <input type="text" name="nombre_empresa_o_cliente" id="hs_nombre_empresa" required class="form-control" style="font-size:13px; height:38px; box-sizing:border-box;">
                 </div>
-                <div class="form-group">
-                    <label>Razón Social</label>
-                    <input type="text" name="razon_social" id="hs_razon_social" class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="Ej: CYCSA S.A. / Persona Natural">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Razón Social</label>
+                    <input type="text" name="razon_social" id="hs_razon_social" class="form-control" style="font-size:13px; height:38px; box-sizing:border-box;" placeholder="Ej: CYCSA S.A. / Persona Natural">
                 </div>
-                <div class="form-group">
-                    <label>Dirección Proyecto/Obra</label>
-                    <input type="text" name="direccion_proyecto" id="hs_direccion" required class="form-control" style="font-size:13px; padding:8px 12px;">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Dirección Proyecto/Obra</label>
+                    <input type="text" name="direccion_proyecto" id="hs_direccion" required class="form-control" style="font-size:13px; height:38px; box-sizing:border-box;">
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label>Teléfono</label>
-                    <input type="text" name="telefono" id="hs_telefono" required class="form-control" style="font-size:13px; padding:8px 12px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; margin-bottom: 15px; align-items:flex-end;">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Teléfono</label>
+                    <input type="text" name="telefono" id="hs_telefono" required class="form-control" style="font-size:13px; height:38px; box-sizing:border-box;">
                 </div>
-                <div class="form-group">
-                    <label>Correo Electrónico</label>
-                    <input type="email" name="correo_electronico" id="hs_email" required class="form-control" style="font-size:13px; padding:8px 12px;">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Correo Electrónico</label>
+                    <input type="email" name="correo_electronico" id="hs_email" required class="form-control" style="font-size:13px; height:38px; box-sizing:border-box;">
                 </div>
-                <div class="form-group">
-                    <label>Nombre de quien trae la muestra</label>
-                    <input type="text" name="nombre_persona_entrega_muestra" id="hs_persona_entrega" required class="form-control" style="font-size:13px; padding:8px 12px;">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Persona que entrega la muestra</label>
+                    <input type="text" name="nombre_persona_entrega_muestra" id="hs_persona_entrega" required class="form-control" style="font-size:13px; height:38px; box-sizing:border-box;">
                 </div>
             </div>
 
             <!-- 3. DATOS DE LA MUESTRA -->
-            <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-flask-vial"></i> 1. Datos de la Muestra (Sección 1.1 y 1.2)</div>
+            <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-flask-vial"></i> 1. Datos de la Muestra (1.1 y 1.2)</div>
             <div class="form-group" style="margin-bottom: 12px;">
-                <label>Naturaleza de la Muestra (Seleccione todas las que apliquen)</label>
+                <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">1.1 Denominación-Descripción e Identificación de la Muestra &mdash; Naturaleza de la muestra:</label>
                 <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:5px;">
                     <?php foreach (['Concreto', 'Bloques', 'Suelo', 'Adoquines', 'Agregados', 'Otros materiales'] as $nat): ?>
                         <label style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; font-size:13px; cursor:pointer;">
@@ -634,96 +627,99 @@
                     <?php endforeach; ?>
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label>Procedencia/ Punto de muestreo</label>
-                    <input type="text" name="procedencia_punto_muestreo" id="hs_procedencia" required class="form-control" style="font-size:13px; padding:8px 12px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; margin-bottom: 15px; align-items:flex-end;">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;" title="Describir la ubicación del punto donde se tomó la muestra así como la comarca.">Procedencia/ Punto de muestreo:</label>
+                    <input type="text" name="procedencia_punto_muestreo" id="hs_procedencia" required class="form-control" placeholder="Punto de toma y comarca" style="font-size:13px; height:38px; box-sizing:border-box;">
                 </div>
-                    <div class="form-group">
-                        <label>¿Quién tomó la muestra?</label>
-                        <input type="text" name="nombre_persona_toma_muestra" id="hs_persona_toma" list="lista_tecnicos_hs" required class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="Nombre de quien tomó la muestra (Ej: Juan / Cliente)">
-                        <datalist id="lista_tecnicos_hs">
-                            <option value="Cliente / Entregada por Cliente"></option>
-                            <?php if (!empty($tecnicos)): ?>
-                                <?php foreach ($tecnicos as $t): ?>
-                                    <?php $nomTec = htmlspecialchars($t['nombre'] ?? $t['nombre_tecnico'] ?? ''); ?>
-                                    <option value="<?= $nomTec ?>"></option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </datalist>
-                    </div>
-                <div class="form-group">
-                    <label>Fecha y hora de toma muestra</label>
-                    <input type="datetime-local" name="fecha_hora_toma_muestra" id="hs_fecha_toma" required class="form-control" style="font-size:13px; padding:8px 12px;">
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Persona quien tomó la muestra:</label>
+                    <input type="text" name="nombre_persona_toma_muestra" id="hs_persona_toma" list="lista_tecnicos_hs" required class="form-control" style="font-size:13px; height:38px; box-sizing:border-box;" placeholder="Nombre (Ej: Juan / Cliente)">
+                    <datalist id="lista_tecnicos_hs">
+                        <option value="Cliente / Entregada por Cliente"></option>
+                        <?php if (!empty($tecnicos)): ?>
+                            <?php foreach ($tecnicos as $t): ?>
+                                <?php $nomTec = htmlspecialchars($t['nombre'] ?? $t['nombre_tecnico'] ?? ''); ?>
+                                <option value="<?= $nomTec ?>"></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </datalist>
+                </div>
+                <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
+                    <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">1.2 Fecha y hora en que se tomó:</label>
+                    <input type="datetime-local" name="fecha_hora_toma_muestra" id="hs_fecha_toma" required class="form-control" style="font-size:13px; height:38px; box-sizing:border-box;">
                 </div>
             </div>
 
             <!-- 4. IDENTIFICACIONES PROPIAS (TABLA DINÁMICA) -->
             <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;">
-                <span><i class="fa-solid fa-list-ol"></i> 2. Identificaciones Propias de la Muestra (Especímenes)</span>
+                <span><i class="fa-solid fa-list-ol"></i> 2. Identificaciones Propias de la Muestra</span>
                 <button type="button" class="btn-accion-hs btn-registrar" style="padding:6px 14px; font-size:12.5px; cursor:pointer;" onclick="agregarFilaMuestraModal()">
                     <i class="fa-solid fa-plus"></i> Agregar Muestra
                 </button>
             </div>
 
-            <!-- BARRA DE ASIGNACIÓN GENERAL DE PLANTILLA (DESPLEGABLE AJAX) -->
-            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; position:relative;">
+            <!-- BARRA DE ASIGNACIÓN GENERAL DE PLANTILLA (SELECTOR INTERACTIVO AJAX AMPLIADO) -->
+            <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:12px 16px; margin-bottom:15px; position:relative;">
                 <input type="hidden" id="select_plantilla_global" name="plantilla_global_id" value="">
                 
-                <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:320px; position:relative;">
-                    <i class="fa-solid fa-layer-group text-success" style="font-size:18px;"></i>
-                    <span style="font-size:12.5px; font-weight:700; color:#166534; white-space:nowrap;">Plantilla de Ensayo:</span>
-                    
-                    <!-- Trigger Desplegable AJAX -->
-                    <div style="flex:1; position:relative;">
-                        <div id="trigger_plantilla_global" onclick="toggleDropdownPlantillasGlobal()" style="background:white; border:1.5px solid #86efac; border-radius:6px; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; min-height:36px; transition:all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.boxShadow='0 2px 6px rgba(22,163,74,0.1)';" onmouseout="this.style.borderColor='#86efac'; this.style.boxShadow='none';">
-                            <div id="texto_plantilla_seleccionada" style="display:flex; align-items:center; gap:8px; font-size:12px; color:#334155;">
-                                <i class="fa-solid fa-file-waveform text-success"></i>
-                                <span>-- Seleccionar Plantilla General --</span>
-                            </div>
-                            <i class="fa-solid fa-chevron-down" style="color:#64748b; font-size:11px;"></i>
-                        </div>
-
-                        <!-- Panel Flotante Desplegable AJAX -->
-                        <div id="dropdown_plantillas_panel" style="display:none; position:absolute; top:calc(100% + 5px); left:0; width:100%; min-width:440px; max-width:620px; background:white; border:1.5px solid #cbd5e1; border-radius:10px; box-shadow:0 12px 28px rgba(0,0,0,0.18); z-index:9999; padding:12px; box-sizing:border-box;">
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-                                <div style="position:relative; flex:1;">
-                                    <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:12px;"></i>
-                                    <input type="text" id="input_buscar_plantilla_ajax" placeholder="Buscar por código (ej: FM-22, FM-61), nombre o norma..." oninput="filtrarPlantillasAjax(this.value)" style="width:100%; padding:7px 10px 7px 30px; font-size:12px; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; outline:none;" autocomplete="off">
-                                </div>
-                                <button type="button" onclick="cerrarDropdownPlantillasGlobal()" class="btn btn-sm btn-outline-secondary" style="padding:4px 8px; font-size:13px; line-height:1;">&times;</button>
-                            </div>
-
-                            <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
-                                <button type="button" class="btn-filtro-plt active" onclick="filtrarCategoriaPlantilla('todos', this)" style="padding:3px 9px; font-size:11px; font-weight:600; border-radius:12px; border:1px solid #cbd5e1; background:#0284c7; color:white; cursor:pointer;">Todas (<span id="cnt_plt_todas">0</span>)</button>
-                                <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('cliente', this)" style="padding:3px 9px; font-size:11px; font-weight:600; border-radius:12px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">⭐ Del Cliente (<span id="cnt_plt_cliente">0</span>)</button>
-                                <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('servicio', this)" style="padding:3px 9px; font-size:11px; font-weight:600; border-radius:12px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">🎯 Recomendadas (<span id="cnt_plt_servicio">0</span>)</button>
-                            </div>
-
-                            <div id="lista_resultados_plantillas_ajax" style="max-height:240px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:4px;">
-                                <!-- Inyectado dinámicamente por AJAX -->
-                            </div>
-                        </div>
+                <!-- Fila Superior: Encabezado y Acciones -->
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-layer-group text-success" style="font-size:18px;"></i>
+                        <span style="font-size:13px; font-weight:700; color:#166534;">Plantilla de Ensayo Predeterminada:</span>
+                        <span style="font-size:11.5px; color:#15803d; font-weight:500;">(Se asigna automáticamente a especímenes nuevos)</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button type="button" class="btn btn-success btn-sm" onclick="aplicarPlantillaATodasLasMuestras()" style="font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                            <i class="fa-solid fa-check-double"></i> Aplicar a todas las muestras
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="abrirPreviewPlantillaGlobal()" style="font-size:12px; display:inline-flex; align-items:center; gap:5px;" title="Ver maqueta de la plantilla seleccionada">
+                            <i class="fa-solid fa-eye"></i> Vista Previa
+                        </button>
                     </div>
                 </div>
 
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <button type="button" class="btn btn-success btn-sm" onclick="aplicarPlantillaATodasLasMuestras()" style="font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
-                        <i class="fa-solid fa-check-double"></i> Aplicar a todas las muestras
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="abrirPreviewPlantillaGlobal()" style="font-size:12px; display:inline-flex; align-items:center; gap:5px;" title="Ver maqueta de la plantilla seleccionada">
-                        <i class="fa-solid fa-eye"></i> Vista Previa
-                    </button>
+                <!-- Fila Principal: Desplegable AJAX Full-Width -->
+                <div style="position:relative; width:100%;">
+                    <div id="trigger_plantilla_global" onclick="toggleDropdownPlantillasGlobal()" style="background:white; border:1.5px solid #86efac; border-radius:8px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; min-height:42px; transition:all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.boxShadow='0 3px 8px rgba(22,163,74,0.12)';" onmouseout="this.style.borderColor='#86efac'; this.style.boxShadow='none';">
+                        <div id="texto_plantilla_seleccionada" style="display:flex; align-items:center; gap:10px; font-size:12.5px; color:#334155; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            <i class="fa-solid fa-file-waveform text-success" style="font-size:15px;"></i>
+                            <span style="font-weight:600;">-- Seleccionar Plantilla General --</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-down" style="color:#64748b; font-size:12px; margin-left:8px;"></i>
+                    </div>
+
+                    <!-- Panel Flotante Desplegable AJAX Espacioso -->
+                    <div id="dropdown_plantillas_panel" style="display:none; position:absolute; top:calc(100% + 6px); left:0; width:100%; background:white; border:1.5px solid #cbd5e1; border-radius:10px; box-shadow:0 16px 36px rgba(0,0,0,0.2); z-index:99999; padding:14px; box-sizing:border-box;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                            <div style="position:relative; flex:1;">
+                                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
+                                <input type="text" id="input_buscar_plantilla_ajax" placeholder="Buscar por código (ej: FM-22, FM-61, FM-35), nombre o norma técnica..." oninput="filtrarPlantillasAjax(this.value)" style="width:100%; padding:8px 12px 8px 34px; font-size:13px; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; outline:none;" autocomplete="off">
+                            </div>
+                            <button type="button" onclick="cerrarDropdownPlantillasGlobal()" class="btn btn-sm btn-outline-secondary" style="padding:6px 10px; font-size:14px; line-height:1; cursor:pointer;" title="Cerrar">&times;</button>
+                        </div>
+
+                        <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+                            <button type="button" class="btn-filtro-plt active" onclick="filtrarCategoriaPlantilla('todos', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #0284c7; background:#0284c7; color:white; cursor:pointer;">Todas (<span id="cnt_plt_todas">0</span>)</button>
+                            <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('cliente', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">⭐ Del Cliente (<span id="cnt_plt_cliente">0</span>)</button>
+                            <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('servicio', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">🎯 Recomendadas (<span id="cnt_plt_servicio">0</span>)</button>
+                        </div>
+
+                        <div id="lista_resultados_plantillas_ajax" style="max-height:280px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:6px;">
+                            <!-- Inyectado dinámicamente por AJAX -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <table class="hs-table" style="width:100%; border-collapse:collapse; margin-bottom:20px;" id="hs-tabla-muestras">
+            <table class="hs-table" style="width:100%; border-collapse:collapse; margin-bottom:20px; border:1px solid #e2e8f0;" id="hs-tabla-muestras">
                 <thead>
-                    <tr style="background:#f8fafc;">
-                        <th style="width:22%; font-size:12px; padding:8px;">Identificación Espécimen</th>
-                        <th style="width:48%; font-size:12px; padding:8px;">Descripción de la Muestra / Elemento</th>
-                        <th style="width:20%; font-size:12px; padding:8px;">Plantilla Asignada</th>
-                        <th style="width:10%; font-size:12px; padding:8px; text-align:center;">Acción</th>
+                    <tr style="background:#f8fafc; font-size:11.5px; color:#475569; text-transform:uppercase;">
+                        <th style="width:20%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Identificación Espécimen</th>
+                        <th style="width:45%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Descripción de la Muestra / Elemento</th>
+                        <th style="width:25%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Plantilla Asignada</th>
+                        <th style="width:10%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:center;">Acción</th>
                     </tr>
                 </thead>
                 <tbody id="hs-tbody-muestras">
