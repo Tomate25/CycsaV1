@@ -60,8 +60,8 @@ $puedeEditarPlan = ($totalEnsayados === 0);
     .btn-secondary-lab { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
     .btn-secondary-lab:hover { background: #e2e8f0; }
 
-    .modal-lab { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
-    .modal-lab-content { background: white; margin: 4% auto; padding: 25px 30px; border-radius: 12px; width: 90%; max-width: 620px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0; }
+    .modal-lab { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+    .modal-lab-content { background: white; margin: 3% auto; padding: 25px 30px; border-radius: 12px; width: 92%; max-width: 680px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15); border: 1px solid #e2e8f0; box-sizing: border-box; }
 </style>
 
 <!-- Encabezado Ciego -->
@@ -518,15 +518,15 @@ $puedeEditarPlan = ($totalEnsayados === 0);
 
 <!-- Modal 2: Registrar Ensayo de Rotura -->
 <div id="modalRegistrarRotura" class="modal-lab">
-    <div class="modal-lab-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-            <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--cycsa-azul);">
+    <div class="modal-lab-content" style="max-width: 760px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--cycsa-azul); display: flex; align-items: center; gap: 8px;">
                 <i class="fa-solid fa-hammer"></i> Captura de Rotura: <span id="rot_esp_codigo" style="font-family: monospace; color:#0369a1;"></span>
             </h3>
-            <button onclick="cerrarModalRegistrarRotura()" style="border: none; background: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            <button type="button" onclick="cerrarModalRegistrarRotura()" style="border: none; background: none; font-size: 24px; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
         </div>
 
-        <form method="POST" action="/Cycsa/publico/laboratorio/registrar-rotura" onsubmit="validarEnvioRotura(event)">
+        <form method="POST" action="/Cycsa/publico/laboratorio/registrar-rotura" onsubmit="validarEnvioRotura(event)" style="margin: 0;">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <input type="hidden" name="muestra_id" value="<?= (int)$muestra['muestra_id'] ?>">
             <input type="hidden" id="rot_especimen_id" name="especimen_id" value="">
@@ -534,14 +534,14 @@ $puedeEditarPlan = ($totalEnsayados === 0);
             <input type="hidden" id="rot_fecha_prog" value="">
             <input type="hidden" id="rot_tol_horas" value="24">
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
-                    <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">Fecha y Hora Real:</label>
-                    <input type="datetime-local" id="rot_fecha_real" name="fecha_real" class="form-control" style="width: 100%; box-sizing: border-box;" value="<?= date('Y-m-d\TH:i') ?>" onchange="verificarToleranciaTiempo()" required>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Fecha y Hora Real:</label>
+                    <input type="datetime-local" id="rot_fecha_real" name="fecha_real" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="<?= date('Y-m-d\TH:i') ?>" onchange="verificarToleranciaTiempo()" required>
                 </div>
                 <div>
-                    <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">Tipo de Falla (ASTM C39):</label>
-                    <select name="tipo_falla" class="form-control" style="width: 100%; box-sizing: border-box;">
+                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Tipo de Falla (ASTM C39):</label>
+                    <select name="tipo_falla" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;">
                         <option value="Tipo 1 (Cono bien formado)">Tipo 1 (Cono bien formado)</option>
                         <option value="Tipo 2 (Cono y división)">Tipo 2 (Cono y división)</option>
                         <option value="Tipo 3 (División columnar)">Tipo 3 (División columnar)</option>
@@ -551,26 +551,27 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
-                    <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">Carga de Rotura (lb):</label>
-                    <input type="number" step="0.1" id="rot_carga" name="carga" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 15px; font-weight: 700;" placeholder="Ej. 85000" oninput="calcularEsfuerzoEnVivo()" required>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Carga de Rotura (lb):</label>
+                    <input type="number" step="0.1" id="rot_carga" name="carga" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 15px; font-weight: 700; height: 38px;" placeholder="Ej. 85000" oninput="calcularEsfuerzoEnVivo()" required>
                 </div>
                 <div>
-                    <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">Área Transversal (in²):</label>
-                    <input type="number" step="0.001" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box;" value="28.274" oninput="calcularEsfuerzoEnVivo()" required>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Área Transversal (in²):</label>
+                    <input type="number" step="0.001" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="28.274" oninput="calcularEsfuerzoEnVivo()" required>
                 </div>
             </div>
 
             <!-- Hoja de Cálculo RT-FM-61 / Roturas (Datos Crudos Opcionales con Calibración PRENSA-01 y Factor L/D) -->
-            <details style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px;">
-                <summary style="font-size: 12px; font-weight: 700; color: #103487; cursor: pointer;">
+            <details style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
+                <summary style="font-size: 12.5px; font-weight: 700; color: #103487; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                     <i class="fa-solid fa-calculator"></i> Hoja de Cálculo RT-FM-61 (Dimensiones, Masa, Prensa PRENSA-01 y Factor L/D)
                 </summary>
-                <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                
+                <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
                     <div>
-                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Formato HC:</label>
-                        <select name="datos_crudos[codigo_formato]" id="hc_codigo_formato" class="form-control" style="font-size: 12px; padding: 4px 6px;">
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Formato HC:</label>
+                        <select name="datos_crudos[codigo_formato]" id="hc_codigo_formato" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;">
                             <option value="">-- Directo --</option>
                             <option value="RT-FM-61">RT-FM-61 (Cilindro C39)</option>
                             <option value="RT-FM-36">RT-FM-36 (Bloques C140)</option>
@@ -581,58 +582,58 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                         </select>
                     </div>
                     <div>
-                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Diámetro 1 (cm):</label>
-                        <input type="number" step="0.01" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 15.20" oninput="recalcularDesdeHc61()">
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Diámetro 1 (cm):</label>
+                        <input type="number" step="0.01" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.20" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
-                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Diámetro 2 (cm):</label>
-                        <input type="number" step="0.01" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 15.22" oninput="recalcularDesdeHc61()">
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Diámetro 2 (cm):</label>
+                        <input type="number" step="0.01" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.22" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
-                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Longitud 1 (cm):</label>
-                        <input type="number" step="0.01" name="datos_crudos[largo_1]" id="hc_l1" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 30.40" oninput="recalcularDesdeHc61()">
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Longitud 1 (cm):</label>
+                        <input type="number" step="0.01" name="datos_crudos[largo_1]" id="hc_l1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 30.40" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
-                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Longitud 2 (cm):</label>
-                        <input type="number" step="0.01" name="datos_crudos[largo_2]" id="hc_l2" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 30.45" oninput="recalcularDesdeHc61()">
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Longitud 2 (cm):</label>
+                        <input type="number" step="0.01" name="datos_crudos[largo_2]" id="hc_l2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 30.45" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
-                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Masa (kg):</label>
-                        <input type="number" step="0.001" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 12.850">
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Masa (kg):</label>
+                        <input type="number" step="0.001" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 12.850">
                     </div>
-                    <div style="grid-column: span 3;">
-                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Lectura Prensa sin corregir (lbf) — aplica polinomio PRENSA-01:</label>
-                        <input type="number" step="0.1" name="datos_crudos[lectura_carga_lbf]" id="hc_lectura_lbf" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 91932" oninput="recalcularDesdeHc61()">
+                    <div style="grid-column: 1 / -1;">
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Lectura Prensa sin corregir (lbf) — aplica polinomio PRENSA-01:</label>
+                        <input type="number" step="0.1" name="datos_crudos[lectura_carga_lbf]" id="hc_lectura_lbf" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 91932" oninput="recalcularDesdeHc61()">
                     </div>
                 </div>
             </details>
 
             <!-- Previsualización de Cálculos -->
-            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; justify-content: space-around; text-align: center;">
-                <div>
-                    <div style="font-size: 11px; color: #64748b; font-weight: 700;">Esfuerzo PSI:</div>
-                    <div id="calc_psi" style="font-size: 18px; font-weight: 800; font-family: monospace; color: #0369a1;">--</div>
+            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center;">
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Esfuerzo PSI:</div>
+                    <div id="calc_psi" style="font-size: 20px; font-weight: 800; font-family: monospace; color: #0369a1; margin-top: 2px;">--</div>
                 </div>
-                <div>
-                    <div style="font-size: 11px; color: #64748b; font-weight: 700;">Esfuerzo kg/cm²:</div>
-                    <div id="calc_kgcm2" style="font-size: 18px; font-weight: 800; font-family: monospace; color: #047857;">--</div>
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Esfuerzo kg/cm²:</div>
+                    <div id="calc_kgcm2" style="font-size: 20px; font-weight: 800; font-family: monospace; color: #047857; margin-top: 2px;">--</div>
                 </div>
             </div>
 
             <!-- Alerta y Justificación de Tolerancia Temporal -->
-            <div id="box_justificacion_tolerancia" style="display: none; background: #fff1f2; border: 1.5px solid #fecaca; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
-                <div style="font-size: 12px; font-weight: 800; color: #991b1b; margin-bottom: 4px;">
+            <div id="box_justificacion_tolerancia" style="display: none; background: #fff1f2; border: 1.5px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 15px;">
+                <div style="font-size: 12px; font-weight: 800; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
                     <i class="fa-solid fa-triangle-exclamation"></i> ENSAYO FUERA DE TOLERANCIA ASTM C39
                 </div>
-                <div style="font-size: 11.5px; color: #881337; margin-bottom: 8px;">
+                <div style="font-size: 12px; color: #881337; margin-bottom: 8px; line-height: 1.4;">
                     La fecha/hora seleccionada excede la ventana de tolerancia admisible para esta edad. Es mandatorio registrar una justificación técnica para el informe.
                 </div>
-                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
+                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; font-size: 12.5px;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn-accion btn-secondary-lab" onclick="cerrarModalRegistrarRotura()">Cancelar</button>
-                <button type="submit" class="btn-accion btn-primary-lab">
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+                <button type="button" class="btn-accion btn-secondary-lab" onclick="cerrarModalRegistrarRotura()" style="padding: 9px 18px; font-size: 13px; font-weight: 600;">Cancelar</button>
+                <button type="submit" class="btn-accion btn-primary-lab" style="padding: 9px 20px; font-size: 13px; font-weight: 700;">
                     <i class="fa-solid fa-check"></i> Registrar Rotura
                 </button>
             </div>
