@@ -92,16 +92,20 @@
                                                         <td class="fw-bold"><?= htmlspecialchars((string)($c['valor_numerico'] ?? 'JSON')) ?></td>
                                                         <td><?= htmlspecialchars($c['unidad'] ?? '-') ?></td>
                                                         <td>
-                                                            <form method="POST" action="/Cycsa/publico/equipos-calibracion/guardar-constante" class="d-flex gap-1">
-                                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
-                                                                <input type="hidden" name="equipo_id" value="<?= (int)$eq['id'] ?>">
-                                                                <input type="hidden" name="clave" value="<?= htmlspecialchars($c['clave']) ?>">
-                                                                <input type="hidden" name="ref_equipo_alias" value="<?= htmlspecialchars($c['ref_equipo_alias'] ?? '') ?>">
-                                                                <input type="number" step="any" name="valor_numerico" value="<?= htmlspecialchars((string)($c['valor_numerico'] ?? '')) ?>" class="form-control form-control-sm" style="width: 110px;">
-                                                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Guardar constante">
-                                                                    <i class="fas fa-save"></i>
-                                                                </button>
-                                                            </form>
+                                                            <?php if (!empty($puedeEditarCalidad)): ?>
+                                                                <form method="POST" action="/Cycsa/publico/equipos-calibracion/guardar-constante" class="d-flex gap-1">
+                                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+                                                                    <input type="hidden" name="equipo_id" value="<?= (int)$eq['id'] ?>">
+                                                                    <input type="hidden" name="clave" value="<?= htmlspecialchars($c['clave']) ?>">
+                                                                    <input type="hidden" name="ref_equipo_alias" value="<?= htmlspecialchars($c['ref_equipo_alias'] ?? '') ?>">
+                                                                    <input type="number" step="any" name="valor_numerico" value="<?= htmlspecialchars((string)($c['valor_numerico'] ?? '')) ?>" class="form-control form-control-sm" style="width: 110px;">
+                                                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Guardar constante">
+                                                                        <i class="fas fa-save"></i>
+                                                                    </button>
+                                                                </form>
+                                                            <?php else: ?>
+                                                                <span class="badge bg-light text-muted border"><i class="fas fa-lock me-1"></i>Solo Calidad</span>
+                                                            <?php endif; ?>
                                                         </td>
                                                     </tr>
                                                 <?php endforeach; ?>
@@ -195,16 +199,22 @@
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <form method="POST" action="/Cycsa/publico/equipos-calibracion/actualizar-correccion" class="d-inline">
-                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
-                                                <input type="hidden" name="codigo_formato" value="<?= htmlspecialchars($corr['codigo_formato']) ?>">
-                                                <input type="hidden" name="correccion_id" value="<?= htmlspecialchars($corr['correccion_id']) ?>">
-                                                <input type="hidden" name="usar_corregido" value="<?= !empty($corr['usar_corregido']) ? '0' : '1' ?>">
-                                                <input type="hidden" name="confirmado_calidad" value="1">
-                                                <button type="submit" class="btn btn-sm btn-outline-dark">
-                                                    Cambiar a <?= !empty($corr['usar_corregido']) ? 'Original' : 'Corregido' ?>
-                                                </button>
-                                            </form>
+                                            <?php if (!empty($corr['es_dudosa']) && !empty($puedeEditarCalidad)): ?>
+                                                <form method="POST" action="/Cycsa/publico/equipos-calibracion/actualizar-correccion" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+                                                    <input type="hidden" name="codigo_formato" value="<?= htmlspecialchars($corr['codigo_formato']) ?>">
+                                                    <input type="hidden" name="correccion_id" value="<?= htmlspecialchars($corr['correccion_id']) ?>">
+                                                    <input type="hidden" name="usar_corregido" value="<?= !empty($corr['usar_corregido']) ? '0' : '1' ?>">
+                                                    <input type="hidden" name="confirmado_calidad" value="1">
+                                                    <button type="submit" class="btn btn-sm btn-outline-dark">
+                                                        Cambiar a <?= !empty($corr['usar_corregido']) ? 'Original' : 'Corregido' ?>
+                                                    </button>
+                                                </form>
+                                            <?php elseif (!empty($corr['es_dudosa'])): ?>
+                                                <span class="badge bg-light text-muted border"><i class="fas fa-lock me-1"></i>Solo Calidad</span>
+                                            <?php else: ?>
+                                                <span class="text-muted small">Validada</span>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

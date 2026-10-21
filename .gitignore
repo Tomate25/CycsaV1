@@ -1,5 +1,14 @@
-# Variables de entorno locales (NO subir a git; .env contiene las credenciales base de Bluehost)
+# Variables de entorno locales y producción (NUNCA subir a git)
+.env
+.env.*
+!.env.example
 .env.local
+
+# Scripts de prueba sueltos y volcados SQL con datos sensibles
+prueba.php
+cycsa_db_backup.sql
+database/cycsa_*.sql
+database/backups/
 
 # Carpetas de desarrollo temporal y respaldos
 scratch/

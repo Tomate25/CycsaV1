@@ -16,10 +16,45 @@ class LaboratorioControlador extends ControladorBase {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        if (!isset($_SESSION['usuario_id'])) {
+        if (!isset($_SESSION['usuario_id']) || (int)$_SESSION['usuario_id'] <= 0) {
             $respuesta->redirigir('/Cycsa/publico/login');
             exit;
         }
+    }
+
+    private function obtenerUsuarioIdAutenticado(Peticion $peticion, Respuesta $respuesta): ?int {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $usuarioId = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
+        if ($usuarioId <= 0) {
+            if ($peticion->esAjax()) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Sesión no autenticada o expirada.'], 401);
+            } else {
+                $respuesta->redirigir('/Cycsa/publico/login');
+            }
+            return null;
+        }
+        return $usuarioId;
+    }
+
+    private function verificarTokenCsrf(Peticion $peticion, Respuesta $respuesta, array $datos = [], string $redirectUrl = '/Cycsa/publico/laboratorio'): bool {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $tokenSesion = (string)($_SESSION['csrf_token'] ?? '');
+        $tokenRecibido = (string)($datos['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
+
+        if ($tokenSesion === '' || $tokenRecibido === '' || !hash_equals($tokenSesion, $tokenRecibido)) {
+            if ($peticion->esAjax()) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido o sesión expirada.'], 403);
+            } else {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
+                $respuesta->redirigir($redirectUrl);
+            }
+            return false;
+        }
+        return true;
     }
 
     private function verificarPermiso(Respuesta $respuesta, string $accion = 'ver'): void {
@@ -359,7 +394,10 @@ class LaboratorioControlador extends ControladorBase {
 
             $muestraId = (int)($datos['muestra_id'] ?? 0);
             $plantillaVersionId = !empty($datos['plantilla_version_id']) ? (int)$datos['plantilla_version_id'] : null;
-            $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+            $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+            if ($usuarioId === null) {
+                return;
+            }
 
             // Reconstruir array de edades
             $edadesConfig = [];
@@ -402,7 +440,10 @@ class LaboratorioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         
         $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+        $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+        if ($usuarioId === null) {
+            return;
+        }
         $esAjax = $peticion->esAjax();
 
         if ($peticion->esPost()) {
@@ -464,7 +505,10 @@ class LaboratorioControlador extends ControladorBase {
                 return;
             }
 
-            $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+            $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+            if ($usuarioId === null) {
+                return;
+            }
             $muestraId = (int)($datos['muestra_id'] ?? 0);
 
             $roturasModelo = new RoturasModelo();
@@ -550,7 +594,10 @@ class LaboratorioControlador extends ControladorBase {
 
             $muestraId = (int)($datos['muestra_id'] ?? 0);
             $planEdadId = (int)($datos['plan_edad_id'] ?? 0);
-            $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+            $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+            if ($usuarioId === null) {
+                return;
+            }
 
             $roturasModelo = new RoturasModelo();
             $resultado = $roturasModelo->generarInformeParcial($muestraId, $planEdadId, $usuarioId);
@@ -581,7 +628,10 @@ class LaboratorioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
 
         $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+        $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+        if ($usuarioId === null) {
+            return;
+        }
         $esAjax = $peticion->esAjax();
 
         if ($peticion->esPost()) {
@@ -630,7 +680,10 @@ class LaboratorioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
 
         $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+        $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+        if ($usuarioId === null) {
+            return;
+        }
         $esAjax = $peticion->esAjax();
 
         if ($peticion->esPost()) {
@@ -1071,22 +1124,40 @@ class LaboratorioControlador extends ControladorBase {
      */
     public function calcularHcAjax(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        if ($this->obtenerUsuarioIdAutenticado($peticion, $respuesta) === null) {
+            return;
+        }
 
         $datos = $peticion->obtenerDatos();
-        $codigoFormato = trim($datos['codigo_formato'] ?? 'RT-FM-61');
+        if ($peticion->esPost() && !$this->verificarTokenCsrf($peticion, $respuesta, $datos)) {
+            return;
+        }
+
+        $codigoFormato = strtoupper(trim((string)($datos['codigo_formato'] ?? 'RT-FM-61')));
         $entradas = isset($datos['entradas']) && is_array($datos['entradas']) ? $datos['entradas'] : $datos;
 
         try {
             $motor = new \Cycsa\Modulos\Operaciones\Servicios\MotorHojasCalculoServicio();
+            if (!in_array($codigoFormato, $motor->listarCodigosFormatos(), true)) {
+                $respuesta->enviarJson([
+                    'status' => 'error',
+                    'message' => 'Formato de hoja de cálculo no válido.'
+                ], 422);
+                return;
+            }
+
             $resultado = $motor->evaluarEspecimen($codigoFormato, $entradas);
             $respuesta->enviarJson([
                 'status' => 'success',
                 'data' => $resultado
             ]);
         } catch (\Throwable $e) {
+            error_log('LaboratorioControlador::calcularHcAjax error: ' . $e->getMessage());
             $respuesta->enviarJson([
                 'status' => 'error',
-                'message' => $e->getMessage()
+                'message' => 'No fue posible procesar los datos de la hoja de cálculo. Verifique los valores ingresados.'
             ], 422);
         }
     }
@@ -1099,16 +1170,32 @@ class LaboratorioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         $this->verificarPermiso($respuesta, 'crear_editar');
 
+        $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+        if ($usuarioId === null) {
+            return;
+        }
+
         $datos = $peticion->obtenerDatos();
+        if (!$this->verificarTokenCsrf($peticion, $respuesta, $datos)) {
+            return;
+        }
+
         $idOs = (int)($datos['id_os'] ?? 0);
-        $codigoFormato = strtoupper(trim($datos['codigo_formato'] ?? 'RT-FM-55'));
-        $variante = trim($datos['variante'] ?? 'ESTANDAR');
+        $codigoFormato = strtoupper(trim((string)($datos['codigo_formato'] ?? 'RT-FM-55')));
+        $variante = trim((string)($datos['variante'] ?? 'ESTANDAR'));
         $encabezado = isset($datos['encabezado']) && is_array($datos['encabezado']) ? $datos['encabezado'] : [];
         $puntos = isset($datos['puntos']) && is_array($datos['puntos']) ? $datos['puntos'] : [];
         $proctorMuestraId = !empty($datos['proctor_muestra_id']) ? (int)$datos['proctor_muestra_id'] : null;
         $muestraId = !empty($datos['muestra_id']) ? (int)$datos['muestra_id'] : null;
         $idHoja = !empty($datos['id_hoja_solicitud']) ? (int)$datos['id_hoja_solicitud'] : null;
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+
+        if (!in_array($codigoFormato, ['RT-FM-27', 'RT-FM-54', 'RT-FM-55', 'RT-FM-62'], true)) {
+            $respuesta->enviarJson([
+                'status' => 'error',
+                'message' => 'Formato de hoja de campo no válido.'
+            ], 422);
+            return;
+        }
 
         try {
             $servicio = new \Cycsa\Modulos\Operaciones\Servicios\HojaCampoProctorServicio();
@@ -1122,9 +1209,10 @@ class LaboratorioControlador extends ControladorBase {
                 'data' => $res
             ]);
         } catch (\Throwable $e) {
+            error_log('LaboratorioControlador::registrarHojaCampoHc error: ' . $e->getMessage());
             $respuesta->enviarJson([
                 'status' => 'error',
-                'message' => $e->getMessage()
+                'message' => 'No fue posible registrar la hoja de campo. Verifique los datos ingresados.'
             ], 422);
         }
     }
@@ -1132,26 +1220,52 @@ class LaboratorioControlador extends ControladorBase {
     /**
      * Renderiza el informe imprimible oficial para los 5 formatos nuevos de Hojas de Cálculo
      * que no poseen equivalente RT-FM-22 (RT-FM-46 CBR, RT-FM-56 Picnómetros, RT-FM-58 Sanidad,
-     * RT-FM-62 Infiltración, RT-FM-64 Acero).
+     * RT-FM-62 Infiltración, RT-FM-64 Acero) cargando exclusivamente registros reales de BD.
      */
     public function imprimirReporteHcNuevo(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         $this->verificarPermiso($respuesta, 'ver');
 
-        $codigoFormato = strtoupper(trim($_GET['formato'] ?? 'RT-FM-64'));
+        if ($this->obtenerUsuarioIdAutenticado($peticion, $respuesta) === null) {
+            return;
+        }
+
+        $codigoFormato = strtoupper(trim((string)($_GET['formato'] ?? '')));
         $motor = new \Cycsa\Modulos\Operaciones\Servicios\MotorHojasCalculoServicio();
         $mapeador = new \Cycsa\Modulos\Operaciones\Servicios\MapeadorRtFm22Servicio($motor);
 
-        $spec = $motor->cargarEspecificacion($codigoFormato);
-        $entradasDemo = [];
-        foreach ($spec['caso_prueba'] ?? [] as $cp) {
-            $entradasDemo[] = $cp['entradas'];
+        if (!$mapeador->esFormatoReporteNuevoValido($codigoFormato)) {
+            if ($peticion->esAjax()) {
+                $respuesta->enviarJson([
+                    'status' => 'error',
+                    'message' => 'El formato solicitado no es un reporte válido.'
+                ], 422);
+                return;
+            }
+            $_SESSION['error'] = 'El formato solicitado no es un reporte válido.';
+            $respuesta->redirigir('/Cycsa/publico/laboratorio');
+            return;
         }
-        $evalConjunto = $motor->evaluarConjunto($codigoFormato, $entradasDemo);
-        $reporte = $mapeador->mapearHaciaInforme($codigoFormato, $evalConjunto, [
-            'codigo_muestra' => $_GET['codigo_muestra'] ?? ($spec['caso_prueba'][0]['nombre'] ?? 'MS-0001-26'),
-            'fecha_ensayo' => date('Y-m-d'),
-        ]);
+
+        try {
+            $reporte = $mapeador->construirReporteNuevoDesdeBaseDatos($codigoFormato, $_GET);
+        } catch (\Throwable $e) {
+            error_log('LaboratorioControlador::imprimirReporteHcNuevo error: ' . $e->getMessage());
+            $reporte = null;
+        }
+
+        if ($reporte === null) {
+            if ($peticion->esAjax()) {
+                $respuesta->enviarJson([
+                    'status' => 'error',
+                    'message' => 'No se encontraron datos reales registrados en base de datos para emitir este informe.'
+                ], 404);
+                return;
+            }
+            $_SESSION['error'] = 'No se encontraron datos reales registrados en base de datos para emitir este informe.';
+            $respuesta->redirigir('/Cycsa/publico/laboratorio');
+            return;
+        }
 
         require dirname(__DIR__) . '/Vistas/reporte_hc_nuevo_print.php';
     }

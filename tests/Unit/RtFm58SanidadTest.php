@@ -52,7 +52,29 @@ class RtFm58SanidadTest extends TestCase {
         $f2 = ['tamano' => '1 1/2" - 3/4"', 'retenido_original' => 1520, 'masa_inicial' => 1005, 'masa_final' => 988];
 
         $conjunto = $this->motor->evaluarConjunto('RT-FM-58', [$f1, $f2]);
-        $this->assertEqualsWithDelta(6287.0, $conjunto['agregaciones']['total_retenido_original'], 0.01);
-        $this->assertGreaterThan(2.32, $conjunto['agregaciones']['perdida_total']);
+        $this->assertEqualsWithDelta(6287.0, $conjunto['agregaciones']['total_retenido_original'], 0.001);
+        $this->assertEqualsWithDelta(75.8231, $conjunto['especimenes'][0]['valores']['gradacion_pct'], 0.001);
+        $this->assertEqualsWithDelta(2.3223, $conjunto['especimenes'][0]['valores']['perdida_corregida'], 0.001);
+        $this->assertEqualsWithDelta(24.1769, $conjunto['especimenes'][1]['valores']['gradacion_pct'], 0.001);
+        $this->assertEqualsWithDelta(0.4090, $conjunto['especimenes'][1]['valores']['perdida_corregida'], 0.001);
+        $this->assertEqualsWithDelta(2.7312, (float)$conjunto['agregaciones']['perdida_total'], 0.001);
+    }
+
+    public function testParametrizacionCorreccionDudosaFm5801ConversionUnidadKgAGramos(): void {
+        // FM58-01 en RT-FM-58.json: "Fracciones gruesas pesan en kg (4.767) y finas en g (154); fácil equivocarse" -> "Unidad única: g"
+        $fraccionEnKg = ['tamano' => '2 1/2" - 1 1/2"', 'retenido_original' => 4767, 'masa_inicial' => 4.767, 'masa_final' => 4.621];
+
+        // Con FM58-01 activa: convierte 4.767 kg -> 4767 g y 4.621 kg -> 4621 g, perdida_masa = 146.0 g
+        $evalCorregido = $this->motor->evaluarEspecimen('RT-FM-58', $fraccionEnKg, [
+            'correcciones_override' => ['FM58-01' => true],
+        ]);
+        $this->assertEqualsWithDelta(146.0, (float)$evalCorregido['valores']['perdida_masa'], 0.01);
+        $this->assertEqualsWithDelta(3.0627, (float)$evalCorregido['valores']['perdida_pct'], 0.001);
+
+        // Con FM58-01 desactivada: mantiene el valor sin convertir (4.767 - 4.621 = 0.146)
+        $evalSinConvertir = $this->motor->evaluarEspecimen('RT-FM-58', $fraccionEnKg, [
+            'correcciones_override' => ['FM58-01' => false],
+        ]);
+        $this->assertEqualsWithDelta(0.146, (float)$evalSinConvertir['valores']['perdida_masa'], 0.001);
     }
 }

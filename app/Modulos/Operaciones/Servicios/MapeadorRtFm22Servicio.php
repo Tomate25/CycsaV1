@@ -2,7 +2,9 @@
 
 namespace Cycsa\Modulos\Operaciones\Servicios;
 
+use Cycsa\Nucleo\Conexion;
 use InvalidArgumentException;
+use PDO;
 
 /**
  * Servicio de Mapeo Bidireccional entre las 17 Hojas de Cálculo (RT-FM-25 al RT-FM-64)
@@ -11,6 +13,14 @@ use InvalidArgumentException;
  * RT-FM-46 (CBR), RT-FM-56 (Picnómetros), RT-FM-58 (Sanidad), RT-FM-62 (Infiltración) y RT-FM-64 (Acero).
  */
 class MapeadorRtFm22Servicio {
+
+    public const FORMATOS_REPORTE_NUEVO = [
+        'RT-FM-46',
+        'RT-FM-56',
+        'RT-FM-58',
+        'RT-FM-62',
+        'RT-FM-64',
+    ];
 
     private MotorHojasCalculoServicio $motor;
 
@@ -126,6 +136,227 @@ class MapeadorRtFm22Servicio {
             throw new InvalidArgumentException("El formato {$cod} no está registrado en el mapa RT-FM-22.");
         }
         return self::MAPA_DESTINOS_RT_FM_22[$cod];
+    }
+
+    /**
+     * Valida estrictamente si un código de formato corresponde a uno de los 5 reportes nuevos permitidos.
+     */
+    public function esFormatoReporteNuevoValido(string $codigoFormato): bool {
+        $cod = strtoupper(trim($codigoFormato));
+        return in_array($cod, self::FORMATOS_REPORTE_NUEVO, true);
+    }
+
+    /**
+     * Carga y evalúa los datos reales de base de datos para cualquiera de los 5 formatos de reporte nuevo
+     * (RT-FM-46, RT-FM-56, RT-FM-58, RT-FM-62, RT-FM-64).
+     * Consulta en orden:
+     * 1) `hojas_campo_registros` (por id, muestra_id, id_os o codigo_muestra en encabezado)
+     * 2) `roturas` + `especimenes` + `recepcion_muestras` (para RT-FM-64 u otros ensayos con datos_crudos)
+     * 3) `equipos_calibracion_picnometros` (para RT-FM-56 certificados volumétricos reales)
+     * 4) `cotizacion_detalles` (por id_detalle con resultados_json real)
+     *
+     * Retorna null si no existe ningún registro real que coincida (nunca imprime datos demo).
+     */
+    public function construirReporteNuevoDesdeBaseDatos(string $codigoFormato, array $filtros = [], ?PDO $db = null): ?array {
+        $cod = strtoupper(trim($codigoFormato));
+        if (!$this->esFormatoReporteNuevoValido($cod)) {
+            throw new InvalidArgumentException("El formato '{$cod}' no es un formato de reporte nuevo válido.");
+        }
+
+        $pdo = $db ?? Conexion::obtenerInstancia();
+        $registroId = (int)($filtros['registro_id'] ?? ($filtros['id'] ?? 0));
+        $muestraId = (int)($filtros['muestra_id'] ?? 0);
+        $idOs = (int)($filtros['id_os'] ?? 0);
+        $idDetalle = (int)($filtros['id_detalle'] ?? 0);
+        $picnometroId = (int)($filtros['picnometro_id'] ?? 0);
+        $numeroPicnometro = (int)($filtros['numero_picnometro'] ?? 0);
+        $codigoMuestra = trim((string)($filtros['codigo_muestra'] ?? ''));
+
+        // 1. Buscar en hojas_campo_registros
+        $sqlHc = "SELECT hcr.*, rm.codigo_muestra AS codigo_muestra_db
+                  FROM hojas_campo_registros hcr
+                  LEFT JOIN recepcion_muestras rm ON rm.id = hcr.muestra_id
+                  WHERE hcr.codigo_formato = :fmt";
+        $paramsHc = ['fmt' => $cod];
+
+        if ($registroId > 0) {
+            $sqlHc .= " AND hcr.id = :reg_id";
+            $paramsHc['reg_id'] = $registroId;
+        }
+        if ($muestraId > 0) {
+            $sqlHc .= " AND hcr.muestra_id = :mid";
+            $paramsHc['mid'] = $muestraId;
+        }
+        if ($idOs > 0) {
+            $sqlHc .= " AND hcr.id_os = :id_os";
+            $paramsHc['id_os'] = $idOs;
+        }
+        if ($codigoMuestra !== '') {
+            $sqlHc .= " AND (rm.codigo_muestra = :cod_m OR hcr.datos_encabezado_json LIKE :cod_like)";
+            $paramsHc['cod_m'] = $codigoMuestra;
+            $paramsHc['cod_like'] = '%' . $codigoMuestra . '%';
+        }
+        $sqlHc .= " ORDER BY hcr.id DESC LIMIT 1";
+
+        $stmtHc = $pdo->prepare($sqlHc);
+        $stmtHc->execute($paramsHc);
+        $filaHc = $stmtHc->fetch(PDO::FETCH_ASSOC);
+
+        if ($filaHc) {
+            $encabezado = json_decode($filaHc['datos_encabezado_json'] ?? '{}', true) ?: [];
+            $puntos = json_decode($filaHc['datos_puntos_json'] ?? '[]', true) ?: [];
+            if (!empty($puntos)) {
+                $evalConjunto = $this->motor->evaluarConjunto($cod, $puntos, $encabezado);
+                $metadatos = array_merge($encabezado, [
+                    'registro_id' => (int)$filaHc['id'],
+                    'id_os' => (int)$filaHc['id_os'],
+                    'muestra_id' => $filaHc['muestra_id'] ? (int)$filaHc['muestra_id'] : null,
+                    'codigo_muestra' => $filaHc['codigo_muestra_db'] ?? ($encabezado['codigo_muestra'] ?? ($codigoMuestra ?: ('REG-' . $filaHc['id']))),
+                    'fecha_ensayo' => substr((string)($encabezado['fecha_ensayo'] ?? ($filaHc['created_at'] ?? date('Y-m-d'))), 0, 10),
+                    'origen_datos' => 'hojas_campo_registros',
+                ]);
+                return $this->mapearHaciaInforme($cod, $evalConjunto, $metadatos);
+            }
+        }
+
+        // 2. Buscar en roturas (especialmente para RT-FM-64 Varillas de Acero o ensayos guardados en roturas)
+        $sqlRot = "SELECT rot.*, esp.codigo_lab, esp.muestra_id, rm.codigo_muestra, rm.id_os
+                   FROM roturas rot
+                   JOIN especimenes esp ON rot.especimen_id = esp.id
+                   JOIN recepcion_muestras rm ON esp.muestra_id = rm.id
+                   WHERE rot.datos_crudos IS NOT NULL
+                     AND rot.datos_crudos LIKE :fmt_like";
+        $paramsRot = ['fmt_like' => '%' . $cod . '%'];
+
+        if ($muestraId > 0) {
+            $sqlRot .= " AND esp.muestra_id = :mid";
+            $paramsRot['mid'] = $muestraId;
+        }
+        if ($idOs > 0) {
+            $sqlRot .= " AND rm.id_os = :id_os";
+            $paramsRot['id_os'] = $idOs;
+        }
+        if ($codigoMuestra !== '') {
+            $sqlRot .= " AND (rm.codigo_muestra = :cod_m OR esp.codigo_lab = :cod_lab)";
+            $paramsRot['cod_m'] = $codigoMuestra;
+            $paramsRot['cod_lab'] = $codigoMuestra;
+        }
+        if ($registroId > 0 && $muestraId <= 0 && $idOs <= 0) {
+            $sqlRot .= " AND rot.id = :rot_id";
+            $paramsRot['rot_id'] = $registroId;
+        }
+        $sqlRot .= " ORDER BY rot.id ASC";
+
+        $stmtRot = $pdo->prepare($sqlRot);
+        $stmtRot->execute($paramsRot);
+        $filasRot = $stmtRot->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($filasRot)) {
+            $entradasRot = [];
+            foreach ($filasRot as $fr) {
+                $crudos = json_decode($fr['datos_crudos'] ?? '{}', true) ?: [];
+                $ent = $crudos['entradas_hc'] ?? $crudos;
+                if (is_array($ent) && !empty($ent)) {
+                    $ent['codigo_muestra'] = $ent['codigo_muestra'] ?? ($fr['codigo_lab'] ?? $fr['codigo_muestra']);
+                    $entradasRot[] = $ent;
+                }
+            }
+            if (!empty($entradasRot)) {
+                $primera = $filasRot[0];
+                $evalConjunto = $this->motor->evaluarConjunto($cod, $entradasRot);
+                return $this->mapearHaciaInforme($cod, $evalConjunto, [
+                    'muestra_id' => (int)$primera['muestra_id'],
+                    'id_os' => (int)$primera['id_os'],
+                    'codigo_muestra' => $primera['codigo_muestra'] ?? $primera['codigo_lab'],
+                    'fecha_ensayo' => substr((string)$primera['fecha_real'], 0, 10),
+                    'origen_datos' => 'roturas',
+                ]);
+            }
+        }
+
+        // 3. Para RT-FM-56 (Certificado de Calibración de Picnómetros), consultar equipos_calibracion_picnometros
+        if ($cod === 'RT-FM-56') {
+            $sqlPic = "SELECT * FROM equipos_calibracion_picnometros WHERE activo = 1";
+            $paramsPic = [];
+            if ($picnometroId > 0) {
+                $sqlPic .= " AND id = :pid";
+                $paramsPic['pid'] = $picnometroId;
+            } elseif ($registroId > 0) {
+                $sqlPic .= " AND id = :pid";
+                $paramsPic['pid'] = $registroId;
+            }
+            if ($numeroPicnometro > 0) {
+                $identComp = sprintf('PICNO-%02d', $numeroPicnometro);
+                $sqlPic .= " AND (identificacion = :ident1 OR identificacion = :ident2)";
+                $paramsPic['ident1'] = $identComp;
+                $paramsPic['ident2'] = 'N°' . $numeroPicnometro;
+            } elseif ($codigoMuestra !== '') {
+                $sqlPic .= " AND identificacion = :ident_m";
+                $paramsPic['ident_m'] = $codigoMuestra;
+            }
+            $sqlPic .= " ORDER BY id ASC LIMIT 1";
+
+            $stmtPic = $pdo->prepare($sqlPic);
+            $stmtPic->execute($paramsPic);
+            $filaPic = $stmtPic->fetch(PDO::FETCH_ASSOC);
+
+            if ($filaPic) {
+                $tablaJson = json_decode($filaPic['tabla_temperatura_json'] ?? '[]', true) ?: [];
+                $replicas = $tablaJson['replicas'] ?? [];
+                $entradasPic = [];
+                foreach ($replicas as $rep) {
+                    if (isset($rep['entradas']) && is_array($rep['entradas'])) {
+                        $entradasPic[] = $rep['entradas'];
+                    } elseif (isset($rep['masa_lleno']) || isset($rep['masa_vacio'])) {
+                        $entradasPic[] = $rep;
+                    }
+                }
+                if (empty($entradasPic) && (float)$filaPic['masa_picnometro_vacio_g'] > 0 && (float)$filaPic['volumen_calibrado_cm3'] > 0) {
+                    $masaVacio = (float)$filaPic['masa_picnometro_vacio_g'];
+                    $volProm = (float)$filaPic['volumen_calibrado_cm3'];
+                    $tempCal = 20.0;
+                    $densAgua20 = 0.99823;
+                    $masaLleno = round($masaVacio + ($volProm * $densAgua20), 4);
+                    $entradasPic[] = [
+                        'masa_vacio' => $masaVacio,
+                        'masa_lleno' => $masaLleno,
+                        'temperatura' => $tempCal,
+                    ];
+                }
+                if (!empty($entradasPic)) {
+                    $evalConjunto = $this->motor->evaluarConjunto('RT-FM-56', $entradasPic);
+                    return $this->mapearHaciaInforme('RT-FM-56', $evalConjunto, [
+                        'picnometro_id' => (int)$filaPic['id'],
+                        'identificacion' => $filaPic['identificacion'],
+                        'codigo_muestra' => $filaPic['identificacion'],
+                        'fecha_ensayo' => $filaPic['fecha_calibracion'] ?? date('Y-m-d'),
+                        'origen_datos' => 'equipos_calibracion_picnometros',
+                    ]);
+                }
+            }
+        }
+
+        // 4. Buscar en cotizacion_detalles si se indicó id_detalle
+        if ($idDetalle > 0) {
+            $stmtDet = $pdo->prepare("SELECT id, id_cotizacion, resultados_json FROM cotizacion_detalles WHERE id = :id");
+            $stmtDet->execute(['id' => $idDetalle]);
+            $filaDet = $stmtDet->fetch(PDO::FETCH_ASSOC);
+            if ($filaDet && !empty($filaDet['resultados_json'])) {
+                $resJson = json_decode($filaDet['resultados_json'], true) ?: [];
+                $entradasDet = $resJson['metadatos']['entradas_hc'] ?? ($resJson['entradas_hc'] ?? []);
+                if (!empty($entradasDet) && is_array($entradasDet)) {
+                    $evalConjunto = $this->motor->evaluarConjunto($cod, $entradasDet);
+                    return $this->mapearHaciaInforme($cod, $evalConjunto, [
+                        'id_detalle' => (int)$filaDet['id'],
+                        'codigo_muestra' => $codigoMuestra ?: ('DET-' . $filaDet['id']),
+                        'fecha_ensayo' => $resJson['metadatos']['fecha_ensayo'] ?? date('Y-m-d'),
+                        'origen_datos' => 'cotizacion_detalles',
+                    ]);
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

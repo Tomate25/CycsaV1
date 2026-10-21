@@ -161,4 +161,74 @@ class RtFm61CilindrosTest extends TestCase {
         $this->assertEquals('RT-FM-61', $crudosGuardados['codigo_formato']);
         $this->assertEqualsWithDelta(2459.71, $crudosGuardados['calculados_hc']['densidad'], 1.0);
     }
+
+    /**
+     * Regresión obligatoria: Verifica que el flujo tradicional previo de RoturasModelo::registrarRotura
+     * (enviando únicamente carga y área, sin lecturas crudas ni formato HC) conserva exactamente
+     * el mismo cálculo original (esfuerzoPsi = round(carga / area, 2), esfuerzoKgCm2 = round(esfuerzoPsi * 0.070307, 2)).
+     */
+    public function testFlujoOriginalTradicionalRegistrarRoturaPermaneceIntacto(): void {
+        $suffix = bin2hex(random_bytes(4));
+        $codigoLab = 'MS-LEG-' . $suffix;
+
+        $this->db->prepare("
+            INSERT INTO clientes (nombre_razon_social, identificacion, numero_ruc, email, telefono, direccion)
+            VALUES ('Cliente Legacy Roturas', 'J077777777', 'J077777777', :email, '2222-0000', 'Managua')
+        ")->execute(['email' => "leg_{$suffix}@test.com"]);
+        $this->clienteId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("
+            INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, id_cliente, fecha_emision, nombre_proyecto, atencion_a, estado)
+            VALUES (:cos, 1, :cid, CURDATE(), 'Proyecto Legacy C39', 'Ing. Obra', 'Estado 4: Ingreso Laboratorio')
+        ")->execute(['cos' => 'OS-LEG-' . $suffix, 'cid' => $this->clienteId]);
+        $this->osId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("
+            INSERT INTO recepcion_muestras (id_os, correlativo_anual, anio, tipo_muestra, codigo_muestra, codigo_campo, fecha_recepcion, recibido_por, estado)
+            VALUES (:os_id, 9611, 2026, 'Laboratorio', :cod, 'C-LEG-01', NOW(), 1, 'Registrado')
+        ")->execute(['os_id' => $this->osId, 'cod' => $codigoLab]);
+        $this->recepcionId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("
+            INSERT INTO lotes_muestras (id_recepcion, nombre_lote, diseno_resistencia, fecha_moldeo, procedimiento_muestreo)
+            VALUES (:rec_id, 'Concreto 3000 PSI', '3000 PSI', DATE_SUB(CURDATE(), INTERVAL 7 DAY), 'ASTM C31')
+        ")->execute(['rec_id' => $this->recepcionId]);
+
+        $roturasModelo = new RoturasModelo();
+        $fechaMoldeo = date('Y-m-d', strtotime('-7 days'));
+        $roturasModelo->crearEspecimenesParaMuestra($this->recepcionId, 1, $fechaMoldeo, 'cilindro_concreto', '15 x 30 cm');
+        $roturasModelo->guardarPlanRotura($this->recepcionId, null, [['edad_dias' => 7, 'cantidad' => 1]], 1);
+
+        $detalle = $roturasModelo->obtenerDetalleMuestraAnonima($this->recepcionId);
+        $esp = $detalle['especimenes'][0];
+
+        // Llamada clásica exacta: carga = 85000 lbf, sin enviar area (usa default 28.2743 in²) ni datos_crudos
+        $res = $roturasModelo->registrarRotura([
+            'especimen_id' => $esp['id'],
+            'plan_edad_id' => $esp['plan_edad_id'],
+            'fecha_real' => $esp['fecha_programada'] . ' 08:30:00',
+            'carga' => 85000,
+            'tipo_falla' => 'Tipo 1 (Cono)',
+        ], 1);
+
+        $this->assertTrue($res['exito'], $res['mensaje'] ?? '');
+        $this->assertSame(85000.0, (float)$res['carga']);
+        $this->assertSame(28.2743, (float)$res['area']);
+        // 85000 / 28.2743 = 3006.263638... -> round(..., 2) = 3006.26
+        $this->assertSame(3006.26, (float)$res['esfuerzo_psi']);
+        // 3006.26 * 0.070307 = 211.36112182 -> round(..., 2) = 211.36
+        $this->assertSame(211.36, (float)$res['esfuerzo_kgcm2']);
+        // (3006.26 / 3000) * 100 = 100.20866... -> round(..., 2) = 100.21
+        $this->assertSame(100.21, (float)$res['porcentaje_fc']);
+        $this->assertNull($res['datos_crudos']);
+        $this->assertNull($res['evaluacion_hc']);
+
+        // Verificar también rechazo cuando el técnico ID es inválido (<= 0)
+        $resInvalido = $roturasModelo->registrarRotura([
+            'especimen_id' => $esp['id'],
+            'plan_edad_id' => $esp['plan_edad_id'],
+            'carga' => 85000,
+        ], 0);
+        $this->assertFalse($resInvalido['exito']);
+    }
 }

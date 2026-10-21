@@ -387,6 +387,40 @@ class EquipoCalibracionModelo {
     }
 
     /**
+     * Obtiene listado plano de correcciones de hojas de cálculo (opcionalmente filtrado por formato y/o solo dudosas).
+     */
+    public function obtenerCorrecciones(?string $codigoFormato = null, bool $soloDudosas = false): array {
+        try {
+            $sql = "SELECT * FROM configuracion_correcciones_hc WHERE 1=1";
+            $params = [];
+            if ($codigoFormato !== null && $codigoFormato !== '') {
+                $sql .= " AND codigo_formato = :fmt";
+                $params['fmt'] = $codigoFormato;
+            }
+            if ($soloDudosas) {
+                $sql .= " AND es_dudosa = 1";
+            }
+            $sql .= " ORDER BY codigo_formato ASC, id ASC";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Indica si una corrección específica está activa (usar_corregido = 1) en base de datos.
+     */
+    public function usarFormulaCorregida(string $codigoFormato, string $correccionId): bool {
+        $correcciones = $this->obtenerCorreccionesFormato($codigoFormato);
+        if (!isset($correcciones[$correccionId])) {
+            return true;
+        }
+        return ((int)($correcciones[$correccionId]['usar_corregido'] ?? 1)) === 1;
+    }
+
+    /**
      * Obtiene la configuración de correcciones dudosas para un formato específico (ej. RT-FM-61).
      * Retorna array indexado por id de corrección: ['CORR-61-02' => ['usar_corregido' => true, ...]]
      */
@@ -420,9 +454,9 @@ class EquipoCalibracionModelo {
                 confirmado_por = :uid,
                 fecha_confirmacion = CASE WHEN :conf2 = 1 THEN NOW() ELSE fecha_confirmacion END,
                 updated_at = NOW()
-            WHERE codigo_formato = :fmt AND correccion_id = :cid
+            WHERE codigo_formato = :fmt AND correccion_id = :cid AND es_dudosa = 1
         ");
-        return $stmt->execute([
+        $stmt->execute([
             'usar' => $usarCorregido ? 1 : 0,
             'conf' => $confirmadoCalidad ? 1 : 0,
             'uid' => $usuarioId,
@@ -430,5 +464,6 @@ class EquipoCalibracionModelo {
             'fmt' => $codigoFormato,
             'cid' => $correccionId
         ]);
+        return $stmt->rowCount() > 0;
     }
 }
