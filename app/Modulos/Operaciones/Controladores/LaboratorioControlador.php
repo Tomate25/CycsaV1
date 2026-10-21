@@ -1064,4 +1064,95 @@ class LaboratorioControlador extends ControladorBase {
             'muestras' => $muestrasLote
         ]);
     }
+
+    /**
+     * Endpoint AJAX para evaluar en tiempo real cualquier Hoja de Cálculo (RT-FM-25 al RT-FM-64)
+     * utilizando MotorHojasCalculoServicio y EvaluadorFormula.
+     */
+    public function calcularHcAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $datos = $peticion->obtenerDatos();
+        $codigoFormato = trim($datos['codigo_formato'] ?? 'RT-FM-61');
+        $entradas = isset($datos['entradas']) && is_array($datos['entradas']) ? $datos['entradas'] : $datos;
+
+        try {
+            $motor = new \Cycsa\Modulos\Operaciones\Servicios\MotorHojasCalculoServicio();
+            $resultado = $motor->evaluarEspecimen($codigoFormato, $entradas);
+            $respuesta->enviarJson([
+                'status' => 'success',
+                'data' => $resultado
+            ]);
+        } catch (\Throwable $e) {
+            $respuesta->enviarJson([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Endpoint aditivo para evaluar y registrar una Hoja de Campo (RT-FM-54, RT-FM-55, RT-FM-62)
+     * o Proctor (RT-FM-27) con enlace automático de PVSM y Humedad Óptima.
+     */
+    public function registrarHojaCampoHc(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        $datos = $peticion->obtenerDatos();
+        $idOs = (int)($datos['id_os'] ?? 0);
+        $codigoFormato = strtoupper(trim($datos['codigo_formato'] ?? 'RT-FM-55'));
+        $variante = trim($datos['variante'] ?? 'ESTANDAR');
+        $encabezado = isset($datos['encabezado']) && is_array($datos['encabezado']) ? $datos['encabezado'] : [];
+        $puntos = isset($datos['puntos']) && is_array($datos['puntos']) ? $datos['puntos'] : [];
+        $proctorMuestraId = !empty($datos['proctor_muestra_id']) ? (int)$datos['proctor_muestra_id'] : null;
+        $muestraId = !empty($datos['muestra_id']) ? (int)$datos['muestra_id'] : null;
+        $idHoja = !empty($datos['id_hoja_solicitud']) ? (int)$datos['id_hoja_solicitud'] : null;
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+
+        try {
+            $servicio = new \Cycsa\Modulos\Operaciones\Servicios\HojaCampoProctorServicio();
+            if ($codigoFormato === 'RT-FM-27') {
+                $res = $servicio->registrarResultadoProctor($idOs, $encabezado, $puntos, $muestraId, $idHoja, $usuarioId, $variante);
+            } else {
+                $res = $servicio->evaluarYRegistrarHojaCampo($idOs, $codigoFormato, $puntos, $encabezado, $proctorMuestraId, $muestraId, $idHoja, $usuarioId, $variante);
+            }
+            $respuesta->enviarJson([
+                'status' => 'success',
+                'data' => $res
+            ]);
+        } catch (\Throwable $e) {
+            $respuesta->enviarJson([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Renderiza el informe imprimible oficial para los 5 formatos nuevos de Hojas de Cálculo
+     * que no poseen equivalente RT-FM-22 (RT-FM-46 CBR, RT-FM-56 Picnómetros, RT-FM-58 Sanidad,
+     * RT-FM-62 Infiltración, RT-FM-64 Acero).
+     */
+    public function imprimirReporteHcNuevo(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $codigoFormato = strtoupper(trim($_GET['formato'] ?? 'RT-FM-64'));
+        $motor = new \Cycsa\Modulos\Operaciones\Servicios\MotorHojasCalculoServicio();
+        $mapeador = new \Cycsa\Modulos\Operaciones\Servicios\MapeadorRtFm22Servicio($motor);
+
+        $spec = $motor->cargarEspecificacion($codigoFormato);
+        $entradasDemo = [];
+        foreach ($spec['caso_prueba'] ?? [] as $cp) {
+            $entradasDemo[] = $cp['entradas'];
+        }
+        $evalConjunto = $motor->evaluarConjunto($codigoFormato, $entradasDemo);
+        $reporte = $mapeador->mapearHaciaInforme($codigoFormato, $evalConjunto, [
+            'codigo_muestra' => $_GET['codigo_muestra'] ?? ($spec['caso_prueba'][0]['nombre'] ?? 'MS-0001-26'),
+            'fecha_ensayo' => date('Y-m-d'),
+        ]);
+
+        require dirname(__DIR__) . '/Vistas/reporte_hc_nuevo_print.php';
+    }
 }

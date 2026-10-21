@@ -238,4 +238,14 @@ $app->enrutador->post('/laboratorio/generar-informe-consolidado', [LaboratorioCo
 $app->enrutador->post('/laboratorio/aceptar-muestra', [LaboratorioControlador::class, 'aceptarMuestraRapida'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/cambiar-estado', [LaboratorioControlador::class, 'cambiarEstadoKanban'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/imprimir-solicitud', [LaboratorioControlador::class, 'imprimirHojaSolicitud'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/calcular-hc-ajax', [LaboratorioControlador::class, 'calcularHcAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/registrar-hoja-campo-hc', [LaboratorioControlador::class, 'registrarHojaCampoHc'], [AuthMiddleware::class]);
+$app->enrutador->get('/laboratorio/imprimir-reporte-hc', [LaboratorioControlador::class, 'imprimirReporteHcNuevo'], [AuthMiddleware::class]);
+
+// ⚖️ MÓDULO DE EQUIPOS, CALIBRACIÓN Y PARÁMETROS NORMATIVOS (ISO/IEC 17025)
+$app->enrutador->get('/equipos-calibracion', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->post('/equipos-calibracion/guardar-constante', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'guardarConstante'], [AuthMiddleware::class]);
+$app->enrutador->post('/equipos-calibracion/guardar-picnometro', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'guardarPicnometro'], [AuthMiddleware::class]);
+$app->enrutador->post('/equipos-calibracion/actualizar-correccion', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'actualizarCorreccion'], [AuthMiddleware::class]);
+
 

@@ -562,6 +562,51 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                 </div>
             </div>
 
+            <!-- Hoja de Cálculo RT-FM-61 / Roturas (Datos Crudos Opcionales con Calibración PRENSA-01 y Factor L/D) -->
+            <details style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px;">
+                <summary style="font-size: 12px; font-weight: 700; color: #103487; cursor: pointer;">
+                    <i class="fa-solid fa-calculator"></i> Hoja de Cálculo RT-FM-61 (Dimensiones, Masa, Prensa PRENSA-01 y Factor L/D)
+                </summary>
+                <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                    <div>
+                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Formato HC:</label>
+                        <select name="datos_crudos[codigo_formato]" id="hc_codigo_formato" class="form-control" style="font-size: 12px; padding: 4px 6px;">
+                            <option value="">-- Directo --</option>
+                            <option value="RT-FM-61">RT-FM-61 (Cilindro C39)</option>
+                            <option value="RT-FM-36">RT-FM-36 (Bloques C140)</option>
+                            <option value="RT-FM-38">RT-FM-38 (Vigas C78)</option>
+                            <option value="RT-FM-57">RT-FM-57 (Cubos Mortero C109)</option>
+                            <option value="RT-FM-63">RT-FM-63 (Núcleos/Adoquín)</option>
+                            <option value="RT-FM-64">RT-FM-64 (Acero A615)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Diámetro 1 (cm):</label>
+                        <input type="number" step="0.01" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 15.20" oninput="recalcularDesdeHc61()">
+                    </div>
+                    <div>
+                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Diámetro 2 (cm):</label>
+                        <input type="number" step="0.01" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 15.22" oninput="recalcularDesdeHc61()">
+                    </div>
+                    <div>
+                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Longitud 1 (cm):</label>
+                        <input type="number" step="0.01" name="datos_crudos[largo_1]" id="hc_l1" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 30.40" oninput="recalcularDesdeHc61()">
+                    </div>
+                    <div>
+                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Longitud 2 (cm):</label>
+                        <input type="number" step="0.01" name="datos_crudos[largo_2]" id="hc_l2" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 30.45" oninput="recalcularDesdeHc61()">
+                    </div>
+                    <div>
+                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Masa (kg):</label>
+                        <input type="number" step="0.001" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 12.850">
+                    </div>
+                    <div style="grid-column: span 3;">
+                        <label style="font-size: 10.5px; font-weight: 700; color: #475569;">Lectura Prensa sin corregir (lbf) — aplica polinomio PRENSA-01:</label>
+                        <input type="number" step="0.1" name="datos_crudos[lectura_carga_lbf]" id="hc_lectura_lbf" class="form-control" style="font-size: 12px; padding: 4px 6px;" placeholder="Ej. 91932" oninput="recalcularDesdeHc61()">
+                    </div>
+                </div>
+            </details>
+
             <!-- Previsualización de Cálculos -->
             <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; justify-content: space-around; text-align: center;">
                 <div>
@@ -734,6 +779,34 @@ function calcularEsfuerzoEnVivo() {
         document.getElementById('calc_psi').innerText = '--';
         document.getElementById('calc_kgcm2').innerText = '--';
     }
+}
+
+function recalcularDesdeHc61() {
+    const d1 = parseFloat(document.getElementById('hc_d1')?.value || 0);
+    const d2 = parseFloat(document.getElementById('hc_d2')?.value || 0);
+    const lectura = parseFloat(document.getElementById('hc_lectura_lbf')?.value || 0);
+    const fmtSelect = document.getElementById('hc_codigo_formato');
+
+    if (fmtSelect && !fmtSelect.value && (d1 > 0 || lectura > 0)) {
+        fmtSelect.value = 'RT-FM-61';
+    }
+
+    if (d1 > 0 && d2 > 0) {
+        const a1 = Math.PI * d1 * d1 / 4.0;
+        const a2 = Math.PI * d2 * d2 / 4.0;
+        const areaIn2 = ((a1 + a2) / 2.0) / 6.4516;
+        document.getElementById('rot_area').value = areaIn2.toFixed(3);
+    }
+
+    if (lectura > 0) {
+        const cargaReal = -4.6765 * Math.pow(lectura / 100000.0, 3) * 10.0
+                        + 2.5071 * Math.pow(lectura / 10000.0, 2)
+                        + 0.99583 * lectura
+                        + 3.7217;
+        document.getElementById('rot_carga').value = cargaReal.toFixed(1);
+    }
+
+    calcularEsfuerzoEnVivo();
 }
 
 function verificarToleranciaTiempo() {

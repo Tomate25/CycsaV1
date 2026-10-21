@@ -428,6 +428,9 @@ class RoturasModelo {
 
     /**
      * Ejecuta y registra la rotura de un espécimen con cálculo y tolerancia ASTM C39.
+     * Soporta tanto la captura directa tradicional (carga + area) como la evaluación completa
+     * mediante Hojas de Cálculo (RT-FM-61, RT-FM-36, RT-FM-38, RT-FM-57, RT-FM-63, RT-FM-64)
+     * con ecuación de calibración de prensa (PRENSA-01), factor L/D (FACTOR-LD-C39) y datos_crudos JSON.
      */
     public function registrarRotura(array $datos, int $tecnicoId): array {
         try {
@@ -438,15 +441,30 @@ class RoturasModelo {
             $area = (float)($datos['area'] ?? 28.2743); // 15x30 cm estándar = ~4.4 in diametro = 28.27 in²
             $tipoFalla = trim($datos['tipo_falla'] ?? 'Tipo 1 (Cono)');
             $justificacion = trim($datos['justificacion'] ?? '');
-            $datosCrudos = !empty($datos['datos_crudos']) ? (is_array($datos['datos_crudos']) ? json_encode($datos['datos_crudos']) : $datos['datos_crudos']) : null;
 
-            if ($especimenId <= 0 || $carga <= 0 || $area <= 0) {
-                return ['exito' => false, 'mensaje' => 'Datos de ensayo incompletos: Carga y área deben ser valores positivos válidos.'];
+            // Decodificar datos_crudos si se enviaron como array o JSON
+            $crudosArr = [];
+            if (!empty($datos['datos_crudos'])) {
+                if (is_array($datos['datos_crudos'])) {
+                    $crudosArr = $datos['datos_crudos'];
+                } elseif (is_string($datos['datos_crudos'])) {
+                    $crudosArr = json_decode($datos['datos_crudos'], true) ?: [];
+                }
+            }
+
+            // Detectar si se invocó con hoja de cálculo (RT-FM-61, 36, 38, 57, 63, 64) o lecturas crudas
+            $codigoFormatoHc = $crudosArr['codigo_formato'] ?? ($datos['codigo_formato'] ?? null);
+            if ($codigoFormatoHc === null && (isset($crudosArr['lectura_carga_lbf']) || isset($datos['lectura_carga_lbf']) || isset($crudosArr['diametro_1']) || isset($datos['diametro_1']))) {
+                $codigoFormatoHc = 'RT-FM-61';
+            }
+
+            if ($especimenId <= 0) {
+                return ['exito' => false, 'mensaje' => 'Datos de ensayo incompletos: Espécimen no válido.'];
             }
 
             // Obtener edad programada y fecha de moldeo
             $stmtAge = $this->db->prepare("
-                SELECT pre.*, lm.fecha_moldeo, lm.diseno_resistencia
+                SELECT pre.*, lm.fecha_moldeo, lm.diseno_resistencia, lm.revenimiento_in, lm.temperatura_c
                 FROM plan_rotura_edades pre
                 JOIN planes_rotura pr ON pre.plan_rotura_id = pr.id
                 JOIN recepcion_muestras rm ON pr.muestra_id = rm.id
@@ -460,20 +478,103 @@ class RoturasModelo {
                 return ['exito' => false, 'mensaje' => 'Edad de rotura programada no válida.'];
             }
 
-            // Cálculos físicos y conversiones
-            $factorPsiToKgCm2 = 0.070307;
-            $esfuerzoPsi = round($carga / $area, 2);
-            $esfuerzoKgCm2 = round($esfuerzoPsi * $factorPsiToKgCm2, 2);
-
-            // Cálculo de porcentaje contra f'c de diseño
-            $porcentajeFc = null;
+            // Extraer f'c de diseño numérico si existe
+            $fcDiseno = 0.0;
             if (!empty($edadData['diseno_resistencia'])) {
                 if (preg_match('/(\d+(\.\d+)?)/', $edadData['diseno_resistencia'], $matches)) {
                     $fcDiseno = (float)$matches[1];
-                    if ($fcDiseno > 0) {
-                        $porcentajeFc = round(($esfuerzoPsi / $fcDiseno) * 100, 2);
-                    }
                 }
+            }
+
+            $evalHc = null;
+            if ($codigoFormatoHc !== null) {
+                $entradasHc = array_merge($datos, $crudosArr);
+                unset($entradasHc['datos_crudos'], $entradasHc['csrf_token']);
+
+                if ($fcDiseno > 0 && empty($entradasHc['resistencia_diseno_psi'])) {
+                    $entradasHc['resistencia_diseno_psi'] = $fcDiseno;
+                }
+
+                $motorHc = new \Cycsa\Modulos\Operaciones\Servicios\MotorHojasCalculoServicio();
+                $opcionesHc = isset($crudosArr['opciones_hc']) && is_array($crudosArr['opciones_hc']) ? $crudosArr['opciones_hc'] : [];
+                $evalHc = $motorHc->evaluarEspecimen($codigoFormatoHc, $entradasHc, $opcionesHc);
+                $valsHc = $evalHc['valores'];
+
+                // Mapear carga, área, esfuerzo_psi, esfuerzo_kgcm2 y porcentaje_fc desde la hoja de cálculo
+                $cargaCandidata = $valsHc['carga_real_lbf']
+                    ?? $valsHc['lectura_carga_lbf']
+                    ?? $valsHc['carga_lbf']
+                    ?? $valsHc['carga_prom']
+                    ?? $valsHc['fuerza_lbf']
+                    ?? $valsHc['carga_1']
+                    ?? $valsHc['carga_1_lbf']
+                    ?? $valsHc['carga_max_lbf']
+                    ?? $carga;
+                if ($cargaCandidata > 0) {
+                    $carga = round((float)$cargaCandidata, 2);
+                }
+
+                $areaCandidata = $valsHc['area_in2']
+                    ?? $valsHc['area_neta_in2']
+                    ?? (isset($valsHc['area_neta']) ? ((float)$valsHc['area_neta'] * 0.155) : null)
+                    ?? (isset($valsHc['ancho_prom'], $valsHc['espesor_prom']) ? ((float)$valsHc['ancho_prom'] * (float)$valsHc['espesor_prom']) : null)
+                    ?? $valsHc['area_bruta_in2']
+                    ?? $valsHc['area_1_in2']
+                    ?? $valsHc['area_nominal_in2']
+                    ?? $area;
+                if ($areaCandidata > 0) {
+                    $area = round((float)$areaCandidata, 4);
+                }
+            }
+
+            if ($carga <= 0 || $area <= 0) {
+                return ['exito' => false, 'mensaje' => 'Datos de ensayo incompletos: Carga y área deben ser valores positivos válidos.'];
+            }
+
+            // Cálculos físicos y conversiones
+            if ($evalHc !== null) {
+                $valsHc = $evalHc['valores'];
+                $psiCalc = $valsHc['esfuerzo_psi_reportado']
+                    ?? $valsHc['esfuerzo_psi']
+                    ?? $valsHc['resistencia_neta_psi']
+                    ?? $valsHc['resistencia_bruta_psi']
+                    ?? $valsHc['resistencia_psi']
+                    ?? $valsHc['modulo_ruptura_psi']
+                    ?? $valsHc['resistencia_tension_psi']
+                    ?? $valsHc['esfuerzo_1_psi']
+                    ?? $valsHc['esfuerzo_ultimo_psi']
+                    ?? ($carga / $area);
+                $esfuerzoPsi = round((float)$psiCalc, 2);
+
+                $kgcm2Calc = $valsHc['esfuerzo_kgcm2']
+                    ?? $valsHc['resistencia_neta_kgcm2']
+                    ?? $valsHc['resistencia_kgcm2']
+                    ?? $valsHc['modulo_ruptura_kgcm2']
+                    ?? $valsHc['resistencia_tension_kgcm2']
+                    ?? $valsHc['esfuerzo_1_kgcm2']
+                    ?? $valsHc['esfuerzo_ultimo_kgcm2']
+                    ?? ($esfuerzoPsi * 0.070307);
+                $esfuerzoKgCm2 = round((float)$kgcm2Calc, 2);
+
+                $porcentajeFc = isset($valsHc['porcentaje_fc']) && $valsHc['porcentaje_fc'] !== null
+                    ? round((float)$valsHc['porcentaje_fc'], 2)
+                    : ($fcDiseno > 0 ? round(($esfuerzoPsi / $fcDiseno) * 100, 2) : null);
+
+                $crudosPersistir = array_merge($crudosArr, [
+                    'codigo_formato' => $codigoFormatoHc,
+                    'entradas_hc' => $evalHc['entradas'],
+                    'constantes_hc' => $evalHc['constantes'],
+                    'calculados_hc' => $evalHc['calculados'],
+                    'redondeados_hc' => $evalHc['redondeados'],
+                    'correcciones_aplicadas' => $evalHc['correcciones_aplicadas'],
+                ]);
+                $datosCrudos = json_encode($crudosPersistir, JSON_UNESCAPED_UNICODE);
+            } else {
+                $factorPsiToKgCm2 = 0.070307;
+                $esfuerzoPsi = round($carga / $area, 2);
+                $esfuerzoKgCm2 = round($esfuerzoPsi * $factorPsiToKgCm2, 2);
+                $porcentajeFc = ($fcDiseno > 0) ? round(($esfuerzoPsi / $fcDiseno) * 100, 2) : null;
+                $datosCrudos = !empty($datos['datos_crudos']) ? (is_array($datos['datos_crudos']) ? json_encode($datos['datos_crudos'], JSON_UNESCAPED_UNICODE) : $datos['datos_crudos']) : null;
             }
 
             // Validación de tolerancia temporal según ASTM C39
@@ -553,9 +654,13 @@ class RoturasModelo {
             return [
                 'exito' => true,
                 'mensaje' => 'Rotura registrada exitosamente.',
+                'carga' => $carga,
+                'area' => $area,
                 'esfuerzo_psi' => $esfuerzoPsi,
                 'esfuerzo_kgcm2' => $esfuerzoKgCm2,
-                'porcentaje_fc' => $porcentajeFc
+                'porcentaje_fc' => $porcentajeFc,
+                'datos_crudos' => $datosCrudos,
+                'evaluacion_hc' => $evalHc
             ];
         } catch (Exception $e) {
             if ($this->db->inTransaction()) {
