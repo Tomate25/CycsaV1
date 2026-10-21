@@ -666,15 +666,47 @@
                 </button>
             </div>
 
-            <!-- BARRA DE ASIGNACIÓN GENERAL DE PLANTILLA -->
-            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:280px;">
-                    <i class="fa-solid fa-layer-group text-success" style="font-size:16px;"></i>
-                    <span style="font-size:12.5px; font-weight:700; color:#166534; white-space:nowrap;">Plantilla para todas las muestras:</span>
-                    <select id="select_plantilla_global" name="plantilla_global_id" class="form-select form-select-sm" style="font-size:12px; font-weight:600; flex:1; min-width:220px; border-color:#86efac;" onchange="aplicarPlantillaATodasLasMuestras()">
-                        <option value="">-- Seleccionar Plantilla General --</option>
-                    </select>
+            <!-- BARRA DE ASIGNACIÓN GENERAL DE PLANTILLA (DESPLEGABLE AJAX) -->
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; position:relative;">
+                <input type="hidden" id="select_plantilla_global" name="plantilla_global_id" value="">
+                
+                <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:320px; position:relative;">
+                    <i class="fa-solid fa-layer-group text-success" style="font-size:18px;"></i>
+                    <span style="font-size:12.5px; font-weight:700; color:#166534; white-space:nowrap;">Plantilla de Ensayo:</span>
+                    
+                    <!-- Trigger Desplegable AJAX -->
+                    <div style="flex:1; position:relative;">
+                        <div id="trigger_plantilla_global" onclick="toggleDropdownPlantillasGlobal()" style="background:white; border:1.5px solid #86efac; border-radius:6px; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; min-height:36px; transition:all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.boxShadow='0 2px 6px rgba(22,163,74,0.1)';" onmouseout="this.style.borderColor='#86efac'; this.style.boxShadow='none';">
+                            <div id="texto_plantilla_seleccionada" style="display:flex; align-items:center; gap:8px; font-size:12px; color:#334155;">
+                                <i class="fa-solid fa-file-waveform text-success"></i>
+                                <span>-- Seleccionar Plantilla General --</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-down" style="color:#64748b; font-size:11px;"></i>
+                        </div>
+
+                        <!-- Panel Flotante Desplegable AJAX -->
+                        <div id="dropdown_plantillas_panel" style="display:none; position:absolute; top:calc(100% + 5px); left:0; width:100%; min-width:440px; max-width:620px; background:white; border:1.5px solid #cbd5e1; border-radius:10px; box-shadow:0 12px 28px rgba(0,0,0,0.18); z-index:9999; padding:12px; box-sizing:border-box;">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                                <div style="position:relative; flex:1;">
+                                    <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:12px;"></i>
+                                    <input type="text" id="input_buscar_plantilla_ajax" placeholder="Buscar por código (ej: FM-22, FM-61), nombre o norma..." oninput="filtrarPlantillasAjax(this.value)" style="width:100%; padding:7px 10px 7px 30px; font-size:12px; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; outline:none;" autocomplete="off">
+                                </div>
+                                <button type="button" onclick="cerrarDropdownPlantillasGlobal()" class="btn btn-sm btn-outline-secondary" style="padding:4px 8px; font-size:13px; line-height:1;">&times;</button>
+                            </div>
+
+                            <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+                                <button type="button" class="btn-filtro-plt active" onclick="filtrarCategoriaPlantilla('todos', this)" style="padding:3px 9px; font-size:11px; font-weight:600; border-radius:12px; border:1px solid #cbd5e1; background:#0284c7; color:white; cursor:pointer;">Todas (<span id="cnt_plt_todas">0</span>)</button>
+                                <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('cliente', this)" style="padding:3px 9px; font-size:11px; font-weight:600; border-radius:12px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">⭐ Del Cliente (<span id="cnt_plt_cliente">0</span>)</button>
+                                <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('servicio', this)" style="padding:3px 9px; font-size:11px; font-weight:600; border-radius:12px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">🎯 Recomendadas (<span id="cnt_plt_servicio">0</span>)</button>
+                            </div>
+
+                            <div id="lista_resultados_plantillas_ajax" style="max-height:240px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:4px;">
+                                <!-- Inyectado dinámicamente por AJAX -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
                 <div style="display:flex; align-items:center; gap:8px;">
                     <button type="button" class="btn btn-success btn-sm" onclick="aplicarPlantillaATodasLasMuestras()" style="font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
                         <i class="fa-solid fa-check-double"></i> Aplicar a todas las muestras
@@ -688,8 +720,9 @@
             <table class="hs-table" style="width:100%; border-collapse:collapse; margin-bottom:20px;" id="hs-tabla-muestras">
                 <thead>
                     <tr style="background:#f8fafc;">
-                        <th style="width:25%; font-size:12px; padding:8px;">Identificación Espécimen</th>
-                        <th style="width:65%; font-size:12px; padding:8px;">Descripción de la Muestra / Elemento</th>
+                        <th style="width:22%; font-size:12px; padding:8px;">Identificación Espécimen</th>
+                        <th style="width:48%; font-size:12px; padding:8px;">Descripción de la Muestra / Elemento</th>
+                        <th style="width:20%; font-size:12px; padding:8px;">Plantilla Asignada</th>
                         <th style="width:10%; font-size:12px; padding:8px; text-align:center;">Acción</th>
                     </tr>
                 </thead>
@@ -912,7 +945,7 @@
     <div class="modal-hs-content" style="max-width: 650px; border-radius: 12px; padding: 25px 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); background:white;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">
             <div style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #0f172a; display:flex; align-items:center; gap:8px;">
-                <i class="fa-solid fa-circle-question" style="color: var(--cycsa-azul);"></i> ¿Se Requiere Muestreo en Campo?
+                <i class="fa-solid fa-circle-question" style="color: var(--cycsa-azul);"></i> <span id="decision_titulo_modal">¿Cómo se Realizará el Muestreo de esta Hoja RT-FM-13?</span>
             </div>
             <button type="button" onclick="cerrarModalDecisionMuestreo()" style="background: none; border: none; font-size: 24px; color: #94a3b8; cursor: pointer; line-height: 1;">&times;</button>
         </div>
@@ -920,44 +953,58 @@
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 15px; margin-bottom:20px;">
             <span style="font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700; display:block;">Orden de Servicio:</span>
             <div id="decision_codigo_os" style="font-size:16px; font-weight:700; color:var(--cycsa-azul); font-family:monospace; margin-top:2px;">OS-2026-XXXX</div>
+            <div id="decision_subtitulo_entrega" style="font-size:12px; color:#64748b; margin-top:4px;"></div>
         </div>
 
         <p style="font-size: 13.5px; color: #475569; margin-bottom: 20px; line-height: 1.5;">
-            Seleccione el flujo correspondiente para la recepción de especímenes de esta Orden de Servicio:
+            Seleccione el tipo de ingreso para esta Hoja de Solicitud de Servicio (CYCSA-RT-FM-13):
         </p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
             
-            <!-- OPCIÓN 1: SÍ REQUIERE MUESTREO (GIRA DE CAMPO) -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; background: white; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cycsa-azul)'; this.style.boxShadow='0 4px 12px rgba(16,52,135,0.08)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
-                <div>
-                    <div style="width: 44px; height: 44px; border-radius: 8px; background: #eff6ff; color: var(--cycsa-azul); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;">
-                        <i class="fa-solid fa-truck-pickup"></i>
-                    </div>
-                    <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">Sí, Muestreo en Campo</h4>
-                    <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
-                        Asignar técnico muestreador, vehículo, fecha de salida y llenar la <strong>Lista de Chequeo Oficial CYCSA-RT-FM-40 B</strong>.
-                    </p>
-                </div>
-                <button type="button" class="btn-accion-hs" style="background: var(--cycsa-azul); color: white; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; border:none; cursor:pointer;" onclick="confirmarDecisionMuestreo(true)">
-                    <i class="fa-solid fa-list-check"></i> Llenar Lista de Chequeo (CYCSA-RT-FM-40 B)
-                </button>
-            </div>
-
-            <!-- OPCIÓN 2: NO REQUIERE MUESTREO (INGRESO DIRECTO AL LAB) -->
+            <!-- OPCIÓN 1: MUESTREO DIRECTO (LABORATORIO CENTRAL - PREFIJO MS) -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; background: white; transition: all 0.2s;" onmouseover="this.style.borderColor='#10b981'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.08)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
                 <div>
                     <div style="width: 44px; height: 44px; border-radius: 8px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;">
                         <i class="fa-solid fa-flask"></i>
                     </div>
-                    <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">No, Ingreso Directo</h4>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a;">Muestreo Directo</h4>
+                        <span class="badge" style="background:#d1fae5; color:#065f46; font-family:monospace; font-weight:700; font-size:11px;">Prefijo MS</span>
+                    </div>
                     <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
-                        Los especímenes fueron entregados directamente por el cliente en el Laboratorio Central (sin salida a campo).
+                        Los especímenes fueron entregados directamente por el cliente en el Laboratorio Central de CYCSA (sin salida de personal técnico).
                     </p>
                 </div>
-                <button type="button" class="btn-accion-hs" style="background: #10b981; color: white; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; border:none; cursor:pointer;" onclick="confirmarDecisionMuestreo(false)">
-                    <i class="fa-solid fa-file-circle-plus"></i> Abrir Hoja RT-FM-13
+                <button type="button" class="btn-accion-hs" style="background: #10b981; color: white; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; border:none; cursor:pointer;" onclick="confirmarDecisionMuestreo('directo')">
+                    <i class="fa-solid fa-file-circle-plus"></i> Abrir RT-FM-13 (Directo - MS)
                 </button>
+            </div>
+
+            <!-- OPCIÓN 2: SE ENVÍA A CAMPO (MUESTREO EN OBRA - PREFIJO MC) -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; background: white; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cycsa-azul)'; this.style.boxShadow='0 4px 12px rgba(16,52,135,0.08)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                <div>
+                    <div style="width: 44px; height: 44px; border-radius: 8px; background: #eff6ff; color: var(--cycsa-azul); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;">
+                        <i class="fa-solid fa-truck-pickup"></i>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a;">Se envía a campo</h4>
+                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-family:monospace; font-weight:700; font-size:11px;">Prefijo MC</span>
+                    </div>
+                    <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
+                        Muestreo realizado en obra o campo por personal técnico de CYCSA (cilindros, densidad nuclear, etc.).
+                    </p>
+                </div>
+                <div>
+                    <button type="button" class="btn-accion-hs" style="background: var(--cycsa-azul); color: white; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; border:none; cursor:pointer;" onclick="confirmarDecisionMuestreo('campo')">
+                        <i class="fa-solid fa-file-signature"></i> Abrir RT-FM-13 (Campo - MC)
+                    </button>
+                    <div id="btn_opcion_logistica_campo" style="margin-top:8px; text-align:center;">
+                        <button type="button" onclick="confirmarDecisionMuestreo('logistica')" style="background:none; border:none; color:#0284c7; font-size:11px; cursor:pointer; text-decoration:underline;">
+                            <i class="fa-solid fa-list-check"></i> Ir a Lista de Chequeo y Vehículo (FM-40 B)
+                        </button>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -1011,32 +1058,46 @@
     // Variables de control para el modal de decisión
     let decisionOSId = null;
     let decisionOSCodigo = '';
+    let esSegundaHojaDecision = false;
 
     function cerrarModalDecisionMuestreo() {
         const m = document.getElementById('modalDecisionMuestreoGlobal');
         if (m) m.style.display = 'none';
     }
 
-    function abrirModalDecisionMuestreo(idOS, codigoOS) {
+    function abrirModalDecisionMuestreo(idOS, codigoOS, esSegundaHoja = false) {
         decisionOSId = idOS;
         decisionOSCodigo = codigoOS;
+        esSegundaHojaDecision = !!esSegundaHoja;
         const lbl = document.getElementById('decision_codigo_os');
         if (lbl) lbl.innerText = codigoOS;
+        const sub = document.getElementById('decision_subtitulo_entrega');
+        if (sub) {
+            sub.innerText = esSegundaHoja ? 'Añadiendo una nueva hoja de solicitud (entrega adicional) a esta O/S.' : 'Configuración de ingreso para la Hoja de Solicitud.';
+        }
+        const btnLog = document.getElementById('btn_opcion_logistica_campo');
+        if (btnLog) {
+            btnLog.style.display = esSegundaHoja ? 'none' : 'block';
+        }
         const m = document.getElementById('modalDecisionMuestreoGlobal');
         if (m) m.style.display = 'flex';
     }
 
-    function confirmarDecisionMuestreo(requiereMuestreo) {
+    function confirmarDecisionMuestreo(tipo) {
         if (!decisionOSId) return;
         const idOS = decisionOSId;
         const codigoOS = decisionOSCodigo;
+        const esSegunda = esSegundaHojaDecision;
         cerrarModalDecisionMuestreo();
 
-        if (requiereMuestreo) {
-            // Redirigir a Programación de Muestreo y Lista de Chequeo Oficial (CYCSA-RT-FM-40 B)
+        if (tipo === 'logistica') {
             window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + encodeURIComponent(idOS);
-        } else {
-            // Ingreso directo: Marcar en BD y abrir modal RT-FM-13 con prefijo MS
+            return;
+        }
+
+        const prefijo = (tipo === 'campo') ? 'MC' : 'MS';
+
+        if (!esSegunda && tipo === 'directo') {
             const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
             fetch('/Cycsa/publico/ordenes-servicio/marcar-ingreso-directo', {
                 method: 'POST',
@@ -1046,13 +1107,10 @@
                 },
                 body: 'id_os=' + encodeURIComponent(idOS) + '&csrf_token=' + encodeURIComponent(csrfVal)
             }).catch(console.error);
-
-            // Actualizar botones en el DOM
-            const btns = document.querySelectorAll(`button[data-id-os="${idOS}"]`);
-            btns.forEach(b => b.setAttribute('data-estado-muestreo', 'no_aplica'));
-
-            abrirModalHojaSolicitud(idOS, codigoOS, 0, true, 'MS');
         }
+
+        // Abrir siempre la Hoja RT-FM-13 con el prefijo seleccionado
+        abrirModalHojaSolicitud(idOS, codigoOS, 0, true, prefijo);
     }
 
     // Intercepción Inteligente del clic en "Registrar Hoja RT-FM-13" (Casos A, B y C)
@@ -1075,9 +1133,7 @@
             fechaLlegada = llegParam || '';
         }
 
-        // =========================================================================
         // CASO B: MUESTREO EN PROCESO (El técnico se encuentra en campo)
-        // =========================================================================
         if (estadoMuestreo === 'en_proceso') {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
@@ -1135,7 +1191,7 @@
                                 if (typeof btnOrId === 'object' && btnOrId !== null) {
                                     btnOrId.setAttribute('data-estado-muestreo', 'finalizado');
                                 }
-                                abrirModalHojaSolicitud(idOS, codigoOS);
+                                abrirModalDecisionMuestreo(idOS, codigoOS, false);
                             } else {
                                 Swal.fire('Error', res.message || 'No se pudo finalizar el muestreo.', 'error');
                             }
@@ -1156,26 +1212,8 @@
             return;
         }
 
-        // =========================================================================
-        // CASO PENDIENTE DE PROGRAMAR (El usuario ya indicó que requiere muestreo)
-        // =========================================================================
-        if (estadoMuestreo === 'pendiente_programar') {
-            window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + idOS;
-            return;
-        }
-
-        // =========================================================================
-        // CASO C: MUESTREO FINALIZADO O INGRESO DIRECTO CONFIRMADO
-        // =========================================================================
-        if (estadoMuestreo === 'finalizado' || estadoMuestreo === 'no_aplica') {
-            abrirModalHojaSolicitud(idOS, codigoOS);
-            return;
-        }
-
-        // =========================================================================
-        // CASO A: SIN DECIDIR / NUEVA ORDEN (Abrir Modal Interactivo Garantizado)
-        // =========================================================================
-        abrirModalDecisionMuestreo(idOS, codigoOS);
+        // SIEMPRE preguntar si es muestreo directo o se envía a campo al generar RT-FM-13
+        abrirModalDecisionMuestreo(idOS, codigoOS, false);
     }
 
     let idOSModalActual = 0;
@@ -1459,23 +1497,8 @@
                         agregarFilaMuestraModal(tipo, nom, m.descripcion || m.ubicacion || '', m.info_importante || m.observaciones || '', m.ensayo_id, m.plantilla_id);
                     });
                 } else {
-                    const cantSugerida = parseInt(data.cantidad_muestras_sugerida || data.os_referencia?.programacion_muestreo?.cantidad_muestras_est || 1) || 1;
-                    const puntoMuestreo = hoja.procedencia_punto_muestreo || data.lugar_muestreo || data.os_referencia?.nombre_proyecto || '';
-                    const primerEnsayoObj = (window.ensayosDisponiblesOS.length > 0) ? window.ensayosDisponiblesOS[0] : null;
-                    const primerEnsayoId = primerEnsayoObj ? primerEnsayoObj.id : 1;
-                    const primerPlantillaId = primerEnsayoObj?.plantilla_sugerida ? primerEnsayoObj.plantilla_sugerida.id : null;
-                    const desc = primerEnsayoObj ? (primerEnsayoObj.nombre.length > 50 ? primerEnsayoObj.nombre.substring(0, 50) + '...' : primerEnsayoObj.nombre) : ((prefijoMuestraActual === 'MC') ? 'Muestra tomada en campo' : 'Muestra entregada en laboratorio');
-                    let infoPunto = puntoMuestreo ? `Ubicación: ${puntoMuestreo}` : '';
-                    if (data.os_referencia?.nombre_proyecto && (!puntoMuestreo || !puntoMuestreo.includes(data.os_referencia.nombre_proyecto))) {
-                        infoPunto += (infoPunto ? ' - ' : '') + `Proy: ${data.os_referencia.nombre_proyecto}`;
-                    }
-                    const info = infoPunto || ((prefijoMuestraActual === 'MC') ? 'Muestreo en Obra' : 'Recepción Lab Central');
-                    for (let i = 0; i < cantSugerida; i++) {
-                        const consecutiveStr = String(siguienteConsecutivoMuestra + i).padStart(4, '0');
-                        const nom = `${prefijoMuestraActual}-${consecutiveStr}-${anioActual2Digitos}`;
-                        agregarFilaMuestraModal(prefijoMuestraActual, nom, desc, info, primerEnsayoId, primerPlantillaId);
-                    }
-                    siguienteConsecutivoMuestra += cantSugerida;
+                    // No pre-poblar automáticamente especímenes; el usuario los agregará manualmente
+                    mostrarEstadoVacioMuestras();
                 }
 
                 hsLoading.style.display = 'none';
@@ -1490,16 +1513,35 @@
 
     function cargarNuevaHojaEnModal() {
         if (!idOSModalActual) return;
-        abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true, prefijoMuestraActual);
+        cerrarModalHojaSolicitud();
+        abrirModalDecisionMuestreo(idOSModalActual, codigoOSModalActual, true);
     }
 
     function cerrarModalHojaSolicitud() {
         modHS.style.display = 'none';
     }
 
+    function mostrarEstadoVacioMuestras() {
+        const tbody = document.getElementById('hs-tbody-muestras');
+        if (!tbody) return;
+        tbody.innerHTML = `
+            <tr id="fila-sin-muestras">
+                <td colspan="4" style="text-align:center; padding:32px 16px; color:#64748b; background:#f8fafc; border-radius:6px;">
+                    <div style="font-size:26px; color:#94a3b8; margin-bottom:6px;"><i class="fa-solid fa-vial-circle-check"></i></div>
+                    <div style="font-size:13px; font-weight:700; color:#334155;">No hay muestras registradas en esta hoja</div>
+                    <div style="font-size:11.5px; color:#64748b; margin-top:3px;">Haz clic en el botón verde <strong>"+ Agregar Muestra"</strong> para añadir los especímenes recibidos o muestreados.</div>
+                </td>
+            </tr>
+        `;
+    }
+
     function agregarFilaMuestraModal(tipo = null, nombre = '', desc = '', info = '', ensayoId = null, plantillaId = null, seleccionManual = 0, motivoCambio = '', bloqueado = 0) {
         const tbody = document.getElementById('hs-tbody-muestras');
         if (!tbody) return;
+
+        // Quitar fila de estado vacío si existe
+        const filaVacia = document.getElementById('fila-sin-muestras');
+        if (filaVacia) filaVacia.remove();
 
         const prefijo = tipo || prefijoMuestraActual || 'MC';
 
@@ -1524,9 +1566,20 @@
             }
         }
 
+        // Obtener datos legibles de la plantilla asignada
+        let etiquetaPlantilla = 'Sin plantilla asignada';
+        let codigoPlantilla = '';
+        if (plantillaId && Array.isArray(window.plantillasCache)) {
+            const plt = window.plantillasCache.find(p => String(p.id) === String(plantillaId));
+            if (plt) {
+                codigoPlantilla = plt.codigo || '';
+                etiquetaPlantilla = plt.codigo ? `${plt.codigo} · ${plt.nombre}` : plt.nombre;
+            }
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td style="padding:6px 8px;">
+            <td style="padding:6px 8px; vertical-align:middle;">
                 <input type="text" name="m_nombre[]" value="${nombre}" readonly required class="form-control" style="font-size:12px; padding:5px 8px; font-weight:700; font-family:monospace; color:var(--cycsa-azul); background:#f8fafc; cursor:not-allowed; border-color:#cbd5e1;" title="Código consecutivo asignado por el sistema">
                 <input type="hidden" name="m_info[]" value="${escapeHtml(info)}">
                 <input type="hidden" name="m_ensayo_id[]" value="${ensayoId || 1}">
@@ -1535,86 +1588,54 @@
                 <input type="hidden" name="m_motivo_cambio[]" value="${escapeHtml(motivoCambio)}">
                 <input type="hidden" name="m_bloqueado[]" value="${bloqueado}">
             </td>
-            <td style="padding:6px 8px;">
+            <td style="padding:6px 8px; vertical-align:middle;">
                 <input type="text" name="m_desc[]" value="${escapeHtml(desc)}" class="form-control" style="font-size:12.5px; padding:6px 10px;" required placeholder="Descripción de la muestra (ej: Concreto F'c 210 kg/cm² - Columnas Eje C-3 / Sub-base)">
                 ${motivoCambio ? `<div class="text-warning small text-truncate mt-1" style="font-size:10px;" title="${escapeHtml(motivoCambio)}"><i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(motivoCambio)}</div>` : ''}
             </td>
-            <td style="padding:6px 8px; text-align:center;">
+            <td style="padding:6px 8px; vertical-align:middle;">
+                <div class="col-plantilla-badge" style="display:flex; align-items:center; gap:6px;">
+                    <span class="badge badge-plt-display" style="background:${plantillaId ? '#e0f2fe' : '#f8fafc'}; color:${plantillaId ? '#0369a1' : '#64748b'}; border:1px solid ${plantillaId ? '#bae6fd' : '#cbd5e1'}; font-size:11px; padding:5px 8px; border-radius:6px; max-width:190px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block;" title="${escapeHtml(etiquetaPlantilla)}">
+                        <i class="fa-solid fa-file-waveform me-1"></i>${escapeHtml(codigoPlantilla ? codigoPlantilla : etiquetaPlantilla)}
+                    </span>
+                </div>
+            </td>
+            <td style="padding:6px 8px; text-align:center; vertical-align:middle;">
                 ${bloqueado ? 
                     '<span class="badge bg-secondary" style="font-size:10px;">Congelado</span>' 
                     : 
-                    '<button type="button" class="btn-accion-hs btn-pdf" style="padding:4px 7px; font-size:10px;" onclick="eliminarFilaMuestraModal(this)" title="Eliminar muestra"><i class="fa-solid fa-trash"></i></button>'
+                    '<button type="button" class="btn-accion-hs btn-pdf" style="padding:5px 8px; font-size:11px;" onclick="eliminarFilaMuestraModal(this)" title="Eliminar muestra"><i class="fa-solid fa-trash"></i></button>'
                 }
             </td>
         `;
         tbody.appendChild(tr);
     }
 
-    function cargarOpcionesPlantillaSelect(selectEl, ensayoId, plantillaSeleccionada = null) {
-        if (!ensayoId) return;
-        const clienteId = window.clienteIdActualHoja || '';
-        selectEl.innerHTML = '<option value="">Buscando plantillas aprobadas...</option>';
-        if (plantillaSeleccionada) {
-            selectEl.dataset.pendienteSeleccionar = plantillaSeleccionada;
+    function eliminarFilaMuestraModal(btn) {
+        const tr = btn.closest('tr');
+        if (tr) tr.remove();
+        const tbody = document.getElementById('hs-tbody-muestras');
+        if (tbody && tbody.querySelectorAll('tr').length === 0) {
+            mostrarEstadoVacioMuestras();
         }
-
-        fetch(`/Cycsa/publico/plantillas/disponibles?ensayo_id=${ensayoId}&cliente_id=${clienteId}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.status === 'success' && data.plantillas && data.plantillas.length > 0) {
-                    let html = '';
-                    const variantes = data.plantillas.filter(p => p.es_variante_cliente == 1);
-                    const delEnsayo = data.plantillas.filter(p => p.es_variante_cliente != 1 && p.es_del_ensayo == 1);
-                    const generales = data.plantillas.filter(p => p.es_variante_cliente != 1 && !p.es_del_ensayo);
-                    const targetId = selectEl.dataset.pendienteSeleccionar || plantillaSeleccionada || null;
-
-                    if (variantes.length > 0) {
-                        html += '<optgroup label="⭐ Variantes Aprobadas para este Cliente">';
-                        variantes.forEach(v => {
-                            const sel = (targetId && parseInt(v.id) === parseInt(targetId)) || (!targetId && data.plantilla_sugerida && parseInt(v.id) === parseInt(data.plantilla_sugerida.id)) ? 'selected' : '';
-                            html += `<option value="${v.id}" ${sel}>${escapeHtml(v.etiqueta_selector)}</option>`;
-                        });
-                        html += '</optgroup>';
-                    }
-
-                    if (delEnsayo.length > 0) {
-                        html += '<optgroup label="🎯 Plantillas Recomendadas para este Ensayo">';
-                        delEnsayo.forEach(e => {
-                            const sel = (targetId && parseInt(e.id) === parseInt(targetId)) || (!targetId && !variantes.length && data.plantilla_sugerida && parseInt(e.id) === parseInt(data.plantilla_sugerida.id)) ? 'selected' : '';
-                            html += `<option value="${e.id}" ${sel}>${escapeHtml(e.etiqueta_selector)}</option>`;
-                        });
-                        html += '</optgroup>';
-                    }
-
-                    if (generales.length > 0) {
-                        const lbl = (delEnsayo.length > 0 || variantes.length > 0) ? "🌐 Otras Plantillas Aprobadas (CYCSA)" : "🌐 Plantillas Generales Aprobadas (CYCSA)";
-                        html += `<optgroup label="${lbl}">`;
-                        generales.forEach(g => {
-                            const sel = (targetId && parseInt(g.id) === parseInt(targetId)) || (!targetId && !variantes.length && !delEnsayo.length && data.plantilla_sugerida && parseInt(g.id) === parseInt(data.plantilla_sugerida.id)) ? 'selected' : '';
-                            html += `<option value="${g.id}" ${sel}>${escapeHtml(g.etiqueta_selector)}</option>`;
-                        });
-                        html += '</optgroup>';
-                    }
-
-                    selectEl.innerHTML = html;
-                    selectEl.dataset.sugeridaId = data.plantilla_sugerida ? data.plantilla_sugerida.id : '';
-                    if (targetId) {
-                        selectEl.value = targetId;
-                    }
-                } else {
-                    selectEl.innerHTML = '<option value="">No hay plantillas aprobadas en el sistema</option>';
-                }
-            })
-            .catch(() => {
-                selectEl.innerHTML = '<option value="">Error al cargar plantillas</option>';
-            });
     }
 
-    // Funciones de gestión global de plantillas para todas las muestras
+    // Funciones del Desplegable Interactivo AJAX de Plantillas
+    window.plantillasCache = [];
+    window.plantillaFiltroCategoria = 'todos';
+
+    function escapeJs(str) {
+        if (!str) return '';
+        return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
     function poblarSelectorPlantillaGlobal(ensayos, clienteId) {
-        const selGlobal = document.getElementById('select_plantilla_global');
-        if (!selGlobal) return;
-        selGlobal.innerHTML = '<option value="">-- Cargando plantillas... --</option>';
+        const hiddenInput = document.getElementById('select_plantilla_global');
+        const listaCont = document.getElementById('lista_resultados_plantillas_ajax');
+        if (!hiddenInput) return;
+
+        if (listaCont) {
+            listaCont.innerHTML = '<div style="padding:15px; text-align:center; color:#64748b; font-size:12px;"><i class="fa-solid fa-spinner fa-spin me-2 text-primary"></i>Cargando plantillas aprobadas...</div>';
+        }
 
         const cid = clienteId || window.clienteIdActualHoja || '';
         const primerEnsayoId = (ensayos && ensayos.length > 0) ? ensayos[0].id : 0;
@@ -1623,72 +1644,202 @@
             .then(r => r.json())
             .then(res => {
                 if (res.status === 'success' && Array.isArray(res.plantillas) && res.plantillas.length > 0) {
-                    renderizarOpcionesSelectGlobal(selGlobal, res.plantillas, res.plantilla_sugerida);
+                    window.plantillasCache = res.plantillas;
+                    
+                    // Actualizar contadores
+                    const total = res.plantillas.length;
+                    const clienteCount = res.plantillas.filter(p => p.es_variante_cliente == 1).length;
+                    const servicioCount = res.plantillas.filter(p => p.es_variante_cliente != 1 && p.es_del_ensayo == 1).length;
+                    
+                    const elTotal = document.getElementById('cnt_plt_todas');
+                    if (elTotal) elTotal.innerText = total;
+                    const elCli = document.getElementById('cnt_plt_cliente');
+                    if (elCli) elCli.innerText = clienteCount;
+                    const elSrv = document.getElementById('cnt_plt_servicio');
+                    if (elSrv) elSrv.innerText = servicioCount;
+
+                    // Renderizar lista en el panel desplegable
+                    renderizarListaDropdownPlantillas(window.plantillasCache);
+
+                    // Seleccionar plantilla sugerida si no hay una elegida
+                    if (!hiddenInput.value && res.plantilla_sugerida) {
+                        seleccionarPlantillaGlobal(res.plantilla_sugerida.id, res.plantilla_sugerida.codigo, res.plantilla_sugerida.nombre, res.plantilla_sugerida.norma, false);
+                    }
                 } else {
-                    selGlobal.innerHTML = '<option value="">-- No hay plantillas disponibles --</option>';
+                    window.plantillasCache = [];
+                    if (listaCont) {
+                        listaCont.innerHTML = '<div style="padding:15px; text-align:center; color:#94a3b8; font-size:12px;"><i class="fa-solid fa-circle-exclamation me-2"></i>No hay plantillas aprobadas en el sistema.</div>';
+                    }
                 }
             })
-            .catch(() => {
-                selGlobal.innerHTML = '<option value="">-- Error al cargar plantillas --</option>';
-            });
-    }
-
-    function renderizarOpcionesSelectGlobal(selectEl, plantillas, sugerida) {
-        let html = '<option value="">-- Seleccionar Plantilla General --</option>';
-        const variantes = plantillas.filter(p => p.es_variante_cliente == 1);
-        const delEnsayo = plantillas.filter(p => p.es_variante_cliente != 1 && p.es_del_ensayo == 1);
-        const generales = plantillas.filter(p => p.es_variante_cliente != 1 && !p.es_del_ensayo);
-
-        if (variantes.length > 0) {
-            html += '<optgroup label="⭐ Variantes Aprobadas para este Cliente">';
-            variantes.forEach(v => {
-                const sel = (sugerida && parseInt(v.id) === parseInt(sugerida.id)) ? 'selected' : '';
-                html += `<option value="${v.id}" ${sel}>${escapeHtml(v.etiqueta_selector || (v.codigo + ' · ' + v.nombre))}</option>`;
-            });
-            html += '</optgroup>';
-        }
-
-        if (delEnsayo.length > 0) {
-            html += '<optgroup label="🎯 Plantillas Recomendadas para el Servicio">';
-            delEnsayo.forEach(e => {
-                const sel = (!variantes.length && sugerida && parseInt(e.id) === parseInt(sugerida.id)) ? 'selected' : '';
-                html += `<option value="${e.id}" ${sel}>${escapeHtml(e.etiqueta_selector || (e.codigo + ' · ' + e.nombre))}</option>`;
-            });
-            html += '</optgroup>';
-        }
-
-        if (generales.length > 0) {
-            const lbl = (delEnsayo.length > 0 || variantes.length > 0) ? "🌐 Otras Plantillas Aprobadas (CYCSA)" : "🌐 Plantillas Generales Aprobadas (CYCSA)";
-            html += `<optgroup label="${lbl}">`;
-            generales.forEach(g => {
-                const sel = (!variantes.length && !delEnsayo.length && sugerida && parseInt(g.id) === parseInt(sugerida.id)) ? 'selected' : '';
-                html += `<option value="${g.id}" ${sel}>${escapeHtml(g.etiqueta_selector || (g.codigo + ' · ' + g.nombre))}</option>`;
-            });
-            html += '</optgroup>';
-        }
-
-        selectEl.innerHTML = html;
-        if (sugerida && sugerida.id) {
-            selectEl.value = sugerida.id;
-        }
-
-        // Auto-asignar a las filas existentes en la tabla que aún no tengan plantilla
-        const tbodyAuto = document.getElementById('hs-tbody-muestras');
-        if (tbodyAuto && selectEl.value) {
-            tbodyAuto.querySelectorAll('tr').forEach(tr => {
-                const inpPlt = tr.querySelector('input[name="m_plantilla_id[]"]');
-                if (inpPlt && !inpPlt.value) {
-                    inpPlt.value = selectEl.value;
+            .catch(err => {
+                console.error(err);
+                if (listaCont) {
+                    listaCont.innerHTML = '<div style="padding:15px; text-align:center; color:#ef4444; font-size:12px;"><i class="fa-solid fa-triangle-exclamation me-2"></i>Error al cargar plantillas del servidor.</div>';
                 }
             });
+    }
+
+    function renderizarListaDropdownPlantillas(plantillas) {
+        const listaCont = document.getElementById('lista_resultados_plantillas_ajax');
+        if (!listaCont) return;
+
+        // Filtrar según pestaña de categoría
+        let filtradas = plantillas;
+        if (window.plantillaFiltroCategoria === 'cliente') {
+            filtradas = plantillas.filter(p => p.es_variante_cliente == 1);
+        } else if (window.plantillaFiltroCategoria === 'servicio') {
+            filtradas = plantillas.filter(p => p.es_variante_cliente != 1 && p.es_del_ensayo == 1);
+        }
+
+        if (filtradas.length === 0) {
+            listaCont.innerHTML = '<div style="padding:15px; text-align:center; color:#94a3b8; font-size:12px;"><i class="fa-solid fa-filter me-2"></i>No se encontraron plantillas para esta categoría o búsqueda.</div>';
+            return;
+        }
+
+        const hiddenVal = document.getElementById('select_plantilla_global')?.value || '';
+
+        let html = '';
+        filtradas.forEach(p => {
+            const isSelected = String(p.id) === String(hiddenVal);
+            const esCliente = p.es_variante_cliente == 1;
+            const esServicio = p.es_del_ensayo == 1;
+
+            html += `
+                <div class="item-plantilla-ajax" onclick="seleccionarPlantillaGlobal(${p.id}, '${escapeJs(p.codigo)}', '${escapeJs(p.nombre)}', '${escapeJs(p.norma || '')}', true)" 
+                     style="padding:8px 10px; border-radius:6px; cursor:pointer; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; background:${isSelected ? '#f0fdf4' : '#ffffff'}; border:1px solid ${isSelected ? '#86efac' : '#f1f5f9'}; transition:all 0.15s;" 
+                     onmouseover="if (!this.classList.contains('selected')) { this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; }" 
+                     onmouseout="if (!this.classList.contains('selected')) { this.style.background='${isSelected ? '#f0fdf4' : '#ffffff'}'; this.style.borderColor='${isSelected ? '#86efac' : '#f1f5f9'}'; }">
+                    <div style="display:flex; align-items:center; gap:9px; flex:1; min-width:0;">
+                        <div style="width:32px; height:32px; border-radius:6px; background:${esCliente ? '#fef3c7' : (esServicio ? '#dbeafe' : '#f1f5f9')}; color:${esCliente ? '#d97706' : (esServicio ? '#1d4ed8' : '#475569')}; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;">
+                            <i class="fa-solid ${esCliente ? 'fa-star' : (esServicio ? 'fa-bullseye' : 'fa-file-lines')}"></i>
+                        </div>
+                        <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span class="badge" style="background:#0284c7; color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;">${escapeHtml(p.codigo)}</span>
+                                <span style="font-size:12.5px; font-weight:600; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.nombre)}</span>
+                            </div>
+                            <div style="font-size:11px; color:#64748b; margin-top:2px; display:flex; align-items:center; gap:6px;">
+                                ${p.norma ? `<span><i class="fa-solid fa-bookmark me-1 text-secondary" style="font-size:10px;"></i>${escapeHtml(p.norma)}</span>` : ''}
+                                ${esCliente ? '<span class="text-warning font-weight-bold"><i class="fa-solid fa-star me-1"></i>Variante Cliente</span>' : ''}
+                                ${esServicio && !esCliente ? '<span class="text-primary"><i class="fa-solid fa-check-circle me-1"></i>Recomendada</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-left:8px; flex-shrink:0;">
+                        ${isSelected ? '<span class="badge bg-success" style="font-size:11px; padding:3px 8px;"><i class="fa-solid fa-check me-1"></i>Activa</span>' : '<span style="font-size:11px; color:#94a3b8;"><i class="fa-solid fa-arrow-right"></i></span>'}
+                    </div>
+                </div>
+            `;
+        });
+        listaCont.innerHTML = html;
+    }
+
+    function filtrarPlantillasAjax(query) {
+        const q = (query || '').toLowerCase().trim();
+        if (!q) {
+            renderizarListaDropdownPlantillas(window.plantillasCache);
+            return;
+        }
+
+        const filtradas = window.plantillasCache.filter(p => {
+            const cod = (p.codigo || '').toLowerCase();
+            const nom = (p.nombre || '').toLowerCase();
+            const nrm = (p.norma || '').toLowerCase();
+            return cod.includes(q) || nom.includes(q) || nrm.includes(q);
+        });
+        renderizarListaDropdownPlantillas(filtradas);
+    }
+
+    function filtrarCategoriaPlantilla(categoria, btn) {
+        window.plantillaFiltroCategoria = categoria;
+        document.querySelectorAll('.btn-filtro-plt').forEach(b => {
+            b.style.background = '#f8fafc';
+            b.style.color = '#475569';
+            b.style.borderColor = '#cbd5e1';
+        });
+        if (btn) {
+            btn.style.background = '#0284c7';
+            btn.style.color = '#ffffff';
+            btn.style.borderColor = '#0284c7';
+        }
+        const query = document.getElementById('input_buscar_plantilla_ajax')?.value || '';
+        filtrarPlantillasAjax(query);
+    }
+
+    function seleccionarPlantillaGlobal(id, codigo, nombre, norma, sincronizar = false) {
+        const hiddenInput = document.getElementById('select_plantilla_global');
+        const triggerTexto = document.getElementById('texto_plantilla_seleccionada');
+        if (hiddenInput) hiddenInput.value = id;
+
+        if (triggerTexto) {
+            triggerTexto.innerHTML = `
+                <span class="badge" style="background:#0284c7; color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; margin-right:4px;">${escapeHtml(codigo)}</span>
+                <span style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(nombre)}</span>
+                ${norma ? `<span style="font-size:11px; color:#64748b; margin-left:4px;">(${escapeHtml(norma)})</span>` : ''}
+            `;
+        }
+
+        cerrarDropdownPlantillasGlobal();
+
+        // Si se pide sincronizar, auto-asignar a filas existentes que no tengan plantilla
+        if (sincronizar) {
+            const tbodyAuto = document.getElementById('hs-tbody-muestras');
+            if (tbodyAuto) {
+                tbodyAuto.querySelectorAll('tr:not(#fila-sin-muestras)').forEach(tr => {
+                    const inpPlt = tr.querySelector('input[name="m_plantilla_id[]"]');
+                    if (inpPlt && !inpPlt.value) {
+                        inpPlt.value = id;
+                        const badgePlt = tr.querySelector('.badge-plt-display');
+                        if (badgePlt) {
+                            badgePlt.innerHTML = `<i class="fa-solid fa-file-waveform me-1"></i>${escapeHtml(codigo || nombre)}`;
+                            badgePlt.title = `${codigo} · ${nombre}`;
+                            badgePlt.style.background = '#e0f2fe';
+                            badgePlt.style.color = '#0369a1';
+                            badgePlt.style.borderColor = '#bae6fd';
+                        }
+                    }
+                });
+            }
         }
     }
+
+    function toggleDropdownPlantillasGlobal() {
+        const panel = document.getElementById('dropdown_plantillas_panel');
+        if (!panel) return;
+        if (panel.style.display === 'none' || !panel.style.display) {
+            panel.style.display = 'block';
+            const input = document.getElementById('input_buscar_plantilla_ajax');
+            if (input) {
+                input.value = '';
+                renderizarListaDropdownPlantillas(window.plantillasCache);
+                setTimeout(() => input.focus(), 50);
+            }
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+
+    function cerrarDropdownPlantillasGlobal() {
+        const panel = document.getElementById('dropdown_plantillas_panel');
+        if (panel) panel.style.display = 'none';
+    }
+
+    // Cerrar desplegable interactivo al hacer clic fuera de él
+    document.addEventListener('click', function(event) {
+        const panel = document.getElementById('dropdown_plantillas_panel');
+        const trigger = document.getElementById('trigger_plantilla_global');
+        if (panel && panel.style.display === 'block') {
+            if (!panel.contains(event.target) && !trigger.contains(event.target)) {
+                cerrarDropdownPlantillasGlobal();
+            }
+        }
+    });
 
     function aplicarPlantillaATodasLasMuestras() {
         const selGlobal = document.getElementById('select_plantilla_global');
         if (!selGlobal || !selGlobal.value) {
-            alert('Por favor seleccione primero una plantilla del selector general.');
-            if (selGlobal) selGlobal.focus();
+            alert('Por favor seleccione primero una plantilla del selector interactivo.');
             return;
         }
 
@@ -1696,9 +1847,20 @@
         const tbody = document.getElementById('hs-tbody-muestras');
         if (!tbody) return;
 
-        const filas = tbody.querySelectorAll('tr');
+        const filas = tbody.querySelectorAll('tr:not(#fila-sin-muestras)');
         if (filas.length === 0) {
+            alert('No hay muestras en la tabla para asignar la plantilla. Haga clic en "+ Agregar Muestra" primero.');
             return;
+        }
+
+        let codigoPlt = '';
+        let textoPlt = 'Plantilla asignada';
+        if (Array.isArray(window.plantillasCache)) {
+            const plt = window.plantillasCache.find(p => String(p.id) === String(plantillaId));
+            if (plt) {
+                codigoPlt = plt.codigo || '';
+                textoPlt = plt.codigo ? `${plt.codigo} · ${plt.nombre}` : plt.nombre;
+            }
         }
 
         let aplicadas = 0;
@@ -1715,6 +1877,15 @@
             if (inpPlt) {
                 inpPlt.value = plantillaId;
                 aplicadas++;
+            }
+
+            const badgePlt = tr.querySelector('.badge-plt-display');
+            if (badgePlt) {
+                badgePlt.innerHTML = `<i class="fa-solid fa-file-waveform me-1"></i>${escapeHtml(codigoPlt || textoPlt)}`;
+                badgePlt.title = textoPlt;
+                badgePlt.style.background = '#e0f2fe';
+                badgePlt.style.color = '#0369a1';
+                badgePlt.style.borderColor = '#bae6fd';
             }
 
             // Efecto visual de confirmación instantánea (destello verde)

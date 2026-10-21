@@ -322,6 +322,16 @@ class PlantillasControlador extends ControladorBase {
         $disponibles = $this->modelo->obtenerPlantillasDisponiblesParaEnsayo($ensayoId, $cid);
         $sugerida = $this->modelo->obtenerPlantillaSugerida($ensayoId, $cid);
 
+        $q = trim((string)$peticion->obtenerParametro('q', ''));
+        if ($q !== '') {
+            $disponibles = array_values(array_filter($disponibles, function($p) use ($q) {
+                return (stripos($p['codigo'] ?? '', $q) !== false)
+                    || (stripos($p['nombre'] ?? '', $q) !== false)
+                    || (stripos($p['norma'] ?? '', $q) !== false)
+                    || (stripos($p['etiqueta_selector'] ?? '', $q) !== false);
+            }));
+        }
+
         $respuesta->enviarJson([
             'status' => 'success',
             'ensayo_id' => $ensayoId,

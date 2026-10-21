@@ -178,10 +178,10 @@ class HojasServicioControlador extends ControladorBase {
         $disponiblesOS = max(0, (int)round($totalContratado - $totalYaRegistrado));
 
         if ($esNueva) {
-            $cantSugerida = ($disponiblesOS > 0) ? $disponiblesOS : ($cantEstimadaProg > 0 ? $cantEstimadaProg : 5);
+            $cantSugerida = 0;
         } else {
             $muestrasActuales = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
-            $cantSugerida = count($muestrasActuales) > 0 ? count($muestrasActuales) : ($disponiblesOS > 0 ? $disponiblesOS : 5);
+            $cantSugerida = count($muestrasActuales);
         }
 
         $siguienteConsecutivoMuestra = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestra, $idOS);
