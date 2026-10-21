@@ -1953,14 +1953,29 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $options->set('fontCache', dirname(__DIR__, 2) . '/storage/cache');
     $dompdf = new Dompdf($options);
 
-    $bgPath = dirname(__DIR__, 2) . '/publico/img/hoja_membretada_horizontal.jpg';
-    if (!file_exists($bgPath)) {
-        $bgPath = dirname(__DIR__, 2) . '/publico/img/hoja_horizontal.jpg';
-    }
-    $bgBase64 = file_exists($bgPath) ? base64_encode(file_get_contents($bgPath)) : '';
-
     $archivoMd = $detalle['archivo_markdown'] ?? '';
     $schemaInfo = obtenerEsquemaPlantillaEnsayo($archivoMd, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
+
+    $orientacion = !empty($detalle['orientacion']) 
+        ? strtolower(trim((string)$detalle['orientacion'])) 
+        : (!empty($schemaInfo['orientacion']) ? strtolower(trim((string)$schemaInfo['orientacion'])) : 'horizontal');
+
+    if ($orientacion === 'vertical') {
+        $bgPath = dirname(__DIR__, 2) . '/publico/img/hoja_membretada_vertical.jpg';
+        if (!file_exists($bgPath)) {
+            $bgPath = dirname(__DIR__, 2) . '/publico/img/hoja_vertical.jpg';
+        }
+        $pageSizeMm = '215.9mm 279.4mm';
+        $zonaCuerpoBottom = '34mm';
+    } else {
+        $bgPath = dirname(__DIR__, 2) . '/publico/img/hoja_membretada_horizontal.jpg';
+        if (!file_exists($bgPath)) {
+            $bgPath = dirname(__DIR__, 2) . '/publico/img/hoja_horizontal.jpg';
+        }
+        $pageSizeMm = '279.4mm 215.9mm';
+        $zonaCuerpoBottom = '32mm';
+    }
+    $bgBase64 = file_exists($bgPath) ? base64_encode(file_get_contents($bgPath)) : '';
 
     $codigoFormatoOficial = !empty($schemaInfo['codigo_formato']) ? $schemaInfo['codigo_formato'] : (!empty($detalle['codigo_documento']) ? $detalle['codigo_documento'] : 'CYCSA-RT-FM-22');
     $ensayoTituloOficial = !empty($schemaInfo['ensayo_titulo']) ? $schemaInfo['ensayo_titulo'] : ($detalle['descripcion_ensayo'] ?? 'Ensayo de Laboratorio');
@@ -2115,7 +2130,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         }
     }
 
-    $bgCss = !empty($bgBase64) ? 'background-image: url("data:image/jpeg;base64,' . $bgBase64 . '"); background-size: 279.4mm 215.9mm; background-repeat: no-repeat;' : '';
+    $bgCss = !empty($bgBase64) ? 'background-image: url("data:image/jpeg;base64,' . $bgBase64 . '"); background-size: ' . $pageSizeMm . '; background-repeat: no-repeat;' : '';
 
     $notasHtml = '';
     if (!empty($notasOficiales)) {
@@ -2151,7 +2166,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
 <meta charset="UTF-8">
 <style>
     @page {
-        size: 279.4mm 215.9mm;
+        size: {$pageSizeMm};
         margin: 0;
     }
     body {
@@ -2173,7 +2188,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         top: 40mm;
         left: 14mm;
         right: 14mm;
-        bottom: 32mm;
+        bottom: {$zonaCuerpoBottom};
     }
     table.meta-informe-tbl {
         width: 100%;
@@ -3714,16 +3729,31 @@ function obtenerParesControlCalidad(array $filas): array {
  * @return string 'MC' o 'MS'
  */
 function determinarPrefijoMuestraOS($os): string {
-    if (is_array($os)) {
-        $req = $os['requiere_muestreo'] ?? null;
-        $tec = trim($os['tecnico_muestreo'] ?? '');
-    } elseif (is_object($os)) {
-        $req = $os->requiere_muestreo ?? null;
-        $tec = trim($os->tecnico_muestreo ?? '');
-    } else {
+    if (is_object($os)) {
+        $os = (array)$os;
+    }
+    if (!is_array($os)) {
         return 'MS';
     }
 
-    $esCampo = ($req === 1 || $req === '1' || $req === true || !empty($tec));
+    $req = $os['requiere_muestreo'] ?? null;
+    $tec = trim($os['tecnico_muestreo'] ?? '');
+    $progTec = trim($os['programacion_muestreo']['tecnico_nombre'] ?? '');
+    $tieneProg = !empty($os['programacion_muestreo']) || !empty($os['id_pm']);
+
+    // Comprobar si los ensayos contratados son de campo (MC) o in situ
+    $esEnsayoCampo = false;
+    if (!empty($os['ensayos']) && is_array($os['ensayos'])) {
+        foreach ($os['ensayos'] as $ens) {
+            $cod = strtoupper(trim($ens['codigo_servicio'] ?? ($ens['codigo_hoja_campo'] ?? '')));
+            $nomEns = $ens['nombre_ensayo'] ?? ($ens['descripcion_ensayo'] ?? ($ens['descripcion'] ?? ''));
+            if (str_starts_with($cod, 'MC') || stripos($nomEns, 'in situ') !== false || stripos($nomEns, 'densímetro') !== false || stripos($nomEns, 'densimetro') !== false) {
+                $esEnsayoCampo = true;
+                break;
+            }
+        }
+    }
+
+    $esCampo = ($req === 1 || $req === '1' || $req === true || !empty($tec) || !empty($progTec) || $tieneProg || $esEnsayoCampo);
     return $esCampo ? 'MC' : 'MS';
 }

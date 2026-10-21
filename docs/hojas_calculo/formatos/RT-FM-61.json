@@ -1,0 +1,597 @@
+{
+  "codigo": "RT-FM-61",
+  "nombre": "Resistencia a compresión de cilindros de concreto (revenimiento, temperatura, densidad, incertidumbre)",
+  "norma": {
+    "texto": "ASTM C39 / C143 / C1064 / C31",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-61HOJA DE CALCULO CILINDRO 2026 central.xlsm",
+  "variantes": [
+    {
+      "nombre": "campo",
+      "archivo": "Archive (1)/CYCSA-RT-FM-61 HC Resistencia de Cilindro2026 (...)(3).xlsx",
+      "diferencias": "Plantilla ANTIGUA tabular 'cilindros' (2023, fila por espécimen, sin polinomio de prensa ni incertidumbre)"
+    },
+    {
+      "nombre": "CASA MANAGUA",
+      "archivo": "Archive (2)/CYCSA-RT-FM-61 HC Resistencia de Cilindro2026 (...).xlsx",
+      "diferencias": "Igual a campo (1 fórmula distinta)"
+    }
+  ],
+  "modulo_destino": "Laboratorio Roturas",
+  "formato_informe_rt_fm_22": {
+    "letra": "A",
+    "nuevo": false,
+    "nota": "Alimenta resistencia_de_concreto.md y formato_de_reveniemiento_y_temperatura.md (RT-FM-22 A) vía roturas / informes_rotura"
+  },
+  "requiere_rotura_por_edad": true,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "tipo_especimen",
+      "etiqueta": "Tipo de espécimen",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "listas.json tipos_especimen"
+    },
+    {
+      "codigo": "fecha_moldeo",
+      "etiqueta": "Fecha de elaboración",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "especimenes.fecha_moldeo"
+    },
+    {
+      "codigo": "fecha_rotura",
+      "etiqueta": "Fecha de rotura",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "edad_dias",
+      "etiqueta": "Edad (fecha_rotura − fecha_moldeo)",
+      "tipo": "calculado",
+      "unidad": "días",
+      "decimales": 0,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_diseno_psi",
+      "etiqueta": "f'c de diseño",
+      "tipo": "numero",
+      "unidad": "lbf/in²",
+      "decimales": 0,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "prensa_id",
+      "etiqueta": "Máquina de fuerza",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "PRENSA-01"
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Concreto fresco",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "revenimiento_cm",
+          "etiqueta": "Revenimiento",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "temperatura_c",
+          "etiqueta": "Temperatura del concreto",
+          "tipo": "numero",
+          "unidad": "°C",
+          "decimales": 1,
+          "requerido": false,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Espécimen",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "diametro_1",
+          "etiqueta": "Diámetro 1",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "diametro_2",
+          "etiqueta": "Diámetro 2",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "largo_1",
+          "etiqueta": "Longitud 1",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "largo_2",
+          "etiqueta": "Longitud 2",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "masa_kg",
+          "etiqueta": "Masa",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 3,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "tipo_falla",
+          "etiqueta": "Tipo de ruptura",
+          "tipo": "lista",
+          "unidad": null,
+          "decimales": null,
+          "requerido": true,
+          "por_especimen": false,
+          "texto_ayuda": "listas.json tipos_falla_c39"
+        },
+        {
+          "codigo": "lectura_carga_lbf",
+          "etiqueta": "Lectura de carga del equipo",
+          "tipo": "numero",
+          "unidad": "lbf",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "prensa_a_e14",
+      "descripcion": "Coef. a ×10¹⁴",
+      "unidad": null,
+      "fuente": "U Carga F20 = -4.6765E-14",
+      "ref_equipo": "PRENSA-01",
+      "valor_referencia": -4.6765
+    },
+    {
+      "codigo": "prensa_b_e8",
+      "descripcion": "Coef. b ×10⁸",
+      "unidad": null,
+      "fuente": "U Carga G20 = 2.5071E-08",
+      "ref_equipo": "PRENSA-01",
+      "valor_referencia": 2.5071
+    },
+    {
+      "codigo": "prensa_c",
+      "descripcion": "Coef. c",
+      "unidad": null,
+      "fuente": "U Carga H20",
+      "ref_equipo": "PRENSA-01",
+      "valor_referencia": 0.99583
+    },
+    {
+      "codigo": "prensa_d",
+      "descripcion": "Coef. d",
+      "unidad": "lbf",
+      "fuente": "U Carga I20",
+      "ref_equipo": "PRENSA-01",
+      "valor_referencia": 3.7217
+    },
+    {
+      "codigo": "ld_a",
+      "descripcion": "Coef. a factor L/D",
+      "unidad": null,
+      "fuente": "CONVERT Y LISTA G37",
+      "ref_equipo": "FACTOR-LD-C39",
+      "valor_referencia": 0.2133
+    },
+    {
+      "codigo": "ld_b",
+      "descripcion": "Coef. b",
+      "unidad": null,
+      "fuente": "G38",
+      "ref_equipo": "FACTOR-LD-C39",
+      "valor_referencia": -1.04
+    },
+    {
+      "codigo": "ld_c",
+      "descripcion": "Coef. c",
+      "unidad": null,
+      "fuente": "G39",
+      "ref_equipo": "FACTOR-LD-C39",
+      "valor_referencia": 1.7667
+    },
+    {
+      "codigo": "ld_d",
+      "descripcion": "Coef. d",
+      "unidad": null,
+      "fuente": "G40",
+      "ref_equipo": "FACTOR-LD-C39",
+      "valor_referencia": -0.07
+    },
+    {
+      "codigo": "psi_por_kgcm2",
+      "descripcion": "Conversión del laboratorio",
+      "unidad": null,
+      "fuente": "CALCULO fila 70 y export MS-9574",
+      "valor": 14.2
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "revenimiento_in",
+      "expresion": "{revenimiento_cm}/2.54",
+      "descripcion": "Revenimiento",
+      "unidad": "in",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "diametro_prom",
+      "expresion": "({diametro_1}+{diametro_2})/2",
+      "descripcion": "Diámetro promedio",
+      "unidad": "cm",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "largo_prom",
+      "expresion": "({largo_1}+{largo_2})/2",
+      "descripcion": "Longitud promedio",
+      "unidad": "cm",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "relacion_ld",
+      "expresion": "{largo_prom}/{diametro_prom}",
+      "descripcion": "Relación L/D",
+      "unidad": null,
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "factor_ld",
+      "expresion": "1-CEIL(MAX(0,MIN(1,1.75-{relacion_ld})))*(1-({ld_a}*{relacion_ld}^3+{ld_b}*{relacion_ld}^2+{ld_c}*{relacion_ld}+{ld_d}))",
+      "descripcion": "Factor L/D: 1 si L/D ≥ 1.75; polinomio si L/D < 1.75 (C39). Sin IF: CEIL(MAX(0,MIN(1,1.75−L/D))) vale 1 o 0",
+      "unidad": null,
+      "redondeo": "ROUND(x,3)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "area_1_cm2",
+      "expresion": "PI()*{diametro_1}^2/4",
+      "descripcion": "Área con diámetro 1",
+      "unidad": "cm²",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "area_2_cm2",
+      "expresion": "PI()*{diametro_2}^2/4",
+      "descripcion": "Área con diámetro 2",
+      "unidad": "cm²",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "area_cm2",
+      "expresion": "({area_1_cm2}+{area_2_cm2})/2",
+      "descripcion": "Área promedio",
+      "unidad": "cm²",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "area_in2",
+      "expresion": "{area_cm2}/6.4516",
+      "descripcion": "Área",
+      "unidad": "in²",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "volumen_cm3",
+      "expresion": "({area_1_cm2}*{largo_1}+{area_2_cm2}*{largo_2})/2",
+      "descripcion": "Volumen promedio",
+      "unidad": "cm³",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "densidad",
+      "expresion": "({masa_kg}*1000000/({area_1_cm2}*{largo_1})+{masa_kg}*1000000/({area_2_cm2}*{largo_2}))/2",
+      "descripcion": "Densidad",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "carga_real_lbf",
+      "expresion": "{prensa_a_e14}*({lectura_carga_lbf}/100000)^3*10+{prensa_b_e8}*({lectura_carga_lbf}/10000)^2+{prensa_c}*{lectura_carga_lbf}+{prensa_d}",
+      "descripcion": "Carga corregida por calibración (polinomio cúbico con coeficientes escalados)",
+      "unidad": "lbf",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "carga_real_kg",
+      "expresion": "{carga_real_lbf}/2.2046",
+      "descripcion": "Carga",
+      "unidad": "kg",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "esfuerzo_psi",
+      "expresion": "{carga_real_lbf}*{factor_ld}/{area_in2}",
+      "descripcion": "Resistencia a compresión → roturas.esfuerzo_psi",
+      "unidad": "lbf/in²",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "esfuerzo_psi_reportado",
+      "expresion": "ROUND({esfuerzo_psi}/10,0)*10",
+      "descripcion": "Resistencia redondeada a 10 psi",
+      "unidad": "lbf/in²",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "esfuerzo_kgcm2",
+      "expresion": "{esfuerzo_psi_reportado}/14.2",
+      "descripcion": "Resistencia → roturas.esfuerzo_kgcm2",
+      "unidad": "kg/cm²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "porcentaje_fc",
+      "expresion": "{esfuerzo_psi_reportado}*100/{resistencia_diseno_psi}",
+      "descripcion": "% de f'c → roturas.porcentaje_fc",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "ACI 318: promedio de 3 pruebas consecutivas ≥ f'c y ningún resultado < f'c − 500 psi (f'c ≤ 5000) o < 0.9·f'c (f'c > 5000); evaluar en el consolidado",
+      "implicito": true
+    },
+    {
+      "descripcion": "Tolerancia de edad de rotura (C39) → plan_rotura_edades.tolerancia_horas",
+      "implicito": false
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "REPORTE: datos generales, resultado, R ± U",
+      "Informe parcial por edad y consolidado (informes_rotura)"
+    ],
+    "graficos": [
+      "REPORTE GRAFICO H: resistencia vs edad"
+    ]
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "U resistencia (oculta)",
+      "contenido": "Repetibilidad, Vernier, combinación de incertidumbre",
+      "destino": "módulo de incertidumbre (fase posterior)"
+    },
+    {
+      "hoja": "CONVERT Y LISTA (oculta)",
+      "contenido": "Conversor de unidades, tipos de espécimen, técnicos, tipos de ruptura 1-6, polinomio L/D",
+      "destino": "listas.json + FACTOR-LD-C39"
+    },
+    {
+      "hoja": "U Temp / U revenimiento / U Area (ocultas)",
+      "contenido": "Incertidumbre termómetro EQ-233, cono de revenimiento, calibrador",
+      "destino": "equipos_calibracion"
+    },
+    {
+      "hoja": "U Carga (visible)",
+      "contenido": "Polinomio de la prensa y U por punto de calibración",
+      "destino": "PRENSA-01"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM61-01",
+      "original_excel": "El factor L/D se calcula (fila 34) pero nunca se aplica; el polinomio da > 1 para L/D > 1.75",
+      "corregido": "Aplicar solo si L/D < 1.75; 1 en otro caso",
+      "justificacion": "ASTM C39",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM61-02",
+      "original_excel": "Área en in² con /6.45 (fila 39) y /6.4516 (fila 62)",
+      "corregido": "6.4516 en todo el cálculo",
+      "justificacion": "psi +0.025 % (7311.87 → 7313.69)",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM61-03",
+      "original_excel": "Coeficientes de la prensa en notación científica",
+      "corregido": "Constantes escaladas (×10¹⁴, ×10⁸)",
+      "justificacion": "EvaluadorFormula no tokeniza 'E'",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM61-04",
+      "original_excel": "kg/cm² = promedio(carga/área1, carga/área2); psi = carga/área promedio",
+      "corregido": "Un único esfuerzo; kg/cm² = psi/14.2",
+      "justificacion": "Coherencia",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM61-05",
+      "original_excel": "Campo/CASA usan plantilla 2023 sin polinomio de prensa",
+      "corregido": "Solo plantilla 'central'",
+      "justificacion": "Unificación",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-0213-26 (cilindro 4x8, 3 días)",
+      "fuente": "Archive/CYCSA-RT-FM-61HOJA DE CALCULO CILINDRO 2026 central.xlsm 'CALCULO' col B",
+      "entradas": {
+        "prensa_a_e14": -4.6765,
+        "prensa_b_e8": 2.5071,
+        "prensa_c": 0.99583,
+        "prensa_d": 3.7217,
+        "ld_a": 0.2133,
+        "ld_b": -1.04,
+        "ld_c": 1.7667,
+        "ld_d": -0.07,
+        "revenimiento_cm": 14.5,
+        "diametro_1": 10.1,
+        "diametro_2": 10.2,
+        "largo_1": 20.2,
+        "largo_2": 20.2,
+        "masa_kg": 4.02,
+        "lectura_carga_lbf": 91932
+      },
+      "esperados": {
+        "revenimiento_in": 5.708661417322834,
+        "diametro_prom": 10.15,
+        "relacion_ld": 1.9901477832512318,
+        "factor_ld": 1,
+        "area_1_cm2": 80.1184666481737,
+        "area_2_cm2": 81.71282491987051,
+        "area_cm2": 80.9156457840221,
+        "volumen_cm3": 1634.4960448372462,
+        "densidad": 2459.712421856533,
+        "carga_real_lbf": 91727.91797465623,
+        "carga_real_kg": 41607.510648034215,
+        "esfuerzo_psi": 7313.69,
+        "esfuerzo_psi_reportado": 7310
+      },
+      "tolerancia_relativa": 0.001,
+      "notas": "esfuerzo_psi con /6.4516 (FM61-02); Excel 7311.87"
+    },
+    {
+      "nombre": "MS-9574-26 export (3 días)",
+      "fuente": "Archive (2)/MS-9574-9578-26.xls",
+      "entradas": {
+        "area_in2": 12.42,
+        "carga_real_lbf": 63492,
+        "factor_ld": 1,
+        "resistencia_diseno_psi": 6000
+      },
+      "esperados": {
+        "esfuerzo_psi": 5112.077,
+        "esfuerzo_psi_reportado": 5110,
+        "esfuerzo_kgcm2": 359.859,
+        "porcentaje_fc": 85.1667
+      },
+      "tolerancia_relativa": 0.001,
+      "notas": "El export reporta 5110 psi y 360 kg/cm²"
+    },
+    {
+      "nombre": "MS-9577-26 export (28 días)",
+      "fuente": "idem",
+      "entradas": {
+        "area_in2": 12.42,
+        "carga_real_lbf": 82069,
+        "factor_ld": 1,
+        "resistencia_diseno_psi": 6000
+      },
+      "esperados": {
+        "esfuerzo_psi_reportado": 6610,
+        "esfuerzo_kgcm2": 465.493,
+        "porcentaje_fc": 110.1667
+      },
+      "tolerancia_relativa": 0.001,
+      "notas": "Export: 6610 psi / 465 kg/cm²"
+    },
+    {
+      "nombre": "MS-9578-26 export (56 días)",
+      "fuente": "idem",
+      "entradas": {
+        "area_in2": 12.42,
+        "carga_real_lbf": 84230,
+        "factor_ld": 1,
+        "resistencia_diseno_psi": 6000
+      },
+      "esperados": {
+        "esfuerzo_psi_reportado": 6780,
+        "esfuerzo_kgcm2": 477.465
+      },
+      "tolerancia_relativa": 0.001,
+      "notas": "Export: 6780 psi / 477 kg/cm²"
+    }
+  ],
+  "agregaciones": []
+}

@@ -1,0 +1,231 @@
+{
+  "codigo": "RT-FM-58",
+  "nombre": "Sanidad de agregados por intemperismo acelerado (sulfatos)",
+  "norma": {
+    "texto": "ASTM C88",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-58 HOJA DE CALCULO INTERPERISMO_ACELERADO_2026.xlsx",
+  "variantes": [],
+  "modulo_destino": "Plantillas",
+  "formato_informe_rt_fm_22": {
+    "letra": null,
+    "nuevo": true,
+    "nota": "Podría ser fila de RT-FM-22 G; por ahora informe nuevo"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "fraccion",
+      "etiqueta": "Fracción",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "opciones_lista": [
+        "Agregado grueso",
+        "Agregado fino"
+      ]
+    },
+    {
+      "codigo": "solucion",
+      "etiqueta": "Solución",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "opciones_lista": [
+        "Sulfato de sodio",
+        "Sulfato de magnesio"
+      ]
+    },
+    {
+      "codigo": "ciclos",
+      "etiqueta": "Ciclos",
+      "tipo": "numero",
+      "unidad": null,
+      "decimales": 0,
+      "requerido": true,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Fracciones",
+      "tipo_layout": "tabla_matriz",
+      "campos": [
+        {
+          "codigo": "tamano",
+          "etiqueta": "Fracción",
+          "tipo": "texto",
+          "unidad": null,
+          "decimales": null,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "retenido_original",
+          "etiqueta": "Retenido en la gradación original",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_inicial",
+          "etiqueta": "Masa inicial",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_final",
+          "etiqueta": "Masa final retenida",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        }
+      ]
+    }
+  ],
+  "constantes": [],
+  "formulas": [
+    {
+      "codigo": "perdida_masa",
+      "expresion": "{masa_inicial}-{masa_final}",
+      "descripcion": "Pérdida",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": true
+    },
+    {
+      "codigo": "perdida_pct",
+      "expresion": "({masa_inicial}-{masa_final})*100/{masa_inicial}",
+      "descripcion": "Pérdida por fracción",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "gradacion_pct",
+      "expresion": "{retenido_original}*100/{total_retenido_original}",
+      "descripcion": "% de la fracción en la gradación original",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "perdida_corregida",
+      "expresion": "{perdida_pct}*{gradacion_pct}/100",
+      "descripcion": "Pérdida ponderada",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": true
+    }
+  ],
+  "agregaciones": [
+    {
+      "codigo": "total_retenido_original",
+      "funcion": "suma",
+      "de": "retenido_original",
+      "unidad": "g"
+    },
+    {
+      "codigo": "perdida_total",
+      "funcion": "suma",
+      "de": "perdida_corregida",
+      "unidad": "%"
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "ASTM C33: pérdida ponderada máxima según solución y fracción (Na₂SO₄ 12 % grueso / 10 % fino; MgSO₄ 18 % / 15 %)",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Fracciones con pérdida ponderada y total"
+    ],
+    "graficos": []
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "Hoja1 (visible)",
+      "contenido": "Borrador del mismo cálculo y masas de ensayo por tamaño (1000/500/670/330/300 g)",
+      "destino": "listas.json masas_ensayo_c88"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM58-01",
+      "original_excel": "Fracción 1½\"–¾\" capturada en kg (1.005/0.988) y el resto en g",
+      "corregido": "Unidad única g",
+      "justificacion": "Mezcla de unidades",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM58-02",
+      "original_excel": "Fracción 3/8\"–No.4 con valores de relleno 1/1",
+      "corregido": "Fracción opcional",
+      "justificacion": "Datos ficticios",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-5491 fracción 2½\"–1½\"",
+      "fuente": "Archive/...FM-58... 'interperismo Agregado grueso'",
+      "entradas": {
+        "retenido_original": 4767,
+        "total_retenido_original": 6287,
+        "masa_inicial": 4767,
+        "masa_final": 4621
+      },
+      "esperados": {
+        "perdida_masa": 146,
+        "perdida_pct": 3.0627228865114327,
+        "gradacion_pct": 75.82312708764117,
+        "perdida_corregida": 2.3222522665818355
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ]
+}

@@ -16,10 +16,14 @@ $codigoFormatoOficial = !empty($schemaInfo['codigo_formato']) ? $schemaInfo['cod
 $ensayoTituloOficial = !empty($schemaInfo['ensayo_titulo']) ? $schemaInfo['ensayo_titulo'] : $detalle['descripcion_ensayo'];
 $metodoMuestreoOficial = !empty($schemaInfo['metodo_muestreo']) ? $schemaInfo['metodo_muestreo'] : (!empty($detalle['norma_astm']) ? $detalle['norma_astm'] : 'Norma ASTM / AASHTO Oficial');
 $tipoMuestraOficial = !empty($schemaInfo['tipo_muestra']) ? $schemaInfo['tipo_muestra'] : 'Especímenes / Muestras';
-$colMethods = $schemaInfo['column_methods'] ?? [];
-
 $disclaimerOficial = !empty($schemaInfo['disclaimer']) ? $schemaInfo['disclaimer'] : 'Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.';
 $notasOficiales = !empty($schemaInfo['notas']) && is_array($schemaInfo['notas']) ? $schemaInfo['notas'] : [];
+
+$orientacion = !empty($detalle['orientacion']) 
+    ? strtolower(trim((string)$detalle['orientacion'])) 
+    : (!empty($schemaInfo['orientacion']) ? strtolower(trim((string)$schemaInfo['orientacion'])) : 'horizontal');
+$esVertical = ($orientacion === 'vertical');
+$bgImagenMatriz = $esVertical ? '/Cycsa/publico/img/hoja_membretada_vertical.jpg' : '/Cycsa/publico/img/hoja_membretada_horizontal.jpg';
 
 if (!array_key_exists('notas', $schemaInfo) && !empty($archivoMd)) {
     $rutaMdFallback = dirname(__DIR__, 4) . '/database/ensayos/' . $archivoMd;
@@ -128,7 +132,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     
     <style>
         @page {
-            size: letter landscape;
+            size: <?= $esVertical ? 'letter portrait' : 'letter landscape' ?>;
             margin: 0;
         }
 
@@ -197,14 +201,14 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             color: white;
         }
 
-        /* Contenedor Principal de la Hoja Membretada (Letter Landscape Exacto: 279.4mm x 215.9mm) */
+        /* Contenedor Principal de la Hoja Membretada */
         .pagina-hoja {
-            width: 279.4mm;
-            height: 215.9mm;
-            max-height: 215.9mm;
+            width: <?= $esVertical ? '215.9mm' : '279.4mm' ?>;
+            height: <?= $esVertical ? '279.4mm' : '215.9mm' ?>;
+            max-height: <?= $esVertical ? '279.4mm' : '215.9mm' ?>;
             margin: 60px auto 40px auto;
             background-color: #ffffff;
-            background-image: url('/Cycsa/publico/img/hoja_membretada_horizontal.jpg');
+            background-image: url('<?= $bgImagenMatriz ?>');
             background-size: 100% 100%;
             background-position: center;
             background-repeat: no-repeat;
@@ -274,13 +278,13 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             margin-top: 3px;
         }
 
-        /* 2. ZONA DE CONTENIDO: Inicia DEBAJO del logo (Top: 40mm) y termina ARRIBA del pie de página (Bottom: 32mm) */
+        /* 2. ZONA DE CONTENIDO: Inicia DEBAJO del logo (Top: 40mm) y termina ARRIBA del pie de página */
         .zona-cuerpo {
             position: absolute;
             top: 40mm;
             left: 14mm;
             right: 14mm;
-            bottom: 32mm;
+            bottom: <?= $esVertical ? '34mm' : '32mm' ?>;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
@@ -482,9 +486,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             .pagina-hoja {
                 margin: 0 !important;
                 box-shadow: none !important;
-                width: 279.4mm !important;
-                height: 215.9mm !important;
-                max-height: 215.9mm !important;
+                width: <?= $esVertical ? '215.9mm' : '279.4mm' ?> !important;
+                height: <?= $esVertical ? '279.4mm' : '215.9mm' ?> !important;
+                max-height: <?= $esVertical ? '279.4mm' : '215.9mm' ?> !important;
                 page-break-inside: avoid !important;
                 page-break-after: avoid !important;
             }

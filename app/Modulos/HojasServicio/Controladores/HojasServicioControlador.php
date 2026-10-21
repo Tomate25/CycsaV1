@@ -61,6 +61,9 @@ class HojasServicioControlador extends ControladorBase {
 
         $todasHojas = $modelo->obtenerHojasSolicitudPorOS($idOS);
         $totalHojas = count($todasHojas);
+        if ($totalHojas === 0) {
+            $esNueva = true;
+        }
 
         $hoja = null;
         if ($idHoja > 0) {
@@ -181,7 +184,7 @@ class HojasServicioControlador extends ControladorBase {
             $cantSugerida = count($muestrasActuales) > 0 ? count($muestrasActuales) : ($disponiblesOS > 0 ? $disponiblesOS : 5);
         }
 
-        $siguienteConsecutivoMuestra = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestra);
+        $siguienteConsecutivoMuestra = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestra, $idOS);
 
         if ($esNueva) {
             if ($esCampo) {
@@ -199,15 +202,47 @@ class HojasServicioControlador extends ControladorBase {
 
         // Simplificar lista de todas las hojas para el selector del frontend
         $listaHojasFrontend = [];
+        $seq = 1;
         foreach ($todasHojas as $th) {
             $mArr = json_decode($th['muestras_json'] ?? '[]', true) ?: [];
             $listaHojasFrontend[] = [
                 'id' => (int)$th['id'],
+                'numero_secuencial' => $seq++,
                 'numero_registro' => $th['numero_registro'] ?? ('ID ' . $th['id']),
                 'fecha_creacion' => $th['fecha_creacion'] ?? '',
                 'fecha_toma' => $th['fecha_hora_toma_muestra'] ?? '',
                 'toma_por' => $th['nombre_persona_toma_muestra'] ?? 'Cliente',
                 'total_muestras' => count($mArr)
+            ];
+        }
+
+        $pltModelo = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
+        $clienteId = (int)($osCompleta['id_cliente'] ?? ($os['id_cliente'] ?? 0));
+        $detallesRelacionales = ($hoja && !empty($hoja['id'])) ? $pltModelo->obtenerDetallesPorHoja((int)$hoja['id']) : [];
+
+        // Obtener ensayos disponibles con sus plantillas aprobadas y sugerencias
+        $ensayosOS = [];
+        if (!empty($osCompleta['ensayos']) && is_array($osCompleta['ensayos'])) {
+            foreach ($osCompleta['ensayos'] as $ens) {
+                $eId = (int)($ens['id_producto'] ?? ($ens['producto_id'] ?? ($ens['id'] ?? 1)));
+                $eNom = $ens['nombre_ensayo'] ?? ($ens['ensayo_servicio'] ?? ($ens['descripcion_ensayo'] ?? 'Ensayo'));
+                $ensayosOS[] = [
+                    'id' => $eId,
+                    'nombre' => $eNom,
+                    'cantidad' => (float)($ens['cantidad'] ?? 1),
+                    'plantillas_disponibles' => $pltModelo->obtenerPlantillasDisponiblesParaEnsayo($eId, $clienteId),
+                    'plantilla_sugerida' => $pltModelo->obtenerPlantillaSugerida($eId, $clienteId)
+                ];
+            }
+        }
+
+        if (empty($ensayosOS)) {
+            $ensayosOS[] = [
+                'id' => 1,
+                'nombre' => 'Ensayos de Laboratorio',
+                'cantidad' => 1,
+                'plantillas_disponibles' => $pltModelo->obtenerPlantillasDisponiblesParaEnsayo(1, $clienteId),
+                'plantilla_sugerida' => $pltModelo->obtenerPlantillaSugerida(1, $clienteId)
             ];
         }
 
@@ -232,7 +267,10 @@ class HojasServicioControlador extends ControladorBase {
             'total_registrado' => $totalYaRegistrado,
             'cantidad_disponible' => $disponiblesOS,
             'lugar_muestreo' => $lugarMuestreo,
-            'os_referencia' => $osCompleta
+            'os_referencia' => $osCompleta,
+            'cliente_id' => $clienteId,
+            'detalles_muestras_relacionales' => $detallesRelacionales,
+            'ensayos_disponibles_os' => $ensayosOS
         ]);
     }
 
@@ -273,11 +311,48 @@ class HojasServicioControlador extends ControladorBase {
                 return;
             }
             
-            // Procesar tabla dinámica de especímenes
+            // Procesar tabla dinámica de especímenes y plantillas
             $identMuestras = [];
             $mNombres = $datos['m_nombre'] ?? [];
             $mDescripciones = $datos['m_desc'] ?? [];
             $mInfos = $datos['m_info'] ?? [];
+            $mEnsayos = $datos['m_ensayo_id'] ?? [];
+            $mPlantillas = $datos['m_plantilla_id'] ?? [];
+            $plantillaGlobalId = (int)($datos['plantilla_global_id'] ?? 0);
+            if ($plantillaGlobalId <= 0) {
+                $pltMod = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
+                $ensayosOS = $modelo->obtenerDetallesCotizacion((int)($os['id_cotizacion'] ?? 0));
+                $primerEnsayoId = (int)($ensayosOS[0]['id_producto'] ?? 1);
+                $sug = $pltMod->obtenerPlantillaSugerida($primerEnsayoId, (int)($os['id_cliente'] ?? 0));
+                if (!empty($sug['id'])) {
+                    $plantillaGlobalId = (int)$sug['id'];
+                }
+            }
+
+            if ($plantillaGlobalId > 0) {
+                for ($i = 0; $i < count($mNombres); $i++) {
+                    if (empty($mPlantillas[$i]) || (int)$mPlantillas[$i] <= 0) {
+                        $mPlantillas[$i] = $plantillaGlobalId;
+                    }
+                }
+            }
+            $mManuales = $datos['m_seleccion_manual'] ?? [];
+            $mMotivos = $datos['m_motivo_cambio'] ?? [];
+            $esRecepcionFisica = !empty($datos['confirmar_recepcion_lims']) || !empty($datos['firma_recibe_cycsa']);
+
+            // Validación ISO 17025: la RT-FM-13 no se puede guardar como recibida si alguna muestra no tiene plantilla asignada
+            if ($esRecepcionFisica) {
+                for ($i = 0; $i < count($mNombres); $i++) {
+                    $nom = trim($mNombres[$i] ?? '');
+                    if (empty($nom)) continue;
+                    $pId = (int)($mPlantillas[$i] ?? 0);
+                    if ($pId <= 0) {
+                        $_SESSION['error'] = 'Validación ISO 17025: La muestra "' . $nom . '" no tiene una plantilla de ensayo asignada. No se puede admitir la recepción física sin plantilla.';
+                        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                        return;
+                    }
+                }
+            }
             
             for ($i = 0; $i < count($mNombres); $i++) {
                 $nom = trim($mNombres[$i]);
@@ -285,7 +360,9 @@ class HojasServicioControlador extends ControladorBase {
                 $identMuestras[] = [
                     'nombre_muestra' => $nom,
                     'descripcion' => trim($mDescripciones[$i] ?? ''),
-                    'info_importante' => trim($mInfos[$i] ?? '')
+                    'info_importante' => trim($mInfos[$i] ?? ''),
+                    'ensayo_id' => (int)($mEnsayos[$i] ?? 1),
+                    'plantilla_id' => (int)($mPlantillas[$i] ?? 0)
                 ];
             }
             $datos['identificacion_muestras_json'] = json_encode($identMuestras);
@@ -295,6 +372,33 @@ class HojasServicioControlador extends ControladorBase {
                 $os = $modelo->obtenerOSPorId($idOS);
                 $hoja = $modelo->obtenerHojaSolicitudPorId($idHojaGuardada) ?: $modelo->obtenerHojaSolicitudPorOS($idOS, $idHojaGuardada);
                 
+                // Guardar en tabla relacional formal hojas_solicitud_detalles
+                $muestrasSaneadas = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
+                $filasDetalles = [];
+                for ($i = 0; $i < count($mNombres); $i++) {
+                    $nom = !empty($muestrasSaneadas[$i]['nombre_muestra'])
+                        ? trim($muestrasSaneadas[$i]['nombre_muestra'])
+                        : trim($mNombres[$i] ?? '');
+                    if (empty($nom)) continue;
+                    $filasDetalles[] = [
+                        'codigo_muestra' => $nom,
+                        'descripcion_ubicacion' => trim($mDescripciones[$i] ?? ''),
+                        'observacion_edad' => trim($mInfos[$i] ?? ''),
+                        'ensayo_id' => (int)($mEnsayos[$i] ?? 1),
+                        'plantilla_id' => (int)($mPlantillas[$i] ?? 0),
+                        'seleccion_manual' => !empty($mManuales[$i]) ? 1 : 0,
+                        'motivo_cambio' => trim($mMotivos[$i] ?? '')
+                    ];
+                }
+                $pltModelo = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
+                $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+                $pltModelo->guardarDetallesMuestrasHoja($idHojaGuardada, $filasDetalles, $usuarioId);
+
+                if ($esRecepcionFisica) {
+                    $pltModelo->bloquearYCongelarDetallesRecepcion($idHojaGuardada, $usuarioId);
+                    registrarBitacora('hojas_servicio', 'congelar_plantillas', "Plantillas congeladas y bloqueadas por recepción física en Hoja RT-FM-13 #{$idHojaGuardada}", $idHojaGuardada);
+                }
+
                 require_once dirname(__DIR__, 4) . '/app/Helpers/funciones.php';
                 $pdfContenido = generarHojaSolicitudPDF($hoja, $os);
                 

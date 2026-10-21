@@ -43,7 +43,33 @@ class ControladorBase {
     }
 
     private function resolverRutaVista(string $rutaVista): string {
-        $partes = explode('/', ltrim($rutaVista, '/'));
+        $rutaLimpia = ltrim($rutaVista, '/\\');
+        
+        // 1. Si es ruta directa absoluta o relativa al proyecto
+        if (file_exists($rutaVista)) {
+            return $rutaVista;
+        }
+        $rutaDesdeRaiz = dirname(__DIR__, 2) . '/' . $rutaLimpia;
+        if (file_exists($rutaDesdeRaiz)) {
+            return $rutaDesdeRaiz;
+        }
+        if (file_exists($rutaDesdeRaiz . '.php')) {
+            return $rutaDesdeRaiz . '.php';
+        }
+
+        // Quitar prefijo 'app/Modulos/' o 'app/' si viene incluido
+        if (str_starts_with($rutaLimpia, 'app/Modulos/')) {
+            $rutaLimpia = substr($rutaLimpia, strlen('app/Modulos/'));
+        } elseif (str_starts_with($rutaLimpia, 'app/modulos/')) {
+            $rutaLimpia = substr($rutaLimpia, strlen('app/modulos/'));
+        } elseif (str_starts_with($rutaLimpia, 'app/')) {
+            $rutaLimpia = substr($rutaLimpia, strlen('app/'));
+        }
+        if (str_ends_with($rutaLimpia, '.php')) {
+            $rutaLimpia = substr($rutaLimpia, 0, -4);
+        }
+
+        $partes = explode('/', $rutaLimpia);
         if (count($partes) >= 2) {
             $modOrig = $partes[0];
             $modStudly = str_replace(' ', '', ucwords(str_replace(['_', '-'], ' ', $modOrig)));
@@ -69,6 +95,6 @@ class ControladorBase {
             }
         }
 
-        return __DIR__ . '/../Modulos/' . $rutaVista . '.php';
+        return __DIR__ . '/../Modulos/' . $rutaLimpia . '.php';
     }
 }

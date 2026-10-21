@@ -23,6 +23,10 @@ almacenamiento/logs/*
 !almacenamiento/logs/.gitkeep
 almacenamiento/cache/*
 !almacenamiento/cache/.gitkeep
+almacenamiento/solicitudes/*
+!almacenamiento/solicitudes/.gitkeep
+almacenamiento/informes/*
+!almacenamiento/informes/.gitkeep
 
 # Archivos subidos por clientes/usuarios (evitar fuga de información en git)
 publico/uploads/*

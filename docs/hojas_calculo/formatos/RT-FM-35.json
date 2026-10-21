@@ -1,0 +1,386 @@
+{
+  "codigo": "RT-FM-35",
+  "nombre": "Absorción y gravedades específicas (bulk, SSS, aparente) de agregado fino y grueso",
+  "norma": {
+    "texto": "ASTM C128 (fino) / ASTM C127 (grueso)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-35 HC %Abs, GE, GE sss, GE Ap 2026 (...)(2).xls",
+  "variantes": [
+    {
+      "nombre": "campo",
+      "archivo": "Archive (1)/CYCSA-RT-FM-35 HC Abs, GE, GE sss, GE Ap campo 2026.xls",
+      "diferencias": "Misma estructura, otras muestras"
+    },
+    {
+      "nombre": "CASA MANAGUA",
+      "archivo": "Archive (2)/CYCSA-RT-FM-35 HC Abs, GE, GE sss, GE Ap CASA MANAGUA.xls",
+      "diferencias": "Misma estructura"
+    }
+  ],
+  "modulo_destino": "Plantillas",
+  "formato_informe_rt_fm_22": {
+    "letra": "G",
+    "nuevo": false,
+    "nota": "Alimenta ensayos_varios.md (RT-FM-22 G); verificar la columna de absorción/GE en el JSON existente"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "fraccion",
+      "etiqueta": "Fracción",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "opciones_lista": [
+        "Agregado fino",
+        "Agregado grueso"
+      ]
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Agregado fino (C128)",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "masa_sss",
+          "etiqueta": "Masa SSS (B)",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "tara",
+          "etiqueta": "Tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "masa_seca_tara",
+          "etiqueta": "Masa seca + tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "frasco_agua",
+          "etiqueta": "Frasco + agua al aforo",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "frasco",
+          "etiqueta": "Masa del frasco",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "frasco_agua_muestra",
+          "etiqueta": "Frasco + agua + muestra",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Agregado grueso (C127)",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "g_masa_sss_tara",
+          "etiqueta": "Masa SSS + tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "g_tara",
+          "etiqueta": "Tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "g_masa_seca_tara",
+          "etiqueta": "Masa seca + tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "g_canasta_muestra_sumergida",
+          "etiqueta": "Canasta + muestra sumergida",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "g_canasta_sumergida",
+          "etiqueta": "Canasta sumergida",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [],
+  "formulas": [
+    {
+      "codigo": "masa_seca",
+      "expresion": "{masa_seca_tara}-{tara}",
+      "descripcion": "Masa seca al horno (A)",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "volumen_frasco",
+      "expresion": "{frasco_agua}-{frasco}",
+      "descripcion": "Capacidad del frasco (V)",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "masa_agua_agregada",
+      "expresion": "{frasco_agua_muestra}-({masa_sss}+{frasco})",
+      "descripcion": "Agua añadida con la muestra (W)",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "absorcion",
+      "expresion": "({masa_sss}-{masa_seca})*100/{masa_seca}",
+      "descripcion": "Absorción",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "ge_bulk",
+      "expresion": "{masa_seca}/({volumen_frasco}-{masa_agua_agregada})",
+      "descripcion": "GE bulk (seca)",
+      "unidad": null,
+      "redondeo": "ROUND(x,3)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "ge_sss",
+      "expresion": "{masa_sss}/({volumen_frasco}-{masa_agua_agregada})",
+      "descripcion": "GE SSS",
+      "unidad": null,
+      "redondeo": "ROUND(x,3)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "ge_aparente",
+      "expresion": "{masa_seca}/(({volumen_frasco}-{masa_agua_agregada})-({masa_sss}-{masa_seca}))",
+      "descripcion": "GE aparente",
+      "unidad": null,
+      "redondeo": "ROUND(x,3)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "g_masa_sss",
+      "expresion": "{g_masa_sss_tara}-{g_tara}",
+      "descripcion": "Grueso: masa SSS (B)",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "g_masa_seca",
+      "expresion": "{g_masa_seca_tara}-{g_tara}",
+      "descripcion": "Grueso: masa seca (A)",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "g_masa_sumergida",
+      "expresion": "{g_canasta_muestra_sumergida}-{g_canasta_sumergida}",
+      "descripcion": "Grueso: masa sumergida (C)",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "g_absorcion",
+      "expresion": "({g_masa_sss}-{g_masa_seca})*100/{g_masa_seca}",
+      "descripcion": "Grueso: absorción",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "g_ge_bulk",
+      "expresion": "{g_masa_seca}/({g_masa_sss}-{g_masa_sumergida})",
+      "descripcion": "Grueso: GE bulk",
+      "unidad": null,
+      "redondeo": "ROUND(x,3)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "g_ge_sss",
+      "expresion": "{g_masa_sss}/({g_masa_sss}-{g_masa_sumergida})",
+      "descripcion": "Grueso: GE SSS",
+      "unidad": null,
+      "redondeo": "ROUND(x,3)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "g_ge_aparente",
+      "expresion": "{g_masa_seca}/({g_masa_seca}-{g_masa_sumergida})",
+      "descripcion": "Grueso: GE aparente",
+      "unidad": null,
+      "redondeo": "ROUND(x,3)",
+      "por_especimen": false
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "Precisión entre duplicados (C127/C128, un operador): absorción ≤ 0.31 % fino / 0.25 % grueso; GE ≤ 0.027 / 0.025",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Por muestra: %Abs, GE, GE SSS, GE aparente"
+    ],
+    "graficos": []
+  },
+  "hojas_ocultas_relevantes": [],
+  "correcciones": [
+    {
+      "id": "FM35-01",
+      "original_excel": "Fino: A = B − B·Abs/100 (col F) usado en GE bulk y GE aparente; Abs usa la masa seca real (col K)",
+      "corregido": "A = masa seca real (seco+tara − tara)",
+      "justificacion": "B·(1−Abs) ≠ B/(1+Abs): subestima A (446.76 vs 451.88 g). GE SSS y Abs no cambian.",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM35-02",
+      "original_excel": "Grueso: GE = A/(E−C) con E = 'P sss peso húmedo' que incluye tara (G = E−H es 'sin tara'); A = E·(1−Abs)",
+      "corregido": "B = SSS+tara − tara; A = seco+tara − tara; GE = A/(B−C)",
+      "justificacion": "Restar la tara antes de usar B; mismo error de A",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM35-03",
+      "original_excel": "Archivo .xls; nombres Print_Area → #N/A",
+      "corregido": "Sin efecto",
+      "justificacion": "Fórmulas recuperadas convirtiendo a .xlsx con LibreOffice (solo lectura)",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-0718-26 fino",
+      "fuente": "Archive/...FM-35...xls 'Agregado fino.' fila 10",
+      "entradas": {
+        "masa_sss": 500,
+        "tara": 0,
+        "masa_seca_tara": 451.88,
+        "frasco_agua": 710.71,
+        "frasco": 194.57,
+        "frasco_agua_muestra": 1003.13
+      },
+      "esperados": {
+        "masa_seca": 451.88,
+        "volumen_frasco": 516.14,
+        "masa_agua_agregada": 308.56,
+        "absorcion": 10.648844826060017,
+        "ge_sss": 2.408709894980248,
+        "ge_bulk": 2.176895654687,
+        "ge_aparente": 2.833814
+      },
+      "tolerancia_relativa": 0.001,
+      "notas": "ge_bulk/ge_aparente CORREGIDOS (FM35-01); Excel 2.1522 y 2.8947"
+    },
+    {
+      "nombre": "MS-1363-25 grueso",
+      "fuente": "'Agregado Grueso' fila 10",
+      "entradas": {
+        "g_masa_sss_tara": 3187.51,
+        "g_tara": 150.38,
+        "g_masa_seca_tara": 3145,
+        "g_canasta_muestra_sumergida": 2805.05,
+        "g_canasta_sumergida": 862.85
+      },
+      "esperados": {
+        "g_masa_sss": 3037.13,
+        "g_masa_seca": 2994.62,
+        "g_masa_sumergida": 1942.2,
+        "g_absorcion": 1.419532,
+        "g_ge_bulk": 2.73497,
+        "g_ge_sss": 2.773794,
+        "g_ge_aparente": 2.845461
+      },
+      "tolerancia_relativa": 0.001,
+      "notas": "Corregidos (FM35-02); absorción coincide con Excel N10"
+    }
+  ],
+  "agregaciones": []
+}

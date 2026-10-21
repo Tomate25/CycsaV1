@@ -1,0 +1,194 @@
+{
+  "codigo": "RT-FM-56",
+  "nombre": "Calibración de picnómetros (balones) para gravedad específica de suelos",
+  "norma": {
+    "texto": "ASTM D854 (calibración del picnómetro)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-56 Gravedad Especifica del suelos 2026.xlsx",
+  "variantes": [],
+  "modulo_destino": "Equipos y Calibracion",
+  "formato_informe_rt_fm_22": {
+    "letra": null,
+    "nuevo": true,
+    "nota": "No genera informe a cliente; produce el volumen calibrado y la curva Mpw,t por balón"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "balon_id",
+      "etiqueta": "Picnómetro / balón",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "equipos_calibracion picnometros"
+    },
+    {
+      "codigo": "fecha_calibracion",
+      "etiqueta": "Fecha de calibración",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "realizado_por",
+      "etiqueta": "Responsable (usuario)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Réplicas (3-5)",
+      "tipo_layout": "tabla_matriz",
+      "campos": [
+        {
+          "codigo": "masa_vacio",
+          "etiqueta": "Picnómetro vacío",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_lleno",
+          "etiqueta": "Picnómetro + agua",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "temperatura",
+          "etiqueta": "Temperatura del agua",
+          "tipo": "numero",
+          "unidad": "°C",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": true
+        }
+      ]
+    }
+  ],
+  "constantes": [],
+  "formulas": [
+    {
+      "codigo": "densidad_agua",
+      "expresion": "1.00034038-0.00000777*{temperatura}-0.00000495*{temperatura}^2",
+      "descripcion": "Densidad del agua a T",
+      "unidad": "g/mL",
+      "redondeo": "ROUND(x,5)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "masa_agua",
+      "expresion": "{masa_lleno}-{masa_vacio}",
+      "descripcion": "Masa de agua",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": true
+    },
+    {
+      "codigo": "volumen",
+      "expresion": "{masa_agua}/{densidad_agua}",
+      "descripcion": "Volumen calibrado",
+      "unidad": "mL",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": true
+    }
+  ],
+  "agregaciones": [
+    {
+      "codigo": "volumen_promedio",
+      "funcion": "promedio",
+      "de": "volumen",
+      "unidad": "mL"
+    },
+    {
+      "codigo": "volumen_desv",
+      "funcion": "desv_est",
+      "de": "volumen",
+      "unidad": "mL"
+    },
+    {
+      "codigo": "curva_mpw",
+      "funcion": "regresion_cuadratica",
+      "de": "masa_lleno vs temperatura",
+      "descripcion": "Mpw,t = a·T² + b·T + c (Excel: 0.0006T² − 0.0945T + 277.93 en un balón) guardada en el equipo"
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "Desviación estándar del volumen ≤ 0.05 mL (D854)",
+      "expresion_validacion": "{volumen_desv} <= 0.05",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Registro de calibración por balón"
+    ],
+    "graficos": [
+      "Mpw vs temperatura"
+    ]
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "Hoja1 (visible)",
+      "contenido": "Notas de calibración de balones 3+ (termómetro Eq-2136)",
+      "destino": "equipos_calibracion"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM56-01",
+      "original_excel": "Cada réplica usa la densidad de otra temperatura ($B$29/$B$39/$B$48 = 27.9/28.9/29.8 °C) aunque el encabezado dice 27.9 °C",
+      "corregido": "Cada réplica registra su temperatura",
+      "justificacion": "Inconsistencia",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM56-02",
+      "original_excel": "Desviación sobre 3 filas fijas; balón -09 con 12 filas ocultas",
+      "corregido": "Agregación sobre réplicas capturadas",
+      "justificacion": "Robustez",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM56-03",
+      "original_excel": "No hay hoja de cálculo de Gs de muestras",
+      "corregido": "Plantilla Gs (D854) a definir con el laboratorio",
+      "justificacion": "Falta",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "Balón 3 réplica 1",
+      "fuente": "Archive/...FM-56... 'Balon -03' fila 11 (T de B29 = 27.9 °C)",
+      "entradas": {
+        "masa_vacio": 183.49,
+        "masa_lleno": 680.7,
+        "temperatura": 27.9
+      },
+      "esperados": {
+        "densidad_agua": 0.99627042,
+        "masa_agua": 497.21,
+        "volumen": 499.0713026430246
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ]
+}

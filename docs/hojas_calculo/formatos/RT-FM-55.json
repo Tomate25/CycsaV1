@@ -1,0 +1,349 @@
+{
+  "codigo": "RT-FM-55",
+  "nombre": "Densidad in situ y grado de compactación por cono de arena",
+  "norma": {
+    "texto": "ASTM D1556 (citada)",
+    "implicita": false
+  },
+  "version_origen": "CYCSA-RT-FM-55 COMPACTACIONES CON CONO DE ARENA 2026.xlsx",
+  "variantes": [],
+  "modulo_destino": "Hoja de Campo",
+  "formato_informe_rt_fm_22": {
+    "letra": "B",
+    "nuevo": false,
+    "nota": "Alimenta formato_de_compactacion_por_cono_de_arena.md (RT-FM-22 B)"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "procedencia",
+      "etiqueta": "Procedencia",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": false,
+      "por_especimen": false
+    },
+    {
+      "codigo": "coord_norte",
+      "etiqueta": "Coordenada Norte",
+      "tipo": "numero",
+      "unidad": null,
+      "decimales": 3,
+      "requerido": false,
+      "por_especimen": false
+    },
+    {
+      "codigo": "coord_este",
+      "etiqueta": "Coordenada Este",
+      "tipo": "numero",
+      "unidad": null,
+      "decimales": 3,
+      "requerido": false,
+      "por_especimen": false
+    },
+    {
+      "codigo": "capa",
+      "etiqueta": "Capa",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "profundidad",
+      "etiqueta": "Profundidad",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "pvs_maximo",
+      "etiqueta": "PVSM (RT-FM-27)",
+      "tipo": "numero",
+      "unidad": "kg/m³",
+      "decimales": 0,
+      "requerido": true,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Calibración del cono",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "arena_calib_empleada",
+          "etiqueta": "Arena empleada",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "arena_calib_sobrante",
+          "etiqueta": "Arena sobrante",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Hoyo",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "material_tara",
+          "etiqueta": "Material excavado + tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "tara",
+          "etiqueta": "Tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "arena_empleada",
+          "etiqueta": "Arena empleada",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "arena_sobrante",
+          "etiqueta": "Arena sobrante",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Humedad",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "rec_humedo",
+          "etiqueta": "Recipiente + húmedo",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rec_seco",
+          "etiqueta": "Recipiente + seco",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "recipiente",
+          "etiqueta": "Recipiente",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "pu_arena",
+      "descripcion": "Peso unitario de la arena calibrada",
+      "unidad": "kg/m³",
+      "fuente": "celda D18",
+      "ref_equipo": "ARENA-CONO-01",
+      "valor_referencia": 1250
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "factor_cono",
+      "expresion": "{arena_calib_empleada}-{arena_calib_sobrante}",
+      "descripcion": "Arena que llena el cono",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "masa_excavada",
+      "expresion": "{material_tara}-{tara}",
+      "descripcion": "Masa excavada",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "arena_en_hoyo",
+      "expresion": "{arena_empleada}-{factor_cono}-{arena_sobrante}",
+      "descripcion": "Arena en la excavación",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "volumen_hoyo",
+      "expresion": "{arena_en_hoyo}/{pu_arena}",
+      "descripcion": "Volumen de excavación",
+      "unidad": "L",
+      "redondeo": "ROUND(x,4)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "densidad_humeda",
+      "expresion": "{masa_excavada}/{volumen_hoyo}",
+      "descripcion": "P.V.H. in situ",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "humedad",
+      "expresion": "({rec_humedo}-{rec_seco})*100/({rec_seco}-{recipiente})",
+      "descripcion": "Humedad",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "densidad_seca",
+      "expresion": "{densidad_humeda}*100/({humedad}+100)",
+      "descripcion": "P.V.S. in situ",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "compactacion",
+      "expresion": "{densidad_seca}*100/{pvs_maximo}",
+      "descripcion": "% compactación",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "% compactación ≥ especificación del proyecto",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Puntos → RT-FM-22 B"
+    ],
+    "graficos": []
+  },
+  "hojas_ocultas_relevantes": [],
+  "correcciones": [
+    {
+      "id": "FM55-01",
+      "original_excel": "P.V.H. in situ (E41) tecleado 1403 en lugar de fórmula",
+      "corregido": "masa_excavada / volumen_hoyo (=1403.24)",
+      "justificacion": "Valor manual",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM55-02",
+      "original_excel": "Peso seco (E49) tecleado",
+      "corregido": "rec_seco − recipiente",
+      "justificacion": "Coincide en el caso (171)",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM55-03",
+      "original_excel": "Hojas con nombre de proyecto ('COMPACTACIONES EN WIWILI') y código de formato ajeno (DCA-SGP-F-DAM-LES7-001); 13-15 celdas con error",
+      "corregido": "Proyecto desde la orden",
+      "justificacion": "Plantilla genérica",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "Punto PCI perímetro este",
+      "fuente": "Archive/...FM-55... primera hoja col E",
+      "entradas": {
+        "arena_calib_empleada": 3000,
+        "arena_calib_sobrante": 1586,
+        "material_tara": 3156,
+        "tara": 15,
+        "arena_empleada": 5000,
+        "arena_sobrante": 788,
+        "pu_arena": 1250,
+        "rec_humedo": 257,
+        "rec_seco": 225,
+        "recipiente": 54,
+        "pvs_maximo": 1204
+      },
+      "esperados": {
+        "factor_cono": 1414,
+        "masa_excavada": 3141,
+        "arena_en_hoyo": 2798,
+        "volumen_hoyo": 2.2384,
+        "humedad": 18.71345029239766,
+        "densidad_humeda": 1403.234453,
+        "densidad_seca": 1182.0386,
+        "compactacion": 98.17596
+      },
+      "tolerancia_relativa": 0.001,
+      "notas": "densidad con FM55-01; Excel con 1403 tecleado: 1181.84 y 98.159 %"
+    }
+  ],
+  "agregaciones": []
+}

@@ -40,7 +40,13 @@ $tablasCatalogos = [
     'productos',
     'tecnicos',
     'vehiculos',
-    'secuencias_muestras'
+    'secuencias_muestras',
+    'unidades_medida',
+    'variables',
+    'plantillas',
+    'plantilla_secciones',
+    'plantilla_campos',
+    'plantilla_versiones'
 ];
 
 // Tablas operativas / transaccionales (se exporta solo la estructura limpia, 0 datos)
@@ -50,6 +56,7 @@ $tablasOperativas = [
     'cotizacion_versiones',
     'ordenes_servicio',
     'hojas_solicitud',
+    'hojas_solicitud_detalles',
     'programacion_muestreo',
     'recepcion_muestras',
     'lotes_muestras',
@@ -61,7 +68,14 @@ $tablasOperativas = [
     'bancos_transacciones',
     'bitacora',
     'ensayo_edades',
-    'ensayos_parametros'
+    'ensayos_parametros',
+    'especimenes',
+    'planes_rotura',
+    'plan_rotura_edades',
+    'plan_rotura_asignaciones',
+    'roturas',
+    'informes_rotura',
+    'bitacora_reidentificacion'
 ];
 
 // Orden canónico para respetar integridad referencial
@@ -76,24 +90,38 @@ $todasLasTablas = [
     'tecnicos',
     'vehiculos',
     'secuencias_muestras',
+    'unidades_medida',
+    'variables',
+    'plantillas',
+    'plantilla_secciones',
+    'plantilla_campos',
+    'plantilla_versiones',
     'configuracion_comercial',
     'cotizaciones',
     'cotizacion_detalles',
     'cotizacion_versiones',
     'ordenes_servicio',
     'hojas_solicitud',
+    'hojas_solicitud_detalles',
     'programacion_muestreo',
     'recepcion_muestras',
     'lotes_muestras',
     'informes_control',
     'ensayo_edades',
     'ensayos_parametros',
+    'especimenes',
+    'planes_rotura',
+    'plan_rotura_edades',
+    'plan_rotura_asignaciones',
+    'roturas',
+    'informes_rotura',
     'cuentas_por_cobrar',
     'cuentas_por_pagar',
     'partidas_diario',
     'partidas_diario_detalles',
     'bancos_transacciones',
-    'bitacora'
+    'bitacora',
+    'bitacora_reidentificacion'
 ];
 
 $fechaGeneracion = date('Y-m-d H:i:s');
@@ -204,6 +232,20 @@ foreach ($todasLasTablas as $tabla) {
     } else {
         echo " (Estructura limpia para producción)\n";
     }
+}
+
+// Exportar vistas oficiales sin cláusulas DEFINER
+$vistas = ['v_lab_muestras', 'v_lab_especimenes'];
+foreach ($vistas as $vista) {
+    echo "Procesando vista: $vista...\n";
+    $outSql .= "\n-- --------------------------------------------------------\n";
+    $outSql .= "-- Estructura para la vista `$vista`\n";
+    $outSql .= "-- --------------------------------------------------------\n\n";
+    $outSql .= "DROP VIEW IF EXISTS `$vista`;\n";
+    $createStmt = $pdo->query("SHOW CREATE VIEW `$vista`")->fetch();
+    $createViewSql = $createStmt['Create View'] ?? '';
+    $createViewSql = preg_replace('/DEFINER=`[^`]+`@`[^`]+`\s*/', '', $createViewSql);
+    $outSql .= $createViewSql . ";\n\n";
 }
 
 $footer = <<<SQL

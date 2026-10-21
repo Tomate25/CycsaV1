@@ -59,6 +59,13 @@ class Peticion {
         return $this->obtenerMetodo() === 'GET';
     }
 
+    public function esAjax(): bool {
+        return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
+            || (!empty($_POST['es_ajax']))
+            || (!empty($_GET['es_ajax']));
+    }
+
     public function obtenerDatos(): array {
         $datos = [];
         if ($this->esGet()) {

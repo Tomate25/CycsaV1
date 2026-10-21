@@ -134,13 +134,13 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
-        if (in_array((int)($_SESSION['usuario_rol'] ?? 0), [1, 2], true)) {
+        if (isset($_SESSION['usuario_id'])) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Plantillas de Ensayos',
-                'link' => '/Cycsa/publico/configuracion/plantillas-ensayos',
-                'icon' => 'fa-solid fa-flask',
-                'desc' => 'Versiones, columnas, notas y firmas de los informes.',
-                'color' => 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                'link' => '/Cycsa/publico/plantillas',
+                'icon' => 'fa-solid fa-shapes',
+                'desc' => 'Configurador dinámico ISO 17025, lienzo visual, fórmulas y versiones.',
+                'color' => 'linear-gradient(135deg, #103487, #2563eb)',
             ];
         }
 

@@ -537,6 +537,15 @@
             <?php endif; ?>
             
 
+            <?php if (isset($_SESSION['usuario_id'])): ?>
+            <li class="menu-categoria">Plantillas & Calidad</li>
+            <li>
+                <a href="/Cycsa/publico/plantillas" class="<?= strpos($rutaActual, '/plantillas') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-shapes"></i>
+                    <span class="menu-texto">Plantillas ISO 17025</span>
+                </a>
+            </li>
+            <?php endif; ?>
             <?php if (($_SESSION['usuario_rol'] ?? 0) == 1): ?>
             <li class="menu-categoria">Ajustes</li>
             <li>
@@ -556,13 +565,20 @@
                 <i class="fa-solid fa-bars"></i>
             </button>
             <?php else: ?>
-            <a href="/Cycsa/publico/panel" style="display: flex; align-items: center; gap: 12px; text-decoration: none; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.015)'" onmouseout="this.style.transform='scale(1)'" title="Regresar al Cajón de Aplicaciones">
-                <img src="/Cycsa/publico/img/logo.png" alt="Logo Cycsa" style="max-height: 38px; object-fit: contain;">
-                <span style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--cycsa-azul); letter-spacing: 0.5px;">CYCSA ERP</span>
-                <span style="color: #475569; font-size: 12.5px; margin-left: 10px; padding: 5px 12px; border-radius: 20px; background: #e2e8f0; display: flex; align-items: center; gap: 6px; font-weight: 600; font-family: 'Inter', sans-serif; border: 1px solid rgba(203,213,225,0.5);">
-                    <i class="fa-solid fa-cubes"></i> Módulos
-                </span>
-            </a>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <a href="/Cycsa/publico/panel" style="display: flex; align-items: center; gap: 12px; text-decoration: none; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.015)'" onmouseout="this.style.transform='scale(1)'" title="Regresar al Cajón de Aplicaciones">
+                    <img src="/Cycsa/publico/img/logo.png" alt="Logo Cycsa" style="max-height: 38px; object-fit: contain;">
+                    <span style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--cycsa-azul); letter-spacing: 0.5px;">CYCSA ERP</span>
+                    <span style="color: #475569; font-size: 12.5px; margin-left: 10px; padding: 5px 12px; border-radius: 20px; background: #e2e8f0; display: flex; align-items: center; gap: 6px; font-weight: 600; font-family: 'Inter', sans-serif; border: 1px solid rgba(203,213,225,0.5);">
+                        <i class="fa-solid fa-cubes"></i> Módulos
+                    </span>
+                </a>
+                <?php if (isset($_SESSION['usuario_id'])): ?>
+                <a href="/Cycsa/publico/plantillas" style="color: #0369a1; font-size: 12px; padding: 5px 12px; border-radius: 20px; background: #e0f2fe; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bae6fd; transition: all 0.2s;" onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'" title="Configurador Dinámico de Plantillas ISO 17025">
+                    <i class="fa-solid fa-shapes text-primary"></i> Plantillas ISO 17025
+                </a>
+                <?php endif; ?>
+            </div>
             <?php endif; ?>
             
             <div class="user-info">

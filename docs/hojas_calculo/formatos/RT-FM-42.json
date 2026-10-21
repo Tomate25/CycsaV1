@@ -1,0 +1,287 @@
+{
+  "codigo": "RT-FM-42",
+  "nombre": "Límites de consistencia (Atterberg): LL, LP, IP",
+  "norma": {
+    "texto": "ASTM D4318 (Método A multipunto / Método B un punto)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-42 HC Limites 2026 (3)(1)(1)(1)(5).xlsm",
+  "variantes": [
+    {
+      "nombre": "campo",
+      "archivo": "Archive (1)/CYCSA-RT-FM-42 HC Limites 2026 (2)(2)(1)(2) campo.xlsm",
+      "diferencias": "812 fórmulas distintas a laboratorio"
+    },
+    {
+      "nombre": "CASA MANAGUA",
+      "archivo": "Archive (2)/CYCSA-RT-FM-42 HC Limites 2026 CASA MANGUA).xlsm",
+      "diferencias": "Idéntico a campo (0 diferencias)"
+    }
+  ],
+  "modulo_destino": "Plantillas",
+  "formato_informe_rt_fm_22": {
+    "letra": "F",
+    "nuevo": false,
+    "nota": "LL/LP/IP alimentan la granulometría de suelo (RT-FM-22 F). Si se requiere informe propio de límites → formato nuevo"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "metodo",
+      "etiqueta": "Método",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "opciones_lista": [
+        "METODO A",
+        "METODO B"
+      ]
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Límite líquido (3 puntos)",
+      "tipo_layout": "tabla_matriz",
+      "campos": [
+        {
+          "codigo": "golpes",
+          "etiqueta": "Número de golpes",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_humedo",
+          "etiqueta": "Tara + húmedo",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_seco",
+          "etiqueta": "Tara + seco",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara",
+          "etiqueta": "Tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        }
+      ]
+    },
+    {
+      "nombre": "Límite plástico (2-3 réplicas)",
+      "tipo_layout": "tabla_matriz",
+      "campos": [
+        {
+          "codigo": "lp_tara_humedo",
+          "etiqueta": "Tara + húmedo",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "lp_tara_seco",
+          "etiqueta": "Tara + seco",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "lp_tara",
+          "etiqueta": "Tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "exponente_ll",
+      "descripcion": "Exponente del factor de un punto",
+      "unidad": null,
+      "fuente": "Datos Limite fila 34",
+      "valor": 0.121
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "humedad_ll",
+      "expresion": "({tara_humedo}-{tara_seco})*100/({tara_seco}-{tara})",
+      "descripcion": "Humedad del punto LL",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "ll_por_factor",
+      "expresion": "{humedad_ll}*({golpes}/25)^0.121",
+      "descripcion": "LL de un punto = w·(N/25)^0.121",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "humedad_lp",
+      "expresion": "({lp_tara_humedo}-{lp_tara_seco})*100/({lp_tara_seco}-{lp_tara})",
+      "descripcion": "Humedad réplica LP",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "ip",
+      "expresion": "{ll}-{lp}",
+      "descripcion": "Índice de plasticidad (ll y lp son agregaciones)",
+      "unidad": "%",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    }
+  ],
+  "agregaciones": [
+    {
+      "codigo": "ll",
+      "funcion": "promedio",
+      "de": "ll_por_factor",
+      "descripcion": "Excel: promedio de LL por factor. Método A correcto: regresión w vs log N a 25 golpes (FM42-01)",
+      "unidad": "%"
+    },
+    {
+      "codigo": "lp",
+      "funcion": "promedio",
+      "de": "humedad_lp",
+      "unidad": "%"
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "Método B: 20 ≤ N ≤ 30",
+      "implicito": true
+    },
+    {
+      "descripcion": "Réplicas de LP dentro de la repetibilidad de D4318 (valor a confirmar por el laboratorio; usar ControlCalidadReplicas)",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Informe Limites: LL, LP, IP, método"
+    ],
+    "graficos": [
+      "Curva de fluidez (w vs log N)"
+    ]
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "Listas (oculta)",
+      "contenido": "Analistas y métodos A/B",
+      "destino": "listas.json"
+    },
+    {
+      "hoja": "Incert Limites / Incert Humedad (ocultas)",
+      "contenido": "Incertidumbre LL/LP/IP y tabla de factores (N/25)^0.121",
+      "destino": "módulo incertidumbre"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM42-01",
+      "original_excel": "Método A calculado como promedio de LL por factor de un punto, incluso con N=15 y 31 (fuera del rango del método B)",
+      "corregido": "Método A: regresión lineal w vs log10(N), LL = w a 25 golpes; Método B: factor solo con 20≤N≤30",
+      "justificacion": "ASTM D4318",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM42-02",
+      "original_excel": "MS-0134-25: réplicas LP 26.10 % y 14.87 % promediadas sin control",
+      "corregido": "Advertir/bloquear si superan la repetibilidad",
+      "justificacion": "Control de réplicas",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM42-03",
+      "original_excel": "Una fórmula #REF! en Informe Limites",
+      "corregido": "Eliminada",
+      "justificacion": "Referencia rota",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-0134-25",
+      "fuente": "Archive/...FM-42... 'Datos Limite' col E",
+      "entradas": {
+        "golpes": 15,
+        "tara_humedo": 33.48,
+        "tara_seco": 30.02,
+        "tara": 21.8,
+        "lp_tara_humedo": 32.26,
+        "lp_tara_seco": 30.06,
+        "lp_tara": 21.63,
+        "ll": 39.678001534078085,
+        "lp": 20.48268858223
+      },
+      "esperados": {
+        "humedad_ll": 42.092457420924546,
+        "ll_por_factor": 39.56950182145056,
+        "humedad_lp": 26.097271648873065,
+        "ip": 19.19531295
+      },
+      "tolerancia_relativa": 0.001,
+      "notas": "ll = promedio Excel de los 3 LL por factor; lp = promedio de réplicas 26.097/14.868 (FM42-02)"
+    }
+  ]
+}

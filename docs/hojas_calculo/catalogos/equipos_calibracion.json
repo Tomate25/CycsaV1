@@ -1,0 +1,324 @@
+{
+  "descripcion": "Equipos y constantes de calibración extraídas de los Excel (valores vigentes en los archivos, a verificar contra certificados). Las fórmulas de los formatos referencian estos códigos (ref_equipo); el sistema debe leer la versión vigente por fecha.",
+  "nota_tabla": "No existe tabla de equipos en el sistema (solo activos_fijos / mantenimiento_equipos en 003). Proponer tablas NUEVAS equipos_calibracion y equipos_calibracion_constantes (aditivas).",
+  "equipos": [
+    {
+      "codigo": "PRENSA-01",
+      "tipo": "maquina_fuerza",
+      "descripcion": "Máquina de fuerza (compresión) usada en RT-FM-61/36/38/57/63",
+      "fuente": "RT-FM-61 hoja 'U Carga'",
+      "modelo_correccion": "carga_real = a·L³ + b·L² + c·L + d (L = lectura lbf)",
+      "constantes": {
+        "a": -4.6765e-14,
+        "b": 2.5071e-08,
+        "c": 0.99583,
+        "d": 3.7217,
+        "a_e14": -4.6765,
+        "b_e8": 2.5071
+      },
+      "nota_parser": "EvaluadorFormula no acepta notación científica: usar a_e14·(L/100000)³·10 + b_e8·(L/10000)²",
+      "incertidumbre_por_punto": [
+        {
+          "carga_lbf": 4973,
+          "u_rel": 0.0044,
+          "U_lbf": 21.8812
+        },
+        {
+          "carga_lbf": 9963,
+          "u_rel": 0.0011,
+          "U_lbf": 10.9593
+        },
+        {
+          "carga_lbf": 24929,
+          "u_rel": 0.0025,
+          "U_lbf": 62.3225
+        }
+      ],
+      "nota_incertidumbre": "Tabla completa en U Carga F24:H33 (10 puntos); se listan los 3 primeros"
+    },
+    {
+      "codigo": "FACTOR-LD-C39",
+      "tipo": "tabla_norma",
+      "descripcion": "Factor de corrección por esbeltez L/D (ASTM C39)",
+      "fuente": "RT-FM-61 'CONVERT Y LISTA' F36:H40",
+      "constantes": {
+        "a": 0.2133,
+        "b": -1.04,
+        "c": 1.7667,
+        "d": -0.07
+      },
+      "tabla": [
+        {
+          "ld": 1.75,
+          "factor": 0.98
+        },
+        {
+          "ld": 1.5,
+          "factor": 0.96
+        },
+        {
+          "ld": 1.25,
+          "factor": 0.93
+        },
+        {
+          "ld": 1.0,
+          "factor": 0.87
+        }
+      ],
+      "aplicar_si": "L/D < 1.75"
+    },
+    {
+      "codigo": "ESCL-01",
+      "tipo": "esclerometro",
+      "descripcion": "Esclerómetro (martillo suizo) RT-FM-59",
+      "fuente": "RT-FM-59 'datos equipo' y 'datos Mx'",
+      "factor_calibracion": 0.976,
+      "coeficientes_por_posicion": {
+        "A": {
+          "a": -0.0431,
+          "b": 5.8982,
+          "c": -51.093,
+          "d": 319.54
+        },
+        "B": {
+          "a": -0.0921,
+          "b": 10.964,
+          "c": -221.79,
+          "d": 2770
+        },
+        "C": {
+          "a": -0.0658,
+          "b": 9.4676,
+          "c": -218.13,
+          "d": 1863.4
+        }
+      },
+      "curva_fabricante": {
+        "psi": [
+          1500,
+          2000,
+          2500,
+          3000,
+          3500,
+          4000,
+          4500,
+          5000,
+          5500,
+          6000,
+          6500,
+          7000
+        ],
+        "rebote_B": [
+          null,
+          20,
+          24.5,
+          27,
+          30,
+          32.5,
+          35,
+          37.5,
+          40,
+          42,
+          44.5,
+          47
+        ],
+        "rebote_A": [
+          21.5,
+          24.5,
+          27.5,
+          30.5,
+          33,
+          35.5,
+          38,
+          40,
+          42.5,
+          45,
+          47,
+          49.5
+        ],
+        "rebote_C": [
+          26.5,
+          29.5,
+          32.5,
+          35,
+          37.5,
+          39.5,
+          42,
+          44,
+          46,
+          48.5,
+          50.5,
+          52.5
+        ]
+      },
+      "curva_dispersion_incertidumbre": {
+        "nota": "PRESUPUESTO F21:M21 muestra a=-0.0045, b=0.3855, c=-1.1116, d=588.46 (valores mostrados redondeados; no reproducen la U de 'datos Mx'; obtener valores completos del laboratorio)"
+      }
+    },
+    {
+      "codigo": "MOLDE-PROCTOR-4IN",
+      "tipo": "molde",
+      "descripcion": "Molde Proctor 4 in",
+      "fuente": "RT-FM-27 Datos PROCTOR fila 11 / hoja Listas",
+      "volumen_ml": 947.26,
+      "nota": "La hoja Listas contiene la lista de volúmenes de cilindro; registrar cada molde con su volumen calibrado"
+    },
+    {
+      "codigo": "MOLDE-CBR-6IN",
+      "tipo": "molde",
+      "descripcion": "Molde CBR",
+      "fuente": "RT-FM-46",
+      "volumen_cm3": 3200,
+      "masa_g": 7849
+    },
+    {
+      "codigo": "ANILLO-CBR-01",
+      "tipo": "anillo_carga",
+      "descripcion": "Anillo de carga CBR",
+      "fuente": "RT-FM-46",
+      "constante_lbf_por_div": 10,
+      "area_piston_in2": 3
+    },
+    {
+      "codigo": "ARENA-CONO-01",
+      "tipo": "material_calibrado",
+      "descripcion": "Arena calibrada para cono de arena",
+      "fuente": "RT-FM-55 D18",
+      "peso_unitario_kgm3": 1250
+    },
+    {
+      "codigo": "ANILLO-RA-01",
+      "tipo": "anillo",
+      "descripcion": "Anillo para reemplazo de agua",
+      "fuente": "RT-FM-54",
+      "diametro_m": 1.0
+    },
+    {
+      "codigo": "BAL-EQ-6566",
+      "tipo": "balanza",
+      "descripcion": "Balanza 200 g (humedad)",
+      "fuente": "Incert Humedad (RT-FM-25/27/42)",
+      "certificado": "CM15022022-03MM",
+      "incertidumbre_calibracion_g": 0.01,
+      "resolucion_g": 0.01,
+      "excentricidad_g": -0.01,
+      "repetibilidad_s_g": 0.01,
+      "u_combinada_g": 0.0103279555898
+    },
+    {
+      "codigo": "BAL-EQ-6633",
+      "tipo": "balanza",
+      "descripcion": "Balanza 5000 g (granulometría/compactación)",
+      "fuente": "Incert Gran / Incert compactacion",
+      "nota": "Valores en hojas ocultas; capturar del certificado vigente"
+    },
+    {
+      "codigo": "TERM-EQ-233",
+      "tipo": "termometro",
+      "descripcion": "Termómetro concreto fresco",
+      "fuente": "RT-FM-61 'U Temp'"
+    },
+    {
+      "codigo": "TERM-EQ-2136",
+      "tipo": "termometro",
+      "descripcion": "Termómetro calibración de picnómetros",
+      "fuente": "RT-FM-56 Hoja1"
+    }
+  ],
+  "picnometros": {
+    "fuente": "RT-FM-56 hojas 'Balon -02' a 'Balon -10'",
+    "densidad_agua": "ρ(T) = 1.00034038 − 7.77e-6·T − 4.95e-6·T²",
+    "balones": [
+      {
+        "codigo": "PICNO-02",
+        "hoja": "Balon -02",
+        "codigo_lab": "B-02",
+        "fecha_evaluacion": "2018-01-24",
+        "masa_vacio_prom_g": 76.75,
+        "masa_lleno_prom_g": 275.78,
+        "volumen_prom_ml": 199.72463428907201,
+        "desv_volumen_ml": 0.015866571602228024
+      },
+      {
+        "codigo": "PICNO-03",
+        "hoja": "Balon -03",
+        "codigo_lab": "B-02",
+        "fecha_evaluacion": "2018-01-24",
+        "masa_vacio_prom_g": 183.49,
+        "masa_lleno_prom_g": 680.7266666666667,
+        "volumen_prom_ml": 499.2394710361511,
+        "desv_volumen_ml": 0.1564946767945531
+      },
+      {
+        "codigo": "PICNO-04",
+        "hoja": "Balon -04",
+        "codigo_lab": "B-02",
+        "fecha_evaluacion": "2018-01-24",
+        "masa_vacio_prom_g": 194.98,
+        "masa_lleno_prom_g": 692.0366666666667,
+        "volumen_prom_ml": 499.1128595098791,
+        "desv_volumen_ml": 0.10902310577314034
+      },
+      {
+        "codigo": "PICNO-05",
+        "hoja": "Balon -05",
+        "codigo_lab": "B-02",
+        "fecha_evaluacion": "2018-01-24",
+        "masa_vacio_prom_g": 191.14,
+        "masa_lleno_prom_g": 688.4466666666667,
+        "volumen_prom_ml": 499.363895837248,
+        "desv_volumen_ml": 0.12208569533284559
+      },
+      {
+        "codigo": "PICNO-06",
+        "hoja": "Balon -06",
+        "codigo_lab": "B-02",
+        "fecha_evaluacion": "2018-01-24",
+        "masa_vacio_prom_g": 190.75,
+        "masa_lleno_prom_g": 688.0333333333333,
+        "volumen_prom_ml": 499.3404701532729,
+        "desv_volumen_ml": 0.14405929891844704
+      },
+      {
+        "codigo": "PICNO-07",
+        "hoja": "Balon -07",
+        "codigo_lab": "B-02",
+        "fecha_evaluacion": "2018-01-24",
+        "masa_vacio_prom_g": 188.83,
+        "masa_lleno_prom_g": 686.3566666666667,
+        "volumen_prom_ml": 499.5848075448941,
+        "desv_volumen_ml": 0.12941321093061822
+      },
+      {
+        "codigo": "PICNO-08",
+        "hoja": "Balon -08",
+        "codigo_lab": "B-02",
+        "fecha_evaluacion": "2018-01-24",
+        "masa_vacio_prom_g": 187.63,
+        "masa_lleno_prom_g": 685.2866666666665,
+        "volumen_prom_ml": 499.7153425419783,
+        "desv_volumen_ml": 0.11398652064246588
+      },
+      {
+        "codigo": "PICNO-09",
+        "hoja": "Balon -09",
+        "codigo_lab": "B-02",
+        "fecha_evaluacion": "2018-01-24",
+        "masa_vacio_prom_g": 184.51,
+        "masa_lleno_prom_g": 681.9200000000001,
+        "volumen_prom_ml": 499.46765292776485,
+        "desv_volumen_ml": 0.10015157034524148
+      },
+      {
+        "codigo": "PICNO-10",
+        "hoja": "Balon -10",
+        "codigo_lab": "B-02",
+        "fecha_evaluacion": "2018-01-24",
+        "masa_vacio_prom_g": 191.01,
+        "masa_lleno_prom_g": 688.5166666666668,
+        "volumen_prom_ml": 499.56471745417883,
+        "desv_volumen_ml": 0.08911235404289491
+      }
+    ]
+  }
+}

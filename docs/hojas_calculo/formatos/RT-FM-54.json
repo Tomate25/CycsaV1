@@ -1,0 +1,271 @@
+{
+  "codigo": "RT-FM-54",
+  "nombre": "Densidad in situ y grado de compactación por reemplazo de agua",
+  "norma": {
+    "texto": "ASTM D5030 (el JSON existente cita D4220)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-54 - Hoja de calculo para compactación por reemplazo de agua.xlsx",
+  "variantes": [
+    {
+      "nombre": "campo",
+      "archivo": "Archive (1)/...reemplazo de agua campo.xlsx",
+      "diferencias": "0 diferencias de fórmulas; 13 valores (columna G)"
+    },
+    {
+      "nombre": "CASA MANAGUA",
+      "archivo": "Archive (2)/...reemplazo de agua CASA MANAUA.xlsx",
+      "diferencias": "Idéntico a campo"
+    }
+  ],
+  "modulo_destino": "Hoja de Campo",
+  "formato_informe_rt_fm_22": {
+    "letra": "B",
+    "nuevo": false,
+    "nota": "Alimenta formato_de_compactacion_por_reemplazo_de_agua_no_acreditado.md (RT-FM-22 B)"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "capa",
+      "etiqueta": "Capa N°",
+      "tipo": "numero",
+      "unidad": null,
+      "decimales": 0,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "profundidad",
+      "etiqueta": "Profundidad del pozo",
+      "tipo": "numero",
+      "unidad": "cm",
+      "decimales": 0,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "pvs_maximo",
+      "etiqueta": "PVSM (RT-FM-27)",
+      "tipo": "numero",
+      "unidad": "kg/m³",
+      "decimales": 0,
+      "requerido": true,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Punto",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "diametro_anillo",
+          "etiqueta": "Diámetro del anillo",
+          "tipo": "numero",
+          "unidad": "m",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "vol_agua_anillo",
+          "etiqueta": "Agua para llenar el anillo",
+          "tipo": "numero",
+          "unidad": "L",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "peso_excavado",
+          "etiqueta": "Material excavado húmedo",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "vol_agua_total",
+          "etiqueta": "Agua pozo + anillo",
+          "tipo": "numero",
+          "unidad": "L",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rec_humedo",
+          "etiqueta": "Recipiente + húmedo",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rec_seco",
+          "etiqueta": "Recipiente + seco",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "recipiente",
+          "etiqueta": "Recipiente",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "anillo",
+      "descripcion": "Anillo de densidad",
+      "unidad": "m",
+      "fuente": "fila 13",
+      "ref_equipo": "ANILLO-RA-01",
+      "valor_referencia": 1
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "vol_pozo",
+      "expresion": "{vol_agua_total}-{vol_agua_anillo}",
+      "descripcion": "Volumen del pozo",
+      "unidad": "L",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "densidad_humeda",
+      "expresion": "{peso_excavado}/{vol_pozo}*1000",
+      "descripcion": "Peso volumétrico húmedo",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "humedad",
+      "expresion": "({rec_humedo}-{rec_seco})*100/({rec_seco}-{recipiente})",
+      "descripcion": "Humedad",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "densidad_seca",
+      "expresion": "{densidad_humeda}/(1+{humedad}/100)",
+      "descripcion": "Peso volumétrico seco",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "compactacion",
+      "expresion": "{densidad_seca}*100/{pvs_maximo}",
+      "descripcion": "Grado de compactación",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "% compactación ≥ especificación del proyecto",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Puntos de compactación → RT-FM-22 B"
+    ],
+    "graficos": []
+  },
+  "hojas_ocultas_relevantes": [],
+  "correcciones": [
+    {
+      "id": "FM54-01",
+      "original_excel": "Encabezado interno 'CYCSA-RT-FM-52'",
+      "corregido": "RT-FM-54",
+      "justificacion": "Código erróneo",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM54-02",
+      "original_excel": "Columna de ejemplo: 368794 kg y densidad del agua 1000 → 1.5·10⁶ kg/m³ y #DIV/0!",
+      "corregido": "Validación de rangos (variables.minimo/maximo)",
+      "justificacion": "Datos basura",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM54-03",
+      "original_excel": "SUM() innecesario en fórmulas",
+      "corregido": "Expresión directa",
+      "justificacion": "Limpieza",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-0419-26",
+      "fuente": "Archive/...FM-54....xlsx col D",
+      "entradas": {
+        "vol_agua_anillo": 57,
+        "peso_excavado": 496.5,
+        "vol_agua_total": 315,
+        "rec_humedo": 500.89,
+        "rec_seco": 450.1,
+        "recipiente": 66.11,
+        "pvs_maximo": 1730
+      },
+      "esperados": {
+        "vol_pozo": 258,
+        "densidad_humeda": 1924.418604651163,
+        "humedad": 13.22690695070183,
+        "densidad_seca": 1699.6124476746863,
+        "compactacion": 98.24349408524199
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ],
+  "agregaciones": []
+}

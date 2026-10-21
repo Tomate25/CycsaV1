@@ -1,0 +1,254 @@
+{
+  "codigo": "RT-FM-62",
+  "nombre": "Infiltración / percolación de suelo",
+  "norma": {
+    "texto": "Sin norma citada (fórmula tipo prueba de percolación)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-62 HC infiltración 2026 (2).xls",
+  "variantes": [],
+  "modulo_destino": "Hoja de Campo",
+  "formato_informe_rt_fm_22": {
+    "letra": null,
+    "nuevo": true,
+    "nota": "Sin formato RT-FM-22 equivalente"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "ubicacion",
+      "etiqueta": "Ubicación del pozo",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": false,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Descenso acumulado",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "descenso_5min",
+          "etiqueta": "Descenso acumulado a 5 min",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "descenso_10min",
+          "etiqueta": "Descenso acumulado a 10 min",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "descenso_15min",
+          "etiqueta": "Descenso acumulado a 15 min",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "descenso_20min",
+          "etiqueta": "Descenso acumulado a 20 min",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "descenso_25min",
+          "etiqueta": "Descenso acumulado a 25 min",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "descenso_30min",
+          "etiqueta": "Descenso acumulado a 30 min",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "coef_percolacion",
+      "descripcion": "Coeficiente",
+      "unidad": null,
+      "fuente": "L12 = 315.5*((AVERAGE(J12:K12)/300))^0.5",
+      "valor": 315.5
+    },
+    {
+      "codigo": "lm2_por_galft2",
+      "descripcion": "L/m²·día → gal/ft²·día",
+      "unidad": null,
+      "fuente": "Hoja1",
+      "valor": 40.77
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "dif_25",
+      "expresion": "{descenso_25min}-{descenso_20min}",
+      "descripcion": "Descenso 20–25 min",
+      "unidad": "cm",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "dif_30",
+      "expresion": "{descenso_30min}-{descenso_25min}",
+      "descripcion": "Descenso 25–30 min",
+      "unidad": "cm",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "tasa_lm2_dia",
+      "expresion": "315.5*SQRT((({dif_25}+{dif_30})/2)/300)",
+      "descripcion": "Tasa Q con el promedio de los dos últimos intervalos",
+      "unidad": "L/m²·día",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "tasa_galft2_dia",
+      "expresion": "{tasa_lm2_dia}/40.77",
+      "descripcion": "Tasa G",
+      "unidad": "gal/ft²·día",
+      "redondeo": "ROUND(x,3)",
+      "por_especimen": false
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "No definidos en el Excel; solicitar",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Lecturas, diferencias, Q y G"
+    ],
+    "graficos": [
+      "Descenso vs tiempo (opcional)"
+    ]
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "Hoja1 (visible)",
+      "contenido": "Derivación de 40.77 (1 gal = 3.785 L; 1 m = 3.282 ft)",
+      "destino": "constante lm2_por_galft2"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM62-01",
+      "original_excel": "Q = 315.5·√(prom. últimas 2 diferencias / 300) sin fuente ni unidades",
+      "corregido": "Se conserva; documentar fuente de 315.5 y 300",
+      "justificacion": "Trazabilidad",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM62-02",
+      "original_excel": "1 m = 3.282 ft (correcto 3.2808)",
+      "corregido": "Se mantiene 40.77; correcto ≈ 40.75",
+      "justificacion": "0.06 %",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM62-03",
+      "original_excel": "Lecturas incoherentes (MS-2925-26: 1.17 → 79 → 450 cm)",
+      "corregido": "Validación de rango y monotonía",
+      "justificacion": "Error de captura / unidades",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-1315-26",
+      "fuente": "Archive/...FM-62...xls filas 11-12 (fórmulas vía LibreOffice)",
+      "entradas": {
+        "descenso_5min": 2.5,
+        "descenso_10min": 3,
+        "descenso_15min": 4,
+        "descenso_20min": 5.5,
+        "descenso_25min": 6.7,
+        "descenso_30min": 8.2
+      },
+      "esperados": {
+        "dif_25": 1.2,
+        "dif_30": 1.5,
+        "tasa_lm2_dia": 21.164383407035505,
+        "tasa_galft2_dia": 0.5191165908029312
+      },
+      "tolerancia_relativa": 0.001
+    },
+    {
+      "nombre": "MS-11129-26",
+      "fuente": "filas 23-24",
+      "entradas": {
+        "descenso_5min": 3,
+        "descenso_10min": 4.5,
+        "descenso_15min": 6,
+        "descenso_20min": 7.2,
+        "descenso_25min": 8.5,
+        "descenso_30min": 10.2
+      },
+      "esperados": {
+        "tasa_lm2_dia": 22.30921894643557,
+        "tasa_galft2_dia": 0.5471969327062931
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ],
+  "agregaciones": []
+}

@@ -1,0 +1,653 @@
+{
+  "descripcion": "Variables reutilizables (aparecen en 2+ formatos). Insertar en tabla `variables` solo si el codigo NO existe (INSERT IGNORE / verificación previa). Unidades → `unidades_medida.simbolo`.",
+  "unidades_requeridas": [
+    "%",
+    "L",
+    "L/m²·día",
+    "MPa",
+    "cm",
+    "cm²",
+    "cm³",
+    "div",
+    "días",
+    "g",
+    "g/mL",
+    "gal/ft²·día",
+    "in",
+    "in²",
+    "kN",
+    "kg",
+    "kg/cm²",
+    "kg/m",
+    "kg/m³",
+    "kg·cm/cm³",
+    "lb/ft³",
+    "lbf",
+    "lbf/in²",
+    "m",
+    "mL",
+    "mm",
+    "mm²",
+    "psi",
+    "°C"
+  ],
+  "variables": [
+    {
+      "codigo": "absorcion_kgm3",
+      "etiqueta": "Absorción",
+      "tipo": "calculado",
+      "unidad": "kg/m³",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "absorcion_pct",
+      "etiqueta": "Absorción",
+      "tipo": "calculado",
+      "unidad": "%",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "alto",
+      "etiqueta": "Altura",
+      "tipo": "numero",
+      "unidad": "cm",
+      "decimales": 1,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-57"
+      ]
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-25",
+        "RT-FM-27",
+        "RT-FM-35",
+        "RT-FM-36",
+        "RT-FM-38",
+        "RT-FM-42",
+        "RT-FM-46",
+        "RT-FM-54",
+        "RT-FM-55",
+        "RT-FM-57",
+        "RT-FM-58",
+        "RT-FM-59",
+        "RT-FM-61",
+        "RT-FM-62",
+        "RT-FM-63",
+        "RT-FM-64"
+      ]
+    },
+    {
+      "codigo": "ancho",
+      "etiqueta": "Ancho",
+      "tipo": "numero",
+      "unidad": "cm",
+      "decimales": 1,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-57"
+      ]
+    },
+    {
+      "codigo": "ancho_1",
+      "etiqueta": "Ancho lectura 1",
+      "tipo": "numero",
+      "unidad": "in",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-38",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "ancho_2",
+      "etiqueta": "Ancho lectura 2",
+      "tipo": "numero",
+      "unidad": "in",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-38",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "ancho_3",
+      "etiqueta": "Ancho lectura 3",
+      "tipo": "numero",
+      "unidad": "in",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-38",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "ancho_prom",
+      "etiqueta": "Ancho promedio b",
+      "tipo": "calculado",
+      "unidad": "in",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-38",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "area_in2",
+      "etiqueta": "Área",
+      "tipo": "calculado",
+      "unidad": "in²",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-57",
+        "RT-FM-61",
+        "RT-FM-64"
+      ]
+    },
+    {
+      "codigo": "capa",
+      "etiqueta": "Capa N°",
+      "tipo": "numero",
+      "unidad": null,
+      "decimales": 0,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "carga_lbf",
+      "etiqueta": "Carga",
+      "tipo": "numero",
+      "unidad": "lbf",
+      "decimales": 0,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-38",
+        "RT-FM-57"
+      ]
+    },
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-25",
+        "RT-FM-27",
+        "RT-FM-35",
+        "RT-FM-36",
+        "RT-FM-38",
+        "RT-FM-42",
+        "RT-FM-46",
+        "RT-FM-54",
+        "RT-FM-55",
+        "RT-FM-57",
+        "RT-FM-58",
+        "RT-FM-59",
+        "RT-FM-61",
+        "RT-FM-62",
+        "RT-FM-63",
+        "RT-FM-64"
+      ]
+    },
+    {
+      "codigo": "compactacion",
+      "etiqueta": "Compactación reproducida",
+      "tipo": "calculado",
+      "unidad": "%",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-46",
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "densidad_humeda",
+      "etiqueta": "Densidad húmeda",
+      "tipo": "calculado",
+      "unidad": "kg/m³",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-46",
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "densidad_seca",
+      "etiqueta": "Peso volumétrico seco del punto",
+      "tipo": "calculado",
+      "unidad": "kg/m³",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-27",
+        "RT-FM-36",
+        "RT-FM-46",
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "edad_dias",
+      "etiqueta": "Edad",
+      "tipo": "calculado",
+      "unidad": "días",
+      "decimales": 0,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-38",
+        "RT-FM-61"
+      ]
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-25",
+        "RT-FM-27",
+        "RT-FM-35",
+        "RT-FM-36",
+        "RT-FM-38",
+        "RT-FM-42",
+        "RT-FM-46",
+        "RT-FM-54",
+        "RT-FM-55",
+        "RT-FM-57",
+        "RT-FM-58",
+        "RT-FM-59",
+        "RT-FM-61",
+        "RT-FM-62",
+        "RT-FM-63",
+        "RT-FM-64"
+      ]
+    },
+    {
+      "codigo": "fecha_fabricacion",
+      "etiqueta": "Fecha de fabricación",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-38",
+        "RT-FM-57"
+      ]
+    },
+    {
+      "codigo": "fraccion",
+      "etiqueta": "Fracción",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-35",
+        "RT-FM-58"
+      ]
+    },
+    {
+      "codigo": "golpes",
+      "etiqueta": "Golpes por capa",
+      "tipo": "numero",
+      "unidad": null,
+      "decimales": 0,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-27",
+        "RT-FM-42",
+        "RT-FM-46"
+      ]
+    },
+    {
+      "codigo": "humedad",
+      "etiqueta": "Contenido de humedad base seca (D2216)",
+      "tipo": "calculado",
+      "unidad": "%",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-25",
+        "RT-FM-27",
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "ip",
+      "etiqueta": "Índice de plasticidad",
+      "tipo": "calculado",
+      "unidad": "%",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-25",
+        "RT-FM-42"
+      ]
+    },
+    {
+      "codigo": "largo",
+      "etiqueta": "Largo",
+      "tipo": "numero",
+      "unidad": "cm",
+      "decimales": 1,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-57"
+      ]
+    },
+    {
+      "codigo": "largo_1",
+      "etiqueta": "Longitud 1",
+      "tipo": "numero",
+      "unidad": "cm",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-61",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "largo_2",
+      "etiqueta": "Longitud 2",
+      "tipo": "numero",
+      "unidad": "cm",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-61",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "largo_prom",
+      "etiqueta": "Longitud promedio",
+      "tipo": "calculado",
+      "unidad": "cm",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-61",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "masa_kg",
+      "etiqueta": "Masa",
+      "tipo": "numero",
+      "unidad": "kg",
+      "decimales": 3,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-61",
+        "RT-FM-64"
+      ]
+    },
+    {
+      "codigo": "masa_molde",
+      "etiqueta": "Masa del molde",
+      "tipo": "numero",
+      "unidad": "g",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-27",
+        "RT-FM-46"
+      ]
+    },
+    {
+      "codigo": "masa_molde_suelo",
+      "etiqueta": "Molde + suelo húmedo",
+      "tipo": "numero",
+      "unidad": "g",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-27",
+        "RT-FM-46"
+      ]
+    },
+    {
+      "codigo": "masa_recibida",
+      "etiqueta": "Masa al recibir",
+      "tipo": "numero",
+      "unidad": "kg",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "masa_saturada",
+      "etiqueta": "Masa saturada",
+      "tipo": "numero",
+      "unidad": "kg",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "masa_seca",
+      "etiqueta": "Masa seca inicial",
+      "tipo": "calculado",
+      "unidad": "g",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-25",
+        "RT-FM-35",
+        "RT-FM-36",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "masa_seca_tara",
+      "etiqueta": "Muestra seca + tara",
+      "tipo": "numero",
+      "unidad": "g",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-25",
+        "RT-FM-35"
+      ]
+    },
+    {
+      "codigo": "masa_sumergida",
+      "etiqueta": "Masa sumergida",
+      "tipo": "numero",
+      "unidad": "kg",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "profundidad",
+      "etiqueta": "Profundidad del pozo",
+      "tipo": "numero",
+      "unidad": "cm",
+      "decimales": 0,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "pvs_maximo",
+      "etiqueta": "PVSM del Proctor (RT-FM-27)",
+      "tipo": "numero",
+      "unidad": "kg/m³",
+      "decimales": 0,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-46",
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "rec_humedo",
+      "etiqueta": "Recipiente + húmedo",
+      "tipo": "numero",
+      "unidad": "g",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "rec_seco",
+      "etiqueta": "Recipiente + seco",
+      "tipo": "numero",
+      "unidad": "g",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "recipiente",
+      "etiqueta": "Recipiente",
+      "tipo": "numero",
+      "unidad": "g",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-54",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "resistencia_diseno_psi",
+      "etiqueta": "Diseño de mortero",
+      "tipo": "numero",
+      "unidad": "lbf/in²",
+      "decimales": 0,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-57",
+        "RT-FM-59",
+        "RT-FM-61",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "resistencia_kgcm2",
+      "etiqueta": "Resistencia",
+      "tipo": "calculado",
+      "unidad": "kg/cm²",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-57",
+        "RT-FM-59",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "resistencia_psi",
+      "etiqueta": "Resistencia sobre área neta",
+      "tipo": "calculado",
+      "unidad": "lbf/in²",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-36",
+        "RT-FM-57",
+        "RT-FM-59",
+        "RT-FM-63"
+      ]
+    },
+    {
+      "codigo": "tara",
+      "etiqueta": "Masa tara",
+      "tipo": "numero",
+      "unidad": "g",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-25",
+        "RT-FM-27",
+        "RT-FM-35",
+        "RT-FM-42",
+        "RT-FM-55"
+      ]
+    },
+    {
+      "codigo": "volumen_cm3",
+      "etiqueta": "Volumen",
+      "tipo": "calculado",
+      "unidad": "cm³",
+      "decimales": 2,
+      "requerido": false,
+      "usado_en": [
+        "RT-FM-57",
+        "RT-FM-61"
+      ]
+    },
+    {
+      "codigo": "volumen_molde",
+      "etiqueta": "Volumen del molde",
+      "tipo": "numero",
+      "unidad": "mL",
+      "decimales": 2,
+      "requerido": true,
+      "usado_en": [
+        "RT-FM-27",
+        "RT-FM-46"
+      ]
+    }
+  ]
+}

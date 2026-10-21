@@ -1,0 +1,349 @@
+{
+  "codigo": "RT-FM-59",
+  "nombre": "Número de rebote con esclerómetro (martillo suizo) y resistencia estimada",
+  "norma": {
+    "texto": "ASTM C805",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-59 HOJA DE CALCULO MARTILLO SUIZO (2).xlsx",
+  "variantes": [],
+  "modulo_destino": "Plantillas",
+  "formato_informe_rt_fm_22": {
+    "letra": "D",
+    "nuevo": false,
+    "nota": "Alimenta resistencia_de_martillo_suizo.md (RT-FM-22 D)"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "elemento",
+      "etiqueta": "Elemento ensayado",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_diseno_psi",
+      "etiqueta": "Diseño",
+      "tipo": "numero",
+      "unidad": "lbf/in²",
+      "decimales": 0,
+      "requerido": false,
+      "por_especimen": false
+    },
+    {
+      "codigo": "posicion",
+      "etiqueta": "Posición",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "opciones_lista": [
+        "A",
+        "B",
+        "C"
+      ],
+      "texto_ayuda": "listas.json posiciones_esclerometro"
+    },
+    {
+      "codigo": "esclerometro_id",
+      "etiqueta": "Esclerómetro",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Lecturas (10)",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "rebote_1",
+          "etiqueta": "Rebote 1",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rebote_2",
+          "etiqueta": "Rebote 2",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rebote_3",
+          "etiqueta": "Rebote 3",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rebote_4",
+          "etiqueta": "Rebote 4",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rebote_5",
+          "etiqueta": "Rebote 5",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rebote_6",
+          "etiqueta": "Rebote 6",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rebote_7",
+          "etiqueta": "Rebote 7",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rebote_8",
+          "etiqueta": "Rebote 8",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rebote_9",
+          "etiqueta": "Rebote 9",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "rebote_10",
+          "etiqueta": "Rebote 10",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "coef_a",
+      "descripcion": "Coeficiente a según posición",
+      "unidad": null,
+      "fuente": "datos equipo B25:E27",
+      "ref_equipo": "ESCL-01",
+      "valor_referencia": -0.0431
+    },
+    {
+      "codigo": "coef_b",
+      "descripcion": "Coeficiente b",
+      "unidad": null,
+      "fuente": "idem",
+      "ref_equipo": "ESCL-01",
+      "valor_referencia": 5.8982
+    },
+    {
+      "codigo": "coef_c",
+      "descripcion": "Coeficiente c",
+      "unidad": null,
+      "fuente": "idem",
+      "ref_equipo": "ESCL-01",
+      "valor_referencia": -51.093
+    },
+    {
+      "codigo": "coef_d",
+      "descripcion": "Coeficiente d",
+      "unidad": null,
+      "fuente": "idem",
+      "ref_equipo": "ESCL-01",
+      "valor_referencia": 319.54
+    },
+    {
+      "codigo": "factor_calibracion",
+      "descripcion": "Factor de calibración (yunque)",
+      "unidad": null,
+      "fuente": "datos Mx fila 19",
+      "ref_equipo": "ESCL-01",
+      "valor_referencia": 0.976
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "rebote_promedio",
+      "expresion": "({rebote_1}+{rebote_2}+{rebote_3}+{rebote_4}+{rebote_5}+{rebote_6}+{rebote_7}+{rebote_8}+{rebote_9}+{rebote_10})/10",
+      "descripcion": "Promedio de 10 rebotes",
+      "unidad": null,
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "limite_inferior",
+      "expresion": "{rebote_promedio}-6",
+      "descripcion": "Límite inferior",
+      "unidad": null,
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "limite_superior",
+      "expresion": "{rebote_promedio}+6",
+      "descripcion": "Límite superior",
+      "unidad": null,
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_psi",
+      "expresion": "({coef_a}*{rebote_promedio}^3+{coef_b}*{rebote_promedio}^2+{coef_c}*{rebote_promedio}+{coef_d})*{factor_calibracion}",
+      "descripcion": "Resistencia estimada (curva del fabricante × factor)",
+      "unidad": "lbf/in²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_kgcm2",
+      "expresion": "{resistencia_psi}/14.2",
+      "descripcion": "Resistencia estimada",
+      "unidad": "kg/cm²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "C805: descartar lecturas que difieran más de 6 unidades del promedio; si más de 2 se descartan, descartar el conjunto",
+      "implicito": false
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Rebote promedio y resistencia estimada ± U"
+    ],
+    "graficos": [
+      "Curva del fabricante por posición"
+    ]
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "datos equipo / PRESUPUESTO / Lista (visibles)",
+      "contenido": "Curva 1500-7000 psi por posición, coeficientes cúbicos, curva de dispersión para U, conversiones",
+      "destino": "equipos_calibracion ESCL-01"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM59-01",
+      "original_excel": "Resistencia con IFS() por posición",
+      "corregido": "El servicio carga coef_a..d del catálogo según 'posicion'",
+      "justificacion": "EvaluadorFormula no tiene IF",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM59-02",
+      "original_excel": "Las lecturas fuera de ±6 no se descartan",
+      "corregido": "Recalcular promedio excluyéndolas (C805)",
+      "justificacion": "Norma",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM59-03",
+      "original_excel": "614 celdas con error en columnas vacías",
+      "corregido": "N/A",
+      "justificacion": "Plantilla",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-957-26 posición A",
+      "fuente": "Archive/...FM-59... 'datos Mx' col C",
+      "entradas": {
+        "rebote_1": 22,
+        "rebote_2": 23,
+        "rebote_3": 20,
+        "rebote_4": 23,
+        "rebote_5": 20,
+        "rebote_6": 22,
+        "rebote_7": 24,
+        "rebote_8": 23,
+        "rebote_9": 21,
+        "rebote_10": 22,
+        "coef_a": -0.0431,
+        "coef_b": 5.8982,
+        "coef_c": -51.093,
+        "coef_d": 319.54,
+        "factor_calibracion": 0.976
+      },
+      "esperados": {
+        "rebote_promedio": 22,
+        "limite_inferior": 16,
+        "limite_superior": 28,
+        "resistencia_psi": 1553.1029439999995
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ],
+  "agregaciones": []
+}

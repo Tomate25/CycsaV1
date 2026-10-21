@@ -1,0 +1,495 @@
+{
+  "codigo": "RT-FM-63",
+  "nombre": "Adoquines de concreto: resistencia a compresión y absorción",
+  "norma": {
+    "texto": "NTON 12 008-16 / ASTM C140 (según resistencia_de_adoquines.md)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-63 HOJA DE CALCULO ADOQUINES 2026 (2)(3)(1).xlsx",
+  "variantes": [],
+  "modulo_destino": "Laboratorio Roturas",
+  "formato_informe_rt_fm_22": {
+    "letra": "A",
+    "nuevo": false,
+    "nota": "Alimenta resistencia_de_adoquines.md (RT-FM-22 A)"
+  },
+  "requiere_rotura_por_edad": true,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "acabado",
+      "etiqueta": "Acabado",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "opciones_lista": [
+        "Liso",
+        "Biselado"
+      ]
+    },
+    {
+      "codigo": "resistencia_diseno_psi",
+      "etiqueta": "Diseño",
+      "tipo": "numero",
+      "unidad": "lbf/in²",
+      "decimales": 0,
+      "requerido": false,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Dimensiones (3 lecturas)",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "largo_1",
+          "etiqueta": "Largo lectura 1",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "largo_2",
+          "etiqueta": "Largo lectura 2",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "largo_3",
+          "etiqueta": "Largo lectura 3",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ancho_1",
+          "etiqueta": "Ancho lectura 1",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ancho_2",
+          "etiqueta": "Ancho lectura 2",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ancho_3",
+          "etiqueta": "Ancho lectura 3",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "altura_1",
+          "etiqueta": "Altura lectura 1",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "altura_2",
+          "etiqueta": "Altura lectura 2",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "altura_3",
+          "etiqueta": "Altura lectura 3",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "base_mayor_1",
+          "etiqueta": "Base mayor lectura 1",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "base_mayor_2",
+          "etiqueta": "Base mayor lectura 2",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "base_mayor_3",
+          "etiqueta": "Base mayor lectura 3",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "base_menor_1",
+          "etiqueta": "Base menor lectura 1",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "base_menor_2",
+          "etiqueta": "Base menor lectura 2",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "base_menor_3",
+          "etiqueta": "Base menor lectura 3",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Carga",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "carga_1",
+          "etiqueta": "Carga lectura 1",
+          "tipo": "numero",
+          "unidad": "lbf",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "carga_2",
+          "etiqueta": "Carga lectura 2",
+          "tipo": "numero",
+          "unidad": "lbf",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "carga_3",
+          "etiqueta": "Carga lectura 3",
+          "tipo": "numero",
+          "unidad": "lbf",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Absorción (3 especímenes)",
+      "tipo_layout": "tabla_matriz",
+      "campos": [
+        {
+          "codigo": "masa_recibida",
+          "etiqueta": "Masa al recibir",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_seca",
+          "etiqueta": "Masa seca",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_sumergida",
+          "etiqueta": "Masa sumergida",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_saturada",
+          "etiqueta": "Masa saturada",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": true
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "factor_acabado",
+      "descripcion": "Factor liso (1) / biselado (1.16)",
+      "unidad": null,
+      "fuente": "Datos fila 41",
+      "valor": 1.16
+    },
+    {
+      "codigo": "cm2_por_in2_excel",
+      "descripcion": "Conversión usada",
+      "unidad": null,
+      "fuente": "fila 36",
+      "valor": 6.45
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "largo_prom",
+      "expresion": "({largo_1}+{largo_2}+{largo_3})/3",
+      "descripcion": "Largo promedio",
+      "unidad": "cm",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "ancho_prom",
+      "expresion": "({ancho_1}+{ancho_2}+{ancho_3})/3",
+      "descripcion": "Ancho promedio",
+      "unidad": "cm",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "altura_prom",
+      "expresion": "({altura_1}+{altura_2}+{altura_3})/3",
+      "descripcion": "Altura promedio",
+      "unidad": "cm",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "base_mayor_prom",
+      "expresion": "({base_mayor_1}+{base_mayor_2}+{base_mayor_3})/3",
+      "descripcion": "Base mayor promedio",
+      "unidad": "cm",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "base_menor_prom",
+      "expresion": "({base_menor_1}+{base_menor_2}+{base_menor_3})/3",
+      "descripcion": "Base menor promedio",
+      "unidad": "cm",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "area_neta_cm2",
+      "expresion": "{largo_prom}*{ancho_prom}+2*(({base_mayor_prom}+{base_menor_prom})/2)*{altura_prom}",
+      "descripcion": "Área neta según columnas D/E (sin /2) — DUDOSA",
+      "unidad": "cm²",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "area_neta_in2",
+      "expresion": "{area_neta_cm2}/6.45",
+      "descripcion": "Área neta",
+      "unidad": "in²",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "carga_prom",
+      "expresion": "({carga_1}+{carga_2}+{carga_3})/3",
+      "descripcion": "Carga promedio",
+      "unidad": "lbf",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_psi",
+      "expresion": "{carga_prom}/{area_neta_in2}*{factor_acabado}",
+      "descripcion": "Resistencia",
+      "unidad": "lbf/in²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_kgcm2",
+      "expresion": "{resistencia_psi}/14.2",
+      "descripcion": "Resistencia",
+      "unidad": "kg/cm²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "absorcion_kgm3",
+      "expresion": "({masa_saturada}-{masa_seca})/({masa_saturada}-{masa_sumergida})*1000",
+      "descripcion": "Absorción",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "absorcion_pct",
+      "expresion": "({masa_saturada}-{masa_seca})*100/{masa_seca}",
+      "descripcion": "Absorción",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "NTON 12 008-16 / ASTM C936: resistencia y absorción por tipo de tráfico; tabla no presente en el Excel, solicitar",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Calculo: código, área neta, resistencia, absorción"
+    ],
+    "graficos": []
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "Dimensiones del adoquin (visible)",
+      "contenido": "Esquema para el área del adoquín",
+      "destino": "texto de ayuda"
+    },
+    {
+      "hoja": "Hoja1 (visible)",
+      "contenido": "vacía",
+      "destino": "descartar"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM63-01",
+      "original_excel": "Área neta: columnas B y C dividen entre 2, D y E no",
+      "corregido": "Se adopta D/E (sin /2) provisionalmente; CONFIRMAR geometría (la fórmula suma planta + caras laterales)",
+      "justificacion": "Inconsistencia de fórmula",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM63-02",
+      "original_excel": "Resistencia en col B usa solo la lectura 1 (B26) y no el promedio",
+      "corregido": "Promedio de 3 lecturas",
+      "justificacion": "Error de referencia",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM63-03",
+      "original_excel": "Pesos de absorción idénticos en todas las columnas (son los del bloque FM-36)",
+      "corregido": "Captura por muestra",
+      "justificacion": "Datos copiados",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM63-04",
+      "original_excel": "107 celdas con error; 19 filas ocultas",
+      "corregido": "N/A",
+      "justificacion": "Plantilla",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-10108-26 (biselado)",
+      "fuente": "Archive/...FM-63... 'Datos' col D",
+      "entradas": {
+        "largo_1": 25.2,
+        "largo_2": 25.2,
+        "largo_3": 25.2,
+        "ancho_1": 15.2,
+        "ancho_2": 15.2,
+        "ancho_3": 15.2,
+        "altura_1": 3.7,
+        "altura_2": 3.7,
+        "altura_3": 3.7,
+        "base_mayor_1": 13.5,
+        "base_mayor_2": 13.4,
+        "base_mayor_3": 13.5,
+        "base_menor_1": 10.1,
+        "base_menor_2": 10.1,
+        "base_menor_3": 10.1,
+        "carga_1": 201240,
+        "carga_2": 200612,
+        "carga_3": 205495,
+        "factor_acabado": 1.16
+      },
+      "esperados": {
+        "area_neta_cm2": 470.23666666666657,
+        "area_neta_in2": 72.9049095607235,
+        "carga_prom": 202449,
+        "resistencia_psi": 3221.1937634240917,
+        "resistencia_kgcm2": 226.84463122704872
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ],
+  "agregaciones": []
+}

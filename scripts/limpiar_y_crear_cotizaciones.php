@@ -37,7 +37,13 @@ $tablasTruncar = [
     'partidas_diario_detalles',
     'partidas_diario',
     'bancos_transacciones',
-    'secuencias_muestras',
+    'especimenes',
+    'planes_rotura',
+    'plan_rotura_edades',
+    'plan_rotura_asignaciones',
+    'roturas',
+    'informes_rotura',
+    'bitacora_reidentificacion',
     'bitacora'
 ];
 
@@ -45,6 +51,10 @@ foreach ($tablasTruncar as $tabla) {
     $db->exec("TRUNCATE TABLE `$tabla`");
     echo "  -> Tabla `$tabla` truncada con éxito (AUTO_INCREMENT reiniciado a 1).\n";
 }
+
+$db->exec("DELETE FROM secuencias_muestras");
+$db->exec("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) VALUES (" . (int)date('Y') . ", 'Campo', 0), (" . (int)date('Y') . ", 'Laboratorio', 0)");
+echo "  -> Secuencias de muestras reiniciadas a 0 para el año " . date('Y') . ".\n";
 
 $db->exec("SET FOREIGN_KEY_CHECKS = 1");
 

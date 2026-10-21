@@ -1,0 +1,581 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cycsa/hojas_calculo/_esquema.json",
+  "title": "Especificación de hoja de cálculo CYCSA (RT-FM-xx)",
+  "type": "object",
+  "required": [
+    "codigo",
+    "nombre",
+    "norma",
+    "version_origen",
+    "variantes",
+    "modulo_destino",
+    "formato_informe_rt_fm_22",
+    "requiere_rotura_por_edad",
+    "encabezado",
+    "secciones",
+    "constantes",
+    "formulas",
+    "agregaciones",
+    "criterios_aceptacion",
+    "salidas",
+    "hojas_ocultas_relevantes",
+    "correcciones",
+    "caso_prueba"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "codigo": {
+      "type": "string",
+      "pattern": "^RT-FM-[0-9]{2}$"
+    },
+    "nombre": {
+      "type": "string"
+    },
+    "norma": {
+      "type": "object",
+      "required": [
+        "texto",
+        "implicita"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "texto": {
+          "type": "string"
+        },
+        "implicita": {
+          "type": "boolean",
+          "description": "true si la norma fue inferida (no está citada en el Excel)"
+        }
+      }
+    },
+    "version_origen": {
+      "type": "string",
+      "description": "Archivo Excel fuente"
+    },
+    "variantes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "nombre",
+          "archivo",
+          "diferencias"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "nombre": {
+            "type": "string"
+          },
+          "archivo": {
+            "type": "string"
+          },
+          "diferencias": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "modulo_destino": {
+      "enum": [
+        "Plantillas",
+        "Matriz Operaciones",
+        "Laboratorio Roturas",
+        "Hoja de Campo",
+        "Equipos y Calibracion",
+        "Informes"
+      ]
+    },
+    "formato_informe_rt_fm_22": {
+      "type": "object",
+      "required": [
+        "letra",
+        "nuevo",
+        "nota"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "letra": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            null
+          ]
+        },
+        "nuevo": {
+          "type": "boolean"
+        },
+        "nota": {
+          "type": "string"
+        }
+      }
+    },
+    "requiere_rotura_por_edad": {
+      "type": "boolean"
+    },
+    "encabezado": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "codigo",
+          "etiqueta",
+          "tipo",
+          "unidad",
+          "decimales",
+          "requerido",
+          "por_especimen"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 60,
+            "description": "snake_case; mapea a variables.codigo (VARCHAR 60)"
+          },
+          "etiqueta": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "tipo": {
+            "enum": [
+              "numero",
+              "texto",
+              "fecha",
+              "lista",
+              "calculado",
+              "tabla"
+            ],
+            "description": "= ENUM variables.tipo"
+          },
+          "unidad": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "símbolo en unidades_medida"
+          },
+          "decimales": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10
+          },
+          "requerido": {
+            "type": "boolean"
+          },
+          "por_especimen": {
+            "type": "boolean",
+            "description": "true = se repite por espécimen/punto/réplica (layout tabla_matriz)"
+          },
+          "opciones_lista": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "texto_ayuda": {
+            "type": "string",
+            "maxLength": 255
+          }
+        }
+      }
+    },
+    "secciones": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "nombre",
+          "tipo_layout",
+          "campos"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "tipo_layout": {
+            "enum": [
+              "formulario",
+              "tabla_matriz"
+            ]
+          },
+          "campos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "codigo",
+                "etiqueta",
+                "tipo",
+                "unidad",
+                "decimales",
+                "requerido",
+                "por_especimen"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "codigo": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]*$",
+                  "maxLength": 60,
+                  "description": "snake_case; mapea a variables.codigo (VARCHAR 60)"
+                },
+                "etiqueta": {
+                  "type": "string",
+                  "maxLength": 150
+                },
+                "tipo": {
+                  "enum": [
+                    "numero",
+                    "texto",
+                    "fecha",
+                    "lista",
+                    "calculado",
+                    "tabla"
+                  ],
+                  "description": "= ENUM variables.tipo"
+                },
+                "unidad": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "símbolo en unidades_medida"
+                },
+                "decimales": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "requerido": {
+                  "type": "boolean"
+                },
+                "por_especimen": {
+                  "type": "boolean",
+                  "description": "true = se repite por espécimen/punto/réplica (layout tabla_matriz)"
+                },
+                "opciones_lista": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "texto_ayuda": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "constantes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad",
+          "fuente"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "unidad": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fuente": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valor": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ref_equipo": {
+            "type": "string",
+            "description": "código en catalogos/equipos_calibracion.json"
+          },
+          "valor_referencia": {
+            "type": [
+              "number",
+              "null",
+              "string"
+            ],
+            "description": "valor observado en el Excel (solo referencia; el sistema lo lee del equipo vigente)"
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "valor"
+            ]
+          },
+          {
+            "required": [
+              "ref_equipo"
+            ]
+          }
+        ]
+      }
+    },
+    "formulas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "codigo",
+          "expresion",
+          "descripcion",
+          "unidad",
+          "redondeo",
+          "por_especimen"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 60
+          },
+          "expresion": {
+            "type": "string",
+            "pattern": "^[0-9A-Za-z_{}()+\\-*/%^.,\\s]+$",
+            "description": "Sintaxis EvaluadorFormula: {codigo}, números decimales (sin notación científica), + - * / % ^, ROUND SQRT POW ABS MIN MAX CEIL FLOOR PI LOG EXP. Sin IF/AVERAGE/SUM."
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "unidad": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "redondeo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Redondeo de presentación, p.ej. ROUND(x,2); el valor interno se guarda sin redondear"
+          },
+          "por_especimen": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "agregaciones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "codigo",
+          "funcion",
+          "de"
+        ],
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "funcion": {
+            "enum": [
+              "promedio",
+              "suma",
+              "max",
+              "min",
+              "desv_est",
+              "acumulado",
+              "max_curva",
+              "x_de_max_curva",
+              "interpolar",
+              "regresion_cuadratica",
+              "clasificar_sucs"
+            ]
+          },
+          "de": {
+            "type": "string"
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "unidad": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "description": "Cálculos entre especímenes/filas que EvaluadorFormula no soporta; los implementa un servicio PHP"
+      }
+    },
+    "criterios_aceptacion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "descripcion",
+          "implicito"
+        ],
+        "properties": {
+          "descripcion": {
+            "type": "string"
+          },
+          "expresion_validacion": {
+            "type": "string"
+          },
+          "implicito": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "salidas": {
+      "type": "object",
+      "required": [
+        "tablas",
+        "graficos"
+      ],
+      "properties": {
+        "tablas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "graficos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "hojas_ocultas_relevantes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "hoja",
+          "contenido",
+          "destino"
+        ],
+        "properties": {
+          "hoja": {
+            "type": "string"
+          },
+          "contenido": {
+            "type": "string"
+          },
+          "destino": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "correcciones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "original_excel",
+          "corregido",
+          "justificacion",
+          "dudosa",
+          "requiere_confirmacion_laboratorio"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "original_excel": {
+            "type": "string"
+          },
+          "corregido": {
+            "type": "string"
+          },
+          "justificacion": {
+            "type": "string"
+          },
+          "dudosa": {
+            "type": "boolean"
+          },
+          "requiere_confirmacion_laboratorio": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "caso_prueba": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "nombre",
+          "fuente",
+          "entradas",
+          "esperados",
+          "tolerancia_relativa"
+        ],
+        "properties": {
+          "nombre": {
+            "type": "string"
+          },
+          "fuente": {
+            "type": "string"
+          },
+          "entradas": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "esperados": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "tolerancia_relativa": {
+            "type": "number"
+          },
+          "notas": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

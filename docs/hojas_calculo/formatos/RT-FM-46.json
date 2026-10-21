@@ -1,0 +1,424 @@
+{
+  "codigo": "RT-FM-46",
+  "nombre": "Relación de soporte California (CBR) de laboratorio",
+  "norma": {
+    "texto": "AASHTO T193 (citada); ASTM D1883",
+    "implicita": false
+  },
+  "version_origen": "CYCSA-RT-FM-46 - HC de CBR 2026 (1)(2).xlsx",
+  "variantes": [],
+  "modulo_destino": "Plantillas",
+  "formato_informe_rt_fm_22": {
+    "letra": null,
+    "nuevo": true,
+    "nota": "Sin formato RT-FM-22 equivalente: informe nuevo de CBR"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "fecha_ingreso",
+      "etiqueta": "Fecha de ingreso",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "tipo_muestra",
+      "etiqueta": "Tipo de muestra",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "pvs_maximo",
+      "etiqueta": "PVSM del Proctor (RT-FM-27)",
+      "tipo": "numero",
+      "unidad": "kg/m³",
+      "decimales": 0,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "condicion",
+      "etiqueta": "Condición",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "opciones_lista": [
+        "Saturado 96 horas",
+        "Sin saturar"
+      ]
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Moldes (12/25/56 golpes)",
+      "tipo_layout": "tabla_matriz",
+      "campos": [
+        {
+          "codigo": "golpes",
+          "etiqueta": "Golpes por capa",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_molde_suelo",
+          "etiqueta": "Molde + suelo húmedo",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_molde",
+          "etiqueta": "Molde",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "volumen_molde",
+          "etiqueta": "Volumen del molde",
+          "tipo": "numero",
+          "unidad": "cm³",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_molde_suelo_sat",
+          "etiqueta": "Molde + suelo saturado",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_humedo_antes",
+          "etiqueta": "Tara + húmedo (antes)",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_seco_antes",
+          "etiqueta": "Tara + seco (antes)",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_antes",
+          "etiqueta": "Tara (antes)",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_humedo_sat",
+          "etiqueta": "Tara + húmedo (saturado)",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_seco_sat",
+          "etiqueta": "Tara + seco (saturado)",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_sat",
+          "etiqueta": "Tara (saturado)",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "lectura_01",
+          "etiqueta": "Lectura a 0.1 in",
+          "tipo": "numero",
+          "unidad": "div",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "lectura_02",
+          "etiqueta": "Lectura a 0.2 in",
+          "tipo": "numero",
+          "unidad": "div",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "expansion_lectura",
+          "etiqueta": "Lectura de expansión",
+          "tipo": "numero",
+          "unidad": "div",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": true
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "area_piston",
+      "descripcion": "Área del pistón",
+      "unidad": "in²",
+      "fuente": "celda L31",
+      "valor": 3
+    },
+    {
+      "codigo": "constante_anillo",
+      "descripcion": "Factor lectura → lbf",
+      "unidad": "lbf/div",
+      "fuente": "fórmula lectura*10",
+      "ref_equipo": "ANILLO-CBR-01",
+      "valor_referencia": 10
+    },
+    {
+      "codigo": "altura_ref_expansion",
+      "descripcion": "Divisor de expansión",
+      "unidad": null,
+      "fuente": "K20 = (lectura−inicial)/95·100",
+      "valor": 95
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "humedad_antes",
+      "expresion": "({tara_humedo_antes}-{tara_seco_antes})*100/({tara_seco_antes}-{tara_antes})",
+      "descripcion": "Humedad de moldeo",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "humedad_sat",
+      "expresion": "({tara_humedo_sat}-{tara_seco_sat})*100/({tara_seco_sat}-{tara_sat})",
+      "descripcion": "Humedad tras saturación",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "densidad_humeda",
+      "expresion": "({masa_molde_suelo}-{masa_molde})/{volumen_molde}*1000",
+      "descripcion": "Densidad húmeda",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "densidad_seca",
+      "expresion": "{densidad_humeda}*100/(100+{humedad_antes})",
+      "descripcion": "Densidad seca",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "compactacion",
+      "expresion": "{densidad_seca}*100/{pvs_maximo}",
+      "descripcion": "Compactación reproducida",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "densidad_seca_sat",
+      "expresion": "({masa_molde_suelo_sat}-{masa_molde})/{volumen_molde}*1000*100/(100+{humedad_sat})",
+      "descripcion": "Densidad seca saturada",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "esfuerzo_01",
+      "expresion": "{lectura_01}*{constante_anillo}/{area_piston}",
+      "descripcion": "Esfuerzo a 0.1 in",
+      "unidad": "psi",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "esfuerzo_02",
+      "expresion": "{lectura_02}*{constante_anillo}/{area_piston}",
+      "descripcion": "Esfuerzo a 0.2 in",
+      "unidad": "psi",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "cbr_01",
+      "expresion": "{esfuerzo_01}/1000*100",
+      "descripcion": "CBR a 0.1 in (patrón 1000 psi)",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "cbr_02",
+      "expresion": "{esfuerzo_02}/1500*100",
+      "descripcion": "CBR a 0.2 in (patrón 1500 psi)",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "cbr",
+      "expresion": "MAX({cbr_01},{cbr_02})",
+      "descripcion": "CBR del molde",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    }
+  ],
+  "agregaciones": [
+    {
+      "codigo": "cbr_diseno",
+      "funcion": "interpolar",
+      "de": "cbr vs compactacion",
+      "descripcion": "CBR al % de compactación especificado, interpolando entre los 3 moldes",
+      "unidad": "%"
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "Especificación del proyecto (p.ej. CBR mínimo de base/subbase), parámetro de la orden",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Datos de moldes",
+      "Penetración vs esfuerzo",
+      "CBR por molde y de diseño"
+    ],
+    "graficos": [
+      "Esfuerzo–penetración (3 moldes)",
+      "CBR vs densidad seca"
+    ]
+  },
+  "hojas_ocultas_relevantes": [],
+  "correcciones": [
+    {
+      "id": "FM46-01",
+      "original_excel": "Una hoja por muestra (copias de la plantilla)",
+      "corregido": "Un registro por muestra",
+      "justificacion": "Evita copias",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM46-02",
+      "original_excel": "Celdas J41-J47 (CBR) mezclan columnas y factores 0.1/0.0667 sin etiqueta; valores no concuerdan con los esfuerzos",
+      "corregido": "CBR = σ0.1/1000·100 y σ0.2/1500·100, se toma el máximo",
+      "justificacion": "AASHTO T193",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM46-03",
+      "original_excel": "% compactación referido a $K$27 vacío → #DIV/0!",
+      "corregido": "pvs_maximo obligatorio desde RT-FM-27",
+      "justificacion": "Dato faltante",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-1693-26 molde 12 golpes",
+      "fuente": "Archive/...FM-46... hoja 'MS-13962-26' col D/E",
+      "entradas": {
+        "masa_molde_suelo": 12268,
+        "masa_molde": 7849,
+        "volumen_molde": 3200,
+        "masa_molde_suelo_sat": 12345,
+        "tara_humedo_antes": 225,
+        "tara_seco_antes": 204,
+        "tara_antes": 75,
+        "tara_humedo_sat": 220,
+        "tara_seco_sat": 198,
+        "tara_sat": 75,
+        "lectura_01": 50,
+        "lectura_02": 90,
+        "constante_anillo": 10,
+        "area_piston": 3
+      },
+      "esperados": {
+        "humedad_antes": 16.27906976744186,
+        "humedad_sat": 17.88617886178862,
+        "densidad_humeda": 1380.9375,
+        "densidad_seca": 1187.60625,
+        "densidad_seca_sat": 1191.8275862068965,
+        "esfuerzo_01": 166.66666666666666,
+        "esfuerzo_02": 300,
+        "cbr_01": 16.666667,
+        "cbr_02": 20.0,
+        "cbr": 20.0
+      },
+      "tolerancia_relativa": 0.001,
+      "notas": "cbr_* con fórmula corregida FM46-02"
+    }
+  ]
+}

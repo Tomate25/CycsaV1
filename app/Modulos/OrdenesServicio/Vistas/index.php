@@ -898,12 +898,31 @@
                         <i class="fa-solid fa-plus"></i> Agregar Muestra
                     </button>
                 </div>
+
+                <!-- BARRA DE ASIGNACIÓN GENERAL DE PLANTILLA -->
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:280px;">
+                        <i class="fa-solid fa-layer-group" style="font-size:16px; color:#16a34a;"></i>
+                        <span style="font-size:12.5px; font-weight:700; color:#166534; white-space:nowrap;">Plantilla para todas las muestras:</span>
+                        <select id="select_plantilla_global" name="plantilla_global_id" class="form-control-cycsa" style="padding:6px 10px; font-size:12px; font-weight:600; flex:1; min-width:200px; border-color:#86efac;" onchange="aplicarPlantillaATodasLasMuestras()">
+                            <option value="">-- Seleccionar Plantilla General --</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button type="button" class="btn-cycsa btn-cycsa-success" onclick="aplicarPlantillaATodasLasMuestras()" style="padding:6px 14px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-check-double"></i> Aplicar a todas las muestras
+                        </button>
+                        <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="abrirPreviewPlantillaGlobal()" style="padding:6px 12px; font-size:12px;" title="Ver maqueta de la plantilla seleccionada">
+                            <i class="fa-solid fa-eye"></i> Vista Previa
+                        </button>
+                    </div>
+                </div>
+
                 <table style="width:100%; border-collapse:collapse; margin-bottom:20px; border:1px solid #e2e8f0;" id="hs-tabla-muestras">
                     <thead>
                         <tr style="background:#f8fafc; font-size:11.5px; color:#475569; text-transform:uppercase;">
-                            <th style="width:30%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Nombre de la muestra</th>
-                            <th style="width:30%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Descripción</th>
-                            <th style="width:30%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Informaciones importantes</th>
+                            <th style="width:25%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Identificación Espécimen</th>
+                            <th style="width:65%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Descripción de la Muestra / Elemento</th>
                             <th style="width:10%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:center;">Acción</th>
                         </tr>
                     </thead>
@@ -997,8 +1016,22 @@
                     </div>
                 </div>
 
-                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 12px; margin-bottom:20px; font-size:11.5px; color:#1e40af; line-height:1.4;">
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 12px; margin-bottom:15px; font-size:11.5px; color:#1e40af; line-height:1.4;">
                     <strong>*.- Con este documento doy fe</strong>, que todo lo escrito lo he revisado y que he quedado de mutuo acuerdo de los servicios que me ofrecerá CYCSA en la muestra. Cualquier cambio deberá ser notificado previo a CYCSA de cualquier forma escrita para su debido registro.
+                </div>
+
+                <!-- CONTROL DE RECEPCIÓN FÍSICA Y CONGELAMIENTO ISO 17025 -->
+                <div style="background:#fef3c7; border:1.5px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <label style="display:flex; align-items:center; gap:8px; font-weight:700; color:#92400e; font-size:13px; cursor:pointer; margin:0;">
+                            <input type="checkbox" name="confirmar_recepcion_lims" value="1" id="chk_confirmar_recepcion_lims" style="transform:scale(1.2);">
+                            <span><i class="fa-solid fa-lock text-warning me-1"></i> Confirmar Recepción Física y Congelar Plantillas (LIMS / ISO 17025)</span>
+                        </label>
+                        <div style="font-size:11px; color:#b45309; margin-left:26px; margin-top:2px;">
+                            Al marcar esta opción, las plantillas de ensayo seleccionadas quedarán congeladas permanentemente para trazabilidad de auditoría.
+                        </div>
+                    </div>
+                    <span style="font-size:10.5px; background:#fffbeb; color:#92400e; border:1px solid #fde68a; padding:4px 8px; border-radius:6px; font-weight:700;">Trazabilidad ISO 17025</span>
                 </div>
 
                 <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1.5px solid #e2e8f0; padding-top:18px;">
@@ -1008,6 +1041,45 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MOTIVO CAMBIO DE PLANTILLA SUGERIDA -->
+<div id="modalMotivoCambioPlantilla" class="modal-premium" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+    <div class="modal-premium-content" style="width: 440px; max-width:90%; background:white; margin:12% auto; padding:22px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.25);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #e2e8f0; padding-bottom:8px;">
+            <h5 style="margin:0; font-size:15px; font-weight:700; color:#b45309;"><i class="fa-solid fa-triangle-exclamation me-2"></i>Cambio de Plantilla Sugerida</h5>
+            <button type="button" onclick="cancelarCambioPlantillaModal()" style="background:none; border:none; font-size:22px; cursor:pointer;">&times;</button>
+        </div>
+        <p style="font-size:12.5px; color:#334155; margin-bottom:12px;">
+            Ha seleccionado una plantilla distinta a la sugerida por defecto. Según las directrices de trazabilidad <strong>ISO/IEC 17025</strong>, debe registrar el motivo técnico del cambio:
+        </p>
+        <div class="form-group mb-3">
+            <textarea id="txtMotivoCambioModal" class="form-control-cycsa" rows="3" style="font-size:12.5px; width:100%;" placeholder="Ej: Cliente solicitó variante con columna de tamiz 1 1/4..."></textarea>
+            <div id="errMotivoCambio" class="text-danger small mt-1" style="display:none; font-size:11px; color:#dc2626;">El motivo debe tener al menos 10 caracteres.</div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="cancelarCambioPlantillaModal()">Cancelar</button>
+            <button type="button" class="btn-cycsa btn-cycsa-primary" onclick="confirmarCambioPlantillaModal()">Confirmar Cambio</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL VISTA PREVIA PLANTILLA DE ENSAYO (READ ONLY) -->
+<div id="modalVerPlantillaReadOnly" class="modal-premium" style="display:none; position:fixed; z-index:10001; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.6); backdrop-filter:blur(3px);">
+    <div class="modal-premium-content" style="width: 1000px; max-width:95%; max-height:90vh; background:white; margin:2% auto; padding:22px; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.3); display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px;">
+            <h5 style="margin:0; font-size:16px; font-weight:800; color:var(--cycsa-azul, #103487); font-family:'Outfit';">
+                <i class="fa-solid fa-eye me-2"></i>Maqueta y Formato de Plantilla de Ensayo (ISO/IEC 17025)
+            </h5>
+            <button type="button" onclick="cerrarVerPlantillaReadOnly()" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <div id="contenidoVerPlantillaReadOnly" style="overflow-y:auto; flex:1;">
+            <div style="text-align:center; padding:40px;"><i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i></div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; border-top:1px solid #e2e8f0; padding-top:10px; margin-top:10px;">
+            <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="cerrarVerPlantillaReadOnly()">Cerrar Vista Previa</button>
         </div>
     </div>
 </div>
@@ -1433,6 +1505,10 @@
         prefijoMuestraActual = data.prefijo_muestra || 'MC';
         siguienteConsecutivoMuestra = parseInt(data.siguiente_consecutivo_muestra || 1, 10) || 1;
         siguienteConsecutivoMuestraInicial = siguienteConsecutivoMuestra;
+        window.ensayosDisponiblesOS = data.ensayos_disponibles_os || [];
+        window.clienteIdActualHoja = data.cliente_id || '';
+
+        poblarSelectorPlantillaGlobal(window.ensayosDisponiblesOS, window.clienteIdActualHoja);
 
         // Set id_hoja hidden field
         const elIdHoja = document.getElementById('hs_id_hoja');
@@ -1587,18 +1663,46 @@
             }
         } catch(e) { muestrasArr = []; }
 
-        if (Array.isArray(muestrasArr) && muestrasArr.length > 0) {
+        if (data.detalles_muestras_relacionales && Array.isArray(data.detalles_muestras_relacionales) && data.detalles_muestras_relacionales.length > 0) {
+            data.detalles_muestras_relacionales.forEach((det) => {
+                const nom = det.codigo_muestra || '';
+                const tipo = nom.startsWith('MS-') ? 'MS' : (nom.startsWith('MC-') ? 'MC' : prefijoMuestraActual);
+                agregarFilaMuestraModal(
+                    tipo,
+                    nom,
+                    det.descripcion_ubicacion || '',
+                    det.observacion_edad || '',
+                    det.ensayo_id || null,
+                    det.plantilla_id || null,
+                    parseInt(det.seleccion_manual || 0),
+                    det.motivo_cambio || '',
+                    parseInt(det.bloqueado_recepcion || 0)
+                );
+            });
+        } else if (Array.isArray(muestrasArr) && muestrasArr.length > 0) {
             muestrasArr.forEach((m) => {
                 const nom = m.nombre_muestra || m.identificacion || '';
                 const tipo = nom.startsWith('MS-') ? 'MS' : (nom.startsWith('MC-') ? 'MC' : prefijoMuestraActual);
-                agregarFilaMuestraModal(tipo, nom, m.descripcion || m.ubicacion || '', m.info_importante || m.observaciones || '');
+                agregarFilaMuestraModal(
+                    tipo,
+                    nom,
+                    m.descripcion || m.ubicacion || '',
+                    m.info_importante || m.observaciones || '',
+                    m.ensayo_id || null,
+                    m.plantilla_id || null,
+                    parseInt(m.seleccion_manual || 0),
+                    m.motivo_cambio || '',
+                    parseInt(m.bloqueado || 0)
+                );
             });
         } else {
             // Pre-cargar automáticamente las N muestras disponibles (sin repetir números)
             const cantSugerida = parseInt(data.cantidad_muestras_sugerida || os?.programacion_muestreo?.cantidad_muestras_est || 1) || 1;
             const puntoMuestreo = h.procedencia_punto_muestreo || data.lugar_muestreo || os?.nombre_proyecto || '';
-            const primerEnsayo = (os?.ensayos && os.ensayos.length > 0) ? (os.ensayos[0].nombre_ensayo || os.ensayos[0].descripcion_ensayo || '') : '';
-            const desc = primerEnsayo ? (primerEnsayo.length > 50 ? primerEnsayo.substring(0, 50) + '...' : primerEnsayo) : ((prefijoMuestraActual === 'MC') ? 'Muestra tomada en campo' : 'Muestra entregada en laboratorio');
+            const primerEnsayoObj = (window.ensayosDisponiblesOS && window.ensayosDisponiblesOS.length > 0) ? window.ensayosDisponiblesOS[0] : null;
+            const primerEnsayoId = primerEnsayoObj ? primerEnsayoObj.id : null;
+            const primerPlantillaId = primerEnsayoObj?.plantilla_sugerida ? primerEnsayoObj.plantilla_sugerida.id : null;
+            const desc = primerEnsayoObj ? (primerEnsayoObj.nombre.length > 50 ? primerEnsayoObj.nombre.substring(0, 50) + '...' : primerEnsayoObj.nombre) : ((prefijoMuestraActual === 'MC') ? 'Muestra tomada en campo' : 'Muestra entregada en laboratorio');
             let infoPunto = puntoMuestreo ? `Ubicación: ${puntoMuestreo}` : '';
             if (os?.nombre_proyecto && (!puntoMuestreo || !puntoMuestreo.includes(os.nombre_proyecto))) {
                 infoPunto += (infoPunto ? ' - ' : '') + `Proy: ${os.nombre_proyecto}`;
@@ -1607,7 +1711,7 @@
             for (let i = 0; i < cantSugerida; i++) {
                 const consecutiveStr = String(siguienteConsecutivoMuestra + i).padStart(4, '0');
                 const nom = `${prefijoMuestraActual}-${consecutiveStr}-${anioActual2Digitos}`;
-                agregarFilaMuestraModal(prefijoMuestraActual, nom, desc, info);
+                agregarFilaMuestraModal(prefijoMuestraActual, nom, desc, info, primerEnsayoId, primerPlantillaId);
             }
             siguienteConsecutivoMuestra += cantSugerida;
         }
@@ -1661,6 +1765,15 @@
         if (elFirmaCli) elFirmaCli.checked = (parseInt(h.firma_cliente) === 1);
     }
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
 
     function recalcularConsecutivoMuestra(prefix = prefijoMuestraActual) {
         const tbody = document.getElementById('hs-tbody-muestras');
@@ -1678,7 +1791,7 @@
         return Math.max(max + 1, siguienteConsecutivoMuestraInicial);
     }
 
-    function agregarFilaMuestraModal(tipo = null, nom = '', desc = '', info = '') {
+    function agregarFilaMuestraModal(tipo = null, nom = '', desc = '', info = '', ensayoId = null, plantillaId = null, seleccionManual = 0, motivoCambio = '', bloqueado = 0) {
         const tbody = document.getElementById('hs-tbody-muestras');
         if (!tbody) return;
 
@@ -1697,23 +1810,374 @@
             }
         }
 
+        // Si no se especificó plantillaId pero hay una seleccionada en el selector general, usarla
+        if (!plantillaId) {
+            const selGlobal = document.getElementById('select_plantilla_global');
+            if (selGlobal && selGlobal.value) {
+                plantillaId = selGlobal.value;
+            }
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td style="padding:6px; border-bottom:1px solid #e2e8f0;">
-                <input type="text" name="m_nombre[]" value="${nom}" readonly required class="form-control-cycsa" style="padding:6px 10px; font-size:12px; font-weight:700; font-family:monospace; color:var(--cycsa-azul); background:#f8fafc; cursor:not-allowed; border-color:#cbd5e1;" title="Código consecutivo bloqueado por el sistema">
+                <input type="text" name="m_nombre[]" value="${nom}" readonly required class="form-control-cycsa" style="padding:6px 10px; font-size:12px; font-weight:700; font-family:monospace; color:var(--cycsa-azul); background:#f8fafc; cursor:not-allowed; border-color:#cbd5e1;" title="Código consecutivo asignado por el sistema">
+                <input type="hidden" name="m_info[]" value="${escapeHtml(info)}">
+                <input type="hidden" name="m_ensayo_id[]" value="${ensayoId || 1}">
+                <input type="hidden" name="m_plantilla_id[]" value="${plantillaId || ''}" class="input-plantilla-muestra">
+                <input type="hidden" name="m_seleccion_manual[]" value="${seleccionManual}">
+                <input type="hidden" name="m_motivo_cambio[]" value="${escapeHtml(motivoCambio)}">
+                <input type="hidden" name="m_bloqueado[]" value="${bloqueado}">
             </td>
             <td style="padding:6px; border-bottom:1px solid #e2e8f0;">
-                <input type="text" name="m_desc[]" value="${desc}" class="form-control-cycsa" style="padding:6px 10px; font-size:12px;" required placeholder="Elemento / Ubicación">
-            </td>
-            <td style="padding:6px; border-bottom:1px solid #e2e8f0;">
-                <input type="text" name="m_info[]" value="${info}" class="form-control-cycsa" style="padding:6px 10px; font-size:12px;" placeholder="Revenimiento / Edad">
+                <input type="text" name="m_desc[]" value="${escapeHtml(desc)}" class="form-control-cycsa" style="padding:6px 10px; font-size:12.5px;" required placeholder="Descripción de la muestra (ej: Concreto F'c 210 kg/cm² - Columnas Eje C-3 / Sub-base)">
+                ${motivoCambio ? `<div style="font-size:10px; color:#b45309; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(motivoCambio)}"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(motivoCambio)}</div>` : ''}
             </td>
             <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center;">
-                <button type="button" class="btn-cycsa btn-cycsa-danger" style="padding:4px 8px; font-size:11px;" onclick="this.closest('tr').remove(); siguienteConsecutivoMuestra = recalcularConsecutivoMuestra();" title="Eliminar muestra"><i class="fa-solid fa-trash"></i></button>
+                ${bloqueado ? 
+                    '<span style="background:#f1f5f9; color:#64748b; font-size:10px; font-weight:700; padding:3px 6px; border-radius:4px;">Bloqueado</span>' 
+                    : 
+                    '<button type="button" class="btn-cycsa btn-cycsa-danger" style="padding:4px 8px; font-size:11px;" onclick="this.closest(\'tr\').remove(); siguienteConsecutivoMuestra = recalcularConsecutivoMuestra();" title="Eliminar muestra"><i class="fa-solid fa-trash"></i></button>'
+                }
             </td>
         `;
         tbody.appendChild(tr);
     }
+
+    function cargarOpcionesPlantillaSelect(selectEl, ensayoId, plantillaSeleccionada = null) {
+        if (!ensayoId) return;
+        const clienteId = window.clienteIdActualHoja || '';
+        selectEl.innerHTML = '<option value="">Buscando plantillas aprobadas...</option>';
+        if (plantillaSeleccionada) {
+            selectEl.dataset.pendienteSeleccionar = plantillaSeleccionada;
+        }
+
+        fetch(`/Cycsa/publico/plantillas/disponibles?ensayo_id=${ensayoId}&cliente_id=${clienteId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success' && data.plantillas && data.plantillas.length > 0) {
+                    let html = '';
+                    const variantes = data.plantillas.filter(p => p.es_variante_cliente == 1);
+                    const delEnsayo = data.plantillas.filter(p => p.es_variante_cliente != 1 && p.es_del_ensayo == 1);
+                    const generales = data.plantillas.filter(p => p.es_variante_cliente != 1 && !p.es_del_ensayo);
+                    const targetId = selectEl.dataset.pendienteSeleccionar || plantillaSeleccionada || null;
+
+                    if (variantes.length > 0) {
+                        html += '<optgroup label="⭐ Variantes Aprobadas para este Cliente">';
+                        variantes.forEach(v => {
+                            const sel = (targetId && parseInt(v.id) === parseInt(targetId)) || (!targetId && data.plantilla_sugerida && parseInt(v.id) === parseInt(data.plantilla_sugerida.id)) ? 'selected' : '';
+                            html += `<option value="${v.id}" ${sel}>${escapeHtml(v.etiqueta_selector)}</option>`;
+                        });
+                        html += '</optgroup>';
+                    }
+
+                    if (delEnsayo.length > 0) {
+                        html += '<optgroup label="🎯 Plantillas Recomendadas para este Ensayo">';
+                        delEnsayo.forEach(e => {
+                            const sel = (targetId && parseInt(e.id) === parseInt(targetId)) || (!targetId && !variantes.length && data.plantilla_sugerida && parseInt(e.id) === parseInt(data.plantilla_sugerida.id)) ? 'selected' : '';
+                            html += `<option value="${e.id}" ${sel}>${escapeHtml(e.etiqueta_selector)}</option>`;
+                        });
+                        html += '</optgroup>';
+                    }
+
+                    if (generales.length > 0) {
+                        const lbl = (delEnsayo.length > 0 || variantes.length > 0) ? "🌐 Otras Plantillas Aprobadas (CYCSA)" : "🌐 Plantillas Generales Aprobadas (CYCSA)";
+                        html += `<optgroup label="${lbl}">`;
+                        generales.forEach(g => {
+                            const sel = (targetId && parseInt(g.id) === parseInt(targetId)) || (!targetId && !variantes.length && !delEnsayo.length && data.plantilla_sugerida && parseInt(g.id) === parseInt(data.plantilla_sugerida.id)) ? 'selected' : '';
+                            html += `<option value="${g.id}" ${sel}>${escapeHtml(g.etiqueta_selector)}</option>`;
+                        });
+                        html += '</optgroup>';
+                    }
+
+                    selectEl.innerHTML = html;
+                    selectEl.dataset.sugeridaId = data.plantilla_sugerida ? data.plantilla_sugerida.id : '';
+                    if (targetId) {
+                        selectEl.value = targetId;
+                    }
+                } else {
+                    selectEl.innerHTML = '<option value="">No hay plantillas aprobadas en el sistema</option>';
+                }
+            })
+            .catch(() => {
+                selectEl.innerHTML = '<option value="">Error al cargar plantillas</option>';
+            });
+    }
+
+    // Funciones de gestión global de plantillas para todas las muestras
+    function poblarSelectorPlantillaGlobal(ensayos, clienteId) {
+        const selGlobal = document.getElementById('select_plantilla_global');
+        if (!selGlobal) return;
+        selGlobal.innerHTML = '<option value="">-- Cargando plantillas... --</option>';
+
+        const cid = clienteId || window.clienteIdActualHoja || '';
+        const primerEnsayoId = (ensayos && ensayos.length > 0) ? ensayos[0].id : 0;
+
+        fetch(`/Cycsa/publico/plantillas/disponibles?ensayo_id=${primerEnsayoId}&cliente_id=${cid}`)
+            .then(r => r.json())
+            .then(res => {
+                if (res.status === 'success' && Array.isArray(res.plantillas) && res.plantillas.length > 0) {
+                    renderizarOpcionesSelectGlobal(selGlobal, res.plantillas, res.plantilla_sugerida);
+                } else {
+                    selGlobal.innerHTML = '<option value="">-- No hay plantillas disponibles --</option>';
+                }
+            })
+            .catch(() => {
+                selGlobal.innerHTML = '<option value="">-- Error al cargar plantillas --</option>';
+            });
+    }
+
+    function renderizarOpcionesSelectGlobal(selectEl, plantillas, sugerida) {
+        let html = '<option value="">-- Seleccionar Plantilla General --</option>';
+        const variantes = plantillas.filter(p => p.es_variante_cliente == 1);
+        const delEnsayo = plantillas.filter(p => p.es_variante_cliente != 1 && p.es_del_ensayo == 1);
+        const generales = plantillas.filter(p => p.es_variante_cliente != 1 && !p.es_del_ensayo);
+
+        if (variantes.length > 0) {
+            html += '<optgroup label="⭐ Variantes Aprobadas para este Cliente">';
+            variantes.forEach(v => {
+                const sel = (sugerida && parseInt(v.id) === parseInt(sugerida.id)) ? 'selected' : '';
+                html += `<option value="${v.id}" ${sel}>${escapeHtml(v.etiqueta_selector || (v.codigo + ' · ' + v.nombre))}</option>`;
+            });
+            html += '</optgroup>';
+        }
+
+        if (delEnsayo.length > 0) {
+            html += '<optgroup label="🎯 Plantillas Recomendadas para el Servicio">';
+            delEnsayo.forEach(e => {
+                const sel = (!variantes.length && sugerida && parseInt(e.id) === parseInt(sugerida.id)) ? 'selected' : '';
+                html += `<option value="${e.id}" ${sel}>${escapeHtml(e.etiqueta_selector || (e.codigo + ' · ' + e.nombre))}</option>`;
+            });
+            html += '</optgroup>';
+        }
+
+        if (generales.length > 0) {
+            const lbl = (delEnsayo.length > 0 || variantes.length > 0) ? "🌐 Otras Plantillas Aprobadas (CYCSA)" : "🌐 Plantillas Generales Aprobadas (CYCSA)";
+            html += `<optgroup label="${lbl}">`;
+            generales.forEach(g => {
+                const sel = (!variantes.length && !delEnsayo.length && sugerida && parseInt(g.id) === parseInt(sugerida.id)) ? 'selected' : '';
+                html += `<option value="${g.id}" ${sel}>${escapeHtml(g.etiqueta_selector || (g.codigo + ' · ' + g.nombre))}</option>`;
+            });
+            html += '</optgroup>';
+        }
+
+        selectEl.innerHTML = html;
+        if (sugerida && sugerida.id) {
+            selectEl.value = sugerida.id;
+        }
+
+        // Auto-asignar a las filas existentes en la tabla que aún no tengan plantilla
+        const tbodyAuto = document.getElementById('hs-tbody-muestras');
+        if (tbodyAuto && selectEl.value) {
+            tbodyAuto.querySelectorAll('tr').forEach(tr => {
+                const inpPlt = tr.querySelector('input[name="m_plantilla_id[]"]');
+                if (inpPlt && !inpPlt.value) {
+                    inpPlt.value = selectEl.value;
+                }
+            });
+        }
+    }
+
+    function aplicarPlantillaATodasLasMuestras() {
+        const selGlobal = document.getElementById('select_plantilla_global');
+        if (!selGlobal || !selGlobal.value) {
+            alert('Por favor seleccione primero una plantilla del selector general.');
+            if (selGlobal) selGlobal.focus();
+            return;
+        }
+
+        const plantillaId = selGlobal.value;
+        const tbody = document.getElementById('hs-tbody-muestras');
+        if (!tbody) return;
+
+        const filas = tbody.querySelectorAll('tr');
+        if (filas.length === 0) {
+            return;
+        }
+
+        let aplicadas = 0;
+        let bloqueadas = 0;
+
+        filas.forEach(tr => {
+            const inpBloqueado = tr.querySelector('input[name="m_bloqueado[]"]');
+            if (inpBloqueado && inpBloqueado.value === '1') {
+                bloqueadas++;
+                return;
+            }
+
+            const inpPlt = tr.querySelector('input[name="m_plantilla_id[]"]');
+            if (inpPlt) {
+                inpPlt.value = plantillaId;
+                aplicadas++;
+            }
+
+            // Efecto visual de confirmación instantánea (destello verde)
+            tr.style.transition = 'background-color 0.4s ease';
+            tr.style.backgroundColor = '#dcfce7';
+            setTimeout(() => {
+                tr.style.backgroundColor = '';
+            }, 1200);
+        });
+
+        if (bloqueadas > 0) {
+            alert(`Se aplicó la plantilla general a ${aplicadas} muestra(s). Nota: ${bloqueadas} muestra(s) ya estaban congeladas por recepción de laboratorio y no se modificaron.`);
+        }
+    }
+
+    function abrirPreviewPlantillaGlobal() {
+        const selGlobal = document.getElementById('select_plantilla_global');
+        if (!selGlobal || !selGlobal.value) {
+            alert('Seleccione una plantilla del selector general para ver su vista previa.');
+            return;
+        }
+        abrirModalPreviewPlantilla(selGlobal.value);
+    }
+
+    function replicarPlantillaFilaATodas(btn) {
+        const trOrigen = btn.closest('tr');
+        if (!trOrigen) return;
+        const selOrigen = trOrigen.querySelector('select[name="m_plantilla_id[]"]');
+        if (!selOrigen || !selOrigen.value) {
+            alert('Esta fila no tiene una plantilla seleccionada para replicar.');
+            return;
+        }
+
+        const plantillaId = selOrigen.value;
+        const plantillaText = selOrigen.options[selOrigen.selectedIndex]?.text || '';
+
+        // Sincronizar el selector general
+        const selGlobal = document.getElementById('select_plantilla_global');
+        if (selGlobal) {
+            let optExists = false;
+            for (let i = 0; i < selGlobal.options.length; i++) {
+                if (selGlobal.options[i].value == plantillaId) {
+                    selGlobal.selectedIndex = i;
+                    optExists = true;
+                    break;
+                }
+            }
+            if (!optExists && plantillaText) {
+                const newOpt = document.createElement('option');
+                newOpt.value = plantillaId;
+                newOpt.textContent = plantillaText;
+                newOpt.selected = true;
+                selGlobal.appendChild(newOpt);
+            }
+        }
+
+        aplicarPlantillaATodasLasMuestras();
+    }
+
+    function actualizarPlantillasDeFila(selectEnsayo) {
+        const tr = selectEnsayo.closest('tr');
+        const selectPlantilla = tr.querySelector('select[name="m_plantilla_id[]"]');
+        if (selectPlantilla) {
+            cargarOpcionesPlantillaSelect(selectPlantilla, selectEnsayo.value, null);
+        }
+    }
+
+    let selectCambiandoActual = null;
+    let valorPrevioPlantilla = null;
+
+    function guardarPlantillaPrevia(sel) {
+        valorPrevioPlantilla = sel.value;
+    }
+
+    function verificarCambioPlantilla(sel) {
+        const sugeridaId = sel.dataset.sugeridaId;
+        const tr = sel.closest('tr');
+        const inpManual = tr.querySelector('input[name="m_seleccion_manual[]"]');
+
+        if (sugeridaId && sel.value !== sugeridaId && inpManual.value !== '1') {
+            selectCambiandoActual = sel;
+            document.getElementById('txtMotivoCambioModal').value = '';
+            document.getElementById('errMotivoCambio').style.display = 'none';
+            document.getElementById('modalMotivoCambioPlantilla').style.display = 'block';
+        }
+    }
+
+    function cancelarCambioPlantillaModal() {
+        if (selectCambiandoActual && valorPrevioPlantilla !== null) {
+            selectCambiandoActual.value = valorPrevioPlantilla;
+        }
+        document.getElementById('modalMotivoCambioPlantilla').style.display = 'none';
+        selectCambiandoActual = null;
+    }
+
+    function confirmarCambioPlantillaModal() {
+        const txt = document.getElementById('txtMotivoCambioModal').value.trim();
+        if (txt.length < 10) {
+            document.getElementById('errMotivoCambio').style.display = 'block';
+            return;
+        }
+
+        if (selectCambiandoActual) {
+            const tr = selectCambiandoActual.closest('tr');
+            tr.querySelector('input[name="m_seleccion_manual[]"]').value = '1';
+            tr.querySelector('input[name="m_motivo_cambio[]"]').value = txt;
+        }
+        document.getElementById('modalMotivoCambioPlantilla').style.display = 'none';
+        selectCambiandoActual = null;
+    }
+
+    function abrirPreviewPlantillaFila(btn) {
+        const tr = btn.closest('tr');
+        const sel = tr.querySelector('select[name="m_plantilla_id[]"]');
+        const pid = sel ? sel.value : null;
+
+        if (!pid) {
+            alert('Seleccione primero una plantilla para ver su maqueta.');
+            return;
+        }
+
+        const contenedor = document.getElementById('contenidoVerPlantillaReadOnly');
+        contenedor.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i><div style="color:#64748b; margin-top:8px; font-size:12px;">Cargando formato oficial...</div></div>';
+        document.getElementById('modalVerPlantillaReadOnly').style.display = 'block';
+
+        fetch(`/Cycsa/publico/plantillas/preview-modal?id=${pid}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    contenedor.innerHTML = data.html;
+                } else {
+                    contenedor.innerHTML = `<div style="background:#fee2e2; color:#b91c1c; padding:15px; border-radius:8px;">${data.message}</div>`;
+                }
+            })
+            .catch(() => {
+                contenedor.innerHTML = `<div style="background:#fee2e2; color:#b91c1c; padding:15px; border-radius:8px;">Error al cargar la plantilla.</div>`;
+            });
+    }
+
+    function cerrarVerPlantillaReadOnly() {
+        document.getElementById('modalVerPlantillaReadOnly').style.display = 'none';
+    }
+
+    // Validación obligatoria en el envío del formulario RT-FM-13
+    document.addEventListener('DOMContentLoaded', () => {
+        const formHS = document.getElementById('form-hoja-solicitud');
+        if (formHS) {
+            formHS.addEventListener('submit', function(e) {
+                const isRecepcion = document.getElementById('chk_confirmar_recepcion_lims')?.checked;
+                if (isRecepcion) {
+                    let faltaPlantilla = false;
+                    let nombreFaltante = '';
+                    document.querySelectorAll('#hs-tbody-muestras tr').forEach(tr => {
+                        const selPlt = tr.querySelector('select[name="m_plantilla_id[]"]');
+                        const inpNom = tr.querySelector('input[name="m_nombre[]"]');
+                        if (selPlt && (!selPlt.value || selPlt.value === '0')) {
+                            faltaPlantilla = true;
+                            nombreFaltante = inpNom ? inpNom.value : 'Espécimen';
+                        }
+                    });
+                    if (faltaPlantilla) {
+                        e.preventDefault();
+                        alert(`Validación ISO 17025:\n\nLa muestra "${nombreFaltante}" no tiene asignada una plantilla de ensayo aprobada.\nNo se puede admitir la recepción física sin plantilla vinculada.`);
+                        return false;
+                    }
+                }
+            });
+        }
+    });
 
     function cerrarModalHojaSolicitud() {
         modHS.style.display = 'none';

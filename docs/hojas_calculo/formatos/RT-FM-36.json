@@ -1,0 +1,405 @@
+{
+  "codigo": "RT-FM-36",
+  "nombre": "Bloques de mampostería de concreto: absorción, humedad, densidad, área neta y resistencia",
+  "norma": {
+    "texto": "ASTM C140 / C90; NTON 12 008-16 (C90 y NTON citadas)",
+    "implicita": false
+  },
+  "version_origen": "CYCSA-RT-FM-36 HOJA DE CALCULO DE MAMPOSTERIA BLOQUE 2026 (2).xlsm",
+  "variantes": [],
+  "modulo_destino": "Laboratorio Roturas",
+  "formato_informe_rt_fm_22": {
+    "letra": "A",
+    "nuevo": false,
+    "nota": "Alimenta formato_de_resistencia_de_bloques.md (RT-FM-22 A)"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "dimension_nominal",
+      "etiqueta": "Dimensión nominal",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "listas.json bloques_nton"
+    },
+    {
+      "codigo": "fecha_fabricacion",
+      "etiqueta": "Fecha de fabricación",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": false,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Especímenes (3)",
+      "tipo_layout": "tabla_matriz",
+      "campos": [
+        {
+          "codigo": "masa_recibida",
+          "etiqueta": "Masa al recibir",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_seca",
+          "etiqueta": "Masa seca al horno",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_sumergida",
+          "etiqueta": "Masa sumergida",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_saturada",
+          "etiqueta": "Masa saturada",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "alto",
+          "etiqueta": "Altura",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "largo",
+          "etiqueta": "Largo",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "ancho",
+          "etiqueta": "Ancho",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "espesor_pared_ext",
+          "etiqueta": "Espesor pared exterior",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "espesor_pared_int",
+          "etiqueta": "Espesor pared interior",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "carga_lbf",
+          "etiqueta": "Carga",
+          "tipo": "numero",
+          "unidad": "lbf",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": true
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "cm2_a_in2",
+      "descripcion": "cm² → in² (Excel)",
+      "unidad": "in²/cm²",
+      "fuente": "fila 79",
+      "valor": 0.155
+    },
+    {
+      "codigo": "densidad_agua_lbft3",
+      "descripcion": "Densidad del agua",
+      "unidad": "lb/ft³",
+      "fuente": "fila 26",
+      "valor": 62.4
+    },
+    {
+      "codigo": "psi_por_kgcm2",
+      "descripcion": "Conversión del laboratorio",
+      "unidad": null,
+      "fuente": "fila 100",
+      "valor": 14.2
+    },
+    {
+      "codigo": "prensa",
+      "descripcion": "Polinomio de la máquina de fuerza",
+      "unidad": null,
+      "fuente": "Hoja U Carga",
+      "ref_equipo": "PRENSA-01",
+      "valor_referencia": null
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "absorcion_lbft3",
+      "expresion": "({masa_saturada}-{masa_seca})/({masa_saturada}-{masa_sumergida})*62.4",
+      "descripcion": "Absorción",
+      "unidad": "lb/ft³",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "absorcion_kgm3",
+      "expresion": "({masa_saturada}-{masa_seca})/({masa_saturada}-{masa_sumergida})*1000",
+      "descripcion": "Absorción",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "absorcion_pct",
+      "expresion": "({masa_saturada}-{masa_seca})*100/{masa_seca}",
+      "descripcion": "Absorción",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "humedad_pct_absorcion",
+      "expresion": "({masa_recibida}-{masa_seca})*100/({masa_saturada}-{masa_seca})",
+      "descripcion": "Humedad como % de la absorción total",
+      "unidad": "%",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "densidad_seca",
+      "expresion": "{masa_seca}/({masa_saturada}-{masa_sumergida})*1000",
+      "descripcion": "Densidad seca",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "volumen_neto",
+      "expresion": "({masa_saturada}-{masa_sumergida})*1000",
+      "descripcion": "Volumen neto",
+      "unidad": "cm³",
+      "redondeo": null,
+      "por_especimen": true
+    },
+    {
+      "codigo": "area_neta",
+      "expresion": "{volumen_neto}/{alto}",
+      "descripcion": "Área neta",
+      "unidad": "cm²",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "area_bruta",
+      "expresion": "{ancho}*{largo}",
+      "descripcion": "Área bruta",
+      "unidad": "cm²",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "resistencia_psi",
+      "expresion": "{carga_lbf}/({area_neta}*0.155)",
+      "descripcion": "Resistencia sobre área neta",
+      "unidad": "lbf/in²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "resistencia_kgcm2",
+      "expresion": "{resistencia_psi}/14.2",
+      "descripcion": "Resistencia",
+      "unidad": "kg/cm²",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    }
+  ],
+  "agregaciones": [
+    {
+      "codigo": "resistencia_promedio_psi",
+      "funcion": "promedio",
+      "de": "resistencia_psi",
+      "unidad": "lbf/in²"
+    },
+    {
+      "codigo": "resistencia_promedio_kgcm2",
+      "funcion": "promedio",
+      "de": "resistencia_kgcm2",
+      "unidad": "kg/cm²"
+    },
+    {
+      "codigo": "absorcion_promedio_kgm3",
+      "funcion": "promedio",
+      "de": "absorcion_kgm3",
+      "unidad": "kg/m³"
+    },
+    {
+      "codigo": "densidad_promedio",
+      "funcion": "promedio",
+      "de": "densidad_seca",
+      "unidad": "kg/m³"
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "NTON 12 008-16: espesor mínimo de paredes según dimensión nominal (listas.json bloques_nton); tolerancia dimensional ±3 mm",
+      "implicito": false
+    },
+    {
+      "descripcion": "Resistencia/absorción mínima por clase (C90/NTON): tabla no presente en el Excel, solicitar",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "REPORTE por espécimen y promedio con incertidumbre",
+      "Comparación con CRITERIOS NTON"
+    ],
+    "graficos": []
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "U Area / U Carga / U resistencia (visibles)",
+      "contenido": "Incertidumbre de área, carga y repetibilidad",
+      "destino": "equipos_calibracion + módulo de incertidumbre"
+    },
+    {
+      "hoja": "CRITERIOS (visible)",
+      "contenido": "Tabla NTON de espesores mínimos",
+      "destino": "listas.json bloques_nton"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM36-01",
+      "original_excel": "Conversiones aproximadas 0.155, 2.202, 14.2",
+      "corregido": "Se mantienen para reproducir informes; recomendado 0.15500031, 2.20462, 14.2233",
+      "justificacion": "Diferencias < 0.2 %",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM36-02",
+      "original_excel": "REPORTE con datos ficticios ('Fulano de Tal') y 92 celdas con error",
+      "corregido": "Encabezado desde cliente/proyecto del sistema",
+      "justificacion": "Datos de prueba",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM36-03",
+      "original_excel": "Macros VistaPrevia/imprimir/guardar/ver",
+      "corregido": "No se migran",
+      "justificacion": "Solo impresión",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-1943-26 espécimen 1",
+      "fuente": "Archive/...FM-36...xlsm 'DATOS + CALCULO' col B",
+      "entradas": {
+        "masa_recibida": 14.2,
+        "masa_seca": 14.08,
+        "masa_sumergida": 8.79,
+        "masa_saturada": 14.57,
+        "alto": 19.1,
+        "largo": 39,
+        "ancho": 14,
+        "carga_lbf": 154283
+      },
+      "esperados": {
+        "absorcion_lbft3": 5.2899653979238765,
+        "absorcion_kgm3": 84.77508650519033,
+        "absorcion_pct": 3.480113636363638,
+        "humedad_pct_absorcion": 24.48979591836718,
+        "densidad_seca": 2435.98615916955,
+        "volumen_neto": 5780,
+        "area_neta": 302.6178010471204,
+        "area_bruta": 546,
+        "resistencia_psi": 3289.2123004799646
+      },
+      "tolerancia_relativa": 0.001
+    },
+    {
+      "nombre": "MS-1943-26 espécimen 2",
+      "fuente": "idem",
+      "entradas": {
+        "masa_recibida": 14.48,
+        "masa_seca": 14.38,
+        "masa_sumergida": 8.49,
+        "masa_saturada": 15.12,
+        "alto": 19,
+        "largo": 39,
+        "ancho": 14,
+        "carga_lbf": 137761
+      },
+      "esperados": {
+        "area_neta": 348.94736842105266,
+        "resistencia_psi": 2547.033523086654
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ]
+}

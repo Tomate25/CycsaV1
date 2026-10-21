@@ -6,6 +6,8 @@ use Cycsa\Nucleo\ControladorBase;
 use Cycsa\Nucleo\Peticion;
 use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\Operaciones\Modelos\OperacionModelo;
+use Cycsa\Modulos\Operaciones\Modelos\RoturasModelo;
+use Cycsa\Nucleo\Conexion;
 use PDO;
 
 class LaboratorioControlador extends ControladorBase {
@@ -28,133 +30,161 @@ class LaboratorioControlador extends ControladorBase {
     }
 
     /**
-     * Dashboard del laboratorio: Solicitudes Entrantes (ISO 17025) y Laboratorio Operativo (Rupturas y Matrices).
+     * Bandeja Anónima de Laboratorio (ISO/IEC 17025 Cláusulas 4.1 y 4.2).
+     * Muestra las muestras aprobadas identificadas ÚNICAMENTE por código técnico.
      */
     public function index(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         $this->verificarPermiso($respuesta, 'ver');
 
-        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-        $modelo = new OperacionModelo();
+        $roturasModelo = new RoturasModelo();
+        $operacionModelo = new OperacionModelo();
+        $db = Conexion::obtenerInstancia();
 
-        // 1. Obtener todas las Órdenes de Servicio para el Tablero Kanban LIMS (Muestra Ciega ISO 17025)
-        $sqlAll = "SELECT os.id AS id_os, os.codigo_os, os.fecha_emision, os.estado AS estado_os,
-                          os.requiere_muestreo, os.tipo_contrato, os.atencion_a, os.nombre_proyecto, os.motivo_observacion,
-                          hs.id AS id_hoja, hs.codigo_documento AS hoja_codigo,
-                          hs.nombre_persona_toma_muestra, hs.fecha_hora_toma_muestra,
-                          hs.muestras_json, hs.naturaleza_muestra, hs.procedencia_punto_muestreo,
-                          hs.observaciones, hs.fecha_creacion AS hoja_fecha_creacion,
-                          cot.id AS id_cotizacion, cot.codigo AS cotizacion_codigo,
-                          (SELECT COUNT(*) FROM recepcion_muestras rm WHERE rm.id_os = os.id) AS total_recibidas_lab
-                   FROM ordenes_servicio os
-                   LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
-                   LEFT JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-                   ORDER BY os.id DESC";
-        $stmtAll = $db->query($sqlAll);
-        $todasOrdenes = $stmtAll->fetchAll(PDO::FETCH_ASSOC);
+        $tabActiva = $_GET['tab'] ?? 'aprobacion';
+        if (!in_array($tabActiva, ['aprobacion', 'bandeja', 'programadas'])) {
+            $tabActiva = 'aprobacion';
+        }
 
-        $kanban = [
-            'recien_llegadas' => [],
-            'en_revision' => [],
-            'aceptadas_lab' => [],
-            'finalizadas' => []
-        ];
+        // 1. Obtener solicitudes de servicio y hojas RT-FM-13 para el apartado de Aprobación/Recepción (ISO 17025)
+        $sqlSolicitudes = "SELECT os.id AS id_os, os.codigo_os, os.fecha_emision, os.estado AS estado_os,
+                                  os.requiere_muestreo, os.tipo_contrato, os.motivo_observacion,
+                                  hs.id AS id_hoja, hs.codigo_documento AS hoja_codigo, hs.numero_registro,
+                                  hs.fecha_hora_toma_muestra, hs.muestras_json, hs.naturaleza_muestra,
+                                  hs.procedencia_punto_muestreo, hs.observaciones, hs.fecha_creacion AS hoja_fecha_creacion,
+                                  cot.id AS id_cotizacion,
+                                  (CASE 
+                                      WHEN hs.id IS NOT NULL THEN (SELECT COUNT(*) FROM recepcion_muestras rm WHERE rm.id_os = os.id AND (rm.id_hoja = hs.id OR (rm.id_hoja IS NULL AND hs.id = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = os.id))))
+                                      ELSE (SELECT COUNT(*) FROM recepcion_muestras rm WHERE rm.id_os = os.id)
+                                   END) AS total_recibidas_lab
+                           FROM ordenes_servicio os
+                           LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+                           LEFT JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+                           WHERE os.estado NOT IN ('Cancelada')
+                           ORDER BY os.id DESC, hs.id DESC";
+        $stmtSol = $db->query($sqlSolicitudes);
+        $todasOrdenes = $stmtSol->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($todasOrdenes as &$o) {
-            $o['ensayos'] = $modelo->obtenerDetallesCotizacion((int)$o['id_cotizacion']);
-            $o['total_ensayos'] = count($o['ensayos']);
-            $o['ensayos_aprobados'] = 0;
-            foreach ($o['ensayos'] as $ensayo) {
-                if (obtenerEstadoRevisionMatriz($ensayo['resultados_json'] ?? '')['estado'] === 'aprobada') {
-                    $o['ensayos_aprobados']++;
-                }
-            }
-            
-            // Si la orden contiene exclusivamente ensayos in situ de compactación, no requiere recepción física de muestras en lab
-            if (!empty($o['ensayos']) && esOrdenSoloCompactacion($o['ensayos'])) {
+        $solicitudesPorAprobar = [];
+        $solicitudesAprobadasRecientes = [];
+
+        foreach ($todasOrdenes as $o) {
+            $ensayos = $operacionModelo->obtenerDetallesCotizacion((int)$o['id_cotizacion']);
+            // Omitir si la orden contiene exclusivamente ensayos in situ de compactación (no ingresan a laboratorio)
+            if (!empty($ensayos) && esOrdenSoloCompactacion($ensayos)) {
                 continue;
             }
 
+            $o['ensayos'] = $ensayos;
             $o['muestras_declaradas'] = !empty($o['muestras_json']) ? (json_decode($o['muestras_json'], true) ?: []) : [];
             $o['total_muestras_declaradas'] = count($o['muestras_declaradas']);
 
-            // Muestras ingresadas formalmente en lab
-            $stmtCodigos = $db->prepare("SELECT rm.codigo_muestra, rm.codigo_campo, rm.fecha_recepcion, lm.id AS id_lote FROM recepcion_muestras rm LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id WHERE rm.id_os = :id_os");
-            $stmtCodigos->execute(['id_os' => $o['id_os']]);
-            $o['muestras_ingresadas'] = $stmtCodigos->fetchAll(PDO::FETCH_ASSOC);
-
-            $estado = $o['estado_os'];
             $recibidas = (int)$o['total_recibidas_lab'];
+            $estado = $o['estado_os'];
 
-            if ($estado === 'Estado 2: Revision') {
-                $kanban['en_revision'][] = $o;
-            } elseif ($estado === 'Finalizado' || $estado === 'Estado 7: Revision Resultados') {
-                $kanban['finalizadas'][] = $o;
-            } elseif ($recibidas > 0 || in_array($estado, ['Estado 4: Ingreso Laboratorio', 'Estado 5: Solicitud Tecnicos'])) {
-                $kanban['aceptadas_lab'][] = $o;
+            if ($recibidas === 0 && !in_array($estado, ['Finalizado', 'Cancelada'], true)) {
+                $solicitudesPorAprobar[] = $o;
+            } elseif ($recibidas > 0) {
+                if (count($solicitudesAprobadasRecientes) < 15) {
+                    $solicitudesAprobadasRecientes[] = $o;
+                }
+            }
+        }
+
+        // Filtro de búsqueda en la pestaña de aprobación
+        $filtroAprobacion = trim($_GET['buscar_solicitud'] ?? '');
+        $estadoAprobacion = trim($_GET['estado_aprobacion'] ?? '');
+        if ($filtroAprobacion !== '' || $estadoAprobacion !== '') {
+            $solicitudesPorAprobar = array_values(array_filter($solicitudesPorAprobar, function($item) use ($filtroAprobacion, $estadoAprobacion) {
+                if ($estadoAprobacion !== '') {
+                    if ($estadoAprobacion === 'recibidas' && $item['estado_os'] !== 'Estado 1: Recepcion') return false;
+                    if ($estadoAprobacion === 'revision' && $item['estado_os'] !== 'Estado 2: Revision') return false;
+                    if ($estadoAprobacion === 'observadas' && $item['estado_os'] !== 'Estado 2: Observada') return false;
+                }
+                if ($filtroAprobacion !== '') {
+                    $haystack = mb_strtolower(($item['hoja_codigo'] ?? '') . ' ' . ($item['codigo_os'] ?? '') . ' ' . ($item['naturaleza_muestra'] ?? '') . ' ' . ($item['ensayos'][0]['descripcion_ensayo'] ?? ''));
+                    if (!str_contains($haystack, mb_strtolower($filtroAprobacion))) {
+                        return false;
+                    }
+                }
+                return true;
+            }));
+        }
+
+        // Filtros capturados por GET para la bandeja anónima
+        $filtros = [
+            'busqueda' => trim($_GET['busqueda'] ?? ''),
+            'estado' => trim($_GET['estado'] ?? ''),
+            'tipo_ensayo' => trim($_GET['tipo_ensayo'] ?? ''),
+            'rotura_hoy' => !empty($_GET['rotura_hoy']),
+            'vencidas' => !empty($_GET['vencidas']),
+            'fecha_desde' => trim($_GET['fecha_desde'] ?? ''),
+            'fecha_hasta' => trim($_GET['fecha_hasta'] ?? '')
+        ];
+
+        // Obtener listado de la vista SQL anónima v_lab_muestras
+        $muestras = $roturasModelo->obtenerBandejaAnonima($filtros);
+
+        // Métricas rápidas para KPIs superiores de la bandeja anónima
+        $todas = $roturasModelo->obtenerBandejaAnonima([]);
+        $kpis = [
+            'total' => count($todas),
+            'rotura_hoy' => 0,
+            'vencidas' => 0,
+            'activas' => 0,
+            'cerradas' => 0
+        ];
+        $hoy = date('Y-m-d');
+        foreach ($todas as $t) {
+            if (!empty($t['proxima_rotura'])) {
+                if ($t['proxima_rotura'] === $hoy) {
+                    $kpis['rotura_hoy']++;
+                } elseif ($t['proxima_rotura'] < $hoy && $t['estado_plan'] !== 'cerrado') {
+                    $kpis['vencidas']++;
+                }
+            }
+            if ($t['estado_plan'] === 'cerrado') {
+                $kpis['cerradas']++;
             } else {
-                $kanban['recien_llegadas'][] = $o;
+                $kpis['activas']++;
             }
         }
-        unset($o);
 
-        // 2. Obtener listado de muestras ingresadas activas en custodia
-        $sqlMuestras = "SELECT lm.id AS id_lote, rm.id AS id_recepcion, rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote,
-                               lm.fecha_moldeo, rm.fecha_recepcion, rm.estado, os.codigo_os, os.id AS id_os,
-                               (SELECT descripcion_ensayo FROM cotizacion_detalles cd WHERE cd.id = (SELECT id_detalle_cotizacion FROM ensayo_edades ee WHERE ee.id_lote = lm.id LIMIT 1)) AS nombre_ensayo
-                        FROM lotes_muestras lm
-                        JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
-                        JOIN ordenes_servicio os ON rm.id_os = os.id
-                        ORDER BY lm.id DESC LIMIT 100";
-        $stmtMuestras = $db->query($sqlMuestras);
-        $muestras = $stmtMuestras->fetchAll(PDO::FETCH_ASSOC);
-
-        // 3. Obtener rupturas programadas para los próximos 7 días (ciego)
-        $sqlProximas = "SELECT ee.id, ee.identificador_especimen, ee.edad_dias, ee.fecha_programada,
-                               rm.codigo_muestra, rm.codigo_campo, lm.id AS id_lote,
-                               cd.descripcion_ensayo AS nombre_ensayo
-                        FROM ensayo_edades ee
-                        JOIN lotes_muestras lm ON ee.id_lote = lm.id
-                        JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
-                        LEFT JOIN cotizacion_detalles cd ON ee.id_detalle_cotizacion = cd.id
-                        WHERE ee.estado IN ('Programado', 'Listo para Ensaye')
-                          AND ee.edad_dias > 0
-                          AND ee.fecha_programada BETWEEN CURRENT_DATE - INTERVAL 2 DAY AND CURRENT_DATE + INTERVAL 7 DAY
-                        ORDER BY ee.fecha_programada ASC, rm.codigo_muestra ASC";
-        $stmtProx = $db->query($sqlProximas);
+        // Rupturas programadas en los próximos 7 días (consulta técnica ciega)
+        $sqlProx = "SELECT esp.id AS especimen_id, esp.codigo_lab, esp.dimensiones, esp.estado AS especimen_estado,
+                           pre.id AS plan_edad_id, pre.edad_dias, pre.fecha_programada, pre.tolerancia_horas,
+                           vm.muestra_id, vm.material_descripcion, vm.diseno_resistencia, vm.plantilla_nombre
+                    FROM plan_rotura_edades pre
+                    JOIN plan_rotura_asignaciones pra ON pra.plan_edad_id = pre.id
+                    JOIN especimenes esp ON pra.especimen_id = esp.id
+                    JOIN planes_rotura pr ON pre.plan_rotura_id = pr.id
+                    JOIN v_lab_muestras vm ON pr.muestra_id = vm.muestra_id
+                    WHERE esp.estado IN ('programado', 'en_curado')
+                      AND pre.fecha_programada BETWEEN CURRENT_DATE - INTERVAL 2 DAY AND CURRENT_DATE + INTERVAL 7 DAY
+                    ORDER BY pre.fecha_programada ASC, esp.codigo_lab ASC";
+        $stmtProx = $db->query($sqlProx);
         $rupturasProgramadas = $stmtProx->fetchAll(PDO::FETCH_ASSOC);
-
-        // 4. Obtener rupturas para el calendario
-        $sqlCalendario = "SELECT ee.id, ee.identificador_especimen, ee.edad_dias, ee.fecha_programada,
-                                 ee.estado, rm.codigo_muestra, rm.codigo_campo, lm.id AS id_lote,
-                                 cd.descripcion_ensayo AS nombre_ensayo,
-                                 os.codigo_os
-                          FROM ensayo_edades ee
-                          JOIN lotes_muestras lm ON ee.id_lote = lm.id
-                          JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
-                          JOIN ordenes_servicio os ON rm.id_os = os.id
-                          LEFT JOIN cotizacion_detalles cd ON ee.id_detalle_cotizacion = cd.id
-                          WHERE ee.fecha_programada BETWEEN CURRENT_DATE - INTERVAL 60 DAY AND CURRENT_DATE + INTERVAL 60 DAY
-                          ORDER BY ee.fecha_programada ASC";
-        $stmtCal = $db->query($sqlCalendario);
-        $eventosCalendario = $stmtCal->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($eventosCalendario as &$ev) {
-            if (isset($ev['id_lote'])) {
-                $ev['id_lote'] = codificarId($ev['id_lote']);
-            }
-        }
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
+        $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
+        $puedeReidentificar = in_array($rolUsuario, [1, 2, 3], true);
+
         $this->renderizar('operaciones/vistas/laboratorio_dashboard', [
             'titulo' => 'Portal de Laboratorio LIMS (ISO 17025)',
-            'kanban' => $kanban,
+            'tabActiva' => $tabActiva,
+            'solicitudesPorAprobar' => $solicitudesPorAprobar,
+            'solicitudesAprobadasRecientes' => $solicitudesAprobadasRecientes,
+            'filtroAprobacion' => $filtroAprobacion,
+            'estadoAprobacion' => $estadoAprobacion,
             'muestras' => $muestras,
+            'kpis' => $kpis,
+            'filtros' => $filtros,
             'rupturas' => $rupturasProgramadas,
-            'eventosCalendario' => $eventosCalendario,
+            'puedeReidentificar' => $puedeReidentificar,
+            'rolUsuario' => $rolUsuario,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
         ]);
@@ -162,78 +192,143 @@ class LaboratorioControlador extends ControladorBase {
     }
 
     /**
-     * Detalle ciego de una muestra en laboratorio para cargar datos.
+     * Endpoint AJAX para alimentar DataTables o búsquedas en tiempo real.
+     * Retorna datos sanitizados sin ninguna propiedad de clientes ni O/S.
+     */
+    public function muestrasAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $roturasModelo = new RoturasModelo();
+        $filtros = [
+            'busqueda' => trim($_GET['busqueda'] ?? ''),
+            'estado' => trim($_GET['estado'] ?? ''),
+            'tipo_ensayo' => trim($_GET['tipo_ensayo'] ?? ''),
+            'rotura_hoy' => !empty($_GET['rotura_hoy']),
+            'vencidas' => !empty($_GET['vencidas']),
+            'fecha_desde' => trim($_GET['fecha_desde'] ?? ''),
+            'fecha_hasta' => trim($_GET['fecha_hasta'] ?? '')
+        ];
+
+        $muestras = $roturasModelo->obtenerBandejaAnonima($filtros);
+
+        // Sanitización rigurosa de salida
+        $sanitizadas = [];
+        foreach ($muestras as $m) {
+            $sanitizadas[] = [
+                'muestra_id' => (int)$m['muestra_id'],
+                'codigo_lab' => $m['codigo_lab'],
+                'codigo_campo' => $m['codigo_campo'],
+                'material_descripcion' => $m['material_descripcion'],
+                'plantilla_nombre' => $m['plantilla_nombre'] ?: 'Sin Plantilla',
+                'norma_referencia' => $m['norma_referencia'] ?: 'ISO 17025',
+                'total_especimenes' => (int)$m['total_especimenes'],
+                'especimenes_ensayados' => (int)$m['especimenes_ensayados'],
+                'fecha_moldeo' => $m['fecha_moldeo'],
+                'fecha_ingreso' => $m['fecha_ingreso'],
+                'estado_plan' => $m['estado_plan'] ?: 'Sin Plan',
+                'proxima_rotura' => $m['proxima_rotura'],
+                'es_vencida' => (bool)$m['es_vencida'],
+                'es_hoy' => (bool)$m['es_hoy'],
+                'diseno_resistencia' => $m['diseno_resistencia'] ?: 'N/A'
+            ];
+        }
+
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'total' => count($sanitizadas),
+            'data' => $sanitizadas
+        ]);
+    }
+
+    /**
+     * Detalle ciego de una muestra en laboratorio para carga técnica y programa de roturas.
      */
     public function detalleMuestra(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         $this->verificarPermiso($respuesta, 'ver');
 
-        $idLote = (int)($_GET['id_lote'] ?? 0);
-        if ($idLote <= 0) {
-            $_SESSION['error'] = 'Muestra inválida.';
+        $idParam = (int)($_GET['id_lote'] ?? ($_GET['id'] ?? ($_GET['muestra_id'] ?? 0)));
+        $codigoParam = trim($_GET['codigo'] ?? '');
+
+        $db = Conexion::obtenerInstancia();
+        $muestraId = 0;
+
+        if ($idParam > 0) {
+            // Comprobar si el ID corresponde directamente a recepcion_muestras o a lotes_muestras
+            $stmtM = $db->prepare("SELECT id FROM recepcion_muestras WHERE id = :id");
+            $stmtM->execute(['id' => $idParam]);
+            $muestraId = (int)$stmtM->fetchColumn();
+
+            if ($muestraId === 0) {
+                $stmtL = $db->prepare("SELECT id_recepcion FROM lotes_muestras WHERE id = :id");
+                $stmtL->execute(['id' => $idParam]);
+                $muestraId = (int)$stmtL->fetchColumn();
+            }
+        } elseif (!empty($codigoParam)) {
+            $stmtC = $db->prepare("SELECT id FROM recepcion_muestras WHERE codigo_muestra = :cod");
+            $stmtC->execute(['cod' => $codigoParam]);
+            $muestraId = (int)$stmtC->fetchColumn();
+        }
+
+        if ($muestraId <= 0) {
+            $_SESSION['error'] = 'Muestra técnica no encontrada o identificador no válido.';
             $respuesta->redirigir('/Cycsa/publico/laboratorio');
             return;
         }
 
-        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $roturasModelo = new RoturasModelo();
+        $detalle = $roturasModelo->obtenerDetalleMuestraAnonima($muestraId);
 
-        // 1. Obtener datos del lote y recepción (estrictamente técnicos)
-        $sqlLote = "SELECT lm.*, rm.codigo_muestra, rm.codigo_campo, rm.fecha_recepcion
-                    FROM lotes_muestras lm
-                    JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
-                    WHERE lm.id = :id_lote";
-        $stmt = $db->prepare($sqlLote);
-        $stmt->execute(['id_lote' => $idLote]);
-        $lote = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$lote) {
-            $_SESSION['error'] = 'Muestra no encontrada.';
+        if (!$detalle) {
+            $_SESSION['error'] = 'La muestra de laboratorio no fue localizada en el sistema.';
             $respuesta->redirigir('/Cycsa/publico/laboratorio');
             return;
         }
 
-        // 2. Obtener especímenes del lote
-        $modelo = new OperacionModelo();
-        $especimenes = $modelo->obtenerDetallesLote($idLote);
-        $historial = $modelo->obtenerHistorialInformes($idLote);
+        // Si la muestra no tiene especímenes en la tabla nueva, crearlos automáticamente según lote
+        if (empty($detalle['especimenes'])) {
+            $stmtLoteData = $db->prepare("SELECT fecha_moldeo, nombre_lote FROM lotes_muestras WHERE id_recepcion = :mid");
+            $stmtLoteData->execute(['mid' => $muestraId]);
+            $loteFila = $stmtLoteData->fetch(PDO::FETCH_ASSOC);
 
-        // Obtener el id_detalle_cotizacion asociado a este lote desde ensayo_edades
-        $stmtDetalleLote = $db->prepare("SELECT DISTINCT id_detalle_cotizacion FROM ensayo_edades WHERE id_lote = :id_lote LIMIT 1");
-        $stmtDetalleLote->execute(['id_lote' => $idLote]);
-        $idDetalleCotizacionAsociado = $stmtDetalleLote->fetchColumn();
+            // Contar cantidad de especímenes declarados en ensayo_edades o asignar default de 3
+            $stmtCountEd = $db->prepare("SELECT COUNT(*) FROM ensayo_edades ee JOIN lotes_muestras lm ON ee.id_lote = lm.id WHERE lm.id_recepcion = :mid");
+            $stmtCountEd->execute(['mid' => $muestraId]);
+            $cantEsp = (int)$stmtCountEd->fetchColumn();
+            if ($cantEsp <= 0) {
+                $cantEsp = 3;
+            }
 
-        // 3. Obtener únicamente el ensayo cotizado relacionado y asociado a este lote (ciego)
-        $sqlItems = "SELECT cd.id, cd.descripcion_ensayo, cd.norma_astm, fe.archivo_markdown, 
-                            fe.nombre AS formato_nombre, cd.resultados_json, cd.id_cotizacion
-                     FROM cotizacion_detalles cd
-                     JOIN lotes_muestras lm ON lm.id = :id_lote
-                     JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
-                     JOIN ordenes_servicio os ON rm.id_os = os.id
-                     LEFT JOIN productos p ON cd.id_producto = p.id
-                     LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
-                     WHERE cd.id_cotizacion = os.id_cotizacion AND cd.id = :id_det_cot";
-        $stmtItems = $db->prepare($sqlItems);
-        $stmtItems->execute([
-            'id_lote' => $idLote,
-            'id_det_cot' => $idDetalleCotizacionAsociado
-        ]);
-        $itemsOS = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+            $roturasModelo->crearEspecimenesParaMuestra(
+                $muestraId,
+                $cantEsp,
+                $loteFila['fecha_moldeo'] ?? date('Y-m-d'),
+                'cilindro_concreto',
+                '15 x 30 cm'
+            );
 
-        // Cargar esquemas JSON
-        $schemaPath = dirname(__DIR__, 4) . '/database/ensayos/formatos_schema.json';
-        $formatosSchemaJson = file_exists($schemaPath) ? file_get_contents($schemaPath) : '{}';
+            // Recargar detalle
+            $detalle = $roturasModelo->obtenerDetalleMuestraAnonima($muestraId);
+        }
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
+        $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
+        $puedeReidentificar = in_array($rolUsuario, [1, 2, 3], true);
+
         $this->renderizar('operaciones/vistas/laboratorio_detalle', [
-            'titulo' => 'Hoja de Trabajo Ciega - Muestra ' . $lote['codigo_muestra'],
-            'lote' => $lote,
-            'especimenes' => $especimenes,
-            'historial' => $historial,
-            'itemsOS' => $itemsOS,
-            'formatosSchemaJson' => $formatosSchemaJson,
+            'titulo' => 'Hoja de Trabajo Ciega - Muestra ' . $detalle['muestra']['codigo_lab'],
+            'muestra' => $detalle['muestra'],
+            'especimenes' => $detalle['especimenes'],
+            'plan' => $detalle['plan'],
+            'edades' => $detalle['edades'],
+            'informes' => $detalle['informes'],
+            'puede_consolidar' => $detalle['puede_consolidar'],
+            'puedeReidentificar' => $puedeReidentificar,
+            'rolUsuario' => $rolUsuario,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
         ]);
@@ -241,7 +336,162 @@ class LaboratorioControlador extends ControladorBase {
     }
 
     /**
-     * Guarda la carga de rotura de un cilindro.
+     * Guarda el Plan de Roturas para una muestra.
+     */
+    public function guardarPlanRotura(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $esAjax = $peticion->esAjax();
+
+            // Validación CSRF
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido o sesión expirada.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                return;
+            }
+
+            $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $plantillaVersionId = !empty($datos['plantilla_version_id']) ? (int)$datos['plantilla_version_id'] : null;
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+
+            // Reconstruir array de edades
+            $edadesConfig = [];
+            $edadesArr = $datos['edad_dias'] ?? [];
+            $cantArr = $datos['cantidad'] ?? [];
+
+            for ($i = 0; $i < count($edadesArr); $i++) {
+                $d = (int)($edadesArr[$i] ?? 0);
+                $c = (int)($cantArr[$i] ?? 0);
+                if ($d > 0 && $c > 0) {
+                    $edadesConfig[] = ['edad_dias' => $d, 'cantidad' => $c];
+                }
+            }
+
+            $roturasModelo = new RoturasModelo();
+            $resultado = $roturasModelo->guardarPlanRotura($muestraId, $plantillaVersionId, $edadesConfig, $usuarioId);
+
+            if ($esAjax) {
+                $respuesta->enviarJson([
+                    'status' => $resultado['exito'] ? 'success' : 'error',
+                    'message' => $resultado['mensaje']
+                ]);
+                return;
+            }
+
+            if ($resultado['exito']) {
+                $_SESSION['exito'] = $resultado['mensaje'];
+            } else {
+                $_SESSION['error'] = $resultado['mensaje'];
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+        }
+    }
+
+    /**
+     * Modifica un plan de roturas ya iniciado bajo autorización de Calidad/Supervisión.
+     */
+    public function modificarPlanRotura(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        
+        $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+        $esAjax = $peticion->esAjax();
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                return;
+            }
+
+            $planId = (int)($datos['plan_id'] ?? 0);
+            $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $motivo = trim($datos['motivo_modificacion'] ?? '');
+
+            $roturasModelo = new RoturasModelo();
+            $resultado = $roturasModelo->modificarPlanRoturaConAutorizacion($planId, [], $usuarioId, $rolUsuario, $motivo);
+
+            if ($esAjax) {
+                $respuesta->enviarJson([
+                    'status' => $resultado['exito'] ? 'success' : 'error',
+                    'message' => $resultado['mensaje']
+                ]);
+                return;
+            }
+
+            if ($resultado['exito']) {
+                $_SESSION['exito'] = $resultado['mensaje'];
+            } else {
+                $_SESSION['error'] = $resultado['mensaje'];
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+        }
+    }
+
+    /**
+     * Registra el ensayo de rotura de un espécimen con cálculo y validación de tolerancias ASTM C39.
+     */
+    public function registrarRotura(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $esAjax = $peticion->esAjax();
+
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                return;
+            }
+
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+            $muestraId = (int)($datos['muestra_id'] ?? 0);
+
+            $roturasModelo = new RoturasModelo();
+            $resultado = $roturasModelo->registrarRotura($datos, $usuarioId);
+
+            if ($esAjax) {
+                $respuesta->enviarJson([
+                    'status' => $resultado['exito'] ? 'success' : 'error',
+                    'requiere_justificacion' => $resultado['requiere_justificacion'] ?? false,
+                    'message' => $resultado['mensaje'],
+                    'datos' => $resultado
+                ]);
+                return;
+            }
+
+            if ($resultado['exito']) {
+                $_SESSION['exito'] = $resultado['mensaje'];
+            } else {
+                $_SESSION['error'] = $resultado['mensaje'];
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+        }
+    }
+
+    /**
+     * Guarda la carga de rotura tradicional (retrocompatibilidad).
      */
     public function guardarRuptura(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
@@ -261,12 +511,6 @@ class LaboratorioControlador extends ControladorBase {
             $carga = (float)($datos['carga_lbs'] ?? 0);
             $area = (float)($datos['area_in2'] ?? 28.274);
 
-            if ($idEnsayo <= 0) {
-                $_SESSION['error'] = 'Identificador de especímen inválido.';
-                $respuesta->redirigir('/Cycsa/publico/laboratorio');
-                return;
-            }
-
             $modelo = new OperacionModelo();
             $resultado = $modelo->guardarResultadoRuptura($idEnsayo, [
                 'carga_lbs' => $carga,
@@ -284,7 +528,262 @@ class LaboratorioControlador extends ControladorBase {
     }
 
     /**
-     * Procesa la aceptación técnica y recepción de muestras en el laboratorio (conforme a ISO 17025).
+     * Genera un informe parcial para una edad completada.
+     */
+    public function generarInformeParcial(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $esAjax = $peticion->esAjax();
+
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                return;
+            }
+
+            $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $planEdadId = (int)($datos['plan_edad_id'] ?? 0);
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+
+            $roturasModelo = new RoturasModelo();
+            $resultado = $roturasModelo->generarInformeParcial($muestraId, $planEdadId, $usuarioId);
+
+            if ($esAjax) {
+                $respuesta->enviarJson([
+                    'status' => $resultado['exito'] ? 'success' : 'error',
+                    'message' => $resultado['mensaje'],
+                    'numero' => $resultado['numero'] ?? ''
+                ]);
+                return;
+            }
+
+            if ($resultado['exito']) {
+                $_SESSION['exito'] = $resultado['mensaje'];
+            } else {
+                $_SESSION['error'] = $resultado['mensaje'];
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+        }
+    }
+
+    /**
+     * Procesa la revisión y aprobación/devolución de informes de ensayo (Rol Supervisor/Calidad/Admin).
+     */
+    public function procesarRevisionInforme(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+        $esAjax = $peticion->esAjax();
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                return;
+            }
+
+            $informeId = (int)($datos['informe_id'] ?? 0);
+            $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $nuevoEstado = trim($datos['nuevo_estado'] ?? '');
+            $motivo = trim($datos['motivo_devolucion'] ?? '');
+
+            $roturasModelo = new RoturasModelo();
+            $resultado = $roturasModelo->procesarRevisionInforme($informeId, $nuevoEstado, $motivo, $usuarioId, $rolUsuario);
+
+            if ($esAjax) {
+                $respuesta->enviarJson([
+                    'status' => $resultado['exito'] ? 'success' : 'error',
+                    'message' => $resultado['mensaje']
+                ]);
+                return;
+            }
+
+            if ($resultado['exito']) {
+                $_SESSION['exito'] = $resultado['mensaje'];
+            } else {
+                $_SESSION['error'] = $resultado['mensaje'];
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+        }
+    }
+
+    /**
+     * Emite el Informe Consolidado. Bloqueado si hay parciales pendientes o devueltos.
+     */
+    public function generarInformeConsolidado(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+        $esAjax = $peticion->esAjax();
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                return;
+            }
+
+            $muestraId = (int)($datos['muestra_id'] ?? 0);
+
+            $roturasModelo = new RoturasModelo();
+            $resultado = $roturasModelo->generarInformeConsolidado($muestraId, $usuarioId, $rolUsuario);
+
+            if ($esAjax) {
+                $respuesta->enviarJson([
+                    'status' => $resultado['exito'] ? 'success' : 'error',
+                    'message' => $resultado['mensaje'],
+                    'numero' => $resultado['numero'] ?? ''
+                ]);
+                return;
+            }
+
+            if ($resultado['exito']) {
+                $_SESSION['exito'] = $resultado['mensaje'];
+            } else {
+                $_SESSION['error'] = $resultado['mensaje'];
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+        }
+    }
+
+    /**
+     * Reidentificación blindada bajo ISO 17025 Cláusula 4.1 y 4.2.
+     * Permitido para Administrador (1), Supervisor / Gerente de Calidad (3) o Comercial (2).
+     * Prohibido para rol Técnico (6).
+     * Registra en bitacora_reidentificacion y bitacora.
+     */
+    public function reidentificarMuestra(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                $respuesta->enviarJson([
+                    'status' => 'error',
+                    'message' => 'Token CSRF inválido o sesión expirada.'
+                ], 403);
+                return;
+            }
+
+            $codigoLab = trim($datos['codigo_lab'] ?? ($datos['muestra_id'] ?? ''));
+            $motivo = trim($datos['motivo'] ?? '');
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+            $usuarioNombre = trim($_SESSION['usuario_nombre'] ?? 'Usuario');
+            $rolId = (int)($_SESSION['usuario_rol'] ?? 0);
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+            $roturasModelo = new RoturasModelo();
+            $res = $roturasModelo->reidentificarMuestra($codigoLab, $usuarioId, $usuarioNombre, $rolId, $ip, $motivo);
+
+            $respuesta->enviarJson([
+                'status' => $res['exito'] ? 'success' : 'error',
+                'message' => $res['mensaje'],
+                'datos' => $res['datos'] ?? null
+            ], $res['codigo_http'] ?? 200);
+        }
+    }
+
+    /**
+     * Imprime la etiqueta física de probeta/cilindro conteniendo ÚNICAMENTE datos técnicos y código QR.
+     * Cero datos de cliente o comerciales (ISO 17025).
+     */
+    public function imprimirEtiqueta(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $espId = (int)($_GET['id'] ?? 0);
+        $db = Conexion::obtenerInstancia();
+
+        $stmt = $db->prepare("
+            SELECT esp.*, vm.material_descripcion, vm.diseno_resistencia, vm.plantilla_nombre, vm.norma_referencia
+            FROM especimenes esp
+            JOIN v_lab_muestras vm ON esp.muestra_id = vm.muestra_id
+            WHERE esp.id = :id
+        ");
+        $stmt->execute(['id' => $espId]);
+        $esp = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$esp) {
+            $_SESSION['error'] = 'Espécimen no encontrado para emitir etiqueta.';
+            $respuesta->redirigir('/Cycsa/publico/laboratorio');
+            return;
+        }
+
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Etiqueta Oficial de Espécimen - ' . htmlspecialchars($esp['codigo_lab']) . '</title>
+            <style>
+                @page { size: 100mm 50mm; margin: 0; }
+                body { font-family: "Arial", sans-serif; margin: 0; padding: 6mm; color: #000; }
+                .etiqueta-card { border: 2px solid #000; padding: 4mm; border-radius: 4px; display: flex; flex-direction: column; justify-content: space-between; height: 38mm; box-sizing: border-box; }
+                .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #000; padding-bottom: 2mm; margin-bottom: 2mm; }
+                .titulo { font-size: 13pt; font-weight: 900; letter-spacing: 0.5px; }
+                .codigo-lab { font-size: 16pt; font-weight: 900; font-family: monospace; }
+                .body-grid { display: grid; grid-template-columns: 1fr auto; gap: 4mm; align-items: center; }
+                .info-item { font-size: 8.5pt; margin-bottom: 1mm; }
+                .info-item strong { text-transform: uppercase; }
+                .qr-placeholder { width: 22mm; height: 22mm; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 6pt; text-align: center; }
+                .footer { font-size: 7pt; text-align: right; border-top: 1px solid #666; padding-top: 1mm; margin-top: 1mm; font-style: italic; }
+            </style>
+        </head>
+        <body onload="window.print()">
+            <div class="etiqueta-card">
+                <div class="header">
+                    <span class="titulo">CYCSA LIMS &bull; ISO/IEC 17025</span>
+                    <span class="codigo-lab">' . htmlspecialchars($esp['codigo_lab']) . '</span>
+                </div>
+                <div class="body-grid">
+                    <div>
+                        <div class="info-item"><strong>Material:</strong> ' . htmlspecialchars($esp['material_descripcion']) . '</div>
+                        <div class="info-item"><strong>Moldeo:</strong> ' . htmlspecialchars(date('d/m/Y', strtotime($esp['fecha_moldeo']))) . '</div>
+                        <div class="info-item"><strong>f\'c Diseño:</strong> ' . htmlspecialchars($esp['diseno_resistencia'] ?: 'N/A') . '</div>
+                        <div class="info-item"><strong>Dimensiones:</strong> ' . htmlspecialchars($esp['dimensiones']) . '</div>
+                        <div class="info-item"><strong>Norma:</strong> ' . htmlspecialchars($esp['norma_referencia']) . '</div>
+                    </div>
+                    <div class="qr-placeholder">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=' . urlencode(obtenerBaseUrl() . '/laboratorio/detalle-muestra?codigo=' . $esp['codigo_lab']) . '" alt="QR" style="width:100%;height:100%;">
+                    </div>
+                </div>
+                <div class="footer">
+                    MUESTRA CIEGA &bull; CLAÚSULAS 4.1 Y 4.2 &bull; IMPARCIALIDAD ESTRICTA
+                </div>
+            </div>
+        </body>
+        </html>';
+        exit;
+    }
+
+    /**
+     * Procesa la aceptación técnica y recepción de muestras en el laboratorio (ISO 17025).
+     * Además crea automáticamente los especímenes técnicos en la tabla especimenes.
      */
     public function aceptarMuestraRapida(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
@@ -300,6 +799,7 @@ class LaboratorioControlador extends ControladorBase {
             }
 
             $idOS = (int)($datos['id_os'] ?? 0);
+            $idHoja = (int)($datos['id_hoja'] ?? 0);
             if ($idOS <= 0) {
                 $_SESSION['error'] = 'Orden de Servicio inválida.';
                 $respuesta->redirigir('/Cycsa/publico/laboratorio');
@@ -314,26 +814,10 @@ class LaboratorioControlador extends ControladorBase {
                 return;
             }
 
-            // 🔒 Validar que no existan ensayos ya realizados o validados antes de re-procesar
-            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-            $stmtCheck = $db->prepare("SELECT COUNT(*) FROM ensayo_edades ee 
-                                       JOIN lotes_muestras lm ON ee.id_lote = lm.id 
-                                       JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id 
-                                       WHERE rm.id_os = :id_os 
-                                         AND (ee.fecha_ensaye_real IS NOT NULL 
-                                              OR ee.carga_lbs IS NOT NULL 
-                                              OR (ee.resistencia_psi IS NOT NULL AND ee.resistencia_psi > 0)
-                                              OR ee.usuario_ensayador IS NOT NULL 
-                                              OR (ee.edad_dias > 0 AND ee.estado = 'Completado'))");
-            $stmtCheck->execute(['id_os' => $idOS]);
-            if ((int)$stmtCheck->fetchColumn() > 0) {
-                $_SESSION['error'] = 'No se pueden re-procesar las muestras: esta Orden de Servicio ya cuenta con ensayos ejecutados o validados.';
-                $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=solicitudes');
-                return;
-            }
+            $db = Conexion::obtenerInstancia();
 
-            // Obtener estrictamente las muestras declaradas en la Hoja RT-FM-13
-            $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+            // Obtener las muestras declaradas en la Hoja RT-FM-13 correspondiente
+            $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS, $idHoja > 0 ? $idHoja : null);
             $muestrasDeclaradasRT = [];
             if ($hoja && !empty($hoja['muestras_json'])) {
                 $muestrasDeclaradasRT = json_decode($hoja['muestras_json'], true) ?: [];
@@ -341,7 +825,6 @@ class LaboratorioControlador extends ControladorBase {
 
             $servicios = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
             $idDetalleCotizacion = (int)($datos['id_detalle_cotizacion'] ?? ($servicios[0]['id'] ?? 0));
-            
             $tipoMuestraCalculado = !empty($os['requiere_muestreo']) ? 'Campo' : 'Laboratorio';
 
             $muestrasPayload = [];
@@ -359,9 +842,6 @@ class LaboratorioControlador extends ControladorBase {
                         'nombre_lote' => $descLote,
                         'fecha_moldeo' => !empty($hoja['fecha_hora_toma_muestra']) ? date('Y-m-d', strtotime($hoja['fecha_hora_toma_muestra'])) : date('Y-m-d'),
                         'diseno_resistencia' => '',
-                        'revenimiento_in' => '',
-                        'revenimiento_cm' => '',
-                        'temperatura_c' => '',
                         'procedimiento_muestreo' => trim($datos['procedimiento_muestreo'] ?? 'ASTM / ISO 17025'),
                         'edades_dias' => [],
                         'edades_identificadores' => []
@@ -380,25 +860,120 @@ class LaboratorioControlador extends ControladorBase {
                 ];
             }
 
+            $actualHojaId = $idHoja > 0 ? $idHoja : ($hoja['id'] ?? null);
             $payloadRecepcion = [
                 'id_os' => $idOS,
-                'limpiar_previas' => true,
+                'id_hoja' => $actualHojaId,
+                'limpiar_previas' => false,
                 'id_detalle_cotizacion' => $idDetalleCotizacion,
+                'tipo_muestra' => $tipoMuestraCalculado,
                 'fecha_recepcion' => !empty($datos['fecha_recepcion']) ? $datos['fecha_recepcion'] : date('Y-m-d H:i:s'),
                 'recibido_por' => trim($datos['recibido_por'] ?? ($_SESSION['usuario_nombre'] ?? 'Laboratorista')),
-                'entregado_por' => trim($datos['entregado_por'] ?? ($os['cliente_nombre'] ?? 'Cliente')),
+                'entregado_por' => trim($datos['entregado_por'] ?? 'Cliente'),
                 'observaciones' => trim($datos['observaciones'] ?? 'Muestras aceptadas bajo estricta conformidad técnica con la Hoja CYCSA-RT-FM-13 (ISO 17025)'),
                 'muestras_recibidas_json' => json_encode($muestrasPayload)
             ];
 
             if ($modelo->registrarRecepcion($payloadRecepcion)) {
+                // Crear automáticamente los especímenes en la tabla especimenes para las muestras que aún no los tienen
+                $roturasModelo = new RoturasModelo();
+                if ($actualHojaId) {
+                    $stmtMuestrasCreadas = $db->prepare("SELECT rm.id, lm.fecha_moldeo 
+                        FROM recepcion_muestras rm 
+                        JOIN lotes_muestras lm ON lm.id_recepcion = rm.id 
+                        WHERE rm.id_os = :id_os AND rm.id_hoja = :id_hoja
+                          AND rm.id NOT IN (SELECT DISTINCT muestra_id FROM especimenes)");
+                    $stmtMuestrasCreadas->execute(['id_os' => $idOS, 'id_hoja' => $actualHojaId]);
+                } else {
+                    $stmtMuestrasCreadas = $db->prepare("SELECT rm.id, lm.fecha_moldeo 
+                        FROM recepcion_muestras rm 
+                        JOIN lotes_muestras lm ON lm.id_recepcion = rm.id 
+                        WHERE rm.id_os = :id_os
+                          AND rm.id NOT IN (SELECT DISTINCT muestra_id FROM especimenes)");
+                    $stmtMuestrasCreadas->execute(['id_os' => $idOS]);
+                }
+                $creadas = $stmtMuestrasCreadas->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($creadas as $c) {
+                    $roturasModelo->crearEspecimenesParaMuestra((int)$c['id'], 3, $c['fecha_moldeo'] ?? date('Y-m-d'));
+                }
+
                 $prefijoAsignado = ($tipoMuestraCalculado === 'Campo') ? 'MC' : 'MS';
-                $_SESSION['exito'] = "Muestras aceptadas e ingresadas formalmente al Laboratorio. Se asignaron los códigos técnicos ({$prefijoAsignado}-XXXX-" . date('y') . ").";
+                $numHojaTexto = !empty($hoja['numero_registro']) ? " [Reg: {$hoja['numero_registro']}]" : "";
+                $_SESSION['exito'] = "Muestras de la Hoja RT-FM-13{$numHojaTexto} aceptadas e ingresadas exitosamente a la Bandeja Anónima de Laboratorio ({$prefijoAsignado}-XXXX-" . date('y') . ").";
             } else {
                 $_SESSION['error'] = 'Ocurrió un error al registrar el ingreso de muestras al laboratorio.';
             }
 
-            $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=solicitudes');
+            $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=bandeja');
+        }
+    }
+
+    /**
+     * Permite avanzar o retroceder el estado de una solicitud en el apartado de Aprobación de Laboratorio.
+     */
+    public function cambiarEstadoKanban(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $esAjax = $peticion->esAjax();
+
+            $tokenPost = $datos['csrf_token'] ?? '';
+            $tokenSession = $_SESSION['csrf_token'] ?? '';
+
+            if (empty($tokenPost) || empty($tokenSession) || !hash_equals($tokenSession, $tokenPost)) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido o sesión expirada.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=aprobacion');
+                return;
+            }
+
+            $estadosPermitidos = [
+                'Estado 1: Recepcion',
+                'Estado 2: Revision',
+                'Estado 2: Observada',
+                'Estado 4: Ingreso Laboratorio',
+                'Estado 5: Solicitud Tecnicos',
+                'Estado 7: Revision Resultados',
+                'Finalizado'
+            ];
+
+            $nuevoEstado = trim($datos['nuevo_estado'] ?? '');
+            $motivo = trim($datos['motivo_observacion'] ?? '');
+            $idOS = (int)($datos['id_os'] ?? 0);
+
+            if (!in_array($nuevoEstado, $estadosPermitidos, true) || $idOS <= 0) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Estado de destino no válido.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Estado de destino no válido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=aprobacion');
+                return;
+            }
+
+            $modelo = new OperacionModelo();
+            if ($modelo->actualizarEstadoOS($idOS, $nuevoEstado, !empty($motivo) ? $motivo : null)) {
+                registrarBitacora('laboratorio', 'cambiar_estado', "Estado de Solicitud/OS #{$idOS} actualizado a {$nuevoEstado}" . (!empty($motivo) ? " con motivo: {$motivo}" : ""), $idOS);
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'success', 'message' => 'Estado actualizado exitosamente.']);
+                    return;
+                }
+                $_SESSION['exito'] = 'Estado de la solicitud actualizado correctamente a: ' . $nuevoEstado;
+            } else {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'No se pudo actualizar el estado.']);
+                    return;
+                }
+                $_SESSION['error'] = 'No se pudo actualizar el estado.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=aprobacion');
         }
     }
 
@@ -410,13 +985,14 @@ class LaboratorioControlador extends ControladorBase {
         $this->verificarPermiso($respuesta, 'ver');
 
         $idOS = (int)($_GET['id_os'] ?? 0);
+        $idHoja = (int)($_GET['id_hoja'] ?? 0);
         if ($idOS <= 0) {
             $_SESSION['error'] = 'Orden de Servicio inválida.';
             $respuesta->redirigir('/Cycsa/publico/laboratorio');
             return;
         }
 
-        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $db = Conexion::obtenerInstancia();
         $modelo = new OperacionModelo();
 
         $os = $modelo->obtenerOSPorId($idOS);
@@ -426,34 +1002,52 @@ class LaboratorioControlador extends ControladorBase {
             return;
         }
 
-        $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS, $idHoja > 0 ? $idHoja : null);
         $ensayos = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
 
-        // Obtener la recepción y las muestras registradas en lab
-        $stmtRec = $db->prepare("SELECT * FROM recepcion_muestras WHERE id_os = :id_os ORDER BY id DESC LIMIT 1");
-        $stmtRec->execute(['id_os' => $idOS]);
+        if ($idHoja > 0) {
+            $stmtRec = $db->prepare("SELECT * FROM recepcion_muestras WHERE id_os = :id_os AND (id_hoja = :id_hoja OR (id_hoja IS NULL AND :id_hoja = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = :id_os))) ORDER BY id DESC LIMIT 1");
+            $stmtRec->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
+        } else {
+            $stmtRec = $db->prepare("SELECT * FROM recepcion_muestras WHERE id_os = :id_os ORDER BY id DESC LIMIT 1");
+            $stmtRec->execute(['id_os' => $idOS]);
+        }
         $recepcion = $stmtRec->fetch(PDO::FETCH_ASSOC);
 
-        $stmtMuestras = $db->prepare("SELECT rm.codigo_muestra, rm.codigo_campo, rm.fecha_recepcion, lm.fecha_moldeo AS fecha_elaboracion,
-                                             (SELECT descripcion_ensayo FROM cotizacion_detalles cd WHERE cd.id = (SELECT id_detalle_cotizacion FROM ensayo_edades ee WHERE ee.id_lote = lm.id LIMIT 1)) AS nombre_ensayo
-                                      FROM recepcion_muestras rm
-                                      LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
-                                      WHERE rm.id_os = :id_os
-                                      ORDER BY rm.id ASC");
-        $stmtMuestras->execute(['id_os' => $idOS]);
+        if ($idHoja > 0) {
+            $stmtMuestras = $db->prepare("
+                SELECT rm.codigo_muestra, rm.codigo_campo, rm.fecha_recepcion, lm.fecha_moldeo AS fecha_elaboracion,
+                       (SELECT descripcion_ensayo FROM cotizacion_detalles cd WHERE cd.id = (SELECT id_detalle_cotizacion FROM ensayo_edades ee WHERE ee.id_lote = lm.id LIMIT 1)) AS nombre_ensayo
+                FROM recepcion_muestras rm
+                LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+                WHERE rm.id_os = :id_os AND (rm.id_hoja = :id_hoja OR (rm.id_hoja IS NULL AND :id_hoja = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = :id_os)))
+                ORDER BY rm.id ASC
+            ");
+            $stmtMuestras->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
+        } else {
+            $stmtMuestras = $db->prepare("
+                SELECT rm.codigo_muestra, rm.codigo_campo, rm.fecha_recepcion, lm.fecha_moldeo AS fecha_elaboracion,
+                       (SELECT descripcion_ensayo FROM cotizacion_detalles cd WHERE cd.id = (SELECT id_detalle_cotizacion FROM ensayo_edades ee WHERE ee.id_lote = lm.id LIMIT 1)) AS nombre_ensayo
+                FROM recepcion_muestras rm
+                LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+                WHERE rm.id_os = :id_os
+                ORDER BY rm.id ASC
+            ");
+            $stmtMuestras->execute(['id_os' => $idOS]);
+        }
         $muestrasLote = $stmtMuestras->fetchAll(PDO::FETCH_ASSOC);
 
         // Si aún no se ha recepcionado formalmente, construimos la lista tentativa desde la Hoja RT-FM-13
         if (empty($muestrasLote) && $hoja && !empty($hoja['muestras_json'])) {
             $declaradas = json_decode($hoja['muestras_json'], true) ?: [];
             $anioShort = date('y');
-            $prefijoOS = determinarPrefijoMuestraOS($os);
-            $siguienteCorr = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoOS);
+            $prefijoMuestra = determinarPrefijoMuestraOS($os);
+            $siguienteCorr = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestra);
 
             foreach ($declaradas as $idx => $dec) {
                 $muestrasLote[] = [
-                    'codigo_muestra' => sprintf("{$prefijoOS}-%04d-%02d", $siguienteCorr + $idx, $anioShort),
-                    'codigo_campo' => $dec['nombre_muestra'] ?? ($prefijoOS . '-' . ($idx + 1)),
+                    'codigo_muestra' => sprintf("{$prefijoMuestra}-%04d-%02d", $siguienteCorr + $idx, $anioShort),
+                    'codigo_campo' => $dec['nombre_muestra'] ?? ($prefijoMuestra . '-' . ($idx + 1)),
                     'fecha_recepcion' => date('Y-m-d'),
                     'fecha_elaboracion' => !empty($hoja['fecha_hora_toma_muestra']) ? date('Y-m-d', strtotime($hoja['fecha_hora_toma_muestra'])) : date('Y-m-d'),
                     'nombre_ensayo' => $ensayos[0]['descripcion_ensayo'] ?? 'Ensayo Estándar'
@@ -466,118 +1060,8 @@ class LaboratorioControlador extends ControladorBase {
             'hoja' => $hoja,
             'ensayos' => $ensayos,
             'recepcion' => $recepcion,
-            'muestrasLote' => $muestrasLote
+            'muestrasLote' => $muestrasLote,
+            'muestras' => $muestrasLote
         ]);
-    }
-
-    /**
-     * Permite avanzar o cambiar el estado de una Orden de Servicio en el Tablero Kanban (Enviar a Revisión, Observar, etc.)
-     */
-    public function cambiarEstadoKanban(Peticion $peticion, Respuesta $respuesta): void {
-        $this->verificarSesion($respuesta);
-        $this->verificarPermiso($respuesta, 'crear_editar');
-
-        if ($peticion->esPost()) {
-            $datos = $peticion->obtenerDatos();
-            $idOS = (int)($datos['id_os'] ?? 0);
-            $nuevoEstado = trim($datos['nuevo_estado'] ?? '');
-            $motivo = trim($datos['motivo_observacion'] ?? '');
-            $esAjax = !empty($datos['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
-
-            if ($idOS <= 0 || empty($nuevoEstado)) {
-                if ($esAjax) {
-                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Datos insuficientes.']);
-                    return;
-                }
-                $_SESSION['error'] = 'Datos insuficientes para cambiar estado.';
-                $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
-                return;
-            }
-
-            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-                if ($esAjax) {
-                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido.']);
-                    return;
-                }
-                $_SESSION['error'] = 'Token CSRF inválido.';
-                $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
-                return;
-            }
-
-            // 🔒 Validar estado contra la lista permitida de transiciones Kanban
-            $estadosPermitidos = [
-                'Estado 1: Recepcion',
-                'Estado 2: Revision',
-                'Estado 2: Observada',
-                'Estado 4: Ingreso Laboratorio',
-                'Estado 5: Solicitud Tecnicos',
-                'Estado 7: Revision Resultados',
-                'Finalizado'
-            ];
-
-            if (!in_array($nuevoEstado, $estadosPermitidos, true)) {
-                if ($esAjax) {
-                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Estado de destino no válido.']);
-                    return;
-                }
-                $_SESSION['error'] = 'Estado de destino no válido.';
-                $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
-                return;
-            }
-
-            if ($nuevoEstado === 'Finalizado') {
-                if ($esAjax) {
-                    $respuesta->enviarJson(['status' => 'error', 'message' => 'El cierre requiere aprobación de todas las matrices y factura pagada en Operaciones.']);
-                } else {
-                    $_SESSION['error'] = 'El cierre requiere aprobación de todas las matrices y factura pagada en Operaciones.';
-                    $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
-                }
-                return;
-            }
-
-            // Si el estado es "Observada", exigir motivo
-            if ($nuevoEstado === 'Estado 2: Observada' && empty($motivo)) {
-                if ($esAjax) {
-                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Debe especificar el motivo de la observación.']);
-                    return;
-                }
-                $_SESSION['error'] = 'Debe especificar el motivo de la observación.';
-                $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
-                return;
-            }
-
-            // Para finalizar ordenes o emitir resultados, verificar privilegios de supervisión/dirección
-            if (in_array($nuevoEstado, ['Finalizado', 'Estado 7: Revision Resultados'], true)) {
-                $rol = $_SESSION['rol'] ?? '';
-                if (!in_array($rol, ['Super Administrador', 'Administrador', 'Jefe de Laboratorio', 'Supervisor', 'Director Técnico'], true)) {
-                    if ($esAjax) {
-                        $respuesta->enviarJson(['status' => 'error', 'message' => 'No cuenta con autorización de supervisión técnica para emitir resultados o finalizar esta orden.']);
-                        return;
-                    }
-                    $_SESSION['error'] = 'No cuenta con autorización de supervisión técnica para emitir resultados o finalizar esta orden.';
-                    $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
-                    return;
-                }
-            }
-
-            $modelo = new OperacionModelo();
-            $ok = $modelo->actualizarEstadoOS($idOS, $nuevoEstado, !empty($motivo) ? $motivo : null);
-
-            if ($ok) {
-                if ($esAjax) {
-                    $respuesta->enviarJson(['status' => 'success', 'message' => 'Estado de la solicitud actualizado a: ' . $nuevoEstado]);
-                    return;
-                }
-                $_SESSION['exito'] = 'Estado de la solicitud actualizado correctamente a: ' . $nuevoEstado;
-            } else {
-                if ($esAjax) {
-                    $respuesta->enviarJson(['status' => 'error', 'message' => 'No se pudo actualizar el estado de la Orden.']);
-                    return;
-                }
-                $_SESSION['error'] = 'No se pudo actualizar el estado de la Orden.';
-            }
-
-            $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
-        }
     }
 }

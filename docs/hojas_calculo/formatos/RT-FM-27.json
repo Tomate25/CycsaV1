@@ -1,0 +1,327 @@
+{
+  "codigo": "RT-FM-27",
+  "nombre": "Proctor estándar y modificado (relación humedad–densidad)",
+  "norma": {
+    "texto": "ASTM D698 / D1557 (AASHTO T99 / T180)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-27 Formato de Hoja de Cálculo para Proctor Estándar y Modificado (...)(3).xlsm",
+  "variantes": [
+    {
+      "nombre": "campo",
+      "archivo": "Archive (1)/...Proctor... CAMPO (...).xlsm",
+      "diferencias": "Misma plantilla; 156 fórmulas difieren (versión previa)"
+    },
+    {
+      "nombre": "CASA MANAGUA",
+      "archivo": "Archive (2)/...Proctor... CASA MANAGUA) (1).xlsm",
+      "diferencias": "Informe con MS-MCA-003-26-26 (sufijo duplicado); 134 fórmulas distintas a campo"
+    }
+  ],
+  "modulo_destino": "Plantillas",
+  "formato_informe_rt_fm_22": {
+    "letra": "C",
+    "nuevo": false,
+    "nota": "Alimenta proctor_estandar.md (RT-FM-22 C): P.Vol.Seco Máximo y Humedad Óptima"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "tipo_proctor",
+      "etiqueta": "Tipo de Proctor",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "opciones_lista": [
+        "Proctor Estandar",
+        "Proctor Modificado"
+      ]
+    },
+    {
+      "codigo": "molde_id",
+      "etiqueta": "Molde (equipo)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "equipos_calibracion.json moldes"
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Compactación",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "golpes",
+          "etiqueta": "Golpes por capa",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "capas",
+          "etiqueta": "Número de capas",
+          "tipo": "numero",
+          "unidad": null,
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "masa_piston",
+          "etiqueta": "Masa del pisón",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "altura_caida",
+          "etiqueta": "Altura de caída",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "volumen_molde",
+          "etiqueta": "Volumen del molde",
+          "tipo": "numero",
+          "unidad": "mL",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false,
+          "texto_ayuda": "Del equipo seleccionado"
+        }
+      ]
+    },
+    {
+      "nombre": "Puntos (hasta 6)",
+      "tipo_layout": "tabla_matriz",
+      "campos": [
+        {
+          "codigo": "masa_molde_suelo",
+          "etiqueta": "Molde + suelo húmedo",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "masa_molde",
+          "etiqueta": "Masa del molde",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_suelo_humedo",
+          "etiqueta": "Tara + suelo húmedo",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara_suelo_seco",
+          "etiqueta": "Tara + suelo seco",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        },
+        {
+          "codigo": "tara",
+          "etiqueta": "Tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": true
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "volumen_molde",
+      "descripcion": "Volumen del molde",
+      "unidad": "mL",
+      "fuente": "Datos PROCTOR fila 11 (tecleado por muestra)",
+      "ref_equipo": "MOLDE-PROCTOR-4IN",
+      "valor_referencia": 947.26
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "energia",
+      "expresion": "{golpes}*{capas}*{masa_piston}*{altura_caida}/{volumen_molde}",
+      "descripcion": "Energía de compactación",
+      "unidad": "kg·cm/cm³",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "humedad",
+      "expresion": "({tara_suelo_humedo}-{tara_suelo_seco})*100/({tara_suelo_seco}-{tara})",
+      "descripcion": "Humedad del punto",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": true
+    },
+    {
+      "codigo": "densidad_seca",
+      "expresion": "(({masa_molde_suelo}-{masa_molde})/{volumen_molde})/(1+{humedad}/100)*1000",
+      "descripcion": "Peso volumétrico seco del punto",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": true
+    }
+  ],
+  "agregaciones": [
+    {
+      "codigo": "pvs_maximo",
+      "funcion": "max_curva",
+      "de": "densidad_seca",
+      "descripcion": "Máximo de la curva (ajuste parabólico alrededor del máximo; en Excel se lee del gráfico)",
+      "unidad": "kg/m³"
+    },
+    {
+      "codigo": "humedad_optima",
+      "funcion": "x_de_max_curva",
+      "de": "humedad",
+      "unidad": "%"
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "Al menos 2 puntos a cada lado del óptimo (D698/D1557)",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Datos de compactación y puntos",
+      "PVSM y humedad óptima"
+    ],
+    "graficos": [
+      "Curva de compactación (+ curva de saturación opcional)"
+    ]
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "Listas (oculta en campo/CASA)",
+      "contenido": "Analistas, tipos de Proctor, volúmenes de cilindro",
+      "destino": "listas.json; equipos_calibracion moldes"
+    },
+    {
+      "hoja": "Incert Humedad / Incert compactacion (ocultas)",
+      "contenido": "Incertidumbre balanzas EQ-6566 y EQ-6633 y volumen del molde (9/12 celdas con error)",
+      "destino": "equipos_calibracion.json"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM27-01",
+      "original_excel": "Volumen del molde tecleado en cada muestra",
+      "corregido": "Se toma del molde calibrado",
+      "justificacion": "Trazabilidad ISO 17025",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM27-02",
+      "original_excel": "Vínculo externo y una fórmula #REF! (Datos PROCTOR / CONSOLIDADO)",
+      "corregido": "Eliminados",
+      "justificacion": "Referencia rota",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-0140-26 punto 1",
+      "fuente": "Archive/...Proctor...(3).xlsm 'Datos PROCTOR' col E",
+      "entradas": {
+        "golpes": 25,
+        "capas": 3,
+        "masa_piston": 2.5,
+        "altura_caida": 30,
+        "volumen_molde": 947.26,
+        "masa_molde_suelo": 5573,
+        "masa_molde": 4161,
+        "tara_suelo_humedo": 254.7,
+        "tara_suelo_seco": 240.24,
+        "tara": 54.58
+      },
+      "esperados": {
+        "energia": 5.93817959166438,
+        "humedad": 7.788430464289549,
+        "densidad_seca": 1382.9081939810633
+      },
+      "tolerancia_relativa": 0.001
+    },
+    {
+      "nombre": "MS-0140-26 punto 5 (máximo)",
+      "fuente": "idem",
+      "entradas": {
+        "golpes": 25,
+        "capas": 3,
+        "masa_piston": 2.5,
+        "altura_caida": 30,
+        "volumen_molde": 947.26,
+        "masa_molde_suelo": 5852,
+        "masa_molde": 4161,
+        "tara_suelo_humedo": 275.94,
+        "tara_suelo_seco": 236.97,
+        "tara": 75.74
+      },
+      "esperados": {
+        "humedad": 24.170439744464424,
+        "densidad_seca": 1437.6600006205394
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ]
+}

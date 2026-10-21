@@ -1,0 +1,371 @@
+{
+  "codigo": "RT-FM-64",
+  "nombre": "Ensayo de tensión de varillas de acero de refuerzo",
+  "norma": {
+    "texto": "ASTM A370 / E8 / A615 (procedimiento CYCSA-PE-61)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-64-HOJA DE CALCULO PARA MÉTODOS DE PRUEBAS ESTÁNDAR DE TENSIÓN PARA MATERIALES METÁLICOS (2).xlsx",
+  "variantes": [],
+  "modulo_destino": "Laboratorio Roturas",
+  "formato_informe_rt_fm_22": {
+    "letra": null,
+    "nuevo": true,
+    "nota": "Sin formato RT-FM-22 equivalente: informe nuevo de acero"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "numero_varilla",
+      "etiqueta": "No. de varilla (in nominal)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "listas.json varillas"
+    },
+    {
+      "codigo": "grado",
+      "etiqueta": "Grado A615",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": false,
+      "por_especimen": false,
+      "opciones_lista": [
+        "40",
+        "60",
+        "75"
+      ]
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Medición",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "diametro_mm",
+          "etiqueta": "Diámetro inicial",
+          "tipo": "numero",
+          "unidad": "mm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "masa_kg",
+          "etiqueta": "Peso de la varilla",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 3,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "longitud_cm",
+          "etiqueta": "Largo de la varilla",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "espaciamiento_corruga",
+          "etiqueta": "Espaciamiento de corruga",
+          "tipo": "numero",
+          "unidad": "mm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "altura_corruga",
+          "etiqueta": "Altura de corruga",
+          "tipo": "numero",
+          "unidad": "mm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "longitud_calibrada_cm",
+          "etiqueta": "Longitud calibrada entre marcas (L0)",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "longitud_final_cm",
+          "etiqueta": "Largo final de la varilla",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "longitud_final_marcas_cm",
+          "etiqueta": "Longitud final entre marcas (Lf) – NUEVO",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "diametro_final_mm",
+          "etiqueta": "Diámetro final (estricción)",
+          "tipo": "numero",
+          "unidad": "mm",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Ensayo",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "fuerza_max_kn",
+          "etiqueta": "Fuerza máxima Fm",
+          "tipo": "numero",
+          "unidad": "kN",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "fluencia_mpa",
+          "etiqueta": "Fluencia Rel",
+          "tipo": "numero",
+          "unidad": "MPa",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "lbf_por_kn",
+      "descripcion": "Conversión",
+      "unidad": null,
+      "fuente": "fila 23",
+      "valor": 224.809
+    },
+    {
+      "codigo": "psi_por_mpa",
+      "descripcion": "Conversión",
+      "unidad": null,
+      "fuente": "RESULTADOS fila 10",
+      "valor": 145.038
+    },
+    {
+      "codigo": "kgcm2_por_psi",
+      "descripcion": "Conversión",
+      "unidad": null,
+      "fuente": "RESULTADOS fila 9",
+      "valor": 0.07031
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "peso_unitario",
+      "expresion": "{masa_kg}/({longitud_cm}/100)",
+      "descripcion": "Peso unitario",
+      "unidad": "kg/m",
+      "redondeo": "ROUND(x,3)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "area_mm2",
+      "expresion": "3.1416*{diametro_mm}^2/4",
+      "descripcion": "Sección (Excel usa 3.1416)",
+      "unidad": "mm²",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "area_in2",
+      "expresion": "{area_mm2}/645.16",
+      "descripcion": "Sección",
+      "unidad": "in²",
+      "redondeo": "ROUND(x,4)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "reduccion_area",
+      "expresion": "({diametro_mm}^2-{diametro_final_mm}^2)*100/{diametro_mm}^2",
+      "descripcion": "Reducción de área",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "elongacion_excel",
+      "expresion": "({longitud_final_cm}-{longitud_cm})*100/{longitud_calibrada_cm}",
+      "descripcion": "Elongación como en el Excel (DUDOSA, FM64-01)",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "elongacion",
+      "expresion": "({longitud_final_marcas_cm}-{longitud_calibrada_cm})*100/{longitud_calibrada_cm}",
+      "descripcion": "Elongación A370: (Lf − L0)/L0",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "fuerza_lbf",
+      "expresion": "{fuerza_max_kn}*224.809",
+      "descripcion": "Fuerza máxima",
+      "unidad": "lbf",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_tension_psi",
+      "expresion": "{fuerza_lbf}/{area_in2}",
+      "descripcion": "Resistencia a la tensión",
+      "unidad": "lbf/in²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_tension_kgcm2",
+      "expresion": "{resistencia_tension_psi}*0.07031",
+      "descripcion": "Resistencia a la tensión",
+      "unidad": "kg/cm²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "fluencia_psi",
+      "expresion": "{fluencia_mpa}*145.038",
+      "descripcion": "Fluencia",
+      "unidad": "lbf/in²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "ASTM A615: fy/fu mínimos por grado (Gr60: 60/90 ksi; Gr40: 40/60 ksi), elongación mínima en 8 in por No. de varilla, peso unitario ≥ 94 % del nominal",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "RESULTADOS: tensión, fluencia, diámetro, peso, corrugas, elongación, reducción de área"
+    ],
+    "graficos": []
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "Hoja1 (oculta)",
+      "contenido": "Borrador de resultados de MS-10607-26",
+      "destino": "descartar"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM64-01",
+      "original_excel": "Elongación = (largo final total − largo inicial total)/20 cm: mezcla longitud total de la varilla con la longitud calibrada",
+      "corregido": "(Lf entre marcas − L0)/L0 con el nuevo campo longitud_final_marcas_cm; elongacion_excel se conserva hasta confirmar",
+      "justificacion": "ASTM A370 / E8",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM64-02",
+      "original_excel": "Fila 'Diámetro de reducción' es reducción de área en fracción",
+      "corregido": "Reducción de área en %",
+      "justificacion": "Etiqueta/unidad",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM64-03",
+      "original_excel": "π = 3.1416",
+      "corregido": "Se mantiene",
+      "justificacion": "Diferencia despreciable",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM64-04",
+      "original_excel": "MS-0371-26: fluencia 169.17 MPa igual a una fuerza de otra columna",
+      "corregido": "Validar fy < fu y rangos",
+      "justificacion": "Posible copia",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-0411-26 varilla 3/8",
+      "fuente": "Archive/...FM-64... 'DATOS BITACORA' col B / 'RESULTADOS' col B",
+      "entradas": {
+        "diametro_mm": 9.06,
+        "masa_kg": 0.265,
+        "longitud_cm": 49.7,
+        "longitud_calibrada_cm": 20,
+        "longitud_final_cm": 56.5,
+        "diametro_final_mm": 6.8,
+        "fuerza_max_kn": 44.52,
+        "fluencia_mpa": 516.75
+      },
+      "esperados": {
+        "peso_unitario": 0.5331991951710261,
+        "area_mm2": 64.46845944,
+        "area_in2": 0.09992631198462398,
+        "reduccion_area": 43.66718808629252,
+        "elongacion_excel": 34.0,
+        "fuerza_lbf": 10008.49668,
+        "resistencia_tension_psi": 100158.77181117264,
+        "resistencia_tension_kgcm2": 7042.1632460435485,
+        "fluencia_psi": 74948.38650000001
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ],
+  "agregaciones": []
+}

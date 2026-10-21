@@ -1,0 +1,331 @@
+{
+  "codigo": "RT-FM-38",
+  "nombre": "Módulo de ruptura de viguetas de concreto (flexión)",
+  "norma": {
+    "texto": "ASTM C78 (carga a tercios)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-38 HOJA DE CALCULO PARA LA RESISTENCIA EN VIGUETA 2026 (...).xlsx",
+  "variantes": [],
+  "modulo_destino": "Laboratorio Roturas",
+  "formato_informe_rt_fm_22": {
+    "letra": "E",
+    "nuevo": false,
+    "nota": "Alimenta formato_de_resistencia_de_a_la_flexion.md (RT-FM-22 E)"
+  },
+  "requiere_rotura_por_edad": true,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "fecha_fabricacion",
+      "etiqueta": "Fecha de fabricación",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "edad_dias",
+      "etiqueta": "Edad",
+      "tipo": "calculado",
+      "unidad": "días",
+      "decimales": 0,
+      "requerido": true,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Vigueta",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "ancho_1",
+          "etiqueta": "Ancho lectura 1",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ancho_2",
+          "etiqueta": "Ancho lectura 2",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ancho_3",
+          "etiqueta": "Ancho lectura 3",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "espesor_1",
+          "etiqueta": "Espesor lectura 1",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "espesor_2",
+          "etiqueta": "Espesor lectura 2",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "espesor_3",
+          "etiqueta": "Espesor lectura 3",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "luz_apoyos",
+          "etiqueta": "Luz entre apoyos (L)",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "carga_lbf",
+          "etiqueta": "Carga máxima",
+          "tipo": "numero",
+          "unidad": "lbf",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "fractura_en_tercio_medio",
+          "etiqueta": "¿Fractura en el tercio medio?",
+          "tipo": "lista",
+          "unidad": null,
+          "decimales": null,
+          "requerido": true,
+          "por_especimen": false,
+          "opciones_lista": [
+            "Sí",
+            "No"
+          ]
+        },
+        {
+          "codigo": "dist_fractura_1",
+          "etiqueta": "Distancia fractura–apoyo 1",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "dist_fractura_2",
+          "etiqueta": "Distancia fractura–apoyo 2",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "dist_fractura_3",
+          "etiqueta": "Distancia fractura–apoyo 3",
+          "tipo": "numero",
+          "unidad": "in",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "psi_por_kgcm2",
+      "descripcion": "Conversión",
+      "unidad": null,
+      "fuente": "DATOS col AA",
+      "valor": 14.2
+    },
+    {
+      "codigo": "prensa",
+      "descripcion": "Máquina de fuerza",
+      "unidad": null,
+      "fuente": "CALCULO Uex",
+      "ref_equipo": "PRENSA-01",
+      "valor_referencia": null
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "ancho_prom",
+      "expresion": "({ancho_1}+{ancho_2}+{ancho_3})/3",
+      "descripcion": "Ancho promedio b",
+      "unidad": "in",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "espesor_prom",
+      "expresion": "({espesor_1}+{espesor_2}+{espesor_3})/3",
+      "descripcion": "Espesor promedio d",
+      "unidad": "in",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "modulo_ruptura_psi",
+      "expresion": "{carga_lbf}*{luz_apoyos}/({ancho_prom}*{espesor_prom}^2)",
+      "descripcion": "MR, fractura en tercio medio: R = PL/bd²",
+      "unidad": "lbf/in²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "dist_fractura_prom",
+      "expresion": "({dist_fractura_1}+{dist_fractura_2}+{dist_fractura_3})/3",
+      "descripcion": "Distancia promedio fractura–apoyo (a)",
+      "unidad": "in",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "modulo_ruptura_fuera_psi",
+      "expresion": "3*{carga_lbf}*{dist_fractura_prom}/({ancho_prom}*{espesor_prom}^2)",
+      "descripcion": "MR fuera del tercio medio (exceso ≤ 5 % de L): R = 3Pa/bd²",
+      "unidad": "lbf/in²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "modulo_ruptura_kgcm2",
+      "expresion": "{modulo_ruptura_psi}/14.2",
+      "descripcion": "MR",
+      "unidad": "kg/cm²",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "Si la fractura está fuera del tercio medio más de 5 % de L, descartar (C78)",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "INDIVIDUAL: MR ± U por vigueta"
+    ],
+    "graficos": []
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "R +-U (oculta)",
+      "contenido": "Cálculo real del MR (P·L/(b·d²)) y caso fuera del tercio",
+      "destino": "formulas modulo_ruptura_*"
+    },
+    {
+      "hoja": "CALCULO Uex / OBSERVACIONES (ocultas)",
+      "contenido": "Incertidumbre expandida; tabla a,b por clase de exactitud del calibrador (2990 celdas con error en filas vacías)",
+      "destino": "módulo incertidumbre"
+    },
+    {
+      "hoja": "Hoja1 (oculta)",
+      "contenido": "vacía",
+      "destino": "descartar"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM38-01",
+      "original_excel": "DATOS col Z solo calcula el caso fuera del tercio medio; el caso normal está en la hoja oculta 'R +-U'",
+      "corregido": "Ambas fórmulas explícitas; selección por fractura_en_tercio_medio",
+      "justificacion": "Claridad",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM38-02",
+      "original_excel": "Encabezados 'CYCSA-RT-BIT-10' y 'RT-FM-XX'",
+      "corregido": "RT-FM-38",
+      "justificacion": "Código inconsistente",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM38-03",
+      "original_excel": "Fecha tecleada '20025-08-07'",
+      "corregido": "Validación de fecha",
+      "justificacion": "Dato inválido",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-4053-25",
+      "fuente": "Archive/...FM-38... 'DATOS' fila 7 / 'R +-U' fila 6",
+      "entradas": {
+        "ancho_1": 6.1,
+        "ancho_2": 6,
+        "ancho_3": 6.2,
+        "espesor_1": 6.2,
+        "espesor_2": 6,
+        "espesor_3": 6,
+        "luz_apoyos": 18,
+        "carga_lbf": 17297
+      },
+      "esperados": {
+        "ancho_prom": 6.1,
+        "espesor_prom": 6.066666666666666,
+        "modulo_ruptura_psi": 1386.7979435444756,
+        "modulo_ruptura_kgcm2": 97.66182701017435
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ],
+  "agregaciones": []
+}

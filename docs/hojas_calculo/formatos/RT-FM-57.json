@@ -1,0 +1,255 @@
+{
+  "codigo": "RT-FM-57",
+  "nombre": "Resistencia a compresión de cubos de mortero",
+  "norma": {
+    "texto": "ASTM C109",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-57 HC Cubo de Mortero 2026 (...).xlsx",
+  "variantes": [],
+  "modulo_destino": "Laboratorio Roturas",
+  "formato_informe_rt_fm_22": {
+    "letra": "A",
+    "nuevo": false,
+    "nota": "Alimenta resistencia_de_mortero.md (RT-FM-22 A)"
+  },
+  "requiere_rotura_por_edad": true,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "fecha_fabricacion",
+      "etiqueta": "Fecha de fabricación",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_diseno_psi",
+      "etiqueta": "Diseño de mortero",
+      "tipo": "numero",
+      "unidad": "lbf/in²",
+      "decimales": 0,
+      "requerido": false,
+      "por_especimen": false
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Cubo",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "alto",
+          "etiqueta": "Alto",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "largo",
+          "etiqueta": "Largo",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ancho",
+          "etiqueta": "Ancho",
+          "tipo": "numero",
+          "unidad": "cm",
+          "decimales": 1,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "masa",
+          "etiqueta": "Peso",
+          "tipo": "numero",
+          "unidad": "kg",
+          "decimales": 3,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "carga_lbf",
+          "etiqueta": "Carga",
+          "tipo": "numero",
+          "unidad": "lbf",
+          "decimales": 0,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "lb_por_kg",
+      "descripcion": "Conversión (S6)",
+      "unidad": "lb/kg",
+      "fuente": "fila 6",
+      "valor": 2.202
+    },
+    {
+      "codigo": "cm2_por_in2",
+      "descripcion": "(2.54)² (R6)",
+      "unidad": null,
+      "fuente": "fila 6",
+      "valor": 6.4516
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "area_in2",
+      "expresion": "{ancho}*{largo}/6.4516",
+      "descripcion": "Área",
+      "unidad": "in²",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_psi",
+      "expresion": "ROUND({carga_lbf}/{area_in2}/10,0)*10",
+      "descripcion": "Resistencia redondeada a 10 psi",
+      "unidad": "lbf/in²",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "carga_kg",
+      "expresion": "{carga_lbf}/2.202",
+      "descripcion": "Carga",
+      "unidad": "kg",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "resistencia_kgcm2",
+      "expresion": "{resistencia_psi}/(2.202*6.45)",
+      "descripcion": "Resistencia",
+      "unidad": "kg/cm²",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "volumen_cm3",
+      "expresion": "{area_in2}*6.4516*{alto}",
+      "descripcion": "Volumen",
+      "unidad": "cm³",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "peso_volumetrico",
+      "expresion": "{masa}*1000000/{volumen_cm3}",
+      "descripcion": "Peso volumétrico",
+      "unidad": "kg/m³",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    }
+  ],
+  "agregaciones": [
+    {
+      "codigo": "resistencia_promedio_psi",
+      "funcion": "promedio",
+      "de": "resistencia_psi",
+      "descripcion": "Por edad (3 cubos)",
+      "unidad": "lbf/in²"
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "C109: rango de cubos de la misma edad dentro del límite de la norma",
+      "implicito": true
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Resultados por edad → RT-FM-22 A"
+    ],
+    "graficos": [
+      "Resistencia vs edad"
+    ]
+  },
+  "hojas_ocultas_relevantes": [],
+  "correcciones": [
+    {
+      "id": "FM57-01",
+      "original_excel": "Hoja 'cilindros' con ~15 700 filas, 7 columnas ocultas y 11 443 celdas con error",
+      "corregido": "Un registro por cubo en especimenes/roturas",
+      "justificacion": "Estructura",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM57-02",
+      "original_excel": "kg/cm² sobre psi ya redondeado y con 2.202·6.45 (=14.203)",
+      "corregido": "Se mantiene; recomendado psi sin redondear / 14.2233",
+      "justificacion": "Doble redondeo",
+      "dudosa": true,
+      "requiere_confirmacion_laboratorio": true
+    },
+    {
+      "id": "FM57-03",
+      "original_excel": "Códigos tecleados en formatos mixtos; Excel convirtió '7193-01-25' en fecha",
+      "corregido": "codigo desde especimenes",
+      "justificacion": "Integridad",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-7191-25",
+      "fuente": "Archive/...FM-57... 'cilindros' fila 8",
+      "entradas": {
+        "alto": 5.3,
+        "largo": 5.3,
+        "ancho": 5.3,
+        "masa": 0.25,
+        "carga_lbf": 3941
+      },
+      "esperados": {
+        "area_in2": 4.353958707917416,
+        "resistencia_psi": 910,
+        "carga_kg": 1789.7366030881017,
+        "resistencia_kgcm2": 64.07142203352836,
+        "peso_volumetrico": 1679.238566064604
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ]
+}

@@ -177,6 +177,21 @@ $esc = static fn($valor) => htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8'
 </style>
 
 <div class="plantillas-wrap">
+    <div style="background: linear-gradient(135deg, #103487 0%, #1e40af 100%); color: white; padding: 18px 24px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(16, 52, 135, 0.2); flex-wrap: wrap; gap: 15px;">
+        <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="background: #22c55e; color: white; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 20px; text-transform: uppercase;">Nuevo Módulo</span>
+                <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: white;">Configurador Visual Dinámico ISO 17025 (Single-Screen Studio)</h3>
+            </div>
+            <p style="margin: 6px 0 0 0; font-size: 13px; color: #e0f2fe;">
+                Diseñe plantillas interactivas, gestione variables, configure fórmulas matemáticas sin código, soporte fondos membretados y el sello de acreditación.
+            </p>
+        </div>
+        <a href="/Cycsa/publico/plantillas" style="background: white; color: #103487; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); transition: transform 0.2s;">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Ir al Nuevo Estudio de Plantillas
+        </a>
+    </div>
+
     <div class="plantillas-head">
         <div>
             <a href="/Cycsa/publico/panel">← Volver al panel</a>

@@ -1,0 +1,543 @@
+{
+  "codigo": "RT-FM-25",
+  "nombre": "Contenido de humedad y granulometría por lavado y tamizado (clasificación SUCS)",
+  "norma": {
+    "texto": "ASTM C33 (citada); ASTM D2216 / C136 / C117 / D2487 (inferidas)",
+    "implicita": true
+  },
+  "version_origen": "CYCSA-RT-FM-25 Formato de Hoj Granulometría y humedad 2026 (...)(7).xlsm",
+  "variantes": [
+    {
+      "nombre": "campo",
+      "archivo": "Archive (1)/CYCSA-RT-FM-25-Humedad y Granulometría2026 campo (...).xlsm",
+      "diferencias": "Misma plantilla, otro conjunto de muestras; ~5.4k fórmulas difieren de laboratorio (versión anterior). Hoja Lista oculta."
+    },
+    {
+      "nombre": "CASA MANAGUA",
+      "archivo": "Archive (2)/CYCSA-RT-FM-25-Humedad y Granulometría2026 CASA MANAGUA (2).xlsm",
+      "diferencias": "Copia de campo con la muestra MS-15062-26-26 seleccionada (sufijo duplicado); 43 fórmulas distintas a campo."
+    }
+  ],
+  "modulo_destino": "Plantillas",
+  "formato_informe_rt_fm_22": {
+    "letra": "F",
+    "nuevo": false,
+    "nota": "Alimenta formato_de_granulometria_de_suelo.md / granulomnetria_de_agregados.md (RT-FM-22 F)"
+  },
+  "requiere_rotura_por_edad": false,
+  "encabezado": [
+    {
+      "codigo": "codigo_muestra",
+      "etiqueta": "Código de muestra (MS-####-AA, desde recepción)",
+      "tipo": "texto",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "fecha_ensayo",
+      "etiqueta": "Fecha de ensayo",
+      "tipo": "fecha",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false
+    },
+    {
+      "codigo": "analista_id",
+      "etiqueta": "Analista (usuario del sistema)",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "texto_ayuda": "Catálogo de usuarios; NO copiar nombres desde Excel"
+    },
+    {
+      "codigo": "tipo_material",
+      "etiqueta": "Tipo de material",
+      "tipo": "lista",
+      "unidad": null,
+      "decimales": null,
+      "requerido": true,
+      "por_especimen": false,
+      "opciones_lista": [
+        "Suelo",
+        "Agregado fino",
+        "Agregado grueso"
+      ]
+    }
+  ],
+  "secciones": [
+    {
+      "nombre": "Humedad",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "tara",
+          "etiqueta": "Masa tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "masa_humeda_tara",
+          "etiqueta": "Muestra húmeda + tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        },
+        {
+          "codigo": "masa_seca_tara",
+          "etiqueta": "Muestra seca + tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Lavado",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "masa_lavada_tara",
+          "etiqueta": "Masa lavada seca + tara",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": true,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Granulometría",
+      "tipo_layout": "tabla_matriz",
+      "campos": [
+        {
+          "codigo": "ret_2in",
+          "etiqueta": "Masa retenida tamiz 2\"",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_1_1_2in",
+          "etiqueta": "Masa retenida tamiz 1 1/2\"",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_1in",
+          "etiqueta": "Masa retenida tamiz 1\"",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_3_4in",
+          "etiqueta": "Masa retenida tamiz 3/4\"",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_1_2in",
+          "etiqueta": "Masa retenida tamiz 1/2\"",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_3_8in",
+          "etiqueta": "Masa retenida tamiz 3/8\"",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no4",
+          "etiqueta": "Masa retenida tamiz No. 4",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no8",
+          "etiqueta": "Masa retenida tamiz No. 8",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no10",
+          "etiqueta": "Masa retenida tamiz No. 10",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no16",
+          "etiqueta": "Masa retenida tamiz No. 16",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no20",
+          "etiqueta": "Masa retenida tamiz No. 20",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no30",
+          "etiqueta": "Masa retenida tamiz No. 30",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no40",
+          "etiqueta": "Masa retenida tamiz No. 40",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no50",
+          "etiqueta": "Masa retenida tamiz No. 50",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no60",
+          "etiqueta": "Masa retenida tamiz No. 60",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no80",
+          "etiqueta": "Masa retenida tamiz No. 80",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no100",
+          "etiqueta": "Masa retenida tamiz No. 100",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no140",
+          "etiqueta": "Masa retenida tamiz No. 140",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_no200",
+          "etiqueta": "Masa retenida tamiz No. 200",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "ret_fondo",
+          "etiqueta": "Masa retenida tamiz Fondo",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        }
+      ]
+    },
+    {
+      "nombre": "Límites (opcional, desde RT-FM-42)",
+      "tipo_layout": "formulario",
+      "campos": [
+        {
+          "codigo": "ll",
+          "etiqueta": "Límite líquido",
+          "tipo": "numero",
+          "unidad": "%",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
+          "codigo": "lp",
+          "etiqueta": "Límite plástico",
+          "tipo": "numero",
+          "unidad": "%",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        }
+      ]
+    }
+  ],
+  "constantes": [
+    {
+      "codigo": "balanza_humedad",
+      "descripcion": "Balanza 200 g (incertidumbre de pesaje)",
+      "unidad": "g",
+      "fuente": "Hoja oculta 'Incert Humedad'",
+      "ref_equipo": "BAL-EQ-6566",
+      "valor_referencia": null
+    },
+    {
+      "codigo": "balanza_granulometria",
+      "descripcion": "Balanza 5000 g",
+      "unidad": "g",
+      "fuente": "Hoja oculta 'Incert Gran'",
+      "ref_equipo": "BAL-EQ-6633",
+      "valor_referencia": null
+    }
+  ],
+  "formulas": [
+    {
+      "codigo": "humedad",
+      "expresion": "({masa_humeda_tara}-{masa_seca_tara})*100/({masa_seca_tara}-{tara})",
+      "descripcion": "Contenido de humedad base seca (D2216)",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "humedad_correccion",
+      "expresion": "({masa_humeda_tara}-{masa_seca_tara})*100/({masa_humeda_tara}-{tara})",
+      "descripcion": "Humedad base húmeda (corrección de masa)",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "masa_seca",
+      "expresion": "{masa_seca_tara}-{tara}",
+      "descripcion": "Masa seca inicial",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "perdida_lavado",
+      "expresion": "{masa_seca_tara}-{masa_lavada_tara}",
+      "descripcion": "Pérdida por lavado",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "total_retenido",
+      "expresion": "{perdida_lavado}+{ret_2in}+{ret_1_1_2in}+{ret_1in}+{ret_3_4in}+{ret_1_2in}+{ret_3_8in}+{ret_no4}+{ret_no8}+{ret_no10}+{ret_no16}+{ret_no20}+{ret_no30}+{ret_no40}+{ret_no50}+{ret_no60}+{ret_no80}+{ret_no100}+{ret_no140}+{ret_no200}+{ret_fondo}",
+      "descripcion": "Pérdida por lavado + suma de retenidos",
+      "unidad": "g",
+      "redondeo": null,
+      "por_especimen": false
+    },
+    {
+      "codigo": "perdida_proceso",
+      "expresion": "100-{total_retenido}*100/{masa_seca}",
+      "descripcion": "Pérdida en el proceso de tamizado",
+      "unidad": "%",
+      "redondeo": "ROUND(x,2)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "pasa_no200",
+      "expresion": "({perdida_lavado}+{ret_fondo})*100/{masa_seca}",
+      "descripcion": "% que pasa No. 200 (lavado + fondo)",
+      "unidad": "%",
+      "redondeo": "ROUND(x,1)",
+      "por_especimen": false
+    },
+    {
+      "codigo": "ip",
+      "expresion": "{ll}-{lp}",
+      "descripcion": "Índice de plasticidad",
+      "unidad": "%",
+      "redondeo": "ROUND(x,0)",
+      "por_especimen": false
+    }
+  ],
+  "agregaciones": [
+    {
+      "codigo": "curva_granulometrica",
+      "funcion": "acumulado",
+      "de": "ret_*",
+      "descripcion": "% retenido acumulado y % que pasa = 100 − acumulado·100/masa_seca por tamiz (servicio PHP; no cabe en una expresión)",
+      "unidad": "%"
+    },
+    {
+      "codigo": "clasificacion_sucs",
+      "funcion": "clasificar_sucs",
+      "de": "curva_granulometrica, ll, ip",
+      "descripcion": "D2487 con catalogos/listas.json → sucs"
+    }
+  ],
+  "criterios_aceptacion": [
+    {
+      "descripcion": "Pérdida en proceso ≤ 0.3 % (ASTM C136)",
+      "expresion_validacion": "{perdida_proceso} <= 0.3",
+      "implicito": true
+    },
+    {
+      "descripcion": "Agregados: % pasa dentro de bandas ASTM C33 del tamaño nominal (bandas a cargar por el laboratorio)",
+      "implicito": false
+    }
+  ],
+  "salidas": {
+    "tablas": [
+      "Tamiz / % retenido acumulado / % pasa",
+      "Indicadores: humedad, pérdida por lavado, pérdida en proceso, LL/LP/IP, SUCS"
+    ],
+    "graficos": [
+      "Curva granulométrica semilog"
+    ]
+  },
+  "hojas_ocultas_relevantes": [
+    {
+      "hoja": "Incert Humedad (oculta)",
+      "contenido": "Incertidumbre de humedad, balanza EQ-6566, cert. CM15022022-03MM",
+      "destino": "equipos_calibracion BAL-EQ-6566; módulo de incertidumbre (fase posterior)"
+    },
+    {
+      "hoja": "Incert Gran (oculta)",
+      "contenido": "% retenido/pasa e incertidumbre por tamiz (de aquí lee el informe)",
+      "destino": "agregación curva_granulometrica"
+    },
+    {
+      "hoja": "Suelo_SUCS (oculta)",
+      "contenido": "Tabla y lógica SUCS + gráfico (1 #REF!)",
+      "destino": "listas.json sucs"
+    },
+    {
+      "hoja": "Lista (visible en lab, oculta en campo)",
+      "contenido": "Material y analistas",
+      "destino": "listas.json (sin nombres)"
+    }
+  ],
+  "correcciones": [
+    {
+      "id": "FM25-01",
+      "original_excel": "Nombres definidos Criteria y Tiempo__s → #REF!; validación IS6:XFD6 → #REF!; vínculo externo externalLink1",
+      "corregido": "Eliminados; listas desde catálogo",
+      "justificacion": "Referencias rotas sin uso",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM25-02",
+      "original_excel": "Código = CONCATENATE('MS-',número,'-26') con año fijo; el usuario teclea el código completo → 'MS-15062-26-26'",
+      "corregido": "codigo_muestra viene de recepción",
+      "justificacion": "Evita sufijo duplicado y año fijo",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    },
+    {
+      "id": "FM25-03",
+      "original_excel": "VBA Worksheet_Change desprotege la hoja con contraseña en texto plano y oculta filas de tamices vacíos",
+      "corregido": "La vista oculta filas vacías; sin macros",
+      "justificacion": "Seguridad y presentación",
+      "dudosa": false,
+      "requiere_confirmacion_laboratorio": false
+    }
+  ],
+  "caso_prueba": [
+    {
+      "nombre": "MS-0367-26 (suelo)",
+      "fuente": "Archive/CYCSA-RT-FM-25 ... (7).xlsm, hoja 'Datos de Granulometria', columna E",
+      "entradas": {
+        "tara": 154.5,
+        "masa_humeda_tara": 909.18,
+        "masa_seca_tara": 889.63,
+        "masa_lavada_tara": 760.87,
+        "ret_2in": 0,
+        "ret_1_1_2in": 0,
+        "ret_1in": 0,
+        "ret_3_4in": 46.32,
+        "ret_1_2in": 0,
+        "ret_3_8in": 78.69,
+        "ret_no4": 67.1,
+        "ret_no8": 0,
+        "ret_no10": 80.3,
+        "ret_no16": 0,
+        "ret_no20": 84.58,
+        "ret_no30": 0,
+        "ret_no40": 80.21,
+        "ret_no50": 0,
+        "ret_no60": 61.46,
+        "ret_no80": 0,
+        "ret_no100": 50.47,
+        "ret_no140": 29.69,
+        "ret_no200": 25.36,
+        "ret_fondo": 1.8,
+        "ll": 0,
+        "lp": 0
+      },
+      "esperados": {
+        "humedad": 2.6593935766463,
+        "humedad_correccion": 2.59050193459479,
+        "masa_seca": 735.13,
+        "perdida_lavado": 128.76,
+        "total_retenido": 734.74,
+        "perdida_proceso": 0.0530518411709267,
+        "ip": 0
+      },
+      "tolerancia_relativa": 0.001
+    }
+  ]
+}

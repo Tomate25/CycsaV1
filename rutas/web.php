@@ -82,6 +82,20 @@ $app->enrutador->get('/configuracion/plantillas-ensayos/obtener-ajax', [\Cycsa\M
 $app->enrutador->post('/configuracion/plantillas-ensayos/guardar', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'guardarPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->post('/configuracion/plantillas-ensayos/restablecer', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'restablecerPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
 
+// 🔬 RUTAS DE PLANTILLAS DINÁMICAS (ISO/IEC 17025)
+$app->enrutador->get('/plantillas', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/plantillas/estudio', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'estudio'], [AuthMiddleware::class]);
+$app->enrutador->post('/plantillas/guardar', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'guardar'], [AuthMiddleware::class]);
+$app->enrutador->post('/plantillas/duplicar-variante', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'duplicarVariante'], [AuthMiddleware::class]);
+$app->enrutador->post('/plantillas/cambiar-estado', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'cambiarEstado'], [AuthMiddleware::class]);
+$app->enrutador->get('/plantillas/validar-formula', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'validarFormula'], [AuthMiddleware::class]);
+$app->enrutador->post('/plantillas/subir-sello-acreditacion', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'subirSelloAcreditacion'], [AuthMiddleware::class]);
+$app->enrutador->get('/plantillas/disponibles', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'disponibles'], [AuthMiddleware::class]);
+$app->enrutador->get('/plantillas/preview-modal', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'previewModal'], [AuthMiddleware::class]);
+$app->enrutador->post('/plantillas/crear-variable-ajax', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'crearVariableAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/plantillas/crear-unidad-ajax', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'crearUnidadAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/plantillas/cambiar-plantilla-muestra', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'cambiarPlantillaMuestra'], [AuthMiddleware::class]);
+
 // 🔒 RUTAS DE CLIENTES (REQUERIDO: SESIÓN ACTIVA)
 $app->enrutador->get('/clientes', [ClientesControlador::class, 'index'], [AuthMiddleware::class]);
 $app->enrutador->get('/clientes/crear', [ClientesControlador::class, 'crear'], [AuthMiddleware::class]);
@@ -204,10 +218,24 @@ $app->enrutador->get('/ventas/imprimir-factura', [VentasControlador::class, 'imp
     $app->enrutador->post('/operaciones/enviar-revision-resultados', [OperacionesControlador::class, 'enviarRevisionResultados'], [AuthMiddleware::class]);
     $app->enrutador->post('/operaciones/procesar-revision-resultados', [OperacionesControlador::class, 'procesarRevisionResultados'], [AuthMiddleware::class]);
 
-// 🔒 MÓDULO DE LABORATORIO AISLADO (REQUERIDO: SESIÓN ACTIVA)
+// 🔒 MÓDULO DE LABORATORIO AISLADO E IMPARCIAL (ISO 17025)
 $app->enrutador->get('/laboratorio', [LaboratorioControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/laboratorio/muestras-datos-ajax', [LaboratorioControlador::class, 'muestrasAjax'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/detalle-muestra', [LaboratorioControlador::class, 'detalleMuestra'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/reidentificar', [LaboratorioControlador::class, 'reidentificarMuestra'], [AuthMiddleware::class]);
+$app->enrutador->get('/laboratorio/etiqueta-probeta', [LaboratorioControlador::class, 'imprimirEtiqueta'], [AuthMiddleware::class]);
+
+// Programa de Roturas Periódicas y Ejecución
+$app->enrutador->post('/laboratorio/guardar-plan-rotura', [LaboratorioControlador::class, 'guardarPlanRotura'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/modificar-plan-rotura', [LaboratorioControlador::class, 'modificarPlanRotura'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/registrar-rotura', [LaboratorioControlador::class, 'registrarRotura'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/guardar-ruptura', [LaboratorioControlador::class, 'guardarRuptura'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/generar-informe-parcial', [LaboratorioControlador::class, 'generarInformeParcial'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/procesar-revision-informe', [LaboratorioControlador::class, 'procesarRevisionInforme'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/generar-informe-consolidado', [LaboratorioControlador::class, 'generarInformeConsolidado'], [AuthMiddleware::class]);
+
+// Operaciones de Recepción Técnica y Kanban
 $app->enrutador->post('/laboratorio/aceptar-muestra', [LaboratorioControlador::class, 'aceptarMuestraRapida'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/cambiar-estado', [LaboratorioControlador::class, 'cambiarEstadoKanban'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/imprimir-solicitud', [LaboratorioControlador::class, 'imprimirHojaSolicitud'], [AuthMiddleware::class]);
+

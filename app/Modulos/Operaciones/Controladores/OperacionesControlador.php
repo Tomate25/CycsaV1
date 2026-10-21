@@ -276,8 +276,7 @@ class OperacionesControlador extends ControladorBase {
 
         $anio = date('Y');
         $prefijoMuestraOS = determinarPrefijoMuestraOS($os);
-        $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra((int)$anio, $prefijoMuestraOS);
-        $codigoCampoAuto = !empty($os['hoja_campo_codigo']) ? $os['hoja_campo_codigo'] : $prefijoMuestraOS . '-' . sprintf("%03d", $siguienteConsecutivo) . '-' . $anio;
+        $codigoCampoAuto = !empty($os['hoja_campo_codigo']) ? $os['hoja_campo_codigo'] : sprintf("{$prefijoMuestraOS}-%04d-%02d", $siguienteConsecutivo, date('y'));
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
