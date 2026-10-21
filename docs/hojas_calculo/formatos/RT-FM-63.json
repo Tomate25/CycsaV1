@@ -298,6 +298,27 @@
       "unidad": null,
       "fuente": "fila 36",
       "valor": 6.45
+    },
+    {
+      "codigo": "peso_absorcion_masa_seca_defecto",
+      "descripcion": "Peso masa seca por defecto Excel histórico FM-36",
+      "unidad": "kg",
+      "fuente": "Hoja histórica FM-36",
+      "valor": 10.945
+    },
+    {
+      "codigo": "peso_absorcion_masa_saturada_defecto",
+      "descripcion": "Peso masa saturada por defecto Excel histórico FM-36",
+      "unidad": "kg",
+      "fuente": "Hoja histórica FM-36",
+      "valor": 11.665
+    },
+    {
+      "codigo": "peso_absorcion_masa_sumergida_defecto",
+      "descripcion": "Peso masa sumergida por defecto Excel histórico FM-36",
+      "unidad": "kg",
+      "fuente": "Hoja histórica FM-36",
+      "valor": 5.81
     }
   ],
   "formulas": [
@@ -429,7 +450,10 @@
       "corregido": "Se adopta D/E (sin /2) provisionalmente; CONFIRMAR geometría (la fórmula suma planta + caras laterales)",
       "justificacion": "Inconsistencia de fórmula",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "campo_afectado": "area_neta_cm2",
+      "expresion_corregida": "{largo_prom}*{ancho_prom}+2*(({base_mayor_prom}+{base_menor_prom})/2)*{altura_prom}",
+      "expresion_original_excel": "{largo_prom}*{ancho_prom}+(2*(({base_mayor_prom}+{base_menor_prom})/2)*{altura_prom})/2"
     },
     {
       "id": "FM63-02",
@@ -437,7 +461,10 @@
       "corregido": "Promedio de 3 lecturas",
       "justificacion": "Error de referencia",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "campo_afectado": "resistencia_psi",
+      "expresion_corregida": "{carga_prom}/{area_neta_in2}*{factor_acabado}",
+      "expresion_original_excel": "{carga_1}/{area_neta_in2}*{factor_acabado}"
     },
     {
       "id": "FM63-03",
@@ -445,7 +472,8 @@
       "corregido": "Captura por muestra",
       "justificacion": "Datos copiados",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "manejador": "FM63_03"
     },
     {
       "id": "FM63-04",

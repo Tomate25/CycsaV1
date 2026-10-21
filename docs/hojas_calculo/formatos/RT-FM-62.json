@@ -193,7 +193,10 @@
       "corregido": "Se conserva; documentar fuente de 315.5 y 300",
       "justificacion": "Trazabilidad",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "campo_afectado": "tasa_lm2_dia",
+      "expresion_corregida": "315.5*SQRT((({dif_25}+{dif_30})/2)/300)",
+      "expresion_original_excel": "315.5*SQRT({dif_30}/300)"
     },
     {
       "id": "FM62-02",
@@ -201,7 +204,10 @@
       "corregido": "Se mantiene 40.77; correcto ≈ 40.75",
       "justificacion": "0.06 %",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "campo_afectado": "tasa_galft2_dia",
+      "expresion_corregida": "{tasa_lm2_dia}/40.77",
+      "expresion_original_excel": "{tasa_lm2_dia}/40.75"
     },
     {
       "id": "FM62-03",
@@ -209,7 +215,9 @@
       "corregido": "Validación de rango y monotonía",
       "justificacion": "Error de captura / unidades",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "solo_validacion": true,
+      "manejador": "FM62_03"
     }
   ],
   "caso_prueba": [

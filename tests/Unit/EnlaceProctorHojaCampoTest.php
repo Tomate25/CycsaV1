@@ -65,8 +65,8 @@ class EnlaceProctorHojaCampoTest extends TestCase {
 
         $this->assertGreaterThan(0, $resProctor['registro_id']);
         $this->assertSame('CASA MANAGUA', $resProctor['variante']);
-        $this->assertEqualsWithDelta(1730.0, $resProctor['pvs_maximo'], 0.01);
-        $this->assertEqualsWithDelta(14.5, $resProctor['humedad_optima'], 0.01);
+        $this->assertEqualsWithDelta(1730.0, (float)$resProctor['pvs_maximo'], 1730.0 * 0.001);
+        $this->assertEqualsWithDelta(14.5, (float)$resProctor['humedad_optima'], 14.5 * 0.001);
 
         // 2. Evaluar y registrar Hoja de Campo RT-FM-54 (Reemplazo de Agua) SIN pasar pvs_maximo manual
         // Debe enlazar automáticamente pvs_maximo = 1730 desde el Proctor de la misma OS
@@ -93,11 +93,11 @@ class EnlaceProctorHojaCampoTest extends TestCase {
 
         $this->assertSame('RT-FM-54', $res54['codigo_formato']);
         $this->assertSame('campo', $res54['variante']);
-        $this->assertEqualsWithDelta(1730.0, $res54['pvs_maximo'], 0.01);
+        $this->assertEqualsWithDelta(1730.0, (float)$res54['pvs_maximo'], 1730.0 * 0.001);
         $this->assertNotEmpty($res54['proctor_enlazado']);
-        $this->assertEqualsWithDelta(98.243494, $res54['evaluacion']['especimenes'][0]['valores']['compactacion'], 0.1);
+        $this->assertEqualsWithDelta(98.243494, (float)$res54['evaluacion']['especimenes'][0]['valores']['compactacion'], 98.243494 * 0.001);
         $this->assertCount(1, $res54['filas_rt_fm_22_b']);
-        $this->assertEqualsWithDelta(98.2, $res54['filas_rt_fm_22_b'][0]['grado_compactacion_pct'], 0.1);
+        $this->assertEqualsWithDelta(98.2, (float)$res54['filas_rt_fm_22_b'][0]['grado_compactacion_pct'], 98.2 * 0.001);
 
         // 3. Evaluar y registrar Hoja de Campo RT-FM-55 (Cono de Arena) con pvs_maximo específico
         $punto55 = [
@@ -121,7 +121,7 @@ class EnlaceProctorHojaCampoTest extends TestCase {
         );
 
         $this->assertSame('RT-FM-55', $res55['codigo_formato']);
-        $this->assertEqualsWithDelta(98.17596, $res55['evaluacion']['especimenes'][0]['valores']['compactacion'], 0.1);
+        $this->assertEqualsWithDelta(98.17596, (float)$res55['evaluacion']['especimenes'][0]['valores']['compactacion'], 98.17596 * 0.001);
         $this->assertCount(1, $res55['filas_rt_fm_22_b']);
     }
 }

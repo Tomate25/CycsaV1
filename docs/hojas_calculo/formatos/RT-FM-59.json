@@ -304,7 +304,8 @@
       "corregido": "Recalcular promedio excluyéndolas (C805)",
       "justificacion": "Norma",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "manejador": "FM59_02"
     },
     {
       "id": "FM59-03",

@@ -92,7 +92,8 @@ class RtFm61CilindrosTest extends TestCase {
             'correcciones_override' => ['FM61-01' => false]
         ]);
         $this->assertEqualsWithDelta(1.0, $evalOriginalExcel['valores']['factor_ld'], 1e-6);
-        $this->assertGreaterThan($evalCorregido['valores']['esfuerzo_psi'], $evalOriginalExcel['valores']['esfuerzo_psi']);
+        $this->assertEqualsWithDelta(3931.26, (float)$evalCorregido['valores']['esfuerzo_psi'], 3931.26 * 0.001);
+        $this->assertEqualsWithDelta(4095.06, (float)$evalOriginalExcel['valores']['esfuerzo_psi'], 4095.06 * 0.001);
     }
 
     /**
@@ -230,5 +231,17 @@ class RtFm61CilindrosTest extends TestCase {
             'carga' => 85000,
         ], 0);
         $this->assertFalse($resInvalido['exito']);
+
+        // Rechazo explícito si llegan lecturas crudas sin codigo_formato
+        $resSinCodigo = $roturasModelo->registrarRotura([
+            'especimen_id' => $esp['id'],
+            'plan_edad_id' => $esp['plan_edad_id'],
+            'datos_crudos' => [
+                'lectura_carga_lbf' => 91932,
+                'diametro_1' => 10.1
+            ]
+        ], 1);
+        $this->assertFalse($resSinCodigo['exito']);
+        $this->assertStringContainsString('código de formato explícito', $resSinCodigo['mensaje']);
     }
 }

@@ -203,7 +203,19 @@ class RoturasModelo {
         $existentes = (int)$stmtCheck->fetchColumn();
 
         if ($existentes >= $cantidad) {
+            if (!empty($fechaMoldeo)) {
+                $stmtUpdLote = $this->db->prepare("UPDATE lotes_muestras SET fecha_moldeo = :fm WHERE id_recepcion = :id");
+                $stmtUpdLote->execute(['fm' => $fechaMoldeo, 'id' => $muestraId]);
+                $stmtUpdEsp = $this->db->prepare("UPDATE especimenes SET fecha_moldeo = :fm WHERE muestra_id = :id");
+                $stmtUpdEsp->execute(['fm' => $fechaMoldeo, 'id' => $muestraId]);
+            }
             return true; // Ya están creados
+        }
+
+        // Sincronizar fecha de moldeo en el lote de la muestra
+        if (!empty($fechaMoldeo)) {
+            $stmtUpdLote = $this->db->prepare("UPDATE lotes_muestras SET fecha_moldeo = :fm WHERE id_recepcion = :id");
+            $stmtUpdLote->execute(['fm' => $fechaMoldeo, 'id' => $muestraId]);
         }
 
         $stmtInsert = $this->db->prepare("
@@ -251,10 +263,14 @@ class RoturasModelo {
             }
 
             // Obtener todos los especímenes de la muestra
-            $stmtEsp = $this->db->prepare("SELECT id, estado FROM especimenes WHERE muestra_id = :id ORDER BY id ASC");
+            $stmtEsp = $this->db->prepare("SELECT id, estado, fecha_moldeo FROM especimenes WHERE muestra_id = :id ORDER BY id ASC");
             $stmtEsp->execute(['id' => $muestraId]);
             $todosEspecimenes = $stmtEsp->fetchAll(PDO::FETCH_ASSOC);
             $totalEspecimenes = count($todosEspecimenes);
+
+            if (!empty($todosEspecimenes[0]['fecha_moldeo'])) {
+                $fechaMoldeo = $todosEspecimenes[0]['fecha_moldeo'];
+            }
 
             if ($totalEspecimenes === 0) {
                 $this->db->rollBack();
@@ -429,16 +445,46 @@ class RoturasModelo {
     }
 
     /**
-     * Ejecuta y registra la rotura de un espécimen con cálculo y tolerancia ASTM C39.
-     * Preserva intacto el flujo y cálculo original (carga / area, factorPsiToKgCm2 = 0.070307),
-     * y agrega de forma aditiva la evaluación por Hoja de Cálculo (RT-FM-61, 36, 38, 57, 63, 64)
-     * únicamente cuando se envían lecturas crudas o `codigo_formato`.
+     * Ejecuta y registra la rotura tradicional clásica de un espécimen (ASTM C39).
+     * Mantiene 100% de compatibilidad con el flujo original clásico (commit 275dad5):
+     * esfuerzoPsi = carga / area, esfuerzoKgCm2 = esfuerzoPsi * 0.070307.
+     * Si se envían lecturas crudas sin código de formato explícito, rechaza con validación clara.
+     * Si se envía un código de formato explícito, redirige al flujo de Hoja de Cálculo (registrarRoturaHc).
      */
     public function registrarRotura(array $datos, int $tecnicoId): array {
         if ($tecnicoId <= 0) {
             return ['exito' => false, 'mensaje' => 'Sesión de usuario no válida para registrar el ensayo.'];
         }
 
+        // Inspeccionar lecturas crudas y código de formato
+        $crudosArr = [];
+        if (!empty($datos['datos_crudos'])) {
+            if (is_array($datos['datos_crudos'])) {
+                $crudosArr = $datos['datos_crudos'];
+            } elseif (is_string($datos['datos_crudos'])) {
+                $crudosArr = json_decode($datos['datos_crudos'], true) ?: [];
+            }
+        }
+
+        $codigoFormatoHc = $datos['codigo_formato'] ?? ($crudosArr['codigo_formato'] ?? null);
+
+        // Sin deducción implícita: si llegan lecturas crudas sin código explícito, rechazar
+        $tieneLecturasCrudas = isset($crudosArr['lectura_carga_lbf']) || isset($datos['lectura_carga_lbf'])
+            || isset($crudosArr['diametro_1']) || isset($datos['diametro_1'])
+            || isset($crudosArr['largo_1']) || isset($datos['largo_1']);
+
+        if ($tieneLecturasCrudas && empty($codigoFormatoHc)) {
+            return [
+                'exito' => false,
+                'mensaje' => 'Se enviaron lecturas crudas pero no se especificó un código de formato explícito de hoja de cálculo.'
+            ];
+        }
+
+        if (!empty($codigoFormatoHc)) {
+            return $this->registrarRoturaHc($datos, $tecnicoId);
+        }
+
+        // Flujo tradicional clásico idéntico a 275dad5
         try {
             $especimenId = (int)($datos['especimen_id'] ?? 0);
             $planEdadId = (int)($datos['plan_edad_id'] ?? 0);
@@ -447,63 +493,15 @@ class RoturasModelo {
             $area = (float)($datos['area'] ?? 28.2743); // 15x30 cm estándar = ~4.4 in diametro = 28.27 in²
             $tipoFalla = trim($datos['tipo_falla'] ?? 'Tipo 1 (Cono)');
             $justificacion = trim($datos['justificacion'] ?? '');
-
-            // Detectar de forma aditiva si se enviaron lecturas crudas de Hoja de Cálculo
-            $crudosArr = [];
-            if (!empty($datos['datos_crudos'])) {
-                if (is_array($datos['datos_crudos'])) {
-                    $crudosArr = $datos['datos_crudos'];
-                } elseif (is_string($datos['datos_crudos'])) {
-                    $crudosArr = json_decode($datos['datos_crudos'], true) ?: [];
-                }
-            }
-
-            $codigoFormatoHc = $crudosArr['codigo_formato'] ?? ($datos['codigo_formato'] ?? null);
-            if ($codigoFormatoHc === null && (isset($crudosArr['lectura_carga_lbf']) || isset($datos['lectura_carga_lbf']) || isset($crudosArr['diametro_1']) || isset($datos['diametro_1']))) {
-                $codigoFormatoHc = 'RT-FM-61';
-            }
-
-            // Si se invocó con Hoja de Cálculo y aún no vienen carga/área directas, pre-evaluar para obtenerlas
-            $evalHc = null;
-            if ($codigoFormatoHc !== null) {
-                $entradasHcPre = array_merge($datos, $crudosArr);
-                unset($entradasHcPre['datos_crudos'], $entradasHcPre['csrf_token']);
-                $motorHc = new \Cycsa\Modulos\Operaciones\Servicios\MotorHojasCalculoServicio();
-                $opcionesHc = isset($crudosArr['opciones_hc']) && is_array($crudosArr['opciones_hc']) ? $crudosArr['opciones_hc'] : [];
-                $evalHc = $motorHc->evaluarEspecimen($codigoFormatoHc, $entradasHcPre, $opcionesHc);
-                $valsHcPre = $evalHc['valores'];
-
-                $cargaCandidata = $valsHcPre['carga_real_lbf']
-                    ?? $valsHcPre['lectura_carga_lbf']
-                    ?? $valsHcPre['carga_lbf']
-                    ?? $valsHcPre['carga_prom']
-                    ?? $valsHcPre['fuerza_lbf']
-                    ?? $valsHcPre['carga_1']
-                    ?? $valsHcPre['carga_1_lbf']
-                    ?? $valsHcPre['carga_max_lbf']
-                    ?? $carga;
-                if ($cargaCandidata > 0) {
-                    $carga = round((float)$cargaCandidata, 2);
-                }
-
-                $areaCandidata = $valsHcPre['area_in2']
-                    ?? $valsHcPre['area_neta_in2']
-                    ?? (isset($valsHcPre['area_neta']) ? ((float)$valsHcPre['area_neta'] * 0.155) : null)
-                    ?? (isset($valsHcPre['ancho_prom'], $valsHcPre['espesor_prom']) ? ((float)$valsHcPre['ancho_prom'] * (float)$valsHcPre['espesor_prom']) : null)
-                    ?? $valsHcPre['area_bruta_in2']
-                    ?? $valsHcPre['area_1_in2']
-                    ?? $valsHcPre['area_nominal_in2']
-                    ?? $area;
-                if ($areaCandidata > 0) {
-                    $area = round((float)$areaCandidata, 4);
-                }
-            }
+            $datosCrudos = !empty($datos['datos_crudos'])
+                ? (is_array($datos['datos_crudos']) ? json_encode($datos['datos_crudos'], JSON_UNESCAPED_UNICODE) : $datos['datos_crudos'])
+                : null;
 
             if ($especimenId <= 0 || $carga <= 0 || $area <= 0) {
                 return ['exito' => false, 'mensaje' => 'Datos de ensayo incompletos: Carga y área deben ser valores positivos válidos.'];
             }
 
-            // Obtener edad programada y fecha de moldeo (consulta original intacta)
+            // Obtener edad programada y fecha de moldeo
             $stmtAge = $this->db->prepare("
                 SELECT pre.*, lm.fecha_moldeo, lm.diseno_resistencia
                 FROM plan_rotura_edades pre
@@ -519,74 +517,20 @@ class RoturasModelo {
                 return ['exito' => false, 'mensaje' => 'Edad de rotura programada no válida.'];
             }
 
-            // Cálculos físicos y conversiones (flujo original exacto)
+            // Cálculos físicos y conversiones (flujo tradicional clásico)
             $factorPsiToKgCm2 = 0.070307;
             $esfuerzoPsi = round($carga / $area, 2);
             $esfuerzoKgCm2 = round($esfuerzoPsi * $factorPsiToKgCm2, 2);
 
-            // Extraer f'c de diseño numérico si existe
-            $fcDiseno = 0.0;
+            // Cálculo de porcentaje contra f'c de diseño
+            $porcentajeFc = null;
             if (!empty($edadData['diseno_resistencia'])) {
                 if (preg_match('/(\d+(\.\d+)?)/', $edadData['diseno_resistencia'], $matches)) {
                     $fcDiseno = (float)$matches[1];
+                    if ($fcDiseno > 0) {
+                        $porcentajeFc = round(($esfuerzoPsi / $fcDiseno) * 100, 2);
+                    }
                 }
-            }
-
-            $porcentajeFc = ($fcDiseno > 0) ? round(($esfuerzoPsi / $fcDiseno) * 100, 2) : null;
-
-            $datosCrudos = !empty($datos['datos_crudos'])
-                ? (is_array($datos['datos_crudos']) ? json_encode($datos['datos_crudos'], JSON_UNESCAPED_UNICODE) : $datos['datos_crudos'])
-                : null;
-
-            // Enriquecimiento aditivo cuando se utiliza Hoja de Cálculo (RT-FM-61, 36, 38, 57, 63, 64)
-            if ($codigoFormatoHc !== null) {
-                $entradasHc = array_merge($datos, $crudosArr);
-                unset($entradasHc['datos_crudos'], $entradasHc['csrf_token']);
-                if ($fcDiseno > 0 && empty($entradasHc['resistencia_diseno_psi'])) {
-                    $entradasHc['resistencia_diseno_psi'] = $fcDiseno;
-                    $motorHc = new \Cycsa\Modulos\Operaciones\Servicios\MotorHojasCalculoServicio();
-                    $opcionesHc = isset($crudosArr['opciones_hc']) && is_array($crudosArr['opciones_hc']) ? $crudosArr['opciones_hc'] : [];
-                    $evalHc = $motorHc->evaluarEspecimen($codigoFormatoHc, $entradasHc, $opcionesHc);
-                }
-
-                $valsHc = $evalHc['valores'];
-                $psiCalc = $valsHc['esfuerzo_psi_reportado']
-                    ?? $valsHc['esfuerzo_psi']
-                    ?? $valsHc['resistencia_neta_psi']
-                    ?? $valsHc['resistencia_bruta_psi']
-                    ?? $valsHc['resistencia_psi']
-                    ?? $valsHc['modulo_ruptura_psi']
-                    ?? $valsHc['resistencia_tension_psi']
-                    ?? $valsHc['esfuerzo_1_psi']
-                    ?? $valsHc['esfuerzo_ultimo_psi']
-                    ?? $esfuerzoPsi;
-                $esfuerzoPsi = round((float)$psiCalc, 2);
-
-                $kgcm2Calc = $valsHc['esfuerzo_kgcm2']
-                    ?? $valsHc['resistencia_neta_kgcm2']
-                    ?? $valsHc['resistencia_kgcm2']
-                    ?? $valsHc['modulo_ruptura_kgcm2']
-                    ?? $valsHc['resistencia_tension_kgcm2']
-                    ?? $valsHc['esfuerzo_1_kgcm2']
-                    ?? $valsHc['esfuerzo_ultimo_kgcm2']
-                    ?? ($esfuerzoPsi * $factorPsiToKgCm2);
-                $esfuerzoKgCm2 = round((float)$kgcm2Calc, 2);
-
-                if (isset($valsHc['porcentaje_fc']) && $valsHc['porcentaje_fc'] !== null) {
-                    $porcentajeFc = round((float)$valsHc['porcentaje_fc'], 2);
-                } elseif ($fcDiseno > 0) {
-                    $porcentajeFc = round(($esfuerzoPsi / $fcDiseno) * 100, 2);
-                }
-
-                $crudosPersistir = array_merge($crudosArr, [
-                    'codigo_formato' => $codigoFormatoHc,
-                    'entradas_hc' => $evalHc['entradas'],
-                    'constantes_hc' => $evalHc['constantes'],
-                    'calculados_hc' => $evalHc['calculados'],
-                    'redondeados_hc' => $evalHc['redondeados'],
-                    'correcciones_aplicadas' => $evalHc['correcciones_aplicadas'],
-                ]);
-                $datosCrudos = json_encode($crudosPersistir, JSON_UNESCAPED_UNICODE);
             }
 
             // Validación de tolerancia temporal según ASTM C39
@@ -672,7 +616,7 @@ class RoturasModelo {
                 'esfuerzo_kgcm2' => $esfuerzoKgCm2,
                 'porcentaje_fc' => $porcentajeFc,
                 'datos_crudos' => $datosCrudos,
-                'evaluacion_hc' => $evalHc
+                'evaluacion_hc' => null
             ];
         } catch (Exception $e) {
             if ($this->db->inTransaction()) {
@@ -680,6 +624,237 @@ class RoturasModelo {
             }
             error_log('RoturasModelo::registrarRotura error: ' . $e->getMessage());
             return ['exito' => false, 'mensaje' => 'Error interno al registrar la rotura del espécimen.'];
+        }
+    }
+
+    /**
+     * Flujo especializado de registro de rotura mediante Hoja de Cálculo (RT-FM-61, 36, 38, 57, 63, 64).
+     * Requiere explícitamente `codigo_formato`. Evalúa todas las fórmulas mediante MotorHojasCalculoServicio
+     * y persiste el conjunto completo de trazabilidad en `datos_crudos`.
+     */
+    public function registrarRoturaHc(array $datos, int $tecnicoId): array {
+        if ($tecnicoId <= 0) {
+            return ['exito' => false, 'mensaje' => 'Sesión de usuario no válida para registrar el ensayo.'];
+        }
+
+        $crudosArr = [];
+        if (!empty($datos['datos_crudos'])) {
+            if (is_array($datos['datos_crudos'])) {
+                $crudosArr = $datos['datos_crudos'];
+            } elseif (is_string($datos['datos_crudos'])) {
+                $crudosArr = json_decode($datos['datos_crudos'], true) ?: [];
+            }
+        }
+
+        $codigoFormatoHc = $datos['codigo_formato'] ?? ($crudosArr['codigo_formato'] ?? null);
+        if (empty($codigoFormatoHc)) {
+            return [
+                'exito' => false,
+                'mensaje' => 'Se requiere un código de formato explícito para el cálculo de hoja de cálculo.'
+            ];
+        }
+
+        try {
+            $especimenId = (int)($datos['especimen_id'] ?? 0);
+            $planEdadId = (int)($datos['plan_edad_id'] ?? 0);
+            $fechaReal = !empty($datos['fecha_real']) ? $datos['fecha_real'] : date('Y-m-d H:i:s');
+            $tipoFalla = trim($datos['tipo_falla'] ?? 'Tipo 1 (Cono)');
+            $justificacion = trim($datos['justificacion'] ?? '');
+
+            // Obtener edad programada y fecha de moldeo
+            $stmtAge = $this->db->prepare("
+                SELECT pre.*, lm.fecha_moldeo, lm.diseno_resistencia
+                FROM plan_rotura_edades pre
+                JOIN planes_rotura pr ON pre.plan_rotura_id = pr.id
+                JOIN recepcion_muestras rm ON pr.muestra_id = rm.id
+                JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+                WHERE pre.id = :id
+            ");
+            $stmtAge->execute(['id' => $planEdadId]);
+            $edadData = $stmtAge->fetch(PDO::FETCH_ASSOC);
+
+            if (!$edadData) {
+                return ['exito' => false, 'mensaje' => 'Edad de rotura programada no válida.'];
+            }
+
+            // Extraer f'c de diseño si existe
+            $fcDiseno = 0.0;
+            if (!empty($edadData['diseno_resistencia'])) {
+                if (preg_match('/(\d+(\.\d+)?)/', $edadData['diseno_resistencia'], $matches)) {
+                    $fcDiseno = (float)$matches[1];
+                }
+            }
+
+            // Evaluar mediante el motor de Hoja de Cálculo
+            $entradasHc = array_merge($datos, $crudosArr);
+            unset($entradasHc['datos_crudos'], $entradasHc['csrf_token']);
+            if ($fcDiseno > 0 && empty($entradasHc['resistencia_diseno_psi'])) {
+                $entradasHc['resistencia_diseno_psi'] = $fcDiseno;
+            }
+
+            $motorHc = new \Cycsa\Modulos\Operaciones\Servicios\MotorHojasCalculoServicio();
+            $opcionesHc = isset($crudosArr['opciones_hc']) && is_array($crudosArr['opciones_hc']) ? $crudosArr['opciones_hc'] : [];
+            $evalHc = $motorHc->evaluarEspecimen($codigoFormatoHc, $entradasHc, $opcionesHc);
+            $valsHc = $evalHc['valores'];
+
+            // Resolver carga y área desde los cálculos
+            $carga = (float)($valsHc['carga_real_lbf']
+                ?? $valsHc['lectura_carga_lbf']
+                ?? $valsHc['carga_lbf']
+                ?? $valsHc['carga_prom']
+                ?? $valsHc['fuerza_lbf']
+                ?? $valsHc['carga_1']
+                ?? $valsHc['carga_1_lbf']
+                ?? $valsHc['carga_max_lbf']
+                ?? ($datos['carga'] ?? 0));
+            $carga = round($carga, 2);
+
+            $area = (float)($valsHc['area_in2']
+                ?? $valsHc['area_neta_in2']
+                ?? (isset($valsHc['area_neta']) ? ((float)$valsHc['area_neta'] * 0.155) : null)
+                ?? (isset($valsHc['ancho_prom'], $valsHc['espesor_prom']) ? ((float)$valsHc['ancho_prom'] * (float)$valsHc['espesor_prom']) : null)
+                ?? $valsHc['area_bruta_in2']
+                ?? $valsHc['area_1_in2']
+                ?? $valsHc['area_nominal_in2']
+                ?? ($datos['area'] ?? 28.2743));
+            $area = round($area, 4);
+
+            if ($especimenId <= 0 || $carga <= 0 || $area <= 0) {
+                return ['exito' => false, 'mensaje' => 'Datos de ensayo incompletos: Carga y área calculadas deben ser valores positivos válidos.'];
+            }
+
+            // Resolver esfuerzo y porcentajes
+            $factorPsiToKgCm2 = 0.070307;
+            $psiCalc = $valsHc['esfuerzo_psi_reportado']
+                ?? $valsHc['esfuerzo_psi']
+                ?? $valsHc['resistencia_neta_psi']
+                ?? $valsHc['resistencia_bruta_psi']
+                ?? $valsHc['resistencia_psi']
+                ?? $valsHc['modulo_ruptura_psi']
+                ?? $valsHc['resistencia_tension_psi']
+                ?? $valsHc['esfuerzo_1_psi']
+                ?? $valsHc['esfuerzo_ultimo_psi']
+                ?? ($carga / $area);
+            $esfuerzoPsi = round((float)$psiCalc, 2);
+
+            $kgcm2Calc = $valsHc['esfuerzo_kgcm2']
+                ?? $valsHc['resistencia_neta_kgcm2']
+                ?? $valsHc['resistencia_kgcm2']
+                ?? $valsHc['modulo_ruptura_kgcm2']
+                ?? $valsHc['resistencia_tension_kgcm2']
+                ?? $valsHc['esfuerzo_1_kgcm2']
+                ?? $valsHc['esfuerzo_ultimo_kgcm2']
+                ?? ($esfuerzoPsi * $factorPsiToKgCm2);
+            $esfuerzoKgCm2 = round((float)$kgcm2Calc, 2);
+
+            $porcentajeFc = null;
+            if (isset($valsHc['porcentaje_fc']) && $valsHc['porcentaje_fc'] !== null) {
+                $porcentajeFc = round((float)$valsHc['porcentaje_fc'], 2);
+            } elseif ($fcDiseno > 0) {
+                $porcentajeFc = round(($esfuerzoPsi / $fcDiseno) * 100, 2);
+            }
+
+            $crudosPersistir = array_merge($crudosArr, [
+                'codigo_formato' => $codigoFormatoHc,
+                'entradas_hc' => $evalHc['entradas'],
+                'constantes_hc' => $evalHc['constantes'],
+                'calculados_hc' => $evalHc['calculados'],
+                'redondeados_hc' => $evalHc['redondeados'],
+                'correcciones_aplicadas' => $evalHc['correcciones_aplicadas'],
+                'avisos_hc' => $evalHc['avisos'] ?? [],
+            ]);
+            $datosCrudos = json_encode($crudosPersistir, JSON_UNESCAPED_UNICODE);
+
+            // Validación de tolerancia temporal según ASTM C39
+            $fechaProgTimestamp = strtotime($edadData['fecha_programada'] . ' 08:00:00');
+            $fechaRealTimestamp = strtotime($fechaReal);
+            $diferenciaHoras = abs($fechaRealTimestamp - $fechaProgTimestamp) / 3600;
+            $toleranciaHoras = (int)$edadData['tolerancia_horas'];
+
+            $fueraTolerancia = ($diferenciaHoras > $toleranciaHoras) ? 1 : 0;
+
+            if ($fueraTolerancia && empty($justificacion)) {
+                return [
+                    'exito' => false,
+                    'requiere_justificacion' => true,
+                    'mensaje' => "El ensayo se realizó fuera de la ventana de tolerancia ASTM C39 (±{$toleranciaHoras} hrs). Debe ingresar una justificación técnica obligatoria."
+                ];
+            }
+
+            $this->db->beginTransaction();
+
+            $stmtRot = $this->db->prepare("
+                INSERT INTO roturas (especimen_id, plan_edad_id, fecha_real, carga, area, esfuerzo_psi, esfuerzo_kgcm2, porcentaje_fc, tipo_falla, tecnico_id, fuera_tolerancia, justificacion, datos_crudos)
+                VALUES (:especimen_id, :plan_edad_id, :fecha_real, :carga, :area, :esfuerzo_psi, :esfuerzo_kgcm2, :porcentaje_fc, :tipo_falla, :tecnico_id, :fuera_tolerancia, :justificacion, :datos_crudos)
+                ON DUPLICATE KEY UPDATE 
+                    fecha_real = VALUES(fecha_real), carga = VALUES(carga), area = VALUES(area),
+                    esfuerzo_psi = VALUES(esfuerzo_psi), esfuerzo_kgcm2 = VALUES(esfuerzo_kgcm2),
+                    porcentaje_fc = VALUES(porcentaje_fc), tipo_falla = VALUES(tipo_falla),
+                    tecnico_id = VALUES(tecnico_id), fuera_tolerancia = VALUES(fuera_tolerancia),
+                    justificacion = VALUES(justificacion), datos_crudos = VALUES(datos_crudos)
+            ");
+            $stmtRot->execute([
+                'especimen_id' => $especimenId,
+                'plan_edad_id' => $planEdadId,
+                'fecha_real' => $fechaReal,
+                'carga' => $carga,
+                'area' => $area,
+                'esfuerzo_psi' => $esfuerzoPsi,
+                'esfuerzo_kgcm2' => $esfuerzoKgCm2,
+                'porcentaje_fc' => $porcentajeFc,
+                'tipo_falla' => $tipoFalla,
+                'tecnico_id' => $tecnicoId,
+                'fuera_tolerancia' => $fueraTolerancia,
+                'justificacion' => $justificacion,
+                'datos_crudos' => $datosCrudos
+            ]);
+
+            // Marcar espécimen como ensayado
+            $this->db->prepare("UPDATE especimenes SET estado = 'ensayado' WHERE id = :id")->execute(['id' => $especimenId]);
+
+            // Verificar estado del plan por edad
+            $stmtCheckEdad = $this->db->prepare("
+                SELECT COUNT(*) FROM plan_rotura_asignaciones pra
+                JOIN especimenes esp ON pra.especimen_id = esp.id
+                WHERE pra.plan_edad_id = :plan_edad_id AND esp.estado != 'ensayado'
+            ");
+            $stmtCheckEdad->execute(['plan_edad_id' => $planEdadId]);
+            $pendientesEdad = (int)$stmtCheckEdad->fetchColumn();
+
+            if ($pendientesEdad === 0) {
+                $this->db->prepare("UPDATE plan_rotura_edades SET estado = 'completado' WHERE id = :id")->execute(['id' => $planEdadId]);
+            } else {
+                $this->db->prepare("UPDATE plan_rotura_edades SET estado = 'en_proceso' WHERE id = :id")->execute(['id' => $planEdadId]);
+            }
+
+            // Verificar si todo el plan está completado
+            $planRoturaId = (int)$edadData['plan_rotura_id'];
+            $stmtCheckPlan = $this->db->prepare("SELECT COUNT(*) FROM plan_rotura_edades WHERE plan_rotura_id = :plan_id AND estado != 'completado'");
+            $stmtCheckPlan->execute(['plan_id' => $planRoturaId]);
+            $edadesPendientesPlan = (int)$stmtCheckPlan->fetchColumn();
+
+            if ($edadesPendientesPlan === 0) {
+                $this->db->prepare("UPDATE planes_rotura SET estado = 'cerrado' WHERE id = :id")->execute(['id' => $planRoturaId]);
+            }
+
+            $this->db->commit();
+            return [
+                'exito' => true,
+                'mensaje' => 'Rotura registrada exitosamente mediante hoja de cálculo.',
+                'carga' => $carga,
+                'area' => $area,
+                'esfuerzo_psi' => $esfuerzoPsi,
+                'esfuerzo_kgcm2' => $esfuerzoKgCm2,
+                'porcentaje_fc' => $porcentajeFc,
+                'datos_crudos' => $datosCrudos,
+                'evaluacion_hc' => $evalHc
+            ];
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('RoturasModelo::registrarRoturaHc error: ' . $e->getMessage());
+            return ['exito' => false, 'mensaje' => 'Error interno al registrar la rotura mediante hoja de cálculo.'];
         }
     }
 

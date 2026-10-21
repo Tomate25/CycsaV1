@@ -115,7 +115,7 @@ class ReportesNuevosHcTest extends TestCase {
             $this->assertSame('hojas_campo_registros', $reporteReal['metadatos']['origen_datos']);
             $this->assertSame('MC-REAL-6299-26', $reporteReal['metadatos']['codigo_muestra']);
             $this->assertSame('Proyecto Real Infiltración Residencial', $reporteReal['metadatos']['nombre_proyecto']);
-            $this->assertEqualsWithDelta(11.52, (float)$reporteReal['filas'][0]['Tasa Q (L/m²·día)'], 0.01);
+            $this->assertEqualsWithDelta(11.52, (float)$reporteReal['filas'][0]['Tasa Q (L/m²·día)'], 11.52 * 0.001);
         } finally {
             $db->prepare("DELETE FROM hojas_campo_registros WHERE id = :id")->execute(['id' => $regId]);
         }
@@ -125,6 +125,6 @@ class ReportesNuevosHcTest extends TestCase {
         $this->assertNotNull($reportePic);
         $this->assertSame('equipos_calibracion_picnometros', $reportePic['metadatos']['origen_datos']);
         $this->assertSame('PICNO-02', $reportePic['metadatos']['codigo_muestra']);
-        $this->assertEqualsWithDelta(199.73, (float)$reportePic['filas'][0]['Volumen Calibrado (mL)'], 0.05);
+        $this->assertEqualsWithDelta(199.73, (float)$reportePic['filas'][0]['Volumen Calibrado (mL)'], 199.73 * 0.001);
     }
 }

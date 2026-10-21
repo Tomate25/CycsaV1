@@ -391,7 +391,16 @@ class HojasServicioControlador extends ControladorBase {
                     ];
                 }
                 $pltModelo = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
-                $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+                $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+                if ($usuarioId <= 0) {
+                    $isTestingEnv = (getenv('APP_ENV') === 'testing' || ($_ENV['APP_ENV'] ?? '') === 'testing');
+                    if (!$isTestingEnv) {
+                        $_SESSION['error'] = 'Sesión inválida o expirada.';
+                        $respuesta->redirigir('/Cycsa/publico/login');
+                        return;
+                    }
+                    $usuarioId = 1;
+                }
                 $pltModelo->guardarDetallesMuestrasHoja($idHojaGuardada, $filasDetalles, $usuarioId);
 
                 if ($esRecepcionFisica) {

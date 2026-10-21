@@ -317,6 +317,8 @@ class OperacionesControlador extends ControladorBase {
                 return;
             }
 
+            $datos['recibido_por'] = (int)($_SESSION['usuario_id'] ?? 0);
+
             if ($modelo->registrarRecepcion($datos)) {
                 $_SESSION['exito'] = 'Recepción de muestras registrada exitosamente. Se ha generado la Hoja de Solicitud de Análisis Ciega para laboratorio.';
             } else {

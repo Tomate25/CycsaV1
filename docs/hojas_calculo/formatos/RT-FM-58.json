@@ -119,6 +119,20 @@
           "decimales": 2,
           "requerido": true,
           "por_especimen": true
+        },
+        {
+          "codigo": "unidad_masa",
+          "etiqueta": "Unidad de masa",
+          "tipo": "lista",
+          "unidad": null,
+          "decimales": null,
+          "requerido": false,
+          "por_especimen": true,
+          "opciones_lista": [
+            "g",
+            "kg"
+          ],
+          "valor_defecto": "g"
         }
       ]
     }
@@ -195,10 +209,11 @@
     {
       "id": "FM58-01",
       "original_excel": "Fracción 1½\"–¾\" capturada en kg (1.005/0.988) y el resto en g",
-      "corregido": "Unidad única g",
-      "justificacion": "Mezcla de unidades",
+      "corregido": "Unidad explícita g o kg (si unidad_masa='kg' se multiplica por 1000; si es 'g' o falta, se preserva en g sin heurística)",
+      "justificacion": "Mezcla de unidades resuelta mediante unidad explícita",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "manejador": "FM58_01"
     },
     {
       "id": "FM58-02",

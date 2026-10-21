@@ -533,6 +533,36 @@
           },
           "requiere_confirmacion_laboratorio": {
             "type": "boolean"
+          },
+          "campo_afectado": {
+            "type": "string"
+          },
+          "formula_afectada": {
+            "type": "string"
+          },
+          "expresion_corregida": {
+            "type": "string"
+          },
+          "expresion_original_excel": {
+            "type": "string"
+          },
+          "formulas_afectadas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["codigo", "expresion_corregida", "expresion_original_excel"],
+              "properties": {
+                "codigo": {"type": "string"},
+                "expresion_corregida": {"type": "string"},
+                "expresion_original_excel": {"type": "string"}
+              }
+            }
+          },
+          "manejador": {
+            "type": "string"
+          },
+          "solo_validacion": {
+            "type": "boolean"
           }
         }
       }

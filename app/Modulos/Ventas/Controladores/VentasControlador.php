@@ -186,7 +186,10 @@ class VentasControlador extends ControladorBase {
                 $db->rollBack();
             }
             error_log('Error en Ventas/procesarFacturacion: ' . $e->getMessage());
-            $_SESSION['error'] = 'Error al procesar la facturación: ' . $e->getMessage();
+            $esTesting = (getenv('APP_ENV') === 'testing' || ($_ENV['APP_ENV'] ?? '') === 'testing');
+            $_SESSION['error'] = $esTesting 
+                ? ('Error al procesar la facturación: ' . $e->getMessage()) 
+                : 'No fue posible procesar la facturación. Verifique los datos o consulte con el administrador.';
         }
         $respuesta->redirigir('/Cycsa/publico/ventas');
     }

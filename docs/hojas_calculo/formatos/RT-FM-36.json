@@ -336,7 +336,19 @@
       "corregido": "Se mantienen para reproducir informes; recomendado 0.15500031, 2.20462, 14.2233",
       "justificacion": "Diferencias < 0.2 %",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "formulas_afectadas": [
+        {
+          "codigo": "resistencia_psi",
+          "expresion_corregida": "{carga_lbf}/({area_neta}*0.155)",
+          "expresion_original_excel": "{carga_lbf}/({area_neta}*0.15500031)"
+        },
+        {
+          "codigo": "resistencia_kgcm2",
+          "expresion_corregida": "{resistencia_psi}/14.2",
+          "expresion_original_excel": "{resistencia_psi}/14.2233"
+        }
+      ]
     },
     {
       "id": "FM36-02",

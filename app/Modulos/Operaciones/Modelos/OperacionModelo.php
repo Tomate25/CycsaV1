@@ -269,6 +269,18 @@ class OperacionModelo extends ModeloBase {
             // ADQUIRIR CANDADO DE CONCURRENCIA PARA RECEPCION DE MUESTRAS
             $this->db->prepare("SELECT GET_LOCK('lock_recepcion_muestras', 10)")->execute();
 
+            $isTestingEnv = (getenv('APP_ENV') === 'testing' || ($_ENV['APP_ENV'] ?? '') === 'testing');
+            $recibidoPorId = !empty($datos['recibido_por']) && is_numeric($datos['recibido_por'])
+                ? (int)$datos['recibido_por']
+                : (int)($_SESSION['usuario_id'] ?? 0);
+            if ($recibidoPorId <= 0) {
+                if ($isTestingEnv) {
+                    $recibidoPorId = 1;
+                } else {
+                    throw new \InvalidArgumentException('Usuario de recepción no autenticado o no especificado (ISO/IEC 17025).');
+                }
+            }
+
             $anio = (int)date('Y', strtotime($fechaRecepcion));
             $anioShort = date('y', strtotime($fechaRecepcion));
 
@@ -339,7 +351,7 @@ class OperacionModelo extends ModeloBase {
                     'is_qa_qc' => $isQaQc,
                     'replica_codigo' => $replicaCodigo,
                     'fecha_recepcion' => $fechaRecepcion,
-                    'recibido_por' => (int)($_SESSION['usuario_id'] ?? 1),
+                    'recibido_por' => $recibidoPorId,
                     'entregado_por' => $entregadoPor,
                     'observaciones' => $observaciones
                 ]);
@@ -658,7 +670,9 @@ class OperacionModelo extends ModeloBase {
 
         } catch (Exception $e) {
             error_log("Error al guardar ruptura LIMS: " . $e->getMessage());
-            return ['exito' => false, 'mensaje' => 'Error interno: ' . $e->getMessage(), 'alerta_regresion' => false];
+            $esTesting = (getenv('APP_ENV') === 'testing' || ($_ENV['APP_ENV'] ?? '') === 'testing');
+            $msg = $esTesting ? ('Error interno: ' . $e->getMessage()) : 'No fue posible registrar la ruptura de la muestra. Verifique los parámetros técnicos.';
+            return ['exito' => false, 'mensaje' => $msg, 'alerta_regresion' => false];
         }
     }
 

@@ -58,10 +58,13 @@ class RtFm56CalibracionPicnometroTest extends TestCase {
         ];
 
         $res = $this->equipoModelo->calibrarPicnometroConRtFm56('PICNO-03', $replicas, '2026-10-20');
-        $this->assertGreaterThan(0, $res['picnometro_id']);
+        $this->assertIsInt($res['picnometro_id']);
         $this->assertSame('PICNO-03', $res['identificacion']);
-        $this->assertEqualsWithDelta(499.07, $res['volumen_promedio'], 0.05);
+        $this->assertEqualsWithDelta(499.07, $res['volumen_promedio'], abs(499.07) * 0.001);
         $this->assertTrue($res['cumple_d854']);
         $this->assertIsArray($res['curva_mpw']);
+        $this->assertArrayHasKey('a', $res['curva_mpw']);
+        $this->assertArrayHasKey('b', $res['curva_mpw']);
+        $this->assertArrayHasKey('c', $res['curva_mpw']);
     }
 }

@@ -61,20 +61,58 @@ class RtFm58SanidadTest extends TestCase {
     }
 
     public function testParametrizacionCorreccionDudosaFm5801ConversionUnidadKgAGramos(): void {
-        // FM58-01 en RT-FM-58.json: "Fracciones gruesas pesan en kg (4.767) y finas en g (154); fácil equivocarse" -> "Unidad única: g"
-        $fraccionEnKg = ['tamano' => '2 1/2" - 1 1/2"', 'retenido_original' => 4767, 'masa_inicial' => 4.767, 'masa_final' => 4.621];
+        // Si se indica unidad_masa = 'kg', convierte multiplicando por 1000
+        $fraccionEnKg = [
+            'tamano' => '2 1/2" - 1 1/2"',
+            'retenido_original' => 4767,
+            'masa_inicial' => 4.767,
+            'masa_final' => 4.621,
+            'unidad_masa' => 'kg'
+        ];
 
-        // Con FM58-01 activa: convierte 4.767 kg -> 4767 g y 4.621 kg -> 4621 g, perdida_masa = 146.0 g
         $evalCorregido = $this->motor->evaluarEspecimen('RT-FM-58', $fraccionEnKg, [
             'correcciones_override' => ['FM58-01' => true],
         ]);
-        $this->assertEqualsWithDelta(146.0, (float)$evalCorregido['valores']['perdida_masa'], 0.01);
-        $this->assertEqualsWithDelta(3.0627, (float)$evalCorregido['valores']['perdida_pct'], 0.001);
+        $this->assertEqualsWithDelta(146.0, (float)$evalCorregido['valores']['perdida_masa'], 146.0 * 0.001);
+        $this->assertEqualsWithDelta(3.0627, (float)$evalCorregido['valores']['perdida_pct'], 3.0627 * 0.001);
 
-        // Con FM58-01 desactivada: mantiene el valor sin convertir (4.767 - 4.621 = 0.146)
-        $evalSinConvertir = $this->motor->evaluarEspecimen('RT-FM-58', $fraccionEnKg, [
-            'correcciones_override' => ['FM58-01' => false],
+        // Con unidad_masa = 'g' o sin especificar, mantiene el valor sin convertir
+        $fraccionEnG = [
+            'tamano' => '2 1/2" - 1 1/2"',
+            'retenido_original' => 4767,
+            'masa_inicial' => 4.767,
+            'masa_final' => 4.621,
+            'unidad_masa' => 'g'
+        ];
+        $evalSinConvertir = $this->motor->evaluarEspecimen('RT-FM-58', $fraccionEnG);
+        $this->assertEqualsWithDelta(0.146, (float)$evalSinConvertir['valores']['perdida_masa'], 0.146 * 0.001);
+    }
+
+    /**
+     * Regla FM58-01: Masas menores de 10 g capturadas explícitamente en gramos
+     * nunca deben multiplicarse por 1000 con heurísticas.
+     */
+    public function testMasasMenoresDe10EnGramosNuncaSeAlteranSinHeuristica(): void {
+        $fraccionGramosPequena = [
+            'tamano' => 'No.4 - No.8',
+            'retenido_original' => 150,
+            'masa_inicial' => 8.50,
+            'masa_final' => 7.90,
+            'unidad_masa' => 'g'
+        ];
+
+        $eval = $this->motor->evaluarEspecimen('RT-FM-58', $fraccionGramosPequena, [
+            'correcciones_override' => ['FM58-01' => true]
         ]);
-        $this->assertEqualsWithDelta(0.146, (float)$evalSinConvertir['valores']['perdida_masa'], 0.001);
+
+        $this->assertEqualsWithDelta(8.50, (float)$eval['valores']['masa_inicial'], 8.50 * 0.001);
+        $this->assertEqualsWithDelta(7.90, (float)$eval['valores']['masa_final'], 7.90 * 0.001);
+        $this->assertEqualsWithDelta(0.60, (float)$eval['valores']['perdida_masa'], 0.60 * 0.001);
+
+        // Sin indicar unidad_masa explícita (usa default del JSON que es 'g')
+        unset($fraccionGramosPequena['unidad_masa']);
+        $evalDefault = $this->motor->evaluarEspecimen('RT-FM-58', $fraccionGramosPequena);
+        $this->assertEqualsWithDelta(8.50, (float)$evalDefault['valores']['masa_inicial'], 8.50 * 0.001);
+        $this->assertEqualsWithDelta(7.90, (float)$evalDefault['valores']['masa_final'], 7.90 * 0.001);
     }
 }

@@ -155,7 +155,8 @@
       "corregido": "Cada réplica registra su temperatura",
       "justificacion": "Inconsistencia",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "manejador": "FM56_01"
     },
     {
       "id": "FM56-02",
@@ -171,7 +172,8 @@
       "corregido": "Plantilla Gs (D854) a definir con el laboratorio",
       "justificacion": "Falta",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "manejador": "FM56_03"
     }
   ],
   "caso_prueba": [

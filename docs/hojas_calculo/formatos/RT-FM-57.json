@@ -220,7 +220,19 @@
       "corregido": "Se mantiene; recomendado psi sin redondear / 14.2233",
       "justificacion": "Doble redondeo",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "formulas_afectadas": [
+        {
+          "codigo": "carga_kg",
+          "expresion_corregida": "{carga_lbf}/2.202",
+          "expresion_original_excel": "{carga_lbf}/2.20462"
+        },
+        {
+          "codigo": "resistencia_kgcm2",
+          "expresion_corregida": "{resistencia_psi}/(2.202*6.45)",
+          "expresion_original_excel": "({carga_lbf}/{area_in2})/14.2233"
+        }
+      ]
     },
     {
       "id": "FM57-03",

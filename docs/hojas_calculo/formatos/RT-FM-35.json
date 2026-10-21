@@ -316,7 +316,19 @@
       "corregido": "A = masa seca real (seco+tara − tara)",
       "justificacion": "B·(1−Abs) ≠ B/(1+Abs): subestima A (446.76 vs 451.88 g). GE SSS y Abs no cambian.",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "formulas_afectadas": [
+        {
+          "codigo": "ge_bulk",
+          "expresion_corregida": "{masa_seca}/({volumen_frasco}-{masa_agua_agregada})",
+          "expresion_original_excel": "({masa_sss}*(1-{absorcion}/100))/({volumen_frasco}-{masa_agua_agregada})"
+        },
+        {
+          "codigo": "ge_aparente",
+          "expresion_corregida": "{masa_seca}/(({volumen_frasco}-{masa_agua_agregada})-({masa_sss}-{masa_seca}))",
+          "expresion_original_excel": "({masa_sss}*(1-{absorcion}/100))/(({volumen_frasco}-{masa_agua_agregada})-({masa_sss}-({masa_sss}*(1-{absorcion}/100))))"
+        }
+      ]
     },
     {
       "id": "FM35-02",
@@ -324,7 +336,24 @@
       "corregido": "B = SSS+tara − tara; A = seco+tara − tara; GE = A/(B−C)",
       "justificacion": "Restar la tara antes de usar B; mismo error de A",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "formulas_afectadas": [
+        {
+          "codigo": "g_ge_bulk",
+          "expresion_corregida": "{g_masa_seca}/({g_masa_sss}-{g_masa_sumergida})",
+          "expresion_original_excel": "({g_masa_sss_tara}*(1-{g_absorcion}/100))/({g_masa_sss_tara}-{g_masa_sumergida})"
+        },
+        {
+          "codigo": "g_ge_sss",
+          "expresion_corregida": "{g_masa_sss}/({g_masa_sss}-{g_masa_sumergida})",
+          "expresion_original_excel": "{g_masa_sss_tara}/({g_masa_sss_tara}-{g_masa_sumergida})"
+        },
+        {
+          "codigo": "g_ge_aparente",
+          "expresion_corregida": "{g_masa_seca}/({g_masa_seca}-{g_masa_sumergida})",
+          "expresion_original_excel": "({g_masa_sss_tara}*(1-{g_absorcion}/100))/(({g_masa_sss_tara}*(1-{g_absorcion}/100))-{g_masa_sumergida})"
+        }
+      ]
     },
     {
       "id": "FM35-03",

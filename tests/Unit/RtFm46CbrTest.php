@@ -65,13 +65,13 @@ class RtFm46CbrTest extends TestCase {
         // Molde 56 golpes: compactación = 98.9597%, CBR = 40.0%
         // Interpolación lineal en compactacion_diseno = 95.0%:
         // CBR(95%) = 30.0 + ((95.0 - 93.584722) / (98.959722 - 93.584722)) * (40.0 - 30.0) = 32.6331%
-        $this->assertEqualsWithDelta(87.9708, $conjunto['especimenes'][0]['valores']['compactacion'], 0.01);
-        $this->assertEqualsWithDelta(20.0, $conjunto['especimenes'][0]['valores']['cbr'], 0.01);
-        $this->assertEqualsWithDelta(93.5847, $conjunto['especimenes'][1]['valores']['compactacion'], 0.01);
-        $this->assertEqualsWithDelta(30.0, $conjunto['especimenes'][1]['valores']['cbr'], 0.01);
-        $this->assertEqualsWithDelta(98.9597, $conjunto['especimenes'][2]['valores']['compactacion'], 0.01);
-        $this->assertEqualsWithDelta(40.0, $conjunto['especimenes'][2]['valores']['cbr'], 0.01);
-        $this->assertEqualsWithDelta(32.6331, (float)$conjunto['agregaciones']['cbr_diseno'], 0.01);
+        $this->assertEqualsWithDelta(87.9708, (float)$conjunto['especimenes'][0]['valores']['compactacion'], 87.9708 * 0.001);
+        $this->assertEqualsWithDelta(20.0, (float)$conjunto['especimenes'][0]['valores']['cbr'], 20.0 * 0.001);
+        $this->assertEqualsWithDelta(93.5847, (float)$conjunto['especimenes'][1]['valores']['compactacion'], 93.5847 * 0.001);
+        $this->assertEqualsWithDelta(30.0, (float)$conjunto['especimenes'][1]['valores']['cbr'], 30.0 * 0.001);
+        $this->assertEqualsWithDelta(98.9597, (float)$conjunto['especimenes'][2]['valores']['compactacion'], 98.9597 * 0.001);
+        $this->assertEqualsWithDelta(40.0, (float)$conjunto['especimenes'][2]['valores']['cbr'], 40.0 * 0.001);
+        $this->assertEqualsWithDelta(32.6331, (float)$conjunto['agregaciones']['cbr_diseno'], 32.6331 * 0.001);
     }
 
     public function testParametrizacionCorreccionDudosaFm4602CbrMaxVsCbr01(): void {
@@ -82,12 +82,12 @@ class RtFm46CbrTest extends TestCase {
         $evalCorregido = $this->motor->evaluarEspecimen('RT-FM-46', $entradas, [
             'correcciones_override' => ['FM46-02' => true],
         ]);
-        $this->assertEqualsWithDelta(20.0, $evalCorregido['valores']['cbr'], 0.01);
+        $this->assertEqualsWithDelta(20.0, (float)$evalCorregido['valores']['cbr'], 20.0 * 0.001);
 
         // Con FM46-02 desactivada (fórmula Excel sin MAX: cbr = cbr_01 = 16.6667%)
         $evalExcel = $this->motor->evaluarEspecimen('RT-FM-46', $entradas, [
             'correcciones_override' => ['FM46-02' => false],
         ]);
-        $this->assertEqualsWithDelta(16.6667, $evalExcel['valores']['cbr'], 0.01);
+        $this->assertEqualsWithDelta(16.6667, (float)$evalExcel['valores']['cbr'], 16.6667 * 0.001);
     }
 }

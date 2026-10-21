@@ -467,7 +467,10 @@
       "corregido": "Aplicar solo si L/D < 1.75; 1 en otro caso",
       "justificacion": "ASTM C39",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "campo_afectado": "factor_ld",
+      "expresion_corregida": "1-CEIL(MAX(0,MIN(1,1.75-{relacion_ld})))*(1-({ld_a}*{relacion_ld}^3+{ld_b}*{relacion_ld}^2+{ld_c}*{relacion_ld}+{ld_d}))",
+      "expresion_original_excel": "1"
     },
     {
       "id": "FM61-02",
@@ -491,7 +494,10 @@
       "corregido": "Un único esfuerzo; kg/cm² = psi/14.2",
       "justificacion": "Coherencia",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "campo_afectado": "esfuerzo_kgcm2",
+      "expresion_corregida": "{esfuerzo_psi_reportado}/14.2",
+      "expresion_original_excel": "(({carga_real_kg}/{area_1_cm2})+({carga_real_kg}/{area_2_cm2}))/2"
     },
     {
       "id": "FM61-05",

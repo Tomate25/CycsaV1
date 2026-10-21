@@ -374,7 +374,19 @@
       "corregido": "CBR = σ0.1/1000·100 y σ0.2/1500·100, se toma el máximo",
       "justificacion": "AASHTO T193",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "formulas_afectadas": [
+        {
+          "codigo": "cbr",
+          "expresion_corregida": "MAX({cbr_01},{cbr_02})",
+          "expresion_original_excel": "{cbr_01}"
+        },
+        {
+          "codigo": "cbr_02",
+          "expresion_corregida": "{esfuerzo_02}/1500*100",
+          "expresion_original_excel": "{esfuerzo_02}*0.0667"
+        }
+      ]
     },
     {
       "id": "FM46-03",

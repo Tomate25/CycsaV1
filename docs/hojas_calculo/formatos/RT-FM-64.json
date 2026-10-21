@@ -312,7 +312,10 @@
       "corregido": "(Lf entre marcas − L0)/L0 con el nuevo campo longitud_final_marcas_cm; elongacion_excel se conserva hasta confirmar",
       "justificacion": "ASTM A370 / E8",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "campo_afectado": "elongacion",
+      "expresion_corregida": "({longitud_final_marcas_cm}-{longitud_calibrada_cm})*100/{longitud_calibrada_cm}",
+      "expresion_original_excel": "{elongacion_excel}"
     },
     {
       "id": "FM64-02",
@@ -336,7 +339,9 @@
       "corregido": "Validar fy < fu y rangos",
       "justificacion": "Posible copia",
       "dudosa": true,
-      "requiere_confirmacion_laboratorio": true
+      "requiere_confirmacion_laboratorio": true,
+      "solo_validacion": true,
+      "manejador": "FM64_04"
     }
   ],
   "caso_prueba": [

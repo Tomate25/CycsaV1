@@ -921,7 +921,7 @@ class LaboratorioControlador extends ControladorBase {
                 'id_detalle_cotizacion' => $idDetalleCotizacion,
                 'tipo_muestra' => $tipoMuestraCalculado,
                 'fecha_recepcion' => !empty($datos['fecha_recepcion']) ? $datos['fecha_recepcion'] : date('Y-m-d H:i:s'),
-                'recibido_por' => trim($datos['recibido_por'] ?? ($_SESSION['usuario_nombre'] ?? 'Laboratorista')),
+                'recibido_por' => (int)($_SESSION['usuario_id'] ?? 0),
                 'entregado_por' => trim($datos['entregado_por'] ?? 'Cliente'),
                 'observaciones' => trim($datos['observaciones'] ?? 'Muestras aceptadas bajo estricta conformidad técnica con la Hoja CYCSA-RT-FM-13 (ISO 17025)'),
                 'muestras_recibidas_json' => json_encode($muestrasPayload)

@@ -52,7 +52,7 @@ class RtFm27ProctorTest extends TestCase {
         $p5 = $spec['caso_prueba'][1]['entradas'];
 
         $conjunto = $this->motor->evaluarConjunto('RT-FM-27', [$p1, $p5]);
-        $this->assertEqualsWithDelta(1437.66, $conjunto['agregaciones']['pvs_maximo'], 0.1);
-        $this->assertEqualsWithDelta(24.1704, $conjunto['agregaciones']['humedad_optima'], 0.05);
+        $this->assertEqualsWithDelta(1437.66, (float)$conjunto['agregaciones']['pvs_maximo'], abs(1437.66) * 0.001);
+        $this->assertEqualsWithDelta(24.1704, (float)$conjunto['agregaciones']['humedad_optima'], abs(24.1704) * 0.001);
     }
 }

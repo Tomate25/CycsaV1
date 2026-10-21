@@ -170,11 +170,14 @@ class PlantillasControlador extends ControladorBase {
             $_SESSION['exito'] = 'Plantilla guardada exitosamente.';
             $respuesta->redirigir('/Cycsa/publico/plantillas/estudio?id=' . $plantillaId);
         } catch (Throwable $e) {
+            error_log("PlantillasControlador::guardar error: " . $e->getMessage());
+            $esTesting = (getenv('APP_ENV') === 'testing' || ($_ENV['APP_ENV'] ?? '') === 'testing');
+            $msg = $esTesting ? $e->getMessage() : 'No fue posible guardar la plantilla. Verifique los datos ingresados.';
             if ($peticion->esAjax() || !empty($datos['es_ajax'])) {
-                $respuesta->enviarJson(['status' => 'error', 'message' => $e->getMessage()]);
+                $respuesta->enviarJson(['status' => 'error', 'message' => $msg]);
                 return;
             }
-            $_SESSION['error'] = 'Error al guardar la plantilla: ' . $e->getMessage();
+            $_SESSION['error'] = 'Error al guardar la plantilla: ' . $msg;
             $idRetorno = (int)($datos['id'] ?? 0);
             $url = $idRetorno > 0 ? ('/Cycsa/publico/plantillas/estudio?id=' . $idRetorno) : '/Cycsa/publico/plantillas/estudio';
             $respuesta->redirigir($url);
