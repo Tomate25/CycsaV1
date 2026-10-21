@@ -988,16 +988,16 @@
                         <span class="badge" style="background:#e0f2fe; color:#0369a1; font-family:monospace; font-weight:700; font-size:11px;">Prefijo MC</span>
                     </div>
                     <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
-                        Muestreo realizado en obra o campo por personal técnico de CYCSA (cilindros, densidad nuclear, etc.).
+                        Los técnicos de CYCSA van a obra a tomar las muestras. Abre el <strong>formulario para asignar técnico, vehículo, fechas y la Lista de Chequeo CYCSA-RT-FM-40 B</strong>.
                     </p>
                 </div>
-                <div>
-                    <button type="button" class="btn-accion-hs" style="background: var(--cycsa-azul); color: white; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; border:none; cursor:pointer;" onclick="confirmarDecisionMuestreo('campo')">
-                        <i class="fa-solid fa-file-signature"></i> Abrir RT-FM-13 (Campo - MC)
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <button type="button" class="btn-accion-hs" style="background: var(--cycsa-azul); color: white; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; border:none; cursor:pointer;" onclick="confirmarDecisionMuestreo('logistica')">
+                        <i class="fa-solid fa-truck-pickup"></i> Asignar Técnicos y Salida a Campo (FM-40 B)
                     </button>
-                    <div id="btn_opcion_logistica_campo" style="margin-top:8px; text-align:center;">
-                        <button type="button" onclick="confirmarDecisionMuestreo('logistica')" style="background:none; border:none; color:#0284c7; font-size:11px; cursor:pointer; text-decoration:underline;">
-                            <i class="fa-solid fa-list-check"></i> Ir a Lista de Chequeo y Vehículo (FM-40 B)
+                    <div id="btn_opcion_logistica_campo" style="text-align:center;">
+                        <button type="button" onclick="confirmarDecisionMuestreo('campo')" style="background:none; border:none; color:#0284c7; font-size:11.5px; cursor:pointer; text-decoration:underline; padding:4px;" title="Si las muestras ya fueron tomadas y solo desea registrar la RT-FM-13">
+                            <i class="fa-solid fa-file-signature"></i> O abrir RT-FM-13 directamente (Prefijo MC)
                         </button>
                     </div>
                 </div>
@@ -1070,10 +1070,6 @@
         const sub = document.getElementById('decision_subtitulo_entrega');
         if (sub) {
             sub.innerText = esSegundaHoja ? 'Añadiendo una nueva hoja de solicitud (entrega adicional) a esta O/S.' : 'Configuración de ingreso para la Hoja de Solicitud.';
-        }
-        const btnLog = document.getElementById('btn_opcion_logistica_campo');
-        if (btnLog) {
-            btnLog.style.display = esSegundaHoja ? 'none' : 'block';
         }
         const m = document.getElementById('modalDecisionMuestreoGlobal');
         if (m) m.style.display = 'flex';
