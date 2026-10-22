@@ -15,6 +15,7 @@ class PlantillaModelo {
     public function __construct() {
         $this->db = Conexion::obtenerInstancia();
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        \Cycsa\Modulos\Configuracion\Servicios\MigradorServicio::asegurarTablas($this->db);
     }
 
     /**

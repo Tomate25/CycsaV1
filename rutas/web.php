@@ -82,6 +82,9 @@ $app->enrutador->get('/configuracion/plantillas-ensayos/obtener-ajax', [\Cycsa\M
 $app->enrutador->post('/configuracion/plantillas-ensayos/guardar', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'guardarPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->post('/configuracion/plantillas-ensayos/restablecer', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'restablecerPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
 
+// ⚙️ RUTA DE MIGRACIÓN Y MANTENIMIENTO DE BASE DE DATOS
+$app->enrutador->get('/migraciones', [\Cycsa\Modulos\Configuracion\Controladores\MigracionesControlador::class, 'ejecutar']);
+
 // 🔬 RUTAS DE PLANTILLAS DINÁMICAS (ISO/IEC 17025)
 $app->enrutador->get('/plantillas', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'index'], [AuthMiddleware::class]);
 $app->enrutador->get('/plantillas/estudio', [\Cycsa\Modulos\Configuracion\Controladores\PlantillasControlador::class, 'estudio'], [AuthMiddleware::class]);

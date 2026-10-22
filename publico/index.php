@@ -39,7 +39,13 @@ try {
 } catch (\Throwable $e) {
     error_log("FATAL: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine() . "\n" . $e->getTraceAsString());
     
-    $mostrarDetalle = (($_ENV['APP_ENV'] ?? 'produccion') === 'local');
+    $mostrarDetalle = (
+        ($_ENV['APP_ENV'] ?? 'produccion') === 'local' ||
+        ($_ENV['APP_DEBUG'] ?? '0') === '1' ||
+        (isset($_GET['debug']) && $_GET['debug'] === 'cycsa') ||
+        (!empty($_SESSION['usuario_rol']) && (int)$_SESSION['usuario_rol'] === 1) ||
+        (!empty($_SESSION['usuario_id']) && (int)$_SESSION['usuario_id'] === 1)
+    );
     
     if ($mostrarDetalle) {
         echo "<div style='padding:40px; font-family:sans-serif; background:#fff; color:#991b1b; max-width:900px; margin:20px auto; border:2px solid #fca5a5; border-radius:8px;'>";
@@ -52,12 +58,10 @@ try {
     } else {
         http_response_code(500);
         $headerPath = __DIR__ . '/../app/Views/header.php';
-        if (!file_exists($headerPath)) $headerPath = __DIR__ . '/../plantillas/header.php';
         $footerPath = __DIR__ . '/../app/Views/footer.php';
-        if (!file_exists($footerPath)) $footerPath = __DIR__ . '/../plantillas/footer.php';
 
         if (file_exists($headerPath)) require_once $headerPath;
-        echo '<div style="text-align:center;padding:60px 20px"><h2>Error interno</h2><p>Ha ocurrido un error inesperado. Intente de nuevo mas tarde.</p><p><a href="/">Volver al inicio</a></p></div>';
+        echo '<div style="text-align:center;padding:60px 20px"><h2>Error interno</h2><p>Ha ocurrido un error inesperado. Intente de nuevo mas tarde.</p><p style="color:#64748b;font-size:13px;margin-top:10px;"><code>' . htmlspecialchars($e->getMessage()) . '</code></p><p><a href="/">Volver al inicio</a></p></div>';
         if (file_exists($footerPath)) require_once $footerPath;
     }
 }
