@@ -1,8 +1,6 @@
-# Variables de entorno locales y producción (NUNCA subir a git)
-.env
-.env.*
-!.env.example
+# Variables de entorno locales (NO subir a git; .env contiene las credenciales base de Bluehost)
 .env.local
+.env.testing
 
 # Scripts de prueba sueltos y volcados SQL con datos sensibles
 prueba.php
