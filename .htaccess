@@ -22,6 +22,9 @@ Options -Indexes
     # Mapeo directo de assets estáticos a la carpeta publico/
     RewriteRule ^(css|js|img|uploads)/(.*)$ publico/$1/$2 [L]
 
+    # Enrutamiento explícito para el módulo /plantillas (evita colisiones con carpetas legacy en Apache)
+    RewriteRule ^plantillas(/.*)?$ index.php [QSA,L]
+
     # Redirección amigable a index.php para el enrutador
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
