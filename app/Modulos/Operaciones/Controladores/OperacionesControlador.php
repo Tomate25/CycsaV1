@@ -1523,13 +1523,23 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $items = $modelo->obtenerItemsOS($idOS);
-        foreach ($items as &$it) {
-            $it['revision_info'] = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
-        }
-        unset($it);
-
         $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
         $tieneHoja = !empty($hoja);
+        $rolSesion = (int)($_SESSION['usuario_rol'] ?? 0);
+        $esSupervisor = in_array($rolSesion, [1, 2, 3]);
+
+        foreach ($items as &$it) {
+            $it['revision_info'] = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
+            $esCompactacion = esItemCompactacion($it);
+            $tieneMuestrasAceptadas = !empty($os['muestras_aceptadas_lab']) && $os['muestras_aceptadas_lab'] > 0;
+            $tieneHojaServicio = $tieneHoja;
+            $o = $os;
+
+            ob_start();
+            include dirname(__DIR__) . '/Vistas/parciales/acciones_ensayo.php';
+            $it['acciones_html'] = ob_get_clean();
+        }
+        unset($it);
 
         $respuesta->enviarJson([
             'status' => 'success',
@@ -1588,6 +1598,12 @@ class OperacionesControlador extends ControladorBase {
         $stmtHoja = $db->prepare("SELECT id FROM hojas_solicitud WHERE id_os = :id_os LIMIT 1");
         $stmtHoja->execute(['id_os' => $detalle['id_os']]);
         $hojaExistente = $stmtHoja->fetchColumn();
+
+        if (!$hojaExistente) {
+            $_SESSION['error'] = 'Debe registrar primero la Hoja de Solicitud de Servicio (CYCSA-RT-FM-13) para la Orden de Servicio ' . ($detalle['codigo_os'] ?? 'O/S') . ' antes de acceder a la matriz técnica.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
 
         $esCompactacion = esItemCompactacion($detalle);
 
@@ -1737,6 +1753,20 @@ class OperacionesControlador extends ControladorBase {
                 $_SESSION['error'] = 'Detalle de ensayo no encontrado.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
+            }
+
+            // Candado Backend RT-FM-13: Validar que la O/S tenga registrada su hoja de solicitud
+            $stmtOS = $db->prepare("SELECT id, codigo_os FROM ordenes_servicio WHERE id_cotizacion = :id_cot LIMIT 1");
+            $stmtOS->execute(['id_cot' => $detalleActual['id_cotizacion']]);
+            $osActual = $stmtOS->fetch(PDO::FETCH_ASSOC);
+            if ($osActual) {
+                $stmtHojaCheck = $db->prepare("SELECT id FROM hojas_solicitud WHERE id_os = :id_os LIMIT 1");
+                $stmtHojaCheck->execute(['id_os' => $osActual['id']]);
+                if (!$stmtHojaCheck->fetchColumn()) {
+                    $_SESSION['error'] = 'Operación bloqueada: Debe registrar primero la Hoja de Solicitud CYCSA-RT-FM-13 oficial para ' . $osActual['codigo_os'] . ' antes de guardar la matriz técnica.';
+                    $respuesta->redirigir('/Cycsa/publico/operaciones');
+                    return;
+                }
             }
 
             // Desempaquetar filas y metadatos existentes

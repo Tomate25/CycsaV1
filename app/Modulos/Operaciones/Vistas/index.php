@@ -23,16 +23,16 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     }
 
     .tabla-cycsa { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; font-size: 14px; }
-    .tabla-cycsa th { background-color: var(--color-slate-50); color: var(--color-slate-600); padding: 14px 16px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--color-slate-200); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+    .tabla-cycsa th { background-color: var(--color-slate-50); color: var(--color-slate-600); padding: 14px 16px; text-align: left; font-weight: 700; border-bottom: 2px solid var(--color-slate-200); text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
     .tabla-cycsa td { padding: 14px 16px; border-bottom: 1px solid var(--color-slate-100); vertical-align: middle; color: var(--color-slate-700); transition: background-color 0.2s; }
-    .tabla-cycsa tbody tr:not(.detalle-os-row):hover { background-color: var(--color-slate-50); }
+    .tabla-cycsa tbody tr:not(.detalle-os-row):hover { background-color: #f8fafc; }
     
-    .badge-prioridad { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; display: inline-block; }
+    .badge-prioridad { padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; display: inline-block; }
     .prioridad-Alta { background-color: #fee2e2; color: #b91c1c; }
     .prioridad-Media { background-color: #ffedd5; color: #c2410c; }
     .prioridad-Normal { background-color: #dcfce7; color: #15803d; }
     
-    .badge-estado { padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; border: 1px solid transparent; }
+    .badge-estado { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; border: 1px solid transparent; }
     
     /* Estado Badge Colors */
     .estado-Estado-1-Recepcion { background-color: #f1f5f9; color: #475569; border-color: #cbd5e1; }
@@ -48,6 +48,26 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     .estado-Estado-6-Ejecucion-Ensayos { background-color: #fff7ed; color: #c2410c; border-color: #ffedd5; }
     .estado-Estado-7-Revision-Resultados { background-color: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
     .estado-Finalizado { background-color: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+
+    /* LIMS Progress Step Chips (Non-clickable, readable >= 12px) */
+    .lims-step-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 9px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+        border: 1px solid transparent;
+        user-select: none;
+    }
+    .step-ok { background-color: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+    .step-warn { background-color: #fffbeb; color: #b45309; border-color: #fde68a; }
+    .step-info { background-color: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+    .step-muted { background-color: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+    .step-ready { background-color: #f0fdf4; color: #15803d; border-color: #86efac; box-shadow: 0 0 0 1px #86efac; }
+    .dropdown-toggle-no-caret::after { display: none !important; }
     
     .modal-premium { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
     .modal-premium-content { background-color: #fff; margin: 4% auto; padding: 30px; border: 1px solid var(--color-slate-200); width: 45%; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -62,7 +82,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
         font-size: 13px;
         font-weight: 600;
         color: var(--color-slate-700);
-        min-height: 32px;
+        min-height: 28px;
         display: flex;
         align-items: flex-end;
         margin-bottom: 2px;
@@ -70,7 +90,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     .form-control { padding: 10px 14px; border: 1px solid var(--color-slate-300); border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; outline: none; transition: all 0.2s; color: var(--color-slate-800); }
     .form-control:focus { border-color: var(--cycsa-azul); box-shadow: 0 0 0 3px rgba(16, 52, 135, 0.1); }
     
-    .btn-accion { border: none; background: none; cursor: pointer; padding: 8px 14px; border-radius: 6px; font-size: 12.5px; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    .btn-accion { border: none; background: none; cursor: pointer; padding: 8px 14px; min-height: 36px; border-radius: 6px; font-size: 13px; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
     .btn-os { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
     .btn-os:hover { background-color: #dbeafe; transform: translateY(-1px); }
     .btn-recepcion { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
@@ -86,7 +106,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     .alert-exito { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
     .alert-error { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     
-    .tab-btn { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .tab-btn { padding: 10px 20px; min-height: 36px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
     .tab-btn-active { background-color: var(--cycsa-azul); color: white; box-shadow: 0 4px 6px -1px rgba(16, 52, 135, 0.2); }
     .tab-btn-inactive { background-color: var(--color-slate-100); color: var(--color-slate-600); }
     .tab-btn-inactive:hover { background-color: var(--color-slate-200); color: var(--color-slate-800); }
@@ -94,7 +114,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     .tab-content { display: none; }
     .tab-content-active { display: block; }
 
-    .btn-toggle-detail { border: none; background: none; color: var(--color-slate-600); cursor: pointer; padding: 6px; font-size: 14px; transition: all 0.2s; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+    .btn-toggle-detail { border: none; background: none; color: var(--color-slate-600); cursor: pointer; padding: 6px; font-size: 14px; min-width: 32px; min-height: 32px; transition: all 0.2s; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
     .btn-toggle-detail:hover { background-color: var(--color-slate-200); color: var(--color-slate-900); }
     
     .detalle-os-card { background: white; border: 1px solid var(--color-slate-200); border-radius: 10px; padding: 20px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 4px 6px -1px rgba(0,0,0,0.05); }
@@ -134,6 +154,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     }
     .quick-tab-link {
         padding: 8px 14px;
+        min-height: 36px;
         border-radius: 8px;
         font-size: 13px;
         font-weight: 600;
@@ -159,7 +180,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     .quick-tab-badge {
         padding: 2px 7px;
         border-radius: 10px;
-        font-size: 11px;
+        font-size: 11.5px;
         font-weight: 700;
         background: #e2e8f0;
         color: #334155;
@@ -180,9 +201,10 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
         border: none;
         background: transparent;
         color: #64748b;
-        font-size: 12px;
+        font-size: 12.5px;
         font-weight: 600;
         padding: 6px 13px;
+        min-height: 32px;
         border-radius: 6px;
         cursor: pointer;
         display: inline-flex;
@@ -222,8 +244,8 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
         position: fixed;
         top: 0;
         right: -750px;
-        width: 700px;
-        max-width: 94vw;
+        width: 720px;
+        max-width: 95vw;
         height: 100vh;
         background: #f8fafc;
         z-index: 10050;
@@ -264,7 +286,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
         border-color: #fca5a5;
     }
     .lims-drawer-body {
-        padding: 20px 24px 80px 24px;
+        padding: 20px 24px;
         overflow-y: auto;
         flex: 1;
     }
@@ -277,36 +299,6 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     }
     .drawer-mode tbody tr[id^="os-row-"]:hover {
         background-color: #f8fafc;
-    }
-    .badge-progreso {
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 11.5px;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        white-space: nowrap;
-    }
-    .badge-progreso-verde {
-        background: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        color: #047857;
-    }
-    .badge-progreso-azul {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        color: #1e40af;
-    }
-    .badge-progreso-ambar {
-        background: #fffbeb;
-        border: 1px solid #fde68a;
-        color: #b45309;
-    }
-    .badge-progreso-gris {
-        background: #f8fafc;
-        border: 1px solid #cbd5e1;
-        color: #475569;
     }
 </style>
 
@@ -338,13 +330,19 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
         </div>
     </div>
 
-    <!-- Pestañas LIMS -->
-    <div style="display: flex; justify-content: space-between; border-bottom: 2px solid var(--color-slate-100); padding-bottom: 14px; margin-bottom: 25px; align-items: center; flex-wrap: wrap; gap: 15px;">
-        <div class="tabs-container" style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="tab-btn tab-btn-active" onclick="switchTab('tab-os', this)"><i class="fa-solid fa-receipt"></i> Órdenes de Servicio (Flujo de Calidad)</button>
-        </div>
-        <a href="/Cycsa/publico/operaciones/calendario" class="tab-btn tab-btn-inactive" style="text-decoration: none;"><i class="fa-solid fa-calendar-days"></i> Calendario de Rupturas</a>
-    </div>
+    <!-- Pestañas LIMS Principales -->
+    <ul class="nav nav-pills mb-4 gap-2">
+        <li class="nav-item">
+            <a class="nav-link active fw-bold" href="/Cycsa/publico/operaciones" style="background-color: var(--cycsa-azul, #103487); font-size: 13.5px; padding: 9px 18px;">
+                <i class="fa-solid fa-receipt me-1"></i> Lista de Operaciones
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-secondary fw-semibold bg-light border" href="/Cycsa/publico/operaciones/calendario" style="font-size: 13.5px; padding: 9px 18px;">
+                <i class="fa-solid fa-calendar-days me-1"></i> Calendario de Rupturas y Muestreos
+            </a>
+        </li>
+    </ul>
 
     <!-- CONTENIDO PESTAÑA: ÓRDENES DE SERVICIO -->
     <div id="tab-os" class="tab-content tab-content-active">
@@ -387,11 +385,10 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                 <thead>
                     <tr>
                         <th style="width: 44px; text-align: center;"></th>
-                        <th>Código O/S</th>
-                        <th>Cliente / Proyecto</th>
-                        <th>Fecha Emisión</th>
-                        <th>Modalidad / Muestreo</th>
-                        <th style="text-align: right;">Matriz / Calidad LIMS</th>
+                        <th style="min-width: 280px;">Identidad de Orden</th>
+                        <th style="min-width: 170px;">Modalidad / Servicio</th>
+                        <th style="min-width: 310px;">Progreso en 4 Pasos</th>
+                        <th style="min-width: 260px; text-align: right;">Siguiente Acción</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -408,325 +405,325 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                         $tieneHojaServicio = !empty($o['hoja_solicitud']);
                         $requiereMuestreo = !empty($o['requiere_muestreo']);
                         $tieneMuestrasAceptadas = !empty($o['muestras_aceptadas_lab']) && $o['muestras_aceptadas_lab'] > 0;
-                        
+                        $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
+
+                        // Determinar Siguiente Acción Primaria Contextual (1 botón primario destacado)
+                        if ($requiereMuestreo && !$tieneTecnico) {
+                            $btnPrimario = [
+                                'tipo' => 'button',
+                                'onclick' => "abrirModalMuestreo({$o['id']}, '" . htmlspecialchars(addslashes($o['codigo_os'])) . "')",
+                                'icono' => 'fa-solid fa-user-plus',
+                                'texto' => 'Asignar Técnico',
+                                'clase' => 'btn-primary',
+                                'titulo' => 'Asignar técnico de muestreo dedicado para esta orden'
+                            ];
+                        } elseif (!$tieneHojaServicio && !$esSoloCompactacion) {
+                            $btnPrimario = [
+                                'tipo' => 'link',
+                                'href' => "/Cycsa/publico/hojas-servicio/crear?id_os={$o['id']}",
+                                'icono' => 'fa-solid fa-file-signature',
+                                'texto' => 'Registrar RT-FM-13',
+                                'clase' => 'btn-warning text-dark fw-bold border-warning',
+                                'titulo' => 'Registrar Hoja de Solicitud CYCSA-RT-FM-13 para habilitar captura'
+                            ];
+                        } elseif ($matricesLlenadas === 0) {
+                            $btnPrimario = [
+                                'tipo' => 'button',
+                                'onclick' => "abrirDetalleOS({$o['id']}, this)",
+                                'icono' => 'fa-solid fa-table-cells',
+                                'texto' => 'Rellenar Matriz',
+                                'clase' => 'btn-primary',
+                                'titulo' => 'Abrir panel para iniciar la captura de resultados técnicos'
+                            ];
+                        } elseif (!$matrizCompleta) {
+                            $btnPrimario = [
+                                'tipo' => 'button',
+                                'onclick' => "abrirDetalleOS({$o['id']}, this)",
+                                'icono' => 'fa-solid fa-pen-to-square',
+                                'texto' => 'Continuar Matriz',
+                                'clase' => 'btn-primary',
+                                'titulo' => 'Continuar captura de ensayos pendientes'
+                            ];
+                        } elseif ($o['ensayos_con_resultados'] > 0 && !$o['tecnico_100']) {
+                            $btnPrimario = [
+                                'tipo' => 'button',
+                                'onclick' => "abrirDetalleOS({$o['id']}, this)",
+                                'icono' => 'fa-solid fa-clipboard-check',
+                                'texto' => $esSupervisor ? 'Revisar / Aprobar' : 'Ver Matriz',
+                                'clase' => $esSupervisor ? 'btn-info text-white' : 'btn-primary',
+                                'titulo' => 'Revisar matrices técnicas para visto bueno o corrección'
+                            ];
+                        } elseif ($o['puede_cerrar'] && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'])) {
+                            $btnPrimario = [
+                                'tipo' => 'button',
+                                'onclick' => "abrirModalCerrarOS({$o['id']}, '" . htmlspecialchars(addslashes($o['codigo_os'])) . "')",
+                                'icono' => 'fa-solid fa-lock',
+                                'texto' => 'Cerrar Orden',
+                                'clase' => 'btn-success',
+                                'titulo' => '100% técnico y comercial cumplido. Finalizar y archivar orden LIMS'
+                            ];
+                        } else {
+                            $btnPrimario = [
+                                'tipo' => 'button',
+                                'onclick' => "abrirDetalleOS({$o['id']}, this)",
+                                'icono' => 'fa-solid fa-folder-open',
+                                'texto' => 'Ver Detalle',
+                                'clase' => 'btn-outline-primary',
+                                'titulo' => 'Consultar detalle completo de operación'
+                            ];
+                        }
                     ?>
-                    <tr id="os-row-<?= $o['id'] ?>" data-detail-id="os-detail-<?= $o['id'] ?>" class="fila-os-lims">
+                    <tr id="os-row-<?= $o['id'] ?>" data-detail-id="os-detail-<?= $o['id'] ?>" class="fila-os-lims align-middle">
                         <td style="text-align: center; width: 44px;">
                             <button class="btn-toggle-detail" onclick="abrirDetalleOS(<?= $o['id'] ?>, this)" title="Ver Detalle de Operación">
                                 <i class="fa-solid fa-chevron-right"></i>
                             </button>
                         </td>
-                        <td data-col="codigo" style="font-family: monospace; font-size: 13.5px; font-weight: 700; color: var(--cycsa-azul);">
-                            <?= htmlspecialchars($o['codigo_os'], ENT_QUOTES, 'UTF-8') ?>
+                        <!-- ZONA 1: IDENTIDAD -->
+                        <td data-col="codigo">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="lims-os-code" style="font-family: monospace; font-size: 14.5px; font-weight: 800; color: var(--cycsa-azul, #103487);">
+                                    <?= htmlspecialchars($o['codigo_os'], ENT_QUOTES, 'UTF-8') ?>
+                                </span>
+                                <span class="text-muted" style="font-size: 11.5px;">&bull; <?= date('d/m/Y', strtotime($o['fecha_emision'])) ?></span>
+                            </div>
+                            <div data-col="cliente-sub" class="mt-1">
+                                <div style="font-weight: 700; color: #0f172a; font-size: 13.5px;"><?= htmlspecialchars($o['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                                    Proyecto: <span class="fw-semibold"><?= htmlspecialchars($o['nombre_proyecto'], ENT_QUOTES, 'UTF-8') ?></span> &bull; Coty: <span class="fw-semibold"><?= htmlspecialchars($o['cot_codigo'], ENT_QUOTES, 'UTF-8') ?></span>
+                                </div>
+                            </div>
                         </td>
-                        <td data-col="cliente">
-                            <div style="font-weight: 600; color: var(--color-slate-800);"><?= htmlspecialchars($o['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?></div>
-                            <div style="font-size: 11.5px; color: var(--color-slate-600); margin-top: 2px;">Proyecto: <?= htmlspecialchars($o['nombre_proyecto'], ENT_QUOTES, 'UTF-8') ?> &bull; Coty: <?= htmlspecialchars($o['cot_codigo'], ENT_QUOTES, 'UTF-8') ?></div>
-                        </td>
-                        <td style="white-space: nowrap;"><?= date('d/m/Y', strtotime($o['fecha_emision'])) ?></td>
+                        <!-- MODALIDAD / MUESTREO -->
                         <td>
                             <?php if ($requiereMuestreo): ?>
                                 <div>
-                                    <span style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
+                                    <span class="badge" style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
                                         <i class="fa-solid fa-truck-pickup"></i> Muestreo en Campo
                                     </span>
                                     <?php if ($tieneTecnico): ?>
-                                        <div style="font-size: 12px; color: #1e293b; margin-top: 4px;">
-                                            <strong style="color: #103487;"><i class="fa-solid fa-user-check"></i> <?= htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                            <?php if (!empty($o['fecha_muestreo'])): ?>
-                                                <br><span style="font-size: 11px; color: #64748b;"><i class="fa-solid fa-calendar-day"></i> <?= date('d/m/Y', strtotime($o['fecha_muestreo'])) ?> <?= htmlspecialchars($o['hora_muestreo'] ?? '') ?></span>
-                                            <?php endif; ?>
+                                        <div style="font-size: 12.5px; color: #1e293b; margin-top: 4px; font-weight: 600;">
+                                            <i class="fa-solid fa-user-check text-primary"></i> <?= htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') ?>
                                         </div>
                                     <?php else: ?>
-                                        <div style="margin-top: 5px;">
-                                            <button type="button" 
-                                                    onclick="abrirModalMuestreo(<?= $o['id'] ?>, '<?= $o['codigo_os'] ?>')" 
-                                                    class="btn-accion btn-os" 
-                                                    style="padding: 4px 8px; font-size: 11px; background-color: #fffbeb; color: #b45309; border-color: #fef3c7;">
-                                                <i class="fa-solid fa-user-plus"></i> Asignar Técnico Dedicado
-                                            </button>
+                                        <div style="font-size: 12px; color: #b45309; margin-top: 4px; font-weight: 600;">
+                                            <i class="fa-solid fa-triangle-exclamation"></i> Técnico pendiente
                                         </div>
                                     <?php endif; ?>
                                 </div>
                             <?php else: ?>
                                 <div>
-                                    <span style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 4px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
-                                        <i class="fa-solid fa-building-user"></i> Entregada por Cliente
+                                    <span class="badge" style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
+                                        <i class="fa-solid fa-building-user"></i> Entrega Lab
                                     </span>
-                                    <div style="font-size: 11px; color: #64748b; margin-top: 3px;">
-                                        <i class="fa-solid fa-store"></i> Ingreso Directo en Lab Central
+                                    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                                        <i class="fa-solid fa-store"></i> Lab Central (MS)
                                     </div>
                                 </div>
                             <?php endif; ?>
                         </td>
-
-                        <td style="text-align: right; white-space: nowrap; vertical-align: middle;">
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px;">
-                                <?php 
-                                $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
-                                ?>
-                                <?php if (!$tieneHojaServicio && $o['ensayos_con_resultados'] == 0): ?>
-                                    <span class="badge-progreso badge-progreso-rojo" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca;" title="Bloqueado: Falta registrar la Hoja RT-FM-13 oficial">
-                                        <i class="fa-solid fa-lock"></i> Falta Hoja RT-FM-13
-                                    </span>
-                                <?php elseif ($esSoloCompactacion): ?>
-                                    <span class="badge-progreso badge-progreso-azul" title="Ensayo de densidad / compactación in situ">
-                                        <i class="fa-solid fa-gauge-high"></i> Compactación In Situ
-                                    </span>
-                                <?php elseif ($o['tecnico_100']): ?>
-                                    <span class="badge-progreso badge-progreso-verde" title="100% de ensayos aprobados por supervisión">
-                                        <i class="fa-solid fa-check-double"></i> 100% Aprobado (<?= $o['ensayos_aprobados'] ?>/<?= $o['total_ensayos'] ?>)
-                                    </span>
-                                <?php elseif ($o['ensayos_aprobados'] > 0): ?>
-                                    <span class="badge-progreso badge-progreso-azul" title="<?= $o['ensayos_aprobados'] ?> de <?= $o['total_ensayos'] ?> ensayos aprobados por supervisión">
-                                        <i class="fa-solid fa-circle-check"></i> <?= $o['ensayos_aprobados'] ?>/<?= $o['total_ensayos'] ?> Aprobados
-                                    </span>
-                                <?php elseif ($o['ensayos_con_resultados'] > 0): ?>
-                                    <span class="badge-progreso badge-progreso-ambar" title="<?= $o['ensayos_con_resultados'] ?> de <?= $o['total_ensayos'] ?> en revisión de calidad">
-                                        <i class="fa-solid fa-pen-ruler"></i> <?= $o['ensayos_con_resultados'] ?>/<?= $o['total_ensayos'] ?> pendientes de revisión
-                                    </span>
-                                <?php elseif ($tieneMuestrasAceptadas): ?>
-                                    <span class="badge-progreso badge-progreso-verde" title="Muestras aceptadas en custodia de laboratorio">
-                                        <i class="fa-solid fa-flask"></i> Custodia Lab (0/<?= $o['total_ensayos'] ?>)
-                                    </span>
+                        <!-- ZONA 2: PROGRESO EN 4 PASOS -->
+                        <td>
+                            <div class="lims-steps-container d-flex flex-wrap gap-1 align-items-center">
+                                <!-- PASO 1: RT-FM-13 -->
+                                <?php if ($tieneHojaServicio): ?>
+                                    <span class="lims-step-chip step-ok" title="Hoja RT-FM-13 registrada"><i class="fa-solid fa-circle-check"></i> 1 RT-FM-13</span>
                                 <?php else: ?>
-                                    <span class="badge-progreso badge-progreso-gris" title="Pendiente de recepción y captura de resultados">
-                                        <i class="fa-solid fa-clock"></i> Pendiente (<?= $o['total_ensayos'] ?>)
-                                    </span>
+                                    <span class="lims-step-chip step-warn" title="Falta registrar Hoja RT-FM-13 oficial"><i class="fa-solid fa-clock"></i> 1 RT-FM-13</span>
                                 <?php endif; ?>
 
-                                <button type="button" 
-                                        onclick="abrirDetalleOS(<?= $o['id'] ?>, document.querySelector('#os-row-<?= $o['id'] ?> .btn-toggle-detail'))" 
-                                        class="btn-accion btn-detalle" 
-                                        style="background-color: #eff6ff; color: #1e40af; border-color: #bfdbfe; padding: 5px 10px; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;"
-                                        title="Abrir panel con matriz técnica e ingreso de resultados">
+                                <!-- PASO 2: MATRIZ -->
+                                <?php if ($matrizCompleta): ?>
+                                    <span class="lims-step-chip step-ok" title="Matrices completadas (100%)"><i class="fa-solid fa-circle-check"></i> 2 Matriz</span>
+                                <?php elseif ($matricesLlenadas > 0): ?>
+                                    <span class="lims-step-chip step-warn" title="Captura en curso (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)"><i class="fa-solid fa-pen-ruler"></i> 2 Matriz</span>
+                                <?php elseif (!$tieneHojaServicio && !$esSoloCompactacion): ?>
+                                    <span class="lims-step-chip step-muted" title="Bloqueado: requiere RT-FM-13 previa"><i class="fa-solid fa-lock"></i> 2 Matriz</span>
+                                <?php else: ?>
+                                    <span class="lims-step-chip step-muted" title="Pendiente de captura"><i class="fa-solid fa-hourglass-start"></i> 2 Matriz</span>
+                                <?php endif; ?>
+
+                                <!-- PASO 3: APROBACIÓN -->
+                                <?php if ($o['tecnico_100']): ?>
+                                    <span class="lims-step-chip step-ok" title="100% Aprobado por supervisión"><i class="fa-solid fa-circle-check"></i> 3 Aprobación</span>
+                                <?php elseif ($o['ensayos_con_resultados'] > 0): ?>
+                                    <span class="lims-step-chip step-info" title="Ensayos en revisión técnica (<?= $o['ensayos_con_resultados'] ?>/<?= $o['total_ensayos'] ?>)"><i class="fa-solid fa-magnifying-glass"></i> 3 Aprobación</span>
+                                <?php else: ?>
+                                    <span class="lims-step-chip step-muted" title="Pendiente de resultados"><i class="fa-solid fa-hourglass"></i> 3 Aprobación</span>
+                                <?php endif; ?>
+
+                                <!-- PASO 4: CIERRE -->
+                                <?php if (in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'])): ?>
+                                    <span class="lims-step-chip step-ok" title="Orden cerrada y archivada"><i class="fa-solid fa-box-archive"></i> 4 Cierre</span>
+                                <?php elseif ($o['puede_cerrar']): ?>
+                                    <span class="lims-step-chip step-ready" title="100% Técnico y Comercial cumplido. Lista para cierre"><i class="fa-solid fa-flag-checkered"></i> 4 Cierre Listo</span>
+                                <?php else: ?>
+                                    <span class="lims-step-chip step-muted" title="Cierre LIMS en proceso"><i class="fa-solid fa-lock"></i> 4 Cierre</span>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                        <!-- ZONA 3: ACCIONES CONTEXTUALES -->
+                        <td style="text-align: right; white-space: nowrap;">
+                            <div class="d-inline-flex align-items-center justify-content-end gap-2">
+                                <!-- PRIMARY CONTEXTUAL -->
+                                <?php if ($btnPrimario['tipo'] === 'link'): ?>
+                                    <a href="<?= $btnPrimario['href'] ?>" class="btn <?= $btnPrimario['clase'] ?> btn-sm" style="height:36px; padding: 0 14px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;" title="<?= $btnPrimario['titulo'] ?>">
+                                        <i class="<?= $btnPrimario['icono'] ?>"></i> <?= $btnPrimario['texto'] ?>
+                                    </a>
+                                <?php else: ?>
+                                    <button type="button" onclick="<?= $btnPrimario['onclick'] ?>" class="btn <?= $btnPrimario['clase'] ?> btn-sm" style="height:36px; padding: 0 14px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;" title="<?= $btnPrimario['titulo'] ?>">
+                                        <i class="<?= $btnPrimario['icono'] ?>"></i> <?= $btnPrimario['texto'] ?>
+                                    </button>
+                                <?php endif; ?>
+
+                                <!-- SECONDARY DETALLE -->
+                                <button type="button" onclick="abrirDetalleOS(<?= $o['id'] ?>, document.querySelector('#os-row-<?= $o['id'] ?> .btn-toggle-detail'))" class="btn btn-outline-secondary btn-sm" style="height:36px; padding: 0 12px; font-size: 12.5px; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;" title="Abrir panel lateral de detalle">
                                     <i class="fa-solid fa-folder-open"></i> Detalle
                                 </button>
+
+                                <!-- MENÚ ⋮ MÁS (BOOTSTRAP 5 DROPDOWN) -->
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-no-caret" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="height:36px; width:36px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:6px;" title="Más opciones de la orden">
+                                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 13px;">
+                                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirDetalleOS(<?= $o['id'] ?>, document.querySelector('#os-row-<?= $o['id'] ?> .btn-toggle-detail'))"><i class="fa-solid fa-folder-open me-2 text-primary"></i> Ver Detalle de Ensayos</a></li>
+                                        <?php if ($tieneHojaServicio): ?>
+                                            <li><a class="dropdown-item py-2" href="/Cycsa/publico/hojas-servicio/detalle?id_os=<?= $o['id'] ?>" target="_blank"><i class="fa-solid fa-file-lines me-2 text-info"></i> Ver Hoja RT-FM-13</a></li>
+                                        <?php else: ?>
+                                            <li><a class="dropdown-item py-2 text-warning fw-semibold" href="/Cycsa/publico/hojas-servicio/crear?id_os=<?= $o['id'] ?>"><i class="fa-solid fa-file-signature me-2"></i> Registrar RT-FM-13</a></li>
+                                        <?php endif; ?>
+                                        <?php if ($requiereMuestreo): ?>
+                                            <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirModalMuestreo(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')"><i class="fa-solid fa-truck-pickup me-2 text-secondary"></i> <?= $tieneTecnico ? 'Reasignar Muestreo' : 'Programar Muestreo' ?></a></li>
+                                        <?php endif; ?>
+                                        <?php if (!$esSoloCompactacion): ?>
+                                            <li><a class="dropdown-item py-2" href="/Cycsa/publico/laboratorio?tab=kanban"><i class="fa-solid fa-flask me-2 text-success"></i> Recepción en Laboratorio</a></li>
+                                        <?php endif; ?>
+                                        <?php if ($o['puede_cerrar'] && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'])): ?>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item py-2 text-success fw-bold" href="javascript:void(0)" onclick="abrirModalCerrarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')"><i class="fa-solid fa-lock me-2"></i> Cerrar y Archivar O/S</a></li>
+                                        <?php endif; ?>
+                                    </ul>
+                                </div>
                             </div>
                         </td>
                     </tr>
                     
                     <!-- Sub-fila para detalles desplegables (Acordeón / Viñetas) -->
                     <tr class="detalle-os-row" id="os-detail-<?= $o['id'] ?>" style="display: none; background-color: #f8fafc;">
-                        <td colspan="6" style="padding: 15px 25px; border-bottom: 1.5px solid #cbd5e1;">
+                        <td colspan="5" style="padding: 16px 20px; border-bottom: 1.5px solid #cbd5e1;">
                             <div class="detalle-os-card" style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
                                 
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
                                     <h4 style="margin: 0; font-family: 'Outfit'; font-size: 15px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
                                         <i class="fa-solid fa-table-cells" style="color: var(--cycsa-azul);"></i> 
                                         Productos Cotizados - Matriz Técnica de Ensayos
                                     </h4>
-                                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">
+                                    <span class="badge bg-light text-dark border" style="font-size: 12px; font-weight: 600;">
                                         Modalidad: <strong><?= $requiereMuestreo ? 'Muestreo en Campo' : 'Ingreso Directo Lab' ?></strong>
                                     </span>
                                 </div>
 
-                                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
-                                    <div>
-                                        <span style="font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">Origen de la Muestra:</span>
-                                        <?php if ($esSoloCompactacion): ?>
-                                            <span style="background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 11px; margin-left: 6px;">
-                                                <i class="fa-solid fa-gauge-high"></i> Ensayo In Situ (Sin muestra física a custodia de lab)
-                                            </span>
-                                        <?php elseif ($requiereMuestreo): ?>
-                                            <span style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 11px; margin-left: 6px;">
-                                                <i class="fa-solid fa-truck-pickup"></i> Muestreo en Campo por Técnico Dedicado (CYCSA)
-                                            </span>
-                                        <?php else: ?>
-                                            <span style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 11px; margin-left: 6px;">
-                                                <i class="fa-solid fa-building-user"></i> Muestra Entregada Directamente por el Cliente
-                                            </span>
-                                        <?php endif; ?>
+                                <!-- Sección Colapsable: Custodia y Logística -->
+                                <details class="mb-3" style="border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 10px 14px;">
+                                    <summary style="font-size: 13px; font-weight: 700; color: #334155; cursor: pointer; display: flex; align-items: center; justify-content: space-between; list-style: none;">
+                                        <span class="d-flex align-items-center gap-2">
+                                            <i class="fa-solid fa-truck-ramp-box text-primary"></i>
+                                            <span>Detalles de Custodia y Logística</span>
+                                        </span>
+                                        <span class="badge bg-secondary-subtle text-secondary" style="font-size: 11.5px;">
+                                            <?= $requiereMuestreo ? 'Muestreo en Campo' : 'Recepción Lab Central' ?>
+                                        </span>
+                                    </summary>
+                                    <div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted" style="font-size: 13px;">
+                                        <div>
+                                            <span style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase;">Origen:</span>
+                                            <?php if ($esSoloCompactacion): ?>
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle ms-1">Ensayo In Situ (Sin custodia física)</span>
+                                            <?php elseif ($requiereMuestreo): ?>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle ms-1">Muestreo en Campo por Técnico CYCSA</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">Muestra Entregada por Cliente</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div style="font-size: 12.5px; color: #475569; font-weight: 600;">
+                                            <?php if ($esSoloCompactacion): ?>
+                                                Responsable: <strong class="text-info">Operaciones / Terreno</strong>
+                                            <?php elseif ($requiereMuestreo): ?>
+                                                Técnico Asignado: <strong class="text-primary"><?= $tieneTecnico ? htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') : 'Sin Asignar' ?></strong>
+                                            <?php else: ?>
+                                                Recepción: <strong class="text-success">Ventanilla Central (MS)</strong>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
-                                    <div style="font-size: 12px; color: #64748b; font-weight: 600;">
-                                        <?php if ($esSoloCompactacion): ?>
-                                            Responsable: <strong style="color: #0369a1;">Operaciones / Ensayos en Terreno</strong>
-                                        <?php elseif ($requiereMuestreo): ?>
-                                            Técnico Asignado: <strong style="color: #103487;"><?= $tieneTecnico ? htmlspecialchars($o['tecnico_muestreo'], ENT_QUOTES, 'UTF-8') : 'Sin Asignar' ?></strong>
-                                        <?php else: ?>
-                                            Recepción: <strong style="color: #059669;">Ventanilla / Laboratorio Central (MS-XXXX-26)</strong>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                                
-                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                </details>
+
+                                <!-- Cards por Producto / Ensayo -->
+                                <div class="lims-ensayos-cards-list d-flex flex-column gap-3">
                                     <?php foreach ($o['items'] as $it): 
-                                        $rev = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? '');
-                                        $tieneRes = $rev['tiene_resultados'];
                                         $esCompactacion = esItemCompactacion($it);
                                     ?>
-                                        <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 8px; transition: all 0.2s;">
-                                            <div>
-                                                <div style="font-weight: 700; color: #0f172a; font-size: 14px; display: flex; align-items: center; gap: 8px;">
-                                                    <i class="fa-solid fa-flask" style="color: var(--cycsa-azul);"></i>
-                                                    <?= htmlspecialchars($it['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?>
-                                                </div>
-                                                <?php if (!empty($it['norma_astm'])): ?>
-                                                    <div style="font-size: 12px; color: #64748b; font-family: monospace; margin-top: 2px;">
-                                                        Norma: <?= htmlspecialchars($it['norma_astm'], ENT_QUOTES, 'UTF-8') ?> &bull; Formato: <?= htmlspecialchars($it['formato_nombre'] ?? 'Matriz Técnica', ENT_QUOTES, 'UTF-8') ?>
+                                        <div class="card shadow-sm border" style="border-color: #e2e8f0; border-radius: 8px; overflow: hidden;">
+                                            <div class="card-header bg-white py-3 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom">
+                                                <div>
+                                                    <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 14.5px;">
+                                                        <i class="fa-solid fa-flask" style="color: var(--cycsa-azul);"></i>
+                                                        <?= htmlspecialchars($it['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?>
                                                     </div>
-                                                <?php endif; ?>
+                                                    <div class="text-secondary mt-1" style="font-size: 12.5px; font-family: monospace;">
+                                                        Norma: <strong><?= htmlspecialchars($it['norma_astm'] ?? 'N/A') ?></strong> &bull; Formato: <?= htmlspecialchars($it['formato_nombre'] ?? 'Matriz Técnica') ?> &bull; Cant: <strong><?= (int)($it['cantidad'] ?? 1) ?></strong>
+                                                    </div>
+                                                </div>
                                             </div>
-
-                                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
-                                                <!-- BADGE DE ESTADO DEL CICLO DE VIDA DE LA MATRIZ -->
-                                                <span style="background-color: <?= $rev['badge_bg'] ?>; color: <?= $rev['badge_color'] ?>; border: 1px solid <?= $rev['badge_border'] ?>; font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
-                                                    <i class="<?= $rev['badge_icono'] ?>"></i> <?= htmlspecialchars($rev['estado_label']) ?>
-                                                </span>
-
-                                                <?php if ($rev['estado'] === 'devuelta'): ?>
-                                                    <button type="button" 
-                                                            onclick="verObservacionDevolucion(<?= (int)$it['id'] ?>, '<?= htmlspecialchars(addslashes($it['descripcion_ensayo']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($rev['motivo_devolucion'] ?? ''), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($rev['usuario_revisor'] ?? 'Supervisor'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($rev['fecha_revision'] ?? ''), ENT_QUOTES, 'UTF-8') ?>')" 
-                                                            style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"
-                                                            title="Ver observaciones del supervisor que devolvió la matriz">
-                                                        <i class="fa-solid fa-comment-dots"></i> Ver Observación
-                                                    </button>
-                                                <?php endif; ?>
-
-                                                <!-- ACCIONES DE SUPERVISIÓN RÁPIDAS (ROLES 1, 2, 3) -->
-                                                <?php if ($esSupervisor && $tieneRes): ?>
-                                                    <?php if ($rev['estado'] !== 'aprobada'): ?>
-                                                        <button type="button" 
-                                                                onclick="abrirModalAprobarEnIndex(<?= (int)$it['id'] ?>, '<?= htmlspecialchars(addslashes($it['descripcion_ensayo']), ENT_QUOTES, 'UTF-8') ?>')" 
-                                                                class="btn-accion-hs" 
-                                                                style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 6px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; cursor: pointer;" 
-                                                                title="Aprobar técnicamente los resultados">
-                                                            <i class="fa-solid fa-circle-check"></i> Aprobar
-                                                        </button>
-                                                    <?php endif; ?>
-                                                    <?php if ($rev['estado'] !== 'devuelta'): ?>
-                                                        <button type="button" 
-                                                                onclick="abrirModalDevolverEnIndex(<?= (int)$it['id'] ?>, '<?= htmlspecialchars(addslashes($it['descripcion_ensayo']), ENT_QUOTES, 'UTF-8') ?>')" 
-                                                                class="btn-accion-hs" 
-                                                                style="background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; padding: 6px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; cursor: pointer;" 
-                                                                title="Devolver matriz con observaciones para corrección">
-                                                            <i class="fa-solid fa-rotate-left"></i> Devolver
-                                                        </button>
-                                                    <?php endif; ?>
-                                                <?php endif; ?>
-
-                                                <?php if (!$tieneHojaServicio && !$tieneRes): ?>
-                                                    <!-- BLOQUEADO PORQUE FALTA HOJA RT-FM-13 -->
-                                                    <span style="padding: 6px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 5px;" title="Bloqueado: Falta registrar la Hoja de Solicitud CYCSA-RT-FM-13 oficial">
-                                                        <i class="fa-solid fa-lock"></i> Bloqueado: Falta Hoja RT-FM-13
-                                                    </span>
-                                                <?php elseif ($esCompactacion): ?>
-                                                    <!-- COMPACTACIÓN / DENSIDAD IN SITU: DIRECTO A LLENADO DE MATRIZ TRAS REGISTRAR HOJA RT-FM-13 -->
-                                                    <span style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 12px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; display: inline-flex; align-items: center; gap: 4px;">
-                                                        <i class="fa-solid fa-gauge-high"></i> In Situ
-                                                    </span>
-                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" 
-                                                       class="btn-accion-hs btn-registrar" 
-                                                       style="text-decoration: none; padding: 7px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background-color:#103487; color:white;">
-                                                        <i class="fa-solid fa-pen-to-square"></i> <?= $tieneRes ? 'Editar Matriz' : 'Rellenar Matriz' ?>
-                                                    </a>
-                                                    <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $it['id'] ?>" 
-                                                       target="_blank" 
-                                                       class="btn-accion-hs btn-pdf" 
-                                                       style="text-decoration: none; padding: 7px 11px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;" 
-                                                       title="Imprimir Matriz Técnica Oficial con Membrete CYCSA">
-                                                        <i class="fa-solid fa-print"></i> Imprimir
-                                                    </a>
-                                                    <?php if ($rev['estado'] === 'aprobada'): ?>
-                                                        <button type="button" 
-                                                                onclick="abrirModalEnviarMatriz(<?= (int)$it['id'] ?>, '<?= htmlspecialchars(addslashes($it['descripcion_ensayo']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['cliente_nombre']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['cliente_email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')" 
-                                                                class="btn-accion-hs btn-enviar-cliente" 
-                                                                style="padding: 7px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background-color: #059669; color: white; border: 1px solid #047857; cursor: pointer;" 
-                                                                title="Enviar Matriz Oficial en PDF al Correo del Cliente">
-                                                            <i class="fa-solid fa-paper-plane"></i> Enviar al Cliente
-                                                        </button>
-                                                    <?php elseif ($tieneRes): ?>
-                                                        <button type="button" 
-                                                                disabled 
-                                                                class="btn-accion-hs" 
-                                                                style="padding: 7px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background-color: #f1f5f9; color: #94a3b8; border: 1px solid #cbd5e1; cursor: not-allowed;" 
-                                                                title="No se puede enviar al cliente: La matriz está en estado <?= htmlspecialchars($rev['estado_label']) ?> y requiere aprobación de supervisión previa.">
-                                                            <i class="fa-solid fa-lock"></i> Enviar al Cliente
-                                                        </button>
-                                                    <?php endif; ?>
-                                                <?php elseif (!$tieneHojaServicio): ?>
-                                                    <span style="padding: 6px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 5px;" title="Bloqueado: Falta registrar la Hoja de Solicitud CYCSA-RT-FM-13 oficial">
-                                                        <i class="fa-solid fa-lock"></i> Bloqueado: Falta Hoja RT-FM-13
-                                                    </span>
-                                                <?php elseif (!$tieneMuestrasAceptadas): ?>
-                                                    <span style="padding: 6px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 5px;">
-                                                        <i class="fa-solid fa-hourglass-half"></i> En Custodia / Pendiente Lab
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 12px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 4px;">
-                                                        <i class="fa-solid fa-circle-check"></i> Aprobado Lab
-                                                    </span>
-                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" 
-                                                       class="btn-accion-hs btn-registrar" 
-                                                       style="text-decoration: none; padding: 7px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
-                                                        <i class="fa-solid fa-pen-to-square"></i> <?= $tieneRes ? 'Editar Matriz' : 'Rellenar Matriz' ?>
-                                                    </a>
-                                                    <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $it['id'] ?>" 
-                                                       target="_blank" 
-                                                       class="btn-accion-hs btn-pdf" 
-                                                       style="text-decoration: none; padding: 7px 11px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;" 
-                                                       title="Imprimir Matriz Técnica Oficial con Membrete CYCSA">
-                                                        <i class="fa-solid fa-print"></i> Imprimir
-                                                    </a>
-                                                    <?php if ($rev['estado'] === 'aprobada'): ?>
-                                                        <button type="button" 
-                                                                onclick="abrirModalEnviarMatriz(<?= (int)$it['id'] ?>, '<?= htmlspecialchars(addslashes($it['descripcion_ensayo']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['cliente_nombre']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['cliente_email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')" 
-                                                                class="btn-accion-hs btn-enviar-cliente" 
-                                                                style="padding: 7px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background-color: #059669; color: white; border: 1px solid #047857; cursor: pointer;" 
-                                                                title="Enviar Matriz Oficial en PDF al Correo del Cliente">
-                                                            <i class="fa-solid fa-paper-plane"></i> Enviar al Cliente
-                                                        </button>
-                                                    <?php elseif ($tieneRes): ?>
-                                                        <button type="button" 
-                                                                disabled 
-                                                                class="btn-accion-hs" 
-                                                                style="padding: 7px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background-color: #f1f5f9; color: #94a3b8; border: 1px solid #cbd5e1; cursor: not-allowed;" 
-                                                                title="No se puede enviar al cliente: La matriz está en estado <?= htmlspecialchars($rev['estado_label']) ?> y requiere aprobación de supervisión.">
-                                                            <i class="fa-solid fa-lock"></i> Enviar al Cliente
-                                                        </button>
-                                                    <?php endif; ?>
-                                                <?php endif; ?>
+                                            <div class="card-body py-2 px-3 bg-light">
+                                                <?php include __DIR__ . '/parciales/acciones_ensayo.php'; ?>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
 
-                                <!-- APARTADO DE CIERRE DE OPERACIÓN Y ARCHIVO LIMS (Doble Validación: 100% Técnico + 100% Comercial) -->
-                                <div class="cierre-os-seccion" style="margin-top: 20px; padding: 16px 20px; border-radius: 10px; background: <?= $o['puede_cerrar'] ? '#f0fdf4' : '#f8fafc' ?>; border: 1.5px solid <?= $o['puede_cerrar'] ? '#86efac' : '#e2e8f0' ?>; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                                <!-- APARTADO DE CIERRE LIMS (STICKY EN DRAWER) -->
+                                <div class="lims-cierre-box" style="margin-top: 18px; padding: 14px 18px; border-radius: 8px; background: <?= $o['puede_cerrar'] ? '#f0fdf4' : '#f8fafc' ?>; border: 1.5px solid <?= $o['puede_cerrar'] ? '#86efac' : '#e2e8f0' ?>; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
                                     <div>
-                                        <div style="font-family: 'Outfit'; font-size: 14px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                                        <div style="font-family: 'Outfit'; font-size: 14.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
                                             <i class="fa-solid fa-shield-halved" style="color: <?= $o['puede_cerrar'] ? '#16a34a' : '#64748b' ?>; font-size: 16px;"></i>
                                             Cierre de Orden de Servicio y Archivo LIMS
                                         </div>
-                                        <div style="font-size: 12px; color: #475569; margin-top: 4px; display: flex; gap: 14px; flex-wrap: wrap;">
+                                        <div style="font-size: 12.5px; color: #475569; margin-top: 4px; display: flex; gap: 14px; flex-wrap: wrap;">
                                             <span>
-                                                <i class="fa-solid <?= $o['tecnico_100'] ? 'fa-circle-check' : 'fa-clock' ?>" style="color: <?= $o['tecnico_100'] ? '#16a34a' : '#d97706' ?>;"></i>
-                                                <strong>100% Técnico:</strong> <?= $o['tecnico_100'] ? 'Todos los ensayos aprobados' : ($o['ensayos_aprobados'] . '/' . $o['total_ensayos'] . ' ensayos aprobados') ?>
+                                                <i class="fa-solid <?= $o['tecnico_100'] ? 'fa-circle-check text-success' : 'fa-clock text-warning' ?>"></i>
+                                                <strong>Técnico:</strong> <?= $o['tecnico_100'] ? '100% aprobado' : ($o['ensayos_aprobados'] . '/' . $o['total_ensayos'] . ' ensayos aprobados') ?>
                                             </span>
                                             <span>
-                                                <i class="fa-solid <?= $o['comercial_100'] ? 'fa-circle-check' : 'fa-clock' ?>" style="color: <?= $o['comercial_100'] ? '#16a34a' : '#d97706' ?>;"></i>
-                                                <strong>100% Comercial:</strong> <?= $o['comercial_100'] ? 'Factura cancelada (Saldo C$ 0.00)' : ('Saldo pendiente C$ ' . number_format($o['saldo_os'], 2)) ?>
+                                                <i class="fa-solid <?= $o['comercial_100'] ? 'fa-circle-check text-success' : 'fa-clock text-warning' ?>"></i>
+                                                <strong>Comercial:</strong> <?= $o['comercial_100'] ? 'Factura cancelada (C$ 0.00)' : ('Saldo pendiente C$ ' . number_format($o['saldo_os'], 2)) ?>
                                             </span>
                                         </div>
+                                        <?php if (!$o['puede_cerrar']): ?>
+                                            <div style="font-size: 12px; color: #b45309; margin-top: 3px; font-style: italic;">
+                                                <i class="fa-solid fa-circle-exclamation"></i>
+                                                <?= !$o['tecnico_100'] ? 'Faltan ensayos por aprobar formalmente por supervisión.' : 'Saldo comercial pendiente de cobro.' ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                     <div>
                                         <?php if (in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'])): ?>
-                                            <span style="background: #e2e8f0; color: #475569; padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                                                <i class="fa-solid fa-box-archive"></i> Orden Archivada en Histórico
+                                            <span class="badge bg-secondary" style="font-size: 12.5px; padding: 8px 14px; border-radius: 20px;">
+                                                <i class="fa-solid fa-box-archive me-1"></i> Orden Archivada en Histórico
                                             </span>
                                         <?php elseif ($o['puede_cerrar']): ?>
                                             <button type="button" 
                                                     onclick="abrirModalCerrarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')" 
-                                                    class="btn-accion" 
-                                                    style="background: #16a34a; border: 1px solid #15803d; color: white; padding: 8px 18px; font-size: 12.5px; font-weight: 700; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 5px rgba(22,163,74,0.25);">
+                                                    class="btn btn-success" 
+                                                    style="height: 38px; font-size: 13px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background-color: #16a34a; border-color: #15803d;">
                                                 <i class="fa-solid fa-lock"></i> Finalizar y Archivar Orden
                                             </button>
                                         <?php else: ?>
                                             <button type="button" 
                                                     disabled 
-                                                    class="btn-accion" 
-                                                    style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #94a3b8; padding: 8px 16px; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: not-allowed; display: inline-flex; align-items: center; gap: 6px;" 
-                                                    title="Cierre bloqueado: Requiere 100% de ensayos técnicos aprobados por supervisión y 100% de cobro comercial liquidado.">
+                                                    class="btn btn-outline-secondary" 
+                                                    style="height: 38px; font-size: 12.5px; font-weight: 600; border-radius: 6px; cursor: not-allowed; opacity: 0.7;" 
+                                                    title="Cierre bloqueado: Requiere 100% de ensayos técnicos aprobados y cobro comercial liquidado.">
                                                 <i class="fa-solid fa-lock"></i> Cierre LIMS Bloqueado
                                             </button>
                                         <?php endif; ?>
@@ -738,7 +735,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                     <?php endforeach; ?>
                     <?php if (empty($ordenes)): ?>
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px; color: var(--color-slate-600);">No se encontraron órdenes de servicio en esta bandeja.</td>
+                        <td colspan="5" style="text-align: center; padding: 40px; color: var(--color-slate-600);">No se encontraron órdenes de servicio en esta bandeja.</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>
@@ -752,11 +749,12 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
 <div class="lims-drawer-overlay" id="lims-drawer-overlay" onclick="cerrarLimsDrawer()"></div>
 <aside class="lims-drawer" id="lims-drawer" aria-label="Panel Lateral de Detalle">
     <div class="lims-drawer-header">
-        <div>
-            <h3 id="lims-drawer-title" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+        <div style="flex: 1; min-width: 0;">
+            <h3 id="lims-drawer-title" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
                 <i class="fa-solid fa-folder-open" style="color: var(--cycsa-azul);"></i> Detalle de Operación
             </h3>
-            <p id="lims-drawer-subtitle" style="margin: 3px 0 0 0; font-size: 12.5px; color: #64748b;"></p>
+            <p id="lims-drawer-subtitle" style="margin: 3px 0 6px 0; font-size: 13px; color: #64748b;"></p>
+            <div id="lims-drawer-steps" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
         </div>
         <button type="button" class="lims-drawer-close" onclick="cerrarLimsDrawer()" title="Cerrar Panel Lateral (Esc)">
             <i class="fa-solid fa-xmark"></i>
@@ -850,9 +848,11 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
             </div>
             
             <div class="form-group" id="grp_tecnico_cycsa">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label>Técnico de Muestreo Asignado</label>
-                    <a href="/Cycsa/publico/configuracion" style="font-size:11px; color:var(--cycsa-azul); text-decoration:underline;" target="_blank"><i class="fa-solid fa-plus-circle"></i> Gestionar Técnicos</a>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #1e293b;">Técnico de Muestreo Asignado</label>
+                    <a href="/Cycsa/publico/configuracion" class="btn btn-outline-primary btn-sm" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600;" target="_blank">
+                        <i class="fa-solid fa-user-gear"></i> Gestionar Técnicos
+                    </a>
                 </div>
                 <select name="tecnico_muestreo_select" id="select_tecnico_muestreo" class="form-control" style="font-size:13px; padding:10px 14px;">
                     <option value="">-- Seleccionar Técnico --</option>
@@ -868,9 +868,11 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
             </div>
             
             <div class="form-group" id="grp_vehiculo_cycsa">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label>Vehículo de Muestreo Asignado</label>
-                    <a href="/Cycsa/publico/configuracion" style="font-size:11px; color:var(--cycsa-azul); text-decoration:underline;" target="_blank"><i class="fa-solid fa-plus-circle"></i> Gestionar Vehículos</a>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #1e293b;">Vehículo de Muestreo Asignado</label>
+                    <a href="/Cycsa/publico/configuracion" class="btn btn-outline-primary btn-sm" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600;" target="_blank">
+                        <i class="fa-solid fa-truck"></i> Gestionar Vehículos
+                    </a>
                 </div>
                 <select name="vehiculo_muestreo" id="select_vehiculo_muestreo" class="form-control" style="font-size:13px; padding:10px 14px;">
                     <option value="">-- Seleccionar Vehículo --</option>
@@ -886,8 +888,10 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
             <input type="hidden" name="tecnico_muestreo" id="final_tecnico_muestreo" value="">
 
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button type="button" onclick="cerrarModalMuestreo()" class="btn-accion btn-detalle" style="cursor:pointer; margin:0;">Cancelar</button>
-                <button type="submit" onclick="prepararSubmitMuestreo(event)" class="btn-accion btn-primary" style="cursor:pointer;">Guardar y Registrar en Hoja de Servicio</button>
+                <button type="button" onclick="cerrarModalMuestreo()" class="btn btn-outline-secondary" style="height: 38px; padding: 0 16px; font-size: 13px; font-weight: 600; cursor:pointer;">Cancelar</button>
+                <button type="submit" onclick="prepararSubmitMuestreo(event)" class="btn btn-primary" style="height: 38px; padding: 0 20px; font-size: 13px; font-weight: 700; background-color: var(--cycsa-azul, #103487); border-color: var(--cycsa-azul, #103487); cursor:pointer;">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Guardar y Registrar en Hoja de Servicio
+                </button>
             </div>
         </form>
     </div>
@@ -1116,11 +1120,14 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
         const drawerTitle = document.getElementById('lims-drawer-title');
         const drawerSubtitle = document.getElementById('lims-drawer-subtitle');
 
-        const codigoOS = row.querySelector('[data-col="codigo"]')?.innerText.trim() || ('O/S #' + idOS);
-        const clienteProyecto = row.querySelector('[data-col="cliente"]')?.innerText.trim() || '';
+        const codigoOS = row.querySelector('.lims-os-code')?.innerText.trim() || ('O/S #' + idOS);
+        const clienteProyecto = row.querySelector('[data-col="cliente-sub"]')?.innerText.trim() || '';
+        const stepsHtml = row.querySelector('.lims-steps-container')?.innerHTML || '';
+        const drawerSteps = document.getElementById('lims-drawer-steps');
 
         if (drawerTitle) drawerTitle.innerHTML = '<i class="fa-solid fa-folder-open" style="color:var(--cycsa-azul);"></i> Operación: ' + codigoOS;
         if (drawerSubtitle) drawerSubtitle.innerText = clienteProyecto;
+        if (drawerSteps) drawerSteps.innerHTML = stepsHtml;
 
         drawerBody.innerHTML = '';
         drawerBody.appendChild(card);
@@ -1360,14 +1367,14 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                             btnMatrizHtml = `<span style="padding:6px 12px; font-size:11.5px; font-weight:700; border-radius:6px; background:#fffbeb; color:#b45309; border:1px solid #fde68a; display:inline-flex; align-items:center; gap:5px;"><i class="fa-solid fa-user-lock"></i> Asignar Técnico Primero</span>`;
                         }
 
+                        const accionesFinal = it.acciones_html ? it.acciones_html : (badgeHtml + btnMatrizHtml);
                         tr.innerHTML = `
                             <td style="padding:12px 14px; font-weight:700; color:#0f172a;">${it.descripcion_ensayo}</td>
                             <td style="padding:12px 14px; color:#475569; font-family:monospace; font-size:12.5px;">${it.norma_astm || 'N/A'}</td>
                             <td style="padding:12px 14px; font-weight:500; color:#334155;">${it.formato_nombre || 'Matriz Técnica'}</td>
                             <td style="padding:12px 14px; font-weight:700; text-align:center;">${parseInt(it.cantidad || 1)}</td>
                             <td style="padding:12px 14px; text-align:right; white-space:nowrap;">
-                                ${badgeHtml}
-                                ${btnMatrizHtml}
+                                ${accionesFinal}
                             </td>
                         `;
                         tbody.appendChild(tr);

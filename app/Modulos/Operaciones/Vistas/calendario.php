@@ -37,7 +37,7 @@ if ($nextMes > 12) {
     .dia-numero { font-weight: 700; font-size: 13px; color: #64748b; margin-bottom: 2px; display: inline-block; width: 24px; height: 24px; text-align: center; line-height: 24px; border-radius: 50%; }
     .dia-hoy { background-color: var(--cycsa-azul); color: white; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3); }
     
-    .event-tag { font-family: 'Inter', sans-serif; font-size: 11px; padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 1px solid; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.02); text-decoration: none; }
+    .event-tag { font-family: 'Inter', sans-serif; font-size: 12px; padding: 7px 9px; border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; border: 1px solid; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.02); text-decoration: none; }
     .event-tag:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08); }
     .event-ruptura { background-color: #fef2f2; color: #991b1b; border-color: #fecaca; border-left: 4px solid #ef4444; }
     .event-ruptura:hover { background-color: #fee2e2; border-color: #fca5a5; }
@@ -51,7 +51,7 @@ if ($nextMes > 12) {
     .event-muestreo-ejecutado { background-color: #faf5ff; color: #6b21a8; border-color: #e9d5ff; border-left: 4px solid #a855f7; }
     .event-muestreo-ejecutado:hover { background-color: #f3e8ff; border-color: #d8b4fe; }
     
-    .event-code { font-weight: 700; font-size: 10.5px; display: flex; align-items: center; gap: 4px; }
+    .event-code { font-weight: 700; font-size: 12px; display: flex; align-items: center; gap: 4px; }
     .event-lote { font-weight: 600; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .event-details { color: #64748b; font-size: 10px; }
     
@@ -72,39 +72,48 @@ if ($nextMes > 12) {
         </div>
     </div>
 
-    <!-- Pestañas secundarias -->
-    <div class="tabs-container" style="display: flex; gap: 10px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 25px;">
-        <a href="/Cycsa/publico/operaciones" class="tab-link" style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 14px; background-color: #f1f5f9; color: #475569; transition: background 0.2s;"><i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> Lista de Operaciones</a>
-        <a href="/Cycsa/publico/operaciones/calendario" class="tab-link" style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; background-color: var(--cycsa-azul); color: white;"><i class="fa-solid fa-calendar-days" style="margin-right: 6px;"></i> Calendario de Operaciones</a>
-    </div>
+    <!-- Pestañas LIMS Principales -->
+    <ul class="nav nav-pills mb-4 gap-2">
+        <li class="nav-item">
+            <a class="nav-link text-secondary fw-semibold bg-light border" href="/Cycsa/publico/operaciones" style="font-size: 13.5px; padding: 9px 18px;">
+                <i class="fa-solid fa-receipt me-1"></i> Lista de Operaciones
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link active fw-bold" href="/Cycsa/publico/operaciones/calendario" style="background-color: var(--cycsa-azul, #103487); font-size: 13.5px; padding: 9px 18px;">
+                <i class="fa-solid fa-calendar-days me-1"></i> Calendario de Rupturas y Muestreos
+            </a>
+        </li>
+    </ul>
 
-    <!-- Leyenda de colores y estados -->
-    <div class="calendario-legend">
-        <div class="legend-item">
-            <span style="display: inline-block; width: 12px; height: 12px; background-color: #fef2f2; border: 1px solid #fecaca; border-left: 3px solid #ef4444; border-radius: 3px;"></span>
-            <span>Ruptura Programada</span>
+    <!-- Leyenda de colores y estados agrupada -->
+    <div class="calendario-legend d-flex flex-wrap align-items-center justify-content-between p-3 mb-4 rounded border bg-light" style="font-size: 13px; gap: 16px;">
+        <!-- GRUPO RUPTURAS -->
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-uppercase fw-bold text-secondary" style="font-size: 11.5px; letter-spacing: 0.5px;">Rupturas en Lab:</span>
+            <div class="legend-item d-flex align-items-center gap-2">
+                <span style="display: inline-block; width: 14px; height: 14px; background-color: #fef2f2; border: 1.5px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 3px;"></span>
+                <span class="fw-semibold text-dark">Programada</span>
+            </div>
+            <div class="legend-item d-flex align-items-center gap-2">
+                <span style="display: inline-block; width: 14px; height: 14px; background-color: #f0fdf4; border: 1.5px solid #bbf7d0; border-left: 4px solid #22c55e; border-radius: 3px;"></span>
+                <span class="fw-semibold text-dark">Completada</span>
+            </div>
         </div>
-        <div class="legend-item">
-            <span style="display: inline-block; width: 12px; height: 12px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 3px solid #22c55e; border-radius: 3px;"></span>
-            <span>Ruptura Completada</span>
-        </div>
-        <div style="width: 1px; background: #e2e8f0; align-self: stretch; margin: 0 5px;"></div>
-        <div class="legend-item">
-            <span style="display: inline-block; width: 12px; height: 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-left: 3px solid #3b82f6; border-radius: 3px;"></span>
-            <span>Muestreo Programado</span>
-        </div>
-        <div class="legend-item">
-            <span style="display: inline-block; width: 12px; height: 12px; background-color: #faf5ff; border: 1px solid #e9d5ff; border-left: 3px solid #a855f7; border-radius: 3px;"></span>
-            <span>Muestreo Ejecutado</span>
-        </div>
-        <div style="width: 1px; background: #e2e8f0; align-self: stretch; margin: 0 5px;"></div>
-        <div class="legend-item">
-            <span class="event-status-dot status-Programado"></span>
-            <span>Programado</span>
-        </div>
-        <div class="legend-item">
-            <span class="event-status-dot status-Completado"></span>
-            <span>Completado</span>
+
+        <div class="vr d-none d-md-block" style="height: 24px;"></div>
+
+        <!-- GRUPO MUESTREOS -->
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-uppercase fw-bold text-secondary" style="font-size: 11.5px; letter-spacing: 0.5px;">Muestreos en Campo:</span>
+            <div class="legend-item d-flex align-items-center gap-2">
+                <span style="display: inline-block; width: 14px; height: 14px; background-color: #eff6ff; border: 1.5px solid #bfdbfe; border-left: 4px solid #3b82f6; border-radius: 3px;"></span>
+                <span class="fw-semibold text-dark">Programado</span>
+            </div>
+            <div class="legend-item d-flex align-items-center gap-2">
+                <span style="display: inline-block; width: 14px; height: 14px; background-color: #faf5ff; border: 1.5px solid #e9d5ff; border-left: 4px solid #a855f7; border-radius: 3px;"></span>
+                <span class="fw-semibold text-dark">Ejecutado</span>
+            </div>
         </div>
     </div>
 
