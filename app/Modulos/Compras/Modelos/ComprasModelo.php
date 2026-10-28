@@ -14,6 +14,14 @@ class ComprasModelo extends ModeloBase {
         } else {
             parent::__construct();
         }
+        try {
+            $check = $this->db->query("SHOW TABLES LIKE 'proveedores'")->fetchAll(PDO::FETCH_COLUMN);
+            if (empty($check)) {
+                \Cycsa\Modulos\Configuracion\Servicios\MigradorServicio::asegurarTablas($this->db);
+            }
+        } catch (Throwable $e) {
+            error_log("Auto-migracion ComprasModelo: " . $e->getMessage());
+        }
     }
 
     // =========================================================================

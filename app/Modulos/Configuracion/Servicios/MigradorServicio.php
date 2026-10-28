@@ -91,7 +91,8 @@ class MigradorServicio {
             // FASE 6: Migración 012 - Compras, Inventario y Maestro Proveedores
             // =========================================================================
             $tablasProv = $db->query("SHOW TABLES LIKE 'proveedores'")->fetchAll(PDO::FETCH_COLUMN);
-            if (empty($tablasProv)) {
+            $tablasInv = $db->query("SHOW TABLES LIKE 'inventario_insumos'")->fetchAll(PDO::FETCH_COLUMN);
+            if (empty($tablasProv) || empty($tablasInv)) {
                 $ruta012 = dirname(__DIR__, 4) . '/database/migrations/012_compras_inventario_proveedores.php';
                 if (file_exists($ruta012)) {
                     ob_start();

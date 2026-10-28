@@ -24,6 +24,15 @@ if (!isset($db) || !($db instanceof PDO)) {
 
 echo "--- Iniciando Migración 012: Compras, Inventario y Maestro Proveedores ---\n";
 
+if (!function_exists('asegurarColumna012')) {
+    function asegurarColumna012(PDO $db, string $tabla, string $columna, string $definicion): void {
+        $stmt = $db->query("SHOW COLUMNS FROM `{$tabla}` LIKE '{$columna}'");
+        if (!$stmt->fetch()) {
+            $db->exec("ALTER TABLE `{$tabla}` ADD COLUMN `{$columna}` {$definicion}");
+        }
+    }
+}
+
 if (!function_exists('asegurarIndice012')) {
     function asegurarIndice012(PDO $db, string $tabla, string $nombreIndice, string $columnas): void {
         $stmt = $db->query("SHOW INDEX FROM `{$tabla}` WHERE Key_name = '{$nombreIndice}'");
@@ -73,15 +82,12 @@ CREATE TABLE IF NOT EXISTS `ordenes_compra` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ");
 
-$db->exec("
-ALTER TABLE `ordenes_compra`
-  ADD COLUMN IF NOT EXISTS `proveedor_id` INT NULL,
-  ADD COLUMN IF NOT EXISTS `subtotal` DECIMAL(12,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS `iva` DECIMAL(12,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS `total` DECIMAL(12,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS `aprobado_por` INT NULL,
-  ADD COLUMN IF NOT EXISTS `fecha_aprobacion` DATETIME NULL;
-");
+asegurarColumna012($db, 'ordenes_compra', 'proveedor_id', 'INT NULL');
+asegurarColumna012($db, 'ordenes_compra', 'subtotal', 'DECIMAL(12,2) DEFAULT 0');
+asegurarColumna012($db, 'ordenes_compra', 'iva', 'DECIMAL(12,2) DEFAULT 0');
+asegurarColumna012($db, 'ordenes_compra', 'total', 'DECIMAL(12,2) DEFAULT 0');
+asegurarColumna012($db, 'ordenes_compra', 'aprobado_por', 'INT NULL');
+asegurarColumna012($db, 'ordenes_compra', 'fecha_aprobacion', 'DATETIME NULL');
 asegurarIndice012($db, 'ordenes_compra', 'idx_oc_proveedor_id', '`proveedor_id`');
 asegurarIndice012($db, 'ordenes_compra', 'idx_oc_estado', '`estado`');
 echo "[OK] Tabla ordenes_compra y columnas verificadas.\n";
@@ -161,12 +167,9 @@ CREATE TABLE IF NOT EXISTS `inventario_insumos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ");
 
-$db->exec("
-ALTER TABLE `inventario_insumos`
-  ADD COLUMN IF NOT EXISTS `cuenta_inventario_id` INT NULL,
-  ADD COLUMN IF NOT EXISTS `stock_minimo` DECIMAL(10,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS `unidad_medida` VARCHAR(50) DEFAULT 'unidad';
-");
+asegurarColumna012($db, 'inventario_insumos', 'cuenta_inventario_id', 'INT NULL');
+asegurarColumna012($db, 'inventario_insumos', 'stock_minimo', 'DECIMAL(10,2) DEFAULT 0');
+asegurarColumna012($db, 'inventario_insumos', 'unidad_medida', "VARCHAR(50) DEFAULT 'unidad'");
 asegurarIndice012($db, 'inventario_insumos', 'idx_inv_cuenta', '`cuenta_inventario_id`');
 echo "[OK] Tabla inventario_insumos y columnas verificadas.\n";
 

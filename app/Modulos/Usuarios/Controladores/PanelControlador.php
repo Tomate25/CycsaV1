@@ -18,6 +18,14 @@ class PanelControlador extends ControladorBase {
         }
 
         $esAdmin = (($_SESSION['usuario_rol'] ?? 0) == 1);
+        if ($esAdmin) {
+            try {
+                $db = Conexion::obtenerInstancia();
+                \Cycsa\Modulos\Configuracion\Servicios\MigradorServicio::asegurarTablas($db);
+            } catch (\Throwable $e) {
+                error_log("PanelControlador asegurarTablas: " . $e->getMessage());
+            }
+        }
         
         // Construir cajón de aplicaciones según los permisos del usuario
         $cajon_aplicaciones = [];

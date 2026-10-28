@@ -101,9 +101,10 @@ class RoturasP1Test extends TestCase {
             $this->modelo->registrarRotura([
                 'especimen_id' => $esp['id'],
                 'plan_edad_id' => $edadId,
-                'fecha_real' => date('Y-m-d H:i:s'),
+                'fecha_real' => date('Y-m-d 08:00:00'),
                 'carga' => 85000,
-                'area' => 28.274
+                'area' => 28.274,
+                'justificacion' => 'Ensayo de prueba en fecha programada'
             ], $this->adminUserId);
         }
 

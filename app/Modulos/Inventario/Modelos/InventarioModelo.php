@@ -12,6 +12,18 @@ use Exception;
  */
 class InventarioModelo extends ModeloBase {
 
+    public function __construct() {
+        parent::__construct();
+        try {
+            $check = $this->db->query("SHOW TABLES LIKE 'inventario_insumos'")->fetchAll(PDO::FETCH_COLUMN);
+            if (empty($check)) {
+                \Cycsa\Modulos\Configuracion\Servicios\MigradorServicio::asegurarTablas($this->db);
+            }
+        } catch (\Throwable $e) {
+            error_log("Auto-migracion InventarioModelo: " . $e->getMessage());
+        }
+    }
+
     /**
      * Lista de insumos con saldo total acumulado de lotes activos, stock_minimo y bandera alerta_stock_minimo (saldo <= stock_minimo).
      *
