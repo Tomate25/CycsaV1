@@ -2082,7 +2082,21 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $obs = !empty($detalle['observaciones']) ? htmlspecialchars($detalle['observaciones'], ENT_QUOTES, 'UTF-8') : 'Ensayos ejecutados bajo condiciones ambientales y parámetros establecidos en la norma técnica correspondiente. Equipos con calibración trazable vigente.';
 
     $datosParaCodigo = !empty($resultados) ? $resultados : (!empty($muestrasSeteadas) ? $muestrasSeteadas : ($detalle['resultados_json'] ?? []));
+    $decMatriz = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+    $reemision = $decMatriz['reemision'] ?? [];
+    $versionActual = (int)($decMatriz['version_actual'] ?? 1);
+    $sustituyeA = $reemision['sustituye_a'] ?? null;
+    $motivoReemision = $reemision['motivo'] ?? null;
+
     $codigoInformeConsecutivo = htmlspecialchars(generarCodigoInformeEnsayo($datosParaCodigo, $metaOficial['fecha_muestreo'] ?? ($metaOficial['fecha_ingreso'] ?? null), $metaOficial['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? '')), ENT_QUOTES, 'UTF-8');
+    if ($versionActual > 1 && !empty($sustituyeA)) {
+        $codigoInformeConsecutivo .= '-' . ($versionActual - 1);
+    }
+
+    $bannerSustituyeHtml = '';
+    if (!empty($sustituyeA)) {
+        $bannerSustituyeHtml = '<div style="font-size: 8px; font-weight: bold; color: #b91c1c; background: #fee2e2; border: 1px solid #f87171; padding: 2px 6px; margin-top: 2px; border-radius: 3px; display: inline-block;">SUSTITUYE AL INFORME: ' . htmlspecialchars($sustituyeA, ENT_QUOTES, 'UTF-8') . ' (Motivo: ' . htmlspecialchars($motivoReemision, ENT_QUOTES, 'UTF-8') . ')</div>';
+    }
 
     if (empty($resultados) && !empty($muestrasSeteadas)) {
         foreach ($muestrasSeteadas as $ms) {
@@ -2279,6 +2293,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             <td style="text-align: center; vertical-align: middle;">
                 <div style="font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">{$tituloInforme}</div>
                 <div style="font-family: 'Courier New', Courier, monospace; font-size: 11px; font-weight: bold; color: #103487; letter-spacing: 0.5px; margin-top: 2px; margin-bottom: 2px;">{$codigoInformeConsecutivo}</div>
+                {$bannerSustituyeHtml}
                 <div style="font-size: 8.5px; font-weight: bold; color: #475569; margin-top: 1px;">{$subtituloLaboratorio} &bull; O/S: {$codigoOS}</div>
                 <div style="font-size: 7.5px; color: #475569;">Norma técnica: {$normaOficial}</div>
             </td>

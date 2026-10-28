@@ -1062,17 +1062,36 @@ class RoturasModelo {
             // 4. Insertar el nuevo informe con tipo = 'parcial', muestra_id, plan_edad_id, nuevo numero, version N+1, estado = 'en_revision'
             $tipoNuevo = ($informeActual['tipo'] === 'consolidado') ? 'consolidado' : 'parcial';
             $stmtInsert = $this->db->prepare("
-                INSERT INTO informes_rotura (tipo, muestra_id, plan_edad_id, numero, version, estado)
-                VALUES (:tipo, :muestra_id, :plan_edad_id, :numero, :version, 'en_revision')
+                INSERT INTO informes_rotura (tipo, muestra_id, plan_edad_id, numero, version, estado, sustituye_a)
+                VALUES (:tipo, :muestra_id, :plan_edad_id, :numero, :version, 'en_revision', :sustituye_a)
             ");
             $stmtInsert->execute([
                 'tipo' => $tipoNuevo,
                 'muestra_id' => $muestraId,
                 'plan_edad_id' => $planEdadId,
                 'numero' => $nuevoNumero,
-                'version' => $nuevaVersion
+                'version' => $nuevaVersion,
+                'sustituye_a' => $informeActual['numero']
             ]);
             $nuevoInformeId = (int)$this->db->lastInsertId();
+
+            // Registrar en documentos_reemisiones (Fase B TAREA-059)
+            try {
+                $stmtReem = $this->db->prepare("
+                    INSERT INTO documentos_reemisiones (tipo_documento, documento_base_id, version, codigo_version, sustituye_a, tipo_correccion, motivo, estado, solicitado_por)
+                    VALUES ('informe_rotura', :base_id, :version, :codigo, :sustituye, 'tecnica', :motivo, 'en_revision', :usuario_id)
+                ");
+                $stmtReem->execute([
+                    'base_id' => $nuevoInformeId,
+                    'version' => $nuevaVersion,
+                    'codigo' => $nuevoNumero,
+                    'sustituye' => $informeActual['numero'],
+                    'motivo' => $motivo,
+                    'usuario_id' => $usuarioId
+                ]);
+            } catch (\Exception $e) {
+                error_log('Error registrando en documentos_reemisiones: ' . $e->getMessage());
+            }
 
             // 5. Si la muestra ya contaba con un informe 'consolidado', invalidar dicho consolidado
             $stmtCons = $this->db->prepare("

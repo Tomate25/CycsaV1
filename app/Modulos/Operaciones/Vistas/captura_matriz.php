@@ -405,11 +405,11 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         $ccMatrizInfo = obtenerEstadoControlCalidadMatriz($detalle['resultados_json'] ?? '');
         if ($ccMatrizInfo['tiene_replicas']): 
         ?>
-            <!-- CHIP ESTADO CONTROL DE CALIDAD DE R蒔LICAS -->
+            <!-- CHIP ESTADO CONTROL DE CALIDAD DE R脡PLICAS -->
             <a href="/Cycsa/publico/control-calidad/ver?id_detalle=<?= $idDetalle ?>" 
                class="badge text-decoration-none <?= $ccMatrizInfo['badge_clase'] ?>" 
                style="font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" 
-               title="Ver dictamen anal韙ico en Control de Calidad: <?= htmlspecialchars($ccMatrizInfo['motivo_bloqueo'] ?? 'Todas las r閜licas conformes') ?>">
+               title="Ver dictamen anal铆tico en Control de Calidad: <?= htmlspecialchars($ccMatrizInfo['motivo_bloqueo'] ?? 'Todas las r茅plicas conformes') ?>">
                 <i class="fa-solid fa-microscope"></i> <?= htmlspecialchars($ccMatrizInfo['estado_label']) ?>
             </a>
         <?php endif; ?>
@@ -421,11 +421,14 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         <i class="fa-solid fa-lock"></i> Aprobar Matriz
                     </button>
                 <?php else: ?>
-                    <button type="button" onclick="abrirModalAprobarEnMatriz()" class="btn-matriz-secondary" style="background: #ecfdf5; color: #047857; border: 1.5px solid #a7f3d0; font-weight: 700; cursor: pointer; height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;" title="Aprobar t閏nicamente los resultados y c醠culos de este ensayo">
+                    <button type="button" onclick="abrirModalAprobarEnMatriz()" class="btn-matriz-secondary" style="background: #ecfdf5; color: #047857; border: 1.5px solid #a7f3d0; font-weight: 700; cursor: pointer; height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;" title="Aprobar t茅cnicamente los resultados y c谩lculos de este ensayo">
                         <i class="fa-solid fa-circle-check"></i> Aprobar Matriz
                     </button>
                 <?php endif; ?>
-                    <i class="fa-solid fa-circle-check"></i> Aprobar Matriz
+            <?php else: ?>
+                <!-- BOT脫N CORRECCI脫N ADMINISTRATIVA (FASE B) -->
+                <button type="button" onclick="abrirModalCorreccionAdmin()" class="btn-matriz-secondary" style="background:#fffbeb; color:#b45309; border:1.5px solid #fde68a; font-weight:700; cursor:pointer; height:38px; padding:0 16px; display:inline-flex; align-items:center; gap:6px; border-radius:6px;" title="Solicitar correcci贸n administrativa de datos (cliente, proyecto, etc.) emitiendo una nueva versi贸n que sustituye a esta">
+                    <i class="fa-solid fa-pen-ruler"></i> Solicitar Correcci贸n Admin
                 </button>
             <?php endif; ?>
             <?php if ($revisionInfo['estado'] !== 'devuelta' && $revisionInfo['estado'] !== 'aprobada'): ?>
@@ -1974,4 +1977,78 @@ window.addEventListener('click', (e) => {
     if (modDev && e.target === modDev) cerrarModalDevolverEnMatriz();
 });
 </script>
+
+<!-- Modal Correcci贸n Administrativa (Fase B TAREA-059) -->
+<div id="modalCorreccionAdmin" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; backdrop-filter:blur(3px);">
+    <div style="background:white; border-radius:12px; max-width:540px; margin:60px auto; padding:24px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.15); border:1px solid #e2e8f0; font-family:inherit;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+            <h3 style="margin:0; color:#1e293b; font-size:17px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-pen-ruler" style="color:#d97706;"></i> Solicitar Correcci贸n Administrativa
+            </h3>
+            <button type="button" onclick="cerrarModalCorreccionAdmin()" style="background:none; border:none; font-size:20px; color:#94a3b8; cursor:pointer;">&times;</button>
+        </div>
+        <form method="POST" action="/Cycsa/publico/operaciones/solicitar-correccion-admin">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="id_detalle" value="<?= (int)$detalle['id'] ?>">
+
+            <div style="background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:10px 14px; border-radius:8px; font-size:12.5px; margin-bottom:14px; line-height:1.4;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Se emitir谩 la <strong>Versi贸n <?= $versionActualNum + 1 ?></strong> que sustituir谩 a la versi贸n actual. La matriz pasar谩 a <strong>PENDIENTE DE REVISI脫N</strong> para su re-aprobaci贸n formal. Los datos t茅cnicos de ensayos no se alteran.
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12.5px; font-weight:700; color:#334155; margin-bottom:4px;">
+                    Motivo obligatorio de la correcci贸n: <span style="color:#dc2626;">*</span>
+                </label>
+                <textarea name="motivo_correccion" rows="2" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:13px; font-family:inherit; box-sizing:border-box;" placeholder="Ej. Correcci贸n de raz贸n social por solicitud formal del cliente..." required></textarea>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12.5px; font-weight:700; color:#334155; margin-bottom:4px;">
+                    Nombre o Raz贸n Social (para el informe):
+                </label>
+                <input type="text" name="cliente_nombre" value="<?= htmlspecialchars($metadatos['cliente_nombre'] ?? '') ?>" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:13px; box-sizing:border-box;">
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12.5px; font-weight:700; color:#334155; margin-bottom:4px;">
+                    Proyecto:
+                </label>
+                <input type="text" name="nombre_proyecto" value="<?= htmlspecialchars($metadatos['proyecto'] ?? '') ?>" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:13px; box-sizing:border-box;">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Ubicaci贸n:</label>
+                    <input type="text" name="ubicacion" value="<?= htmlspecialchars($metadatos['ubicacion'] ?? '') ?>" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:13px; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Atenci贸n a:</label>
+                    <input type="text" name="atencion_a" value="<?= htmlspecialchars($metadatos['atencion_a'] ?? '') ?>" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:13px; box-sizing:border-box;">
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" onclick="cerrarModalCorreccionAdmin()" class="btn-matriz-secondary" style="height:36px; padding:0 14px;">Cancelar</button>
+                <button type="submit" class="btn-matriz-primary" style="background:#d97706; border-color:#b45309; height:36px; padding:0 16px;">
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar y Emitir Versi贸n <?= $versionActualNum + 1 ?>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirModalCorreccionAdmin() {
+    document.getElementById('modalCorreccionAdmin').style.display = 'block';
+}
+function cerrarModalCorreccionAdmin() {
+    document.getElementById('modalCorreccionAdmin').style.display = 'none';
+}
+window.addEventListener('click', function(e) {
+    const modCorr = document.getElementById('modalCorreccionAdmin');
+    if (modCorr && e.target === modCorr) cerrarModalCorreccionAdmin();
+});
+</script>
+
 <?php endif; ?>

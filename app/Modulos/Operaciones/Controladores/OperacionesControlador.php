@@ -2309,6 +2309,198 @@ class OperacionesControlador extends ControladorBase {
     }
 
     /**
+     * Solicita una corrección administrativa para una matriz técnica ya aprobada (Fase B TAREA-059).
+     * Emite una nueva versión correlativa BASE-N que sustituye a la previa y pasa a estado 'en_revision'.
+     */
+    public function solicitarCorreccionAdminPOST(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        // Roles autorizados: 1: Superadmin, 2: Administrador, 3: Supervisor
+        if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 2, 3])) {
+            $_SESSION['error'] = 'No tiene permisos de supervisión para solicitar correcciones administrativas.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $idDetalle = (int)($datos['id_detalle'] ?? 0);
+            $motivo = trim($datos['motivo_correccion'] ?? ($datos['motivo'] ?? ''));
+
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            if ($idDetalle <= 0) {
+                $_SESSION['error'] = 'Detalle de ensayo inválido.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            if (empty($motivo)) {
+                $_SESSION['error'] = 'Debe especificar el motivo obligatorio de la corrección administrativa.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $idDetalle);
+                return;
+            }
+
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmt = $db->prepare("SELECT cd.*, os.codigo_os, os.id AS id_os 
+                                  FROM cotizacion_detalles cd
+                                  JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+                                  WHERE cd.id = :id LIMIT 1");
+            $stmt->execute(['id' => $idDetalle]);
+            $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$detalle) {
+                $_SESSION['error'] = 'Ensayo no encontrado.';
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
+            $decoded = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+            $filas = isset($decoded['filas']) ? $decoded['filas'] : (isset($decoded[0]) ? $decoded : []);
+            $metadatos = $decoded['metadatos'] ?? [];
+            $revision = isset($decoded['revision']) && is_array($decoded['revision']) ? $decoded['revision'] : [];
+            $historial = $revision['historial'] ?? [];
+            $versiones = isset($decoded['versiones']) && is_array($decoded['versiones']) ? $decoded['versiones'] : [];
+            $versionActual = (int)($decoded['version_actual'] ?? 1);
+
+            $usuarioSesion = $_SESSION['usuario_nombre'] ?? 'Supervisor';
+            $usuarioIdSesion = (int)($_SESSION['usuario_id'] ?? 0);
+            $fechaActual = date('Y-m-d H:i:s');
+
+            $codigoBase = generarCodigoInformeEnsayo(
+                $filas,
+                $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null),
+                $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? '')
+            );
+            $codigoPrevio = ($versionActual > 1) ? "{$codigoBase}-" . ($versionActual - 1) : $codigoBase;
+            $nuevaVersionActual = $versionActual + 1;
+            $nuevoCodigoVersion = "{$codigoBase}-" . ($nuevaVersionActual - 1);
+
+            // 1. Archivar versión previa como anulada/sustituida en el historial
+            $versiones[] = [
+                'version' => $versionActual,
+                'codigo_documento' => $codigoPrevio,
+                'fecha' => $fechaActual,
+                'estado' => 'anulada',
+                'sustituida_por_version' => $nuevaVersionActual,
+                'motivo_reemision' => $motivo,
+                'tipo_correccion' => 'administrativa',
+                'usuario_anulo' => $usuarioSesion,
+                'usuario_anulo_id' => $usuarioIdSesion,
+                'filas' => $filas,
+                'metadatos' => $metadatos
+            ];
+
+            // 2. Aplicar campos administrativos modificados
+            $camposModificados = [];
+            if (!empty($datos['cliente_nombre'])) {
+                $camposModificados['cliente_nombre'] = ['prev' => $metadatos['cliente_nombre'] ?? '', 'nuevo' => trim($datos['cliente_nombre'])];
+                $metadatos['cliente_nombre'] = trim($datos['cliente_nombre']);
+            }
+            if (!empty($datos['nombre_proyecto'])) {
+                $camposModificados['proyecto'] = ['prev' => $metadatos['proyecto'] ?? '', 'nuevo' => trim($datos['nombre_proyecto'])];
+                $metadatos['proyecto'] = trim($datos['nombre_proyecto']);
+            }
+            if (isset($datos['ubicacion'])) {
+                $camposModificados['ubicacion'] = ['prev' => $metadatos['ubicacion'] ?? '', 'nuevo' => trim($datos['ubicacion'])];
+                $metadatos['ubicacion'] = trim($datos['ubicacion']);
+            }
+            if (isset($datos['identificacion'])) {
+                $camposModificados['identificacion'] = ['prev' => $metadatos['identificacion'] ?? '', 'nuevo' => trim($datos['identificacion'])];
+                $metadatos['identificacion'] = trim($datos['identificacion']);
+            }
+            if (isset($datos['atencion_a'])) {
+                $camposModificados['atencion_a'] = ['prev' => $metadatos['atencion_a'] ?? '', 'nuevo' => trim($datos['atencion_a'])];
+                $metadatos['atencion_a'] = trim($datos['atencion_a']);
+            }
+
+            // 3. Pasar a estado 'en_revision' para exigir re-aprobación obligatoria
+            $historial[] = [
+                'accion' => 'correccion_administrativa',
+                'version' => $nuevaVersionActual,
+                'fecha' => $fechaActual,
+                'usuario' => $usuarioSesion,
+                'usuario_id' => $usuarioIdSesion,
+                'motivo' => $motivo,
+                'sustituye_a' => $codigoPrevio
+            ];
+
+            $revision['estado'] = 'en_revision';
+            $revision['fecha_envio'] = $fechaActual;
+            $revision['usuario_envio'] = $usuarioSesion;
+            $revision['usuario_envio_id'] = $usuarioIdSesion;
+            $revision['fecha_revision'] = null;
+            $revision['usuario_revisor'] = null;
+            $revision['usuario_revisor_id'] = null;
+            $revision['nota_aprobacion'] = null;
+            $revision['historial'] = $historial;
+
+            $reemisionInfo = [
+                'version' => $nuevaVersionActual,
+                'codigo_version' => $nuevoCodigoVersion,
+                'sustituye_a' => $codigoPrevio,
+                'tipo_correccion' => 'administrativa',
+                'motivo' => $motivo,
+                'fecha' => $fechaActual,
+                'solicitado_por' => $usuarioSesion,
+                'solicitado_por_id' => $usuarioIdSesion,
+                'campos_modificados' => $camposModificados
+            ];
+
+            $payload = [
+                'version_actual' => $nuevaVersionActual,
+                'filas' => $filas,
+                'metadatos' => $metadatos,
+                'revision' => $revision,
+                'versiones' => $versiones,
+                'reemision' => $reemisionInfo,
+                'control_calidad' => $decoded['control_calidad'] ?? [],
+                'usuario_captura_id' => $decoded['usuario_captura_id'] ?? null,
+                'usuario_captura_nombre' => $decoded['usuario_captura_nombre'] ?? null
+            ];
+
+            $stmtUpdate = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+            $stmtUpdate->execute([
+                'json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                'id' => $idDetalle
+            ]);
+
+            // 4. Registrar en tabla documentos_reemisiones (Migración 021)
+            try {
+                $stmtReem = $db->prepare("
+                    INSERT INTO documentos_reemisiones (tipo_documento, documento_base_id, version, codigo_version, sustituye_a, tipo_correccion, motivo, campos_modificados_json, estado, solicitado_por)
+                    VALUES ('matriz_ensayo', :base_id, :version, :codigo, :sustituye, 'administrativa', :motivo, :campos, 'en_revision', :solicita)
+                ");
+                $stmtReem->execute([
+                    'base_id' => $idDetalle,
+                    'version' => $nuevaVersionActual,
+                    'codigo' => $nuevoCodigoVersion,
+                    'sustituye' => $codigoPrevio,
+                    'motivo' => $motivo,
+                    'campos' => json_encode($camposModificados, JSON_UNESCAPED_UNICODE),
+                    'solicita' => $usuarioIdSesion
+                ]);
+            } catch (\Exception $e) {
+                error_log('Error registrando en documentos_reemisiones: ' . $e->getMessage());
+            }
+
+            registrarBitacora(
+                'operaciones',
+                'correccion_administrativa',
+                "Corrección administrativa solicitada para '{$detalle['descripcion_ensayo']}' en O/S {$detalle['codigo_os']}. Nueva versión v{$nuevaVersionActual} ({$nuevoCodigoVersion}) sustituye a {$codigoPrevio}. Motivo: {$motivo}",
+                $detalle['id_os']
+            );
+
+            $_SESSION['exito'] = "Corrección administrativa registrada como Versión {$nuevaVersionActual} ({$nuevoCodigoVersion}), sustituyendo al informe {$codigoPrevio}. La matriz se encuentra en estado PENDIENTE DE REVISIÓN para su re-aprobación formal.";
+            $respuesta->redirigir('/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $idDetalle);
+        }
+    }
+
+    /**
      * Cierra y archiva formalmente una Orden de Servicio (Doble validación: 100% Técnico + 100% Comercial).
      */
     public function cerrarOperacion(Peticion $peticion, Respuesta $respuesta): void {

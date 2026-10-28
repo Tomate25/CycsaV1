@@ -121,7 +121,15 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
 }
 
 $datosParaCodigo = !empty($resultados) ? $resultados : (!empty($muestrasSeteadas) ? $muestrasSeteadas : ($detalle['resultados_json'] ?? []));
+$reemision = $dec['reemision'] ?? [];
+$versionActualNum = (int)($dec['version_actual'] ?? 1);
+$sustituyeA = $reemision['sustituye_a'] ?? null;
+$motivoReemision = $reemision['motivo'] ?? null;
+
 $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null), $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''));
+if ($versionActualNum > 1 && !empty($sustituyeA)) {
+    $codigoInformeConsecutivo .= '-' . ($versionActualNum - 1);
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -569,6 +577,11 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 <div class="codigo-informe-consecutivo" style="font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; font-weight: 800; color: #103487; letter-spacing: 0.8px; margin-top: 2px; margin-bottom: 2px;">
                     <?= htmlspecialchars($codigoInformeConsecutivo) ?>
                 </div>
+                <?php if (!empty($sustituyeA)): ?>
+                    <div style="font-size: 8.5px; font-weight: bold; color: #b91c1c; background: #fee2e2; border: 1px solid #f87171; padding: 2px 6px; margin-top: 2px; margin-bottom: 3px; border-radius: 3px; display: inline-block;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> SUSTITUYE AL INFORME: <?= htmlspecialchars($sustituyeA) ?> (Motivo: <?= htmlspecialchars($motivoReemision) ?>)
+                    </div>
+                <?php endif; ?>
                 <div class="subtitulo-doc" style="font-size: 9px; font-weight: 600; color: #475569; margin-top: 1px;"><?= htmlspecialchars($subtituloLaboratorio) ?> &bull; Orden de Servicio: <strong style="color: #103487; font-family: monospace;"><?= htmlspecialchars($detalle['codigo_os']) ?></strong></div>
                 <div class="subtitulo-doc" style="font-size: 8px;">Norma técnica: <?= htmlspecialchars($normaOficial) ?></div>
             </div>

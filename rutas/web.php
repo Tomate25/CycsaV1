@@ -205,6 +205,7 @@ $app->enrutador->get('/operaciones/enviar-matriz-cliente', [OperacionesControlad
 $app->enrutador->post('/operaciones/guardar-matriz-producto', [OperacionesControlador::class, 'guardarMatrizProductoPOST'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/aprobar-matriz-producto', [OperacionesControlador::class, 'aprobarMatrizProducto'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/devolver-matriz-producto', [OperacionesControlador::class, 'devolverMatrizProducto'], [AuthMiddleware::class]);
+$app->enrutador->post('/operaciones/solicitar-correccion-admin', [OperacionesControlador::class, 'solicitarCorreccionAdminPOST'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/guardar-hoja-campo', [OperacionesControlador::class, 'guardarHojaCampo'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/subir-logo-acreditacion', [OperacionesControlador::class, 'subirLogoAcreditacionAjax'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/eliminar-logo-acreditacion', [OperacionesControlador::class, 'eliminarLogoAcreditacionAjax'], [AuthMiddleware::class]);

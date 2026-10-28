@@ -1,5 +1,5 @@
 <?php
-// Laboratorio Detalle Muestra - Programa de Roturas Periódicas e Imparcialidad ISO 17025
+// Laboratorio Detalle Muestra - Programa de Roturas PeriÃ³dicas e Imparcialidad ISO 17025
 $totalEspecimenes = count($especimenes ?? []);
 $totalEnsayados = 0;
 foreach (($especimenes ?? []) as $esp) {
@@ -67,9 +67,9 @@ $puedeEditarPlan = ($totalEnsayados === 0);
 <!-- Encabezado Ciego -->
 <div class="header-flex" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
     <div>
-        <h2 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800;">Hoja de Trabajo Ciega &bull; Ensayo de Compresión</h2>
+        <h2 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800;">Hoja de Trabajo Ciega &bull; Ensayo de CompresiÃ³n</h2>
         <p style="color: #64748b; margin-top: 4px; font-size: 13.5px;">
-            Código de Laboratorio: <strong style="color: #0369a1; font-family: monospace; font-size: 15px;"><?= htmlspecialchars($muestra['codigo_lab']) ?></strong>
+            CÃ³digo de Laboratorio: <strong style="color: #0369a1; font-family: monospace; font-size: 15px;"><?= htmlspecialchars($muestra['codigo_lab']) ?></strong>
             <?php if (!empty($muestra['codigo_campo'])): ?>
                 | Campo: <strong style="color: #475569; font-family: monospace;"><?= htmlspecialchars($muestra['codigo_campo']) ?></strong>
             <?php endif; ?>
@@ -79,7 +79,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
         <a href="/Cycsa/publico/laboratorio" class="btn-accion btn-secondary-lab"><i class="fa-solid fa-arrow-left"></i> Volver a Bandeja</a>
         <?php if ($puedeReidentificar): ?>
             <button type="button" class="btn-accion btn-warning-lab" onclick="abrirModalReidentificar('<?= htmlspecialchars($muestra['codigo_lab']) ?>', <?= (int)$muestra['muestra_id'] ?>)">
-                <i class="fa-solid fa-shield-halved"></i> Reidentificar (Auditoría)
+                <i class="fa-solid fa-shield-halved"></i> Reidentificar (AuditorÃ­a)
             </button>
         <?php endif; ?>
     </div>
@@ -89,7 +89,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
 <div style="background-color: #fefce8; border: 1px solid #fef08a; color: #854d0e; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500;">
     <i class="fa-solid fa-eye-slash" style="font-size: 18px; color: #ca8a04;"></i>
     <div>
-        <strong>RESGUARDO DE IMPARCIALIDAD (ISO 17025 Cláusulas 4.1 y 4.2):</strong> En cumplimiento con la norma técnica, los datos comerciales, de clientes, obras y montos se encuentran aislados de esta vista.
+        <strong>RESGUARDO DE IMPARCIALIDAD (ISO 17025 ClÃ¡usulas 4.1 y 4.2):</strong> En cumplimiento con la norma tÃ©cnica, los datos comerciales, de clientes, obras y montos se encuentran aislados de esta vista.
     </div>
 </div>
 
@@ -105,10 +105,10 @@ $puedeEditarPlan = ($totalEnsayados === 0);
     </div>
 <?php endif; ?>
 
-<!-- 1. ESPECIFICACIONES TÉCNICAS DEL LOTE -->
+<!-- 1. ESPECIFICACIONES TÃCNICAS DEL LOTE -->
 <div class="lab-box">
     <h4 style="font-family:'Outfit'; font-size:15px; font-weight:700; color:var(--cycsa-azul); border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px;">
-        <i class="fa-solid fa-cube"></i> Datos Técnicos de la Muestra
+        <i class="fa-solid fa-cube"></i> Datos TÃ©cnicos de la Muestra
     </h4>
     <div class="grid-4">
         <div>
@@ -120,17 +120,17 @@ $puedeEditarPlan = ($totalEnsayados === 0);
             <strong style="color:#1e293b;"><?= htmlspecialchars(date('d/m/Y', strtotime($muestra['fecha_moldeo']))) ?></strong>
         </div>
         <div>
-            <span style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Resistencia Diseño (f'c):</span><br>
+            <span style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Resistencia DiseÃ±o (f'c):</span><br>
             <strong style="color:#0369a1; font-family:monospace;"><?= htmlspecialchars($muestra['diseno_resistencia'] ?: 'No especificada') ?></strong>
         </div>
         <div>
-            <span style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Fecha Recepción Lab:</span><br>
+            <span style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Fecha RecepciÃ³n Lab:</span><br>
             <strong style="color:#1e293b;"><?= htmlspecialchars(date('d/m/Y H:i', strtotime($muestra['fecha_ingreso']))) ?></strong>
         </div>
     </div>
     <div class="grid-3" style="margin-top: 15px;">
         <div>
-            <span style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Plantilla Técnica Vinculada:</span><br>
+            <span style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Plantilla TÃ©cnica Vinculada:</span><br>
             <span style="font-weight: 600;"><?= htmlspecialchars($muestra['plantilla_nombre'] ?: 'General') ?> (<?= htmlspecialchars($muestra['norma_referencia'] ?: 'ASTM C39') ?>)</span>
         </div>
         <div>
@@ -144,14 +144,14 @@ $puedeEditarPlan = ($totalEnsayados === 0);
     </div>
 </div>
 
-<!-- 2. PROGRAMA DE ROTURAS PERIÓDICAS -->
+<!-- 2. PROGRAMA DE ROTURAS PERIÃDICAS -->
 <div class="lab-box">
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
         <div>
             <h4 style="font-family:'Outfit'; font-size:15px; font-weight:700; color:var(--cycsa-azul); margin: 0;">
-                <i class="fa-solid fa-calendar-days"></i> Programa de Roturas Periódicas
+                <i class="fa-solid fa-calendar-days"></i> Programa de Roturas PeriÃ³dicas
             </h4>
-            <span style="font-size:12px; color:#64748b;">Especímenes Disponibles: <strong><?= $totalEspecimenes ?></strong> | Ensayados: <strong><?= $totalEnsayados ?></strong></span>
+            <span style="font-size:12px; color:#64748b;">EspecÃ­menes Disponibles: <strong><?= $totalEspecimenes ?></strong> | Ensayados: <strong><?= $totalEnsayados ?></strong></span>
         </div>
         <div>
             <?php if (!$planActivo): ?>
@@ -174,8 +174,8 @@ $puedeEditarPlan = ($totalEnsayados === 0);
         <table class="tabla-lab">
             <thead>
                 <tr>
-                    <th>Edad (Días)</th>
-                    <th>Especímenes Asignados</th>
+                    <th>Edad (DÃ­as)</th>
+                    <th>EspecÃ­menes Asignados</th>
                     <th>Fecha Programada</th>
                     <th>Tolerancia ASTM C39</th>
                     <th>Estado</th>
@@ -190,7 +190,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     $asignados = (int)$ed['especimenes_asignados'];
                 ?>
                 <tr>
-                    <td><strong style="color: #7c3aed; font-size: 14px;"><?= (int)$ed['edad_dias'] ?> días</strong></td>
+                    <td><strong style="color: #7c3aed; font-size: 14px;"><?= (int)$ed['edad_dias'] ?> dÃ­as</strong></td>
                     <td>
                         <strong style="color:#0f172a;"><?= $rotos ?> / <?= $asignados ?></strong> ensayados
                     </td>
@@ -215,7 +215,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                             <?php elseif ($ed['informe_parcial_estado'] === 'devuelto'): ?>
                                 <span class="badge-lab badge-devuelto">Devuelto</span>
                             <?php else: ?>
-                                <span class="badge-lab badge-revision">En Revisión</span>
+                                <span class="badge-lab badge-revision">En RevisiÃ³n</span>
                             <?php endif; ?>
                         <?php else: ?>
                             <span style="color:#94a3b8; font-style:italic;">Sin informe emitido</span>
@@ -232,7 +232,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                                 </button>
                             </form>
                         <?php elseif (!empty($ed['informe_parcial_id']) && ($rolUsuario === 1 || $rolUsuario === 3) && $ed['informe_parcial_estado'] === 'en_revision'): ?>
-                            <!-- Aprobación de Calidad -->
+                            <!-- AprobaciÃ³n de Calidad -->
                             <form method="POST" action="/Cycsa/publico/laboratorio/procesar-revision-informe" style="display:inline;">
                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                 <input type="hidden" name="informe_id" value="<?= (int)$ed['informe_parcial_id'] ?>">
@@ -254,7 +254,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
     <?php else: ?>
         <div style="text-align: center; padding: 30px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px;">
             <i class="fa-solid fa-calendar-xmark" style="font-size: 28px; color: #94a3b8; display: block; margin-bottom: 8px;"></i>
-            <span style="color: #64748b; font-weight: 600;">Esta muestra aún no tiene un Plan de Roturas definido.</span><br>
+            <span style="color: #64748b; font-weight: 600;">Esta muestra aÃºn no tiene un Plan de Roturas definido.</span><br>
             <button type="button" class="btn-accion btn-primary-lab" style="margin-top: 10px;" onclick="abrirModalConfigurarPlan()">
                 <i class="fa-solid fa-plus-circle"></i> Configurar Plan de Roturas Ahora
             </button>
@@ -262,11 +262,11 @@ $puedeEditarPlan = ($totalEnsayados === 0);
     <?php endif; ?>
 </div>
 
-<!-- 3. DETALLE DE PROBETAS / ESPECÍMENES -->
+<!-- 3. DETALLE DE PROBETAS / ESPECÃMENES -->
 <div class="lab-box">
     <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
         <h4 style="font-family:'Outfit'; font-size:15px; font-weight:700; color:var(--cycsa-azul); margin: 0;">
-            <i class="fa-solid fa-vial"></i> Especímenes y Registro de Ensayos
+            <i class="fa-solid fa-vial"></i> EspecÃ­menes y Registro de Ensayos
         </h4>
         <span style="font-size:12px; color:#64748b;">Ensayados: <?= $totalEnsayados ?> de <?= $totalEspecimenes ?></span>
     </div>
@@ -274,14 +274,14 @@ $puedeEditarPlan = ($totalEnsayados === 0);
     <table class="tabla-lab">
         <thead>
             <tr>
-                <th>Código Probeta</th>
+                <th>CÃ³digo Probeta</th>
                 <th>Dimensiones</th>
                 <th>Edad Asignada</th>
                 <th>Fecha Prog.</th>
                 <th>Carga</th>
-                <th>Área</th>
+                <th>Ãrea</th>
                 <th>Esfuerzo PSI</th>
-                <th>Esfuerzo kg/cm²</th>
+                <th>Esfuerzo kg/cmÂ²</th>
                 <th>% f'c</th>
                 <th>Falla</th>
                 <th>Estado</th>
@@ -299,7 +299,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                 <td><?= htmlspecialchars($esp['dimensiones'] ?: '15 x 30 cm') ?></td>
                 <td>
                     <?php if (!empty($esp['edad_dias'])): ?>
-                        <strong style="color: #7c3aed;"><?= (int)$esp['edad_dias'] ?> días</strong>
+                        <strong style="color: #7c3aed;"><?= (int)$esp['edad_dias'] ?> dÃ­as</strong>
                     <?php else: ?>
                         <span style="color: #94a3b8; font-style: italic;">Sin edad</span>
                     <?php endif; ?>
@@ -311,7 +311,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     <?= $ensayado ? '<strong>' . number_format((float)$esp['carga'], 1) . '</strong> lb' : '--' ?>
                 </td>
                 <td>
-                    <?= $ensayado ? number_format((float)$esp['area'], 3) . ' in²' : '--' ?>
+                    <?= $ensayado ? number_format((float)$esp['area'], 3) . ' inÂ²' : '--' ?>
                 </td>
                 <td style="font-family: monospace; font-weight: 700;">
                     <?= $ensayado ? number_format((float)$esp['esfuerzo_psi'], 1) : '--' ?>
@@ -397,6 +397,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                 <th>Estado Calidad</th>
                 <th>Aprobado Por</th>
                 <th>Observaciones / Devolución</th>
+                <th style="text-align: right;">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -411,19 +412,28 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                         <span class="badge-lab badge-aprobado"><i class="fa-solid fa-check"></i> Aprobado</span>
                     <?php elseif ($inf['estado'] === 'devuelto'): ?>
                         <span class="badge-lab badge-devuelto"><i class="fa-solid fa-xmark"></i> Devuelto</span>
+                    <?php elseif ($inf['estado'] === 'anulado'): ?>
+                        <span class="badge-lab badge-devuelto" style="background:#fee2e2; color:#991b1b;"><i class="fa-solid fa-ban"></i> Anulado (Sustituido)</span>
                     <?php else: ?>
                         <span class="badge-lab badge-revision"><i class="fa-solid fa-clock"></i> En Revisión</span>
                     <?php endif; ?>
                 </td>
                 <td><?= htmlspecialchars($inf['aprobado_por_nombre'] ?: 'Gerencia de Calidad') ?></td>
                 <td style="font-size: 12px; color: #64748b;">
-                    <?= htmlspecialchars($inf['motivo_devolucion'] ?: ($inf['observaciones'] ?: '--')) ?>
+                    <?= htmlspecialchars($inf['motivo_reemision'] ? ('Sustituido: ' . $inf['motivo_reemision']) : ($inf['motivo_devolucion'] ?: ($inf['observaciones'] ?: '--'))) ?>
+                </td>
+                <td style="text-align: right;">
+                    <?php if ($inf['estado'] === 'aprobado' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
+                        <button type="button" onclick="abrirModalReemitirInforme(<?= (int)$inf['id'] ?>, '<?= htmlspecialchars($inf['numero']) ?>')" class="btn-accion btn-warning-lab" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Reemitir informe oficial (N+1) según ISO/IEC 17025">
+                            <i class="fa-solid fa-arrows-rotate"></i> Reemitir
+                        </button>
+                    <?php endif; ?>
                 </td>
             </tr>
             <?php endforeach; ?>
             <?php if (empty($informes)): ?>
             <tr>
-                <td colspan="7" style="text-align: center; padding: 25px; color: #64748b;">No se han emitido informes para esta muestra aún.</td>
+                <td colspan="8" style="text-align: center; padding: 25px; color: #64748b;">No se han emitido informes para esta muestra aún.</td>
             </tr>
             <?php endif; ?>
         </tbody>
@@ -439,7 +449,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
     <div class="modal-lab-content">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
             <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--cycsa-azul);">
-                <i class="fa-solid fa-calendar-plus"></i> Configurar Plan de Roturas Periódicas
+                <i class="fa-solid fa-calendar-plus"></i> Configurar Plan de Roturas PeriÃ³dicas
             </h3>
             <button onclick="cerrarModalPlanRotura()" style="border: none; background: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
         </div>
@@ -449,20 +459,20 @@ $puedeEditarPlan = ($totalEnsayados === 0);
             <input type="hidden" name="muestra_id" value="<?= (int)$muestra['muestra_id'] ?>">
 
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
-                <div style="font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 4px;">Especímenes Disponibles: <span id="lbl_total_disp" style="color:var(--cycsa-azul);"><?= $totalEspecimenes ?></span></div>
-                <div style="font-size: 12px; color: #64748b;">Defina las edades en días y cuántas probetas ensayar en cada fecha. La suma no puede exceder el total de especímenes. Los sobrantes quedan como testigos.</div>
+                <div style="font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 4px;">EspecÃ­menes Disponibles: <span id="lbl_total_disp" style="color:var(--cycsa-azul);"><?= $totalEspecimenes ?></span></div>
+                <div style="font-size: 12px; color: #64748b;">Defina las edades en dÃ­as y cuÃ¡ntas probetas ensayar en cada fecha. La suma no puede exceder el total de especÃ­menes. Los sobrantes quedan como testigos.</div>
             </div>
 
             <div id="contenedor_edades_inputs" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
                 <div class="fila-edad-item" style="display: flex; gap: 10px; align-items: center;">
                     <div style="flex: 2;">
-                        <label style="font-size: 11px; font-weight: 700; color: #64748b;">Edad (Días):</label>
+                        <label style="font-size: 11px; font-weight: 700; color: #64748b;">Edad (DÃ­as):</label>
                         <select name="edad_dias[]" class="form-control" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" onchange="recalcularPlanEspecimenes()">
-                            <option value="3">3 días</option>
-                            <option value="7" selected>7 días</option>
-                            <option value="14">14 días</option>
-                            <option value="28">28 días</option>
-                            <option value="90">90 días</option>
+                            <option value="3">3 dÃ­as</option>
+                            <option value="7" selected>7 dÃ­as</option>
+                            <option value="14">14 dÃ­as</option>
+                            <option value="28">28 dÃ­as</option>
+                            <option value="90">90 dÃ­as</option>
                         </select>
                     </div>
                     <div style="flex: 2;">
@@ -475,13 +485,13 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                 </div>
                 <div class="fila-edad-item" style="display: flex; gap: 10px; align-items: center;">
                     <div style="flex: 2;">
-                        <label style="font-size: 11px; font-weight: 700; color: #64748b;">Edad (Días):</label>
+                        <label style="font-size: 11px; font-weight: 700; color: #64748b;">Edad (DÃ­as):</label>
                         <select name="edad_dias[]" class="form-control" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" onchange="recalcularPlanEspecimenes()">
-                            <option value="3">3 días</option>
-                            <option value="7">7 días</option>
-                            <option value="14">14 días</option>
-                            <option value="28" selected>28 días</option>
-                            <option value="90">90 días</option>
+                            <option value="3">3 dÃ­as</option>
+                            <option value="7">7 dÃ­as</option>
+                            <option value="14">14 dÃ­as</option>
+                            <option value="28" selected>28 dÃ­as</option>
+                            <option value="90">90 dÃ­as</option>
                         </select>
                     </div>
                     <div style="flex: 2;">
@@ -543,8 +553,8 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Tipo de Falla (ASTM C39):</label>
                     <select name="tipo_falla" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;">
                         <option value="Tipo 1 (Cono bien formado)">Tipo 1 (Cono bien formado)</option>
-                        <option value="Tipo 2 (Cono y división)">Tipo 2 (Cono y división)</option>
-                        <option value="Tipo 3 (División columnar)">Tipo 3 (División columnar)</option>
+                        <option value="Tipo 2 (Cono y divisiÃ³n)">Tipo 2 (Cono y divisiÃ³n)</option>
+                        <option value="Tipo 3 (DivisiÃ³n columnar)">Tipo 3 (DivisiÃ³n columnar)</option>
                         <option value="Tipo 4 (Fractura diagonal)">Tipo 4 (Fractura diagonal)</option>
                         <option value="Tipo 5 (Fractura en esquinas)">Tipo 5 (Fractura en esquinas)</option>
                     </select>
@@ -557,15 +567,15 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_carga" name="carga" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 15px; font-weight: 700; height: 38px;" placeholder="Ej. 85000" oninput="calcularEsfuerzoEnVivo()" required>
                 </div>
                 <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Área Transversal (in²):</label>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Ãrea Transversal (inÂ²):</label>
                     <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="28.274" oninput="calcularEsfuerzoEnVivo()" required>
                 </div>
             </div>
 
-            <!-- Hoja de Cálculo RT-FM-61 / Roturas (Datos Crudos Opcionales con Calibración PRENSA-01 y Factor L/D) -->
+            <!-- Hoja de CÃ¡lculo RT-FM-61 / Roturas (Datos Crudos Opcionales con CalibraciÃ³n PRENSA-01 y Factor L/D) -->
             <details style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
                 <summary style="font-size: 12.5px; font-weight: 700; color: #103487; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-calculator"></i> Hoja de Cálculo RT-FM-61 (Dimensiones, Masa, Prensa PRENSA-01 y Factor L/D)
+                    <i class="fa-solid fa-calculator"></i> Hoja de CÃ¡lculo RT-FM-61 (Dimensiones, Masa, Prensa PRENSA-01 y Factor L/D)
                 </summary>
                 
                 <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
@@ -577,16 +587,16 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                             <option value="RT-FM-36">RT-FM-36 (Bloques C140)</option>
                             <option value="RT-FM-38">RT-FM-38 (Vigas C78)</option>
                             <option value="RT-FM-57">RT-FM-57 (Cubos Mortero C109)</option>
-                            <option value="RT-FM-63">RT-FM-63 (Núcleos/Adoquín)</option>
+                            <option value="RT-FM-63">RT-FM-63 (NÃºcleos/AdoquÃ­n)</option>
                             <option value="RT-FM-64">RT-FM-64 (Acero A615)</option>
                         </select>
                     </div>
                     <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Diámetro 1 (cm):</label>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">DiÃ¡metro 1 (cm):</label>
                         <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.20" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Diámetro 2 (cm):</label>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">DiÃ¡metro 2 (cm):</label>
                         <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.22" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
@@ -602,33 +612,33 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                         <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 12.850">
                     </div>
                     <div style="grid-column: 1 / -1;">
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Lectura Prensa sin corregir (lbf) — aplica polinomio PRENSA-01:</label>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Lectura Prensa sin corregir (lbf) â aplica polinomio PRENSA-01:</label>
                         <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[lectura_carga_lbf]" id="hc_lectura_lbf" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 91932" oninput="recalcularDesdeHc61()">
                     </div>
                 </div>
             </details>
 
-            <!-- Previsualización de Cálculos -->
+            <!-- PrevisualizaciÃ³n de CÃ¡lculos -->
             <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center;">
                 <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px;">
                     <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Esfuerzo PSI:</div>
                     <div id="calc_psi" style="font-size: 20px; font-weight: 800; font-family: monospace; color: #0369a1; margin-top: 2px;">--</div>
                 </div>
                 <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px;">
-                    <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Esfuerzo kg/cm²:</div>
+                    <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Esfuerzo kg/cmÂ²:</div>
                     <div id="calc_kgcm2" style="font-size: 20px; font-weight: 800; font-family: monospace; color: #047857; margin-top: 2px;">--</div>
                 </div>
             </div>
 
-            <!-- Alerta y Justificación de Tolerancia Temporal -->
+            <!-- Alerta y JustificaciÃ³n de Tolerancia Temporal -->
             <div id="box_justificacion_tolerancia" style="display: none; background: #fff1f2; border: 1.5px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 15px;">
                 <div style="font-size: 12px; font-weight: 800; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
                     <i class="fa-solid fa-triangle-exclamation"></i> ENSAYO FUERA DE TOLERANCIA ASTM C39
                 </div>
                 <div style="font-size: 12px; color: #881337; margin-bottom: 8px; line-height: 1.4;">
-                    La fecha/hora seleccionada excede la ventana de tolerancia admisible para esta edad. Es mandatorio registrar una justificación técnica para el informe.
+                    La fecha/hora seleccionada excede la ventana de tolerancia admisible para esta edad. Es mandatorio registrar una justificaciÃ³n tÃ©cnica para el informe.
                 </div>
-                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; font-size: 12.5px;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
+                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; font-size: 12.5px;" placeholder="JustificaciÃ³n tÃ©cnica por ensayo extemporÃ¡neo..."></textarea>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
@@ -658,14 +668,14 @@ $puedeEditarPlan = ($totalEnsayados === 0);
             <input type="hidden" name="nuevo_estado" value="devuelto">
 
             <div style="margin-bottom: 15px;">
-                <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Motivo de Devolución / Observación Técnica:</label>
-                <textarea name="motivo_devolucion" rows="3" class="form-control" style="width: 100%; box-sizing: border-box;" placeholder="Especifique el motivo de rechazo o corrección requerida..." required></textarea>
+                <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Motivo de DevoluciÃ³n / ObservaciÃ³n TÃ©cnica:</label>
+                <textarea name="motivo_devolucion" rows="3" class="form-control" style="width: 100%; box-sizing: border-box;" placeholder="Especifique el motivo de rechazo o correcciÃ³n requerida..." required></textarea>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" class="btn-accion btn-secondary-lab" onclick="cerrarModalDevolverInforme()">Cancelar</button>
                 <button type="submit" class="btn-accion btn-warning-lab">
-                    <i class="fa-solid fa-paper-plane"></i> Registrar Devolución
+                    <i class="fa-solid fa-paper-plane"></i> Registrar DevoluciÃ³n
                 </button>
             </div>
         </form>
@@ -692,14 +702,14 @@ function agregarFilaEdad() {
     div.style = 'display: flex; gap: 10px; align-items: center;';
     div.innerHTML = `
         <div style="flex: 2;">
-            <label style="font-size: 11px; font-weight: 700; color: #64748b;">Edad (Días):</label>
+            <label style="font-size: 11px; font-weight: 700; color: #64748b;">Edad (DÃ­as):</label>
             <select name="edad_dias[]" class="form-control" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" onchange="recalcularPlanEspecimenes()">
-                <option value="1">1 día</option>
-                <option value="3">3 días</option>
-                <option value="7">7 días</option>
-                <option value="14">14 días</option>
-                <option value="28" selected>28 días</option>
-                <option value="90">90 días</option>
+                <option value="1">1 dÃ­a</option>
+                <option value="3">3 dÃ­as</option>
+                <option value="7">7 dÃ­as</option>
+                <option value="14">14 dÃ­as</option>
+                <option value="28" selected>28 dÃ­as</option>
+                <option value="90">90 dÃ­as</option>
             </select>
         </div>
         <div style="flex: 2;">
@@ -775,7 +785,7 @@ function calcularEsfuerzoEnVivo() {
         const psi = carga / area;
         const kgcm2 = psi * 0.070307;
         document.getElementById('calc_psi').innerText = psi.toFixed(1) + ' PSI';
-        document.getElementById('calc_kgcm2').innerText = kgcm2.toFixed(1) + ' kg/cm²';
+        document.getElementById('calc_kgcm2').innerText = kgcm2.toFixed(1) + ' kg/cmÂ²';
     } else {
         document.getElementById('calc_psi').innerText = '--';
         document.getElementById('calc_kgcm2').innerText = '--';
@@ -837,7 +847,7 @@ function validarEnvioRotura(e) {
         const just = document.getElementById('rot_justificacion').value.trim();
         if (just.length < 5) {
             e.preventDefault();
-            alert('El ensayo se encuentra fuera de tolerancia ASTM C39. Debe ingresar una justificación técnica obligatoria.');
+            alert('El ensayo se encuentra fuera de tolerancia ASTM C39. Debe ingresar una justificaciÃ³n tÃ©cnica obligatoria.');
             document.getElementById('rot_justificacion').focus();
             return false;
         }
@@ -853,4 +863,49 @@ function abrirModalDevolverInforme(informeId) {
 function cerrarModalDevolverInforme() {
     document.getElementById('modalDevolverInforme').style.display = 'none';
 }
+
+<!-- Modal 4: Reemitir Informe (Calidad / N+1) -->
+<div id="modalReemitirInforme" class="modal-lab">
+    <div class="modal-lab-content" style="max-width: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #1e293b; font-size: 16px; font-weight: 700;">
+                <i class="fa-solid fa-arrows-rotate" style="color:#d97706;"></i> Reemitir Informe Oficial (ISO/IEC 17025)
+            </h3>
+            <button onclick="cerrarModalReemitirInforme()" style="border: none; background: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+
+        <form method="POST" action="/Cycsa/publico/laboratorio/reemitir-informe">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" id="reem_informe_id" name="informe_id" value="">
+            <input type="hidden" name="muestra_id" value="<?= (int)$muestra['muestra_id'] ?>">
+
+            <div style="background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:10px 14px; border-radius:6px; font-size:12.5px; margin-bottom:12px;">
+                <i class="fa-solid fa-triangle-exclamation"></i> El informe actual <strong id="reem_informe_numero"></strong> quedará <strong>ANULADO</strong> y se generará una nueva versión que lo sustituye formalmente en el expediente.
+            </div>
+
+            <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 5px;">
+                Motivo obligatorio de la reemisión:
+            </label>
+            <textarea name="motivo_reemision" rows="3" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; font-size: 13px;" placeholder="Detalle la justificación técnica o administrativa..." required></textarea>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                <button type="button" class="btn-accion btn-secondary-lab" onclick="cerrarModalReemitirInforme()">Cancelar</button>
+                <button type="submit" class="btn-accion btn-warning-lab">
+                    <i class="fa-solid fa-arrows-rotate"></i> Reemitir y Sustituir
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirModalReemitirInforme(id, numero) {
+    document.getElementById('reem_informe_id').value = id;
+    document.getElementById('reem_informe_numero').innerText = numero;
+    document.getElementById('modalReemitirInforme').style.display = 'block';
+}
+function cerrarModalReemitirInforme() {
+    document.getElementById('modalReemitirInforme').style.display = 'none';
+}
+</script>
 </script>
