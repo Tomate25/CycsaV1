@@ -78,6 +78,7 @@ class PrestamosControlador extends ControladorBase {
         $resumen = $modelo->obtenerResumenDashboard();
 
         $this->renderizar('Prestamos/Vistas/index', [
+            'subnavActiva' => 'prestamos',
             'titulo' => 'Préstamos Bancarios - Amortización y Cuotas - CYCSA',
             'prestamos' => $prestamos,
             'resumen' => $resumen,
@@ -113,6 +114,7 @@ class PrestamosControlador extends ControladorBase {
         ")->fetchAll(\PDO::FETCH_ASSOC);
 
         $this->renderizar('Prestamos/Vistas/crear', [
+            'subnavActiva' => 'prestamos',
             'titulo' => 'Registrar Nuevo Préstamo Bancario - CYCSA',
             'sugerenciaCodigo' => $sugerenciaCodigo,
             'cuentasBancarias' => $cuentasBancarias,
@@ -247,6 +249,7 @@ class PrestamosControlador extends ControladorBase {
         $cuentasBancarias = $contabilidad->obtenerCuentasBancarias();
 
         $this->renderizar('Prestamos/Vistas/detalle', [
+            'subnavActiva' => 'prestamos',
             'titulo' => "Detalle de Préstamo {$prestamo['codigo']} - CYCSA",
             'prestamo' => $prestamo,
             'cuotas' => $cuotas,

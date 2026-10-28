@@ -91,6 +91,7 @@ class ActivosFijosControlador extends ControladorBase {
         $activos = $modelo->listarActivos($busqueda, $categoria, $estado);
 
         $this->renderizar('ActivosFijos/Vistas/index', [
+            'subnavActiva' => 'activos',
             'titulo' => 'Gestión de Activos Fijos y Depreciación - CYCSA ERP',
             'activos' => $activos,
             'busqueda' => $busqueda,
@@ -118,6 +119,7 @@ class ActivosFijosControlador extends ControladorBase {
         $depreciaciones = $modelo->obtenerDepreciacionesPorActivo($id);
 
         $this->renderizar('ActivosFijos/Vistas/detalle', [
+            'subnavActiva' => 'activos',
             'titulo' => 'Ficha Técnica de Activo: ' . $activo['codigo'] . ' - CYCSA ERP',
             'activo' => $activo,
             'depreciaciones' => $depreciaciones,
@@ -144,6 +146,7 @@ class ActivosFijosControlador extends ControladorBase {
         $sugerenciaCodigo = 'AF-' . str_pad((string)($totalActivos + 1), 4, '0', STR_PAD_LEFT);
 
         $this->renderizar('ActivosFijos/Vistas/crear', [
+            'subnavActiva' => 'activos',
             'titulo' => 'Registrar Nuevo Activo Fijo - CYCSA ERP',
             'esEdicion' => false,
             'activo' => null,
@@ -213,6 +216,7 @@ class ActivosFijosControlador extends ControladorBase {
         $cuentasDetalle = $contabilidad->obtenerCuentasDetalle();
 
         $this->renderizar('ActivosFijos/Vistas/crear', [
+            'subnavActiva' => 'activos',
             'titulo' => 'Editar Activo Fijo: ' . $activo['codigo'] . ' - CYCSA ERP',
             'esEdicion' => true,
             'activo' => $activo,
@@ -319,6 +323,7 @@ class ActivosFijosControlador extends ControladorBase {
         $historico = $modelo->obtenerHistoricoDepreciaciones($busqueda, $periodo);
 
         $this->renderizar('ActivosFijos/Vistas/depreciacion', [
+            'subnavActiva' => 'depreciacion',
             'titulo' => 'Depreciación Mensual de Activos Fijos - CYCSA ERP',
             'historico' => $historico,
             'busqueda' => $busqueda,

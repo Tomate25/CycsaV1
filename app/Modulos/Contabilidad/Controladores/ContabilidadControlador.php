@@ -43,6 +43,7 @@ class ContabilidadControlador extends ControladorBase {
         $bitacora_logs = obtenerBitacoraModulo('contabilidad');
 
         $this->renderizar('contabilidad/vistas/cuentas', [
+            'subnavActiva' => 'cuentas',
             'titulo' => 'Catálogo de Cuentas Contables - Cycsa',
             'cuentas' => $modelo->obtenerCuentas($busqueda),
             'cuentasMayor' => $modelo->obtenerCuentasMayor(),
@@ -117,6 +118,7 @@ class ContabilidadControlador extends ControladorBase {
         $cxcList = ($antiguedad !== '') ? $modelo->obtenerCxc($busqueda, $antiguedad) : $todasCxc;
 
         $this->renderizar('contabilidad/vistas/cxc', [
+            'subnavActiva' => 'cxc',
             'titulo' => 'Cuentas por Cobrar (CXC) - Cycsa',
             'cxcList' => $cxcList,
             'resumenAntiguedad' => $resumenAntiguedad,
@@ -216,6 +218,7 @@ class ContabilidadControlador extends ControladorBase {
         }
 
         $this->renderizar('contabilidad/vistas/cxp', [
+            'subnavActiva' => 'cxp',
             'titulo' => 'Cuentas por Pagar (CXP) - Cycsa',
             'cxpList' => $modelo->obtenerCxp($busqueda),
             'cuentasDetalle' => $modelo->obtenerCuentasDetalle(),
@@ -446,6 +449,7 @@ class ContabilidadControlador extends ControladorBase {
         }
 
         $this->renderizar('contabilidad/vistas/bancos', [
+            'subnavActiva' => 'bancos',
             'titulo' => 'Bancos y Chequera - Cycsa',
             'bancos' => $modelo->obtenerCuentasBancarias(),
             'transacciones' => $modelo->obtenerTransaccionesBancarias($idBancoCuenta),
@@ -546,6 +550,7 @@ class ContabilidadControlador extends ControladorBase {
         }
 
         $this->renderizar('contabilidad/vistas/diario', [
+            'subnavActiva' => 'diario',
             'titulo' => 'Registro Diario Contable - Cycsa',
             'asientos' => $asientos,
             'cuentasDetalle' => $modelo->obtenerCuentasDetalle(),
@@ -728,6 +733,7 @@ class ContabilidadControlador extends ControladorBase {
         $saldos = $modelo->obtenerSaldosCuentas($fechaHasta);
 
         $this->renderizar('contabilidad/vistas/balance', [
+            'subnavActiva' => 'balance',
             'titulo' => 'Balance General - Cycsa',
             'saldos' => $saldos,
             'fechaHasta' => $fechaHasta,
@@ -753,6 +759,7 @@ class ContabilidadControlador extends ControladorBase {
         $saldos = $modelo->obtenerSaldosIngresosEgresos($fechaDesde, $fechaHasta);
 
         $this->renderizar('contabilidad/vistas/resultados', [
+            'subnavActiva' => 'resultados',
             'titulo' => 'Estado de Resultados - Cycsa',
             'saldos' => $saldos,
             'fechaDesde' => $fechaDesde,

@@ -13,8 +13,18 @@ $porcentajeRecibido = $totalPedidas > 0 ? min(100, round(($totalRecibidas / $tot
 ?>
 <div class="container-fluid py-3">
 
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Compras', 'url' => '/Cycsa/publico/compras/ordenes'],
+        ['label' => 'Órdenes de Compra', 'url' => '/Cycsa/publico/compras/ordenes'],
+        ['label' => 'Orden #OC-' . str_pad($orden['id'], 5, '0', STR_PAD_LEFT)]
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
     <!-- Encabezado y Acciones -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <div class="d-flex align-items-center gap-2">
                 <h1 class="h3 mb-0 text-gray-800 fw-bold">
@@ -59,6 +69,9 @@ $porcentajeRecibido = $totalPedidas > 0 ? min(100, round(($totalRecibidas / $tot
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_compras.php'; ?>
 
     <!-- Alertas -->
     <?php if (!empty($exito)): ?>

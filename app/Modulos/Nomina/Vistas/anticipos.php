@@ -4,26 +4,32 @@
  */
 ?>
 <div class="container-fluid px-0">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Nómina', 'url' => '/Cycsa/publico/nomina'],
+        ['label' => 'Anticipos de Sueldo']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Header y Acción Primaria -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-1 text-gray-800 fw-bold">
                 <i class="fa-solid fa-hand-holding-dollar text-primary me-2"></i>Anticipos a Empleados
             </h1>
-            <p class="text-muted mb-0 small">Registro de adelantos de salario, amortización automática en nómina y enlace a tesorería.</p>
+            <p class="text-muted mb-0 small">Control de adelantos salariales y amortización automática en corrida de nómina.</p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/Cycsa/publico/nomina/empleados" class="btn btn-outline-secondary btn-sm px-3">
-                <i class="fa-solid fa-users me-1"></i>Ver Colaboradores
-            </a>
-            <a href="/Cycsa/publico/nomina" class="btn btn-outline-secondary btn-sm px-3">
-                <i class="fa-solid fa-file-invoice-dollar me-1"></i>Nóminas
-            </a>
-            <button type="button" class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalAnticipo">
-                <i class="fa-solid fa-plus me-1"></i>Conceder Anticipo
+        <div>
+            <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAnticipo">
+                <i class="fa-solid fa-plus me-1"></i>Registrar Anticipo
             </button>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_nomina.php'; ?>
 
     <!-- Mensajes Flash -->
     <?php if (!empty($_SESSION['flash_exito'])): ?>

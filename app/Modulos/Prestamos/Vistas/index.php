@@ -4,8 +4,17 @@
  */
 ?>
 <div class="container-fluid px-0">
-    <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Préstamos', 'url' => '/Cycsa/publico/prestamos'],
+        ['label' => 'Préstamos Bancarios']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Encabezado y Acción Primaria -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-1 text-gray-800 fw-bold">
                 <i class="fa-solid fa-building-columns text-primary me-2"></i>Préstamos Bancarios
@@ -18,6 +27,9 @@
             </a>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_prestamos.php'; ?>
 
     <!-- Mensajes Flash -->
     <?php if (!empty($_SESSION['mensaje_exito'])): ?>

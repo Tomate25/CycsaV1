@@ -5,8 +5,17 @@
  */
 ?>
 <div class="container-fluid px-0">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Proyectos', 'url' => '/Cycsa/publico/proyectos'],
+        ['label' => 'Órdenes de Obra']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Header y Acción Primaria -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-0 text-gray-800 fw-bold">
                 <i class="fa-solid fa-helmet-safety text-primary me-2"></i>Proyectos y Órdenes de Obra
@@ -15,12 +24,15 @@
                 Control de obras civiles, presupuesto y agregación transversal de costos directos (Compras, Gastos, Kárdex, Mano de Obra).
             </p>
         </div>
-        <div class="d-flex gap-2">
+        <div>
             <a href="/Cycsa/publico/proyectos/crear" class="btn btn-primary btn-sm px-3 shadow-sm">
                 <i class="fa-solid fa-plus me-1"></i>Nuevo Proyecto
             </a>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_proyectos.php'; ?>
 
     <!-- Mensajes Flash -->
     <?php if (!empty($_SESSION['flash_exito'])): ?>

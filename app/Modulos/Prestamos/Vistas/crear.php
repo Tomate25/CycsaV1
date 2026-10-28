@@ -4,8 +4,18 @@
  */
 ?>
 <div class="container-fluid px-0">
-    <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Préstamos', 'url' => '/Cycsa/publico/prestamos'],
+        ['label' => 'Préstamos Bancarios', 'url' => '/Cycsa/publico/prestamos'],
+        ['label' => 'Nuevo Préstamo']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Encabezado y Acción -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-1 text-gray-800 fw-bold">
                 <i class="fa-solid fa-calculator text-primary me-2"></i>Nuevo Préstamo Bancario
@@ -13,11 +23,14 @@
             <p class="text-muted mb-0 small">Simulación de amortización cuota nivelada (método francés) y registro contable de desembolso.</p>
         </div>
         <div>
-            <a href="/Cycsa/publico/prestamos" class="btn btn-outline-secondary btn-sm px-3">
-                <i class="fa-solid fa-arrow-left me-1"></i>Regresar a Listado
+            <a href="/Cycsa/publico/prestamos" class="btn btn-outline-secondary btn-sm px-3 shadow-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver a Préstamos
             </a>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_prestamos.php'; ?>
 
     <!-- Mensajes Flash -->
     <?php if (!empty($_SESSION['mensaje_error'])): ?>

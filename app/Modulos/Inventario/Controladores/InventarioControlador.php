@@ -76,6 +76,7 @@ class InventarioControlador extends ControladorBase {
         $alertas = $modelo->obtenerAlertas();
 
         $this->renderizar('Inventario/Vistas/index', [
+            'subnavActiva' => 'stock',
             'titulo' => 'Gestión de Inventario y Kárdex - CYCSA',
             'insumos' => $insumos,
             'alertas' => $alertas,
@@ -105,6 +106,7 @@ class InventarioControlador extends ControladorBase {
         $insumoSeleccionado = $insumoId > 0 ? $modelo->obtenerInsumo($insumoId) : null;
 
         $this->renderizar('Inventario/Vistas/lotes', [
+            'subnavActiva' => 'lotes',
             'titulo' => 'Control de Lotes y Vencimientos - CYCSA',
             'lotes' => $lotes,
             'insumos' => $insumos,
@@ -137,6 +139,7 @@ class InventarioControlador extends ControladorBase {
         $insumoSeleccionado = $insumoId > 0 ? $modelo->obtenerInsumo($insumoId) : null;
 
         $this->renderizar('Inventario/Vistas/kardex', [
+            'subnavActiva' => 'kardex',
             'titulo' => 'Kárdex de Movimientos de Inventario - CYCSA',
             'movimientos' => $movimientos,
             'insumos' => $insumos,

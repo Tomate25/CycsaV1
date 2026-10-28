@@ -54,7 +54,16 @@
 </style>
 
 <div class="content-header mb-3">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Inventario', 'url' => '/Cycsa/publico/inventario'],
+        ['label' => 'Lotes y Caducidades']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div>
             <h2 class="fw-bold mb-1" style="color: #0f172a;">
                 <i class="fa-solid fa-tags me-2" style="color: #0284c7;"></i>Control de Lotes y Caducidades
@@ -62,11 +71,14 @@
             <p class="text-muted small mb-0">Gestión de lotes activos, caducidad operativa (&le; 30 días) y despacho PEPS/FIFO</p>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" onclick="abrirModalAjuste()">
+            <button class="btn btn-primary shadow-sm" onclick="abrirModalAjuste()">
                 <i class="fa-solid fa-plus-minus me-1"></i>Ajuste de Lote
             </button>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_inventario.php'; ?>
 </div>
 
 <!-- Alertas Flash -->
@@ -84,20 +96,7 @@
 <?php endif; ?>
 
 <!-- Pestañas de Navegación del Módulo -->
-<div class="inv-tabs">
-    <a href="/Cycsa/publico/inventario" class="inv-tab-item">
-        <i class="fa-solid fa-layer-group"></i>Resumen de Stock e Insumos
-    </a>
-    <a href="/Cycsa/publico/inventario/lotes" class="inv-tab-item active">
-        <i class="fa-solid fa-tags"></i>Control de Lotes y Caducidades
-        <?php if (($alertas['conteo_por_vencer'] ?? 0) + ($alertas['conteo_vencidos'] ?? 0) > 0): ?>
-            <span class="badge bg-danger rounded-pill"><?= ($alertas['conteo_por_vencer'] ?? 0) + ($alertas['conteo_vencidos'] ?? 0) ?></span>
-        <?php endif; ?>
-    </a>
-    <a href="/Cycsa/publico/inventario/kardex" class="inv-tab-item">
-        <i class="fa-solid fa-clock-rotate-left"></i>Kárdex de Movimientos
-    </a>
-</div>
+
 
 <!-- Selector de Insumo para Filtrar Lotes -->
 <div class="bg-white p-3 rounded-3 shadow-sm border mb-4">

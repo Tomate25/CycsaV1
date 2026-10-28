@@ -11,26 +11,32 @@ $pendientesEval = $totalProv - $evaluadosCount;
 ?>
 <div class="container-fluid py-3">
 
-    <!-- Encabezado y Navegación rápida -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Compras', 'url' => '/Cycsa/publico/compras/ordenes'],
+        ['label' => 'Maestro de Proveedores']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Encabezado y Acción Primaria -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-1 text-gray-800 fw-bold">
                 <i class="fa-solid fa-truck-field text-primary me-2"></i>Maestro de Proveedores
             </h1>
             <p class="text-muted small mb-0">Control de proveedores externos calificados según norma <strong>ISO/IEC 17025:2017 §6.6</strong></p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/Cycsa/publico/compras/ordenes" class="btn btn-outline-secondary btn-sm">
-                <i class="fa-solid fa-file-invoice-dollar me-1"></i>Órdenes de Compra
-            </a>
-            <a href="/Cycsa/publico/compras/recepciones" class="btn btn-outline-secondary btn-sm">
-                <i class="fa-solid fa-boxes-packing me-1"></i>Recepciones
-            </a>
-            <button type="button" class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalProveedor" onclick="abrirModalNuevoProveedor()">
+        <div>
+            <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalProveedor" onclick="abrirModalNuevoProveedor()">
                 <i class="fa-solid fa-plus me-1"></i>Nuevo Proveedor
             </button>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_compras.php'; ?>
 
     <!-- Alertas -->
     <?php if (!empty($exito)): ?>

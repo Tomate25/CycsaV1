@@ -4,8 +4,18 @@
  */
 ?>
 <div class="container-fluid px-0">
-    <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Préstamos', 'url' => '/Cycsa/publico/prestamos'],
+        ['label' => 'Préstamos Bancarios', 'url' => '/Cycsa/publico/prestamos'],
+        ['label' => 'Detalle ' . ($prestamo['codigo'] ?? '')]
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Encabezado y Acciones -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <div class="d-flex align-items-center gap-2">
                 <h1 class="h3 mb-0 text-gray-800 fw-bold">
@@ -38,6 +48,10 @@
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_prestamos.php'; ?>
+
 
     <!-- Mensajes Flash -->
     <?php if (!empty($_SESSION['mensaje_exito'])): ?>

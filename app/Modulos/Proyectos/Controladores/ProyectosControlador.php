@@ -48,6 +48,7 @@ class ProyectosControlador extends ControladorBase {
         $clientes = $this->modelo->listarClientesCatalogo();
 
         $this->renderizar('Proyectos/Vistas/index', [
+            'subnavActiva' => 'proyectos',
             'titulo'       => 'Gestión de Proyectos y Órdenes de Obra - CYCSA',
             'proyectos'    => $proyectos,
             'estadisticas' => $estadisticas,
@@ -67,6 +68,7 @@ class ProyectosControlador extends ControladorBase {
         $cuentaDefault = $this->modelo->obtenerCuentaObraDefault();
 
         $this->renderizar('Proyectos/Vistas/crear', [
+            'subnavActiva'     => 'proyectos',
             'titulo'           => 'Registrar Nuevo Proyecto / Orden de Obra - CYCSA',
             'sugerenciaCodigo' => $sugerenciaCodigo,
             'clientes'         => $clientes,
@@ -156,6 +158,7 @@ class ProyectosControlador extends ControladorBase {
         $csrfToken = $this->asegurarTokenCsrf();
 
         $this->renderizar('Proyectos/Vistas/detalle', [
+            'subnavActiva' => 'proyectos',
             'titulo'    => "Detalle Proyecto {$proyecto['codigo']} - CYCSA",
             'proyecto'  => $proyecto,
             'costos'    => $proyecto['costos'],
@@ -182,6 +185,7 @@ class ProyectosControlador extends ControladorBase {
         $cuentasObras = $this->modelo->listarCuentasObrasCatalogo();
 
         $this->renderizar('Proyectos/Vistas/crear', [
+            'subnavActiva'     => 'proyectos',
             'titulo'           => "Editar Proyecto {$proyecto['codigo']} - CYCSA",
             'sugerenciaCodigo' => $proyecto['codigo'],
             'clientes'         => $clientes,

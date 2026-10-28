@@ -8,26 +8,32 @@ foreach ($recepciones as $r) {
 ?>
 <div class="container-fluid py-3">
 
-    <!-- Encabezado y Acciones -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Compras', 'url' => '/Cycsa/publico/compras/ordenes'],
+        ['label' => 'Recepciones de Compra']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Encabezado y Acción Primaria -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-1 text-gray-800 fw-bold">
                 <i class="fa-solid fa-boxes-packing text-primary me-2"></i>Recepciones de Compra
             </h1>
             <p class="text-muted small mb-0">Recepción técnica de insumos en bodega, control de lotes y alimentación de kárdex</p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/Cycsa/publico/compras/proveedores" class="btn btn-outline-secondary btn-sm">
-                <i class="fa-solid fa-truck-field me-1"></i>Proveedores
-            </a>
-            <a href="/Cycsa/publico/compras/ordenes" class="btn btn-outline-secondary btn-sm">
-                <i class="fa-solid fa-file-invoice-dollar me-1"></i>Órdenes de Compra
-            </a>
-            <button type="button" class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalRecepcion" onclick="abrirModalNuevaRecepcion()">
+        <div>
+            <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalRecepcion" onclick="abrirModalNuevaRecepcion()">
                 <i class="fa-solid fa-plus me-1"></i>Registrar Recepción
             </button>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_compras.php'; ?>
 
     <!-- Alertas -->
     <?php if (!empty($exito)): ?>

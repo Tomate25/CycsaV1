@@ -79,6 +79,7 @@ class ComprasControlador extends ControladorBase {
         $cuentasContables = $this->modelo->listarCuentasDetalle();
 
         $this->renderizar('compras/vistas/proveedores_index', [
+            'subnavActiva' => 'proveedores',
             'titulo' => 'Maestro de Proveedores - CYCSA LIMS',
             'proveedores' => $proveedores,
             'cuentasContables' => $cuentasContables,
@@ -211,6 +212,7 @@ class ComprasControlador extends ControladorBase {
         $proveedores = $this->modelo->listarProveedores(['estado' => 'activo']);
 
         $this->renderizar('compras/vistas/ordenes_index', [
+            'subnavActiva' => 'ordenes',
             'titulo' => 'Órdenes de Compra - CYCSA LIMS',
             'ordenes' => $ordenes,
             'proveedores' => $proveedores,
@@ -233,6 +235,7 @@ class ComprasControlador extends ControladorBase {
         $cuentas = $this->modelo->listarCuentasDetalle();
 
         $this->renderizar('compras/vistas/ordenes_form', [
+            'subnavActiva' => 'ordenes',
             'titulo' => 'Nueva Orden de Compra - CYCSA LIMS',
             'proveedores' => $proveedores,
             'insumos' => $insumos,
@@ -330,6 +333,7 @@ class ComprasControlador extends ControladorBase {
         }
 
         $this->renderizar('compras/vistas/ordenes_detalle', [
+            'subnavActiva' => 'ordenes',
             'titulo' => "Orden de Compra #{$id} - CYCSA LIMS",
             'orden' => $orden,
             'exito' => $_SESSION['exito'] ?? null,
@@ -405,6 +409,7 @@ class ComprasControlador extends ControladorBase {
         $insumos = $this->modelo->listarInsumosActivos();
 
         $this->renderizar('compras/vistas/recepciones_index', [
+            'subnavActiva' => 'recepciones',
             'titulo' => 'Recepciones de Compra - CYCSA LIMS',
             'recepciones' => $recepciones,
             'proveedores' => $proveedores,
@@ -430,6 +435,7 @@ class ComprasControlador extends ControladorBase {
         $insumos = $this->modelo->listarInsumosActivos();
 
         $this->renderizar('compras/vistas/recepciones_index', [
+            'subnavActiva' => 'recepciones',
             'titulo' => 'Registrar Recepción de Compra - CYCSA LIMS',
             'recepciones' => $this->modelo->listarRecepciones(),
             'proveedores' => $proveedores,

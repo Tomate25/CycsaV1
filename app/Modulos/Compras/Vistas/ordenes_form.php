@@ -3,8 +3,18 @@
 ?>
 <div class="container-fluid py-3">
 
-    <!-- Encabezado y Navegación -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Compras', 'url' => '/Cycsa/publico/compras/ordenes'],
+        ['label' => 'Órdenes de Compra', 'url' => '/Cycsa/publico/compras/ordenes'],
+        ['label' => 'Nueva Orden de Compra']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Encabezado y Acción -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-1 text-gray-800 fw-bold">
                 <i class="fa-solid fa-file-circle-plus text-primary me-2"></i>Nueva Orden de Compra
@@ -12,11 +22,14 @@
             <p class="text-muted small mb-0">Emisión de requisición y orden de compra formal a proveedores evaluados</p>
         </div>
         <div>
-            <a href="/Cycsa/publico/compras/ordenes" class="btn btn-outline-secondary btn-sm">
-                <i class="fa-solid fa-arrow-left me-1"></i>Volver al Listado
+            <a href="/Cycsa/publico/compras/ordenes" class="btn btn-outline-secondary btn-sm shadow-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver a Órdenes
             </a>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_compras.php'; ?>
 
     <!-- Alertas -->
     <?php if (!empty($error)): ?>

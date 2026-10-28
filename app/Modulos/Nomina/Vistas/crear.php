@@ -4,19 +4,33 @@
  */
 ?>
 <div class="container-fluid px-0">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Nómina', 'url' => '/Cycsa/publico/nomina'],
+        ['label' => 'Nóminas y Planillas', 'url' => '/Cycsa/publico/nomina'],
+        ['label' => 'Procesar Nueva Nómina']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Header y Acción -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-1 text-gray-800 fw-bold">
-                <i class="fa-solid fa-calculator text-primary me-2"></i>Generación y Procesamiento de Nómina
+                <i class="fa-solid fa-calculator text-primary me-2"></i>Procesar Nueva Nómina
             </h1>
-            <p class="text-muted mb-0 small">Cálculo de deducciones de ley (INSS 7%, IR), deducción de anticipos y provisiones laborales.</p>
+            <p class="text-muted mb-0 small">Cálculo de deducciones de ley (INSS 7%, IR Ley 822), amortización de anticipos y provisiones patronales.</p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/Cycsa/publico/nomina" class="btn btn-outline-secondary btn-sm px-3">
-                <i class="fa-solid fa-arrow-left me-1"></i>Regresar a Nóminas
+        <div>
+            <a href="/Cycsa/publico/nomina" class="btn btn-outline-secondary btn-sm px-3 shadow-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver a Nóminas
             </a>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_nomina.php'; ?>
 
     <!-- Formulario de Nómina -->
     <form method="POST" action="/Cycsa/publico/nomina/procesar" id="formProcesarNomina">

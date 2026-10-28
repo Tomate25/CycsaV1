@@ -84,6 +84,7 @@ class NominaControlador extends ControladorBase {
         $cuentasDetalle = $contabilidad->obtenerCuentasDetalle();
 
         $this->renderizar('Nomina/Vistas/empleados', [
+            'subnavActiva' => 'empleados',
             'titulo' => 'Gestión de Empleados y Salarios - CYCSA',
             'empleados' => $empleados,
             'departamentos' => $departamentos,
@@ -189,6 +190,7 @@ class NominaControlador extends ControladorBase {
         $bancos = $contabilidad->obtenerCuentasBancarias();
 
         $this->renderizar('Nomina/Vistas/anticipos', [
+            'subnavActiva' => 'anticipos',
             'titulo' => 'Anticipos y Préstamos a Empleados - CYCSA',
             'anticipos' => $anticipos,
             'empleados' => $empleados,
@@ -289,6 +291,7 @@ class NominaControlador extends ControladorBase {
         $nominas = $modelo->listarNominas($busqueda, $estado);
 
         $this->renderizar('Nomina/Vistas/nominas', [
+            'subnavActiva' => 'nominas',
             'titulo' => 'Planillas y Nóminas Procesadas - CYCSA',
             'nominas' => $nominas,
             'busqueda' => $busqueda,
@@ -310,6 +313,7 @@ class NominaControlador extends ControladorBase {
         $sugerenciaCodigo = 'NOM-' . $anio . '-' . str_pad((string)(count($modelo->listarNominas()) + 1), 3, '0', STR_PAD_LEFT);
 
         $this->renderizar('Nomina/Vistas/crear', [
+            'subnavActiva' => 'nominas',
             'titulo' => 'Procesar Nueva Nómina de Sueldos - CYCSA',
             'empleados' => $empleados,
             'sugerenciaCodigo' => $sugerenciaCodigo,
@@ -451,6 +455,7 @@ class NominaControlador extends ControladorBase {
 
         $csrfToken = $this->asegurarCsrf();
         $this->renderizar('Nomina/Vistas/detalle', [
+            'subnavActiva' => 'nominas',
             'titulo' => 'Detalle de Nómina ' . htmlspecialchars($nomina['codigo']) . ' - CYCSA',
             'nomina' => $nomina,
             'csrfToken' => $csrfToken

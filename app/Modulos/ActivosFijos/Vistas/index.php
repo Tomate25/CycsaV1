@@ -4,23 +4,32 @@
  */
 ?>
 <div class="container-fluid px-0">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Activos Fijos', 'url' => '/Cycsa/publico/activos-fijos'],
+        ['label' => 'Control de Activos']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Header y Acción Primaria -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-1 text-gray-800 fw-bold">
                 <i class="fa-solid fa-boxes-stacked text-primary me-2"></i>Gestión de Activos Fijos
             </h1>
             <p class="text-muted mb-0 small">Registro, control de valor en libros y depreciación mensual en línea recta con imputación contable.</p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/Cycsa/publico/activos-fijos/depreciacion" class="btn btn-outline-primary btn-sm px-3">
-                <i class="fa-solid fa-calendar-check me-1"></i>Depreciación Mensual
-            </a>
-            <a href="/Cycsa/publico/activos-fijos/crear" class="btn btn-primary btn-sm px-3">
+        <div>
+            <a href="/Cycsa/publico/activos-fijos/crear" class="btn btn-primary btn-sm px-3 shadow-sm">
                 <i class="fa-solid fa-plus me-1"></i>Registrar Activo Fijo
             </a>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_activos.php'; ?>
 
     <!-- Mensajes Flash -->
     <?php if (!empty($_SESSION['flash_exito'])): ?>

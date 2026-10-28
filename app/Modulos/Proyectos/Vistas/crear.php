@@ -7,23 +7,33 @@ $esEdicion = !empty($proyecto['id']);
 $actionUrl = $esEdicion ? '/Cycsa/publico/proyectos/actualizar' : '/Cycsa/publico/proyectos/guardar';
 ?>
 <div class="container-fluid px-0">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Proyectos', 'url' => '/Cycsa/publico/proyectos'],
+        ['label' => 'Órdenes de Obra', 'url' => '/Cycsa/publico/proyectos'],
+        ['label' => !empty($esEdicion) ? 'Editar Proyecto' : 'Nuevo Proyecto']
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Header y Acción -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
-            <h1 class="h3 mb-0 text-gray-800 fw-bold">
-                <i class="fa-solid fa-<?= $esEdicion ? 'pen-to-square' : 'plus-circle' ?> text-primary me-2"></i>
-                <?= $esEdicion ? 'Editar Proyecto: ' . htmlspecialchars($proyecto['codigo']) : 'Nuevo Proyecto / Orden de Obra' ?>
+            <h1 class="h3 mb-1 text-gray-800 fw-bold">
+                <i class="fa-solid fa-helmet-safety text-primary me-2"></i><?= !empty($esEdicion) ? 'Editar Proyecto' : 'Nuevo Proyecto / Orden de Obra' ?>
             </h1>
-            <p class="text-muted mb-0 small">
-                <?= $esEdicion ? 'Modifique los parámetros del proyecto u orden de obra.' : 'Defina el código, cliente, presupuesto y cuenta de imputación transversal.' ?>
-            </p>
+            <p class="text-muted mb-0 small">Definición de obra civil, cliente asociado, fechas planificadas y presupuesto asignado.</p>
         </div>
         <div>
-            <a href="/Cycsa/publico/proyectos" class="btn btn-outline-secondary btn-sm px-3">
-                <i class="fa-solid fa-arrow-left me-1"></i>Regresar al Listado
+            <a href="/Cycsa/publico/proyectos" class="btn btn-outline-secondary btn-sm px-3 shadow-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver a Proyectos
             </a>
         </div>
     </div>
+
+    <!-- Barra de Subnavegación del Módulo -->
+    <?php require __DIR__ . '/parciales/subnav_proyectos.php'; ?>
 
     <!-- Mensajes Flash -->
     <?php if (!empty($_SESSION['flash_error'])): ?>

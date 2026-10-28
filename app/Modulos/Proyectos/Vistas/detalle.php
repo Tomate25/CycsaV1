@@ -17,8 +17,18 @@ $insumos = $desglose['insumos'] ?? [];
 $manoObra = $desglose['mano_obra'] ?? [];
 ?>
 <div class="container-fluid px-0">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <!-- Breadcrumb de Navegación -->
+    <?php
+    $migas = [
+        ['label' => 'Proyectos', 'url' => '/Cycsa/publico/proyectos'],
+        ['label' => 'Órdenes de Obra', 'url' => '/Cycsa/publico/proyectos'],
+        ['label' => 'Detalle ' . ($proyecto['codigo'] ?? '')]
+    ];
+    require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
+    ?>
+
+    <!-- Header y Acciones -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <h1 class="h3 mb-0 text-gray-800 fw-bold">
