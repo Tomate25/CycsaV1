@@ -3757,3 +3757,152 @@ function determinarPrefijoMuestraOS($os): string {
     $esCampo = ($req === 1 || $req === '1' || $req === true || !empty($tec) || !empty($progTec) || $tieneProg || $esEnsayoCampo);
     return $esCampo ? 'MC' : 'MS';
 }
+
+/**
+ * Evalúa el estado general de Control de Calidad para una matriz de ensayo según sus réplicas (-CR).
+ *
+ * @param string|array|null $resultadosJsonOArray
+ * @return array{
+ *     tiene_replicas: bool,
+ *     total_pares: int,
+ *     pendientes: int,
+ *     conformes: int,
+ *     no_conformes: int,
+ *     estado: string,
+ *     estado_label: string,
+ *     badge_clase: string,
+ *     puede_aprobar: bool,
+ *     motivo_bloqueo: ?string
+ * }
+ */
+function obtenerEstadoControlCalidadMatriz($resultadosJsonOArray): array {
+    $defecto = [
+        'tiene_replicas' => false,
+        'total_pares' => 0,
+        'pendientes' => 0,
+        'conformes' => 0,
+        'no_conformes' => 0,
+        'estado' => 'sin_replicas',
+        'estado_label' => 'Sin Réplicas',
+        'badge_clase' => 'bg-secondary',
+        'puede_aprobar' => true,
+        'motivo_bloqueo' => null
+    ];
+
+    if (empty($resultadosJsonOArray)) {
+        return $defecto;
+    }
+
+    $datos = is_array($resultadosJsonOArray)
+        ? $resultadosJsonOArray
+        : (json_decode((string)$resultadosJsonOArray, true) ?: []);
+
+    if (!is_array($datos)) {
+        return $defecto;
+    }
+
+    $filas = isset($datos['filas']) && is_array($datos['filas'])
+        ? $datos['filas']
+        : (isset($datos[0]) ? $datos : []);
+
+    $pares = obtenerParesControlCalidad($filas);
+    if (empty($pares)) {
+        return $defecto;
+    }
+
+    $evaluaciones = $datos['control_calidad']['replicas'] ?? [];
+    $total = count($pares);
+    $pendientes = 0;
+    $conformes = 0;
+    $noConformes = 0;
+
+    foreach ($pares as $par) {
+        $clave = strtoupper((string)$par['codigo_original']);
+        $ev = $evaluaciones[$clave]['estado'] ?? 'pendiente';
+        if ($ev === 'conforme') {
+            $conformes++;
+        } elseif ($ev === 'no_conforme') {
+            $noConformes++;
+        } else {
+            $pendientes++;
+        }
+    }
+
+    $resultado = [
+        'tiene_replicas' => true,
+        'total_pares' => $total,
+        'pendientes' => $pendientes,
+        'conformes' => $conformes,
+        'no_conformes' => $noConformes,
+    ];
+
+    if ($noConformes > 0) {
+        $resultado['estado'] = 'no_conforme';
+        $resultado['estado_label'] = 'CC: No Conforme';
+        $resultado['badge_clase'] = 'bg-danger text-white';
+        $resultado['puede_aprobar'] = false;
+        $resultado['motivo_bloqueo'] = "Existen {$noConformes} réplica(s) dictaminada(s) como NO CONFORME en Control de Calidad.";
+    } elseif ($pendientes > 0) {
+        $resultado['estado'] = 'pendiente';
+        $resultado['estado_label'] = 'CC: Pendiente';
+        $resultado['badge_clase'] = 'bg-warning text-dark';
+        $resultado['puede_aprobar'] = false;
+        $resultado['motivo_bloqueo'] = "Existen {$pendientes} réplica(s) pendiente(s) de evaluación en Control de Calidad.";
+    } else {
+        $resultado['estado'] = 'conforme';
+        $resultado['estado_label'] = 'CC: Conforme';
+        $resultado['badge_clase'] = 'bg-success text-white';
+        $resultado['puede_aprobar'] = true;
+        $resultado['motivo_bloqueo'] = null;
+    }
+
+    return $resultado;
+}
+
+/**
+ * Compara los pares de réplica previos y nuevos.
+ * Devuelve un array de códigos originales cuyos valores numéricos han cambiado.
+ */
+function detectarCambiosNumericosEnParesCC(array $paresPrevios, array $paresNuevos): array {
+    $prevIndex = [];
+    foreach ($paresPrevios as $p) {
+        $prevIndex[strtoupper((string)$p['codigo_original'])] = $p;
+    }
+
+    $modificados = [];
+    foreach ($paresNuevos as $p) {
+        $key = strtoupper((string)$p['codigo_original']);
+        if (!isset($prevIndex[$key])) {
+            $modificados[] = $key;
+            continue;
+        }
+
+        $prev = $prevIndex[$key];
+        $difPrev = $prev['diferencias'] ?? [];
+        $difNew = $p['diferencias'] ?? [];
+
+        if (count($difPrev) !== count($difNew)) {
+            $modificados[] = $key;
+            continue;
+        }
+
+        foreach ($difNew as $campo => $valsNew) {
+            if (!isset($difPrev[$campo])) {
+                $modificados[] = $key;
+                break;
+            }
+            $origPrev = (float)($difPrev[$campo]['original'] ?? 0);
+            $origNew = (float)($valsNew['original'] ?? 0);
+            $repPrev = (float)($difPrev[$campo]['replica'] ?? 0);
+            $repNew = (float)($valsNew['replica'] ?? 0);
+
+            if (abs($origPrev - $origNew) > 0.00001 || abs($repPrev - $repNew) > 0.00001) {
+                $modificados[] = $key;
+                break;
+            }
+        }
+    }
+
+    return array_values(array_unique($modificados));
+}
+

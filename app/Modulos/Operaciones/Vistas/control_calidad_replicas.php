@@ -390,6 +390,14 @@ foreach ($informes as $inf) {
                                     <div style="font-size:11px; color:#64748b; margin-top:3px; font-family:monospace;">
                                         ID #<?= $idDet ?>
                                     </div>
+                                    <?php 
+                                    $revMatriz = $det['revision_info'] ?? obtenerEstadoRevisionMatriz($det['resultados_json'] ?? '');
+                                    ?>
+                                    <div style="margin-top:4px;">
+                                        <span class="badge" style="background-color: <?= $revMatriz['badge_bg'] ?>; color: <?= $revMatriz['badge_color'] ?>; border: 1px solid <?= $revMatriz['badge_border'] ?>; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 12px; display:inline-flex; align-items:center; gap:4px;">
+                                            <i class="<?= $revMatriz['badge_icono'] ?>" style="font-size: 9px;"></i> <?= htmlspecialchars($revMatriz['estado_label']) ?>
+                                        </span>
+                                    </div>
                                 </td>
 
                                 <td>

@@ -236,4 +236,81 @@ class ControlCalidadReplicasTest extends TestCase {
 
         unset($_GET['test_param_1'], $_POST['test_param_2']);
     }
+
+    public function testObtenerEstadoControlCalidadMatriz(): void {
+        // 1. Sin réplicas
+        $jsonSin = json_encode(['filas' => [['Código laboratorio' => 'MS-0001-26', 'Carga' => 100]]]);
+        $stSin = obtenerEstadoControlCalidadMatriz($jsonSin);
+        $this->assertFalse($stSin['tiene_replicas']);
+        $this->assertTrue($stSin['puede_aprobar']);
+
+        // 2. Con réplica pendiente
+        $jsonPend = json_encode([
+            'filas' => [
+                ['Código laboratorio' => 'MS-0001-26', 'Carga' => 100],
+                ['Código laboratorio' => 'MS-0001-26-CR', '_es_replica' => true, '_muestra_origen' => 'MS-0001-26', 'Carga' => 105],
+            ],
+            'control_calidad' => ['replicas' => []]
+        ]);
+        $stPend = obtenerEstadoControlCalidadMatriz($jsonPend);
+        $this->assertTrue($stPend['tiene_replicas']);
+        $this->assertSame('pendiente', $stPend['estado']);
+        $this->assertFalse($stPend['puede_aprobar']);
+        $this->assertNotNull($stPend['motivo_bloqueo']);
+
+        // 3. Con réplica no conforme
+        $jsonNoConf = json_encode([
+            'filas' => [
+                ['Código laboratorio' => 'MS-0001-26', 'Carga' => 100],
+                ['Código laboratorio' => 'MS-0001-26-CR', '_es_replica' => true, '_muestra_origen' => 'MS-0001-26', 'Carga' => 150],
+            ],
+            'control_calidad' => [
+                'replicas' => [
+                    'MS-0001-26' => ['estado' => 'no_conforme']
+                ]
+            ]
+        ]);
+        $stNoConf = obtenerEstadoControlCalidadMatriz($jsonNoConf);
+        $this->assertSame('no_conforme', $stNoConf['estado']);
+        $this->assertFalse($stNoConf['puede_aprobar']);
+
+        // 4. Con réplica conforme
+        $jsonConf = json_encode([
+            'filas' => [
+                ['Código laboratorio' => 'MS-0001-26', 'Carga' => 100],
+                ['Código laboratorio' => 'MS-0001-26-CR', '_es_replica' => true, '_muestra_origen' => 'MS-0001-26', 'Carga' => 101],
+            ],
+            'control_calidad' => [
+                'replicas' => [
+                    'MS-0001-26' => ['estado' => 'conforme']
+                ]
+            ]
+        ]);
+        $stConf = obtenerEstadoControlCalidadMatriz($jsonConf);
+        $this->assertSame('conforme', $stConf['estado']);
+        $this->assertTrue($stConf['puede_aprobar']);
+        $this->assertNull($stConf['motivo_bloqueo']);
+    }
+
+    public function testDetectarCambiosNumericosEnParesCC(): void {
+        $previos = obtenerParesControlCalidad([
+            ['Código laboratorio' => 'MS-0001-26', 'Carga (lb)' => '100'],
+            ['Código laboratorio' => 'MS-0001-26-CR', '_es_replica' => true, '_muestra_origen' => 'MS-0001-26', 'Carga (lb)' => '102'],
+        ]);
+
+        // Sin cambios
+        $iguales = obtenerParesControlCalidad([
+            ['Código laboratorio' => 'MS-0001-26', 'Carga (lb)' => '100'],
+            ['Código laboratorio' => 'MS-0001-26-CR', '_es_replica' => true, '_muestra_origen' => 'MS-0001-26', 'Carga (lb)' => '102'],
+        ]);
+        $this->assertEmpty(detectarCambiosNumericosEnParesCC($previos, $iguales));
+
+        // Con cambio en réplica
+        $cambiados = obtenerParesControlCalidad([
+            ['Código laboratorio' => 'MS-0001-26', 'Carga (lb)' => '100'],
+            ['Código laboratorio' => 'MS-0001-26-CR', '_es_replica' => true, '_muestra_origen' => 'MS-0001-26', 'Carga (lb)' => '108'],
+        ]);
+        $mod = detectarCambiosNumericosEnParesCC($previos, $cambiados);
+        $this->assertSame(['MS-0001-26'], $mod);
+    }
 }

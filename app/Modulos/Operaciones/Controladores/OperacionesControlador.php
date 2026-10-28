@@ -1826,15 +1826,42 @@ class OperacionesControlador extends ControladorBase {
                 : [];
             $versionActual = (int)($decExistente['version_actual'] ?? 1);
 
+            // A1: Comparar pares de réplicas previos vs nuevos y resetear dictámenes obsoletos si cambiaron datos numéricos
+            $filasPrevias = isset($decExistente['filas']) && is_array($decExistente['filas'])
+                ? $decExistente['filas']
+                : (isset($decExistente[0]) && is_array($decExistente[0]) ? $decExistente : []);
+            $paresPrevios = obtenerParesControlCalidad($filasPrevias);
+            $paresNuevos = obtenerParesControlCalidad($filasDecodificadas);
+            $codigosModificados = detectarCambiosNumericosEnParesCC($paresPrevios, $paresNuevos);
+
+            $ccExistente = isset($decExistente['control_calidad']) && is_array($decExistente['control_calidad'])
+                ? $decExistente['control_calidad']
+                : [];
+            if (!isset($ccExistente['replicas']) || !is_array($ccExistente['replicas'])) {
+                $ccExistente['replicas'] = [];
+            }
+
+            foreach ($codigosModificados as $codMod) {
+                if (isset($ccExistente['replicas'][$codMod])) {
+                    $estadoPrevCC = $ccExistente['replicas'][$codMod]['estado'] ?? 'pendiente';
+                    if ($estadoPrevCC !== 'pendiente') {
+                        $ccExistente['replicas'][$codMod]['estado'] = 'pendiente';
+                        $ccExistente['replicas'][$codMod]['observaciones'] = 'Dictamen reiniciado automáticamente por modificación de datos numéricos en matriz.';
+                        $ccExistente['replicas'][$codMod]['usuario'] = 'Sistema (Auto)';
+                        $ccExistente['replicas'][$codMod]['fecha'] = $fechaActual;
+                    }
+                }
+            }
+
             $payloadCompleto = [
                 'version_actual' => $versionActual,
                 'filas' => $filasDecodificadas,
                 'metadatos' => $metadatos,
                 'revision' => $nuevaRevision,
                 'versiones' => $versionesExistentes,
-                'control_calidad' => isset($decExistente['control_calidad']) && is_array($decExistente['control_calidad'])
-                    ? $decExistente['control_calidad']
-                    : []
+                'control_calidad' => $ccExistente,
+                'usuario_captura_id' => $usuarioIdSesion,
+                'usuario_captura_nombre' => $usuarioSesion
             ];
             $resultadosJsonFinal = json_encode($payloadCompleto, JSON_UNESCAPED_UNICODE);
 
@@ -2087,6 +2114,14 @@ class OperacionesControlador extends ControladorBase {
                 return;
             }
 
+            // A2: Candado de Control de Calidad: Si existen réplicas (-CR), exigir que todas estén CONFORME
+            $ccInfo = obtenerEstadoControlCalidadMatriz($detalle['resultados_json'] ?? '');
+            if (!$ccInfo['puede_aprobar']) {
+                $_SESSION['error'] = 'No se puede aprobar la matriz técnica: ' . $ccInfo['motivo_bloqueo'];
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+
             $decoded = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
             $filas = isset($decoded['filas']) ? $decoded['filas'] : (isset($decoded[0]) ? $decoded : []);
             $metadatos = $decoded['metadatos'] ?? [];
@@ -2121,7 +2156,10 @@ class OperacionesControlador extends ControladorBase {
                 'filas' => $filas,
                 'metadatos' => $metadatos,
                 'revision' => $revision,
-                'versiones' => $versiones
+                'versiones' => $versiones,
+                'control_calidad' => $decoded['control_calidad'] ?? [],
+                'usuario_captura_id' => $decoded['usuario_captura_id'] ?? null,
+                'usuario_captura_nombre' => $decoded['usuario_captura_nombre'] ?? null
             ];
 
             $stmtUpdate = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
@@ -2245,7 +2283,10 @@ class OperacionesControlador extends ControladorBase {
                 'filas' => $filas,
                 'metadatos' => $metadatos,
                 'revision' => $revision,
-                'versiones' => $versiones
+                'versiones' => $versiones,
+                'control_calidad' => $decoded['control_calidad'] ?? [],
+                'usuario_captura_id' => $decoded['usuario_captura_id'] ?? null,
+                'usuario_captura_nombre' => $decoded['usuario_captura_nombre'] ?? null
             ];
 
             $stmtUpdate = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
@@ -2673,6 +2714,14 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
+        // VALIDACIÓN DE RÉPLICAS CC: Solo se puede enviar si todas las réplicas fueron dictaminadas como CONFORME
+        $ccInfo = obtenerEstadoControlCalidadMatriz($detalle['resultados_json'] ?? '');
+        if (!$ccInfo['puede_aprobar']) {
+            $_SESSION['error'] = 'No se puede enviar el informe al cliente: ' . $ccInfo['motivo_bloqueo'];
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
         // Destinatario: tomar el especificado en el formulario o el registrado en la base de datos del cliente
         $destinatario = trim($datos['destinatario'] ?? ($detalle['cliente_email'] ?? ''));
         if (empty($destinatario) || !filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
@@ -2851,6 +2900,9 @@ class OperacionesControlador extends ControladorBase {
             }
             unset($par);
 
+            $detalle['revision_info'] = obtenerEstadoRevisionMatriz($detalle['resultados_json'] ?? '');
+            $detalle['cc_info'] = obtenerEstadoControlCalidadMatriz($detalle['resultados_json'] ?? '');
+
             $codigoInformeConsecutivo = generarCodigoInformeEnsayo(
                 $filas,
                 $metaOficial['fecha_muestreo'] ?? ($metaOficial['fecha_ingreso'] ?? null),
@@ -2974,8 +3026,13 @@ class OperacionesControlador extends ControladorBase {
      */
     public function evaluarReplicaControlCalidad(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
-        if (!tienePermiso('operaciones', 'ver') && !tienePermiso('laboratorio', 'ver')) {
-            $respuesta->redirigir('/Cycsa/publico/panel');
+
+        // A5: Permisos específicos para dictamen de Control de Calidad (roles 1-3 o permiso explícito)
+        $rolSesion = (int)($_SESSION['usuario_rol'] ?? 0);
+        $usuarioIdSesion = (int)($_SESSION['usuario_id'] ?? 0);
+        if (!in_array($rolSesion, [1, 2, 3]) && !tienePermiso('control_calidad', 'evaluar')) {
+            $_SESSION['error'] = 'No tiene permisos autorizados de Control de Calidad para emitir dictámenes.';
+            $respuesta->redirigir('/Cycsa/publico/control-calidad');
             return;
         }
 
@@ -3005,6 +3062,14 @@ class OperacionesControlador extends ControladorBase {
         $jsonActual = $stmt->fetchColumn();
         $dec = json_decode((string)$jsonActual, true) ?: [];
         $filas = isset($dec['filas']) && is_array($dec['filas']) ? $dec['filas'] : (isset($dec[0]) ? $dec : []);
+
+        // A5: Imparcialidad ISO/IEC 17025 (no auto-evaluación del usuario que capturó los resultados)
+        $usuarioCapturaId = (int)($dec['usuario_captura_id'] ?? ($dec['revision']['usuario_envio_id'] ?? 0));
+        if ($rolSesion !== 1 && $usuarioCapturaId > 0 && $usuarioCapturaId === $usuarioIdSesion) {
+            $_SESSION['error'] = 'Por norma técnica ISO/IEC 17025 (imparcialidad e independencia técnica), el usuario que capturó los resultados de la matriz no puede emitir el dictamen de Control de Calidad.';
+            $respuesta->redirigir('/Cycsa/publico/control-calidad/ver?id_detalle=' . $idDetalle);
+            return;
+        }
 
         $parValido = false;
         foreach (obtenerParesControlCalidad($filas) as $par) {

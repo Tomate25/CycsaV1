@@ -603,7 +603,18 @@ $idDet = (int)($detalle['id'] ?? 0);
                         </div>
 
                         <!-- Formulario de Dictamen -->
-                        <form class="qc-eval-form" method="POST" action="/Cycsa/publico/control-calidad/evaluar-replica">
+                        <?php 
+                        $usuarioSesionId = (int)($_SESSION['usuario_id'] ?? 0);
+                        $usuarioCapturaId = (int)($dec['usuario_captura_id'] ?? ($dec['revision']['usuario_envio_id'] ?? 0));
+                        $esAutoEvaluacion = ($usuarioSesionId > 0 && $usuarioCapturaId > 0 && $usuarioSesionId === $usuarioCapturaId && ((int)($_SESSION['usuario_rol'] ?? 0) !== 1));
+                        ?>
+                        <?php if ($esAutoEvaluacion): ?>
+                            <div style="background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:12px 16px; border-radius:8px; margin-bottom:14px; font-size:12.5px; display:flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-triangle-exclamation" style="color:#d97706; font-size:16px;"></i>
+                                <span><strong>Imparcialidad ISO/IEC 17025:</strong> Como analista que capturó los resultados, no puede autoevaluar el dictamen. La validación debe realizarla otro técnico o supervisor.</span>
+                            </div>
+                        <?php endif; ?>
+                        <form class="qc-eval-form" method="POST" action="/Cycsa/publico/control-calidad/evaluar-replica" style="<?= $esAutoEvaluacion ? 'opacity:0.6; pointer-events:none;' : '' ?>">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                             <input type="hidden" name="id_detalle" value="<?= (int)$detalle['id'] ?>">
                             <input type="hidden" name="codigo_original" value="<?= htmlspecialchars($par['codigo_original'], ENT_QUOTES, 'UTF-8') ?>">

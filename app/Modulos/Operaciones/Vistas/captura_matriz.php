@@ -401,9 +401,30 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             <i class="<?= $revisionInfo['badge_icono'] ?>"></i> <?= htmlspecialchars($revisionInfo['estado_label']) ?>
         </span>
 
+        <?php 
+        $ccMatrizInfo = obtenerEstadoControlCalidadMatriz($detalle['resultados_json'] ?? '');
+        if ($ccMatrizInfo['tiene_replicas']): 
+        ?>
+            <!-- CHIP ESTADO CONTROL DE CALIDAD DE RÉPLICAS -->
+            <a href="/Cycsa/publico/control-calidad/ver?id_detalle=<?= $idDetalle ?>" 
+               class="badge text-decoration-none <?= $ccMatrizInfo['badge_clase'] ?>" 
+               style="font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" 
+               title="Ver dictamen analítico en Control de Calidad: <?= htmlspecialchars($ccMatrizInfo['motivo_bloqueo'] ?? 'Todas las réplicas conformes') ?>">
+                <i class="fa-solid fa-microscope"></i> <?= htmlspecialchars($ccMatrizInfo['estado_label']) ?>
+            </a>
+        <?php endif; ?>
+
         <?php if ($esSupervisor && $revisionInfo['tiene_resultados']): ?>
             <?php if ($revisionInfo['estado'] !== 'aprobada'): ?>
-                <button type="button" onclick="abrirModalAprobarEnMatriz()" class="btn-matriz-secondary" style="background: #ecfdf5; color: #047857; border: 1.5px solid #a7f3d0; font-weight: 700; cursor: pointer; height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;" title="Aprobar tÃ©cnicamente los resultados y cÃ¡lculos de este ensayo">
+                <?php if ($ccMatrizInfo['tiene_replicas'] && !$ccMatrizInfo['puede_aprobar']): ?>
+                    <button type="button" class="btn-matriz-secondary disabled" style="background: #f1f5f9; color: #94a3b8; border: 1.5px solid #cbd5e1; font-weight: 700; cursor: not-allowed; height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;" title="<?= htmlspecialchars($ccMatrizInfo['motivo_bloqueo']) ?>" disabled>
+                        <i class="fa-solid fa-lock"></i> Aprobar Matriz
+                    </button>
+                <?php else: ?>
+                    <button type="button" onclick="abrirModalAprobarEnMatriz()" class="btn-matriz-secondary" style="background: #ecfdf5; color: #047857; border: 1.5px solid #a7f3d0; font-weight: 700; cursor: pointer; height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;" title="Aprobar técnicamente los resultados y cálculos de este ensayo">
+                        <i class="fa-solid fa-circle-check"></i> Aprobar Matriz
+                    </button>
+                <?php endif; ?>
                     <i class="fa-solid fa-circle-check"></i> Aprobar Matriz
                 </button>
             <?php endif; ?>

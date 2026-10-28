@@ -25,6 +25,18 @@ $descEnsayoEsc = htmlspecialchars(addslashes($it['descripcion_ensayo'] ?? ''), E
         <i class="<?= $rev['badge_icono'] ?>"></i> <?= htmlspecialchars($rev['estado_label']) ?>
     </span>
 
+    <?php 
+    $ccInfo = obtenerEstadoControlCalidadMatriz($it['resultados_json'] ?? '');
+    if ($ccInfo['tiene_replicas']): 
+    ?>
+        <a href="/Cycsa/publico/control-calidad/ver?id_detalle=<?= (int)$it['id'] ?>" 
+           class="badge text-decoration-none <?= $ccInfo['badge_clase'] ?>" 
+           style="font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;" 
+           title="<?= htmlspecialchars($ccInfo['motivo_bloqueo'] ?? 'Todas las réplicas conformes') ?>">
+            <i class="fa-solid fa-microscope"></i> <?= htmlspecialchars($ccInfo['estado_label']) ?>
+        </a>
+    <?php endif; ?>
+
     <?php if ($rev['estado'] === 'devuelta'): ?>
         <button type="button" 
                 onclick="verObservacionDevolucion(<?= (int)$it['id'] ?>, '<?= $descEnsayoEsc ?>', '<?= htmlspecialchars(addslashes($rev['motivo_devolucion'] ?? ''), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($rev['usuario_revisor'] ?? 'Supervisor'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($rev['fecha_revision'] ?? ''), ENT_QUOTES, 'UTF-8') ?>')" 
@@ -38,13 +50,22 @@ $descEnsayoEsc = htmlspecialchars(addslashes($it['descripcion_ensayo'] ?? ''), E
     <!-- ACCIONES DE SUPERVISIÓN RÁPIDA (ROLES 1, 2, 3) -->
     <?php if ($esSupervisor && $tieneRes): ?>
         <?php if ($rev['estado'] !== 'aprobada'): ?>
-            <button type="button" 
-                    onclick="abrirModalAprobarEnIndex(<?= (int)$it['id'] ?>, '<?= $descEnsayoEsc ?>')" 
-                    class="btn btn-sm btn-success" 
-                    style="height: 36px; padding: 0 14px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; background-color: #16a34a; border-color: #15803d; color: white;" 
-                    title="Aprobar técnicamente los resultados del ensayo">
-                <i class="fa-solid fa-circle-check"></i> Aprobar
-            </button>
+            <?php if ($ccInfo['tiene_replicas'] && !$ccInfo['puede_aprobar']): ?>
+                <button type="button" 
+                        class="btn btn-sm btn-secondary disabled" 
+                        style="height: 36px; padding: 0 14px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; cursor: not-allowed;" 
+                        title="<?= htmlspecialchars($ccInfo['motivo_bloqueo']) ?>" disabled>
+                    <i class="fa-solid fa-lock"></i> Aprobar
+                </button>
+            <?php else: ?>
+                <button type="button" 
+                        onclick="abrirModalAprobarEnIndex(<?= (int)$it['id'] ?>, '<?= $descEnsayoEsc ?>')" 
+                        class="btn btn-sm btn-success" 
+                        style="height: 36px; padding: 0 14px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; background-color: #16a34a; border-color: #15803d; color: white;" 
+                        title="Aprobar técnicamente los resultados del ensayo">
+                    <i class="fa-solid fa-circle-check"></i> Aprobar
+                </button>
+            <?php endif; ?>
         <?php endif; ?>
         <?php if ($rev['estado'] !== 'devuelta'): ?>
             <button type="button" 
