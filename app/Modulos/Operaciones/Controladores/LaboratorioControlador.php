@@ -724,6 +724,63 @@ class LaboratorioControlador extends ControladorBase {
     }
 
     /**
+     * Reemisión de informe de ensayo (N+1) con invalidación controlada según ISO/IEC 17025.
+     */
+    public function reemitirInforme(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+        if ($usuarioId === null) {
+            return;
+        }
+        $esAjax = $peticion->esAjax();
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                return;
+            }
+
+            $informeId = (int)($datos['informe_id'] ?? 0);
+            $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $motivo = trim($datos['motivo_reemision'] ?? ($datos['motivo'] ?? ''));
+
+            $roturasModelo = new RoturasModelo();
+            $resultado = $roturasModelo->reemitirInforme($informeId, $motivo, $usuarioId);
+
+            if ($esAjax) {
+                $respuesta->enviarJson([
+                    'status' => $resultado['exito'] ? 'success' : 'error',
+                    'message' => $resultado['mensaje'],
+                    'nuevo_informe_id' => $resultado['nuevo_informe_id'] ?? null,
+                    'nuevo_numero' => $resultado['nuevo_numero'] ?? '',
+                    'nueva_version' => $resultado['nueva_version'] ?? 1
+                ]);
+                return;
+            }
+
+            if ($resultado['exito']) {
+                $_SESSION['exito'] = $resultado['mensaje'];
+            } else {
+                $_SESSION['error'] = $resultado['mensaje'];
+            }
+
+            $redir = ($muestraId > 0)
+                ? '/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId
+                : '/Cycsa/publico/laboratorio';
+            $respuesta->redirigir($redir);
+        }
+    }
+
+    /**
      * Reidentificación blindada bajo ISO 17025 Cláusula 4.1 y 4.2.
      * Permitido para Administrador (1), Supervisor / Gerente de Calidad (3) o Comercial (2).
      * Prohibido para rol Técnico (6).

@@ -233,30 +233,163 @@ class ContabilidadControlador extends ControladorBase {
         $this->verificarPermiso($respuesta, 'crear_editar');
 
         if ($peticion->esPost()) {
+            $esAjax = $peticion->esAjax();
             $datos = $peticion->obtenerDatos();
+            if (empty($datos)) {
+                $raw = file_get_contents('php://input');
+                if (!empty($raw)) {
+                    $json = json_decode($raw, true);
+                    if (is_array($json)) {
+                        $datos = $json;
+                        $esAjax = true;
+                    }
+                }
+            }
+
             $modelo = new ContabilidadModelo();
 
             if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['ok' => false, 'exito' => false, 'error' => 'Token CSRF inválido.'], 403);
+                    return;
+                }
                 $_SESSION['error'] = 'Token CSRF inválido.';
                 $respuesta->redirigir('/Cycsa/publico/contabilidad/cxp');
                 return;
             }
 
-            if (empty($datos['proveedor_nombre']) || empty($datos['factura_numero']) || empty($datos['monto']) || empty($datos['fecha_emision'])) {
-                $_SESSION['error'] = 'Todos los campos excepto la cuenta y notas son obligatorios.';
+            // Detectar si se recibieron partidas detalladas (array PHP o JSON)
+            $lineas = [];
+            if (!empty($datos['lineas'])) {
+                if (is_string($datos['lineas'])) {
+                    $dec = json_decode($datos['lineas'], true);
+                    if (is_array($dec)) {
+                        $lineas = $dec;
+                    }
+                } elseif (is_array($datos['lineas'])) {
+                    $lineas = $datos['lineas'];
+                }
+            } elseif (!empty($datos['lineas_json']) && is_string($datos['lineas_json'])) {
+                $dec = json_decode($datos['lineas_json'], true);
+                if (is_array($dec)) {
+                    $lineas = $dec;
+                }
+            } elseif (!empty($datos['detalle'])) {
+                if (is_string($datos['detalle'])) {
+                    $dec = json_decode($datos['detalle'], true);
+                    if (is_array($dec)) {
+                        $lineas = $dec;
+                    }
+                } elseif (is_array($datos['detalle'])) {
+                    $lineas = $datos['detalle'];
+                }
+            } elseif (isset($datos['linea_cuenta_id']) && is_array($datos['linea_cuenta_id'])) {
+                foreach ($datos['linea_cuenta_id'] as $idx => $ctaId) {
+                    if (!empty($ctaId)) {
+                        $lineas[] = [
+                            'cuenta_contable_id' => (int)$ctaId,
+                            'concepto'           => $datos['linea_concepto'][$idx] ?? '',
+                            'monto'              => (float)($datos['linea_monto'][$idx] ?? 0),
+                            'iva'                => (float)($datos['linea_iva'][$idx] ?? 0),
+                            'retencion_ir'       => (float)($datos['linea_retencion_ir'][$idx] ?? 0),
+                            'retencion_alcaldia' => (float)($datos['linea_retencion_alcaldia'][$idx] ?? 0),
+                        ];
+                    }
+                }
+            }
+
+            // Si hay partidas multi-línea, procesar mediante guardarCxpConDetalle
+            if (!empty($lineas)) {
+                $resultado = $modelo->guardarCxpConDetalle($datos, $lineas);
+                if ($resultado['exito']) {
+                    registrarBitacora('contabilidad', 'crear_cxp_detalle', 'Creada cuenta por pagar N°: ' . ($datos['factura_numero'] ?? '') . ' con ' . count($lineas) . ' partidas.');
+                    if ($esAjax) {
+                        $respuesta->enviarJson([
+                            'ok'                       => true,
+                            'exito'                    => true,
+                            'mensaje'                  => $resultado['mensaje'] ?? 'Cuenta por pagar registrada exitosamente.',
+                            'cxp_id'                   => $resultado['cxp_id'] ?? null,
+                            'id'                       => $resultado['cxp_id'] ?? null,
+                            'asiento_id'               => $resultado['asiento_id'] ?? null,
+                            'total_subtotal'           => $resultado['total_subtotal'] ?? null,
+                            'total_iva'                => $resultado['total_iva'] ?? null,
+                            'total_retencion_ir'       => $resultado['total_retencion_ir'] ?? null,
+                            'total_retencion_alcaldia' => $resultado['total_retencion_alcaldia'] ?? null,
+                            'total_neto'               => $resultado['total_neto'] ?? null,
+                            'lineas_guardadas'         => $resultado['lineas_guardadas'] ?? count($lineas),
+                        ]);
+                        return;
+                    }
+                    $_SESSION['exito'] = 'Cuenta por pagar registrada exitosamente con partidas multi-línea.';
+                    $respuesta->redirigir('/Cycsa/publico/contabilidad/cxp');
+                    return;
+                } else {
+                    $errMsg = $resultado['mensaje'] ?? $resultado['error'] ?? 'Error al registrar la cuenta por pagar.';
+                    if ($esAjax) {
+                        $respuesta->enviarJson(['ok' => false, 'exito' => false, 'error' => $errMsg, 'mensaje' => $errMsg], 422);
+                        return;
+                    }
+                    $_SESSION['error'] = $errMsg;
+                    $respuesta->redirigir('/Cycsa/publico/contabilidad/cxp');
+                    return;
+                }
+            }
+
+            // Modo estándar / legado (una sola partida global)
+            if ((empty($datos['proveedor_nombre']) && empty($datos['proveedor_id'])) || empty($datos['factura_numero']) || empty($datos['monto']) || empty($datos['fecha_emision'])) {
+                $errMsg = 'Todos los campos excepto la cuenta y notas son obligatorios.';
+                if ($esAjax) {
+                    $respuesta->enviarJson(['ok' => false, 'exito' => false, 'error' => $errMsg, 'mensaje' => $errMsg], 400);
+                    return;
+                }
+                $_SESSION['error'] = $errMsg;
                 $respuesta->redirigir('/Cycsa/publico/contabilidad/cxp');
                 return;
             }
 
             if ($modelo->guardarCxp($datos)) {
                 registrarBitacora('contabilidad', 'crear_cxp', 'Creada cuenta por pagar N°: ' . $datos['factura_numero']);
+                if ($esAjax) {
+                    $respuesta->enviarJson(['ok' => true, 'exito' => true, 'mensaje' => 'Cuenta por pagar registrada exitosamente.']);
+                    return;
+                }
                 $_SESSION['exito'] = 'Cuenta por pagar registrada exitosamente.';
             } else {
+                if ($esAjax) {
+                    $respuesta->enviarJson(['ok' => false, 'exito' => false, 'error' => 'Error al registrar la cuenta por pagar.'], 500);
+                    return;
+                }
                 $_SESSION['error'] = 'Error al registrar la cuenta por pagar.';
             }
 
             $respuesta->redirigir('/Cycsa/publico/contabilidad/cxp');
         }
+    }
+
+    /**
+     * TAREA-049: Consulta las partidas de detalle de una CXP vía API / AJAX.
+     */
+    public function detalleCxp(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $cxpId = (int)($peticion->obtenerParametro('id') ?? $_GET['id'] ?? 0);
+        if ($cxpId <= 0) {
+            $respuesta->enviarJson(['ok' => false, 'exito' => false, 'error' => 'ID de CXP no válido.'], 400);
+            return;
+        }
+
+        $modelo = new ContabilidadModelo();
+        $lineas = $modelo->obtenerDetalleCxp($cxpId);
+        $cxp = $modelo->obtenerCxpPorId($cxpId);
+
+        $respuesta->enviarJson([
+            'ok'     => true,
+            'exito'  => true,
+            'cxp_id' => $cxpId,
+            'cxp'    => $cxp,
+            'lineas' => $lineas
+        ]);
     }
 
     public function pagarCxp(Peticion $peticion, Respuesta $respuesta): void {

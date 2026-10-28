@@ -13,6 +13,9 @@
     <!-- FontAwesome para íconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Bootstrap 5.3.3 CSS (Estandarización UI para todos los módulos) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
     <!-- SweetAlert2 para modales y decisiones interactivas -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
@@ -45,6 +48,18 @@
             height: 100vh; 
             overflow: hidden; 
             color: var(--texto-principal);
+        }
+
+        /* Normalización y compatibilidad de Bootstrap 5 con el diseño CYCSA */
+        a {
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: none;
+        }
+        .content-wrapper > .container-fluid {
+            padding-left: 0;
+            padding-right: 0;
         }
         
         /* BARRA LATERAL (SIDEBAR) */
@@ -503,11 +518,59 @@
                 </a>
             </li>
             <?php endif; ?>
+            <?php if (tienePermiso('compras', 'ver') || tienePermiso('contabilidad', 'ver') || (($_SESSION['usuario_rol'] ?? 0) == 1)): ?>
+            <li>
+                <a href="/Cycsa/publico/compras/proveedores" class="<?= strpos($rutaActual, '/compras') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span class="menu-texto">Compras y Proveedores</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('inventario', 'ver') || tienePermiso('laboratorio', 'ver') || tienePermiso('operaciones', 'ver') || (($_SESSION['usuario_rol'] ?? 0) == 1)): ?>
+            <li>
+                <a href="/Cycsa/publico/inventario" class="<?= strpos($rutaActual, '/inventario') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span class="menu-texto">Inventario y Kárdex</span>
+                </a>
+            </li>
+            <?php endif; ?>
             <?php if (tienePermiso('contabilidad', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/contabilidad/cuentas" class="<?= strpos($rutaActual, '/contabilidad') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-calculator"></i>
                     <span class="menu-texto">Contabilidad</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('nomina', 'ver') || tienePermiso('contabilidad', 'ver') || tienePermiso('rrhh', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/nomina" class="<?= strpos($rutaActual, '/nomina') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span class="menu-texto">Nómina y RRHH</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('prestamos', 'ver') || tienePermiso('contabilidad', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/prestamos" class="<?= strpos($rutaActual, '/prestamos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-building-columns"></i>
+                    <span class="menu-texto">Préstamos Bancarios</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('activos_fijos', 'ver') || tienePermiso('contabilidad', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/activos-fijos" class="<?= strpos($rutaActual, '/activos-fijos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span class="menu-texto">Activos Fijos</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('proyectos', 'ver') || tienePermiso('operaciones', 'ver') || tienePermiso('contabilidad', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/proyectos" class="<?= strpos($rutaActual, '/proyectos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-helmet-safety"></i>
+                    <span class="menu-texto">Proyectos y Obras</span>
                 </a>
             </li>
             <?php endif; ?>
@@ -673,5 +736,8 @@
             }, true);
         });
     </script>
+
+    <!-- Bootstrap 5.3.3 JS Bundle con Popper (Modales, tooltips, tabs y dropdowns interactivos) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>

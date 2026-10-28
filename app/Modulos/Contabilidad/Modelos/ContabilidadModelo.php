@@ -5,6 +5,7 @@ namespace Cycsa\Modulos\Contabilidad\Modelos;
 use Cycsa\Nucleo\ModeloBase;
 use PDO;
 use Exception;
+use Throwable;
 
 class ContabilidadModelo extends ModeloBase {
 
@@ -497,19 +498,37 @@ class ContabilidadModelo extends ModeloBase {
     public function guardarCxp(array $datos): bool {
         try {
             $this->db->beginTransaction();
-            $sql = "INSERT INTO cuentas_por_pagar (proveedor_nombre, id_cuenta_contable, factura_numero, monto, saldo, estado, fecha_emision, fecha_vencimiento, notas) 
-                    VALUES (:proveedor_nombre, :id_cuenta_contable, :factura_numero, :monto, :saldo, 'Pendiente', :fecha_emision, :fecha_vencimiento, :notas)";
+
+            $proveedorId = !empty($datos['proveedor_id']) ? (int)$datos['proveedor_id'] : null;
+            $ordenCompraId = !empty($datos['orden_compra_id']) ? (int)$datos['orden_compra_id'] : null;
+            $recepcionId = !empty($datos['recepcion_id']) ? (int)$datos['recepcion_id'] : null;
+
+            $proveedorNombre = trim($datos['proveedor_nombre'] ?? '');
+            if ($proveedorId !== null && $proveedorNombre === '') {
+                $stmtProv = $this->db->prepare("SELECT razon_social FROM proveedores WHERE id = :id LIMIT 1");
+                $stmtProv->execute(['id' => $proveedorId]);
+                $nom = $stmtProv->fetchColumn();
+                if ($nom) {
+                    $proveedorNombre = (string)$nom;
+                }
+            }
+
+            $sql = "INSERT INTO cuentas_por_pagar (proveedor_id, orden_compra_id, recepcion_id, proveedor_nombre, id_cuenta_contable, factura_numero, monto, saldo, estado, fecha_emision, fecha_vencimiento, notas) 
+                    VALUES (:proveedor_id, :orden_compra_id, :recepcion_id, :proveedor_nombre, :id_cuenta_contable, :factura_numero, :monto, :saldo, 'Pendiente', :fecha_emision, :fecha_vencimiento, :notas)";
             
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
-                'proveedor_nombre' => trim($datos['proveedor_nombre']),
+                'proveedor_id' => $proveedorId,
+                'orden_compra_id' => $ordenCompraId,
+                'recepcion_id' => $recepcionId,
+                'proveedor_nombre' => $proveedorNombre,
                 'id_cuenta_contable' => !empty($datos['id_cuenta_contable']) ? (int)$datos['id_cuenta_contable'] : null,
                 'factura_numero' => trim($datos['factura_numero']),
                 'monto' => (float)$datos['monto'],
                 'saldo' => (float)$datos['monto'],
                 'fecha_emision' => $datos['fecha_emision'],
                 'fecha_vencimiento' => !empty($datos['fecha_vencimiento']) ? $datos['fecha_vencimiento'] : null,
-                'notes' => !empty($datos['notas']) ? trim($datos['notas']) : null
+                'notas' => !empty($datos['notas']) ? trim($datos['notas']) : null
             ]);
 
             $cxpId = (int)$this->db->lastInsertId();
@@ -519,15 +538,18 @@ class ContabilidadModelo extends ModeloBase {
                 $expenseAcc = 221;
             }
 
-            // Register Journal Entry (Debit Expense / Credit Accounts Payable 121)
+            // Usar ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES') dinámicamente en lugar del ID hardcodeado 121
+            $cuentaProveedoresId = ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES') ?? 121;
+
+            // Register Journal Entry (Debit Expense / Credit Accounts Payable)
             $this->registrarAsientoContable(
                 $datos['fecha_emision'],
-                "Registro de Gasto / Factura N° " . $datos['factura_numero'] . " de " . $datos['proveedor_nombre'],
+                "Registro de Gasto / Factura N° " . $datos['factura_numero'] . " de " . $proveedorNombre,
                 'CXP',
                 $cxpId,
                 [
                     ['id_cuenta_contable' => $expenseAcc, 'debe' => $datos['monto'], 'haber' => 0.0],
-                    ['id_cuenta_contable' => 121, 'debe' => 0.0, 'haber' => $datos['monto']]
+                    ['id_cuenta_contable' => $cuentaProveedoresId, 'debe' => 0.0, 'haber' => $datos['monto']]
                 ]
             );
 
@@ -540,6 +562,386 @@ class ContabilidadModelo extends ModeloBase {
             error_log("Error en guardarCxp: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * TAREA-049: Guarda una cuenta por pagar con desglose de gastos multi-cuenta y retenciones fiscales.
+     * Transaccional ACID. Genera asiento compuesto balanceado con comprobación estricta de partida doble.
+     *
+     * @param array $cabecera Datos generales de la CXP (proveedor, factura, fechas, notas, etc.)
+     * @param array $lineas Partidas detalladas de gastos con cuenta, monto, iva, retenciones
+     * @return array ['exito' => bool, 'mensaje' => string, 'cxp_id' => ?int, ...]
+     */
+    public function guardarCxpConDetalle(array $cabecera, array $lineas): array {
+        if (empty($lineas)) {
+            return [
+                'exito'   => false,
+                'mensaje' => 'Debe registrar al menos una partida de detalle.',
+                'error'   => 'Debe registrar al menos una partida de detalle.'
+            ];
+        }
+
+        $transaccionPropia = false;
+        try {
+            if (!$this->db->inTransaction()) {
+                $this->db->beginTransaction();
+                $transaccionPropia = true;
+            }
+
+            // 1. Validar y resolver datos de la cabecera
+            $proveedorId = !empty($cabecera['proveedor_id']) ? (int)$cabecera['proveedor_id'] : null;
+            $proveedorNombre = trim($cabecera['proveedor_nombre'] ?? '');
+            if ($proveedorId !== null && $proveedorNombre === '') {
+                $stmtProv = $this->db->prepare("SELECT razon_social FROM proveedores WHERE id = :id LIMIT 1");
+                $stmtProv->execute(['id' => $proveedorId]);
+                $nom = $stmtProv->fetchColumn();
+                if ($nom) {
+                    $proveedorNombre = (string)$nom;
+                }
+            }
+
+            if ($proveedorNombre === '' && $proveedorId === null) {
+                throw new Exception("El proveedor es obligatorio.");
+            }
+
+            $facturaNumero = trim($cabecera['factura_numero'] ?? '');
+            if ($facturaNumero === '') {
+                throw new Exception("El número de factura es obligatorio.");
+            }
+
+            $fechaEmision = !empty($cabecera['fecha_emision']) ? trim($cabecera['fecha_emision']) : date('Y-m-d');
+            $fechaVencimiento = !empty($cabecera['fecha_vencimiento']) ? trim($cabecera['fecha_vencimiento']) : null;
+            $ordenCompraId = !empty($cabecera['orden_compra_id']) ? (int)$cabecera['orden_compra_id'] : null;
+            $recepcionId = !empty($cabecera['recepcion_id']) ? (int)$cabecera['recepcion_id'] : null;
+            $notas = !empty($cabecera['notas']) ? trim($cabecera['notas']) : null;
+
+            // 2. Validar cada partida y sus cuentas contables
+            $stmtCta = $this->db->prepare("SELECT id, codigo, nombre, tipo FROM cuentas_contables WHERE id = :id LIMIT 1");
+            $lineasValidadas = [];
+            $totalSubtotal = 0.0;
+            $totalIva = 0.0;
+            $totalRetIr = 0.0;
+            $totalRetAlcaldia = 0.0;
+            $retIrPorCuenta = [];
+
+            foreach ($lineas as $idx => $lin) {
+                $cuentaId = (int)($lin['cuenta_contable_id'] ?? $lin['id_cuenta_contable'] ?? 0);
+                if ($cuentaId <= 0) {
+                    throw new Exception("Partida #" . ($idx + 1) . ": No se especificó una cuenta contable válida.");
+                }
+
+                $stmtCta->execute(['id' => $cuentaId]);
+                $cta = $stmtCta->fetch(PDO::FETCH_ASSOC);
+                if (!$cta) {
+                    throw new Exception("Partida #" . ($idx + 1) . ": La cuenta contable ID {$cuentaId} no existe.");
+                }
+
+                if (strtoupper(trim((string)$cta['tipo'])) !== 'DETALLE') {
+                    throw new Exception("Partida #" . ($idx + 1) . ": La cuenta contable '{$cta['codigo']} - {$cta['nombre']}' no es de tipo DETALLE.");
+                }
+
+                $montoLinea = round((float)($lin['monto'] ?? $lin['subtotal'] ?? 0.0), 2);
+                if ($montoLinea <= 0) {
+                    throw new Exception("Partida #" . ($idx + 1) . ": El monto o subtotal debe ser mayor a 0.00.");
+                }
+
+                $ivaLinea = round(max(0.0, (float)($lin['iva'] ?? 0.0)), 2);
+                $retIrLinea = round(max(0.0, (float)($lin['retencion_ir'] ?? $lin['ret_ir'] ?? 0.0)), 2);
+                $retAlcLinea = round(max(0.0, (float)($lin['retencion_alcaldia'] ?? $lin['ret_alcaldia'] ?? 0.0)), 2);
+
+                $totalLinea = isset($lin['total']) && (float)$lin['total'] > 0
+                    ? round((float)$lin['total'], 2)
+                    : round($montoLinea + $ivaLinea - $retIrLinea - $retAlcLinea, 2);
+
+                $conceptoLinea = trim($lin['concepto'] ?? $lin['descripcion'] ?? $notas ?? "Gasto {$cta['nombre']}");
+                if ($conceptoLinea === '') {
+                    $conceptoLinea = "Gasto partida " . ($idx + 1);
+                }
+
+                // Resolver cuenta contable para retención IR de esta línea
+                if ($retIrLinea > 0) {
+                    $cuentaIrId = null;
+                    if (!empty($lin['cuenta_retencion_ir_id'])) {
+                        $cuentaIrId = (int)$lin['cuenta_retencion_ir_id'];
+                    } elseif ((!empty($lin['tipo_retencion_ir']) && (int)$lin['tipo_retencion_ir'] === 10)
+                           || (!empty($cabecera['tipo_retencion_ir']) && (int)$cabecera['tipo_retencion_ir'] === 10)) {
+                        $cuentaIrId = ConfigCuentasModelo::obtenerIdPorClave('IR_FUENTE_10', $this->db)
+                            ?? ConfigCuentasModelo::obtenerIdPorClave('IR_SERVICIOS_10', $this->db);
+                        if (!$cuentaIrId) {
+                            $stmtIr10 = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '2010505' LIMIT 1");
+                            $stmtIr10->execute();
+                            $cuentaIrId = (int)($stmtIr10->fetchColumn() ?: 151);
+                        }
+                    } else {
+                        $cuentaIrId = ConfigCuentasModelo::obtenerIdPorClave('IR_FUENTE_2', $this->db) ?? 154;
+                        if ($cuentaIrId === 154) {
+                            $stmtCheck = $this->db->prepare("SELECT id FROM cuentas_contables WHERE id = 154 LIMIT 1");
+                            $stmtCheck->execute();
+                            if (!$stmtCheck->fetchColumn()) {
+                                $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '2010502' LIMIT 1");
+                                $stmtCode->execute();
+                                $cuentaIrId = (int)($stmtCode->fetchColumn() ?: 154);
+                            }
+                        }
+                    }
+
+                    if (!isset($retIrPorCuenta[$cuentaIrId])) {
+                        $retIrPorCuenta[$cuentaIrId] = 0.0;
+                    }
+                    $retIrPorCuenta[$cuentaIrId] += $retIrLinea;
+                }
+
+                $lineasValidadas[] = [
+                    'cuenta_contable_id' => $cuentaId,
+                    'concepto'           => $conceptoLinea,
+                    'monto'              => $montoLinea,
+                    'iva'                => $ivaLinea,
+                    'retencion_ir'       => $retIrLinea,
+                    'retencion_alcaldia' => $retAlcLinea,
+                    'total'              => $totalLinea,
+                    'cuenta'             => $cta
+                ];
+
+                $totalSubtotal += $montoLinea;
+                $totalIva += $ivaLinea;
+                $totalRetIr += $retIrLinea;
+                $totalRetAlcaldia += $retAlcLinea;
+            }
+
+            $totalSubtotal = round($totalSubtotal, 2);
+            $totalIva = round($totalIva, 2);
+            $totalRetIr = round($totalRetIr, 2);
+            $totalRetAlcaldia = round($totalRetAlcaldia, 2);
+
+            // Saldo neto a pagar a Proveedores
+            $netoProveedor = round(($totalSubtotal + $totalIva) - ($totalRetIr + $totalRetAlcaldia), 2);
+            if ($netoProveedor <= 0) {
+                throw new Exception("El saldo neto a pagar a proveedores debe ser mayor a cero.");
+            }
+
+            // Monto de cabecera en cuentas_por_pagar
+            $montoCabecera = isset($cabecera['monto']) && (float)$cabecera['monto'] > 0
+                ? round((float)$cabecera['monto'], 2)
+                : $netoProveedor;
+
+            $saldoCabecera = isset($cabecera['saldo']) && (float)$cabecera['saldo'] > 0
+                ? round((float)$cabecera['saldo'], 2)
+                : $netoProveedor;
+
+            $idCuentaCabecera = !empty($cabecera['id_cuenta_contable'])
+                ? (int)$cabecera['id_cuenta_contable']
+                : (int)$lineasValidadas[0]['cuenta_contable_id'];
+
+            // 3. Insertar Cabecera en cuentas_por_pagar
+            $sqlCxp = "INSERT INTO cuentas_por_pagar (
+                proveedor_id, orden_compra_id, recepcion_id, proveedor_nombre,
+                id_cuenta_contable, factura_numero, monto, saldo, estado,
+                fecha_emision, fecha_vencimiento, notas
+            ) VALUES (
+                :proveedor_id, :orden_compra_id, :recepcion_id, :proveedor_nombre,
+                :id_cuenta_contable, :factura_numero, :monto, :saldo, 'Pendiente',
+                :fecha_emision, :fecha_vencimiento, :notas
+            )";
+
+            $stmtCxp = $this->db->prepare($sqlCxp);
+            $stmtCxp->execute([
+                'proveedor_id'       => $proveedorId,
+                'orden_compra_id'    => $ordenCompraId,
+                'recepcion_id'       => $recepcionId,
+                'proveedor_nombre'   => $proveedorNombre,
+                'id_cuenta_contable' => $idCuentaCabecera,
+                'factura_numero'     => $facturaNumero,
+                'monto'              => $montoCabecera,
+                'saldo'              => $saldoCabecera,
+                'fecha_emision'      => $fechaEmision,
+                'fecha_vencimiento'  => $fechaVencimiento,
+                'notas'              => $notas
+            ]);
+
+            $cxpId = (int)$this->db->lastInsertId();
+
+            // 4. Insertar Detalle en cuentas_por_pagar_detalle
+            $sqlDet = "INSERT INTO cuentas_por_pagar_detalle (
+                cxp_id, cuenta_contable_id, concepto, monto, iva, retencion_ir, retencion_alcaldia, total
+            ) VALUES (
+                :cxp_id, :cuenta_contable_id, :concepto, :monto, :iva, :retencion_ir, :retencion_alcaldia, :total
+            )";
+            $stmtDet = $this->db->prepare($sqlDet);
+
+            foreach ($lineasValidadas as $lv) {
+                $stmtDet->execute([
+                    'cxp_id'             => $cxpId,
+                    'cuenta_contable_id' => $lv['cuenta_contable_id'],
+                    'concepto'           => $lv['concepto'],
+                    'monto'              => $lv['monto'],
+                    'iva'                => $lv['iva'],
+                    'retencion_ir'       => $lv['retencion_ir'],
+                    'retencion_alcaldia' => $lv['retencion_alcaldia'],
+                    'total'              => $lv['total']
+                ]);
+            }
+
+            // 5. Preparar Asiento Contable Compuesto
+            $asientoLineas = [];
+
+            // DEBE: cada cuenta de gasto específica por el subtotal de cada línea
+            foreach ($lineasValidadas as $lv) {
+                $asientoLineas[] = [
+                    'id_cuenta_contable' => $lv['cuenta_contable_id'],
+                    'debe'               => $lv['monto'],
+                    'haber'              => 0.0
+                ];
+            }
+
+            // DEBE: IVA acreditable por la suma del IVA de las líneas
+            if ($totalIva > 0.0001) {
+                $cuentaIvaId = ConfigCuentasModelo::obtenerIdPorClave('IVA_ACREDITABLE', $this->db) ?? 206;
+                if ($cuentaIvaId === 206) {
+                    $stmtCheck = $this->db->prepare("SELECT id FROM cuentas_contables WHERE id = 206 LIMIT 1");
+                    $stmtCheck->execute();
+                    if (!$stmtCheck->fetchColumn()) {
+                        $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '1010601' LIMIT 1");
+                        $stmtCode->execute();
+                        $cuentaIvaId = (int)($stmtCode->fetchColumn() ?: 206);
+                    }
+                }
+                $asientoLineas[] = [
+                    'id_cuenta_contable' => $cuentaIvaId,
+                    'debe'               => $totalIva,
+                    'haber'              => 0.0
+                ];
+            }
+
+            // HABER: Retención IR fuente 2% o 10% si aplica
+            foreach ($retIrPorCuenta as $ctaIrId => $montoRetIr) {
+                $montoRetIrRound = round($montoRetIr, 2);
+                if ($montoRetIrRound > 0.0001) {
+                    $asientoLineas[] = [
+                        'id_cuenta_contable' => $ctaIrId,
+                        'debe'               => 0.0,
+                        'haber'              => $montoRetIrRound
+                    ];
+                }
+            }
+
+            // HABER: Retención alcaldía 1% si aplica
+            if ($totalRetAlcaldia > 0.0001) {
+                $cuentaAlcaldiaId = ConfigCuentasModelo::obtenerIdPorClave('RETENCION_ALCALDIA_1', $this->db)
+                    ?? ConfigCuentasModelo::obtenerIdPorClave('RETENCION_ALCALDIA', $this->db)
+                    ?? 153;
+                if ($cuentaAlcaldiaId === 153) {
+                    $stmtCheck = $this->db->prepare("SELECT id FROM cuentas_contables WHERE id = 153 LIMIT 1");
+                    $stmtCheck->execute();
+                    if (!$stmtCheck->fetchColumn()) {
+                        $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '2010507' LIMIT 1");
+                        $stmtCode->execute();
+                        $cuentaAlcaldiaId = (int)($stmtCode->fetchColumn() ?: 153);
+                    }
+                }
+                $asientoLineas[] = [
+                    'id_cuenta_contable' => $cuentaAlcaldiaId,
+                    'debe'               => 0.0,
+                    'haber'              => $totalRetAlcaldia
+                ];
+            }
+
+            // HABER: Proveedores por el saldo neto a pagar
+            $cuentaProveedoresId = ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES', $this->db) ?? 121;
+            if ($cuentaProveedoresId === 121) {
+                $stmtCheck = $this->db->prepare("SELECT id FROM cuentas_contables WHERE id = 121 LIMIT 1");
+                $stmtCheck->execute();
+                if (!$stmtCheck->fetchColumn()) {
+                    $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '2010101' LIMIT 1");
+                    $stmtCode->execute();
+                    $cuentaProveedoresId = (int)($stmtCode->fetchColumn() ?: 121);
+                }
+            }
+
+            $asientoLineas[] = [
+                'id_cuenta_contable' => $cuentaProveedoresId,
+                'debe'               => 0.0,
+                'haber'              => $netoProveedor
+            ];
+
+            // Comprobación estricta de partida doble: round(SUM(debe), 2) === round(SUM(haber), 2)
+            $sumDebe = 0.0;
+            $sumHaber = 0.0;
+            foreach ($asientoLineas as $al) {
+                $sumDebe += (float)($al['debe'] ?? 0.0);
+                $sumHaber += (float)($al['haber'] ?? 0.0);
+            }
+            $sumDebe = round($sumDebe, 2);
+            $sumHaber = round($sumHaber, 2);
+
+            if ($sumDebe !== $sumHaber || abs($sumDebe - $sumHaber) > 0.0001) {
+                throw new Exception("Descuadre estricto de partida doble: Debe ($sumDebe) != Haber ($sumHaber).");
+            }
+
+            $conceptoAsiento = "Registro de Gasto / Factura N° {$facturaNumero} de {$proveedorNombre}";
+            $asientoId = $this->registrarAsientoContable($fechaEmision, $conceptoAsiento, 'CXP', $cxpId, $asientoLineas);
+
+            if (!$asientoId) {
+                throw new Exception("Error al generar el asiento contable para la CXP.");
+            }
+
+            if ($transaccionPropia && $this->db->inTransaction()) {
+                $this->db->commit();
+            }
+
+            return [
+                'exito'                    => true,
+                'mensaje'                  => 'Cuenta por pagar y asiento contable registrados exitosamente.',
+                'cxp_id'                   => $cxpId,
+                'id'                       => $cxpId,
+                'asiento_id'               => $asientoId,
+                'total_subtotal'           => $totalSubtotal,
+                'total_iva'                => $totalIva,
+                'total_retencion_ir'       => $totalRetIr,
+                'total_retencion_alcaldia' => $totalRetAlcaldia,
+                'total_neto'               => $netoProveedor,
+                'lineas_guardadas'         => count($lineasValidadas)
+            ];
+
+        } catch (Throwable $e) {
+            if ($transaccionPropia && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("Error en guardarCxpConDetalle: " . $e->getMessage());
+            return [
+                'exito'   => false,
+                'mensaje' => $e->getMessage(),
+                'error'   => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * TAREA-049: Obtiene las partidas de detalle de una cuenta por pagar.
+     */
+    public function obtenerDetalleCxp(int $cxpId): array {
+        $sql = "SELECT d.*, cc.codigo AS cuenta_codigo, cc.nombre AS cuenta_nombre, cc.tipo AS cuenta_tipo, cc.categoria AS cuenta_categoria
+                FROM cuentas_por_pagar_detalle d
+                LEFT JOIN cuentas_contables cc ON d.cuenta_contable_id = cc.id
+                WHERE d.cxp_id = :cxp_id
+                ORDER BY d.id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['cxp_id' => $cxpId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * TAREA-049: Obtiene una cuenta por pagar por su ID único.
+     */
+    public function obtenerCxpPorId(int $id): ?array {
+        $sql = "SELECT cxp.*, cc.nombre AS cuenta_nombre, cc.codigo AS cuenta_codigo
+                FROM cuentas_por_pagar cxp
+                LEFT JOIN cuentas_contables cc ON cxp.id_cuenta_contable = cc.id
+                WHERE cxp.id = :id
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['id' => $id]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $res ?: null;
     }
 
     public function registrarPagoCxp(int $idCxp, float $monto, int $idBancoCuenta, string $referencia, string $fecha, string $tipoTransaccion = 'RETIRAR'): bool {
@@ -1301,6 +1703,14 @@ class ContabilidadModelo extends ModeloBase {
                         ];
                     }
                     break;
+                case 'ACTIVOS_FIJOS':
+                    return [
+                        'tipo' => 'Depreciación de Activos Fijos',
+                        'tercero' => 'CYCSA ERP / Contabilidad',
+                        'documento' => 'Depreciación Mensual',
+                        'monto' => null,
+                        'detalle' => 'Depreciación sistemática en línea recta de activos fijos'
+                    ];
             }
         } catch (Exception $e) {
             error_log("Error en obtenerReferenciaOrigen: " . $e->getMessage());

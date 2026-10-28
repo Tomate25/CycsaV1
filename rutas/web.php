@@ -14,6 +14,12 @@ use Cycsa\Modulos\Operaciones\Controladores\LaboratorioControlador;
 use Cycsa\Modulos\HojasServicio\Controladores\HojasServicioControlador;
 use Cycsa\Modulos\OrdenesServicio\Controladores\OrdenesServicioControlador;
 use Cycsa\Modulos\Ventas\Controladores\VentasControlador;
+use Cycsa\Modulos\Inventario\Controladores\InventarioControlador;
+use Cycsa\Modulos\Compras\Controladores\ComprasControlador;
+use Cycsa\Modulos\Nomina\Controladores\NominaControlador;
+use Cycsa\Modulos\Prestamos\Controladores\PrestamosControlador;
+use Cycsa\Modulos\Proyectos\Controladores\ProyectosControlador;
+use Cycsa\Modulos\ActivosFijos\Controladores\ActivosFijosControlador;
 
 // Importar Middlewares
 use Cycsa\App\Middleware\AuthMiddleware;
@@ -159,6 +165,7 @@ $app->enrutador->post('/contabilidad/guardar-cxc', [ContabilidadControlador::cla
 $app->enrutador->post('/contabilidad/pagar-cxc', [ContabilidadControlador::class, 'pagarCxc'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/cxp', [ContabilidadControlador::class, 'cxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/cxp/exportar', [ContabilidadControlador::class, 'exportarCxpCsv'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
+$app->enrutador->get('/contabilidad/cxp/detalle', [ContabilidadControlador::class, 'detalleCxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-cxp', [ContabilidadControlador::class, 'guardarCxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/pagar-cxp', [ContabilidadControlador::class, 'pagarCxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/bancos', [ContabilidadControlador::class, 'bancos'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
@@ -236,6 +243,7 @@ $app->enrutador->post('/laboratorio/guardar-ruptura', [LaboratorioControlador::c
 $app->enrutador->post('/laboratorio/generar-informe-parcial', [LaboratorioControlador::class, 'generarInformeParcial'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/procesar-revision-informe', [LaboratorioControlador::class, 'procesarRevisionInforme'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/generar-informe-consolidado', [LaboratorioControlador::class, 'generarInformeConsolidado'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/reemitir-informe', [LaboratorioControlador::class, 'reemitirInforme'], [AuthMiddleware::class]);
 
 // Operaciones de Recepción Técnica y Kanban
 $app->enrutador->post('/laboratorio/aceptar-muestra', [LaboratorioControlador::class, 'aceptarMuestraRapida'], [AuthMiddleware::class]);
@@ -250,5 +258,85 @@ $app->enrutador->get('/equipos-calibracion', [\Cycsa\Modulos\Configuracion\Contr
 $app->enrutador->post('/equipos-calibracion/guardar-constante', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'guardarConstante'], [AuthMiddleware::class]);
 $app->enrutador->post('/equipos-calibracion/guardar-picnometro', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'guardarPicnometro'], [AuthMiddleware::class]);
 $app->enrutador->post('/equipos-calibracion/actualizar-correccion', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'actualizarCorreccion'], [AuthMiddleware::class]);
+
+// 📦 MÓDULO DE INVENTARIO Y KARDEX (TAREA-048)
+$app->enrutador->get('/inventario', [InventarioControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/inventario/lotes', [InventarioControlador::class, 'lotes'], [AuthMiddleware::class]);
+$app->enrutador->get('/inventario/kardex', [InventarioControlador::class, 'kardex'], [AuthMiddleware::class]);
+$app->enrutador->post('/inventario/ajuste', [InventarioControlador::class, 'registrarAjuste'], [AuthMiddleware::class]);
+$app->enrutador->post('/inventario/consumo-ensayo', [InventarioControlador::class, 'registrarConsumoEnsayo'], [AuthMiddleware::class]);
+$app->enrutador->get('/inventario/alertas-ajax', [InventarioControlador::class, 'alertasJson'], [AuthMiddleware::class]);
+
+// 🛒 MÓDULO DE COMPRAS, PROVEEDORES Y RECEPCIONES (TAREA-047)
+$app->enrutador->get('/compras', function($peticion, $respuesta) {
+    $respuesta->redirigir('/Cycsa/publico/compras/ordenes');
+}, [AuthMiddleware::class]);
+
+// Proveedores (ISO/IEC 17025 §6.6)
+$app->enrutador->get('/compras/proveedores', [ComprasControlador::class, 'proveedoresIndex'], [AuthMiddleware::class]);
+$app->enrutador->post('/compras/proveedores/guardar', [ComprasControlador::class, 'proveedoresGuardar'], [AuthMiddleware::class]);
+$app->enrutador->post('/compras/proveedores/evaluar', [ComprasControlador::class, 'proveedoresEvaluar'], [AuthMiddleware::class]);
+
+// Órdenes de Compra
+$app->enrutador->get('/compras/ordenes', [ComprasControlador::class, 'ordenesIndex'], [AuthMiddleware::class]);
+$app->enrutador->get('/compras/ordenes/crear', [ComprasControlador::class, 'ordenesCrear'], [AuthMiddleware::class]);
+$app->enrutador->post('/compras/ordenes/guardar', [ComprasControlador::class, 'ordenesGuardar'], [AuthMiddleware::class]);
+$app->enrutador->get('/compras/ordenes/detalle', [ComprasControlador::class, 'ordenesDetalle'], [AuthMiddleware::class]);
+$app->enrutador->post('/compras/ordenes/aprobar', [ComprasControlador::class, 'ordenesAprobar'], [AuthMiddleware::class]);
+
+// Recepciones de Compra
+$app->enrutador->get('/compras/recepciones', [ComprasControlador::class, 'recepcionesIndex'], [AuthMiddleware::class]);
+$app->enrutador->get('/compras/recepciones/crear', [ComprasControlador::class, 'recepcionesCrear'], [AuthMiddleware::class]);
+$app->enrutador->post('/compras/recepciones/guardar', [ComprasControlador::class, 'recepcionesGuardar'], [AuthMiddleware::class]);
+
+// 👥 MÓDULO DE NÓMINA, ANTICIPOS Y RRHH (TAREA-050)
+$app->enrutador->get('/nomina', [NominaControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/nomina/empleados', [NominaControlador::class, 'empleados'], [AuthMiddleware::class]);
+$app->enrutador->post('/nomina/empleados/guardar', [NominaControlador::class, 'guardarEmpleado'], [AuthMiddleware::class]);
+$app->enrutador->post('/nomina/empleados/cambiar-estado', [NominaControlador::class, 'cambiarEstadoEmpleado'], [AuthMiddleware::class]);
+
+$app->enrutador->get('/nomina/anticipos', [NominaControlador::class, 'anticipos'], [AuthMiddleware::class]);
+$app->enrutador->post('/nomina/anticipos/guardar', [NominaControlador::class, 'guardarAnticipo'], [AuthMiddleware::class]);
+$app->enrutador->post('/nomina/anticipos/anular', [NominaControlador::class, 'anularAnticipo'], [AuthMiddleware::class]);
+
+$app->enrutador->get('/nomina/crear', [NominaControlador::class, 'crear'], [AuthMiddleware::class]);
+$app->enrutador->post('/nomina/simular-ajax', [NominaControlador::class, 'simularAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/nomina/procesar', [NominaControlador::class, 'procesar'], [AuthMiddleware::class]);
+$app->enrutador->get('/nomina/detalle', [NominaControlador::class, 'detalle'], [AuthMiddleware::class]);
+$app->enrutador->post('/nomina/anular', [NominaControlador::class, 'anular'], [AuthMiddleware::class]);
+
+// 🏦 MÓDULO DE PRÉSTAMOS BANCARIOS (TAREA-052)
+$app->enrutador->get('/prestamos', [PrestamosControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/prestamos/crear', [PrestamosControlador::class, 'crear'], [AuthMiddleware::class]);
+$app->enrutador->post('/prestamos/simular-ajax', [PrestamosControlador::class, 'simularAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/prestamos/guardar', [PrestamosControlador::class, 'guardar'], [AuthMiddleware::class]);
+$app->enrutador->get('/prestamos/detalle', [PrestamosControlador::class, 'detalle'], [AuthMiddleware::class]);
+$app->enrutador->post('/prestamos/pagar-cuota', [PrestamosControlador::class, 'pagarCuota'], [AuthMiddleware::class]);
+
+// 🏗️ MÓDULO DE PROYECTOS Y ÓRDENES DE OBRA (TAREA-053)
+$app->enrutador->get('/proyectos', [ProyectosControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/proyectos/crear', [ProyectosControlador::class, 'crear'], [AuthMiddleware::class]);
+$app->enrutador->post('/proyectos/guardar', [ProyectosControlador::class, 'guardar'], [AuthMiddleware::class]);
+$app->enrutador->get('/proyectos/detalle', [ProyectosControlador::class, 'detalle'], [AuthMiddleware::class]);
+$app->enrutador->get('/proyectos/editar', [ProyectosControlador::class, 'editar'], [AuthMiddleware::class]);
+$app->enrutador->post('/proyectos/actualizar', [ProyectosControlador::class, 'actualizar'], [AuthMiddleware::class]);
+$app->enrutador->post('/proyectos/cambiar-estado', [ProyectosControlador::class, 'cambiarEstado'], [AuthMiddleware::class]);
+$app->enrutador->get('/api/proyectos/costos', [ProyectosControlador::class, 'apiCostos'], [AuthMiddleware::class]);
+
+// 📦 MÓDULO DE ACTIVOS FIJOS Y DEPRECIACIÓN MENSUAL (TAREA-051)
+$app->enrutador->get('/activos-fijos', [ActivosFijosControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/activos-fijos/crear', [ActivosFijosControlador::class, 'crear'], [AuthMiddleware::class]);
+$app->enrutador->post('/activos-fijos/guardar', [ActivosFijosControlador::class, 'guardar'], [AuthMiddleware::class]);
+$app->enrutador->get('/activos-fijos/editar', [ActivosFijosControlador::class, 'editar'], [AuthMiddleware::class]);
+$app->enrutador->post('/activos-fijos/actualizar', [ActivosFijosControlador::class, 'actualizar'], [AuthMiddleware::class]);
+$app->enrutador->post('/activos-fijos/eliminar', [ActivosFijosControlador::class, 'eliminar'], [AuthMiddleware::class]);
+$app->enrutador->get('/activos-fijos/detalle', [ActivosFijosControlador::class, 'detalle'], [AuthMiddleware::class]);
+$app->enrutador->get('/activos-fijos/depreciacion', [ActivosFijosControlador::class, 'depreciacion'], [AuthMiddleware::class]);
+$app->enrutador->post('/activos-fijos/depreciacion/simular-ajax', [ActivosFijosControlador::class, 'simularDepreciacionAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/activos-fijos/depreciacion/ejecutar', [ActivosFijosControlador::class, 'ejecutarDepreciacion'], [AuthMiddleware::class]);
+
+
+
+
 
 

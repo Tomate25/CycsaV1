@@ -166,8 +166,11 @@ foreach ($cxpList as $item) {
                     </td>
                     <td style="font-size: 13px; color: #64748b;"><?= htmlspecialchars($cxp['fecha_emision'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td style="font-size: 13px; color: #64748b;"><?= htmlspecialchars($cxp['fecha_vencimiento'] ?? 'Sin Venc.', ENT_QUOTES, 'UTF-8') ?></td>
-                    <?php if (tienePermiso('contabilidad', 'crear_editar')): ?>
-                    <td style="text-align: right;">
+                    <td style="text-align: right; white-space: nowrap;">
+                        <button type="button" class="btn-accion" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; margin-right: 4px;" onclick="verDetalleCxp(<?= $cxp['id'] ?>, '<?= htmlspecialchars($cxp['factura_numero'], ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars($cxp['proveedor_nombre'], ENT_QUOTES, 'UTF-8') ?>')" title="Ver partidas detalladas">
+                            <i class="fa-solid fa-list-check"></i> Partidas
+                        </button>
+                        <?php if (tienePermiso('contabilidad', 'crear_editar')): ?>
                         <?php if ($cxp['saldo'] > 0): ?>
                             <button class="btn-accion btn-abono" onclick="abrirAbonoModal(<?= $cxp['id'] ?>, '<?= htmlspecialchars($cxp['factura_numero'], ENT_QUOTES, 'UTF-8') ?>', <?= $cxp['saldo'] ?>)" title="Pagar Factura">
                                 <i class="fa-solid fa-money-bill-transfer"></i> Pagar
@@ -175,8 +178,8 @@ foreach ($cxpList as $item) {
                         <?php else: ?>
                             <span style="color: #cbd5e1; font-size: 12px; font-style: italic;">Pagado</span>
                         <?php endif; ?>
+                        <?php endif; ?>
                     </td>
-                    <?php endif; ?>
                 </tr>
                 <?php endforeach; ?>
                 
@@ -218,7 +221,7 @@ foreach ($cxpList as $item) {
                 </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" id="grupo_cuenta_simple">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Cuenta Contable Asociada</label>
                 <input type="hidden" name="id_cuenta_contable" id="hidden_id_cuenta_contable" value="">
                 <div style="display: flex; gap: 8px;">
@@ -226,6 +229,49 @@ foreach ($cxpList as $item) {
                     <button type="button" class="btn-premium-azul" style="padding: 0 16px; font-size: 13px; width: auto; font-weight: 600; cursor: pointer; white-space: nowrap; border-radius: 6px;" onclick="abrirModalSeleccionCuenta()">
                         <i class="fa-solid fa-magnifying-glass"></i> Buscar
                     </button>
+                </div>
+            </div>
+
+            <!-- SECCIÓN PARTIDAS MULTI-LÍNEA Y RETENCIONES (TAREA-049) -->
+            <div style="margin: 15px 0; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 14px; background: #fafbfc;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label style="font-weight: 700; font-size: 13px; color: #1e293b; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="chk_multi_partidas" onchange="toggleMultiPartidas(this.checked)" style="width: 16px; height: 16px; cursor: pointer;">
+                        <span>Desglosar Partidas Multi-Cuenta e Impuestos / Retenciones</span>
+                    </label>
+                    <button type="button" id="btn_anadir_fila" onclick="anadirFilaGasto()" class="btn-premium-azul" style="display: none; padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer;">
+                        <i class="fa-solid fa-plus"></i> Añadir Partida
+                    </button>
+                </div>
+
+                <div id="contenedor_lineas_detalle" style="display: none; margin-top: 12px;">
+                    <div style="overflow-x: auto;">
+                        <table class="tabla-cycsa" style="font-size: 12px; margin: 0;">
+                            <thead>
+                                <tr style="background: #f1f5f9;">
+                                    <th style="min-width: 170px;">Cuenta de Gasto</th>
+                                    <th style="min-width: 140px;">Concepto</th>
+                                    <th style="width: 105px;">Subtotal (C$)</th>
+                                    <th style="width: 85px;">IVA 15%</th>
+                                    <th style="width: 95px;">Ret. IR</th>
+                                    <th style="width: 90px;">Ret. Alc. 1%</th>
+                                    <th style="width: 105px;">Total</th>
+                                    <th style="width: 35px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineas_gastos_tbody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 10px; font-size: 12.5px; font-weight: 600; color: #334155; padding-top: 8px; border-top: 1px solid #e2e8f0; flex-wrap: wrap;">
+                        <span>Subtotal: <strong id="lbl_resumen_subtotal">C$ 0.00</strong></span>
+                        <span>IVA: <strong id="lbl_resumen_iva">C$ 0.00</strong></span>
+                        <span>Ret. IR: <strong id="lbl_resumen_ret_ir">C$ 0.00</strong></span>
+                        <span>Ret. Alcaldía: <strong id="lbl_resumen_ret_alc">C$ 0.00</strong></span>
+                        <span style="color: #1e40af;">Neto a Pagar: <strong id="lbl_resumen_neto">C$ 0.00</strong></span>
+                    </div>
+                    <input type="hidden" name="lineas_json" id="input_lineas_json" value="">
                 </div>
             </div>
 
@@ -251,6 +297,46 @@ foreach ($cxpList as $item) {
                 <button type="submit" class="form-control" style="cursor: pointer; background: var(--cycsa-azul); border: 1px solid var(--cycsa-azul); color: white; font-weight: 600; padding: 10px 24px;">Guardar CXP</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- MODAL VER DETALLE DE PARTIDAS DE UNA CXP -->
+<div id="modalDetallePartidasCxp" class="modal-premium" style="display: none; z-index: 2100;">
+    <div class="modal-premium-content" style="max-width: 850px; width: 65%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div>
+                <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700;">Detalle de Partidas de Gastos</h3>
+                <p id="detalle_factura_txt" style="margin: 3px 0 0; color: #64748b; font-size: 13px;">Factura N° —</p>
+            </div>
+            <button type="button" onclick="cerrarDetalleCxpModal()" class="btn-cerrar" style="border: none; background: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+
+        <div id="detalle_loading" style="text-align: center; padding: 25px; color: #64748b;">
+            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+            <p style="margin-top: 8px;">Cargando partidas contables...</p>
+        </div>
+
+        <div id="detalle_tabla_wrap" style="display: none; max-height: 400px; overflow-y: auto;">
+            <table class="tabla-cycsa" style="margin: 0; font-size: 13px;">
+                <thead>
+                    <tr style="background: #f8fafc;">
+                        <th>Cuenta Contable</th>
+                        <th>Concepto</th>
+                        <th style="text-align: right;">Subtotal</th>
+                        <th style="text-align: right;">IVA (15%)</th>
+                        <th style="text-align: right;">Ret. IR</th>
+                        <th style="text-align: right;">Ret. Alc.</th>
+                        <th style="text-align: right;">Total Neto</th>
+                    </tr>
+                </thead>
+                <tbody id="detalle_lineas_tbody"></tbody>
+                <tfoot id="detalle_lineas_tfoot" style="background: #f8fafc; font-weight: 700;"></tfoot>
+            </table>
+        </div>
+
+        <div style="text-align: right; margin-top: 15px;">
+            <button type="button" class="form-control" style="background: #f1f5f9; border: 1px solid #cbd5e1; width: auto; display: inline-block; padding: 8px 18px; cursor: pointer; color: #475569; font-weight: 600;" onclick="cerrarDetalleCxpModal()">Cerrar</button>
+        </div>
     </div>
 </div>
 
@@ -459,4 +545,222 @@ foreach ($cxpList as $item) {
     function cerrarAbonoModal() {
         abonoModal.style.display = 'none';
     }
+
+    // --- TAREA-049: Lógica Multi-Partidas de Gastos y Consulta de Detalle ---
+    const modalDetallePartidas = document.getElementById('modalDetallePartidasCxp');
+
+    window.verDetalleCxp = function(idCxp, factura, proveedor) {
+        document.getElementById('detalle_factura_txt').innerText = 'Factura N° ' + factura + ' — ' + proveedor;
+        document.getElementById('detalle_loading').style.display = 'block';
+        document.getElementById('detalle_tabla_wrap').style.display = 'none';
+        modalDetallePartidas.style.display = 'block';
+
+        fetch('/Cycsa/publico/contabilidad/cxp/detalle?id=' + idCxp)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('detalle_loading').style.display = 'none';
+                const tbody = document.getElementById('detalle_lineas_tbody');
+                const tfoot = document.getElementById('detalle_lineas_tfoot');
+                tbody.innerHTML = '';
+                tfoot.innerHTML = '';
+
+                if (!data.lineas || data.lineas.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 25px; color: #64748b; font-style: italic;">Esta cuenta por pagar no cuenta con partidas desglosadas (registrada en modo estándar).</td></tr>`;
+                    document.getElementById('detalle_tabla_wrap').style.display = 'block';
+                    return;
+                }
+
+                let sumSub = 0, sumIva = 0, sumIr = 0, sumAlc = 0, sumNeto = 0;
+                data.lineas.forEach(l => {
+                    const sub = parseFloat(l.monto) || 0;
+                    const iva = parseFloat(l.iva) || 0;
+                    const ir = parseFloat(l.retencion_ir) || 0;
+                    const alc = parseFloat(l.retencion_alcaldia) || 0;
+                    const neto = parseFloat(l.total) || 0;
+
+                    sumSub += sub; sumIva += iva; sumIr += ir; sumAlc += alc; sumNeto += neto;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="font-weight: 600; color: #1e293b;"><span style="color: var(--cycsa-azul); font-family: monospace;">${l.cuenta_codigo || ''}</span> - ${l.cuenta_nombre || ''}</td>
+                        <td style="color: #475569;">${l.concepto || ''}</td>
+                        <td style="text-align: right; font-family: monospace;">C$ ${sub.toFixed(2)}</td>
+                        <td style="text-align: right; font-family: monospace;">C$ ${iva.toFixed(2)}</td>
+                        <td style="text-align: right; font-family: monospace; color: #b91c1c;">C$ ${ir.toFixed(2)}</td>
+                        <td style="text-align: right; font-family: monospace; color: #b91c1c;">C$ ${alc.toFixed(2)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #15803d;">C$ ${neto.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                tfoot.innerHTML = `
+                    <tr style="border-top: 2px solid #cbd5e1; font-weight: 700;">
+                        <td colspan="2" style="text-align: right;">TOTALES FACTURA:</td>
+                        <td style="text-align: right; font-family: monospace;">C$ ${sumSub.toFixed(2)}</td>
+                        <td style="text-align: right; font-family: monospace;">C$ ${sumIva.toFixed(2)}</td>
+                        <td style="text-align: right; font-family: monospace; color: #b91c1c;">C$ ${sumIr.toFixed(2)}</td>
+                        <td style="text-align: right; font-family: monospace; color: #b91c1c;">C$ ${sumAlc.toFixed(2)}</td>
+                        <td style="text-align: right; font-family: monospace; color: #1e40af;">C$ ${sumNeto.toFixed(2)}</td>
+                    </tr>
+                `;
+                document.getElementById('detalle_tabla_wrap').style.display = 'block';
+            })
+            .catch(err => {
+                document.getElementById('detalle_loading').style.display = 'none';
+                document.getElementById('detalle_lineas_tbody').innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #dc2626;">Error al cargar las partidas: ${err.message}</td></tr>`;
+                document.getElementById('detalle_tabla_wrap').style.display = 'block';
+            });
+    };
+
+    window.cerrarDetalleCxpModal = function() {
+        modalDetallePartidas.style.display = 'none';
+    };
+
+    window.toggleMultiPartidas = function(activo) {
+        const contenedor = document.getElementById('contenedor_lineas_detalle');
+        const btnAnadir = document.getElementById('btn_anadir_fila');
+        const grupoCuentaSimple = document.getElementById('grupo_cuenta_simple');
+        const inputMonto = document.querySelector('input[name="monto"]');
+        const modalContent = document.querySelector('#modalCxp .modal-premium-content');
+
+        if (activo) {
+            contenedor.style.display = 'block';
+            btnAnadir.style.display = 'inline-flex';
+            if (grupoCuentaSimple) grupoCuentaSimple.style.display = 'none';
+            if (modalContent) modalContent.style.width = '70%';
+            inputMonto.readOnly = true;
+            inputMonto.style.backgroundColor = '#f1f5f9';
+            if (document.getElementById('lineas_gastos_tbody').children.length === 0) {
+                anadirFilaGasto();
+            }
+            recalcularLineas();
+        } else {
+            contenedor.style.display = 'none';
+            btnAnadir.style.display = 'none';
+            if (grupoCuentaSimple) grupoCuentaSimple.style.display = 'block';
+            if (modalContent) modalContent.style.width = '45%';
+            inputMonto.readOnly = false;
+            inputMonto.style.backgroundColor = '';
+            document.getElementById('input_lineas_json').value = '';
+        }
+    };
+
+    window.anadirFilaGasto = function(datos = {}) {
+        const tbody = document.getElementById('lineas_gastos_tbody');
+        const tr = document.createElement('tr');
+
+        let opcionesCuentas = '<option value="">-- Seleccionar Cuenta --</option>';
+        if (window.cuentasContables) {
+            window.cuentasContables.forEach(c => {
+                const sel = (datos.cuenta_id && datos.cuenta_id == c.id) ? 'selected' : '';
+                opcionesCuentas += `<option value="${c.id}" ${sel}>${c.codigo} - ${c.nombre}</option>`;
+            });
+        }
+
+        tr.innerHTML = `
+            <td>
+                <select class="form-control linea-cuenta" style="padding: 6px 8px; font-size: 12px; width: 100%;" onchange="recalcularLineas()">
+                    ${opcionesCuentas}
+                </select>
+            </td>
+            <td>
+                <input type="text" class="form-control linea-concepto" placeholder="Ej: Papelería resmas" value="${datos.concepto || ''}" style="padding: 6px 8px; font-size: 12px;" oninput="recalcularLineas()">
+            </td>
+            <td>
+                <input type="number" class="form-control linea-monto" step="0.01" min="0" placeholder="0.00" value="${datos.monto || ''}" style="padding: 6px 8px; font-size: 12px; text-align: right;" oninput="recalcularLineas()">
+            </td>
+            <td style="text-align: center;">
+                <input type="checkbox" class="linea-iva-chk" ${datos.aplica_iva !== false ? 'checked' : ''} onchange="recalcularLineas()" title="Aplica IVA 15%" style="width: 16px; height: 16px; cursor: pointer;">
+            </td>
+            <td>
+                <select class="form-control linea-ret-ir" style="padding: 6px 8px; font-size: 12px;" onchange="recalcularLineas()">
+                    <option value="0">0%</option>
+                    <option value="2" selected>2%</option>
+                    <option value="10">10%</option>
+                </select>
+            </td>
+            <td style="text-align: center;">
+                <input type="checkbox" class="linea-ret-alc-chk" ${datos.aplica_alc !== false ? 'checked' : ''} onchange="recalcularLineas()" title="Aplica Retención Alcaldía 1%" style="width: 16px; height: 16px; cursor: pointer;">
+            </td>
+            <td style="text-align: right; font-weight: 700; color: #1e293b; font-family: monospace;">
+                <span class="linea-total-txt">C$ 0.00</span>
+            </td>
+            <td style="text-align: center;">
+                <button type="button" onclick="eliminarFilaGasto(this)" style="border: none; background: none; color: #dc2626; cursor: pointer; font-size: 16px;" title="Eliminar fila">&times;</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        recalcularLineas();
+    };
+
+    window.eliminarFilaGasto = function(btn) {
+        const row = btn.closest('tr');
+        if (row) {
+            row.remove();
+            recalcularLineas();
+        }
+    };
+
+    window.recalcularLineas = function() {
+        const rows = document.querySelectorAll('#lineas_gastos_tbody tr');
+        let totSub = 0, totIva = 0, totIr = 0, totAlc = 0, totNeto = 0;
+        const lineasArray = [];
+
+        rows.forEach(r => {
+            const ctaSelect = r.querySelector('.linea-cuenta');
+            const ctaId = parseInt(ctaSelect.value) || 0;
+            const concepto = r.querySelector('.linea-concepto').value.trim();
+            const subtotal = Math.max(0, parseFloat(r.querySelector('.linea-monto').value) || 0);
+            const aplicaIva = r.querySelector('.linea-iva-chk').checked;
+            const pctIr = parseFloat(r.querySelector('.linea-ret-ir').value) || 0;
+            const aplicaAlc = r.querySelector('.linea-ret-alc-chk').checked;
+
+            const iva = aplicaIva ? Math.round(subtotal * 0.15 * 100) / 100 : 0;
+            const retIr = Math.round(subtotal * (pctIr / 100) * 100) / 100;
+            const retAlc = aplicaAlc ? Math.round(subtotal * 0.01 * 100) / 100 : 0;
+            const totalLinea = Math.round((subtotal + iva - retIr - retAlc) * 100) / 100;
+
+            r.querySelector('.linea-total-txt').innerText = 'C$ ' + totalLinea.toFixed(2);
+
+            totSub += subtotal;
+            totIva += iva;
+            totIr += retIr;
+            totAlc += retAlc;
+            totNeto += totalLinea;
+
+            if (ctaId > 0 && subtotal > 0) {
+                lineasArray.push({
+                    cuenta_contable_id: ctaId,
+                    concepto: concepto || 'Partida de gasto',
+                    monto: subtotal,
+                    iva: iva,
+                    retencion_ir: retIr,
+                    retencion_alcaldia: retAlc,
+                    tipo_retencion_ir: pctIr,
+                    total: totalLinea
+                });
+            }
+        });
+
+        totSub = Math.round(totSub * 100) / 100;
+        totIva = Math.round(totIva * 100) / 100;
+        totIr = Math.round(totIr * 100) / 100;
+        totAlc = Math.round(totAlc * 100) / 100;
+        totNeto = Math.round(totNeto * 100) / 100;
+
+        document.getElementById('lbl_resumen_subtotal').innerText = 'C$ ' + totSub.toFixed(2);
+        document.getElementById('lbl_resumen_iva').innerText = 'C$ ' + totIva.toFixed(2);
+        document.getElementById('lbl_resumen_ret_ir').innerText = 'C$ ' + totIr.toFixed(2);
+        document.getElementById('lbl_resumen_ret_alc').innerText = 'C$ ' + totAlc.toFixed(2);
+        document.getElementById('lbl_resumen_neto').innerText = 'C$ ' + totNeto.toFixed(2);
+
+        const chk = document.getElementById('chk_multi_partidas');
+        if (chk && chk.checked) {
+            const inputMonto = document.querySelector('input[name="monto"]');
+            if (inputMonto) {
+                inputMonto.value = totNeto.toFixed(2);
+            }
+            document.getElementById('input_lineas_json').value = JSON.stringify(lineasArray);
+        }
+    };
 </script>

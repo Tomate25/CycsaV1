@@ -75,6 +75,28 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #7c3aed, #5b21b6)', // Morado
             ];
         }
+
+        // 4.1 Compras y Proveedores (TAREA-045, TAREA-047)
+        if (tienePermiso('compras', 'ver') || tienePermiso('contabilidad', 'ver') || $esAdmin) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Compras y Proveedores',
+                'link' => '/Cycsa/publico/compras/proveedores',
+                'icon' => 'fa-solid fa-cart-shopping',
+                'desc' => 'Gestión de proveedores calificados ISO 17025, órdenes de compra y recepciones.',
+                'color' => 'linear-gradient(135deg, #ea580c, #c2410c)',
+            ];
+        }
+
+        // 4.2 Inventario y Kárdex (TAREA-048)
+        if (tienePermiso('inventario', 'ver') || tienePermiso('laboratorio', 'ver') || tienePermiso('operaciones', 'ver') || $esAdmin) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Inventario y Kárdex',
+                'link' => '/Cycsa/publico/inventario',
+                'icon' => 'fa-solid fa-boxes-stacked',
+                'desc' => 'Control de existencias, lotes, caducidades y consumos PEPS/FIFO por ensayo.',
+                'color' => 'linear-gradient(135deg, #0d9488, #0f766e)',
+            ];
+        }
         // 5. Contabilidad ERP
         if (tienePermiso('contabilidad', 'ver')) {
             $cajon_aplicaciones[] = [
@@ -85,6 +107,50 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #db2777, #be185d)', // Rosado
             ];
         }
+        // 5.1 Nómina & RRHH (TAREA-050)
+        if (tienePermiso('nomina', 'ver') || tienePermiso('contabilidad', 'ver') || tienePermiso('rrhh', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Nómina & RRHH',
+                'link' => '/Cycsa/publico/nomina',
+                'icon' => 'fa-solid fa-file-invoice-dollar',
+                'desc' => 'Colaboradores, anticipos, nómina y provisiones laborales.',
+                'color' => 'linear-gradient(135deg, #0284c7, #0369a1)',
+            ];
+        }
+
+        // 5.2 Activos Fijos (TAREA-051)
+        if (tienePermiso('activos_fijos', 'ver') || tienePermiso('contabilidad', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Activos Fijos',
+                'link' => '/Cycsa/publico/activos-fijos',
+                'icon' => 'fa-solid fa-truck-ramp-box',
+                'desc' => 'Inventario de activos, vida útil y depreciación en línea recta.',
+                'color' => 'linear-gradient(135deg, #4f46e5, #3730a3)',
+            ];
+        }
+
+        // 5.3 Préstamos Bancarios (TAREA-052)
+        if (tienePermiso('prestamos', 'ver') || tienePermiso('contabilidad', 'ver') || $esAdmin) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Préstamos Bancarios',
+                'link' => '/Cycsa/publico/prestamos',
+                'icon' => 'fa-solid fa-building-columns',
+                'desc' => 'Control de financiamiento, amortización francesa (cuota nivelada) y pagos.',
+                'color' => 'linear-gradient(135deg, #6366f1, #4f46e5)',
+            ];
+        }
+
+        // 5.4 Proyectos y Obras (TAREA-053)
+        if (tienePermiso('proyectos', 'ver') || tienePermiso('operaciones', 'ver') || tienePermiso('contabilidad', 'ver') || $esAdmin) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Proyectos y Obras',
+                'link' => '/Cycsa/publico/proyectos',
+                'icon' => 'fa-solid fa-helmet-safety',
+                'desc' => 'Órdenes de obra, presupuestos y agregación transversal de costos directos.',
+                'color' => 'linear-gradient(135deg, #334155, #1e293b)',
+            ];
+        }
+
         // 6. Productos / Ensayos
         if (tienePermiso('productos', 'ver')) {
             $cajon_aplicaciones[] = [

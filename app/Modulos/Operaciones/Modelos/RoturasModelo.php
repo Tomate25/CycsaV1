@@ -130,9 +130,9 @@ class RoturasModelo {
                 SELECT pre.*, 
                        (SELECT COUNT(*) FROM plan_rotura_asignaciones pra WHERE pra.plan_edad_id = pre.id) AS especimenes_asignados,
                        (SELECT COUNT(*) FROM roturas rot WHERE rot.plan_edad_id = pre.id) AS especimenes_rotos,
-                       (SELECT ir.id FROM informes_rotura ir WHERE ir.plan_edad_id = pre.id AND ir.tipo = 'parcial' ORDER BY ir.id DESC LIMIT 1) AS informe_parcial_id,
-                       (SELECT ir.estado FROM informes_rotura ir WHERE ir.plan_edad_id = pre.id AND ir.tipo = 'parcial' ORDER BY ir.id DESC LIMIT 1) AS informe_parcial_estado,
-                       (SELECT ir.numero FROM informes_rotura ir WHERE ir.plan_edad_id = pre.id AND ir.tipo = 'parcial' ORDER BY ir.id DESC LIMIT 1) AS informe_parcial_numero
+                       (SELECT ir.id FROM informes_rotura ir WHERE ir.plan_edad_id = pre.id AND ir.tipo = 'parcial' AND ir.estado != 'anulado' ORDER BY ir.id DESC LIMIT 1) AS informe_parcial_id,
+                       (SELECT ir.estado FROM informes_rotura ir WHERE ir.plan_edad_id = pre.id AND ir.tipo = 'parcial' AND ir.estado != 'anulado' ORDER BY ir.id DESC LIMIT 1) AS informe_parcial_estado,
+                       (SELECT ir.numero FROM informes_rotura ir WHERE ir.plan_edad_id = pre.id AND ir.tipo = 'parcial' AND ir.estado != 'anulado' ORDER BY ir.id DESC LIMIT 1) AS informe_parcial_numero
                 FROM plan_rotura_edades pre
                 WHERE pre.plan_rotura_id = :plan_id
                 ORDER BY pre.edad_dias ASC
@@ -896,6 +896,8 @@ class RoturasModelo {
 
     /**
      * Procesa la revisión y aprobación/devolución de un informe de laboratorio.
+     * Si el informe ya está aprobado, se bloquea cualquier modificación posterior (ISO/IEC 17025).
+     * Al aprobar, genera una ruta simulada/real de PDF e inscribe un hash SHA-256 inmutable.
      */
     public function procesarRevisionInforme(int $informeId, string $nuevoEstado, ?string $motivoDevolucion, int $usuarioId, int $rolId): array {
         if ($rolId !== 1 && $rolId !== 3) {
@@ -910,21 +912,226 @@ class RoturasModelo {
             return ['exito' => false, 'mensaje' => 'Debe especificar el motivo de devolución del informe.'];
         }
 
+        // Obtener el informe actual
+        $stmtInf = $this->db->prepare("SELECT * FROM informes_rotura WHERE id = :id");
+        $stmtInf->execute(['id' => $informeId]);
+        $informe = $stmtInf->fetch(PDO::FETCH_ASSOC);
+
+        if (!$informe) {
+            return ['exito' => false, 'mensaje' => 'Informe no encontrado.'];
+        }
+
+        // Bloqueo post-aprobación estricto (ISO/IEC 17025)
+        if ($informe['estado'] === 'aprobado') {
+            return [
+                'exito' => false,
+                'mensaje' => 'El informe ya se encuentra aprobado y está bloqueado para modificaciones (integridad ISO/IEC 17025).'
+            ];
+        }
+
+        if ($informe['estado'] === 'anulado') {
+            return [
+                'exito' => false,
+                'mensaje' => 'El informe se encuentra anulado y no puede ser modificado.'
+            ];
+        }
+
+        // Al aprobar (nuevoEstado = 'aprobado'):
+        // Generar ruta de PDF y calcular hash SHA-256 inmutable
+        $pdfRuta = $informe['pdf'] ?? null;
+        $hashSha256 = $informe['sha256'] ?? null;
+        if ($nuevoEstado === 'aprobado') {
+            $numero = $informe['numero'];
+            $version = (int)($informe['version'] ?? 1);
+            $pdfRuta = 'almacen/informes/' . $numero . '_v' . $version . '.pdf';
+            $payloadSha = sprintf(
+                "INFORME:%s|VER:%d|MUESTRA:%d|EDAD:%s|FECHA:%s",
+                $numero,
+                $version,
+                $informe['muestra_id'],
+                $informe['plan_edad_id'] ?? 'CONSOL',
+                date('Y-m-d H:i:s')
+            );
+            $hashSha256 = hash('sha256', $payloadSha);
+        }
+
         $stmt = $this->db->prepare("
             UPDATE informes_rotura 
-            SET estado = :estado, motivo_devolucion = :motivo, aprobado_por = :aprobado_por, fecha_aprobacion = NOW()
+            SET estado = :estado, 
+                motivo_devolucion = :motivo, 
+                aprobado_por = :aprobado_por, 
+                fecha_aprobacion = " . ($nuevoEstado === 'aprobado' ? "NOW()" : "NULL") . ",
+                pdf = :pdf,
+                sha256 = :sha256
             WHERE id = :id
         ");
         $stmt->execute([
             'estado' => $nuevoEstado,
             'motivo' => ($nuevoEstado === 'devuelto') ? trim($motivoDevolucion) : null,
             'aprobado_por' => ($nuevoEstado === 'aprobado') ? $usuarioId : null,
+            'pdf' => $pdfRuta,
+            'sha256' => $hashSha256,
             'id' => $informeId
         ]);
 
         registrarBitacora('laboratorio', 'revision_informe', "Informe #{$informeId} pasó a estado '{$nuevoEstado}' por supervisor ID {$usuarioId}", $informeId);
 
-        return ['exito' => true, 'mensaje' => "El informe ha sido marcado como '{$nuevoEstado}' exitosamente."];
+        return [
+            'exito' => true,
+            'mensaje' => "El informe ha sido marcado como '{$nuevoEstado}' exitosamente.",
+            'pdf' => $pdfRuta,
+            'sha256' => $hashSha256
+        ];
+    }
+
+    /**
+     * Reemite un informe de rotura (Fase 1 · ISO/IEC 17025 Cláusula 7.8.8):
+     * 1. Valida que el motivo de reemisión no esté vacío.
+     * 2. Obtiene el informe actual.
+     * 3. Marca el informe actual como 'anulado' con motivo_reemision = $motivo.
+     * 4. Calcula la versión N+1: MAX(version) + 1 para esa misma muestra y edad.
+     * 5. Genera un nuevo consecutivo anual con obtenerSiguienteNumeroInforme().
+     * 6. Inserta el nuevo informe con estado = 'en_revision'.
+     * 7. Invalida cualquier informe 'consolidado' preexistente de la muestra.
+     * 8. Registra bitácora de auditoría inmutable.
+     */
+    public function reemitirInforme(int $informeId, string $motivo, int $usuarioId): array {
+        $motivo = trim($motivo);
+        if ($motivo === '') {
+            return ['exito' => false, 'mensaje' => 'Debe especificar el motivo de reemisión del informe.'];
+        }
+
+        try {
+            $stmtInf = $this->db->prepare("SELECT * FROM informes_rotura WHERE id = :id");
+            $stmtInf->execute(['id' => $informeId]);
+            $informeActual = $stmtInf->fetch(PDO::FETCH_ASSOC);
+
+            if (!$informeActual) {
+                return ['exito' => false, 'mensaje' => 'El informe a reemitir no existe.'];
+            }
+
+            if ($informeActual['estado'] === 'anulado') {
+                return ['exito' => false, 'mensaje' => 'El informe ya se encuentra anulado y no puede ser reemitido nuevamente.'];
+            }
+
+            $muestraId = (int)$informeActual['muestra_id'];
+            $planEdadId = $informeActual['plan_edad_id'] !== null ? (int)$informeActual['plan_edad_id'] : null;
+
+            $this->db->beginTransaction();
+
+            // 1. Marcar el informe actual como 'anulado' con motivo_reemision = $motivo
+            $stmtAnular = $this->db->prepare("
+                UPDATE informes_rotura 
+                SET estado = 'anulado', motivo_reemision = :motivo 
+                WHERE id = :id
+            ");
+            $stmtAnular->execute([
+                'motivo' => $motivo,
+                'id' => $informeId
+            ]);
+
+            // 2. Calcular versión N+1: consultar MAX(version) de informes_rotura para esa misma muestra_id y plan_edad_id
+            if ($planEdadId !== null) {
+                $stmtMaxVer = $this->db->prepare("
+                    SELECT COALESCE(MAX(version), 0) 
+                    FROM informes_rotura 
+                    WHERE muestra_id = :mid AND plan_edad_id = :peid
+                ");
+                $stmtMaxVer->execute([
+                    'mid' => $muestraId,
+                    'peid' => $planEdadId
+                ]);
+            } else {
+                $stmtMaxVer = $this->db->prepare("
+                    SELECT COALESCE(MAX(version), 0) 
+                    FROM informes_rotura 
+                    WHERE muestra_id = :mid AND plan_edad_id IS NULL AND tipo = :tipo
+                ");
+                $stmtMaxVer->execute([
+                    'mid' => $muestraId,
+                    'tipo' => $informeActual['tipo']
+                ]);
+            }
+            $maxVersion = (int)$stmtMaxVer->fetchColumn();
+            $nuevaVersion = max($maxVersion, (int)$informeActual['version']) + 1;
+
+            // 3. Generar nuevo consecutivo anual con obtenerSiguienteNumeroInforme()
+            $anio = (int)date('Y');
+            $nuevoNumero = $this->obtenerSiguienteNumeroInforme($anio);
+
+            // 4. Insertar el nuevo informe con tipo = 'parcial', muestra_id, plan_edad_id, nuevo numero, version N+1, estado = 'en_revision'
+            $tipoNuevo = ($informeActual['tipo'] === 'consolidado') ? 'consolidado' : 'parcial';
+            $stmtInsert = $this->db->prepare("
+                INSERT INTO informes_rotura (tipo, muestra_id, plan_edad_id, numero, version, estado)
+                VALUES (:tipo, :muestra_id, :plan_edad_id, :numero, :version, 'en_revision')
+            ");
+            $stmtInsert->execute([
+                'tipo' => $tipoNuevo,
+                'muestra_id' => $muestraId,
+                'plan_edad_id' => $planEdadId,
+                'numero' => $nuevoNumero,
+                'version' => $nuevaVersion
+            ]);
+            $nuevoInformeId = (int)$this->db->lastInsertId();
+
+            // 5. Si la muestra ya contaba con un informe 'consolidado', invalidar dicho consolidado
+            $stmtCons = $this->db->prepare("
+                SELECT id, numero, version, estado 
+                FROM informes_rotura 
+                WHERE muestra_id = :mid AND tipo = 'consolidado' AND estado != 'anulado' AND id != :nuevo_id
+            ");
+            $stmtCons->execute([
+                'mid' => $muestraId,
+                'nuevo_id' => $nuevoInformeId
+            ]);
+            $consolidados = $stmtCons->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($consolidados as $cons) {
+                $motivoCons = "Invalidado automáticamente por reemisión del informe parcial {$informeActual['numero']} (v{$informeActual['version']}) -> nuevo {$nuevoNumero} (v{$nuevaVersion}). Motivo reemisión: {$motivo}";
+                $stmtAnularCons = $this->db->prepare("
+                    UPDATE informes_rotura 
+                    SET estado = 'anulado', motivo_reemision = :motivo 
+                    WHERE id = :id
+                ");
+                $stmtAnularCons->execute([
+                    'motivo' => $motivoCons,
+                    'id' => $cons['id']
+                ]);
+
+                registrarBitacora(
+                    'laboratorio',
+                    'invalidar_informe_consolidado',
+                    "Informe consolidado {$cons['numero']} (ID #{$cons['id']}) invalidado por reemisión de parcial para la muestra #{$muestraId}",
+                    (int)$cons['id']
+                );
+            }
+
+            // 6. Registrar bitácora de auditoría
+            registrarBitacora(
+                'laboratorio',
+                'reemitir_informe',
+                "Informe #{$informeId} ({$informeActual['numero']} v{$informeActual['version']}) reemitido a nuevo informe #{$nuevoInformeId} ({$nuevoNumero} v{$nuevaVersion}) por usuario ID {$usuarioId}. Motivo: {$motivo}",
+                $nuevoInformeId
+            );
+
+            $this->db->commit();
+
+            return [
+                'exito' => true,
+                'mensaje' => "Informe reemitido exitosamente como {$nuevoNumero} (versión {$nuevaVersion}).",
+                'nuevo_informe_id' => $nuevoInformeId,
+                'nuevo_numero' => $nuevoNumero,
+                'nueva_version' => $nuevaVersion,
+                'informe_anterior_id' => $informeId,
+                'consolidados_invalidados' => count($consolidados)
+            ];
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('RoturasModelo::reemitirInforme error: ' . $e->getMessage());
+            return ['exito' => false, 'mensaje' => 'Error interno al reemitir informe: ' . $e->getMessage()];
+        }
     }
 
     /**
@@ -938,7 +1145,7 @@ class RoturasModelo {
         // 1. Obtener todas las edades del plan
         $stmtEdades = $this->db->prepare("
             SELECT pre.id, pre.edad_dias, pre.estado,
-                   (SELECT ir.estado FROM informes_rotura ir WHERE ir.plan_edad_id = pre.id AND ir.tipo = 'parcial' ORDER BY ir.id DESC LIMIT 1) AS informe_parcial_estado
+                   (SELECT ir.estado FROM informes_rotura ir WHERE ir.plan_edad_id = pre.id AND ir.tipo = 'parcial' AND ir.estado != 'anulado' ORDER BY ir.id DESC LIMIT 1) AS informe_parcial_estado
             FROM plan_rotura_edades pre
             JOIN planes_rotura pr ON pre.plan_rotura_id = pr.id
             WHERE pr.muestra_id = :id
@@ -963,20 +1170,32 @@ class RoturasModelo {
         $anio = (int)date('Y');
         $numeroInforme = $this->obtenerSiguienteNumeroInforme($anio);
 
+        $pdfConsolidado = 'almacen/informes/' . $numeroInforme . '_v1.pdf';
+        $shaConsolidado = hash('sha256', "INFORME:{$numeroInforme}|VER:1|MUESTRA:{$muestraId}|CONSOL|FECHA:" . date('Y-m-d H:i:s'));
+
         $stmtInsert = $this->db->prepare("
-            INSERT INTO informes_rotura (tipo, muestra_id, plan_edad_id, numero, version, estado, aprobado_por, fecha_aprobacion)
-            VALUES ('consolidado', :muestra_id, NULL, :numero, 1, 'aprobado', :aprobado_por, NOW())
+            INSERT INTO informes_rotura (tipo, muestra_id, plan_edad_id, numero, version, estado, aprobado_por, fecha_aprobacion, pdf, sha256)
+            VALUES ('consolidado', :muestra_id, NULL, :numero, 1, 'aprobado', :aprobado_por, NOW(), :pdf, :sha256)
         ");
         $stmtInsert->execute([
             'muestra_id' => $muestraId,
             'numero' => $numeroInforme,
-            'aprobado_por' => $usuarioId
+            'aprobado_por' => $usuarioId,
+            'pdf' => $pdfConsolidado,
+            'sha256' => $shaConsolidado
         ]);
         $informeId = (int)$this->db->lastInsertId();
 
         registrarBitacora('laboratorio', 'generar_informe_consolidado', "Informe CONSOLIDADO {$numeroInforme} emitido y aprobado para muestra #{$muestraId}", $informeId);
 
-        return ['exito' => true, 'mensaje' => "Informe Consolidado {$numeroInforme} emitido exitosamente.", 'informe_id' => $informeId, 'numero' => $numeroInforme];
+        return [
+            'exito' => true,
+            'mensaje' => "Informe Consolidado {$numeroInforme} emitido exitosamente.",
+            'informe_id' => $informeId,
+            'numero' => $numeroInforme,
+            'pdf' => $pdfConsolidado,
+            'sha256' => $shaConsolidado
+        ];
     }
 
     /**
@@ -1105,10 +1324,23 @@ class RoturasModelo {
     /**
      * Calcula el consecutivo único anual para informes INF-YYYY-XXXX.
      */
-    private function obtenerSiguienteNumeroInforme(int $anio): string {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM informes_rotura WHERE YEAR(created_at) = :anio");
-        $stmt->execute(['anio' => $anio]);
-        $consecutivo = (int)$stmt->fetchColumn() + 1;
+    public function obtenerSiguienteNumeroInforme(int $anio): string {
+        $stmt = $this->db->prepare("SELECT numero FROM informes_rotura WHERE numero LIKE :pat");
+        $stmt->execute(['pat' => "INF-{$anio}-%"]);
+        $maxNum = 0;
+        while ($num = $stmt->fetchColumn()) {
+            if (preg_match('/^INF-\d+-(\d+)$/', $num, $m)) {
+                $val = (int)$m[1];
+                if ($val > $maxNum) {
+                    $maxNum = $val;
+                }
+            }
+        }
+        $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM informes_rotura WHERE YEAR(created_at) = :anio");
+        $stmtCount->execute(['anio' => $anio]);
+        $count = (int)$stmtCount->fetchColumn();
+        $consecutivo = max($maxNum, $count) + 1;
+
         return sprintf("INF-%d-%04d", $anio, $consecutivo);
     }
 }
