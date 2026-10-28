@@ -285,8 +285,8 @@
                         <td>
                             <input type="text" name="ensayo_unidad[]" class="form-control spec-unidad" placeholder="Unidad" value="<?= htmlspecialchars($det['unidad_medida'] ?? 'Unidad', ENT_QUOTES, 'UTF-8') ?>" style="font-size: 12.5px;">
                         </td>
-                        <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="<?= $det['cantidad'] ?>" required oninput="calcularFila(this)" style="text-align: center;"></td>
-                        <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="<?= $det['precio_unitario'] ?>" required oninput="calcularFila(this)" style="text-align: right;" <?= $isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1; text-align: right;"' : '' ?>></td>
+                        <td><input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="ensayo_cant[]" class="form-control cant-input" min="1" value="<?= $det['cantidad'] ?>" required oninput="calcularFila(this)" style="text-align: center;"></td>
+                        <td><input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="ensayo_precio[]" class="form-control precio-input" min="0" value="<?= $det['precio_unitario'] ?>" required oninput="calcularFila(this)" style="text-align: right;" <?= $isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1; text-align: right;"' : '' ?>></td>
                         <td style="vertical-align: middle; font-weight: 700; text-align: right; color: #0f172a;" class="subtotal-texto">C$ <?= number_format($det['subtotal'], 2, '.', ',') ?></td>
                         <td style="text-align: center; vertical-align: middle;">
                             <button type="button" class="btn-remover" onclick="eliminarFila(this)"><i class="fa-solid fa-xmark"></i></button>
@@ -345,7 +345,7 @@
                 <div class="fila-total" style="align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0;">
                     <span style="font-weight: 500; color: #334155; font-size: 14.5px;">Descuento:</span>
                     <div style="display: flex; gap: 6px; align-items: center;">
-                        <input type="number" id="input-descuento-val" step="0.01" min="0" value="<?= number_format($cotizacion['descuento'] ?? 0, 2, '.', '') ?>" style="width: 80px; text-align: right; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 13.5px; font-weight: 500; color: #1e293b;">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="input-descuento-val" min="0" value="<?= number_format($cotizacion['descuento'] ?? 0, 2, '.', '') ?>" style="width: 80px; text-align: right; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 13.5px; font-weight: 500; color: #1e293b;">
                         <select id="input-descuento-tipo" style="width: 70px; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; background-color: white;">
                             <option value="monto" selected>C$</option>
                             <option value="porcentaje">%</option>
@@ -782,10 +782,10 @@
                 <input type="text" name="ensayo_unidad[]" class="form-control spec-unidad" placeholder="Unidad" value="Unidad" style="font-size: 12.5px;">
             </td>
             <td>
-                <input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)" style="text-align: center;">
+                <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="ensayo_cant[]" class="form-control cant-input" min="1" value="1" required oninput="calcularFila(this)" style="text-align: center;">
             </td>
             <td>
-                <input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="0.00" required oninput="calcularFila(this)" style="text-align: right;">
+                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="ensayo_precio[]" class="form-control precio-input" min="0" value="0.00" required oninput="calcularFila(this)" style="text-align: right;">
             </td>
             <td style="vertical-align: middle; font-weight: 700; text-align: right; color: #0f172a;" class="subtotal-texto">C$ 0.00</td>
             <td style="text-align: center; vertical-align: middle;">
@@ -1302,8 +1302,8 @@
             <td>
                 <input type="text" name="ensayo_unidad[]" class="form-control spec-unidad" placeholder="Unidad" value="${escapeHtml(unidad || 'Unidad')}" style="font-size: 12.5px;">
             </td>
-            <td><input type="number" name="ensayo_cant[]" class="form-control cant-input" step="1" min="1" value="1" required oninput="calcularFila(this)" style="text-align: center;"></td>
-            <td><input type="number" name="ensayo_precio[]" class="form-control precio-input" step="0.01" min="0" value="${precio.toFixed(2)}" required oninput="calcularFila(this)" style="text-align: right;"></td>
+            <td><input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="ensayo_cant[]" class="form-control cant-input" min="1" value="1" required oninput="calcularFila(this)" style="text-align: center;"></td>
+            <td><input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="ensayo_precio[]" class="form-control precio-input" min="0" value="${precio.toFixed(2)}" required oninput="calcularFila(this)" style="text-align: right;"></td>
             <td style="vertical-align: middle; font-weight: 700; text-align: right; color: #0f172a;" class="subtotal-texto">${formatearMonto(precio)}</td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" class="btn-remover" onclick="eliminarFila(this)"><i class="fa-solid fa-xmark"></i></button>

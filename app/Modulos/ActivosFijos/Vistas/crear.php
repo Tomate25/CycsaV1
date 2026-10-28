@@ -114,24 +114,24 @@ $activo = $activo ?? [];
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-bold">Vida Útil (en Meses) *</label>
-                                <input type="number" name="vida_util_meses" id="vidaUtilMeses" class="form-control form-control-sm" 
+                                <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="vida_util_meses" id="vidaUtilMeses" class="form-control form-control-sm" 
                                        min="1" max="600" value="<?= (int)($activo['vida_util_meses'] ?? 120) ?>" oninput="recalcularPrevisualizacion()" required>
                                 <div class="form-text small" id="ayudaAnios">Equivale a 10 años.</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-bold">Valor de Adquisición (C$) *</label>
-                                <input type="number" step="0.01" name="valor_adquisicion" id="valorAdquisicion" class="form-control form-control-sm fw-bold" 
+                                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="valor_adquisicion" id="valorAdquisicion" class="form-control form-control-sm fw-bold" 
                                        placeholder="0.00" value="<?= htmlspecialchars($activo['valor_adquisicion'] ?? '') ?>" oninput="recalcularPrevisualizacion()" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Valor Residual / Desecho (C$)</label>
-                                <input type="number" step="0.01" name="valor_residual" id="valorResidual" class="form-control form-control-sm" 
+                                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="valor_residual" id="valorResidual" class="form-control form-control-sm" 
                                        placeholder="0.00" value="<?= htmlspecialchars($activo['valor_residual'] ?? '0.00') ?>" oninput="recalcularPrevisualizacion()">
                                 <div class="form-text small">Valor final no depreciable estimado al terminar la vida útil.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Depreciación Acumulada Inicial (C$)</label>
-                                <input type="number" step="0.01" name="depreciacion_acumulada" id="depreciacionAcumulada" class="form-control form-control-sm text-danger" 
+                                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="depreciacion_acumulada" id="depreciacionAcumulada" class="form-control form-control-sm text-danger" 
                                        placeholder="0.00" value="<?= htmlspecialchars($activo['depreciacion_acumulada'] ?? '0.00') ?>" oninput="recalcularPrevisualizacion()">
                                 <div class="form-text small">Monto ya amortizado previo al registro en el sistema (0 si es nuevo).</div>
                             </div>

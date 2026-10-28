@@ -384,7 +384,7 @@ $filtroAntiguedad = $filtroAntiguedad ?? 'todas';
                 
                 <div class="form-group">
                     <label style="font-weight: 600; font-size: 13px; color: #334155;">Monto Original (C$)</label>
-                    <input type="number" name="monto" step="0.01" min="0.01" required placeholder="0.00" class="form-control">
+                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="monto" min="0.01" required placeholder="0.00" class="form-control">
                 </div>
             </div>
 
@@ -481,7 +481,7 @@ $filtroAntiguedad = $filtroAntiguedad ?? 'todas';
 
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Monto a Cobrar (C$)</label>
-                <input type="number" name="monto_pago" id="abono_monto_pago" step="0.01" min="0.01" required placeholder="0.00" class="form-control">
+                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="monto_pago" id="abono_monto_pago" min="0.01" required placeholder="0.00" class="form-control">
             </div>
 
             <div class="form-group">

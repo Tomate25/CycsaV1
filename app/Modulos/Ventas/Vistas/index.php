@@ -89,12 +89,12 @@
             <input type="hidden" name="id_os" id="ventaIdOs">
             <div class="venta-grid">
                 <div class="venta-field"><label>Número de factura</label><input name="factura_numero" id="ventaFactura" required></div>
-                <div class="venta-field"><label>Monto a registrar (C$)</label><input type="number" min="0.01" step="0.01" name="monto" id="ventaMonto" required></div>
+                <div class="venta-field"><label>Monto a registrar (C$)</label><input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0.01" name="monto" id="ventaMonto" required></div>
                 <div class="venta-field"><label>Método</label><select name="metodo_pago" id="ventaMetodo" onchange="cambiarMetodoVenta()"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="credito">Crédito</option></select></div>
                 <div class="venta-field"><label>Fecha</label><input type="date" name="fecha" value="<?= date('Y-m-d') ?>" required></div>
                 <div class="venta-field" id="ventaBanco" style="display:none;"><label>Cuenta bancaria receptora</label><select name="id_banco_cuenta" id="ventaBancoSelect"><option value="">Seleccione...</option><?php foreach ($bancos as $banco): ?><option value="<?= (int)$banco['id'] ?>"><?= htmlspecialchars($banco['banco_nombre'].' - '.$banco['numero_cuenta'].' ('.$banco['moneda'].')') ?></option><?php endforeach; ?></select></div>
                 <div class="venta-field" id="ventaReferencia" style="display:none;"><label>Referencia bancaria</label><input name="referencia"></div>
-                <div class="venta-field" id="ventaCredito" style="display:none;"><label>Plazo de crédito (días)</label><input type="number" min="1" max="180" name="dias_credito" value="30"></div>
+                <div class="venta-field" id="ventaCredito" style="display:none;"><label>Plazo de crédito (días)</label><input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" min="1" max="180" name="dias_credito" value="30"></div>
             </div>
             <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:22px;border-top:1px solid #e2e8f0;padding-top:16px;">
                 <button type="button" class="btn-venta" onclick="cerrarVenta()">Cancelar</button>

@@ -281,7 +281,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">Monto del Anticipo (C$) *</label>
-                            <input type="number" step="0.01" name="monto" class="form-control form-control-sm font-monospace" required placeholder="0.00">
+                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="monto" class="form-control form-control-sm font-monospace" required placeholder="0.00">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">Fecha de Desembolso *</label>

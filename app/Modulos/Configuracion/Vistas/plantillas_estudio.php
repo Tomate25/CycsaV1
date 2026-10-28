@@ -531,7 +531,7 @@ $estadoActual = $plantilla['estado'] ?? 'borrador';
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
                     <div>
                         <label style="display:block; font-size:10.5px; font-weight:700; color:#64748b; margin-bottom:3px; text-transform:uppercase;">Decimales:</label>
-                        <input type="number" id="insp_decimales" class="studio-input" min="0" max="6" value="2" onchange="actualizarCampoSeleccionado()">
+                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" id="insp_decimales" class="studio-input" min="0" max="6" value="2" onchange="actualizarCampoSeleccionado()">
                     </div>
                     <div>
                         <label style="display:block; font-size:10.5px; font-weight:700; color:#64748b; margin-bottom:3px; text-transform:uppercase;">Unidad Símbolo:</label>
@@ -653,7 +653,7 @@ $estadoActual = $plantilla['estado'] ?? 'borrador';
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
                 <div>
                     <label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:3px; text-transform:uppercase;">Decimales:</label>
-                    <input type="number" id="nvar_decimales" class="studio-input" value="2" min="0" max="6">
+                    <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" id="nvar_decimales" class="studio-input" value="2" min="0" max="6">
                 </div>
                 <div style="display:flex; align-items:flex-end; padding-bottom:6px;">
                     <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; cursor:pointer;">

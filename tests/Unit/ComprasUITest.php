@@ -219,8 +219,8 @@ class ComprasUITest extends TestCase {
             'estado' => 'activo'
         ]);
 
-        $codA = 'CEMENTO-TEST-' . rand(100, 999);
-        $codB = 'ARENA-TEST-' . rand(100, 999);
+        $codA = 'CEMENTO-TEST-' . uniqid();
+        $codB = 'ARENA-TEST-' . uniqid();
 
         $this->db->prepare("INSERT INTO inventario_insumos (codigo, nombre, cantidad, unidad_medida) VALUES (:c, 'Cemento Tipo I', 10, 'bolsa')")->execute(['c' => $codA]);
         $insumoA = (int)$this->db->lastInsertId();

@@ -240,7 +240,7 @@
                 
                 <div class="form-group">
                     <label style="font-weight: 600; font-size: 13px; color: #334155;">Saldo Inicial</label>
-                    <input type="number" name="saldo_inicial" step="0.01" min="0.00" required value="0.00" class="form-control">
+                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="saldo_inicial" min="0.00" required value="0.00" class="form-control">
                 </div>
             </div>
 
@@ -296,7 +296,7 @@
                 
                 <div class="form-group">
                     <label style="font-weight: 600; font-size: 13px; color: #334155;">Monto</label>
-                    <input type="number" name="monto" step="0.01" min="0.01" required placeholder="0.00" class="form-control">
+                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="monto" min="0.01" required placeholder="0.00" class="form-control">
                 </div>
             </div>
 

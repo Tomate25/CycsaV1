@@ -97,7 +97,7 @@ $actionUrl = $esEdicion ? '/Cycsa/publico/proyectos/actualizar' : '/Cycsa/public
                         <label for="presupuesto_estimado" class="form-label fw-semibold">Presupuesto Estimado (C$)</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light">C$</span>
-                            <input type="number" step="0.01" min="0" class="form-control text-end" id="presupuesto_estimado" name="presupuesto_estimado" 
+                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0" class="form-control text-end" id="presupuesto_estimado" name="presupuesto_estimado" 
                                    value="<?= htmlspecialchars($proyecto['presupuesto_estimado'] ?? '0.00') ?>" placeholder="0.00">
                         </div>
                         <div class="form-text">Límite financiero para el control de desviaciones.</div>

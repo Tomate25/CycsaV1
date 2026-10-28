@@ -398,13 +398,13 @@
                 <div class="form-group">
                     <label style="font-weight: 600; font-size: 13px; color: #334155;">Revenimiento (Slump) Medido en Campo</label>
                     <div style="display: flex; gap: 8px;">
-                        <input type="number" step="0.01" placeholder="Pulgadas" class="form-control input-revenimiento-in" style="width: 50%;">
-                        <input type="number" step="0.01" placeholder="CM" class="form-control input-revenimiento-cm" style="width: 50%;">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" placeholder="Pulgadas" class="form-control input-revenimiento-in" style="width: 50%;">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" placeholder="CM" class="form-control input-revenimiento-cm" style="width: 50%;">
                     </div>
                 </div>
                 <div class="form-group">
                     <label style="font-weight: 600; font-size: 13px; color: #334155;">Temperatura Concreto en Obra (°C)</label>
-                    <input type="number" step="0.1" placeholder="Grados Celsius" class="form-control input-temperatura-c">
+                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" placeholder="Grados Celsius" class="form-control input-temperatura-c">
                 </div>
             </div>
 
@@ -457,28 +457,28 @@
                     <!-- Edades por defecto: 3, 7, 28, 56 -->
                     <div class="age-row">
                         <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px;">Edad de Rotura (Días):</div>
-                        <input type="number" required class="form-control edad-dia-input" style="width: 70px;" value="3" min="1">
+                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" required class="form-control edad-dia-input" style="width: 70px;" value="3" min="1">
                         <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px; margin-left: 15px;">Cilindros / Identificadores:</div>
                         <input type="text" required placeholder="Ej: A" class="form-control edad-ident-input" style="flex: 1;" value="A">
                         <button type="button" class="btn-action-mini btn-del" style="margin-left: 15px;" onclick="eliminarFilaEdad(this)"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="age-row">
                         <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px;">Edad de Rotura (Días):</div>
-                        <input type="number" required class="form-control edad-dia-input" style="width: 70px;" value="7" min="1">
+                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" required class="form-control edad-dia-input" style="width: 70px;" value="7" min="1">
                         <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px; margin-left: 15px;">Cilindros / Identificadores:</div>
                         <input type="text" required placeholder="Ej: B" class="form-control edad-ident-input" style="flex: 1;" value="B">
                         <button type="button" class="btn-action-mini btn-del" style="margin-left: 15px;" onclick="eliminarFilaEdad(this)"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="age-row">
                         <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px;">Edad de Rotura (Días):</div>
-                        <input type="number" required class="form-control edad-dia-input" style="width: 70px;" value="28" min="1">
+                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" required class="form-control edad-dia-input" style="width: 70px;" value="28" min="1">
                         <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px; margin-left: 15px;">Cilindros / Identificadores:</div>
                         <input type="text" required placeholder="Ej: C, D" class="form-control edad-ident-input" style="flex: 1;" value="C, D">
                         <button type="button" class="btn-action-mini btn-del" style="margin-left: 15px;" onclick="eliminarFilaEdad(this)"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="age-row">
                         <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px;">Edad de Rotura (Días):</div>
-                        <input type="number" required class="form-control edad-dia-input" style="width: 70px;" value="56" min="1">
+                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" required class="form-control edad-dia-input" style="width: 70px;" value="56" min="1">
                         <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px; margin-left: 15px;">Cilindros / Identificadores:</div>
                         <input type="text" required placeholder="Ej: Testigo" class="form-control edad-ident-input" style="flex: 1;" value="Testigo">
                         <button type="button" class="btn-action-mini btn-del" style="margin-left: 15px;" onclick="eliminarFilaEdad(this)"><i class="fa-solid fa-trash"></i></button>
@@ -809,7 +809,7 @@
         newRow.className = 'age-row';
         newRow.innerHTML = `
             <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px;">Edad de Rotura (Días):</div>
-            <input type="number" required class="form-control edad-dia-input" style="width: 70px;" min="1">
+            <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" required class="form-control edad-dia-input" style="width: 70px;" min="1">
             <div style="font-weight: 600; font-size: 12.5px; color: #475569; width: 140px; margin-left: 15px;">Cilindros / Identificadores:</div>
             <input type="text" required placeholder="Ej: E" class="form-control edad-ident-input" style="flex: 1;">
             <button type="button" class="btn-action-mini btn-del" style="margin-left: 15px;" onclick="eliminarFilaEdad(this)"><i class="fa-solid fa-trash"></i></button>

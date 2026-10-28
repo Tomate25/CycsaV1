@@ -77,21 +77,21 @@
                                 <label class="form-label small fw-bold">Monto del Préstamo (C$) *</label>
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-light">C$</span>
-                                    <input type="number" step="0.01" min="1" name="monto_prestamo" id="montoPrestamo" class="form-control form-control-sm fw-bold text-end" placeholder="0.00" required>
+                                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" name="monto_prestamo" id="montoPrestamo" class="form-control form-control-sm fw-bold text-end" placeholder="0.00" required autocomplete="off">
                                 </div>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Tasa Interés Anual (%) *</label>
                                 <div class="input-group input-group-sm">
-                                    <input type="number" step="0.01" min="0" max="100" name="tasa_interes_anual" id="tasaInteresAnual" class="form-control form-control-sm text-end" placeholder="12.00" value="12.00" required>
+                                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" name="tasa_interes_anual" id="tasaInteresAnual" class="form-control form-control-sm text-end" placeholder="12.00" value="12.00" required autocomplete="off">
                                     <span class="input-group-text bg-light">%</span>
                                 </div>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Plazo (Meses) *</label>
-                                <input type="number" min="1" max="360" name="plazo_meses" id="plazoMeses" class="form-control form-control-sm text-end" placeholder="12" value="12" required>
+                                <input type="text" inputmode="numeric" pattern="[0-9]+" name="plazo_meses" id="plazoMeses" class="form-control form-control-sm text-end" placeholder="12" value="12" required autocomplete="off">
                             </div>
 
                             <div class="col-md-6">
@@ -206,8 +206,8 @@
 
 <script>
 function simularAmortizacion() {
-    const monto = parseFloat(document.getElementById('montoPrestamo').value) || 0;
-    const tasa = parseFloat(document.getElementById('tasaInteresAnual').value) || 0;
+    const monto = parseFloat(document.getElementById('montoPrestamo').value.replace(',', '.')) || 0;
+    const tasa = parseFloat(document.getElementById('tasaInteresAnual').value.replace(',', '.')) || 0;
     const plazo = parseInt(document.getElementById('plazoMeses').value) || 0;
     const fecha = document.getElementById('fechaDesembolso').value;
 

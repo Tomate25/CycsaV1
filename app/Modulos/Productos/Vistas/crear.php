@@ -110,7 +110,7 @@
 
             <div class="form-group">
                 <label class="form-label">Precio Unitario (C$) *</label>
-                <input type="number" name="precio" class="form-control" step="0.01" min="0" required placeholder="Ej: 900.00" value="<?= htmlspecialchars($valores['precio'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="precio" class="form-control" min="0" required placeholder="Ej: 900.00" value="<?= htmlspecialchars($valores['precio'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
             </div>
         </div>
 

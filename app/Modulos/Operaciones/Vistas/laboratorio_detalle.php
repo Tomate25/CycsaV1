@@ -467,7 +467,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     </div>
                     <div style="flex: 2;">
                         <label style="font-size: 11px; font-weight: 700; color: #64748b;">Cantidad Probetas:</label>
-                        <input type="number" name="cantidad[]" class="form-control input-cant-plan" min="1" max="<?= $totalEspecimenes ?>" value="1" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
+                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="cantidad[]" class="form-control input-cant-plan" min="1" max="<?= $totalEspecimenes ?>" value="1" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
                     </div>
                     <div style="flex: 1; margin-top: 18px;">
                         <button type="button" class="btn-accion btn-secondary-lab" onclick="eliminarFilaEdad(this)" style="color: #ef4444;"><i class="fa-solid fa-trash"></i></button>
@@ -486,7 +486,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     </div>
                     <div style="flex: 2;">
                         <label style="font-size: 11px; font-weight: 700; color: #64748b;">Cantidad Probetas:</label>
-                        <input type="number" name="cantidad[]" class="form-control input-cant-plan" min="1" max="<?= $totalEspecimenes ?>" value="2" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
+                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="cantidad[]" class="form-control input-cant-plan" min="1" max="<?= $totalEspecimenes ?>" value="2" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
                     </div>
                     <div style="flex: 1; margin-top: 18px;">
                         <button type="button" class="btn-accion btn-secondary-lab" onclick="eliminarFilaEdad(this)" style="color: #ef4444;"><i class="fa-solid fa-trash"></i></button>
@@ -554,11 +554,11 @@ $puedeEditarPlan = ($totalEnsayados === 0);
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Carga de Rotura (lb):</label>
-                    <input type="number" step="0.1" id="rot_carga" name="carga" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 15px; font-weight: 700; height: 38px;" placeholder="Ej. 85000" oninput="calcularEsfuerzoEnVivo()" required>
+                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_carga" name="carga" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 15px; font-weight: 700; height: 38px;" placeholder="Ej. 85000" oninput="calcularEsfuerzoEnVivo()" required>
                 </div>
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Área Transversal (in²):</label>
-                    <input type="number" step="0.001" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="28.274" oninput="calcularEsfuerzoEnVivo()" required>
+                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="28.274" oninput="calcularEsfuerzoEnVivo()" required>
                 </div>
             </div>
 
@@ -583,27 +583,27 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Diámetro 1 (cm):</label>
-                        <input type="number" step="0.01" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.20" oninput="recalcularDesdeHc61()">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.20" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Diámetro 2 (cm):</label>
-                        <input type="number" step="0.01" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.22" oninput="recalcularDesdeHc61()">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.22" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Longitud 1 (cm):</label>
-                        <input type="number" step="0.01" name="datos_crudos[largo_1]" id="hc_l1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 30.40" oninput="recalcularDesdeHc61()">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[largo_1]" id="hc_l1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 30.40" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Longitud 2 (cm):</label>
-                        <input type="number" step="0.01" name="datos_crudos[largo_2]" id="hc_l2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 30.45" oninput="recalcularDesdeHc61()">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[largo_2]" id="hc_l2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 30.45" oninput="recalcularDesdeHc61()">
                     </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Masa (kg):</label>
-                        <input type="number" step="0.001" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 12.850">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 12.850">
                     </div>
                     <div style="grid-column: 1 / -1;">
                         <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Lectura Prensa sin corregir (lbf) — aplica polinomio PRENSA-01:</label>
-                        <input type="number" step="0.1" name="datos_crudos[lectura_carga_lbf]" id="hc_lectura_lbf" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 91932" oninput="recalcularDesdeHc61()">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[lectura_carga_lbf]" id="hc_lectura_lbf" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 91932" oninput="recalcularDesdeHc61()">
                     </div>
                 </div>
             </details>
@@ -704,7 +704,7 @@ function agregarFilaEdad() {
         </div>
         <div style="flex: 2;">
             <label style="font-size: 11px; font-weight: 700; color: #64748b;">Cantidad Probetas:</label>
-            <input type="number" name="cantidad[]" class="form-control input-cant-plan" min="1" max="${TOTAL_ESPECIMENES}" value="1" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
+            <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="cantidad[]" class="form-control input-cant-plan" min="1" max="${TOTAL_ESPECIMENES}" value="1" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
         </div>
         <div style="flex: 1; margin-top: 18px;">
             <button type="button" class="btn-accion btn-secondary-lab" onclick="eliminarFilaEdad(this)" style="color: #ef4444;"><i class="fa-solid fa-trash"></i></button>

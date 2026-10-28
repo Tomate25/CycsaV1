@@ -362,10 +362,10 @@ function agregarFilaRecepcion(datos = null) {
             </select>
         </td>
         <td>
-            <input type="number" step="0.01" min="0.01" name="rec_cantidad[]" class="form-control form-control-sm text-end" value="${cantVal}" required>
+            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0.01" name="rec_cantidad[]" class="form-control form-control-sm text-end" value="${cantVal}" required>
         </td>
         <td>
-            <input type="number" step="0.01" min="0" name="rec_costo[]" class="form-control form-control-sm text-end" value="${costoVal}">
+            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0" name="rec_costo[]" class="form-control form-control-sm text-end" value="${costoVal}">
         </td>
         <td>
             <input type="text" name="rec_lote[]" class="form-control form-control-sm" placeholder="Ej: LOT-2026-X" value="${loteVal}">

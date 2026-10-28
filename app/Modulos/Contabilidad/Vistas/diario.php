@@ -272,10 +272,10 @@
                             </select>
                         </td>
                         <td>
-                            <input type="number" step="0.01" min="0" name="debe_linea[]" placeholder="0.00" class="form-control input-debe" oninput="calcularCuadre()" style="text-align: right; width: 100%;">
+                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0" name="debe_linea[]" placeholder="0.00" class="form-control input-debe" oninput="calcularCuadre()" style="text-align: right; width: 100%;">
                         </td>
                         <td>
-                            <input type="number" step="0.01" min="0" name="haber_linea[]" placeholder="0.00" class="form-control input-haber" oninput="calcularCuadre()" style="text-align: right; width: 100%;">
+                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0" name="haber_linea[]" placeholder="0.00" class="form-control input-haber" oninput="calcularCuadre()" style="text-align: right; width: 100%;">
                         </td>
                         <td style="text-align: center;">
                             <button type="button" onclick="eliminarFila(this)" style="background: none; border: none; color: #ef4444; cursor: pointer;"><i class="fa-solid fa-trash"></i></button>
@@ -292,10 +292,10 @@
                             </select>
                         </td>
                         <td>
-                            <input type="number" step="0.01" min="0" name="debe_linea[]" placeholder="0.00" class="form-control input-debe" oninput="calcularCuadre()" style="text-align: right; width: 100%;">
+                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0" name="debe_linea[]" placeholder="0.00" class="form-control input-debe" oninput="calcularCuadre()" style="text-align: right; width: 100%;">
                         </td>
                         <td>
-                            <input type="number" step="0.01" min="0" name="haber_linea[]" placeholder="0.00" class="form-control input-haber" oninput="calcularCuadre()" style="text-align: right; width: 100%;">
+                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0" name="haber_linea[]" placeholder="0.00" class="form-control input-haber" oninput="calcularCuadre()" style="text-align: right; width: 100%;">
                         </td>
                         <td style="text-align: center;">
                             <button type="button" onclick="eliminarFila(this)" style="background: none; border: none; color: #ef4444; cursor: pointer;"><i class="fa-solid fa-trash"></i></button>

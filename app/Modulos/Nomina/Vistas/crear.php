@@ -113,10 +113,10 @@
                                             </span>
                                         </td>
                                         <td class="text-end">
-                                            <input type="number" step="0.01" class="form-control form-control-sm text-end font-monospace input-salario" value="<?= number_format($emp['salario_base'], 2, '.', '') ?>" oninput="recalcularTotales()">
+                                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" class="form-control form-control-sm text-end font-monospace input-salario" value="<?= number_format($emp['salario_base'], 2, '.', '') ?>" oninput="recalcularTotales()">
                                         </td>
                                         <td class="text-end">
-                                            <input type="number" step="0.01" class="form-control form-control-sm text-end font-monospace input-he" value="0.00" oninput="recalcularTotales()">
+                                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" class="form-control form-control-sm text-end font-monospace input-he" value="0.00" oninput="recalcularTotales()">
                                         </td>
                                         <td class="text-end font-monospace fw-bold col-devengado">
                                             C$ <?= number_format($emp['salario_base'], 2) ?>
@@ -131,7 +131,7 @@
                                             <?php
                                             $sAnt = (float)$emp['saldo_anticipos'];
                                             ?>
-                                            <input type="number" step="0.01" class="form-control form-control-sm text-end font-monospace input-anticipo" value="<?= number_format($sAnt, 2, '.', '') ?>" max="<?= $sAnt ?>" oninput="recalcularTotales()" title="Saldo pendiente total: C$ <?= number_format($sAnt, 2) ?>">
+                                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" class="form-control form-control-sm text-end font-monospace input-anticipo" value="<?= number_format($sAnt, 2, '.', '') ?>" max="<?= $sAnt ?>" oninput="recalcularTotales()" title="Saldo pendiente total: C$ <?= number_format($sAnt, 2) ?>">
                                             <?php if ($sAnt > 0): ?>
                                                 <div class="text-muted small font-monospace" style="font-size: 10px;">Saldo: <?= number_format($sAnt, 2) ?></div>
                                             <?php endif; ?>

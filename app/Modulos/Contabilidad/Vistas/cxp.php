@@ -220,7 +220,7 @@ foreach ($cxpList as $item) {
                 
                 <div class="form-group">
                     <label style="font-weight: 600; font-size: 13px; color: #334155;">Monto Original (C$)</label>
-                    <input type="number" name="monto" step="0.01" min="0.01" required placeholder="0.00" class="form-control">
+                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="monto" min="0.01" required placeholder="0.00" class="form-control">
                 </div>
             </div>
 
@@ -400,7 +400,7 @@ foreach ($cxpList as $item) {
 
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: #334155;">Monto a Pagar (C$)</label>
-                <input type="number" name="monto_pago" id="abono_monto_pago" step="0.01" min="0.01" required placeholder="0.00" class="form-control">
+                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="monto_pago" id="abono_monto_pago" min="0.01" required placeholder="0.00" class="form-control">
             </div>
 
             <div class="form-group">
@@ -670,7 +670,7 @@ foreach ($cxpList as $item) {
                 <input type="text" class="form-control linea-concepto" placeholder="Ej: Papelería resmas" value="${datos.concepto || ''}" style="padding: 6px 8px; font-size: 12px;" oninput="recalcularLineas()">
             </td>
             <td>
-                <input type="number" class="form-control linea-monto" step="0.01" min="0" placeholder="0.00" value="${datos.monto || ''}" style="padding: 6px 8px; font-size: 12px; text-align: right;" oninput="recalcularLineas()">
+                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" class="form-control linea-monto" min="0" placeholder="0.00" value="${datos.monto || ''}" style="padding: 6px 8px; font-size: 12px; text-align: right;" oninput="recalcularLineas()">
             </td>
             <td style="text-align: center;">
                 <input type="checkbox" class="linea-iva-chk" ${datos.aplica_iva !== false ? 'checked' : ''} onchange="recalcularLineas()" title="Aplica IVA 15%" style="width: 16px; height: 16px; cursor: pointer;">

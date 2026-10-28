@@ -248,12 +248,12 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-muted">Cantidad *</label>
-                            <input type="number" step="0.01" min="0.01" name="cantidad" class="form-control" required placeholder="0.00">
+                            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0.01" name="cantidad" class="form-control" required placeholder="0.00">
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small text-muted">Costo Unitario ($)</label>
-                        <input type="number" step="0.0001" min="0" name="costo_unitario" id="modal_costo_unitario" class="form-control" placeholder="0.0000">
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0" name="costo_unitario" id="modal_costo_unitario" class="form-control" placeholder="0.0000">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small text-muted">Motivo / Justificación *</label>

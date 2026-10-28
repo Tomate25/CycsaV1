@@ -367,12 +367,12 @@
 
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: var(--color-slate-700);">Carga Última Aplicada (Lbs)</label>
-                <input type="number" step="0.01" name="carga_lbs" id="rup_carga" required placeholder="Ej: 85200.00" class="form-control">
+                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="carga_lbs" id="rup_carga" required placeholder="Ej: 85200.00" class="form-control">
             </div>
 
             <div class="form-group">
                 <label style="font-weight: 600; font-size: 13px; color: var(--color-slate-700);">Área de Sección Transversal (in²)</label>
-                <input type="number" step="0.001" name="area_in2" id="rup_area" required placeholder="Ej: 28.274" class="form-control" value="28.274">
+                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="area_in2" id="rup_area" required placeholder="Ej: 28.274" class="form-control" value="28.274">
                 <span style="font-size: 11.5px; color: var(--color-slate-600); margin-top: 2px;"><i class="fa-solid fa-circle-info"></i> <strong>Tip de Área:</strong> Estándar 6"x12" = <strong>28.274</strong> | Estándar 4"x8" = <strong>12.566</strong></span>
             </div>
 

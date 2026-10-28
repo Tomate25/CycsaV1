@@ -322,7 +322,7 @@ $pendientesEval = $totalProv - $evaluadosCount;
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">Plazo de Pago (Días)</label>
-                            <input type="number" name="plazo_pago_dias" id="prov_plazo_pago" class="form-select-sm form-control" value="30" min="0">
+                            <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="plazo_pago_dias" id="prov_plazo_pago" class="form-select-sm form-control" value="30" min="0">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">Estado *</label>

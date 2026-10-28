@@ -212,10 +212,10 @@ function agregarLineaDetalle(datos = null) {
             <input type="text" name="item_descripcion[]" id="desc_${filaContador}" class="form-control form-control-sm" required placeholder="Descripción del ítem" value="${descVal}">
         </td>
         <td>
-            <input type="number" step="0.01" min="0.01" name="item_cantidad[]" id="cant_${filaContador}" class="form-control form-control-sm text-end" required value="${cantVal}" oninput="calcularTotales()">
+            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0.01" name="item_cantidad[]" id="cant_${filaContador}" class="form-control form-control-sm text-end" required value="${cantVal}" oninput="calcularTotales()">
         </td>
         <td>
-            <input type="number" step="0.01" min="0" name="item_costo[]" id="costo_${filaContador}" class="form-control form-control-sm text-end" required value="${costoVal}" oninput="calcularTotales()">
+            <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" min="0" name="item_costo[]" id="costo_${filaContador}" class="form-control form-control-sm text-end" required value="${costoVal}" oninput="calcularTotales()">
         </td>
         <td class="text-center">
             <input type="checkbox" name="item_aplica_iva[]" id="iva_${filaContador}" class="form-check-input" value="1" ${aplicaIva} onchange="calcularTotales()">

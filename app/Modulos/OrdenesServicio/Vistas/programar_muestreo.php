@@ -137,7 +137,7 @@ $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) 
                 </div>
                 <div class="form-group-cycsa">
                     <label>No. de Personas (Muestreadores):</label>
-                    <input type="number" min="1" max="10" name="num_muestreadores" class="form-control-cycsa" 
+                    <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" min="1" max="10" name="num_muestreadores" class="form-control-cycsa" 
                            value="<?= htmlspecialchars($pm['num_muestreadores'] ?? 1) ?>">
                 </div>
             </div>

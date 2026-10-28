@@ -961,7 +961,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
 
             <div class="form-group">
                 <label style="font-weight: 600; color: #1e293b;">Horas de Espera Requeridas (Elegibles libremente)</label>
-                <input type="number" name="horas_espera_requeridas" id="field_horas_espera" class="form-control" value="24" min="0" max="168" placeholder="Ej: 24, 11, 12, 6...">
+                <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="horas_espera_requeridas" id="field_horas_espera" class="form-control" value="24" min="0" max="168" placeholder="Ej: 24, 11, 12, 6...">
                 <span style="font-size: 11.5px; color: #64748b; margin-top: 3px; display: block;">Puede indicar 24h por defecto, 11h, 12h, 6h o las horas exactas que el equipo decida. Si indica 0h, el ingreso se habilita de inmediato.</span>
             </div>
             

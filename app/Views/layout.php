@@ -41,6 +41,17 @@
             padding: 0; 
         }
 
+        /* TAREA-056: Desactivar flechas / spinners en inputs numéricos */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
         body { 
             font-family: 'Inter', sans-serif; 
             background: var(--fondo-app); 
@@ -732,6 +743,28 @@
                             }
                         }
                     }, 10);
+                }
+            }, true);
+
+            // TAREA-056: Prevenir cambio accidental por scroll de rueda o flechas en inputs numéricos
+            document.addEventListener('wheel', function(e) {
+                const el = document.activeElement;
+                if (el && (el.type === 'number' || el.getAttribute('inputmode') === 'decimal' || el.getAttribute('inputmode') === 'numeric')) {
+                    el.blur();
+                }
+            }, { passive: true });
+
+            document.addEventListener('keydown', function(e) {
+                if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && document.activeElement && document.activeElement.type === 'number') {
+                    e.preventDefault();
+                }
+            });
+
+            // Normalización automática de coma a punto en campos decimales
+            document.addEventListener('blur', function(e) {
+                const el = e.target;
+                if (el && el.getAttribute && el.getAttribute('inputmode') === 'decimal' && typeof el.value === 'string') {
+                    el.value = el.value.replace(',', '.').trim();
                 }
             }, true);
         });

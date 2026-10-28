@@ -98,7 +98,7 @@
                                                                     <input type="hidden" name="equipo_id" value="<?= (int)$eq['id'] ?>">
                                                                     <input type="hidden" name="clave" value="<?= htmlspecialchars($c['clave']) ?>">
                                                                     <input type="hidden" name="ref_equipo_alias" value="<?= htmlspecialchars($c['ref_equipo_alias'] ?? '') ?>">
-                                                                    <input type="number" step="any" name="valor_numerico" value="<?= htmlspecialchars((string)($c['valor_numerico'] ?? '')) ?>" class="form-control form-control-sm" style="width: 110px;">
+                                                                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="valor_numerico" value="<?= htmlspecialchars((string)($c['valor_numerico'] ?? '')) ?>" class="form-control form-control-sm" style="width: 110px;">
                                                                     <button type="submit" class="btn btn-sm btn-outline-primary" title="Guardar constante">
                                                                         <i class="fas fa-save"></i>
                                                                     </button>

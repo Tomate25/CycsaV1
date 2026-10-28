@@ -222,18 +222,18 @@
             </div>
             <div class="form-group">
                 <label>Días de Crédito</label>
-                <input type="number" name="dias_credito" value="<?= htmlspecialchars($cliente['dias_credito'] ?? '0', ENT_QUOTES, 'UTF-8') ?>" class="form-control">
+                <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="dias_credito" value="<?= htmlspecialchars($cliente['dias_credito'] ?? '0', ENT_QUOTES, 'UTF-8') ?>" class="form-control">
             </div>
             <div class="form-group">
                 <label>No. de Facturas Vencidas Permitidas</label>
-                <input type="number" name="facturas_vencidas_permitidas" value="<?= htmlspecialchars($cliente['facturas_vencidas_permitidas'] ?? '0', ENT_QUOTES, 'UTF-8') ?>" class="form-control">
+                <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="facturas_vencidas_permitidas" value="<?= htmlspecialchars($cliente['facturas_vencidas_permitidas'] ?? '0', ENT_QUOTES, 'UTF-8') ?>" class="form-control">
             </div>
         </div>
 
         <div class="form-grid-3" style="margin-bottom: 20px;">
             <div class="form-group">
                 <label>Descuento %</label>
-                <input type="number" step="0.01" name="porcentaje_descuento" value="<?= htmlspecialchars($cliente['porcentaje_descuento'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>" class="form-control" placeholder="Ej: 5.00">
+                <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="porcentaje_descuento" value="<?= htmlspecialchars($cliente['porcentaje_descuento'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>" class="form-control" placeholder="Ej: 5.00">
             </div>
             <div class="form-group" id="grupo-cuenta-exonerado" style="display: none;">
                 <label>Cuenta para Ingresos Exonerados</label>
