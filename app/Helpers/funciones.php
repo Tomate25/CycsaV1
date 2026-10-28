@@ -1770,7 +1770,16 @@ function obtenerEsquemaPlantillaEnsayo(?string $archivoMd, ?int $formatoId = nul
 }
 
 function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $metadatosGuardados = []): array {
-    $clienteNom = !empty($metadatosGuardados['cliente_nombre']) ? $metadatosGuardados['cliente_nombre'] : (!empty($detalle['cliente_nombre']) ? $detalle['cliente_nombre'] : (!empty($detalle['nombre_razon_social']) ? $detalle['nombre_razon_social'] : ($detalle['atencion_a'] ?? 'Cliente Confidencial (ISO 17025)')));
+    // Si metadatosGuardados tiene cliente_nombre, respetarlo; de lo contrario priorizar la figura jurídica de informe (ISO/IEC 17025)
+    $clienteNom = !empty($metadatosGuardados['cliente_nombre']) 
+        ? $metadatosGuardados['cliente_nombre'] 
+        : (!empty($detalle['cliente_informe_nombre']) 
+            ? $detalle['cliente_informe_nombre'] 
+            : (!empty($detalle['cliente_nombre']) 
+                ? $detalle['cliente_nombre'] 
+                : (!empty($detalle['nombre_razon_social']) 
+                    ? $detalle['nombre_razon_social'] 
+                    : ($detalle['atencion_a'] ?? 'Cliente Confidencial (ISO 17025)'))));
     $clienteDir = !empty($metadatosGuardados['cliente_direccion']) ? $metadatosGuardados['cliente_direccion'] : (!empty($detalle['cliente_direccion']) ? $detalle['cliente_direccion'] : (!empty($detalle['direccion']) ? $detalle['direccion'] : ($detalle['direccion_proyecto'] ?? '')));
     $proyectoNom = !empty($metadatosGuardados['proyecto']) ? $metadatosGuardados['proyecto'] : (!empty($detalle['nombre_proyecto']) ? $detalle['nombre_proyecto'] : (!empty($detalle['proyecto']) ? $detalle['proyecto'] : 'Proyecto no especificado'));
     $fechaIngreso = !empty($metadatosGuardados['fecha_ingreso']) ? $metadatosGuardados['fecha_ingreso'] : (!empty($detalle['fecha_ingreso']) ? substr($detalle['fecha_ingreso'], 0, 10) : (!empty($detalle['fecha_recepcion']) ? substr($detalle['fecha_recepcion'], 0, 10) : (!empty($detalle['fecha_hora_llegada_laboratorio']) ? substr($detalle['fecha_hora_llegada_laboratorio'], 0, 10) : (!empty($detalle['fecha_registro_campo']) ? $detalle['fecha_registro_campo'] : substr($detalle['os_created_at'] ?? date('Y-m-d'), 0, 10)))));

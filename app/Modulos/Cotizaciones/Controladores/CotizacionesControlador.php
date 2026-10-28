@@ -158,6 +158,9 @@ class CotizacionesControlador extends ControladorBase {
             $cabecera = [
                 'codigo' => $modelo->generarCodigoUnico(),
                 'id_cliente' => $datos['id_cliente'],
+                'id_cliente_factura' => !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)$datos['id_cliente'],
+                'id_cliente_informe' => !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)$datos['id_cliente'],
+                'condicion_comercial' => !empty($datos['condicion_comercial']) ? trim($datos['condicion_comercial']) : (str_contains(strtolower($datos['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado'),
                 'tipo_moneda' => isset($datos['tipo_moneda']) ? (int)$datos['tipo_moneda'] : 1,
                 'id_usuario_creador' => $_SESSION['usuario_id'],
                 'atencion_a' => trim($datos['atencion_a']),
@@ -288,6 +291,9 @@ class CotizacionesControlador extends ControladorBase {
 
         $cabecera = [
             'id_cliente' => $datos['id_cliente'],
+            'id_cliente_factura' => !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)$datos['id_cliente'],
+            'id_cliente_informe' => !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)$datos['id_cliente'],
+            'condicion_comercial' => !empty($datos['condicion_comercial']) ? trim($datos['condicion_comercial']) : (str_contains(strtolower($datos['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado'),
             'tipo_moneda' => isset($datos['tipo_moneda']) ? (int)$datos['tipo_moneda'] : 1,
             'atencion_a' => trim($datos['atencion_a']),
             'nombre_proyecto' => trim($datos['nombre_proyecto']),

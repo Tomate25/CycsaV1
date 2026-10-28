@@ -3,7 +3,7 @@
 namespace Cycsa\Modulos\Operaciones\Modelos;
 
 final class CierreOperacionLims {
-    public static function validar(array $items, ?array $cxc): ?string {
+    public static function validar(array $items, ?array $cxc, string $condicionComercial = 'contado'): ?string {
         if (!$items) {
             return 'No se puede cerrar una orden sin ensayos registrados.';
         }
@@ -19,14 +19,22 @@ final class CierreOperacionLims {
                 return "El ensayo '" . ($item['descripcion_ensayo'] ?? '') . "' está en estado '" . $revision['estado_label'] . "'. Todos los ensayos deben estar APROBADOS.";
             }
         }
-        if ($cxc === null || (float)($cxc['saldo'] ?? INF) > 0.01 || ($cxc['estado'] ?? '') !== 'Pagado') {
-            return 'La factura debe estar Pagada y tener saldo C$ 0.00 antes del cierre.';
+
+        $esCredito = (strtolower(trim($condicionComercial)) === 'credito');
+        if ($esCredito) {
+            if ($cxc === null) {
+                return 'Para órdenes a crédito se requiere tener generada la factura o cuenta por cobrar documentada antes del cierre.';
+            }
+        } else {
+            if ($cxc === null || (float)($cxc['saldo'] ?? INF) > 0.01 || ($cxc['estado'] ?? '') !== 'Pagado') {
+                return 'La factura debe estar Pagada y tener saldo C$ 0.00 antes del cierre.';
+            }
         }
         return null;
     }
 
-    public static function cerrar(array $items, ?array $cxc, callable $actualizar, callable $auditar): ?string {
-        $error = self::validar($items, $cxc);
+    public static function cerrar(array $items, ?array $cxc, callable $actualizar, callable $auditar, string $condicionComercial = 'contado'): ?string {
+        $error = self::validar($items, $cxc, $condicionComercial);
         if ($error !== null) {
             return $error;
         }

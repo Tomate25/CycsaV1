@@ -174,12 +174,16 @@ class OrdenServicioModelo {
      * Guardar una nueva Orden de Servicio heredando datos de la cotización
      */
     public function crear(array $datos): int {
+        $idClienteFactura = !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)($datos['id_cliente'] ?? 0);
+        $idClienteInforme = !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)($datos['id_cliente'] ?? 0);
+        $condComercial = !empty($datos['condicion_comercial']) ? trim($datos['condicion_comercial']) : (str_contains(strtolower($datos['forma_pago'] ?? ''), 'credito') ? 'credito' : 'contado');
+
         $sql = "INSERT INTO ordenes_servicio (
-                    codigo_os, id_cotizacion, id_cliente, elaborado_por, fecha_emision,
+                    codigo_os, id_cotizacion, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, elaborado_por, fecha_emision,
                     atencion_a, nombre_proyecto, forma_pago, notas_condiciones,
                     contactos_json, requiere_muestreo, tipo_contrato, estado
                 ) VALUES (
-                    :codigo_os, :id_cotizacion, :id_cliente, :elaborado_por, :fecha_emision,
+                    :codigo_os, :id_cotizacion, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :elaborado_por, :fecha_emision,
                     :atencion_a, :nombre_proyecto, :forma_pago, :notas_condiciones,
                     :contactos_json, :requiere_muestreo, :tipo_contrato, :estado
                 )";
@@ -188,7 +192,10 @@ class OrdenServicioModelo {
         $stmt->execute([
             'codigo_os' => $datos['codigo_os'],
             'id_cotizacion' => $datos['id_cotizacion'],
-            'id_cliente' => $datos['id_cliente'],
+            'id_cliente' => $idClienteFactura,
+            'id_cliente_factura' => $idClienteFactura,
+            'id_cliente_informe' => $idClienteInforme,
+            'condicion_comercial' => $condComercial,
             'elaborado_por' => $datos['elaborado_por'] ?? ($_SESSION['usuario_nombre'] ?? 'Sistema'),
             'fecha_emision' => $datos['fecha_emision'] ?? date('Y-m-d'),
             'atencion_a' => $datos['atencion_a'] ?? '',

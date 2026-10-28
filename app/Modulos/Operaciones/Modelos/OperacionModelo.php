@@ -42,17 +42,24 @@ class OperacionModelo extends ModeloBase {
         $consecutivo = (int)$stmt->fetchColumn() + 1;
         $codigoOS = sprintf("OS-%d-%04d", $anio, $consecutivo);
 
-        $stmtCot = $this->db->prepare("SELECT atencion_a, nombre_proyecto, condicion_pago, id_cliente FROM cotizaciones WHERE id = :id_cot");
+        $stmtCot = $this->db->prepare("SELECT atencion_a, nombre_proyecto, condicion_pago, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial FROM cotizaciones WHERE id = :id_cot");
         $stmtCot->execute(['id_cot' => $idCotizacion]);
         $cotData = $stmtCot->fetch(PDO::FETCH_ASSOC) ?: [];
 
-        $sql = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, id_cliente, atencion_a, nombre_proyecto, forma_pago, tipo_contrato, fecha_emision, estado, fecha_muestreo, hora_muestreo, tecnico_muestreo, vehiculo_muestreo) 
-                VALUES (:codigo_os, :id_cotizacion, :id_cliente, :atencion_a, :nombre_proyecto, :forma_pago, :tipo_contrato, CURRENT_DATE, 'Estado 1: Recepcion', :fecha_m, :hora_m, :tecnico_m, :vehiculo_m)";
+        $idClienteFactura = $cotData['id_cliente_factura'] ?? $cotData['id_cliente'] ?? null;
+        $idClienteInforme = $cotData['id_cliente_informe'] ?? $cotData['id_cliente'] ?? null;
+        $condComercial = !empty($cotData['condicion_comercial']) ? $cotData['condicion_comercial'] : (str_contains(strtolower($cotData['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado');
+
+        $sql = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, atencion_a, nombre_proyecto, forma_pago, tipo_contrato, fecha_emision, estado, fecha_muestreo, hora_muestreo, tecnico_muestreo, vehiculo_muestreo) 
+                VALUES (:codigo_os, :id_cotizacion, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :atencion_a, :nombre_proyecto, :forma_pago, :tipo_contrato, CURRENT_DATE, 'Estado 1: Recepcion', :fecha_m, :hora_m, :tecnico_m, :vehiculo_m)";
         $stmtInsert = $this->db->prepare($sql);
         $stmtInsert->execute([
             'codigo_os' => $codigoOS,
             'id_cotizacion' => $idCotizacion,
-            'id_cliente' => $cotData['id_cliente'] ?? null,
+            'id_cliente' => $idClienteFactura,
+            'id_cliente_factura' => $idClienteFactura,
+            'id_cliente_informe' => $idClienteInforme,
+            'condicion_comercial' => $condComercial,
             'atencion_a' => $cotData['atencion_a'] ?? '',
             'nombre_proyecto' => $cotData['nombre_proyecto'] ?? '',
             'forma_pago' => $cotData['condicion_pago'] ?? 'Pago contra entrega',
@@ -71,12 +78,17 @@ class OperacionModelo extends ModeloBase {
      */
     public function obtenerOSActivas(string $busqueda = '', string $tab = 'activas'): array {
         $sql = "SELECT os.*,
-                       cot.codigo AS cot_codigo, cot.nombre_proyecto, cot.total AS cot_total,
+                       cot.codigo AS cot_codigo, cot.nombre_proyecto, cot.total AS cot_total, cot.condicion_pago,
+                       COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
                        cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre,
-                       cli.email AS cliente_email
+                       cli.email AS cliente_email,
+                       cli_fact.id AS cliente_factura_id, cli_fact.nombre_razon_social AS cliente_factura_nombre,
+                       cli_inf.id AS cliente_informe_id, cli_inf.nombre_razon_social AS cliente_informe_nombre
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-                JOIN clientes cli ON cot.id_cliente = cli.id";
+                JOIN clientes cli ON cot.id_cliente = cli.id
+                LEFT JOIN clientes cli_fact ON cli_fact.id = COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente)
+                LEFT JOIN clientes cli_inf ON cli_inf.id = COALESCE(os.id_cliente_informe, cot.id_cliente_informe, cot.id_cliente)";
 
         $where = [];
         $params = [];
@@ -176,19 +188,25 @@ class OperacionModelo extends ModeloBase {
     public function obtenerOSPorId(int $idOS): ?array {
         $sql = "SELECT os.id, os.codigo_os, os.tipo_contrato, os.fecha_emision, os.estado, os.id_cotizacion,
                        os.requiere_muestreo, os.tecnico_muestreo, os.vehiculo_muestreo, os.fecha_muestreo, os.hora_muestreo,
-                       cot.codigo AS cot_codigo, 
+                       os.id_cliente_factura, os.id_cliente_informe,
+                       COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
+                       cot.codigo AS cot_codigo, cot.condicion_pago,
                        COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
                        COALESCE(NULLIF(cot.direccion_proyecto, ''), NULLIF(cli.direccion, ''), '') AS direccion_proyecto,
                        COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
                        COALESCE(NULLIF(os.forma_pago, ''), NULLIF(cot.condicion_pago, ''), 'Pago contra entrega') AS forma_pago,
-                       cli.nombre_razon_social AS cliente_nombre, 
-                       COALESCE(cli.identificacion, cli.numero_ruc, cli.numero_cedula, '') AS cliente_ruc, 
-                       COALESCE(NULLIF(cli.direccion, ''), NULLIF(cot.direccion_proyecto, ''), '') AS cliente_direccion,
-                       COALESCE(NULLIF(cli.telefono, ''), '') AS cliente_telefono, 
-                       COALESCE(NULLIF(cli.email, ''), NULLIF(cli.contacto_correo, ''), '') AS cliente_email
+                       COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_nombre, 
+                       cli_fact.nombre_razon_social AS cliente_factura_nombre,
+                       cli_inf.nombre_razon_social AS cliente_informe_nombre,
+                       COALESCE(cli_inf.identificacion, cli_inf.numero_ruc, cli_inf.numero_cedula, cli.identificacion, cli.numero_ruc, cli.numero_cedula, '') AS cliente_ruc, 
+                       COALESCE(NULLIF(cli_inf.direccion, ''), NULLIF(cli.direccion, ''), NULLIF(cot.direccion_proyecto, ''), '') AS cliente_direccion,
+                       COALESCE(NULLIF(cli_inf.telefono, ''), NULLIF(cli.telefono, ''), '') AS cliente_telefono, 
+                       COALESCE(NULLIF(cli_inf.email, ''), NULLIF(cli.email, ''), NULLIF(cli.contacto_correo, ''), '') AS cliente_email
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id
+                LEFT JOIN clientes cli_inf ON cli_inf.id = COALESCE(os.id_cliente_informe, cot.id_cliente_informe, cot.id_cliente)
+                LEFT JOIN clientes cli_fact ON cli_fact.id = COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente)
                 WHERE os.id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $idOS]);

@@ -103,9 +103,18 @@ class OperacionesControlador extends ControladorBase {
             $montoOS = (float)($o['cot_total'] ?? 0.0);
             $saldoOS = $o['cxc'] ? (float)$o['cxc']['saldo'] : $montoOS;
             $estadoPago = $o['cxc'] ? $o['cxc']['estado'] : 'Pendiente';
-            $o['comercial_100'] = ($o['cxc'] !== null && $estadoPago === 'Pagado' && $saldoOS <= 0.01);
+            $condicionCom = strtolower(trim($o['condicion_comercial'] ?? $o['condicion_pago'] ?? $o['forma_pago'] ?? 'contado'));
+            $esCredito = ($condicionCom === 'credito');
+
+            if ($esCredito) {
+                // En crédito se autoriza cierre y entrega con la cuenta por cobrar documentada
+                $o['comercial_100'] = ($o['cxc'] !== null);
+            } else {
+                $o['comercial_100'] = ($o['cxc'] !== null && $estadoPago === 'Pagado' && $saldoOS <= 0.01);
+            }
             $o['saldo_os'] = $saldoOS;
             $o['estado_pago'] = $estadoPago;
+            $o['condicion_comercial_activa'] = $condicionCom;
 
             // Condición explícita de cierre (100% técnico + 100% comercial)
             $o['puede_cerrar'] = ($o['tecnico_100'] && $o['comercial_100'] && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado']));
@@ -1566,8 +1575,15 @@ class OperacionesControlador extends ControladorBase {
         $stmt = $db->prepare("
             SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
                    os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
-                   cot.id AS id_cotizacion, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
-                   cli.id AS id_cliente, cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion, cli.email AS cliente_email, cli.telefono AS cliente_telefono,
+                   os.forma_pago, COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
+                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.condicion_pago, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   COALESCE(cli_inf.id, cli.id) AS id_cliente, 
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_nombre, 
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_informe_nombre,
+                   cli_fact.nombre_razon_social AS cliente_factura_nombre,
+                   COALESCE(cli_inf.direccion, cli.direccion) AS cliente_direccion, 
+                   COALESCE(cli_inf.email, cli.email) AS cliente_email, 
+                   COALESCE(cli_inf.telefono, cli.telefono) AS cliente_telefono,
                    p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
                    fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
                    hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio, hs.naturaleza_muestra, hs.observaciones,
@@ -1577,6 +1593,8 @@ class OperacionesControlador extends ControladorBase {
             JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
             JOIN cotizaciones cot ON os.id_cotizacion = cot.id
             JOIN clientes cli ON cot.id_cliente = cli.id
+            LEFT JOIN clientes cli_inf ON cli_inf.id = COALESCE(os.id_cliente_informe, cot.id_cliente_informe, cot.id_cliente)
+            LEFT JOIN clientes cli_fact ON cli_fact.id = COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente)
             LEFT JOIN productos p ON cd.id_producto = p.id
             LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
             LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
@@ -1592,6 +1610,21 @@ class OperacionesControlador extends ControladorBase {
             $_SESSION['error'] = 'Producto o ensayo no encontrado.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
+        }
+
+        // Condición comercial de descarga: Contado / Contra-entrega exige factura pagada (saldo = 0)
+        // Crédito: entrega autorizada sin bloquear
+        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
+        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
+            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
+            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
+            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
+            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
+            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
+                $_SESSION['error'] = "Descarga denegada: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega final requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
         }
 
         // 1. Verificar que exista la Hoja de Servicio (CYCSA-RT-FM-13) registrada
@@ -2562,11 +2595,13 @@ class OperacionesControlador extends ControladorBase {
                 $stmtCxc = $db->prepare("SELECT saldo, estado FROM cuentas_por_cobrar WHERE factura_numero = :fact LIMIT 1 FOR UPDATE");
                 $stmtCxc->execute(['fact' => $facturaNum]);
                 $cxc = $stmtCxc->fetch(PDO::FETCH_ASSOC);
+                $condicionCom = strtolower(trim($os['condicion_comercial'] ?? $os['forma_pago'] ?? 'contado'));
                 $error = CierreOperacionLims::cerrar(
                     $items,
                     $cxc ?: null,
                     fn(string $estado): bool => $modelo->actualizarEstadoOS($idOS, $estado, 'Cierre formal 100% técnico y comercial por supervisión'),
-                    fn(): bool => registrarBitacora('operaciones', 'cerrar_orden', "Orden de Servicio {$os['codigo_os']} finalizada y archivada formalmente (100% Ensayos Aprobados y Pagada).", $idOS)
+                    fn(): bool => registrarBitacora('operaciones', 'cerrar_orden', "Orden de Servicio {$os['codigo_os']} finalizada y archivada formalmente (100% Ensayos Aprobados - Condición: {$condicionCom}).", $idOS),
+                    $condicionCom
                 );
                 if ($error !== null) {
                     $db->rollBack();
@@ -2605,8 +2640,15 @@ class OperacionesControlador extends ControladorBase {
         $stmt = $db->prepare("
             SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
                    os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
-                   cot.id AS id_cotizacion, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
-                   cli.id AS id_cliente, cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion, cli.email AS cliente_email, cli.telefono AS cliente_telefono,
+                   os.forma_pago, COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
+                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.condicion_pago, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   COALESCE(cli_inf.id, cli.id) AS id_cliente, 
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_nombre, 
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_informe_nombre,
+                   cli_fact.nombre_razon_social AS cliente_factura_nombre,
+                   COALESCE(cli_inf.direccion, cli.direccion) AS cliente_direccion, 
+                   COALESCE(cli_inf.email, cli.email) AS cliente_email, 
+                   COALESCE(cli_inf.telefono, cli.telefono) AS cliente_telefono,
                    p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
                    fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
                    hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio, hs.naturaleza_muestra, hs.observaciones,
@@ -2616,6 +2658,8 @@ class OperacionesControlador extends ControladorBase {
             JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
             JOIN cotizaciones cot ON os.id_cotizacion = cot.id
             JOIN clientes cli ON cot.id_cliente = cli.id
+            LEFT JOIN clientes cli_inf ON cli_inf.id = COALESCE(os.id_cliente_informe, cot.id_cliente_informe, cot.id_cliente)
+            LEFT JOIN clientes cli_fact ON cli_fact.id = COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente)
             LEFT JOIN productos p ON cd.id_producto = p.id
             LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
             LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
@@ -2631,6 +2675,21 @@ class OperacionesControlador extends ControladorBase {
             $_SESSION['error'] = 'Producto o ensayo no encontrado.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
+        }
+
+        // Condición comercial de descarga: Contado / Contra-entrega exige factura pagada (saldo = 0)
+        // Crédito: entrega autorizada sin bloquear
+        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
+        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
+            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
+            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
+            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
+            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
+            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
+                $_SESSION['error'] = "Descarga denegada: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega final requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
         }
 
         $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
@@ -2765,8 +2824,15 @@ class OperacionesControlador extends ControladorBase {
         $stmt = $db->prepare("
             SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
                    os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
-                   cot.id AS id_cotizacion, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
-                   cli.id AS id_cliente, cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion, cli.email AS cliente_email, cli.telefono AS cliente_telefono,
+                   os.forma_pago, COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
+                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.condicion_pago, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   COALESCE(cli_inf.id, cli.id) AS id_cliente, 
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_nombre, 
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_informe_nombre,
+                   cli_fact.nombre_razon_social AS cliente_factura_nombre,
+                   COALESCE(cli_inf.direccion, cli.direccion) AS cliente_direccion, 
+                   COALESCE(cli_inf.email, cli.email) AS cliente_email, 
+                   COALESCE(cli_inf.telefono, cli.telefono) AS cliente_telefono,
                    p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
                    fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
                    hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio, hs.naturaleza_muestra, hs.observaciones,
@@ -2776,6 +2842,8 @@ class OperacionesControlador extends ControladorBase {
             JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
             JOIN cotizaciones cot ON os.id_cotizacion = cot.id
             JOIN clientes cli ON cot.id_cliente = cli.id
+            LEFT JOIN clientes cli_inf ON cli_inf.id = COALESCE(os.id_cliente_informe, cot.id_cliente_informe, cot.id_cliente)
+            LEFT JOIN clientes cli_fact ON cli_fact.id = COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente)
             LEFT JOIN productos p ON cd.id_producto = p.id
             LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
             LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
@@ -2791,6 +2859,21 @@ class OperacionesControlador extends ControladorBase {
             $_SESSION['error'] = 'Producto o ensayo no encontrado.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
+        }
+
+        // Condición comercial de descarga: Contado / Contra-entrega exige factura pagada (saldo = 0)
+        // Crédito: entrega autorizada sin bloquear
+        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
+        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
+            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
+            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
+            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
+            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
+            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
+                $_SESSION['error'] = "Descarga denegada: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega final requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
         }
 
         $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
@@ -2884,6 +2967,21 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
+        // Condición comercial de descarga: Contado / Contra-entrega exige factura pagada (saldo = 0)
+        // Crédito: entrega autorizada sin bloquear
+        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
+        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
+            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
+            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
+            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
+            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
+            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
+                $_SESSION['error'] = "Descarga denegada: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega final requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
+        }
+
         // VALIDACIÓN CRUCIAL: Solo se puede enviar si la matriz TIENE RESULTADOS
         $resultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
         if (isset($resultados['filas']) && is_array($resultados['filas'])) {
@@ -2912,6 +3010,21 @@ class OperacionesControlador extends ControladorBase {
             $_SESSION['error'] = 'No se puede enviar el informe al cliente: ' . $ccInfo['motivo_bloqueo'];
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
+        }
+
+        // VALIDACIÓN COMERCIAL: Contado / Contra-entrega requiere pago de la factura antes del despacho oficial
+        // Clientes con condición Crédito tienen despacho autorizado con la cuenta por cobrar
+        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
+        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
+            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
+            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
+            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
+            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
+            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
+                $_SESSION['error'] = "Envío denegado: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
+                $respuesta->redirigir('/Cycsa/publico/operaciones');
+                return;
+            }
         }
 
         // Destinatario: tomar el especificado en el formulario o el registrado en la base de datos del cliente

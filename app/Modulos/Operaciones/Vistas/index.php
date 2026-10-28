@@ -488,9 +488,29 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                                 <span class="text-muted" style="font-size: 11.5px;">&bull; <?= date('d/m/Y', strtotime($o['fecha_emision'])) ?></span>
                             </div>
                             <div data-col="cliente-sub" class="mt-1">
-                                <div style="font-weight: 700; color: #0f172a; font-size: 13.5px;"><?= htmlspecialchars($o['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?></div>
-                                <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
-                                    Proyecto: <span class="fw-semibold"><?= htmlspecialchars($o['nombre_proyecto'], ENT_QUOTES, 'UTF-8') ?></span> &bull; Coty: <span class="fw-semibold"><?= htmlspecialchars($o['cot_codigo'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php 
+                                $cliInfNom = $o['cliente_informe_nombre'] ?? $o['cliente_nombre'];
+                                $cliFactNom = $o['cliente_factura_nombre'] ?? $o['cliente_nombre'];
+                                $condComAct = strtolower(trim($o['condicion_comercial_activa'] ?? $o['condicion_comercial'] ?? $o['condicion_pago'] ?? $o['forma_pago'] ?? 'contado'));
+                                $esCreditoFila = ($condComAct === 'credito');
+                                ?>
+                                <?php if (!empty($cliInfNom) && !empty($cliFactNom) && $cliInfNom !== $cliFactNom): ?>
+                                    <div style="font-weight: 700; color: #0f172a; font-size: 13.5px;" title="Figura jurídica a la que se emiten los resultados oficiales">
+                                        <i class="fa-solid fa-file-contract text-primary" style="font-size: 11px;"></i> Informe: <?= htmlspecialchars($cliInfNom, ENT_QUOTES, 'UTF-8') ?>
+                                    </div>
+                                    <div style="font-size: 12px; color: #475569; margin-top: 1px;">
+                                        <i class="fa-solid fa-receipt text-secondary" style="font-size: 11px;"></i> Facturado a: <span class="fw-semibold"><?= htmlspecialchars($cliFactNom, ENT_QUOTES, 'UTF-8') ?></span>
+                                    </div>
+                                <?php else: ?>
+                                    <div style="font-weight: 700; color: #0f172a; font-size: 13.5px;"><?= htmlspecialchars($o['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <?php endif; ?>
+                                <div style="font-size: 12px; color: #64748b; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <span>Proyecto: <span class="fw-semibold"><?= htmlspecialchars($o['nombre_proyecto'], ENT_QUOTES, 'UTF-8') ?></span></span>
+                                    <span>&bull;</span>
+                                    <span>Coty: <span class="fw-semibold"><?= htmlspecialchars($o['cot_codigo'], ENT_QUOTES, 'UTF-8') ?></span></span>
+                                    <span class="badge" style="background: <?= $esCreditoFila ? '#eff6ff' : '#f8fafc' ?>; color: <?= $esCreditoFila ? '#1d4ed8' : '#475569' ?>; border: 1px solid <?= $esCreditoFila ? '#bfdbfe' : '#e2e8f0' ?>; font-size: 11px; padding: 2px 7px;">
+                                        <i class="fa-solid <?= $esCreditoFila ? 'fa-credit-card' : 'fa-money-bill' ?>"></i> <?= ucfirst($condComAct) ?>
+                                    </span>
                                 </div>
                             </div>
                         </td>
@@ -696,13 +716,18 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                                             </span>
                                             <span>
                                                 <i class="fa-solid <?= $o['comercial_100'] ? 'fa-circle-check text-success' : 'fa-clock text-warning' ?>"></i>
-                                                <strong>Comercial:</strong> <?= $o['comercial_100'] ? 'Factura cancelada (C$ 0.00)' : ('Saldo pendiente C$ ' . number_format($o['saldo_os'], 2)) ?>
+                                                <strong>Comercial (<?= ucfirst(htmlspecialchars($condComAct)) ?>):</strong> 
+                                                <?php if ($esCreditoFila): ?>
+                                                    <?= $o['cxc'] !== null ? 'Factura/CxC documentada' : 'Pendiente generar CxC' ?>
+                                                <?php else: ?>
+                                                    <?= $o['comercial_100'] ? 'Factura cancelada (C$ 0.00)' : ('Saldo pendiente C$ ' . number_format($o['saldo_os'], 2)) ?>
+                                                <?php endif; ?>
                                             </span>
                                         </div>
                                         <?php if (!$o['puede_cerrar']): ?>
                                             <div style="font-size: 12px; color: #b45309; margin-top: 3px; font-style: italic;">
                                                 <i class="fa-solid fa-circle-exclamation"></i>
-                                                <?= !$o['tecnico_100'] ? 'Faltan ensayos por aprobar formalmente por supervisión.' : 'Saldo comercial pendiente de cobro.' ?>
+                                                <?= !$o['tecnico_100'] ? 'Faltan ensayos por aprobar formalmente por supervisión.' : ($esCreditoFila ? 'Falta generar la cuenta por cobrar en el sistema.' : 'Saldo comercial pendiente de cobro (condición Contado).') ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>
