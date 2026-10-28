@@ -8,15 +8,61 @@
         --cycsa-azul-light: #eff6ff;
     }
 
-    .tabla-cycsa { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; font-size: 13.5px; background: white; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; }
-    .tabla-cycsa th { background-color: #f8fafc; color: #475569; padding: 14px 16px; text-align: left; font-weight: 700; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
-    .tabla-cycsa td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #1e293b; }
+    /* MÓDULO O/S: TOKENS DE DISEÑO Y TIPOGRAFÍA */
+    .os-modulo-container {
+        max-width: 1440px;
+        margin: 0 auto;
+        background: white;
+        padding: 28px;
+        border-radius: 14px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        margin-bottom: 35px;
+    }
+
+    .tabla-cycsa { 
+        width: 100%; 
+        border-collapse: separate; 
+        border-spacing: 0; 
+        margin-top: 15px; 
+        font-size: 14px; 
+        background: white; 
+        border-radius: 10px; 
+        overflow: visible; 
+        border: 1px solid #e2e8f0; 
+    }
+    .tabla-cycsa th { 
+        background-color: #f8fafc; 
+        color: #475569; 
+        padding: 14px 18px; 
+        text-align: left; 
+        font-weight: 700; 
+        border-bottom: 2px solid #e2e8f0; 
+        text-transform: uppercase; 
+        font-size: 12px; 
+        letter-spacing: 0.5px; 
+    }
+    .tabla-cycsa td { 
+        padding: 16px 18px; 
+        border-bottom: 1px solid #f1f5f9; 
+        vertical-align: middle; 
+        color: #1e293b; 
+    }
     
     .fila-principal { cursor: pointer; transition: background-color 0.2s; }
     .fila-principal:hover { background-color: #f8fafc; }
     .fila-principal.expandida { background-color: #f0f7ff !important; }
     
-    .badge-premium { padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+    /* BADGES Y PILLS ESTANDARIZADAS */
+    .badge-premium { 
+        padding: 6px 12px; 
+        border-radius: 6px; 
+        font-size: 12px; 
+        font-weight: 700; 
+        display: inline-flex; 
+        align-items: center; 
+        gap: 6px; 
+        line-height: 1.2;
+    }
     .badge-muestreo-no { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     .badge-muestreo-si { background-color: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
     .badge-muestreo-fin { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
@@ -27,40 +73,124 @@
     .badge-hoja-observada { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
     .badge-hoja-aprobada { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
 
-    .btn-cycsa { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s; text-decoration: none; }
-    .btn-cycsa-primary { background: var(--cycsa-azul); color: white; }
-    .btn-cycsa-primary:hover { background: var(--cycsa-azul-dark); color: white; transform: translateY(-1px); }
-    .btn-cycsa-secondary { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
-    .btn-cycsa-secondary:hover { background: #cbd5e1; color: #0f172a; }
-    .btn-cycsa-warning { background: #f59e0b; color: white; }
-    .btn-cycsa-warning:hover { background: #d97706; color: white; }
-    .btn-cycsa-success { background: #10b981; color: white; }
-    .btn-cycsa-success:hover { background: #059669; color: white; }
-    .btn-cycsa-danger { background: #ef4444; color: white; }
-    .btn-cycsa-danger:hover { background: #dc2626; color: white; }
+    /* BOTONES ESTANDARIZADOS (ALTURA MÍNIMA 38-40PX) */
+    .btn-cycsa { 
+        display: inline-flex; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 8px; 
+        border: 1px solid transparent; 
+        min-height: 38px;
+        padding: 8px 16px; 
+        border-radius: 6px; 
+        font-size: 13px; 
+        font-weight: 600; 
+        font-family: 'Inter', sans-serif; 
+        cursor: pointer; 
+        transition: all 0.2s; 
+        text-decoration: none; 
+        box-sizing: border-box;
+    }
+    .btn-cycsa-primary { background: var(--cycsa-azul); color: white; border-color: var(--cycsa-azul); }
+    .btn-cycsa-primary:hover { background: var(--cycsa-azul-dark); color: white; border-color: var(--cycsa-azul-dark); transform: translateY(-1px); }
+    .btn-cycsa-secondary { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+    .btn-cycsa-secondary:hover { background: #e2e8f0; color: #0f172a; border-color: #94a3b8; }
+    .btn-cycsa-warning { background: #f59e0b; color: white; border-color: #f59e0b; }
+    .btn-cycsa-warning:hover { background: #d97706; color: white; border-color: #d97706; }
+    .btn-cycsa-success { background: #10b981; color: white; border-color: #10b981; }
+    .btn-cycsa-success:hover { background: #059669; color: white; border-color: #059669; }
+    .btn-cycsa-danger { background: #ef4444; color: white; border-color: #ef4444; }
+    .btn-cycsa-danger:hover { background: #dc2626; color: white; border-color: #dc2626; }
 
-    .search-bar-premium { display: flex; gap: 15px; align-items: center; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; flex-wrap: wrap; }
-    .form-control-cycsa { padding: 9px 14px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 13.5px; transition: border-color 0.2s; width: 100%; box-sizing: border-box; }
-    .form-control-cycsa:focus { outline: none; border-color: var(--cycsa-azul); box-shadow: 0 0 0 3px rgba(16, 52, 135, 0.08); }
+    /* DROPDOWN MENU DE ACCIONES SECUNDARIAS */
+    .dropdown-toggle-no-caret::after { display: none !important; }
+    .dropdown-btn-mas {
+        min-height: 38px;
+        min-width: 38px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1.5px solid #cbd5e1;
+        background: #ffffff;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .dropdown-btn-mas:hover, .dropdown-btn-mas:focus {
+        background: #f1f5f9;
+        color: var(--cycsa-azul);
+        border-color: #94a3b8;
+    }
 
-    /* FILA DESPLEGABLE CON ACORDEÓN */
+    .search-bar-premium { 
+        display: flex; 
+        gap: 12px; 
+        align-items: center; 
+        background: #f8fafc; 
+        padding: 14px 18px; 
+        border-radius: 10px; 
+        border: 1px solid #e2e8f0; 
+        margin-bottom: 22px; 
+        flex-wrap: wrap; 
+    }
+    .form-control-cycsa { 
+        padding: 9px 14px; 
+        border: 1px solid #cbd5e1; 
+        border-radius: 6px; 
+        font-family: 'Inter', sans-serif; 
+        font-size: 14px; 
+        transition: border-color 0.2s; 
+        width: 100%; 
+        box-sizing: border-box; 
+    }
+    .form-control-cycsa:focus { 
+        outline: none; 
+        border-color: var(--cycsa-azul); 
+        box-shadow: 0 0 0 3px rgba(16, 52, 135, 0.08); 
+    }
+
+    /* FILA DESPLEGABLE CON ACORDEÓN EN 2 COLUMNAS (CERO DUPLICADOS) */
     .fila-desplegable { display: none; background-color: #f8fafc; }
     .fila-desplegable.mostrar { display: table-row; }
-    .acordeon-contenido { padding: 20px 25px; border-bottom: 2px solid #cbd5e1; }
+    .acordeon-contenido { padding: 22px 26px; border-bottom: 2px solid #cbd5e1; }
     
-    .grid-info-os { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 20px; }
-    @media (max-width: 1024px) {
+    .grid-info-os { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 22px; 
+        margin-bottom: 0; 
+    }
+    @media (max-width: 992px) {
         .grid-info-os { grid-template-columns: 1fr; }
     }
 
-    .tarjeta-detalle-os { background: white; border-radius: 10px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
-    .tarjeta-detalle-titulo { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: var(--cycsa-azul); border-bottom: 1.5px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tarjeta-detalle-os { 
+        background: white; 
+        border-radius: 10px; 
+        padding: 18px 20px; 
+        border: 1px solid #e2e8f0; 
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02); 
+    }
+    .tarjeta-detalle-titulo { 
+        font-family: 'Outfit', sans-serif; 
+        font-size: 13.5px; 
+        font-weight: 700; 
+        color: var(--cycsa-azul); 
+        border-bottom: 1.5px solid #f1f5f9; 
+        padding-bottom: 10px; 
+        margin-bottom: 14px; 
+        display: flex; 
+        align-items: center; 
+        gap: 8px; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5px; 
+    }
 
-    .dato-fila { display: flex; font-size: 12.5px; margin-bottom: 7px; color: #334155; line-height: 1.4; }
-    .dato-etiqueta { font-weight: 700; color: #64748b; min-width: 110px; }
+    .dato-fila { display: flex; font-size: 13px; margin-bottom: 9px; color: #334155; line-height: 1.45; }
+    .dato-etiqueta { font-weight: 700; color: #64748b; min-width: 125px; }
     .dato-valor { flex: 1; color: #0f172a; }
-
-    .barra-acciones-os { display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; background: white; padding: 14px 18px; border-radius: 8px; border: 1px solid #e2e8f0; }
 
     .chevron-icon { transition: transform 0.25s ease; color: #94a3b8; font-size: 13px; }
     .fila-principal.expandida .chevron-icon { transform: rotate(90deg); color: var(--cycsa-azul); }
@@ -70,16 +200,16 @@
     .modal-premium-content { width: 96%; max-width: 1540px; max-height: 92vh; overflow-y: auto; padding: 22px 28px; background: white; margin: 1.5% auto; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
 </style>
 
-<div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 30px;">
+<div class="os-modulo-container">
     
     <!-- CABECERA -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 15px;">
         <div>
-            <h2 style="margin: 0; color: #0f172a; font-size: 22px; font-family: 'Outfit', sans-serif; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+            <h2 style="margin: 0; color: #0f172a; font-size: 24px; font-family: 'Outfit', sans-serif; font-weight: 700; display: flex; align-items: center; gap: 10px;">
                 <i class="fa-solid fa-file-contract" style="color: var(--cycsa-azul);"></i> Órdenes de Servicio & Hojas de Recepción
             </h2>
-            <p style="color: #64748b; margin-top: 5px; font-size: 13.5px; margin-bottom: 0;">
-                Gestión integral del formato <strong>CYCSA-RG-FM-39 V1</strong>, logística de muestreo y registro de especímenes <strong>CYCSA-RT-FM-13</strong>.
+            <p style="color: #64748b; margin-top: 5px; font-size: 14px; margin-bottom: 0;">
+                Gestión integral del formato oficial <strong>CYCSA-RG-FM-39 V1</strong>, logística de muestreo en campo y registro de especímenes <strong>CYCSA-RT-FM-13</strong>.
             </p>
         </div>
         <div style="display: flex; gap: 10px;">
@@ -91,37 +221,34 @@
 
     <!-- BUSCADOR -->
     <form method="GET" action="/Cycsa/publico/ordenes-servicio" class="search-bar-premium">
-        <div style="flex: 1; min-width: 250px;">
-            <input type="text" name="q" placeholder="Buscar por código O/S, cotización, cliente o proyecto..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control-cycsa">
+        <div style="flex: 1; min-width: 280px; position: relative;">
+            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;"></i>
+            <input type="text" name="q" placeholder="Buscar por código O/S, cotización, cliente o proyecto..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control-cycsa" style="padding-left: 38px; min-height: 40px;">
         </div>
-        <div style="display: flex; gap: 8px;">
-            <button type="submit" class="btn-cycsa btn-cycsa-primary"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" class="btn-cycsa btn-cycsa-primary" style="min-height: 40px; padding: 8px 18px;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
             <?php if(!empty($busqueda)): ?>
-                <a href="/Cycsa/publico/ordenes-servicio" class="btn-cycsa btn-cycsa-secondary"><i class="fa-solid fa-xmark"></i> Limpiar</a>
+                <a href="/Cycsa/publico/ordenes-servicio" class="btn-cycsa btn-cycsa-secondary" style="min-height: 40px; padding: 8px 16px;"><i class="fa-solid fa-xmark"></i> Limpiar</a>
             <?php endif; ?>
         </div>
     </form>
 
-    <!-- TABLA DE REGISTROS CON DESPLIEGUE INTELIGENTE -->
+    <!-- TABLA DE REGISTROS CON DESPLIEGUE INTELIGENTE (5 COLUMNAS DESDENSIFICADAS) -->
     <div style="overflow-x: auto;">
         <table class="tabla-cycsa">
             <thead>
                 <tr>
-                    <th style="width: 40px; text-align: center;"></th>
-                    <th style="width: 170px;">Código O/S</th>
-                    <th style="width: 130px;">Cotización</th>
+                    <th style="width: 230px;">Código O/S / Cotización</th>
                     <th>Cliente / Proyecto</th>
-                    <th style="width: 110px;">Emisión</th>
-                    <th style="width: 180px;">Muestreo / Visita</th>
-                    <th style="width: 160px;">Hoja RT-FM-13</th>
-                    <th style="text-align: right; width: 210px;">Acciones Rápidas</th>
+                    <th style="width: 125px;">Emisión</th>
+                    <th style="width: 270px;">Estado Operativo</th>
+                    <th style="text-align: right; width: 240px;">Acción</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (!empty($ordenes)): ?>
                     <?php foreach ($ordenes as $os): ?>
                         <?php
-                        // Determinar estado de muestreo para Casos A, B y C
                         // Determinar estado de muestreo para Casos A, B y C
                         $estadoMuestreo = 'sin_decidir';
                         if (!empty($os['id_pm'])) {
@@ -138,362 +265,186 @@
                             $estadoMuestreo = 'no_aplica';
                         }
 
-                        // Estado de la Hoja RT-FM-13
+                        // Estado de la Hoja RT-FM-13 y aprobación general
                         $tieneHoja = !empty($os['id_hoja']);
                         $estadoOS = $os['estado'];
+                        $cantHojas = count($os['hojas_servicio'] ?? []);
+
+                        $esOSAprobada = !in_array($os['estado'], ['Estado 1: Recepcion', 'Pendiente', 'Borrador'])
+                                        || $cantHojas > 0
+                                        || !empty($os['id_hoja'])
+                                        || !empty($os['id_pm'])
+                                        || ($os['requiere_muestreo'] !== null && $os['requiere_muestreo'] !== '')
+                                        || in_array($os['estado'], [
+                                            'Aprobada', 'Estado 3: Aprobada', 'Estado 3: Ingreso Directo', 
+                                            'Estado 3A: Programacion Muestreo', 'Estado 3B: Ejecucion Muestreo', 
+                                            'Estado 4: Ingreso Laboratorio', 'Estado 5: Solicitud Tecnicos', 
+                                            'Estado 6: Ejecucion Ensayos', 'Estado 7: Revision Resultados', 
+                                            'Finalizado', 'En Proceso'
+                                        ]);
                         ?>
                         <!-- FILA PRINCIPAL -->
                         <tr class="fila-principal" id="fila-os-<?= $os['id'] ?>" onclick="toggleFilaDesplegable(<?= $os['id'] ?>, event)">
-                            <td style="text-align: center;">
-                                <i class="fa-solid fa-chevron-right chevron-icon" id="icon-chevron-<?= $os['id'] ?>"></i>
-                            </td>
+                            
+                            <!-- COLUMNA 1: CÓDIGO O/S Y COTIZACIÓN -->
                             <td>
-                                <strong style="font-family: monospace; font-size: 13.5px; color: var(--cycsa-azul);">
-                                    <?= htmlspecialchars($os['codigo_os']) ?>
-                                </strong>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: var(--cycsa-azul); flex-shrink: 0;" title="Clic para expandir detalles">
+                                        <i class="fa-solid fa-chevron-right chevron-icon" id="icon-chevron-<?= $os['id'] ?>"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="font-family: monospace; font-size: 14.5px; color: var(--cycsa-azul); display: block; letter-spacing: 0.3px;">
+                                            <?= htmlspecialchars($os['codigo_os']) ?>
+                                        </strong>
+                                        <span style="font-family: monospace; font-size: 11.5px; color: #475569; background: #f8fafc; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0; display: inline-block; margin-top: 3px;">
+                                            <i class="fa-solid fa-file-invoice" style="font-size: 10.5px; color:#64748b;"></i> <?= htmlspecialchars($os['cotizacion_codigo'] ?? 'N/A') ?>
+                                        </span>
+                                    </div>
+                                </div>
                             </td>
+
+                            <!-- COLUMNA 2: CLIENTE Y PROYECTO -->
                             <td>
-                                <span style="background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 11.5px; border: 1px solid #e2e8f0; font-family: monospace;">
-                                    <?= htmlspecialchars($os['cotizacion_codigo'] ?? 'N/A') ?>
-                                </span>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 14px; line-height: 1.3;">
+                                    <?= htmlspecialchars($os['cliente_nombre']) ?>
+                                </div>
+                                <div style="color: #64748b; font-size: 12.5px; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-map-pin" style="color: #94a3b8; font-size: 11px;"></i>
+                                    <span><?= htmlspecialchars($os['nombre_proyecto'] ?? 'Sin nombre de proyecto') ?></span>
+                                </div>
                             </td>
-                            <td>
-                                <div style="font-weight: 700; color: #0f172a;"><?= htmlspecialchars($os['cliente_nombre']) ?></div>
-                                <div style="color: #64748b; font-size: 12px; margin-top: 2px;"><?= htmlspecialchars($os['nombre_proyecto'] ?? 'Sin nombre de proyecto') ?></div>
-                            </td>
-                            <td style="color: #475569; font-weight: 500; font-size: 12.5px;">
+
+                            <!-- COLUMNA 3: EMISIÓN -->
+                            <td style="color: #334155; font-weight: 600; font-size: 13.5px; white-space: nowrap;">
+                                <i class="fa-regular fa-calendar" style="color: #94a3b8; margin-right: 4px;"></i>
                                 <?= date('d/m/Y', strtotime($os['fecha_emision'])) ?>
                             </td>
-                            <td>
-                                <?php if ($estadoMuestreo === 'en_proceso'): ?>
-                                    <span class="badge-premium badge-muestreo-si">
-                                        <i class="fa-solid fa-truck-pickup"></i> En Campo
-                                    </span>
-                                    <?php if (!empty($os['tecnico_nombre'])): ?>
-                                        <div style="color: #64748b; font-size: 11px; margin-top: 3px; font-weight: 500;">Téc: <?= htmlspecialchars($os['tecnico_nombre']) ?></div>
-                                    <?php endif; ?>
-                                    <div style="margin-top: 3px; display:flex; gap:6px; flex-wrap:wrap;">
-                                        <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank" style="font-size: 10.5px; color: var(--cycsa-azul); text-decoration: none;" title="Imprimir Lista de Chequeo CYCSA-RT-FM-40 B">
-                                            <i class="fa-solid fa-print"></i> FM-40 B
-                                        </a>
-                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" style="font-size: 10.5px; color: #475569; text-decoration: none;" title="Editar Lista de Chequeo">
-                                            <i class="fa-solid fa-pen-to-square"></i> Editar
-                                        </a>
-                                    </div>
-                                <?php elseif ($estadoMuestreo === 'finalizado' && !empty($os['id_pm'])): ?>
-                                    <span class="badge-premium badge-muestreo-fin">
-                                        <i class="fa-solid fa-circle-check"></i> Muestreo Finalizado
-                                    </span>
-                                    <?php if (!empty($os['tecnico_nombre'])): ?>
-                                        <div style="color: #166534; font-size: 11px; margin-top: 3px; font-weight: 600;">
-                                            <i class="fa-solid fa-person-walking-arrow-right"></i> Retornó: <?= htmlspecialchars($os['tecnico_nombre']) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                    <div style="margin-top: 3px; display:flex; gap:6px; flex-wrap:wrap;">
-                                        <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank" style="font-size: 10.5px; color: #166534; text-decoration: none;" title="Ver Lista de Chequeo CYCSA-RT-FM-40 B">
-                                            <i class="fa-solid fa-clipboard-check"></i> FM-40 B
-                                        </a>
-                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" style="font-size: 10.5px; color: #475569; text-decoration: none;" title="Ver/Editar Datos de Muestreo">
-                                            <i class="fa-solid fa-pen-to-square"></i> Ver
-                                        </a>
-                                    </div>
-                                <?php elseif ($estadoMuestreo === 'pendiente_programar'): ?>
-                                    <span class="badge-premium badge-hoja-borrador">
-                                        <i class="fa-solid fa-truck-pickup"></i> Requiere Muestreo
-                                    </span>
-                                    <div style="margin-top: 3px;">
-                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" style="font-size: 11px; color: var(--cycsa-azul); font-weight:600; text-decoration: none;">
-                                            <i class="fa-solid fa-list-check"></i> Llenar FM-40 B
-                                        </a>
-                                    </div>
-                                <?php elseif ($estadoMuestreo === 'no_aplica'): ?>
-                                    <span class="badge-premium badge-muestreo-no">
-                                        <i class="fa-solid fa-flask"></i> Ingreso Directo
-                                    </span>
-                                <?php else: ?>
-                                    <span class="badge-premium" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;">
-                                        <i class="fa-solid fa-circle-question"></i> Por Definir
-                                    </span>
-                                <?php endif; ?>
-                            </td>
-                            <?php 
-                            $esOSAprobada = !in_array($os['estado'], ['Estado 1: Recepcion', 'Pendiente', 'Borrador'])
-                                            || count($os['hojas_servicio'] ?? []) > 0
-                                            || !empty($os['id_hoja'])
-                                            || !empty($os['id_pm'])
-                                            || ($os['requiere_muestreo'] !== null && $os['requiere_muestreo'] !== '')
-                                            || in_array($os['estado'], [
-                                                'Aprobada', 'Estado 3: Aprobada', 'Estado 3: Ingreso Directo', 
-                                                'Estado 3A: Programacion Muestreo', 'Estado 3B: Ejecucion Muestreo', 
-                                                'Estado 4: Ingreso Laboratorio', 'Estado 5: Solicitud Tecnicos', 
-                                                'Estado 6: Ejecucion Ensayos', 'Estado 7: Revision Resultados', 
-                                                'Finalizado', 'En Proceso'
-                                            ]);
-                            $cantHojas = count($os['hojas_servicio'] ?? []);
-                            ?>
-                            <td>
-                                <?php if (!$esOSAprobada): ?>
-                                    <span class="badge-premium" style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">
-                                        <i class="fa-solid fa-hourglass-half"></i> O/S Por Aprobar
-                                    </span>
-                                <?php elseif ($cantHojas === 0): ?>
-                                    <span class="badge-premium badge-hoja-sin">
-                                        <i class="fa-solid fa-file-circle-plus"></i> Sin Registrar
-                                    </span>
-                                <?php else: ?>
-                                    <span class="badge-premium badge-hoja-aprobada">
-                                        <i class="fa-solid fa-circle-check"></i> <?= $cantHojas ?> Hoja(s)
-                                    </span>
-                                    <div style="font-family: monospace; font-size: 10.5px; color: #64748b; margin-top: 2px;">
-                                        <?= htmlspecialchars($os['hoja_codigo'] ?? 'CYCSA-RT-FM-13') ?>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                            <td style="text-align: right;" onclick="event.stopPropagation();">
-                                <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
-                                    <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary" title="Ver Documento CYCSA-RG-FM-39 V1">
-                                        <i class="fa-solid fa-print" style="color: var(--cycsa-azul);"></i> O/S
-                                    </a>
 
+                            <!-- COLUMNA 4: ESTADO OPERATIVO (VISITA + HOJA RT-FM-13) -->
+                            <td>
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    <!-- Pill 1: Modalidad / Muestreo -->
+                                    <div>
+                                        <?php if ($estadoMuestreo === 'en_proceso'): ?>
+                                            <span class="badge-premium badge-muestreo-si" title="Técnico en campo">
+                                                <i class="fa-solid fa-truck-pickup"></i> En Campo
+                                            </span>
+                                            <?php if (!empty($os['tecnico_nombre'])): ?>
+                                                <span style="color: #475569; font-size: 11.5px; font-weight: 500; margin-left: 4px;">(<?= htmlspecialchars($os['tecnico_nombre']) ?>)</span>
+                                            <?php endif; ?>
+                                        <?php elseif ($estadoMuestreo === 'finalizado' && !empty($os['id_pm'])): ?>
+                                            <span class="badge-premium badge-muestreo-fin" title="Muestreo finalizado y recibido en laboratorio">
+                                                <i class="fa-solid fa-circle-check"></i> Muestreo Finalizado
+                                            </span>
+                                        <?php elseif ($estadoMuestreo === 'pendiente_programar'): ?>
+                                            <span class="badge-premium badge-hoja-borrador" title="Requiere asignación de salida a campo">
+                                                <i class="fa-solid fa-calendar-plus"></i> Requiere Muestreo
+                                            </span>
+                                        <?php elseif ($estadoMuestreo === 'no_aplica'): ?>
+                                            <span class="badge-premium badge-muestreo-no" title="Entrega de muestras directamente en ventanilla">
+                                                <i class="fa-solid fa-flask"></i> Ingreso Directo
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge-premium" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;" title="Modalidad por definir al emitir hoja">
+                                                <i class="fa-solid fa-circle-question"></i> Por Definir
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Pill 2: Estado de Hoja RT-FM-13 -->
+                                    <div>
+                                        <?php if (!$esOSAprobada): ?>
+                                            <span class="badge-premium" style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">
+                                                <i class="fa-solid fa-hourglass-half"></i> O/S Por Aprobar
+                                            </span>
+                                        <?php elseif ($cantHojas === 0): ?>
+                                            <span class="badge-premium badge-hoja-sin">
+                                                <i class="fa-solid fa-file-circle-plus"></i> Sin Hoja RT-FM-13
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge-premium badge-hoja-aprobada">
+                                                <i class="fa-solid fa-file-circle-check"></i> <?= $cantHojas ?> Hoja(s) Registrada(s)
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- COLUMNA 5: ACCIÓN PRIMARIA + MENÚ DESPLEGABLE MÁS -->
+                            <td style="text-align: right;" onclick="event.stopPropagation();">
+                                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                                    
+                                    <!-- BOTÓN PRIMARIO SEGÚN EL SIGUIENTE PASO LÓGICO -->
                                     <?php if (!$esOSAprobada): ?>
                                         <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669;" 
+                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669; border-color:#059669; min-height:38px; font-weight:700;" 
                                                     onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>')">
                                                 <i class="fa-solid fa-check-double"></i> Aprobar O/S
                                             </button>
                                         <?php else: ?>
-                                            <span class="btn-cycsa btn-cycsa-secondary" style="opacity:0.75; cursor:not-allowed;" title="Pendiente de aprobación por supervisor">
+                                            <span class="btn-cycsa btn-cycsa-secondary" style="opacity:0.75; cursor:not-allowed; min-height:38px;" title="Pendiente de aprobación formal por supervisor">
                                                 <i class="fa-solid fa-lock"></i> Por Aprobar
                                             </span>
                                         <?php endif; ?>
                                     <?php else: ?>
                                         <?php if ($cantHojas === 0): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-success"
-                                                    data-id-os="<?= $os['id'] ?>"
-                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                    onclick="iniciarRegistroHojaRTFM13(this)">
-                                                <i class="fa-solid fa-file-signature"></i> Registrar Hoja
-                                            </button>
+                                            <?php if ($estadoMuestreo === 'pendiente_programar'): ?>
+                                                <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-primary" style="min-height:38px; font-weight:600;">
+                                                    <i class="fa-solid fa-calendar-days"></i> Programar Muestreo
+                                                </a>
+                                            <?php else: ?>
+                                                <button type="button" class="btn-cycsa btn-cycsa-success" style="min-height:38px; font-weight:700;"
+                                                        data-id-os="<?= $os['id'] ?>"
+                                                        data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                        data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                        data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                        data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                        data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
+                                                        onclick="iniciarRegistroHojaRTFM13(this)">
+                                                    <i class="fa-solid fa-file-signature"></i> Registrar Hoja
+                                                </button>
+                                            <?php endif; ?>
                                         <?php else: ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="toggleFilaDesplegable(<?= $os['id'] ?>, event)" title="Ver Hojas RT-FM-13 registradas">
-                                                <i class="fa-solid fa-layer-group"></i> Hojas (<?= $cantHojas ?>)
-                                            </button>
-                                            <button type="button" class="btn-cycsa btn-cycsa-success" style="padding: 5px 10px; font-size: 12px;"
-                                                    data-id-os="<?= $os['id'] ?>"
-                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                    onclick="iniciarRegistroHojaRTFM13(this)" title="Añadir nueva entrega RT-FM-13">
-                                                <i class="fa-solid fa-plus"></i> Hoja
+                                            <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height:38px; font-weight:600; border-color:#cbd5e1;" onclick="toggleFilaDesplegable(<?= $os['id'] ?>, event)" title="Ver Hojas RT-FM-13 registradas">
+                                                <i class="fa-solid fa-layer-group" style="color:var(--cycsa-azul);"></i> Ver Hojas (<?= $cantHojas ?>)
                                             </button>
                                         <?php endif; ?>
                                     <?php endif; ?>
-                                </div>
-                            </td>
-                        </tr>
 
-                        <!-- FILA DESPLEGABLE CON DETALLES COMPLETOS (ACORDEÓN) -->
-                        <tr class="fila-desplegable" id="desplegable-os-<?= $os['id'] ?>">
-                            <td colspan="8" style="padding: 0;">
-                                <div class="acordeon-contenido">
-                                    <div class="grid-info-os">
-                                        
-                                        <!-- TARJETA 1: DATOS COMERCIALES Y PROYECTO -->
-                                        <div class="tarjeta-detalle-os">
-                                            <div class="tarjeta-detalle-titulo">
-                                                <i class="fa-solid fa-building"></i> 1. Información Comercial
-                                            </div>
-                                            <div class="dato-fila">
-                                                <span class="dato-etiqueta">Cliente:</span>
-                                                <span class="dato-valor"><strong><?= htmlspecialchars($os['cliente_nombre']) ?></strong></span>
-                                            </div>
-                                            <div class="dato-fila">
-                                                <span class="dato-etiqueta">RUC/Cédula:</span>
-                                                <span class="dato-valor" style="font-family:monospace;"><?= htmlspecialchars($os['cliente_rfc'] ?: 'No registrado') ?></span>
-                                            </div>
-                                            <div class="dato-fila">
-                                                <span class="dato-etiqueta">Atención a:</span>
-                                                <span class="dato-valor"><?= htmlspecialchars($os['atencion_a'] ?: 'N/A') ?></span>
-                                            </div>
-                                            <div class="dato-fila">
-                                                <span class="dato-etiqueta">Proyecto:</span>
-                                                <span class="dato-valor"><?= htmlspecialchars($os['nombre_proyecto'] ?: 'N/A') ?></span>
-                                            </div>
-                                            <div class="dato-fila">
-                                                <span class="dato-etiqueta">Cotización:</span>
-                                                <span class="dato-valor"><a href="/Cycsa/publico/cotizaciones" style="color:var(--cycsa-azul); font-weight:700; text-decoration:none; font-family:monospace;"><?= htmlspecialchars($os['cotizacion_codigo'] ?? '') ?></a></span>
-                                            </div>
-                                            <div class="dato-fila">
-                                                <span class="dato-etiqueta">Forma Pago:</span>
-                                                <span class="dato-valor"><?= htmlspecialchars($os['forma_pago'] ?? 'Pago contra entrega') ?></span>
-                                            </div>
-                                        </div>
-
-                                        <!-- TARJETA 2: LOGÍSTICA DE MUESTREO EN CAMPO -->
-                                        <div class="tarjeta-detalle-os">
-                                            <div class="tarjeta-detalle-titulo">
-                                                <i class="fa-solid fa-truck-pickup"></i> 2. Logística de Muestreo / Visita
-                                            </div>
+                                    <!-- MENÚ DESPLEGABLE MÁS ACCIONES (BOOTSTRAP 5 DROPDOWN) -->
+                                    <div class="dropdown" style="display: inline-block;">
+                                        <button class="dropdown-btn-mas dropdown-toggle-no-caret" type="button" id="dropdownMenuOS<?= $os['id'] ?>" data-bs-toggle="dropdown" aria-expanded="false" title="Más opciones de la Orden de Servicio">
+                                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="dropdownMenuOS<?= $os['id'] ?>" style="font-size: 13px; min-width: 220px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 6px 0; z-index: 1050;">
+                                            <li>
+                                                <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>">
+                                                    <i class="fa-solid fa-file-lines me-2" style="color:var(--cycsa-azul);"></i> Ver Documento O/S (FM-39)
+                                                </a>
+                                            </li>
                                             <?php if (!empty($os['id_pm'])): ?>
-                                                <div class="dato-fila">
-                                                    <span class="dato-etiqueta">Estado Visita:</span>
-                                                    <span class="dato-valor">
-                                                        <?php if ($os['estado_muestreo'] === 'Finalizado'): ?>
-                                                            <strong style="color: #15803d; display: inline-flex; align-items: center; gap: 5px;">
-                                                                <i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Finalizado (Retornó al Lab)
-                                                            </strong>
-                                                        <?php else: ?>
-                                                            <strong style="color: #0369a1; display: inline-flex; align-items: center; gap: 5px;">
-                                                                <i class="fa-solid fa-truck-pickup"></i> <?= htmlspecialchars($os['estado_muestreo'] ?? 'En Campo') ?>
-                                                            </strong>
-                                                        <?php endif; ?>
-                                                    </span>
-                                                </div>
-                                                <div class="dato-fila">
-                                                    <span class="dato-etiqueta">Técnico Muestreador:</span>
-                                                    <span class="dato-valor"><strong><?= htmlspecialchars($os['tecnico_nombre'] ?? 'No asignado') ?></strong></span>
-                                                </div>
-                                                <div class="dato-fila">
-                                                    <span class="dato-etiqueta">Vehículo:</span>
-                                                    <span class="dato-valor"><?= htmlspecialchars($os['vehiculo_info'] ?? 'No asignado') ?></span>
-                                                </div>
-                                                <div class="dato-fila">
-                                                    <span class="dato-etiqueta">Salida a Campo:</span>
-                                                    <span class="dato-valor"><?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : 'N/A' ?></span>
-                                                </div>
-                                                <div class="dato-fila">
-                                                    <span class="dato-etiqueta">Retorno al Lab:</span>
-                                                    <span class="dato-valor"><?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : 'N/A' ?></span>
-                                                </div>
-                                                <?php if (!empty($os['lugar_muestreo'])): ?>
-                                                    <div class="dato-fila">
-                                                        <span class="dato-etiqueta">Lugar Muestreo:</span>
-                                                        <span class="dato-valor"><?= htmlspecialchars($os['lugar_muestreo']) ?></span>
-                                                    </div>
-                                                <?php endif; ?>
-                                                <?php if (!empty($os['observaciones_campo'])): ?>
-                                                    <div style="font-size: 11.5px; background: #f8fafc; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 6px; color: #475569;">
-                                                        <strong>Notas de Campo:</strong> <?= htmlspecialchars($os['observaciones_campo']) ?>
-                                                    </div>
-                                                <?php endif; ?>
-                                                <?php if ($os['estado_muestreo'] === 'Finalizado'): ?>
-                                                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px 12px; border-radius: 8px; color: #166534; font-size: 12.5px; margin-top: 10px; display: flex; align-items: center; gap: 8px;">
-                                                        <i class="fa-solid fa-circle-check" style="color: #10b981; font-size: 16px;"></i>
-                                                        <div>
-                                                            <strong>Muestreo finalizado:</strong> El técnico retornó con las muestras al laboratorio y se encuentra listo para procesar la Hoja RT-FM-13.
-                                                        </div>
-                                                    </div>
-                                                <?php else: ?>
-                                                    <div style="margin-top: 10px;">
-                                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary" style="padding: 5px 12px; font-size: 12px;">
-                                                            <i class="fa-solid fa-pen-to-square"></i> Ver / Finalizar Muestreo
-                                                        </a>
-                                                    </div>
-                                                <?php endif; ?>
+                                                <li>
+                                                    <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank">
+                                                        <i class="fa-solid fa-print me-2 text-secondary"></i> Checklist Campo (FM-40 B)
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>">
+                                                        <i class="fa-solid fa-pen-to-square me-2 text-secondary"></i> Ver/Editar Datos Muestreo
+                                                    </a>
+                                                </li>
                                             <?php elseif ($os['requiere_muestreo'] === 1 || $os['requiere_muestreo'] === '1'): ?>
-                                                <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px; border-radius: 8px; color: #1e40af; font-size: 12.5px;">
-                                                    <i class="fa-solid fa-calendar-plus"></i> <strong>Requiere salida a campo:</strong> Pendiente de asignar técnico, vehículo y fechas de salida.
-                                                    <div style="margin-top: 8px;">
-                                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-primary" style="padding: 5px 12px; font-size: 12px;">
-                                                            <i class="fa-solid fa-calendar-days"></i> Programar Muestreo en Campo
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            <?php elseif ($os['requiere_muestreo'] === 0 || $os['requiere_muestreo'] === '0'): ?>
-                                                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; color: #166534; font-size: 12.5px;">
-                                                    <i class="fa-solid fa-flask"></i> <strong>Ingreso Directo:</strong> Los especímenes son entregados por el cliente en ventanilla del laboratorio (no requiere salida técnica a campo).
-                                                </div>
-                                            <?php else: ?>
-                                                <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 12px; border-radius: 8px; color: #92400e; font-size: 12.5px;">
-                                                    <i class="fa-solid fa-circle-question"></i> <strong>Por Definir:</strong> La modalidad (Muestreo en Obra o Ventanilla Lab) se define al emitir cada Hoja RT-FM-13.
-                                                    <?php if ($esOSAprobada): ?>
-                                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="padding: 5px 12px; font-size: 12px;"
-                                                                    data-id-os="<?= $os['id'] ?>"
-                                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                                    onclick="iniciarRegistroHojaRTFM13(this)">
-                                                                <i class="fa-solid fa-file-circle-plus"></i> Registrar Hoja RT-FM-13
-                                                            </button>
-                                                    <?php endif; ?>
-                                                </div>
+                                                <li>
+                                                    <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>">
+                                                        <i class="fa-solid fa-truck-pickup me-2 text-primary"></i> Programar Muestreo en Campo
+                                                    </a>
+                                                </li>
                                             <?php endif; ?>
-                                        </div>
-
-                                        <!-- TARJETA 3: HOJA TÉCNICA CYCSA-RT-FM-13 (Soporte Múltiples Hojas y Contratos Activos) -->
-                                        <div class="tarjeta-detalle-os">
-                                            <div class="tarjeta-detalle-titulo" style="display:flex; justify-content:space-between; align-items:center;">
-                                                <span><i class="fa-solid fa-file-signature"></i> 3. Hojas de Servicio (RT-FM-13)</span>
-                                                <?php if (!empty($os['tipo_contrato']) && in_array($os['tipo_contrato'], ['Marco', 'Contrato Activo', 'Abierto'])): ?>
-                                                    <span style="font-size:10px; background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:10px; text-transform:uppercase; font-weight:700;">
-                                                        <i class="fa-solid fa-calendar-days"></i> Contrato Activo
-                                                    </span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <?php 
-                                            $listaHojas = $os['hojas_servicio'] ?? [];
-                                            if (empty($listaHojas) && $tieneHoja) {
-                                                $listaHojas = [[
-                                                    'id' => $os['id_hoja'],
-                                                    'numero_registro' => '00001',
-                                                    'codigo_documento' => $os['hoja_codigo'] ?? 'CYCSA-RT-FM-13',
-                                                    'nombre_persona_toma_muestra' => $os['nombre_persona_toma_muestra'] ?? 'Cliente',
-                                                    'fecha_hora_toma_muestra' => $os['fecha_hora_toma_muestra'] ?? '',
-                                                    'total_muestras' => !empty($os['muestras_json']) ? count(json_decode($os['muestras_json'], true) ?: []) : 1
-                                                ]];
-                                            }
-                                            ?>
-                                            <?php if (!$esOSAprobada): ?>
-                                                <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 15px; border-radius: 8px; text-align: center; color: #92400e; font-size: 12.5px;">
-                                                    <i class="fa-solid fa-lock" style="font-size: 24px; margin-bottom: 6px; color: #d97706; display: block;"></i>
-                                                    <strong>Aprobación de O/S Requerida</strong><br>
-                                                    Esta Orden de Servicio aún no ha sido aprobada. Debe aprobarse formalmente antes de registrar Hojas de Solicitud CYCSA-RT-FM-13.
-                                                    <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
-                                                        <div style="margin-top:10px;">
-                                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669; font-size:12px; padding:6px 14px;"
-                                                                    onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>')">
-                                                                <i class="fa-solid fa-check-double"></i> Aprobar Orden de Servicio Ahora
-                                                            </button>
-                                                        </div>
-                                                    <?php endif; ?>
-                                                </div>
-                                            <?php elseif (!empty($listaHojas)): ?>
-                                                <div style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
-                                                    <?php foreach ($listaHojas as $idxH => $hItem): ?>
-                                                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                                                            <div>
-                                                                <div style="font-size:12px; font-weight:700; color:var(--cycsa-azul);">
-                                                                    <i class="fa-solid fa-file-invoice"></i> <?= htmlspecialchars($hItem['codigo_documento'] ?? 'CYCSA-RT-FM-13') ?> 
-                                                                    <span style="font-family:monospace; color:#0f172a; background:#e2e8f0; padding:1px 6px; border-radius:4px;">Reg: <?= htmlspecialchars($hItem['numero_registro'] ?? ('#' . $hItem['id'])) ?></span>
-                                                                </div>
-                                                                <div style="font-size:11px; color:#64748b; margin-top:2px;">
-                                                                    <i class="fa-solid fa-vials"></i> <?= (int)($hItem['total_muestras'] ?? 0) ?> espécimen(es) • 
-                                                                    <i class="fa-solid fa-calendar-day"></i> <?= !empty($hItem['fecha_hora_toma_muestra']) ? date('d/m/Y H:i', strtotime($hItem['fecha_hora_toma_muestra'])) : (!empty($hItem['fecha_creacion']) ? date('d/m/Y H:i', strtotime($hItem['fecha_creacion'])) : 'N/A') ?>
-                                                                </div>
-                                                            </div>
-                                                            <div style="display:flex; gap:4px;">
-                                                                <button type="button" class="btn-cycsa btn-cycsa-secondary" style="padding:4px 8px; font-size:11px;"
-                                                                        onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', <?= $hItem['id'] ?>, false)"
-                                                                        title="Editar Hoja RT-FM-13">
-                                                                    <i class="fa-solid fa-pen"></i>
-                                                                </button>
-                                                                <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>&id_hoja=<?= $hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary" style="padding:4px 8px; font-size:11px;" title="Descargar PDF Oficial">
-                                                                    <i class="fa-solid fa-file-pdf"></i>
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                                <div style="margin-top:10px;">
-                                                    <button type="button" class="btn-cycsa btn-cycsa-success" style="width:100%; padding:6px 12px; font-size:11.5px;"
+                                            
+                                            <?php if ($esOSAprobada): ?>
+                                                <li><hr class="dropdown-divider my-1"></li>
+                                                <li>
+                                                    <button type="button" class="dropdown-item py-2"
                                                             data-id-os="<?= $os['id'] ?>"
                                                             data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
                                                             data-estado-muestreo="<?= $estadoMuestreo ?>"
@@ -501,190 +452,365 @@
                                                             data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
                                                             data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
                                                             onclick="abrirModalDecisionMuestreo(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', true)">
-                                                        <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13 (Nueva Entrega)
+                                                        <i class="fa-solid fa-plus-circle me-2 text-success"></i> + Nueva Hoja RT-FM-13
                                                     </button>
-                                                </div>
-                                            <?php else: ?>
-                                                <div style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 8px; text-align: center; color: #64748b; font-size: 12.5px;">
-                                                    <i class="fa-solid fa-file-circle-question" style="font-size: 24px; margin-bottom: 6px; color: #94a3b8; display: block;"></i>
-                                                    Aún no se ha registrado la Hoja de Servicio técnica para esta orden.
-                                                    <div style="margin-top:10px;">
-                                                        <button type="button" class="btn-cycsa btn-cycsa-success" style="padding:6px 14px; font-size:12px;"
-                                                                data-id-os="<?= $os['id'] ?>"
-                                                                data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                                data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                                data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                                data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                                data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                                onclick="iniciarRegistroHojaRTFM13(this)">
-                                                            <i class="fa-solid fa-file-signature"></i> Registrar Primera Hoja RT-FM-13
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                                </li>
+                                                <?php if ($cantHojas > 0): ?>
+                                                    <li>
+                                                        <a class="dropdown-item py-2" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank">
+                                                            <i class="fa-solid fa-file-pdf me-2 text-danger"></i> Descargar PDF Oficial
+                                                        </a>
+                                                    </li>
+                                                <?php endif; ?>
                                             <?php endif; ?>
+                                            
+                                            <li><hr class="dropdown-divider my-1"></li>
+                                            <li>
+                                                <a class="dropdown-item py-2" href="/Cycsa/publico/operaciones">
+                                                    <i class="fa-solid fa-flask-vial me-2 text-info"></i> Ir a Operaciones / Lab
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- FILA DESPLEGABLE CON DETALLES COMPLETOS (ACORDEÓN RESPONSIVO EN 2 COLUMNAS) -->
+                        <tr class="fila-desplegable" id="desplegable-os-<?= $os['id'] ?>">
+                            <td colspan="5" style="padding: 0;">
+                                <div class="acordeon-contenido">
+                                    <div class="grid-info-os">
+                                        
+                                        <!-- COLUMNA IZQUIERDA: COMERCIAL Y LOGÍSTICA DE MUESTREO -->
+                                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                                            
+                                            <!-- TARJETA 1: DATOS COMERCIALES Y PROYECTO -->
+                                            <div class="tarjeta-detalle-os">
+                                                <div class="tarjeta-detalle-titulo">
+                                                    <i class="fa-solid fa-building"></i> 1. Información Comercial
+                                                </div>
+                                                <div class="dato-fila">
+                                                    <span class="dato-etiqueta">Cliente:</span>
+                                                    <span class="dato-valor"><strong><?= htmlspecialchars($os['cliente_nombre']) ?></strong></span>
+                                                </div>
+                                                <div class="dato-fila">
+                                                    <span class="dato-etiqueta">RUC/Cédula:</span>
+                                                    <span class="dato-valor" style="font-family:monospace;"><?= htmlspecialchars($os['cliente_rfc'] ?: 'No registrado') ?></span>
+                                                </div>
+                                                <div class="dato-fila">
+                                                    <span class="dato-etiqueta">Atención a:</span>
+                                                    <span class="dato-valor"><?= htmlspecialchars($os['atencion_a'] ?: 'N/A') ?></span>
+                                                </div>
+                                                <div class="dato-fila">
+                                                    <span class="dato-etiqueta">Proyecto:</span>
+                                                    <span class="dato-valor"><?= htmlspecialchars($os['nombre_proyecto'] ?: 'N/A') ?></span>
+                                                </div>
+                                                <div class="dato-fila">
+                                                    <span class="dato-etiqueta">Cotización:</span>
+                                                    <span class="dato-valor"><a href="/Cycsa/publico/cotizaciones" style="color:var(--cycsa-azul); font-weight:700; text-decoration:none; font-family:monospace;"><?= htmlspecialchars($os['cotizacion_codigo'] ?? 'N/A') ?></a></span>
+                                                </div>
+                                                <div class="dato-fila">
+                                                    <span class="dato-etiqueta">Forma Pago:</span>
+                                                    <span class="dato-valor"><?= htmlspecialchars($os['forma_pago'] ?? 'Pago contra entrega') ?></span>
+                                                </div>
+                                            </div>
+
+                                            <!-- TARJETA 2: LOGÍSTICA DE MUESTREO EN CAMPO -->
+                                            <div class="tarjeta-detalle-os">
+                                                <div class="tarjeta-detalle-titulo" style="display:flex; justify-content:space-between; align-items:center;">
+                                                    <span><i class="fa-solid fa-truck-pickup"></i> 2. Logística de Muestreo / Visita</span>
+                                                    <?php if (!empty($os['id_pm'])): ?>
+                                                        <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:30px; padding:4px 10px; font-size:11.5px;" title="Ver Formato CYCSA-RT-FM-40 B">
+                                                            <i class="fa-solid fa-print"></i> FM-40 B
+                                                        </a>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <?php if (!empty($os['id_pm'])): ?>
+                                                    <div class="dato-fila">
+                                                        <span class="dato-etiqueta">Estado Visita:</span>
+                                                        <span class="dato-valor">
+                                                            <?php if ($os['estado_muestreo'] === 'Finalizado'): ?>
+                                                                <strong style="color: #15803d; display: inline-flex; align-items: center; gap: 5px;">
+                                                                    <i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Finalizado (Retornó al Lab)
+                                                                </strong>
+                                                            <?php else: ?>
+                                                                <strong style="color: #0369a1; display: inline-flex; align-items: center; gap: 5px;">
+                                                                    <i class="fa-solid fa-truck-pickup"></i> <?= htmlspecialchars($os['estado_muestreo'] ?? 'En Campo') ?>
+                                                                </strong>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </div>
+                                                    <div class="dato-fila">
+                                                        <span class="dato-etiqueta">Técnico Muestreador:</span>
+                                                        <span class="dato-valor"><strong><?= htmlspecialchars($os['tecnico_nombre'] ?? 'No asignado') ?></strong></span>
+                                                    </div>
+                                                    <div class="dato-fila">
+                                                        <span class="dato-etiqueta">Vehículo:</span>
+                                                        <span class="dato-valor"><?= htmlspecialchars($os['vehiculo_info'] ?? 'No asignado') ?></span>
+                                                    </div>
+                                                    <div class="dato-fila">
+                                                        <span class="dato-etiqueta">Salida a Campo:</span>
+                                                        <span class="dato-valor"><?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : 'N/A' ?></span>
+                                                    </div>
+                                                    <div class="dato-fila">
+                                                        <span class="dato-etiqueta">Retorno al Lab:</span>
+                                                        <span class="dato-valor"><?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : 'N/A' ?></span>
+                                                    </div>
+                                                    <?php if (!empty($os['lugar_muestreo'])): ?>
+                                                        <div class="dato-fila">
+                                                            <span class="dato-etiqueta">Lugar Muestreo:</span>
+                                                            <span class="dato-valor"><?= htmlspecialchars($os['lugar_muestreo']) ?></span>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($os['observaciones_campo'])): ?>
+                                                        <div style="font-size: 12px; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 8px; color: #475569;">
+                                                            <strong>Notas de Campo:</strong> <?= htmlspecialchars($os['observaciones_campo']) ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <div style="margin-top: 12px; display:flex; gap:8px;">
+                                                        <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; font-size:12px; padding:6px 14px;">
+                                                            <i class="fa-solid fa-pen-to-square"></i> Ver / Editar Datos de Muestreo
+                                                        </a>
+                                                    </div>
+                                                <?php elseif ($os['requiere_muestreo'] === 1 || $os['requiere_muestreo'] === '1'): ?>
+                                                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 14px; border-radius: 8px; color: #1e40af; font-size: 13px;">
+                                                        <i class="fa-solid fa-calendar-plus me-1"></i> <strong>Requiere salida a campo:</strong> Pendiente de asignar técnico, vehículo y fechas.
+                                                        <div style="margin-top: 10px;">
+                                                            <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-primary" style="min-height:36px; padding: 6px 14px; font-size: 12.5px;">
+                                                                <i class="fa-solid fa-calendar-days"></i> Programar Muestreo en Campo
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                <?php elseif ($os['requiere_muestreo'] === 0 || $os['requiere_muestreo'] === '0'): ?>
+                                                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px; border-radius: 8px; color: #166534; font-size: 13px;">
+                                                        <i class="fa-solid fa-flask me-1"></i> <strong>Ingreso Directo:</strong> Los especímenes son entregados por el cliente en ventanilla del laboratorio central.
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 14px; border-radius: 8px; color: #92400e; font-size: 13px;">
+                                                        <i class="fa-solid fa-circle-question me-1"></i> <strong>Por Definir:</strong> La modalidad se define al emitir cada Hoja RT-FM-13.
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+
                                         </div>
 
-                                        <!-- TARJETA 4: ENSAYOS, MATRIZ TÉCNICA Y CÓDIGO DE INFORME (LIMS) -->
-                                        <div class="tarjeta-detalle-os">
-                                            <div class="tarjeta-detalle-titulo" style="display:flex; justify-content:space-between; align-items:center;">
-                                                <span><i class="fa-solid fa-microscope"></i> 4. Ensayos y Matriz Técnica</span>
-                                                <a href="/Cycsa/publico/operaciones" class="btn-cycsa btn-cycsa-secondary" style="padding:2px 8px; font-size:10px;" title="Ir al módulo de Operaciones">
-                                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Operaciones
-                                                </a>
-                                            </div>
-                                            <?php 
-                                            $itemsEnsayos = $os['items'] ?? [];
-                                            ?>
-                                            <?php if (!empty($itemsEnsayos)): ?>
-                                                <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto; padding-right:4px;">
-                                                    <?php foreach ($itemsEnsayos as $it): ?>
-                                                        <?php 
-                                                        $tieneMatriz = !empty($it['resultados_json']);
-                                                        $revInfo = ($tieneMatriz && function_exists('obtenerEstadoRevisionMatriz')) ? obtenerEstadoRevisionMatriz($it['resultados_json']) : null;
-                                                        $codInf = ($tieneMatriz && function_exists('generarCodigoInformeEnsayo')) ? generarCodigoInformeEnsayo($it['resultados_json'], $os['fecha_muestreo'] ?? null, $it['descripcion_ensayo']) : null;
-                                                        ?>
-                                                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
-                                                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                                                                <div style="font-size:12px; font-weight:700; color:#0f172a;">
-                                                                    <i class="fa-solid fa-vial-virus" style="color:var(--cycsa-azul);"></i> <?= htmlspecialchars($it['descripcion_ensayo']) ?>
-                                                                </div>
-                                                                <?php if ($tieneMatriz && $revInfo): ?>
-                                                                    <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; background:<?= $revInfo['badge_bg'] ?>; color:<?= $revInfo['badge_color'] ?>; border:1px solid <?= $revInfo['badge_border'] ?>;">
-                                                                        <?= htmlspecialchars($revInfo['estado_label']) ?>
-                                                                    </span>
-                                                                <?php elseif ($tieneMatriz): ?>
-                                                                    <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; background:#dcfce7; color:#15803d; border:1px solid #86efac;">
-                                                                        Registrada
-                                                                    </span>
-                                                                <?php elseif ($cantHojas === 0): ?>
-                                                                    <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; background:#fef2f2; color:#991b1b; border:1px solid #fecaca;">
-                                                                        <i class="fa-solid fa-lock"></i> Requiere RT-FM-13
-                                                                    </span>
-                                                                <?php else: ?>
-                                                                    <span style="font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">
-                                                                        Sin Matriz
-                                                                    </span>
-                                                                <?php endif; ?>
-                                                            </div>
+                                        <!-- COLUMNA DERECHA: HOJAS RT-FM-13 Y MATRIZ TÉCNICA LIMS -->
+                                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                                            
+                                            <!-- TARJETA 3: HOJA TÉCNICA CYCSA-RT-FM-13 -->
+                                            <div class="tarjeta-detalle-os">
+                                                <div class="tarjeta-detalle-titulo" style="display:flex; justify-content:space-between; align-items:center;">
+                                                    <span><i class="fa-solid fa-file-signature"></i> 3. Hojas de Servicio (RT-FM-13)</span>
+                                                    <div style="display:flex; align-items:center; gap:8px;">
+                                                        <?php if (!empty($os['tipo_contrato']) && in_array($os['tipo_contrato'], ['Marco', 'Contrato Activo', 'Abierto'])): ?>
+                                                            <span style="font-size:10.5px; background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:6px; text-transform:uppercase; font-weight:700;">
+                                                                <i class="fa-solid fa-calendar-days"></i> Contrato Activo
+                                                            </span>
+                                                        <?php endif; ?>
+                                                        <?php if ($esOSAprobada && $cantHojas > 0): ?>
+                                                            <button type="button" class="btn-cycsa btn-cycsa-success" style="min-height:30px; padding:4px 10px; font-size:11.5px; font-weight:700;"
+                                                                    data-id-os="<?= $os['id'] ?>"
+                                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
+                                                                    onclick="abrirModalDecisionMuestreo(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', true)">
+                                                                <i class="fa-solid fa-plus"></i> Nueva Hoja
+                                                            </button>
+                                                            <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:30px; padding:4px 10px; font-size:11.5px;" title="Descargar PDF Oficial">
+                                                                <i class="fa-solid fa-file-pdf text-danger"></i> PDF
+                                                            </a>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
 
-                                                            <?php if ($tieneMatriz && !empty($codInf)): ?>
-                                                                <div style="font-size:11.5px; background:white; border:1px solid #bfdbfe; padding:5px 8px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
-                                                                    <span style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase;">Informe Oficial:</span>
-                                                                    <strong style="font-family:monospace; color:var(--cycsa-azul); font-size:11.5px; letter-spacing:0.3px;"><?= htmlspecialchars($codInf) ?></strong>
-                                                                </div>
-                                                            <?php endif; ?>
-
-                                                            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
-                                                                <?php if ($tieneMatriz): ?>
-                                                                    <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $it['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary" style="padding:3px 8px; font-size:11px;" title="Ver e imprimir formato técnico con membrete horizontal CYCSA">
-                                                                        <i class="fa-solid fa-print"></i> Ver Informe
-                                                                    </a>
-                                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" class="btn-cycsa btn-cycsa-secondary" style="padding:3px 8px; font-size:11px;" title="Editar lecturas y matriz técnica">
-                                                                        <i class="fa-solid fa-pen-to-square"></i> Editar Matriz
-                                                                    </a>
-                                                                <?php elseif ($cantHojas === 0): ?>
-                                                                    <button type="button" class="btn-cycsa btn-cycsa-secondary" disabled style="padding:3px 8px; font-size:11px; opacity:0.6; cursor:not-allowed;" title="Bloqueado: La Orden de Servicio aún no tiene registrada la Hoja RT-FM-13. Debe registrar la RT-FM-13 primero.">
-                                                                        <i class="fa-solid fa-lock"></i> Matriz Bloqueada
-                                                                    </button>
-                                                                <?php else: ?>
-                                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" class="btn-cycsa btn-cycsa-success" style="padding:3px 8px; font-size:11px;" title="Rellenar matriz técnica in situ / laboratorio">
-                                                                        <i class="fa-solid fa-pen"></i> Rellenar Matriz
-                                                                    </a>
-                                                                <?php endif; ?>
-                                                            </div>
+                                                <!-- ESTADOS DE REVISIÓN Y OBSERVACIÓN SUPERVISORIA -->
+                                                <?php if ($os['estado'] === 'Estado 2: Observada'): ?>
+                                                    <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                                                        <div style="color:#991b1b; font-size:12.5px; font-weight:600;">
+                                                            <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i> Hoja Observada por Supervisión
                                                         </div>
-                                                    <?php endforeach; ?>
+                                                        <div style="display:flex; gap:6px;">
+                                                            <button type="button" class="btn-cycsa btn-cycsa-warning" style="min-height:32px; padding:4px 10px; font-size:12px;"
+                                                                    data-id-os="<?= $os['id'] ?>"
+                                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
+                                                                    onclick="iniciarRegistroHojaRTFM13(this)">
+                                                                <i class="fa-solid fa-pen"></i> Corregir
+                                                            </button>
+                                                            <form method="POST" action="/Cycsa/publico/hojas-servicio/enviar-revision" style="margin: 0;">
+                                                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                                                                <input type="hidden" name="id_os" value="<?= $os['id'] ?>">
+                                                                <button type="submit" class="btn-cycsa btn-cycsa-primary" style="background:#4f46e5; border-color:#4f46e5; min-height:32px; padding:4px 10px; font-size:12px;">
+                                                                    <i class="fa-solid fa-paper-plane"></i> Reenviar a Revisión
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                <?php elseif ($os['estado'] === 'Estado 2: Revision'): ?>
+                                                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                                                        <div style="color:#1e40af; font-size:12.5px; font-weight:600;">
+                                                            <i class="fa-solid fa-clock me-1"></i> En Revisión por Supervisión
+                                                        </div>
+                                                        <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
+                                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669; border-color:#059669; min-height:32px; padding:4px 12px; font-size:12px;" onclick="abrirModalRevision(<?= $os['id'] ?>, '<?= $os['codigo_os'] ?>')">
+                                                                <i class="fa-solid fa-check-double"></i> Decisión Supervisor
+                                                            </button>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <?php 
+                                                $listaHojas = $os['hojas_servicio'] ?? [];
+                                                if (empty($listaHojas) && $tieneHoja) {
+                                                    $listaHojas = [[
+                                                        'id' => $os['id_hoja'],
+                                                        'numero_registro' => '00001',
+                                                        'codigo_documento' => $os['hoja_codigo'] ?? 'CYCSA-RT-FM-13',
+                                                        'nombre_persona_toma_muestra' => $os['nombre_persona_toma_muestra'] ?? 'Cliente',
+                                                        'fecha_hora_toma_muestra' => $os['fecha_hora_toma_muestra'] ?? '',
+                                                        'total_muestras' => !empty($os['muestras_json']) ? count(json_decode($os['muestras_json'], true) ?: []) : 1
+                                                    ]];
+                                                }
+                                                ?>
+                                                <?php if (!$esOSAprobada): ?>
+                                                    <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 18px; border-radius: 8px; text-align: center; color: #92400e; font-size: 13px;">
+                                                        <i class="fa-solid fa-lock" style="font-size: 26px; margin-bottom: 8px; color: #d97706; display: block;"></i>
+                                                        <strong>Aprobación de O/S Requerida</strong><br>
+                                                        Esta orden de servicio aún no ha sido aprobada. Debe aprobarse formalmente antes de registrar especímenes RT-FM-13.
+                                                        <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
+                                                            <div style="margin-top:12px;">
+                                                                <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669; border-color:#059669; font-size:12.5px; padding:6px 16px;"
+                                                                        onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>')">
+                                                                    <i class="fa-solid fa-check-double"></i> Aprobar Orden de Servicio Ahora
+                                                                </button>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php elseif (!empty($listaHojas)): ?>
+                                                    <div style="display:flex; flex-direction:column; gap:8px; max-height:240px; overflow-y:auto; padding-right:4px;">
+                                                        <?php foreach ($listaHojas as $idxH => $hItem): ?>
+                                                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                                                <div>
+                                                                    <div style="font-size:13px; font-weight:700; color:var(--cycsa-azul);">
+                                                                        <i class="fa-solid fa-file-invoice"></i> <?= htmlspecialchars($hItem['codigo_documento'] ?? 'CYCSA-RT-FM-13') ?> 
+                                                                        <span style="font-family:monospace; color:#0f172a; background:#e2e8f0; padding:2px 7px; border-radius:4px; font-size:12px;">Reg: <?= htmlspecialchars($hItem['numero_registro'] ?? ('#' . $hItem['id'])) ?></span>
+                                                                    </div>
+                                                                    <div style="font-size:11.5px; color:#64748b; margin-top:3px;">
+                                                                        <i class="fa-solid fa-vials"></i> <?= (int)($hItem['total_muestras'] ?? 0) ?> espécimen(es) • 
+                                                                        <i class="fa-regular fa-clock"></i> <?= !empty($hItem['fecha_hora_toma_muestra']) ? date('d/m/Y H:i', strtotime($hItem['fecha_hora_toma_muestra'])) : (!empty($hItem['fecha_creacion']) ? date('d/m/Y H:i', strtotime($hItem['fecha_creacion'])) : 'N/A') ?>
+                                                                    </div>
+                                                                </div>
+                                                                <div style="display:flex; gap:6px;">
+                                                                    <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:4px 10px; font-size:12px;"
+                                                                            onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', <?= $hItem['id'] ?>, false)"
+                                                                            title="Editar Hoja RT-FM-13">
+                                                                        <i class="fa-solid fa-pen"></i>
+                                                                    </button>
+                                                                    <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>&id_hoja=<?= $hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary" style="min-height:34px; padding:4px 10px; font-size:12px;" title="Descargar PDF Oficial">
+                                                                        <i class="fa-solid fa-file-pdf"></i>
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; padding: 20px; border-radius: 8px; text-align: center; color: #64748b; font-size: 13px;">
+                                                        <i class="fa-solid fa-file-circle-question" style="font-size: 28px; margin-bottom: 8px; color: #94a3b8; display: block;"></i>
+                                                        Aún no se ha registrado la primera Hoja de Servicio técnica para esta orden.
+                                                        <div style="margin-top:12px;">
+                                                            <button type="button" class="btn-cycsa btn-cycsa-success" style="min-height:36px; padding:6px 16px; font-size:12.5px; font-weight:700;"
+                                                                    data-id-os="<?= $os['id'] ?>"
+                                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
+                                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
+                                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
+                                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
+                                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
+                                                                    onclick="iniciarRegistroHojaRTFM13(this)">
+                                                                <i class="fa-solid fa-file-signature"></i> Registrar Primera Hoja RT-FM-13
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+
+                                            <!-- TARJETA 4: ENSAYOS, MATRIZ TÉCNICA Y LIMS -->
+                                            <div class="tarjeta-detalle-os">
+                                                <div class="tarjeta-detalle-titulo" style="display:flex; justify-content:space-between; align-items:center;">
+                                                    <span><i class="fa-solid fa-microscope"></i> 4. Ensayos y Matriz Técnica</span>
+                                                    <a href="/Cycsa/publico/operaciones" class="btn-cycsa btn-cycsa-secondary" style="min-height:30px; padding:4px 10px; font-size:11.5px;" title="Ir al módulo de Operaciones">
+                                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Operaciones
+                                                    </a>
                                                 </div>
-                                            <?php else: ?>
-                                                <div style="background:#f8fafc; border:1px dashed #cbd5e1; padding:15px; border-radius:8px; text-align:center; color:#64748b; font-size:12px;">
-                                                    No hay ensayos registrados para esta cotización/orden.
-                                                </div>
-                                            <?php endif; ?>
+                                                <?php 
+                                                $itemsEnsayos = $os['items'] ?? [];
+                                                ?>
+                                                <?php if (!empty($itemsEnsayos)): ?>
+                                                    <div style="display:flex; flex-direction:column; gap:10px; max-height:240px; overflow-y:auto; padding-right:4px;">
+                                                        <?php foreach ($itemsEnsayos as $it): ?>
+                                                            <?php 
+                                                            $tieneMatriz = !empty($it['resultados_json']);
+                                                            $revInfo = ($tieneMatriz && function_exists('obtenerEstadoRevisionMatriz')) ? obtenerEstadoRevisionMatriz($it['resultados_json']) : null;
+                                                            $codInf = ($tieneMatriz && function_exists('generarCodigoInformeEnsayo')) ? generarCodigoInformeEnsayo($it['resultados_json'], $os['fecha_muestreo'] ?? null, $it['descripcion_ensayo']) : null;
+                                                            ?>
+                                                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; display:flex; flex-direction:column; gap:6px;">
+                                                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                                                                    <div style="font-size:13px; font-weight:700; color:#0f172a;">
+                                                                        <i class="fa-solid fa-vial-virus" style="color:var(--cycsa-azul);"></i> <?= htmlspecialchars($it['descripcion_ensayo']) ?>
+                                                                    </div>
+                                                                    <?php if ($tieneMatriz && $revInfo): ?>
+                                                                        <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; background:<?= $revInfo['badge_bg'] ?>; color:<?= $revInfo['badge_color'] ?>; border:1px solid <?= $revInfo['badge_border'] ?>;">
+                                                                            <?= htmlspecialchars($revInfo['estado_label']) ?>
+                                                                        </span>
+                                                                    <?php elseif ($tieneMatriz): ?>
+                                                                        <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; background:#dcfce7; color:#15803d; border:1px solid #86efac;">
+                                                                            Registrada
+                                                                        </span>
+                                                                    <?php elseif ($cantHojas === 0): ?>
+                                                                        <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; background:#fef2f2; color:#991b1b; border:1px solid #fecaca;">
+                                                                            <i class="fa-solid fa-lock"></i> Requiere RT-FM-13
+                                                                        </span>
+                                                                    <?php else: ?>
+                                                                        <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:6px; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">
+                                                                            Sin Matriz
+                                                                        </span>
+                                                                    <?php endif; ?>
+                                                                </div>
+
+                                                                <?php if ($tieneMatriz && !empty($codInf)): ?>
+                                                                    <div style="font-size:11.5px; font-family:monospace; color:#0369a1; background:#e0f2fe; padding:2px 8px; border-radius:4px; border:1px solid #bae6fd; align-self:flex-start;">
+                                                                        <i class="fa-solid fa-barcode"></i> <?= htmlspecialchars($codInf) ?>
+                                                                    </div>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div style="text-align: center; color: #94a3b8; padding: 25px; font-size: 13px;">
+                                                        <i class="fa-solid fa-vials" style="font-size: 24px; margin-bottom: 6px; display: block; opacity: 0.5;"></i>
+                                                        No hay ensayos registrados para esta cotización/orden.
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+
                                         </div>
 
                                     </div>
 
-                                    <!-- BARRA DE ACCIONES OPERATIVAS -->
-                                    <div class="barra-acciones-os">
-                                        <div style="margin-right: auto; font-size: 12.5px; color: #64748b;">
-                                            <i class="fa-solid fa-circle-info" style="color:var(--cycsa-azul);"></i> Estado técnico: <strong><?= htmlspecialchars($os['estado']) ?></strong>
+                                    <!-- BARRA INFORMATIVA INFERIOR DE ESTADO TÉCNICO -->
+                                    <div style="margin-top: 18px; padding: 12px 18px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                        <div style="font-size: 13px; color: #475569;">
+                                            <i class="fa-solid fa-circle-info" style="color:var(--cycsa-azul);"></i> Estado técnico del flujo: <strong style="color:#0f172a;"><?= htmlspecialchars($os['estado']) ?></strong>
                                         </div>
-
-                                        <?php if (!$esOSAprobada): ?>
-                                            <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
-                                                <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669;"
-                                                        onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>')">
-                                                    <i class="fa-solid fa-check-double"></i> Aprobar Orden de Servicio
-                                                </button>
-                                            <?php else: ?>
-                                                <span class="btn-cycsa btn-cycsa-secondary" style="opacity:0.7; cursor:not-allowed;">
-                                                    <i class="fa-solid fa-lock"></i> O/S Pendiente de Aprobación
-                                                </span>
-                                            <?php endif; ?>
-                                        <?php elseif ($os['estado'] === 'Estado 2: Observada'): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-warning"
-                                                    data-id-os="<?= $os['id'] ?>"
-                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                    onclick="iniciarRegistroHojaRTFM13(this)">
-                                                <i class="fa-solid fa-triangle-exclamation"></i> Corregir Hoja RT-FM-13
-                                            </button>
-                                            <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary">
-                                                <i class="fa-solid fa-file-pdf"></i> Ver PDF
-                                            </a>
-                                            <form method="POST" action="/Cycsa/publico/hojas-servicio/enviar-revision" style="margin: 0;">
-                                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                                                <input type="hidden" name="id_os" value="<?= $os['id'] ?>">
-                                                <button type="submit" class="btn-cycsa btn-cycsa-primary" style="background:#4f46e5;">
-                                                    <i class="fa-solid fa-paper-plane"></i> Reenviar a Revisión Supervisor
-                                                </button>
-                                            </form>
-                                        <?php elseif ($os['estado'] === 'Estado 2: Revision'): ?>
-                                            <span style="font-size:12.5px; color:#0369a1; background:#e0f2fe; padding:7px 14px; border-radius:6px; border:1px solid #bae6fd; display:inline-flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-lock"></i> En revisión por supervisión
-                                            </span>
-                                            <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary">
-                                                <i class="fa-solid fa-file-pdf"></i> Ver PDF RT-FM-13
-                                            </a>
-                                            <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
-                                                <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669;" onclick="abrirModalRevision(<?= $os['id'] ?>, '<?= $os['codigo_os'] ?>')">
-                                                    <i class="fa-solid fa-check-double"></i> Decisión Supervisor (Aprobar / Observar)
-                                                </button>
-                                            <?php endif; ?>
-                                        <?php elseif ($cantHojas === 0): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-success"
-                                                    data-id-os="<?= $os['id'] ?>"
-                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                    onclick="iniciarRegistroHojaRTFM13(this)">
-                                                <i class="fa-solid fa-file-signature"></i> Registrar Primera Hoja RT-FM-13
-                                            </button>
-                                        <?php else: ?>
-                                            <span style="font-size:12.5px; color:#15803d; background:#dcfce7; padding:7px 14px; border-radius:6px; border:1px solid #86efac; display:inline-flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-circle-check"></i> Hoja(s) Registrada(s)
-                                            </span>
-                                            <button type="button" class="btn-cycsa btn-cycsa-success"
-                                                    data-id-os="<?= $os['id'] ?>"
-                                                    data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
-                                                    data-estado-muestreo="<?= $estadoMuestreo ?>"
-                                                    data-tecnico="<?= htmlspecialchars($os['tecnico_nombre'] ?? '') ?>"
-                                                    data-fecha-ida="<?= !empty($os['fecha_ida']) ? date('d/m/Y H:i', strtotime($os['fecha_ida'])) : '' ?>"
-                                                    data-fecha-llegada="<?= !empty($os['fecha_llegada']) ? date('d/m/Y H:i', strtotime($os['fecha_llegada'])) : '' ?>"
-                                                    onclick="iniciarRegistroHojaRTFM13(this)">
-                                                <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13
-                                            </button>
-                                            <?php if ($cantHojas > 0): ?>
-                                                <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary">
-                                                    <i class="fa-solid fa-file-pdf"></i> Ver PDF RT-FM-13 Oficial
-                                                </a>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
+                                        <div style="font-size: 12.5px; color: #64748b; font-family: monospace;">
+                                            Orden Ref: <?= htmlspecialchars($os['codigo_os']) ?>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -692,9 +818,10 @@
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="8" style="text-align: center; color: #64748b; padding: 40px;">
-                            <i class="fa-solid fa-folder-open" style="font-size: 32px; margin-bottom: 10px; display: block; opacity: 0.5;"></i>
-                            No se encontraron Órdenes de Servicio registradas.
+                        <td colspan="5" style="text-align: center; color: #64748b; padding: 50px 20px;">
+                            <i class="fa-solid fa-folder-open" style="font-size: 36px; margin-bottom: 12px; display: block; opacity: 0.5;"></i>
+                            <div style="font-size: 15px; font-weight: 600; color: #334155;">No se encontraron Órdenes de Servicio registradas</div>
+                            <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Las nuevas órdenes aprobadas desde cotizaciones aparecerán aquí automáticamente.</div>
                         </td>
                     </tr>
                 <?php endif; ?>
@@ -707,18 +834,23 @@
      MODAL DE REGISTRO / EDICIÓN DE HOJA DE SERVICIO (CYCSA-RT-FM-13)
      ========================================================================= -->
 <div id="modalHojaSolicitud" class="modal-premium">
-    <div class="modal-premium-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
+    <div class="modal-premium-content" style="max-width: 1380px; width: 96%; max-height: 94vh; display: flex; flex-direction: column; padding: 0; border-radius: 14px; overflow: hidden; background: white; margin: 2vh auto; box-shadow: 0 20px 45px rgba(0,0,0,0.25);">
+        
+        <!-- ENCABEZADO STICKY FIJO SUPERIOR -->
+        <div style="padding: 16px 26px; background: white; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; flex-shrink: 0;">
             <div>
                 <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; display:flex; align-items:center; gap:10px;">
-                    <i class="fa-solid fa-file-signature" style="color:var(--cycsa-azul);"></i> Hoja de Solicitud de Servicio (Ingreso CYCSA-RT-FM-13)
+                    <i class="fa-solid fa-file-signature" style="color:var(--cycsa-azul);"></i> Hoja de Solicitud de Servicio (CYCSA-RT-FM-13)
                 </h3>
                 <p style="margin: 3px 0 0 0; font-size: 13px; color: #64748b;">
-                    Orden de Servicio Vinculada: <strong id="hs_codigo_os_label" style="color:var(--cycsa-azul); font-family:monospace; font-size:14px;"></strong>
+                    Orden de Servicio Vinculada: <strong id="hs_codigo_os_label" style="color:var(--cycsa-azul); font-family:monospace; font-size:14.5px;"></strong>
                 </p>
             </div>
-            <button onclick="cerrarModalHojaSolicitud()" class="btn-cerrar" style="font-size:26px; border:none; background:none; cursor:pointer; color:#64748b;">&times;</button>
+            <button type="button" onclick="cerrarModalHojaSolicitud()" class="btn-cerrar" style="font-size:28px; border:none; background:none; cursor:pointer; color:#64748b; line-height:1;" title="Cerrar modal">&times;</button>
         </div>
+
+        <!-- CUERPO PRINCIPAL CON SCROLL INDEPENDIENTE -->
+        <div style="flex: 1; overflow-y: auto; padding: 22px 26px;">
         
         <div id="loading-hoja-solicitud" style="text-align:center; padding: 50px; display:none;">
             <i class="fa-solid fa-spinner fa-spin" style="font-size:36px; color:var(--cycsa-azul);"></i>
@@ -726,7 +858,7 @@
         </div>
 
         <!-- SELECTOR DE HOJAS RT-FM-13 (Para Contratos Activos / Múltiples Entregas) -->
-        <div id="hs_selector_hojas_container" style="display:none; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px; margin-bottom:15px; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div id="hs_selector_hojas_container" style="display:none; background:#f1f5f9; border:1.5px solid #cbd5e1; border-radius:8px; padding:12px 18px; margin-bottom:18px; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <span style="font-size:12px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.5px;">
                     <i class="fa-solid fa-layer-group" style="color:var(--cycsa-azul);"></i> Hojas / Entregas:
@@ -1066,14 +1198,24 @@
                     <span style="font-size:10.5px; background:#fffbeb; color:#92400e; border:1px solid #fde68a; padding:4px 8px; border-radius:6px; font-weight:700;">Trazabilidad ISO 17025</span>
                 </div>
 
-                <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1.5px solid #e2e8f0; padding-top:18px;">
+                <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1.5px solid #e2e8f0; padding-top:18px; margin-top:20px;">
                     <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="cerrarModalHojaSolicitud()">Cancelar</button>
-                    <button type="submit" class="btn-cycsa btn-cycsa-success" style="padding:10px 24px; font-size:14px;">
+                    <button type="submit" class="btn-cycsa btn-cycsa-success" style="padding:10px 26px; font-size:14px; font-weight:700;">
                         <i class="fa-solid fa-floppy-disk"></i> Guardar Hoja de Solicitud (RT-FM-13)
                     </button>
                 </div>
             </form>
         </div>
+        </div>
+
+        <!-- FOOTER STICKY INFERIOR FLOTANTE SIEMPRE VISIBLE -->
+        <div style="padding: 14px 26px; background: #f8fafc; border-top: 1.5px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; gap: 12px; position: sticky; bottom: 0; z-index: 1000; flex-shrink: 0; box-shadow: 0 -4px 15px rgba(0,0,0,0.04);">
+            <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height: 40px; padding: 8px 22px; font-size: 13.5px;" onclick="cerrarModalHojaSolicitud()">Cancelar</button>
+            <button type="submit" form="form-hoja-solicitud" class="btn-cycsa btn-cycsa-success" style="min-height: 40px; padding: 8px 28px; font-size: 14px; font-weight: 700; box-shadow: 0 2px 8px rgba(16,185,129,0.25);" onclick="var f = document.getElementById('form-hoja-solicitud'); if (f.checkValidity && !f.checkValidity()) { f.reportValidity(); } else { f.submit(); }">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar Hoja de Solicitud (RT-FM-13)
+            </button>
+        </div>
+
     </div>
 </div>
 
@@ -1196,66 +1338,68 @@
 
 <!-- MODAL ELECCIÓN DE MUESTREO VS INGRESO DIRECTO -->
 <div id="modalDecisionMuestreoGlobal" class="modal-premium" style="display:none; z-index:10000; align-items:center; justify-content:center;">
-    <div class="modal-premium-content" style="max-width: 650px; border-radius: 12px; padding: 25px 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); background:white;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">
-            <div style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #0f172a; display:flex; align-items:center; gap:8px;">
+    <div class="modal-premium-content" style="max-width: 740px; border-radius: 14px; padding: 28px 32px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); background:white;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">
+            <div style="font-family: 'Outfit', sans-serif; font-size: 19px; font-weight: 700; color: #0f172a; display:flex; align-items:center; gap:10px;">
                 <i class="fa-solid fa-circle-question" style="color: var(--cycsa-azul);"></i> <span id="decision_titulo_modal">¿Cómo se Realizará el Muestreo de esta Hoja RT-FM-13?</span>
             </div>
-            <button type="button" onclick="cerrarModalDecisionMuestreo()" style="background: none; border: none; font-size: 24px; color: #94a3b8; cursor: pointer; line-height: 1;">&times;</button>
+            <button type="button" onclick="cerrarModalDecisionMuestreo()" style="background: none; border: none; font-size: 26px; color: #94a3b8; cursor: pointer; line-height: 1;">&times;</button>
         </div>
 
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 15px; margin-bottom:20px;">
-            <span style="font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700; display:block;">Orden de Servicio:</span>
-            <div id="decision_codigo_os" style="font-size:16px; font-weight:700; color:var(--cycsa-azul); font-family:monospace; margin-top:2px;">OS-2026-XXXX</div>
-            <div id="decision_subtitulo_entrega" style="font-size:12px; color:#64748b; margin-top:4px;"></div>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:20px;">
+            <span style="font-size:11.5px; text-transform:uppercase; color:#64748b; font-weight:700; display:block; letter-spacing:0.5px;">Orden de Servicio:</span>
+            <div id="decision_codigo_os" style="font-size:16.5px; font-weight:700; color:var(--cycsa-azul); font-family:monospace; margin-top:2px;">OS-2026-XXXX</div>
+            <div id="decision_subtitulo_entrega" style="font-size:12.5px; color:#64748b; margin-top:4px;"></div>
         </div>
 
-        <p style="font-size: 13.5px; color: #475569; margin-bottom: 20px; line-height: 1.5;">
-            Seleccione el tipo de ingreso para esta Hoja de Solicitud de Servicio (CYCSA-RT-FM-13):
+        <p style="font-size: 14px; color: #475569; margin-bottom: 20px; line-height: 1.5;">
+            Seleccione la modalidad de recepción o muestreo para esta Hoja de Solicitud de Servicio (CYCSA-RT-FM-13):
         </p>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px;">
             
             <!-- OPCIÓN 1: MUESTREO DIRECTO (LABORATORIO CENTRAL - PREFIJO MS) -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; background: white; transition: all 0.2s;" onmouseover="this.style.borderColor='#10b981'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.08)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+            <div style="border: 2px solid #cbd5e1; border-radius: 12px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between; background: white; transition: all 0.2s;" onmouseover="this.style.borderColor='#10b981'; this.style.boxShadow='0 6px 18px rgba(16,185,129,0.12)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
                 <div>
-                    <div style="width: 44px; height: 44px; border-radius: 8px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;">
+                    <div style="width: 48px; height: 48px; border-radius: 10px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 14px;">
                         <i class="fa-solid fa-flask"></i>
                     </div>
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a;">Muestreo Directo</h4>
-                        <span class="badge" style="background:#d1fae5; color:#065f46; font-family:monospace; font-weight:700; font-size:11px;">Prefijo MS</span>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                        <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a;">Muestreo Directo</h4>
+                        <span class="badge" style="background:#d1fae5; color:#065f46; font-family:monospace; font-weight:700; font-size:12px; padding: 4px 8px;">Prefijo MS</span>
                     </div>
-                    <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
-                        Los especímenes fueron entregados directamente por el cliente en el Laboratorio Central de CYCSA (sin salida de personal técnico).
+                    <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 0 0 20px 0;">
+                        Los especímenes fueron entregados directamente por el cliente en el Laboratorio Central de CYCSA (sin requerir salida técnica a obra).
                     </p>
                 </div>
-                <button type="button" class="btn-cycsa btn-cycsa-success" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 600;" onclick="confirmarDecisionMuestreo('directo')">
-                    <i class="fa-solid fa-file-circle-plus"></i> Abrir RT-FM-13 (Directo - MS)
-                </button>
+                <div>
+                    <button type="button" class="btn-cycsa btn-cycsa-success" style="width: 100%; min-height: 42px; font-size: 13.5px; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="confirmarDecisionMuestreo('directo')">
+                        <i class="fa-solid fa-file-circle-plus"></i> Abrir RT-FM-13 (Directo - MS)
+                    </button>
+                </div>
             </div>
 
             <!-- OPCIÓN 2: SE ENVÍA A CAMPO (MUESTREO EN OBRA - PREFIJO MC) -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; background: white; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cycsa-azul)'; this.style.boxShadow='0 4px 12px rgba(16,52,135,0.08)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+            <div style="border: 2px solid #cbd5e1; border-radius: 12px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between; background: white; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cycsa-azul)'; this.style.boxShadow='0 6px 18px rgba(16,52,135,0.12)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
                 <div>
-                    <div style="width: 44px; height: 44px; border-radius: 8px; background: #eff6ff; color: var(--cycsa-azul); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;">
+                    <div style="width: 48px; height: 48px; border-radius: 10px; background: #eff6ff; color: var(--cycsa-azul); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 14px;">
                         <i class="fa-solid fa-truck-pickup"></i>
                     </div>
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a;">Se envía a campo</h4>
-                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-family:monospace; font-weight:700; font-size:11px;">Prefijo MC</span>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                        <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a;">Se envía a campo</h4>
+                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-family:monospace; font-weight:700; font-size:12px; padding: 4px 8px;">Prefijo MC</span>
                     </div>
-                    <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0 0 15px 0;">
-                        Los técnicos de CYCSA van a obra a tomar las muestras. Abre el <strong>formulario para asignar técnico, vehículo, fechas y la Lista de Chequeo CYCSA-RT-FM-40 B</strong>.
+                    <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 0 0 20px 0;">
+                        El personal técnico de CYCSA sale a obra a tomar las muestras. Abre el <strong>formulario para asignar técnico, vehículo, fechas y la Lista de Chequeo CYCSA-RT-FM-40 B</strong>.
                     </p>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                    <button type="button" class="btn-cycsa btn-cycsa-primary" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 600;" onclick="confirmarDecisionMuestreo('logistica')">
-                        <i class="fa-solid fa-truck-pickup"></i> Asignar Técnicos y Salida a Campo (FM-40 B)
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <button type="button" class="btn-cycsa btn-cycsa-primary" style="width: 100%; min-height: 42px; font-size: 13.5px; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="confirmarDecisionMuestreo('logistica')">
+                        <i class="fa-solid fa-truck-pickup"></i> Asignar Técnicos y FM-40 B
                     </button>
                     <div id="btn_opcion_logistica_campo" style="text-align:center;">
-                        <button type="button" onclick="confirmarDecisionMuestreo('campo')" style="background:none; border:none; color:#0284c7; font-size:11.5px; cursor:pointer; text-decoration:underline; padding:4px;" title="Si las muestras ya fueron tomadas y solo desea registrar la RT-FM-13">
-                            <i class="fa-solid fa-file-signature"></i> O abrir RT-FM-13 directamente (Prefijo MC)
+                        <button type="button" class="btn btn-outline-primary" style="width: 100%; min-height: 36px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="confirmarDecisionMuestreo('campo')" title="Si las muestras ya fueron tomadas y solo desea registrar la RT-FM-13">
+                            <i class="fa-solid fa-file-signature"></i> O abrir RT-FM-13 directo (Prefijo MC)
                         </button>
                     </div>
                 </div>
@@ -1264,7 +1408,7 @@
         </div>
 
         <div style="display: flex; justify-content: flex-end;">
-            <button type="button" onclick="cerrarModalDecisionMuestreo()" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #64748b; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+            <button type="button" onclick="cerrarModalDecisionMuestreo()" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 9px 22px; border-radius: 6px; font-size: 13.5px; font-weight: 600; cursor: pointer; min-height:38px;">
                 Cancelar
             </button>
         </div>

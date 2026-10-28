@@ -27,13 +27,29 @@ $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) 
 
     .badge-status { padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 12px; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 6px; }
 
-    /* Estilos para la tabla interactiva del Checklist */
-    .chk-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-    .chk-table th, .chk-table td { padding: 7px 10px; border: 1px solid #e2e8f0; vertical-align: middle; }
-    .chk-table th { background: #f8fafc; font-weight: 700; color: #475569; text-transform: uppercase; font-size: 11px; }
+    /* Estilos para la tabla interactiva del Checklist (Desdensificados) */
+    .chk-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .chk-table th, .chk-table td { padding: 9px 12px; border: 1px solid #e2e8f0; vertical-align: middle; }
+    .chk-table th { background: #f8fafc; font-weight: 700; color: #475569; text-transform: uppercase; font-size: 12px; letter-spacing: 0.3px; }
     .chk-table tr:hover { background: #f8fafc; }
-    .chk-input-cant { width: 60px; padding: 4px 6px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; }
-    .chk-checkbox { width: 18px; height: 18px; cursor: pointer; }
+    .chk-input-cant { width: 64px; min-height: 36px; padding: 6px; text-align: center; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 13.5px; font-weight: 600; box-sizing: border-box; }
+    .chk-checkbox { width: 20px; height: 20px; cursor: pointer; }
+
+    /* BARRA FLOTANTE STICKY DE ACCIÓN RÁPIDA */
+    .sticky-bar-muestreo {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 14px 24px;
+        border-top: 2px solid #e2e8f0;
+        box-shadow: 0 -4px 18px rgba(0,0,0,0.06);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 500;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
 </style>
 
 <div style="max-width: 1150px; margin: 0 auto; padding-bottom: 50px;">
@@ -323,13 +339,13 @@ $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) 
                 </div>
             </div>
 
-            <!-- BOTONES DE ACCIÓN DEL FORMULARIO -->
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary">
+            <!-- BARRA STICKY INFERIOR DE ACCIONES -->
+            <div class="sticky-bar-muestreo">
+                <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height: 40px;">
                     <i class="fa-solid fa-print"></i> Vista Previa / Imprimir Formato Oficial
                 </a>
-                <div style="display:flex; gap:10px;">
-                    <button type="submit" name="accion_muestreo" value="guardar" class="btn-cycsa btn-cycsa-primary">
+                <div style="display:flex; gap:12px;">
+                    <button type="submit" name="accion_muestreo" value="guardar" class="btn-cycsa btn-cycsa-primary" style="min-height: 40px; font-size: 14px; font-weight: 700; box-shadow: 0 2px 8px rgba(16, 52, 135, 0.2);">
                         <i class="fa-solid fa-floppy-disk"></i> Guardar Programación y Checklist
                     </button>
                 </div>

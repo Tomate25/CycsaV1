@@ -6,84 +6,89 @@ if (!empty($os['contactos_json'])) {
 }
 ?>
 <style>
-    .os-wrapper { background: #f8fafc; padding: 30px 15px; }
+    .os-wrapper { background: #f1f5f9; padding: 35px 20px; min-height: 100vh; }
     .os-container { 
-        max-width: 850px; 
+        max-width: 960px; 
         margin: 0 auto; 
         background: white; 
-        padding: 45px 50px; 
-        border-radius: 4px; 
-        box-shadow: 0 10px 30px rgba(0,0,0,0.06); 
+        padding: 50px 60px; 
+        border-radius: 8px; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
         color: #111; 
         position: relative;
-        line-height: 1.4;
+        line-height: 1.5;
+        font-size: 14px;
     }
     
-    .os-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
-    .os-logo-box { display: flex; align-items: center; gap: 12px; }
-    .os-logo-box img { max-height: 65px; object-fit: contain; }
+    .os-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 2px solid #103487; padding-bottom: 18px; }
+    .os-logo-box { display: flex; align-items: center; gap: 14px; }
+    .os-logo-box img { max-height: 70px; object-fit: contain; }
     
     .os-header-right { text-align: right; }
-    .os-main-title { font-size: 22px; font-weight: 800; color: #103487; letter-spacing: 0.5px; margin: 0; }
-    .os-doc-code { font-size: 13px; font-weight: 700; color: #333; margin-top: 3px; }
+    .os-main-title { font-size: 24px; font-weight: 800; color: #103487; letter-spacing: 0.5px; margin: 0; }
+    .os-doc-code { font-size: 14px; font-weight: 700; color: #333; margin-top: 4px; }
     
-    /* Rejilla de Información de la O/S */
+    /* Rejilla de Información de la O/S (Escala 100% Nítida) */
     .os-meta-grid { 
         display: grid; 
         grid-template-columns: 1fr 1fr; 
-        gap: 6px 20px; 
-        font-size: 13px; 
-        margin-bottom: 25px; 
+        gap: 8px 28px; 
+        font-size: 14px; 
+        margin-bottom: 28px; 
     }
-    .os-meta-row { display: flex; gap: 8px; }
-    .os-meta-label { font-weight: 700; color: #000; min-width: 110px; }
-    .os-meta-value { color: #222; font-weight: 400; flex: 1; }
+    .os-meta-row { display: flex; gap: 10px; }
+    .os-meta-label { font-weight: 700; color: #000; min-width: 120px; }
+    .os-meta-value { color: #1e293b; font-weight: 400; flex: 1; }
 
     /* Tabla de Ensayos CYCSA-RG-FM-39 V1 */
-    .os-table-border { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; border: 1.5px solid #000; }
-    .os-table-border th { background: #ffffff; color: #000; font-weight: 700; text-align: center; padding: 8px; border: 1px solid #000; font-size: 13px; }
-    .os-table-border td { padding: 8px 12px; border: 1px solid #000; font-size: 13px; }
+    .os-table-border { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 14px; border: 1.5px solid #000; }
+    .os-table-border th { background: #ffffff; color: #000; font-weight: 700; text-align: center; padding: 10px 12px; border: 1px solid #000; font-size: 13.5px; text-transform: uppercase; }
+    .os-table-border td { padding: 10px 14px; border: 1px solid #000; font-size: 13.5px; }
 
     /* Notas y Contactos */
-    .os-section-notes { font-size: 12px; color: #111; line-height: 1.5; margin-bottom: 35px; }
+    .os-section-notes { font-size: 13px; color: #111; line-height: 1.6; margin-bottom: 35px; }
     .os-section-notes p { margin: 0 0 6px 0; }
     
-    .os-contacts-list { margin-top: 10px; margin-bottom: 15px; }
-    .os-contacts-list div { margin-bottom: 3px; }
+    .os-contacts-list { margin-top: 12px; margin-bottom: 16px; font-size: 13.5px; }
+    .os-contacts-list div { margin-bottom: 4px; }
 
     /* Firmas Oficiales de la O/S */
     .os-signatures-grid { 
         display: grid; 
         grid-template-columns: repeat(4, 1fr); 
-        gap: 15px; 
-        margin-top: 50px; 
+        gap: 20px; 
+        margin-top: 55px; 
         margin-bottom: 30px;
         text-align: center; 
-        font-size: 11px; 
+        font-size: 12px; 
         color: #111; 
     }
-    .os-sig-col { border-top: 1px solid #000; padding-top: 6px; font-weight: 500; min-height: 60px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .os-sig-col { border-top: 1.5px solid #000; padding-top: 8px; font-weight: 600; min-height: 65px; display: flex; flex-direction: column; justify-content: flex-start; }
 
     /* Pie de página Oficial */
-    .os-footer-line { border-top: 3px solid #103487; margin-top: 35px; padding-top: 10px; display: flex; justify-content: space-between; font-size: 10.5px; color: #103487; font-weight: 600; line-height: 1.4; }
+    .os-footer-line { border-top: 3px solid #103487; margin-top: 35px; padding-top: 12px; display: flex; justify-content: space-between; font-size: 11.5px; color: #103487; font-weight: 600; line-height: 1.45; }
 
-    .btn-action-bar { max-width: 850px; margin: 0 auto 15px auto; display: flex; justify-content: space-between; align-items: center; }
-    .btn-cycsa { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; padding: 8px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .btn-action-bar { max-width: 960px; margin: 0 auto 18px auto; display: flex; justify-content: space-between; align-items: center; }
+    .btn-cycsa { display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; min-height: 38px; padding: 8px 18px; border-radius: 6px; font-size: 13.5px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s; text-decoration: none; }
     .btn-cycsa-primary { background: var(--cycsa-azul); color: white; }
     .btn-cycsa-primary:hover { background: #0c2766; color: white; }
-    .btn-cycsa-secondary { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
-    .btn-cycsa-secondary:hover { background: #cbd5e1; color: #0f172a; }
-    .btn-cycsa-warning { background: #f59e0b; color: white; }
-    .btn-cycsa-warning:hover { background: #d97706; color: white; }
-    .btn-cycsa-success { background: #10b981; color: white; }
-    .btn-cycsa-success:hover { background: #059669; color: white; }
+    .btn-cycsa-secondary { background: white; color: #334155; border-color: #cbd5e1; }
+    .btn-cycsa-secondary:hover { background: #f1f5f9; color: #0f172a; border-color: #94a3b8; }
 
+    /* MANTENER @MEDIA PRINT 100% INTACTO PARA IMPRESIÓN Y PDF */
     @media print {
         .no-print { display: none !important; }
-        .os-wrapper { padding: 0; background: white; }
-        .os-container { box-shadow: none; padding: 0; max-width: 100%; }
-        @page { margin: 15mm; }
+        .os-wrapper { padding: 0 !important; background: white !important; min-height: auto !important; }
+        .os-container { box-shadow: none !important; padding: 0 !important; max-width: 100% !important; font-size: 11.5px !important; }
+        .os-header { margin-bottom: 15px !important; padding-bottom: 10px !important; }
+        .os-meta-grid { font-size: 11.5px !important; gap: 4px 15px !important; margin-bottom: 15px !important; }
+        .os-table-border { font-size: 11px !important; margin-bottom: 15px !important; }
+        .os-table-border th, .os-table-border td { font-size: 11px !important; padding: 5px 8px !important; }
+        .os-section-notes { font-size: 10.5px !important; margin-bottom: 20px !important; }
+        .os-signatures-grid { font-size: 10px !important; margin-top: 35px !important; margin-bottom: 15px !important; gap: 10px !important; }
+        .os-footer-line { font-size: 9.5px !important; margin-top: 20px !important; }
+        @page { margin: 12mm 15mm; }
     }
 </style>
 
