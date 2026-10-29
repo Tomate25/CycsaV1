@@ -177,7 +177,215 @@ class OrdenServicioModelo {
             static fn(array $ensayo): bool => (int)($ensayo['permitido'] ?? 1) === 1
         ));
 
+        $trazas = $this->obtenerTrazabilidadMuestras((int)$os['id']);
+        foreach ($os['ensayos'] as &$ensayo) {
+            $idDetalle = (int)($ensayo['id'] ?? 0);
+            $ensayo['codigos_laboratorio'] = $trazas['por_detalle'][$idDetalle] ?? [];
+        }
+        unset($ensayo);
+        $os['codigos_muestra'] = $trazas['codigos'];
+        $os['informes_vinculados'] = $this->obtenerInformesVinculados((int)$os['id']);
+
         return $os;
+    }
+
+    /**
+     * Códigos de laboratorio (MS- y MC-) ya custodiados en recepción para la O/S.
+     * La relación con el ensayo, cuando existe, sale de ensayo_edades.
+     *
+     * @return array{codigos: array<int, string>, por_detalle: array<int, array<int, string>>}
+     */
+    public function obtenerTrazabilidadMuestras(int $idOS): array {
+        $vacio = ['codigos' => [], 'por_detalle' => []];
+        if ($idOS <= 0 || !$this->tablaExiste('recepcion_muestras')) {
+            return $vacio;
+        }
+
+        try {
+            if ($this->tablaExiste('lotes_muestras') && $this->tablaExiste('ensayo_edades')) {
+                $sql = "SELECT rm.codigo_muestra, ee.id_detalle_cotizacion
+                        FROM recepcion_muestras rm
+                        LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+                        LEFT JOIN ensayo_edades ee ON ee.id_lote = lm.id
+                        WHERE rm.id_os = :id_os
+                        ORDER BY rm.id ASC, ee.id ASC";
+            } else {
+                $sql = "SELECT codigo_muestra, NULL AS id_detalle_cotizacion
+                        FROM recepcion_muestras
+                        WHERE id_os = :id_os
+                        ORDER BY id ASC";
+            }
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['id_os' => $idOS]);
+            $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log('OrdenServicioModelo::obtenerTrazabilidadMuestras: ' . $e->getMessage());
+            return $vacio;
+        }
+
+        $codigos = [];
+        $porDetalle = [];
+        foreach ($filas as $fila) {
+            $codigo = trim((string)($fila['codigo_muestra'] ?? ''));
+            if ($codigo === '') {
+                continue;
+            }
+            $codigos[$codigo] = $codigo;
+            $idDetalle = (int)($fila['id_detalle_cotizacion'] ?? 0);
+            if ($idDetalle > 0) {
+                $porDetalle[$idDetalle][$codigo] = $codigo;
+            }
+        }
+
+        $porDetalleLista = [];
+        foreach ($porDetalle as $idDetalle => $lista) {
+            $porDetalleLista[$idDetalle] = array_values($lista);
+        }
+
+        return [
+            'codigos' => array_values($codigos),
+            'por_detalle' => $porDetalleLista,
+        ];
+    }
+
+    /**
+     * Informes oficiales ligados a la O/S por la cadena recepción → lote → informe.
+     * El enlace de PDF solo se arma cuando el informe está aprobado.
+     *
+     * @return array<int, array{id: int, codigo: string, estado: string, aprobado: int, url_pdf: string}>
+     */
+    public function obtenerInformesVinculados(int $idOS): array {
+        if ($idOS <= 0) {
+            return [];
+        }
+
+        $informes = [];
+        $informes = array_merge($informes, $this->informesControlDeOS($idOS));
+        $informes = array_merge($informes, $this->informesRoturaDeOS($idOS));
+        return array_values($informes);
+    }
+
+    /**
+     * @return array<int, array{id: int, codigo: string, estado: string, aprobado: int, url_pdf: string}>
+     */
+    private function informesControlDeOS(int $idOS): array {
+        if (!$this->tablaExiste('informes_control') || !$this->tablaExiste('lotes_muestras') || !$this->tablaExiste('recepcion_muestras')) {
+            return [];
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT ic.id, ic.codigo_informe, ic.codigo_completo, ic.estado_aprobacion
+                 FROM informes_control ic
+                 INNER JOIN lotes_muestras lm ON ic.id_lote = lm.id
+                 INNER JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                 WHERE rm.id_os = :id_os
+                 ORDER BY ic.id ASC"
+            );
+            $stmt->execute(['id_os' => $idOS]);
+            $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log('OrdenServicioModelo::informesControlDeOS: ' . $e->getMessage());
+            return [];
+        }
+
+        $salida = [];
+        $vistos = [];
+        foreach ($filas as $fila) {
+            $id = (int)($fila['id'] ?? 0);
+            if ($id <= 0 || isset($vistos[$id])) {
+                continue;
+            }
+            $vistos[$id] = true;
+            $codigo = trim((string)($fila['codigo_completo'] ?? ''));
+            if ($codigo === '') {
+                $codigo = trim((string)($fila['codigo_informe'] ?? ''));
+            }
+            $estado = trim((string)($fila['estado_aprobacion'] ?? ''));
+            $aprobado = $this->estadoInformeAprobado($estado);
+            $salida[] = [
+                'id' => $id,
+                'codigo' => $codigo,
+                'estado' => $estado,
+                'aprobado' => $aprobado ? 1 : 0,
+                'url_pdf' => $aprobado ? '/Cycsa/publico/informes/descargar?id=' . $id : '',
+            ];
+        }
+        return $salida;
+    }
+
+    /**
+     * @return array<int, array{id: int, codigo: string, estado: string, aprobado: int, url_pdf: string}>
+     */
+    private function informesRoturaDeOS(int $idOS): array {
+        if (!$this->tablaExiste('informes_rotura') || !$this->tablaExiste('recepcion_muestras')) {
+            return [];
+        }
+        $columnas = $this->columnasDe('informes_rotura');
+        if (!in_array('muestra_id', $columnas, true) || !in_array('estado', $columnas, true)) {
+            return [];
+        }
+        $colCodigo = in_array('numero', $columnas, true) ? 'numero' : (in_array('codigo', $columnas, true) ? 'codigo' : '');
+        if ($colCodigo === '') {
+            return [];
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT ir.id, ir.`{$colCodigo}` AS codigo_informe, ir.estado
+                 FROM informes_rotura ir
+                 INNER JOIN recepcion_muestras rm ON ir.muestra_id = rm.id
+                 WHERE rm.id_os = :id_os
+                 ORDER BY ir.id ASC"
+            );
+            $stmt->execute(['id_os' => $idOS]);
+            $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log('OrdenServicioModelo::informesRoturaDeOS: ' . $e->getMessage());
+            return [];
+        }
+
+        $salida = [];
+        foreach ($filas as $fila) {
+            $id = (int)($fila['id'] ?? 0);
+            $codigo = trim((string)($fila['codigo_informe'] ?? ''));
+            $estado = trim((string)($fila['estado'] ?? ''));
+            if ($id <= 0 || $codigo === '') {
+                continue;
+            }
+            $salida[] = [
+                'id' => $id,
+                'codigo' => $codigo,
+                'estado' => $estado,
+                'aprobado' => $this->estadoInformeAprobado($estado) ? 1 : 0,
+                'url_pdf' => '',
+            ];
+        }
+        return $salida;
+    }
+
+    private function estadoInformeAprobado(string $estado): bool {
+        $normalizado = mb_strtolower(trim($estado), 'UTF-8');
+        return $normalizado === 'aprobado' || $normalizado === 'approved';
+    }
+
+    private function tablaExiste(string $tabla): bool {
+        if (!preg_match('/^[a-z0-9_]+$/', $tabla)) {
+            return false;
+        }
+        $fila = $this->db->query('SHOW TABLES LIKE ' . $this->db->quote($tabla))->fetch(PDO::FETCH_NUM);
+        return (bool)$fila;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function columnasDe(string $tabla): array {
+        if (!$this->tablaExiste($tabla)) {
+            return [];
+        }
+        $columnas = $this->db->query('SHOW COLUMNS FROM `' . $tabla . '`')->fetchAll(PDO::FETCH_COLUMN);
+        return array_map('strval', $columnas);
     }
 
     /**

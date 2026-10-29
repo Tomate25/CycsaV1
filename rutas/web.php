@@ -146,6 +146,7 @@ $app->enrutador->get('/ordenes-servicio', [OrdenesServicioControlador::class, 'i
 $app->enrutador->get('/ordenes-servicio/crear', [OrdenesServicioControlador::class, 'crear'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/guardar', [OrdenesServicioControlador::class, 'guardar'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/detalle', [OrdenesServicioControlador::class, 'detalle'], [AuthMiddleware::class]);
+$app->enrutador->get('/ordenes-servicio/descargar-pdf', [OrdenesServicioControlador::class, 'descargarPdf'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/programar-muestreo', [OrdenesServicioControlador::class, 'programarMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/guardar-muestreo', [OrdenesServicioControlador::class, 'guardarProgramacionMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/imprimir-checklist', [OrdenesServicioControlador::class, 'imprimirListaChequeo'], [AuthMiddleware::class]);

@@ -442,6 +442,11 @@
                                                     <i class="fa-solid fa-file-lines me-2" style="color:var(--cycsa-azul);"></i> Ver Documento O/S (FM-39)
                                                 </a>
                                             </li>
+                                            <li>
+                                                <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/descargar-pdf?id=<?= $os['id'] ?>" target="_blank">
+                                                    <i class="fa-solid fa-file-pdf me-2 text-danger"></i> Descargar PDF O/S (RG-FM-39)
+                                                </a>
+                                            </li>
                                             <?php if (!empty($os['id_pm'])): ?>
                                                 <li>
                                                     <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank">
