@@ -15,7 +15,10 @@
                 Calibración de Picnómetros (RT-FM-56) y validación de correcciones de fórmulas por Calidad.
             </p>
         </div>
-        <div>
+        <div class="d-flex gap-2">
+            <a href="/Cycsa/publico/equipos-bodegas" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-warehouse me-1"></i> Bodegas y traslados
+            </a>
             <a href="/Cycsa/publico/plantillas" class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-layer-group me-1"></i> Ir a Plantillas Dinámicas
             </a>
@@ -57,6 +60,53 @@
     <div class="tab-content">
         <!-- PESTAÑA 1: EQUIPOS Y CONSTANTES -->
         <div class="tab-pane fade show active" id="tab-equipos" role="tabpanel">
+            <?php $ubicaciones = $ubicaciones ?? []; ?>
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 fw-bold">Ubicación actual del inventario</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Código</th>
+                                <th>Equipo</th>
+                                <th>Categoría</th>
+                                <th>Ubicación</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($equipos)): ?>
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">No hay equipos de calibración registrados.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($equipos as $eqUbic):
+                                    $ub = $ubicaciones[(int)$eqUbic['id']] ?? null;
+                                ?>
+                                    <tr>
+                                        <td><span class="badge bg-primary"><?= htmlspecialchars($eqUbic['codigo']) ?></span></td>
+                                        <td><?= htmlspecialchars($eqUbic['nombre']) ?></td>
+                                        <td><?= htmlspecialchars($eqUbic['categoria']) ?></td>
+                                        <td>
+                                            <?php if ($ub): ?>
+                                                <a href="/Cycsa/publico/equipos-bodegas/bodega?id=<?= (int)$ub['bodega_id'] ?>">
+                                                    <?= htmlspecialchars($ub['bodega_nombre']) ?>
+                                                </a>
+                                                <small class="text-muted font-monospace d-block"><?= htmlspecialchars($ub['bodega_codigo']) ?></small>
+                                            <?php else: ?>
+                                                <span class="text-muted">Sin ubicación</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?= htmlspecialchars((string)($ub['estado'] ?? '—')) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <div class="row g-3">
                 <?php foreach ($equipos ?? [] as $eq): ?>
                     <div class="col-md-6">
@@ -71,6 +121,18 @@
                             <div class="card-body">
                                 <div class="small text-muted mb-2">
                                     <strong>Fuente / Norma:</strong> <?= htmlspecialchars($eq['norma'] ?? 'N/A') ?>
+                                </div>
+                                <?php $ubCard = $ubicaciones[(int)$eq['id']] ?? null; ?>
+                                <div class="small mb-2">
+                                    <strong>Ubicación:</strong>
+                                    <?php if ($ubCard): ?>
+                                        <a href="/Cycsa/publico/equipos-bodegas/equipo?id=<?= (int)$eq['id'] ?>">
+                                            <?= htmlspecialchars($ubCard['bodega_codigo'] . ' — ' . $ubCard['bodega_nombre']) ?>
+                                        </a>
+                                        <span class="badge bg-light text-dark border ms-1"><?= htmlspecialchars((string)$ubCard['estado']) ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">Sin ubicación</span>
+                                    <?php endif; ?>
                                 </div>
                                 <?php if (!empty($eq['constantes'])): ?>
                                     <div class="table-responsive">

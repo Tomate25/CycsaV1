@@ -115,6 +115,13 @@ class EquiposCalibracionControlador extends ControladorBase {
         $picnometros = $modelo->obtenerPicnometros();
         $correcciones = $db->query("SELECT * FROM configuracion_correcciones_hc ORDER BY es_dudosa DESC, codigo_formato ASC, correccion_id ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+        $ubicaciones = [];
+        try {
+            $ubicaciones = (new \Cycsa\Modulos\EquiposBodegas\Modelos\EquiposBodegasModelo())->mapaUbicacionPorEquipo();
+        } catch (\Throwable $e) {
+            $ubicaciones = [];
+        }
+
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
@@ -125,6 +132,7 @@ class EquiposCalibracionControlador extends ControladorBase {
             'picnometros' => $picnometros,
             'correcciones' => $correcciones,
             'puedeEditarCalidad' => $this->tienePermisoEdicionCalidad(),
+            'ubicaciones' => $ubicaciones,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null,
         ]);

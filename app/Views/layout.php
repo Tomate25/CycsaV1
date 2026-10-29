@@ -529,6 +529,14 @@
                 </a>
             </li>
             <?php endif; ?>
+            <?php if (tienePermiso('laboratorio', 'ver') || tienePermiso('operaciones', 'ver') || (($_SESSION['usuario_rol'] ?? 0) == 1)): ?>
+            <li>
+                <a href="/Cycsa/publico/equipos-bodegas" class="<?= strpos($rutaActual, '/equipos-bodegas') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-warehouse"></i>
+                    <span class="menu-texto">Bodegas de Equipos</span>
+                </a>
+            </li>
+            <?php endif; ?>
             <?php if (tienePermiso('compras', 'ver') || tienePermiso('contabilidad', 'ver') || (($_SESSION['usuario_rol'] ?? 0) == 1)): ?>
             <li>
                 <a href="/Cycsa/publico/compras/proveedores" class="<?= strpos($rutaActual, '/compras') !== false ? 'activo' : '' ?>">

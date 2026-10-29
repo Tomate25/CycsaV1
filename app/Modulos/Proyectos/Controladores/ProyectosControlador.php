@@ -156,6 +156,15 @@ class ProyectosControlador extends ControladorBase {
         }
 
         $csrfToken = $this->asegurarTokenCsrf();
+        $equiposEnObra = [];
+        $bodegaObra = null;
+        try {
+            $modeloBodegas = new \Cycsa\Modulos\EquiposBodegas\Modelos\EquiposBodegasModelo();
+            $bodegaObra = $modeloBodegas->buscarBodegaPorProyecto($id);
+            $equiposEnObra = $modeloBodegas->equiposPorProyecto($id);
+        } catch (Throwable $e) {
+            error_log('Detalle de proyecto, equipos en obra: ' . $e->getMessage());
+        }
 
         $this->renderizar('Proyectos/Vistas/detalle', [
             'subnavActiva' => 'proyectos',
@@ -164,6 +173,8 @@ class ProyectosControlador extends ControladorBase {
             'costos'    => $proyecto['costos'],
             'avance'    => $proyecto['avance'],
             'csrfToken' => $csrfToken,
+            'equiposEnObra' => $equiposEnObra,
+            'bodegaObra' => $bodegaObra,
         ]);
     }
 

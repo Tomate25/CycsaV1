@@ -293,6 +293,24 @@ class MigradorServicio {
                     $resultados['025_ensayos_permitidos'] = '[025 WARN] ' . $e025->getMessage();
                 }
             }
+
+            // =========================================================================
+            // FASE 19: Migración 026 - Bodegas y traslados de equipos (Sprint C.4)
+            // =========================================================================
+            $ruta026 = dirname(__DIR__, 4) . '/database/migrations/026_equipos_bodegas_traslados.php';
+            if (file_exists($ruta026)) {
+                ob_start();
+                try {
+                    include $ruta026;
+                    $resultados['026_equipos_bodegas'] = ob_get_clean();
+                } catch (Throwable $e026) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 026: ' . $e026->getMessage());
+                    $resultados['026_equipos_bodegas'] = '[026 WARN] ' . $e026->getMessage();
+                }
+            }
         } catch (Throwable $e) {
             error_log("Error en MigradorServicio: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             $resultados['error'] = $e->getMessage();

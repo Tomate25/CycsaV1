@@ -531,3 +531,68 @@ CREATE TABLE `vehiculos` (
   UNIQUE KEY `placa` (`placa`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Sprint C.4 · Bodegas y traslados de equipos de laboratorio (migración 026).
+-- FK externas: equipos_calibracion (008), proyectos (020), activos_fijos (018).
+
+CREATE TABLE `equipos_bodegas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `codigo` varchar(50) NOT NULL,
+  `nombre` varchar(200) NOT NULL,
+  `tipo` enum('central','proyecto','taller','externo') NOT NULL DEFAULT 'central',
+  `proyecto_id` int(11) DEFAULT NULL,
+  `responsable_id` int(11) DEFAULT NULL,
+  `direccion` varchar(255) DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_eqbod_codigo` (`codigo`),
+  UNIQUE KEY `uk_eqbod_proyecto` (`proyecto_id`),
+  KEY `idx_eqbod_tipo` (`tipo`),
+  KEY `idx_eqbod_activo` (`activo`),
+  KEY `idx_eqbod_responsable` (`responsable_id`),
+  CONSTRAINT `fk_eqbod_proyecto` FOREIGN KEY (`proyecto_id`) REFERENCES `proyectos` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `equipos_traslados` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `equipo_id` int(11) NOT NULL,
+  `bodega_origen_id` int(11) DEFAULT NULL,
+  `bodega_destino_id` int(11) NOT NULL,
+  `fecha_traslado` datetime NOT NULL,
+  `usuario_id` int(11) DEFAULT NULL,
+  `motivo` varchar(255) DEFAULT NULL,
+  `documento_ref` varchar(120) DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_eqtras_equipo_fecha` (`equipo_id`,`fecha_traslado`),
+  KEY `idx_eqtras_origen` (`bodega_origen_id`),
+  KEY `idx_eqtras_destino` (`bodega_destino_id`),
+  KEY `idx_eqtras_usuario` (`usuario_id`),
+  CONSTRAINT `fk_eqtras_equipo` FOREIGN KEY (`equipo_id`) REFERENCES `equipos_calibracion` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_eqtras_origen` FOREIGN KEY (`bodega_origen_id`) REFERENCES `equipos_bodegas` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_eqtras_destino` FOREIGN KEY (`bodega_destino_id`) REFERENCES `equipos_bodegas` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `equipos_ubicacion` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `equipo_id` int(11) NOT NULL,
+  `bodega_id` int(11) NOT NULL,
+  `activo_fijo_id` int(11) DEFAULT NULL,
+  `estado` enum('disponible','en_uso','en_mantenimiento','en_calibracion','de_baja') NOT NULL DEFAULT 'disponible',
+  `desde` datetime NOT NULL,
+  `ultimo_traslado_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_equbic_equipo` (`equipo_id`),
+  KEY `idx_equbic_bodega` (`bodega_id`),
+  KEY `idx_equbic_activo` (`activo_fijo_id`),
+  KEY `idx_equbic_estado` (`estado`),
+  KEY `idx_equbic_ultimo` (`ultimo_traslado_id`),
+  CONSTRAINT `fk_equbic_equipo` FOREIGN KEY (`equipo_id`) REFERENCES `equipos_calibracion` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_equbic_bodega` FOREIGN KEY (`bodega_id`) REFERENCES `equipos_bodegas` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_equbic_activo` FOREIGN KEY (`activo_fijo_id`) REFERENCES `activos_fijos` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

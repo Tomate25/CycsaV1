@@ -83,6 +83,15 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #7c3aed, #5b21b6)', // Morado
             ];
         }
+        if (tienePermiso('laboratorio', 'ver') || tienePermiso('operaciones', 'ver') || $esAdmin) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Bodegas de Equipos',
+                'link' => '/Cycsa/publico/equipos-bodegas',
+                'icon' => 'fa-solid fa-warehouse',
+                'desc' => 'Ubicación de equipos de laboratorio y traslados entre obra y central.',
+                'color' => 'linear-gradient(135deg, #0369a1, #0c4a6e)',
+            ];
+        }
 
         // 4.1 Compras y Proveedores (TAREA-045, TAREA-047)
         if (tienePermiso('compras', 'ver') || tienePermiso('contabilidad', 'ver') || $esAdmin) {

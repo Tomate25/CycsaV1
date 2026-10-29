@@ -555,6 +555,68 @@ model vehiculos {
   fecha_registro DateTime @default(now()) @db.Timestamp(0)
 }
 
+/// Sprint C.4. proyecto_id FK → proyectos(id) ON DELETE SET NULL cuando esa tabla existe (mig 020).
+model equipos_bodegas {
+  id                Int                    @id @default(autoincrement())
+  codigo            String                 @unique(map: "uk_eqbod_codigo") @db.VarChar(50)
+  nombre            String                 @db.VarChar(200)
+  tipo              equipos_bodegas_tipo   @default(central)
+  proyecto_id       Int?                   @unique(map: "uk_eqbod_proyecto")
+  responsable_id    Int?
+  direccion         String?                @db.VarChar(255)
+  activo            Boolean                @default(true)
+  created_at        DateTime               @default(now()) @db.Timestamp(0)
+  updated_at        DateTime               @default(now()) @db.Timestamp(0)
+  traslados_origen  equipos_traslados[]    @relation("traslado_origen")
+  traslados_destino equipos_traslados[]    @relation("traslado_destino")
+  ubicaciones       equipos_ubicacion[]
+
+  @@index([tipo], map: "idx_eqbod_tipo")
+  @@index([activo], map: "idx_eqbod_activo")
+  @@index([responsable_id], map: "idx_eqbod_responsable")
+}
+
+/// Una fila por equipo de calibración. equipo_id FK → equipos_calibracion(id) ON DELETE CASCADE (mig 008).
+/// activo_fijo_id FK → activos_fijos(id) ON DELETE SET NULL cuando esa tabla existe (mig 018).
+model equipos_ubicacion {
+  id                 Int                      @id @default(autoincrement())
+  equipo_id          Int                      @unique(map: "uk_equbic_equipo")
+  bodega_id          Int
+  activo_fijo_id     Int?
+  estado             equipos_ubicacion_estado @default(disponible)
+  desde              DateTime                 @db.DateTime(0)
+  ultimo_traslado_id Int?
+  created_at         DateTime                 @default(now()) @db.Timestamp(0)
+  updated_at         DateTime                 @default(now()) @db.Timestamp(0)
+  bodega             equipos_bodegas          @relation(fields: [bodega_id], references: [id], onDelete: Restrict, map: "fk_equbic_bodega")
+
+  @@index([bodega_id], map: "idx_equbic_bodega")
+  @@index([activo_fijo_id], map: "idx_equbic_activo")
+  @@index([estado], map: "idx_equbic_estado")
+  @@index([ultimo_traslado_id], map: "idx_equbic_ultimo")
+}
+
+/// Historial append-only. bodega_origen_id NULL = alta. equipo_id FK → equipos_calibracion(id) ON DELETE CASCADE.
+model equipos_traslados {
+  id                 Int              @id @default(autoincrement())
+  equipo_id          Int
+  bodega_origen_id   Int?
+  bodega_destino_id  Int
+  fecha_traslado     DateTime         @db.DateTime(0)
+  usuario_id         Int?
+  motivo             String?          @db.VarChar(255)
+  documento_ref      String?          @db.VarChar(120)
+  observaciones      String?          @db.Text
+  created_at         DateTime         @default(now()) @db.Timestamp(0)
+  bodega_origen      equipos_bodegas? @relation("traslado_origen", fields: [bodega_origen_id], references: [id], onDelete: Restrict, map: "fk_eqtras_origen")
+  bodega_destino     equipos_bodegas  @relation("traslado_destino", fields: [bodega_destino_id], references: [id], onDelete: Restrict, map: "fk_eqtras_destino")
+
+  @@index([equipo_id, fecha_traslado], map: "idx_eqtras_equipo_fecha")
+  @@index([bodega_origen_id], map: "idx_eqtras_origen")
+  @@index([bodega_destino_id], map: "idx_eqtras_destino")
+  @@index([usuario_id], map: "idx_eqtras_usuario")
+}
+
 enum secuencias_muestras_tipo_muestra {
   Campo
   Laboratorio
@@ -658,4 +720,19 @@ enum cotizaciones_estado_operativo {
   En_Proceso @map("En Proceso")
   Entregado
   Cancelado
+}
+
+enum equipos_bodegas_tipo {
+  central
+  proyecto
+  taller
+  externo
+}
+
+enum equipos_ubicacion_estado {
+  disponible
+  en_uso
+  en_mantenimiento
+  en_calibracion
+  de_baja
 }

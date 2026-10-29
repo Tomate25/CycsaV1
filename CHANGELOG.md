@@ -2,6 +2,14 @@
 
 Todas las novedades, cambios notables, correcciones y actualizaciones de CYCSA ERP & LIMS se documentarán en este archivo.
 
+## [Sprint C.4] - Bodegas y traslados de equipos
+
+### Añadido
+- Migración `026_equipos_bodegas_traslados`: bodegas (central, proyecto, taller, externo), ubicación vigente de cada equipo de calibración y bitácora append-only de traslados (quién, cuándo, origen, destino y motivo).
+- Semilla idempotente de la bodega `LAB-CENTRAL` y alta de cada equipo activo que aún no tiene ubicación. No se crean bodegas de obra en la migración; hay una sola bodega por proyecto.
+- Módulo `EquiposBodegas` (listado, ficha de bodega, ficha de equipo y traslado con CSRF) junto a `/equipos-calibracion`.
+- Columna **Ubicación** en el inventario de equipos de calibración y tarjeta **Equipos en obra** en el detalle de proyecto.
+
 ## [v2.0] - ERP & LIMS Completo
 
 ### Añadido

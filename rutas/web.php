@@ -20,6 +20,7 @@ use Cycsa\Modulos\Nomina\Controladores\NominaControlador;
 use Cycsa\Modulos\Prestamos\Controladores\PrestamosControlador;
 use Cycsa\Modulos\Proyectos\Controladores\ProyectosControlador;
 use Cycsa\Modulos\ActivosFijos\Controladores\ActivosFijosControlador;
+use Cycsa\Modulos\EquiposBodegas\Controladores\EquiposBodegasControlador;
 
 // Importar Middlewares
 use Cycsa\App\Middleware\AuthMiddleware;
@@ -260,6 +261,13 @@ $app->enrutador->get('/equipos-calibracion', [\Cycsa\Modulos\Configuracion\Contr
 $app->enrutador->post('/equipos-calibracion/guardar-constante', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'guardarConstante'], [AuthMiddleware::class]);
 $app->enrutador->post('/equipos-calibracion/guardar-picnometro', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'guardarPicnometro'], [AuthMiddleware::class]);
 $app->enrutador->post('/equipos-calibracion/actualizar-correccion', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'actualizarCorreccion'], [AuthMiddleware::class]);
+
+// Bodegas y traslados de equipos de laboratorio (Sprint C.4)
+$app->enrutador->get('/equipos-bodegas', [EquiposBodegasControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/equipos-bodegas/bodega', [EquiposBodegasControlador::class, 'bodega'], [AuthMiddleware::class]);
+$app->enrutador->get('/equipos-bodegas/equipo', [EquiposBodegasControlador::class, 'equipo'], [AuthMiddleware::class]);
+$app->enrutador->post('/equipos-bodegas/guardar-bodega', [EquiposBodegasControlador::class, 'guardarBodega'], [AuthMiddleware::class]);
+$app->enrutador->post('/equipos-bodegas/trasladar', [EquiposBodegasControlador::class, 'trasladar'], [AuthMiddleware::class]);
 
 // 📦 MÓDULO DE INVENTARIO Y KARDEX (TAREA-048)
 $app->enrutador->get('/inventario', [InventarioControlador::class, 'index'], [AuthMiddleware::class]);
