@@ -151,10 +151,10 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                     <td style="text-align: center; font-weight: 700; color: #0f172a; vertical-align: top; padding: 12px 8px;">
                         <?= $idx + 1 ?>
                     </td>
-                    <td style="vertical-align: top; padding: 12px;">
-                        <strong style="color: #0f172a; font-size: 13.5px; display: block;"><?= htmlspecialchars($detalle['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?></strong>
+                    <td style="vertical-align: top; padding: 12px; white-space: normal; word-wrap: break-word; overflow-wrap: anywhere;">
+                        <strong style="color: #0f172a; font-size: 13.5px; display: block; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;"><?= nl2br(htmlspecialchars((string)($detalle['descripcion_ensayo'] ?? ''), ENT_QUOTES, 'UTF-8')) ?></strong>
                         <?php if (!empty($detalle['descripcion_adicional'])): ?>
-                            <div style="font-size: 12px; color: #64748b; margin-top: 4px; line-height: 1.4;">
+                            <div style="font-size: 12px; color: #64748b; margin-top: 4px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;">
                                 <?= nl2br(htmlspecialchars($detalle['descripcion_adicional'], ENT_QUOTES, 'UTF-8')) ?>
                             </div>
                         <?php endif; ?>
@@ -595,8 +595,13 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                                     <?php foreach ($detalles as $idxD => $det): ?>
                                         <tr>
                                             <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: 600; text-align: center;"><?= $idxD + 1 ?></td>
-                                            <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #1e293b;">
-                                                <?= htmlspecialchars($det['descripcion_ensayo'] ?? 'Servicio', ENT_QUOTES, 'UTF-8') ?>
+                                            <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #1e293b; white-space: normal; word-wrap: break-word; overflow-wrap: anywhere;">
+                                                <?= nl2br(htmlspecialchars($det['descripcion_ensayo'] ?? 'Servicio', ENT_QUOTES, 'UTF-8')) ?>
+                                                <?php if (!empty($det['descripcion_adicional'])): ?>
+                                                    <div style="margin-top: 4px; font-size: 12px; font-weight: 500; color: #64748b; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;">
+                                                        <?= nl2br(htmlspecialchars($det['descripcion_adicional'], ENT_QUOTES, 'UTF-8')) ?>
+                                                    </div>
+                                                <?php endif; ?>
                                                 <?php
                                                 $metaPartsAct = [];
                                                 if (!empty($det['codigo_servicio'])) $metaPartsAct[] = 'Código: <strong>' . htmlspecialchars($det['codigo_servicio'], ENT_QUOTES, 'UTF-8') . '</strong>';
@@ -723,8 +728,13 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                                             <?php foreach ($datos['detalles'] as $idxHist => $det): ?>
                                                 <tr>
                                                     <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: 600; text-align: center;"><?= $idxHist + 1 ?></td>
-                                                    <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #334155;">
-                                                        <?= htmlspecialchars($det['descripcion_ensayo'] ?? 'Servicio', ENT_QUOTES, 'UTF-8') ?>
+                                                    <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #334155; white-space: normal; word-wrap: break-word; overflow-wrap: anywhere;">
+                                                        <?= nl2br(htmlspecialchars($det['descripcion_ensayo'] ?? 'Servicio', ENT_QUOTES, 'UTF-8')) ?>
+                                                        <?php if (!empty($det['descripcion_adicional'])): ?>
+                                                            <div style="margin-top: 4px; font-size: 12px; font-weight: 500; color: #64748b; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;">
+                                                                <?= nl2br(htmlspecialchars($det['descripcion_adicional'], ENT_QUOTES, 'UTF-8')) ?>
+                                                            </div>
+                                                        <?php endif; ?>
                                                         <?php
                                                         $metaPartsV = [];
                                                         if (!empty($det['codigo_servicio'])) {

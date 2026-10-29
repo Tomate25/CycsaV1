@@ -698,6 +698,18 @@ function procesarArchivoAdjuntoCotizacion(array $cotizacion, string $logoHtml = 
 }
 
 /**
+ * Escapa una descripción de ítem de cotización y conserva los saltos de línea.
+ * No recorta ni sustituye el cuerpo por elipsis.
+ */
+function htmlDescripcionCotizacionMultilinea(?string $texto): string {
+    $texto = (string)($texto ?? '');
+    if ($texto === '') {
+        return '';
+    }
+    return nl2br(htmlspecialchars($texto, ENT_QUOTES, 'UTF-8'), false);
+}
+
+/**
  * Genera el contenido binario de una cotización en formato PDF usando Dompdf.
  */
 function generarCotizacionPDF(array $cotizacion, array $detalles): string {
@@ -788,12 +800,17 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     $rowsHtml = '';
     foreach ($detalles as $index => $det) {
         $numLinea = $index + 1;
-        $desc = htmlspecialchars($det['descripcion_ensayo'] ?? ($det['ensayo_nombre'] ?? 'Servicio de Ensayo'), ENT_QUOTES, 'UTF-8');
+        $descPlano = (string)($det['descripcion_ensayo'] ?? ($det['ensayo_nombre'] ?? 'Servicio de Ensayo'));
+        $desc = htmlDescripcionCotizacionMultilinea($descPlano);
         $descComercial = htmlspecialchars($det['nombre_comercial'] ?? '', ENT_QUOTES, 'UTF-8');
+        $descAdicional = htmlDescripcionCotizacionMultilinea($det['descripcion_adicional'] ?? '');
         
-        $descHtml = "<strong>{$desc}</strong>";
-        if (!empty($descComercial) && $descComercial !== $desc) {
+        $descHtml = "<strong style=\"word-wrap:break-word; overflow-wrap:break-word; white-space:normal;\">{$desc}</strong>";
+        if (!empty($descComercial) && $descComercial !== htmlspecialchars($descPlano, ENT_QUOTES, 'UTF-8')) {
             $descHtml .= "<br><span style=\"color: #64748b; font-size: 8px;\">Comercial: {$descComercial}</span>";
+        }
+        if ($descAdicional !== '') {
+            $descHtml .= "<div style=\"margin-top:3px; color:#334155; font-size:8px; line-height:1.35; font-weight:normal; word-wrap:break-word; overflow-wrap:break-word; white-space:normal;\">{$descAdicional}</div>";
         }
 
         $condiciones = htmlspecialchars($det['condiciones_muestra'] ?? '', ENT_QUOTES, 'UTF-8');
@@ -810,7 +827,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         $rowsHtml .= "
         <tr>
             <td style=\"border: 1px solid #cbd5e1; padding: 4px 3px; font-size: 8.5px; text-align: center; font-weight: bold; color: #0f172a;\">{$numLinea}</td>
-            <td style=\"border: 1px solid #cbd5e1; padding: 4px 5px; font-size: 8.5px; vertical-align: top;\">{$descHtml}</td>
+            <td style=\"border: 1px solid #cbd5e1; padding: 4px 5px; font-size: 8.5px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;\">{$descHtml}</td>
             <td style=\"border: 1px solid #cbd5e1; padding: 4px 5px; font-size: 8px; vertical-align: top;\">{$condHtml}</td>
             <td style=\"border: 1px solid #cbd5e1; padding: 4px 5px; font-size: 8px; font-family: monospace; color: #1e40af; font-weight: bold; vertical-align: top;\">{$procedimientoText}</td>
             <td style=\"border: 1px solid #cbd5e1; padding: 4px 3px; font-size: 8px; text-align: center; color: #334155; vertical-align: top;\">{$unidadText}</td>
@@ -979,7 +996,12 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
                 display: table-header-group;
             }
             .tabla-items tr {
-                page-break-inside: avoid;
+                page-break-inside: auto;
+            }
+            .tabla-items td {
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                white-space: normal;
             }
             .no-split {
                 page-break-inside: avoid;
@@ -2698,7 +2720,8 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
 
     $rowsHtml = '';
     foreach ($detalles as $det) {
-        $descText = htmlspecialchars($det['descripcion_ensayo'] ?? '', ENT_QUOTES, 'UTF-8');
+        $descText = htmlDescripcionCotizacionMultilinea($det['descripcion_ensayo'] ?? '');
+        $descAdicional = htmlDescripcionCotizacionMultilinea($det['descripcion_adicional'] ?? '');
         $codigoServicio = !empty($det['codigo_servicio']) ? htmlspecialchars($det['codigo_servicio'], ENT_QUOTES, 'UTF-8') : 'N/A';
         $cant = number_format($det['cantidad'], 2, '.', ',');
         $precio = number_format($det['precio_unitario'], 2, '.', ',');
@@ -2709,17 +2732,18 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
             $metaHtml .= "<span style=\"color:#475569; font-size:9px;\">Tiempo Entrega: <strong>" . htmlspecialchars($det['observaciones'], ENT_QUOTES, 'UTF-8') . "</strong></span>";
         }
         
-        $desc = $descText;
+        $desc = "<strong style=\"word-wrap:break-word; overflow-wrap:break-word; white-space:normal;\">{$descText}</strong>";
+        if ($descAdicional !== '') {
+            $desc .= "<div style=\"margin-top:3px; font-weight:normal; color:#334155; font-size:9px; line-height:1.35; word-wrap:break-word; overflow-wrap:break-word; white-space:normal;\">{$descAdicional}</div>";
+        }
         if ($metaHtml) {
-            $desc = "<strong>{$desc}</strong><div style=\"margin-top: 3px; padding-top: 2px; border-top: 1px dashed #e2e8f0; font-size: 9px;\">{$metaHtml}</div>";
-        } else {
-            $desc = "<strong>{$desc}</strong>";
+            $desc .= "<div style=\"margin-top: 3px; padding-top: 2px; border-top: 1px dashed #e2e8f0; font-size: 9px;\">{$metaHtml}</div>";
         }
 
         $rowsHtml .= "
         <tr>
             <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10px; font-family: monospace; text-align: center; color: #334155; font-weight: bold;\">{$codigoServicio}</td>
-            <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px;\">{$desc}</td>
+            <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;\">{$desc}</td>
             <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px; text-align: right;\">{$cant}</td>
             <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px; text-align: right;\">C$ {$precio}</td>
             <td style=\"border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 11px; text-align: right; font-weight: bold;\">C$ {$sub}</td>

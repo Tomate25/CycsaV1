@@ -112,7 +112,8 @@ model cotizacion_detalles {
   id                 Int             @id @default(autoincrement())
   id_cotizacion      Int
   id_producto        Int?
-  descripcion_ensayo String          @db.VarChar(255)
+  descripcion_ensayo     String          @db.Text
+  descripcion_adicional  String?         @db.Text
   codigo_servicio    String?         @db.VarChar(100)
   norma_astm         String?         @db.VarChar(150)
   formato_reporte    String?         @db.VarChar(150)
