@@ -443,4 +443,22 @@ class ControlCalidadReplicasTest extends TestCase {
         $this->assertSame(210.0, $difs['Resistencia (kg/cm²)']['original']);
         $this->assertSame(211.1, $difs['Resistencia (kg/cm²)']['replica']);
     }
+
+    public function testCapturaMatrizMapeoSinonimosYChipHref(): void {
+        $capturaContenido = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php');
+
+        // 1. Chip CC incluye id_detalle correctamente (no vacío)
+        $this->assertStringContainsString('control-calidad/ver?id_detalle=<?= (int)($detalle[\'id\'] ?? ($idDetalle ?? 0)) ?>', $capturaContenido);
+
+        // 2. Normalización de superíndices ² y ³ en JS
+        $this->assertStringContainsString('.replace(/²/g, \'2\')', $capturaContenido);
+        $this->assertStringContainsString('.replace(/³/g, \'3\')', $capturaContenido);
+
+        // 3. Diccionario contiene los sinónimos requeridos para Área y Resistencia
+        $this->assertStringContainsString('areain2', $capturaContenido);
+        $this->assertStringContainsString('areacm2', $capturaContenido);
+        $this->assertStringContainsString('rcompresionkgcm2', $capturaContenido);
+        $this->assertStringContainsString('rcompresionlbin2', $capturaContenido);
+        $this->assertStringContainsString('convertirUnidadMedicion', $capturaContenido);
+    }
 }

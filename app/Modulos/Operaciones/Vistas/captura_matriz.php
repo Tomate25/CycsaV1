@@ -1051,6 +1051,8 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     function normalizarTextoClave(txt) {
         if (!txt) return '';
         return String(txt)
+            .replace(/²/g, '2')
+            .replace(/³/g, '3')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
@@ -1059,12 +1061,12 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
     const DICCIONARIO_SINONIMOS = [
         ['carga', 'cargalb', 'cargakg', 'cargamaxima', 'cargamaximalb', 'cargamaximakg'],
-        ['rcompresionkgcm2', 'resistenciakgcm2', 'rcompresionlbpin2', 'resistencialbpin2', 'resistencia', 'rcompresion', 'resistenciaalacompresion'],
+        ['rcompresionkgcm2', 'resistenciakgcm2', 'rcompresionlbin2', 'rcompresionlbpin2', 'resistencialbin2', 'resistencialbpin2', 'rcompresionpsi', 'resistenciapsi', 'resistencia', 'rcompresion', 'resistenciaalacompresion'],
         ['fechadefabricacion', 'fechademoldeo', 'fechamoldeo', 'fechafabricacion', 'fechadecolado', 'fechacolado'],
         ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura'],
         ['edaddias', 'edad'],
         ['disenodeconcretolbin2', 'disenodeconcretokgcm2', 'fcespecificado', 'fckgcm2', 'fc', 'disenokgcm2', 'diseno'],
-        ['areain2', 'areacm2', 'area'],
+        ['areain2', 'areacm2', 'areain', 'areacm', 'area'],
         ['nombremuestra', 'nombredelamuestra', 'identificacion', 'muestra', 'codigodecampo', 'codigocampo'],
         ['revenin', 'revenimientoin', 'revenimiento'],
         ['revencm', 'revenimientocm'],
@@ -1721,9 +1723,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         kgcm2 = psi * 0.070307;
                     }
 
-                    if (rPsiInput && (!rPsiInput.value || isUserEdit)) rPsiInput.value = psi.toFixed(2);
-                    if (rKgInput && (!rKgInput.value || isUserEdit)) rKgInput.value = kgcm2.toFixed(2);
-                } else {
+                    if (rPsiInput && (!rPsiInput.value || isUserEdit)) rPsiInput.value = psi.toFixed(1);
+                    if (rKgInput && (!rKgInput.value || isUserEdit)) rKgInput.value = kgcm2.toFixed(1);
+                } else if (isUserEdit) {
                     if (rPsiInput) rPsiInput.value = '';
                     if (rKgInput) rKgInput.value = '';
                 }
