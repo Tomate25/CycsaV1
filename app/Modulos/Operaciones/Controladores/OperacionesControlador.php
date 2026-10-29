@@ -1811,16 +1811,16 @@ class OperacionesControlador extends ControladorBase {
             }
 
             // Desempaquetar filas y metadatos existentes
-            $filasDecodificadas = json_decode($resultadosJson, true) ?: [];
-            if (isset($filasDecodificadas['filas'])) {
-                $filasDecodificadas = $filasDecodificadas['filas'];
-            }
+            $rawJsonParsed = json_decode($resultadosJson, true) ?: [];
+            $filasDecodificadas = isset($rawJsonParsed['filas']) ? $rawJsonParsed['filas'] : $rawJsonParsed;
             $filasDecodificadas = normalizarReplicasMatriz(is_array($filasDecodificadas) ? $filasDecodificadas : []);
 
             $decExistente = json_decode($detalleActual['resultados_json'] ?? '', true) ?: [];
             $metadatos = !empty($datos['metadatos']) && is_array($datos['metadatos'])
                 ? $datos['metadatos']
-                : ($decExistente['metadatos'] ?? []);
+                : (!empty($rawJsonParsed['metadatos']) && is_array($rawJsonParsed['metadatos'])
+                    ? $rawJsonParsed['metadatos']
+                    : ($decExistente['metadatos'] ?? []));
 
             $revisionExistente = isset($decExistente['revision']) && is_array($decExistente['revision'])
                 ? $decExistente['revision']

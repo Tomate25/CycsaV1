@@ -313,4 +313,53 @@ class ControlCalidadReplicasTest extends TestCase {
         $mod = detectarCambiosNumericosEnParesCC($previos, $cambiados);
         $this->assertSame(['MS-0001-26'], $mod);
     }
+
+    public function testVistaCapturaMatrizNoTieneInputsDuplicadosResultadosJson(): void {
+        $vista = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php');
+        $this->assertSame(1, substr_count($vista, 'name="resultados_json"'), 'Solo debe existir un input name="resultados_json" en captura_matriz');
+        $this->assertSame(1, substr_count($vista, 'id="input_resultados_json"'), 'Solo debe existir un elemento con id="input_resultados_json"');
+        $this->assertStringContainsString('prepararEnvioMatriz();', $vista, 'guardarMatrizFullSubmit debe invocar prepararEnvioMatriz antes de hacer submit');
+    }
+
+    public function testGuardarMatrizConDosFilasYUnaReplicaPersisteJSONCompletoYCC(): void {
+        $filas = [
+            ['Código laboratorio' => 'MS-0001-26', 'Carga (lb)' => '100', 'Edad (días)' => '28'],
+            ['Código laboratorio' => 'MS-0002-26', 'Carga (lb)' => '102', 'Edad (días)' => '28'],
+            [
+                'Código laboratorio' => 'MS-0001-26-CR',
+                '_es_replica' => true,
+                '_muestra_origen' => 'MS-0001-26',
+                'Carga (lb)' => '101',
+                'Edad (días)' => '28'
+            ]
+        ];
+
+        // Normalizar filas y simular guardado de payload
+        $normalizadas = normalizarReplicasMatriz($filas);
+        $this->assertCount(3, $normalizadas, 'Deben persistirse exactamente las 3 filas');
+        $this->assertTrue($normalizadas[2]['_es_replica']);
+        $this->assertSame('MS-0001-26', $normalizadas[2]['_muestra_origen']);
+
+        $payload = [
+            'version_actual' => 1,
+            'filas' => $normalizadas,
+            'metadatos' => ['proyecto' => 'Test Hotfix CC'],
+            'revision' => ['estado' => 'en_revision']
+        ];
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+        // Recargar JSON
+        $recargado = json_decode($json, true);
+        $this->assertCount(3, $recargado['filas']);
+        $this->assertTrue($recargado['filas'][2]['_es_replica']);
+        $this->assertSame('MS-0001-26', $recargado['filas'][2]['_muestra_origen']);
+
+        // CC debe listar la réplica y bloquear aprobación
+        $stCC = obtenerEstadoControlCalidadMatriz($json);
+        $this->assertTrue($stCC['tiene_replicas'], 'Debe registrar que tiene réplicas');
+        $this->assertSame('pendiente', $stCC['estado']);
+        $this->assertFalse($stCC['puede_aprobar'], 'La aprobación debe estar bloqueada con réplica pendiente');
+        $this->assertNotNull($stCC['motivo_bloqueo']);
+        $this->assertStringContainsString('pendiente', $stCC['motivo_bloqueo']);
+    }
 }

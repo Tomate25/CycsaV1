@@ -603,10 +603,6 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     <input type="hidden" name="id_detalle" value="<?= $detalle['id'] ?>">
     <input type="hidden" name="resultados_json" id="input_resultados_json" value="">
 
-        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-    <input type="hidden" name="id_detalle" value="<?= $detalle['id'] ?>">
-    <input type="hidden" name="resultados_json" id="input_resultados_json" value="">
-
     <!-- SECCIÓN 1: GRILLA DE CAPTURA Y MEDICIONES (PRIORIDAD OPERATIVA) -->
     <div class="seccion-form" style="margin-bottom: 24px; padding: 22px; border-radius: 8px; border: 1px solid #cbd5e1; border-top: 4px solid var(--cycsa-azul, #103487); background: #ffffff;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
@@ -1790,12 +1786,19 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             metadatos: metaObj
         };
 
-        document.getElementById('input_resultados_json').value = JSON.stringify(payload);
+        const inputJson = document.getElementById('input_resultados_json');
+        if (inputJson) {
+            inputJson.value = JSON.stringify(payload);
+        }
     }
 
     function guardarMatrizFullSubmit() {
-        document.getElementById('form-matriz-completa').dispatchEvent(new Event('submit', { cancelable: true }));
-        document.getElementById('form-matriz-completa').submit();
+        prepararEnvioMatriz();
+        const form = document.getElementById('form-matriz-completa');
+        if (form) {
+            form.dispatchEvent(new Event('submit', { cancelable: true }));
+            form.submit();
+        }
     }
 
     function manejarSubidaLogoAcreditacion(input) {
