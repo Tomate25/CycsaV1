@@ -2,6 +2,15 @@
 
 Todas las novedades, cambios notables, correcciones y actualizaciones de CYCSA ERP & LIMS se documentarán en este archivo.
 
+## [Sprint C.5] - Bitácora quién-hizo-qué (O/S, matriz, RT-FM-13)
+
+### Añadido
+- Migración `027_bitacora_entidades`: columnas nullable `entidad_tipo`, `entidad_id`, `id_os`, `usuario_rol` y `datos_json`, más índices por O/S, entidad y fecha. Idempotente. La bitácora sigue siendo append-only: la aplicación no expone UPDATE ni DELETE.
+- `registrarBitacora` acepta un 5.º argumento opcional `?array $ctx`. Sin contexto, el INSERT legacy no toca las columnas nuevas. Con contexto escribe entidad, O/S, rol (o `$_SESSION['usuario_rol']`) y `datos_json`. Atajo `registrarEventoOS`.
+- `obtenerBitacoraOS`: filas con `id_os`, más legado cuyo `id_referencia` es la O/S en los módulos de orden, operaciones, hojas y laboratorio. Quedan fuera las acciones cuyo id no es la O/S (matriz, congelado RT-FM-13, cambio de plantilla, roturas por muestra). Se anexa el historial JSON de revisión de matrices con `fuente=json`, sin sustituir `resultados_json`.
+- Detalle de O/S y `GET /ordenes-servicio/bitacora` (AuthMiddleware). Acceso si el rol de sesión es 1, 2 o 3, o si el rol tiene `tienePermiso('bitacora','ver')`. El permiso explícito cubre a un laboratorista sin ampliar el panel global, que sigue restringido al rol 1. Filtros de usuario, acción, entidad, fechas e `id_os` en el panel y en la vista de la O/S.
+- En captura de matriz, enlace a la bitácora de la O/S filtrada al ensayo. La barra de revisiones JSON permanece.
+
 ## [Sprint C.4] - Bodegas y traslados de equipos
 
 ### Añadido

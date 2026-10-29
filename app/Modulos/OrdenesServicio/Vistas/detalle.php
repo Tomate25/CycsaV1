@@ -99,6 +99,11 @@ if (!empty($os['contactos_json'])) {
             <i class="fa-solid fa-arrow-left"></i> Volver a Órdenes
         </a>
         <div style="display: flex; gap: 10px;">
+            <?php if (!empty($mostrar_bitacora)): ?>
+            <a href="/Cycsa/publico/ordenes-servicio/bitacora?id=<?= (int)($os['id'] ?? 0) ?>" class="btn-cycsa btn-cycsa-secondary">
+                <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
+            </a>
+            <?php endif; ?>
             <a href="/Cycsa/publico/ordenes-servicio/descargar-pdf?id=<?= (int)($os['id'] ?? 0) ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary">
                 <i class="fa-solid fa-file-pdf"></i> Descargar PDF Oficial
             </a>
@@ -352,3 +357,13 @@ if (!empty($os['contactos_json'])) {
         </div>
     </div>
 </div>
+<?php if (!empty($mostrar_bitacora)): ?>
+<div class="no-print" style="max-width: 960px; margin: 8px auto 40px auto;">
+<?php
+$bitacora_modulo_nombre = $bitacora_modulo_nombre ?? ('Orden de Servicio ' . ($os['codigo_os'] ?? ''));
+$bitacora_limite = $bitacora_limite ?? 200;
+$bitacora_abierta = $bitacora_abierta ?? false;
+require dirname(__DIR__, 3) . '/Views/parciales/bitacora_modulo.php';
+?>
+</div>
+<?php endif; ?>

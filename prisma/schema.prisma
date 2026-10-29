@@ -49,9 +49,17 @@ model bitacora {
   id_referencia  Int?
   ip             String    @db.VarChar(45)
   fecha_creacion DateTime  @default(now()) @db.Timestamp(0)
+  entidad_tipo   String?   @db.VarChar(40)
+  entidad_id     Int?
+  id_os          Int?
+  usuario_rol    String?   @db.VarChar(50)
+  datos_json     String?   @db.Text
   usuarios       usuarios? @relation(fields: [id_usuario], references: [id], onUpdate: Restrict, map: "bitacora_ibfk_1")
 
   @@index([id_usuario], map: "id_usuario")
+  @@index([id_os], map: "idx_bitacora_id_os")
+  @@index([entidad_tipo, entidad_id], map: "idx_bitacora_entidad")
+  @@index([fecha_creacion], map: "idx_bitacora_fecha")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments

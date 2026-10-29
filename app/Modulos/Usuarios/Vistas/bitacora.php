@@ -24,7 +24,28 @@ $accionesAmigables = [
     'rechazar_cliente' => 'Rechazado por Cliente',
     'aprobar_admin_cliente' => 'Aprobado por Admin',
     'rechazar_admin_cliente' => 'Rechazado por Admin',
-    'editar_reenviar' => 'Corregido y Re-enviado'
+    'editar_reenviar' => 'Corregido y Re-enviado',
+    'crear_os' => 'Creación O/S',
+    'cambiar_estado' => 'Cambio de Estado',
+    'programar_muestreo' => 'Programación Muestreo',
+    'finalizar_muestreo' => 'Muestreo Finalizado',
+    'hoja_campo' => 'Hoja de Campo',
+    'hoja_solicitud' => 'Hoja de Solicitud',
+    'emitir_solicitud' => 'Emisión Solicitud',
+    'enviar_revision_resultados' => 'Envío Revisión Resultados',
+    'aprobar_revision_resultados' => 'Aprobación de Resultados',
+    'observar_resultados' => 'Resultados Observados',
+    'guardar_matriz' => 'Guardar Matriz',
+    'aprobar_matriz' => 'Aprobar Matriz',
+    'devolver_matriz' => 'Devolver Matriz',
+    'congelar_plantillas' => 'Congelar Plantillas RT-FM-13',
+    'cambio_plantilla' => 'Cambio de Plantilla',
+    'cerrar_orden' => 'Cierre de O/S',
+    'enviar_matriz_cliente' => 'Envío Matriz al Cliente',
+    'alerta_regresion' => 'Alerta de Regresión',
+    'correccion_administrativa' => 'Corrección Administrativa',
+    'omitir_espera' => 'Omitir Espera',
+    'aprobar' => 'Aprobación O/S'
 ];
 
 /**
@@ -219,6 +240,36 @@ function formatearDescripcionBitacora(array $log): string {
             </select>
         </div>
 
+        <div class="filtro-grupo" style="width: 160px;">
+            <label class="filtro-label">Acción</label>
+            <input type="text" name="accion" value="<?= htmlspecialchars($accion_seleccionada ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="guardar_matriz" class="form-control">
+        </div>
+
+        <div class="filtro-grupo" style="width: 150px;">
+            <label class="filtro-label">Entidad</label>
+            <select name="entidad_tipo" class="form-control">
+                <option value="">Todas</option>
+                <?php foreach (['os' => 'O/S', 'matriz' => 'Matriz', 'rtfm13' => 'RT-FM-13', 'muestra' => 'Muestra', 'otro' => 'Otro'] as $claveEnt => $etiqEnt): ?>
+                    <option value="<?= $claveEnt ?>" <?= (($entidad_seleccionada ?? '') === $claveEnt) ? 'selected' : '' ?>><?= $etiqEnt ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="filtro-grupo" style="width: 120px;">
+            <label class="filtro-label">O/S (id)</label>
+            <input type="number" min="1" name="id_os" value="<?= htmlspecialchars((string)($id_os_seleccionado ?? ''), ENT_QUOTES, 'UTF-8') ?>" class="form-control">
+        </div>
+
+        <div class="filtro-grupo" style="width: 150px;">
+            <label class="filtro-label">Desde</label>
+            <input type="date" name="desde" value="<?= htmlspecialchars($fecha_desde ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control">
+        </div>
+
+        <div class="filtro-grupo" style="width: 150px;">
+            <label class="filtro-label">Hasta</label>
+            <input type="date" name="hasta" value="<?= htmlspecialchars($fecha_hasta ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control">
+        </div>
+
         <div class="filtro-grupo" style="display: flex; flex-direction: row; gap: 10px; margin-top: auto; padding-top: 5px;">
             <button type="submit" class="btn-premium"><i class="fa-solid fa-filter"></i> Filtrar</button>
             <a href="/Cycsa/publico/panel/bitacora" class="btn-premium btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Limpiar</a>
@@ -234,6 +285,7 @@ function formatearDescripcionBitacora(array $log): string {
                     <th style="width: 150px;">Usuario</th>
                     <th style="width: 110px;">Módulo</th>
                     <th style="width: 130px;">Acción</th>
+                    <th style="width: 120px;">Entidad</th>
                     <th>Descripción</th>
                     <th style="width: 80px;">IP</th>
                 </tr>
@@ -287,6 +339,16 @@ function formatearDescripcionBitacora(array $log): string {
                                 <?= htmlspecialchars($accionLimpia, ENT_QUOTES, 'UTF-8') ?>
                             </span>
                         </td>
+                        <td style="font-size: 12px; color: #334155;">
+                            <?php if (!empty($log['entidad_tipo'])): ?>
+                                <span class="badge-accion"><?= htmlspecialchars((string)$log['entidad_tipo'], ENT_QUOTES, 'UTF-8') ?><?= !empty($log['entidad_id']) ? ' #' . (int)$log['entidad_id'] : '' ?></span>
+                                <?php if (!empty($log['id_os'])): ?>
+                                    <div style="margin-top: 4px; color: #64748b;">O/S #<?= (int)$log['id_os'] ?></div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <span style="color:#94a3b8;">—</span>
+                            <?php endif; ?>
+                        </td>
                         <?php $descFormateada = formatearDescripcionBitacora($log); ?>
                         <td style="color: #334155; font-weight: 500;">
                             <span class="truncate-desc"><?= htmlspecialchars($descFormateada, ENT_QUOTES, 'UTF-8') ?></span>
@@ -297,7 +359,7 @@ function formatearDescripcionBitacora(array $log): string {
                     
                     <!-- Collapsible Details Row -->
                     <tr id="detail-row-<?= $log['id'] ?>" class="detail-row">
-                        <td colspan="6">
+                        <td colspan="7">
                             <div class="detail-container">
                                 <div class="detail-card">
                                     <div class="detail-left">
@@ -342,6 +404,9 @@ function formatearDescripcionBitacora(array $log): string {
                                             <span class="detail-label">Operador / Usuario</span>
                                             <div class="detail-value">
                                                 <strong><?= htmlspecialchars($log['usuario_nombre'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                                <?php if (!empty($log['usuario_rol'])): ?>
+                                                    <span style="display:block; font-size:12px; color:#64748b;">Rol <?= htmlspecialchars((string)$log['usuario_rol'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                <?php endif; ?>
                                                 <?php if (!$log['id_usuario']): ?>
                                                     <span style="display: block; font-size: 12px; color: #a1a1aa; font-style: italic;">Acción anónima (Cliente o Proceso Automático)</span>
                                                 <?php endif; ?>

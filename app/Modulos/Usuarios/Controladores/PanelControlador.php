@@ -370,8 +370,20 @@ class PanelControlador extends ControladorBase {
         $busqueda = $_GET['q'] ?? '';
         $modulo_sel = $_GET['modulo'] ?? '';
         $usuario_sel = $_GET['usuario'] ?? '';
+        $entidad_sel = trim((string)($_GET['entidad_tipo'] ?? ''));
+        $accion_sel = trim((string)($_GET['accion'] ?? ''));
+        $fecha_desde = trim((string)($_GET['desde'] ?? ''));
+        $fecha_hasta = trim((string)($_GET['hasta'] ?? ''));
+        $id_os_sel = (int)($_GET['id_os'] ?? 0);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_desde)) {
+            $fecha_desde = '';
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_hasta)) {
+            $fecha_hasta = '';
+        }
+        $columnasEntidad = function_exists('bitacoraColumnasEntidadDisponibles') && bitacoraColumnasEntidadDisponibles($db);
         
-        // Construir la consulta con filtros
+        // Construir la consulta con filtros. Solo lectura: no hay UPDATE/DELETE de bitácora.
         $sql = "SELECT b.* 
                 FROM bitacora b
                 WHERE 1=1";
@@ -379,8 +391,12 @@ class PanelControlador extends ControladorBase {
         $params = [];
         
         if (!empty($busqueda)) {
-            $sql .= " AND (b.descripcion LIKE :q OR b.usuario_nombre LIKE :q OR b.accion LIKE :q OR b.ip LIKE :q)";
-            $params['q'] = '%' . trim($busqueda) . '%';
+            $sql .= " AND (b.descripcion LIKE :q_desc OR b.usuario_nombre LIKE :q_nom OR b.accion LIKE :q_acc OR b.ip LIKE :q_ip)";
+            $like = '%' . trim($busqueda) . '%';
+            $params['q_desc'] = $like;
+            $params['q_nom'] = $like;
+            $params['q_acc'] = $like;
+            $params['q_ip'] = $like;
         }
         
         if (!empty($modulo_sel)) {
@@ -391,6 +407,31 @@ class PanelControlador extends ControladorBase {
         if (!empty($usuario_sel)) {
             $sql .= " AND b.id_usuario = :usuario";
             $params['usuario'] = (int)$usuario_sel;
+        }
+
+        if ($accion_sel !== '') {
+            $sql .= " AND b.accion = :accion";
+            $params['accion'] = $accion_sel;
+        }
+
+        if ($fecha_desde !== '') {
+            $sql .= " AND DATE(b.fecha_creacion) >= :desde";
+            $params['desde'] = $fecha_desde;
+        }
+
+        if ($fecha_hasta !== '') {
+            $sql .= " AND DATE(b.fecha_creacion) <= :hasta";
+            $params['hasta'] = $fecha_hasta;
+        }
+
+        if ($columnasEntidad && $entidad_sel !== '') {
+            $sql .= " AND b.entidad_tipo = :entidad_tipo";
+            $params['entidad_tipo'] = $entidad_sel;
+        }
+
+        if ($columnasEntidad && $id_os_sel > 0) {
+            $sql .= " AND b.id_os = :id_os";
+            $params['id_os'] = $id_os_sel;
         }
         
         $sql .= " ORDER BY b.id DESC LIMIT 300";
@@ -428,6 +469,12 @@ class PanelControlador extends ControladorBase {
             'busqueda' => $busqueda,
             'modulo_seleccionado' => $modulo_sel,
             'usuario_seleccionado' => $usuario_sel,
+            'entidad_seleccionada' => $entidad_sel,
+            'accion_seleccionada' => $accion_sel,
+            'fecha_desde' => $fecha_desde,
+            'fecha_hasta' => $fecha_hasta,
+            'id_os_seleccionado' => $id_os_sel > 0 ? $id_os_sel : '',
+            'columnas_entidad' => $columnasEntidad,
             'stats' => [
                 'total' => $total_logs,
                 'hoy' => $logs_hoy,

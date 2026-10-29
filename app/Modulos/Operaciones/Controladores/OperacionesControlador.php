@@ -182,7 +182,13 @@ class OperacionesControlador extends ControladorBase {
 
             $codigoOS = $modelo->crearOS($idCotizacion, $tipoContrato, $fechaM, $horaM, $tecnicoM, $vehiculoM);
             if ($codigoOS) {
-                registrarBitacora('operaciones', 'crear_os', 'Orden de Servicio creada: ' . $codigoOS . ' con programación de muestreo.');
+                $idOsCreada = (int)Conexion::obtenerInstancia()->lastInsertId();
+                if ($idOsCreada <= 0) {
+                    $stmtOsNueva = Conexion::obtenerInstancia()->prepare('SELECT id FROM ordenes_servicio WHERE codigo_os = :codigo ORDER BY id DESC LIMIT 1');
+                    $stmtOsNueva->execute(['codigo' => $codigoOS]);
+                    $idOsCreada = (int)$stmtOsNueva->fetchColumn();
+                }
+                registrarEventoOS('operaciones', 'crear_os', 'Orden de Servicio creada: ' . $codigoOS . ' con programación de muestreo.', $idOsCreada);
                 $_SESSION['exito'] = "Orden de Servicio $codigoOS creada exitosamente.";
             } else {
                 $_SESSION['error'] = 'Error al crear la Orden de Servicio.';
@@ -955,7 +961,7 @@ class OperacionesControlador extends ControladorBase {
             if ($modelo->actualizarEstadoOS($idOS, $estado, $motivo, $requiere)) {
                 $osInfo = $modelo->obtenerOSPorId($idOS);
                 $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
-                registrarBitacora('operaciones', 'cambiar_estado', 'Orden de Servicio ' . $codigoTexto . ' cambiada al estado: ' . $estado, $idOS);
+                registrarEventoOS('operaciones', 'cambiar_estado', 'Orden de Servicio ' . $codigoTexto . ' cambiada al estado: ' . $estado, $idOS, ['datos' => ['estado' => $estado]]);
                 $_SESSION['exito'] = 'Estado de la orden de servicio actualizado exitosamente.';
             } else {
                 $_SESSION['error'] = 'Error al actualizar el estado de la orden de servicio.';
@@ -994,7 +1000,7 @@ class OperacionesControlador extends ControladorBase {
             if ($modelo->programarMuestreo($idOS, $fecha, $hora, $tecnico, $vehiculo)) {
                 $osInfo = $modelo->obtenerOSPorId($idOS);
                 $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
-                registrarBitacora('operaciones', 'programar_muestreo', 'Muestreo programado para Orden de Servicio ' . $codigoTexto, $idOS);
+                registrarEventoOS('operaciones', 'programar_muestreo', 'Muestreo programado para Orden de Servicio ' . $codigoTexto, $idOS);
                 $_SESSION['exito'] = 'Programación de muestreo en campo guardada y estado actualizado.';
             } else {
                 $_SESSION['error'] = 'Error al programar el muestreo.';
@@ -1034,7 +1040,7 @@ class OperacionesControlador extends ControladorBase {
             if ($modelo->registrarHojaCampo($idOS, $codigo, $operador, $notas, $horasEspera)) {
                 $osInfo = $modelo->obtenerOSPorId($idOS);
                 $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
-                registrarBitacora('operaciones', 'hoja_campo', 'Hoja de Campo registrada (CYCSA-RT-FM-07) para Orden de Servicio ' . $codigoTexto, $idOS);
+                registrarEventoOS('operaciones', 'hoja_campo', 'Hoja de Campo registrada (CYCSA-RT-FM-07) para Orden de Servicio ' . $codigoTexto, $idOS);
                 $_SESSION['exito'] = "Hoja de Campo CYCSA-RT-FM-07 guardada. Período de espera configurado a $horasEspera hora(s).";
             } else {
                 $_SESSION['error'] = 'Error al guardar la hoja de campo.';
@@ -1069,7 +1075,7 @@ class OperacionesControlador extends ControladorBase {
             if ($modelo->omitirEsperaMuestreo($idOS)) {
                 $osInfo = $modelo->obtenerOSPorId($idOS);
                 $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
-                registrarBitacora('operaciones', 'omitir_espera', 'Período de espera liberado/omitido por supervisión para ' . $codigoTexto, $idOS);
+                registrarEventoOS('operaciones', 'omitir_espera', 'Período de espera liberado/omitido por supervisión para ' . $codigoTexto, $idOS);
                 $_SESSION['exito'] = 'Tiempo de espera liberado exitosamente. Las muestras ya pueden ser recepcionadas e ingresadas.';
             } else {
                 $_SESSION['error'] = 'Error al liberar el tiempo de espera.';
@@ -1230,7 +1236,11 @@ class OperacionesControlador extends ControladorBase {
 
                 $numReg = $hoja['numero_registro'] ?? ('#' . ($hoja['id'] ?? ''));
                 $codigoTexto = $os ? ($os['codigo_os'] . " (Hoja Reg: {$numReg})") : ('ID ' . $idOS);
-                registrarBitacora('operaciones', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada y PDF generado para Orden de Servicio ' . $codigoTexto, $idOS);
+                registrarEventoOS('operaciones', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada y PDF generado para Orden de Servicio ' . $codigoTexto, $idOS, [
+                    'entidad_tipo' => 'rtfm13',
+                    'entidad_id' => (int)($hoja['id'] ?? $idHojaGuardada),
+                    'datos' => ['id_hoja' => (int)($hoja['id'] ?? $idHojaGuardada)],
+                ]);
                 $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado.';
             } else {
                 $_SESSION['error'] = 'Error al registrar la Hoja de Solicitud.';
@@ -1265,7 +1275,9 @@ class OperacionesControlador extends ControladorBase {
             if ($modelo->actualizarEstadoOS($idOS, 'Estado 6: Ejecucion Ensayos')) {
                 $osInfo = $modelo->obtenerOSPorId($idOS);
                 $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
-                registrarBitacora('operaciones', 'emitir_solicitud', 'Solicitud emitida a técnicos para Orden de Servicio ' . $codigoTexto, $idOS);
+                registrarEventoOS('operaciones', 'emitir_solicitud', 'Solicitud emitida a técnicos para Orden de Servicio ' . $codigoTexto, $idOS, [
+                    'entidad_tipo' => 'rtfm13',
+                ]);
                 $_SESSION['exito'] = 'Solicitud emitida a técnicos de laboratorio. Las muestras están disponibles para ejecución de ensayos.';
             } else {
                 $_SESSION['error'] = 'Error al emitir la solicitud.';
@@ -1300,7 +1312,7 @@ class OperacionesControlador extends ControladorBase {
             if ($modelo->actualizarEstadoOS($idOS, 'Estado 7: Revision Resultados')) {
                 $osInfo = $modelo->obtenerOSPorId($idOS);
                 $codigoTexto = $osInfo ? ($osInfo['codigo_os'] . (!empty($osInfo['cliente_nombre']) ? ' (' . $osInfo['cliente_nombre'] . ')' : '')) : ('ID ' . $idOS);
-                registrarBitacora('operaciones', 'enviar_revision_resultados', 'Resultados de ensayos enviados a revisión para Orden de Servicio ' . $codigoTexto, $idOS);
+                registrarEventoOS('operaciones', 'enviar_revision_resultados', 'Resultados de ensayos enviados a revisión para Orden de Servicio ' . $codigoTexto, $idOS);
                 $_SESSION['exito'] = 'Resultados enviados a revisión de calidad por el supervisor.';
             } else {
                 $_SESSION['error'] = 'Error al enviar a revisión.';
@@ -1346,7 +1358,7 @@ class OperacionesControlador extends ControladorBase {
             if ($decision === 'Aprobar') {
                 $exito = $modelo->actualizarEstadoOS($idOS, 'Estado 7: Revision Resultados', null);
                 if ($exito) {
-                    registrarBitacora('operaciones', 'aprobar_revision_resultados', 'Revisión general de resultados aprobada para Orden de Servicio ' . $codigoTexto . '.', $idOS);
+                    registrarEventoOS('operaciones', 'aprobar_revision_resultados', 'Revisión general de resultados aprobada para Orden de Servicio ' . $codigoTexto . '.', $idOS);
                     $_SESSION['exito'] = 'Revisión general aprobada. El cierre de la orden requiere matrices aprobadas y factura pagada.';
                 }
             } else {
@@ -1357,7 +1369,9 @@ class OperacionesControlador extends ControladorBase {
                 }
                 $exito = $modelo->actualizarEstadoOS($idOS, 'Estado 6: Ejecucion Ensayos', $motivo);
                 if ($exito) {
-                    registrarBitacora('operaciones', 'observar_resultados', 'Resultados de Orden de Servicio ' . $codigoTexto . ' observados: ' . $motivo, $idOS);
+                    registrarEventoOS('operaciones', 'observar_resultados', 'Resultados de Orden de Servicio ' . $codigoTexto . ' observados: ' . $motivo, $idOS, [
+                        'datos' => ['motivo' => $motivo],
+                    ]);
                     $_SESSION['exito'] = 'Resultados rechazados y devueltos a ejecución de ensayos con la respectiva observación.';
                 }
             }
@@ -1955,11 +1969,21 @@ class OperacionesControlador extends ControladorBase {
                 $metadatos['logo_acreditacion'] = $decExistente['metadatos']['logo_acreditacion'];
             }
 
-            registrarBitacora(
+            $idOsMatriz = is_array($osActual) ? (int)($osActual['id'] ?? 0) : 0;
+            if ($idOsMatriz <= 0) {
+                $idOsMatriz = bitacoraIdOsPorDetalleEnsayo($idDetalle);
+            }
+            registrarEventoOS(
                 'operaciones',
                 'guardar_matriz',
                 "Matriz técnica guardada como Pendiente de revisión para '{$detalleActual['descripcion_ensayo']}' (Detalle #{$idDetalle})",
-                $idDetalle
+                $idOsMatriz,
+                [
+                    'entidad_tipo' => 'matriz',
+                    'entidad_id' => $idDetalle,
+                    'id_referencia' => $idDetalle,
+                    'datos' => ['id_detalle' => $idDetalle],
+                ]
             );
 
             $_SESSION['exito'] = 'Matriz técnica guardada correctamente con estado Pendiente de revisión.';
@@ -2068,11 +2092,16 @@ class OperacionesControlador extends ControladorBase {
                     'id' => $idDetalle
                 ]);
 
-                registrarBitacora(
+                registrarEventoOS(
                     'operaciones',
                     'subir_logo_acreditacion',
                     "Asignado sello/logo de acreditación para '{$rowDet['descripcion_ensayo']}' (Detalle #{$idDetalle})",
-                    $idDetalle
+                    bitacoraIdOsPorDetalleEnsayo($idDetalle),
+                    [
+                        'entidad_tipo' => 'matriz',
+                        'entidad_id' => $idDetalle,
+                        'id_referencia' => $idDetalle,
+                    ]
                 );
             }
         }
@@ -2117,11 +2146,16 @@ class OperacionesControlador extends ControladorBase {
                     'id' => $idDetalle
                 ]);
 
-                registrarBitacora(
+                registrarEventoOS(
                     'operaciones',
                     'eliminar_logo_acreditacion',
                     "Retirado sello/logo de acreditación para '{$rowDet['descripcion_ensayo']}' (Detalle #{$idDetalle})",
-                    $idDetalle
+                    bitacoraIdOsPorDetalleEnsayo($idDetalle),
+                    [
+                        'entidad_tipo' => 'matriz',
+                        'entidad_id' => $idDetalle,
+                        'id_referencia' => $idDetalle,
+                    ]
                 );
             }
         }
@@ -2238,11 +2272,16 @@ class OperacionesControlador extends ControladorBase {
                 'id' => $idDetalle
             ]);
 
-            registrarBitacora(
+            registrarEventoOS(
                 'operaciones',
                 'aprobar_matriz',
                 "Matriz técnica APROBADA para '{$detalle['descripcion_ensayo']}' en O/S {$detalle['codigo_os']}" . (!empty($nota) ? " Nota: {$nota}" : ''),
-                $detalle['id_os']
+                (int)$detalle['id_os'],
+                [
+                    'entidad_tipo' => 'matriz',
+                    'entidad_id' => $idDetalle,
+                    'datos' => ['nota' => $nota],
+                ]
             );
 
             $_SESSION['exito'] = "Matriz técnica aprobada con éxito. Ya se encuentra habilitada para emisión y envío al cliente.";
@@ -2365,11 +2404,16 @@ class OperacionesControlador extends ControladorBase {
                 'id' => $idDetalle
             ]);
 
-            registrarBitacora(
+            registrarEventoOS(
                 'operaciones',
                 'devolver_matriz',
                 "Matriz técnica DEVUELTA para '{$detalle['descripcion_ensayo']}' en O/S {$detalle['codigo_os']}. Observación: {$motivo}",
-                $detalle['id_os']
+                (int)$detalle['id_os'],
+                [
+                    'entidad_tipo' => 'matriz',
+                    'entidad_id' => $idDetalle,
+                    'datos' => ['motivo' => $motivo],
+                ]
             );
 
             $_SESSION['exito'] = "Matriz técnica devuelta al laboratorio con las observaciones registradas.";
@@ -2559,11 +2603,16 @@ class OperacionesControlador extends ControladorBase {
                 error_log('Error registrando en documentos_reemisiones: ' . $e->getMessage());
             }
 
-            registrarBitacora(
+            registrarEventoOS(
                 'operaciones',
                 'correccion_administrativa',
                 "Corrección administrativa solicitada para '{$detalle['descripcion_ensayo']}' en O/S {$detalle['codigo_os']}. Nueva versión v{$nuevaVersionActual} ({$nuevoCodigoVersion}) sustituye a {$codigoPrevio}. Motivo: {$motivo}",
-                $detalle['id_os']
+                (int)$detalle['id_os'],
+                [
+                    'entidad_tipo' => 'matriz',
+                    'entidad_id' => $idDetalle,
+                    'datos' => ['version' => $nuevaVersionActual, 'codigo_version' => $nuevoCodigoVersion],
+                ]
             );
 
             $_SESSION['exito'] = "Corrección administrativa registrada como Versión {$nuevaVersionActual} ({$nuevoCodigoVersion}), sustituyendo al informe {$codigoPrevio}. La matriz se encuentra en estado PENDIENTE DE REVISIÓN para su re-aprobación formal.";
@@ -2638,7 +2687,9 @@ class OperacionesControlador extends ControladorBase {
                     $items,
                     $cxc ?: null,
                     fn(string $estado): bool => $modelo->actualizarEstadoOS($idOS, $estado, 'Cierre formal 100% técnico y comercial por supervisión'),
-                    fn(): bool => registrarBitacora('operaciones', 'cerrar_orden', "Orden de Servicio {$os['codigo_os']} finalizada y archivada formalmente (100% Ensayos Aprobados - Condición: {$condicionCom}).", $idOS),
+                    fn(): bool => registrarEventoOS('operaciones', 'cerrar_orden', "Orden de Servicio {$os['codigo_os']} finalizada y archivada formalmente (100% Ensayos Aprobados - Condición: {$condicionCom}).", $idOS, [
+                        'datos' => ['condicion_comercial' => $condicionCom],
+                    ]),
                     $condicionCom
                 );
                 if ($error !== null) {
@@ -3168,7 +3219,12 @@ class OperacionesControlador extends ControladorBase {
         $enviado = enviarCorreo($destinatario, $asunto, $cuerpoHTML, '', $adjuntos);
 
         if ($enviado) {
-            registrarBitacora('operaciones', 'enviar_matriz_cliente', 'Enviado informe de resultados de matriz (' . $detalle['codigo_os'] . ' - ' . $detalle['descripcion_ensayo'] . ') al correo: ' . $destinatario, $idDetalle);
+            registrarEventoOS('operaciones', 'enviar_matriz_cliente', 'Enviado informe de resultados de matriz (' . $detalle['codigo_os'] . ' - ' . $detalle['descripcion_ensayo'] . ') al correo: ' . $destinatario, (int)($detalle['id_os'] ?? 0), [
+                'entidad_tipo' => 'matriz',
+                'entidad_id' => $idDetalle,
+                'id_referencia' => $idDetalle,
+                'datos' => ['destinatario' => $destinatario],
+            ]);
             
             $logDir = dirname(__DIR__, 4) . '/storage/logs';
             if (!is_dir($logDir)) {
