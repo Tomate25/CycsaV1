@@ -221,6 +221,69 @@ $manoObra = $desglose['mano_obra'] ?? [];
         </div>
     </div>
 
+    <?php
+    $equiposEnObra = $equiposEnObra ?? [];
+    $bodegaObra = $bodegaObra ?? null;
+    ?>
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2 py-3">
+            <h5 class="fw-bold text-gray-800 mb-0">
+                <i class="fa-solid fa-dolly me-2 text-primary"></i>Equipos en obra
+            </h5>
+            <div class="d-flex gap-2">
+                <?php if (!empty($bodegaObra['id'])): ?>
+                    <a href="/Cycsa/publico/equipos-bodegas/bodega?id=<?= (int)$bodegaObra['id'] ?>" class="btn btn-sm btn-outline-primary">
+                        Abrir bodega <?= htmlspecialchars($bodegaObra['codigo'] ?? '') ?>
+                    </a>
+                <?php else: ?>
+                    <form method="POST" action="/Cycsa/publico/equipos-bodegas/guardar-bodega" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken ?? '') ?>">
+                        <input type="hidden" name="tipo" value="proyecto">
+                        <input type="hidden" name="proyecto_id" value="<?= (int)$proyecto['id'] ?>">
+                        <input type="hidden" name="volver" value="/Cycsa/publico/proyectos/detalle?id=<?= (int)$proyecto['id'] ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                            <i class="fa-solid fa-warehouse me-1"></i>Crear bodega de obra
+                        </button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Código</th>
+                        <th>Equipo</th>
+                        <th>Estado</th>
+                        <th>Desde</th>
+                        <th class="pe-3"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($equiposEnObra)): ?>
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                No hay equipos de laboratorio en la bodega de esta obra.
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($equiposEnObra as $eqObra): ?>
+                            <tr>
+                                <td class="ps-3 font-monospace fw-bold"><?= htmlspecialchars($eqObra['equipo_codigo']) ?></td>
+                                <td><?= htmlspecialchars($eqObra['equipo_nombre']) ?></td>
+                                <td><?= htmlspecialchars((string)$eqObra['estado']) ?></td>
+                                <td><small class="text-muted"><?= htmlspecialchars((string)$eqObra['desde']) ?></small></td>
+                                <td class="pe-3 text-end">
+                                    <a class="btn btn-sm btn-outline-secondary" href="/Cycsa/publico/equipos-bodegas/equipo?id=<?= (int)$eqObra['equipo_id'] ?>">Traslado</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Pestañas de Detalle por Partida Imputada -->
     <div class="card border-0 shadow-sm rounded-3">
         <div class="card-header bg-white border-bottom p-0">
