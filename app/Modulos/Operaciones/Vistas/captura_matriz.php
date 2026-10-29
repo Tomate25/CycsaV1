@@ -406,7 +406,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         if ($ccMatrizInfo['tiene_replicas']): 
         ?>
             <!-- CHIP ESTADO CONTROL DE CALIDAD DE RÉPLICAS -->
-            <a href="/Cycsa/publico/control-calidad/ver?id_detalle=<?= $idDetalle ?>" 
+            <a href="/Cycsa/publico/control-calidad/ver?id_detalle=<?= (int)($detalle['id'] ?? ($idDetalle ?? 0)) ?>" 
                class="badge text-decoration-none <?= $ccMatrizInfo['badge_clase'] ?>" 
                style="font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" 
                title="Ver dictamen analítico en Control de Calidad: <?= htmlspecialchars($ccMatrizInfo['motivo_bloqueo'] ?? 'Todas las réplicas conformes') ?>">
@@ -1048,6 +1048,104 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         }
     };
 
+    function normalizarTextoClave(txt) {
+        if (!txt) return '';
+        return String(txt)
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+    }
+
+    const DICCIONARIO_SINONIMOS = [
+        ['carga', 'cargalb', 'cargakg', 'cargamaxima', 'cargamaximalb', 'cargamaximakg'],
+        ['rcompresionkgcm2', 'resistenciakgcm2', 'rcompresionlbpin2', 'resistencialbpin2', 'resistencia', 'rcompresion', 'resistenciaalacompresion'],
+        ['fechadefabricacion', 'fechademoldeo', 'fechamoldeo', 'fechafabricacion', 'fechadecolado', 'fechacolado'],
+        ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura'],
+        ['edaddias', 'edad'],
+        ['disenodeconcretolbin2', 'disenodeconcretokgcm2', 'fcespecificado', 'fckgcm2', 'fc', 'disenokgcm2', 'diseno'],
+        ['areain2', 'areacm2', 'area'],
+        ['nombremuestra', 'nombredelamuestra', 'identificacion', 'muestra', 'codigodecampo', 'codigocampo'],
+        ['revenin', 'revenimientoin', 'revenimiento'],
+        ['revencm', 'revenimientocm'],
+        ['tempc', 'temperaturac', 'temperatura', 'temp'],
+        ['pesovolumetricokgm3', 'pesovolumetrico', 'pvsmaxkgm3', 'pvssitiokgm3', 'pvs'],
+        ['pvsmaxkgm3', 'pvsmax'],
+        ['pvssitiokgm3', 'pvssitiokgcm2', 'pvssitio'],
+        ['humedaddepct', 'humedaddecampopct', 'humedadsitiopct', 'humedadcampo'],
+        ['compactacionpp', 'compactacionpct', 'porcentajecompactacion'],
+        ['diametrocm', 'diametroin', 'diametro'],
+        ['porcentajeresistencia', 'porcentajecumplimiento'],
+        ['tipodefractura', 'fractura']
+    ];
+
+    function buscarValorEnFila(rowData, col, calcCol) {
+        if (!rowData || typeof rowData !== 'object') return '';
+        
+        // 1. Coincidencia directa exacta
+        if (rowData[col] !== undefined && rowData[col] !== null && String(rowData[col]).trim() !== '') {
+            return String(rowData[col]);
+        }
+        
+        // 2. Coincidencia por alias
+        if (calcCol && rowData[calcCol] !== undefined && rowData[calcCol] !== null && String(rowData[calcCol]).trim() !== '') {
+            return String(rowData[calcCol]);
+        }
+        
+        const colNorm = normalizarTextoClave(col);
+        const calcNorm = calcCol ? normalizarTextoClave(calcCol) : '';
+        
+        // 3. Coincidencia normalizada directa (ignora mayúsculas, tildes, signos y espacios)
+        for (const key in rowData) {
+            if (key.startsWith('_')) continue;
+            const keyNorm = normalizarTextoClave(key);
+            if (keyNorm === colNorm || (calcNorm && keyNorm === calcNorm)) {
+                if (rowData[key] !== undefined && rowData[key] !== null && String(rowData[key]).trim() !== '') {
+                    return String(rowData[key]);
+                }
+            }
+        }
+        
+        // 4. Coincidencia por grupo de sinónimos técnicos
+        for (const grupo of DICCIONARIO_SINONIMOS) {
+            if (grupo.includes(colNorm) || (calcNorm && grupo.includes(calcNorm))) {
+                for (const key in rowData) {
+                    if (key.startsWith('_')) continue;
+                    const keyNorm = normalizarTextoClave(key);
+                    if (grupo.includes(keyNorm)) {
+                        if (rowData[key] !== undefined && rowData[key] !== null && String(rowData[key]).trim() !== '') {
+                            return String(rowData[key]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 5. Fallback para Nombre muestra / réplica
+        if (colNorm === 'nombremuestra' || calcNorm === 'nombremuestra') {
+            if (rowData['_muestra_origen']) return rowData['_muestra_origen'] + ' (Réplica CR)';
+            if (rowData['Código laboratorio']) return String(rowData['Código laboratorio']);
+        }
+        
+        return '';
+    }
+
+    function sincronizarSinonimosFila(fila, saveKey, val) {
+        if (!fila || typeof fila !== 'object' || !saveKey) return;
+        const keyNorm = normalizarTextoClave(saveKey);
+        for (const grupo of DICCIONARIO_SINONIMOS) {
+            if (grupo.includes(keyNorm)) {
+                for (const k in fila) {
+                    if (k.startsWith('_')) continue;
+                    const targetNorm = normalizarTextoClave(k);
+                    if (grupo.includes(targetNorm)) {
+                        fila[k] = val;
+                    }
+                }
+            }
+        }
+    }
+
     let columnasActuales = [];
 
     function inicializarMatriz() {
@@ -1184,6 +1282,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
         filas.forEach((rowData, rIdx) => {
             const tr = document.createElement('tr');
+            tr.dataset.rowIndex = rIdx;
             const esReplica = rowData._es_replica === true || /-CR$/i.test(String(rowData[columnaCodigoReplica] || ''));
             tr.dataset.esReplica = esReplica ? '1' : '0';
             tr.dataset.muestraOrigen = esReplica ? String(rowData._muestra_origen || String(rowData[columnaCodigoReplica] || '').replace(/-CR$/i, '')) : '';
@@ -1239,7 +1338,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'matriz-input';
-                input.value = rowData[col] !== undefined ? rowData[col] : (rowData[calcCol] !== undefined ? rowData[calcCol] : '');
+                input.value = buscarValorEnFila(rowData, col, calcCol);
                 input.dataset.col = calcCol;
                 input.dataset.saveCol = col;
                 input.dataset.row = rIdx;
@@ -1526,7 +1625,8 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         }
     }
 
-    function recalculateCompresion() {
+    function recalculateCompresion(ev) {
+        const isUserEdit = !!(ev && (ev.type === 'input' || ev.type === 'change'));
         const rows = document.querySelectorAll('#tabla-body tr');
         rows.forEach(tr => {
             const cargaInput = tr.querySelector('input[data-col="Carga (lb)"]') || tr.querySelector('input[data-col="Carga (kg)"]');
@@ -1566,8 +1666,8 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         kgcm2 = psi * 0.070307;
                     }
 
-                    if (rPsiInput) rPsiInput.value = psi.toFixed(2);
-                    if (rKgInput) rKgInput.value = kgcm2.toFixed(2);
+                    if (rPsiInput && (!rPsiInput.value || isUserEdit)) rPsiInput.value = psi.toFixed(2);
+                    if (rKgInput && (!rKgInput.value || isUserEdit)) rKgInput.value = kgcm2.toFixed(2);
                 } else {
                     if (rPsiInput) rPsiInput.value = '';
                     if (rKgInput) rKgInput.value = '';
@@ -1743,13 +1843,15 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         const rows = document.querySelectorAll('#tabla-body tr');
         const resultados = [];
 
-        rows.forEach(tr => {
-            const rowObj = {};
+        rows.forEach((tr, rIdx) => {
+            const originalRow = (Array.isArray(DATOS_INICIALES) && DATOS_INICIALES[rIdx]) ? { ...DATOS_INICIALES[rIdx] } : {};
+            const rowObj = Object.assign({}, originalRow);
             let hasAnyVal = false;
             tr.querySelectorAll('input[data-col]').forEach(inp => {
                 const colName = inp.dataset.saveCol || inp.dataset.col;
                 const val = inp.value;
                 rowObj[colName] = val;
+                sincronizarSinonimosFila(rowObj, colName, val);
                 if (val && val.trim() !== '' && val !== '—') {
                     hasAnyVal = true;
                 }

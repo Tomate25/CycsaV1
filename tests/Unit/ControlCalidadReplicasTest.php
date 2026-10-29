@@ -362,4 +362,85 @@ class ControlCalidadReplicasTest extends TestCase {
         $this->assertNotNull($stCC['motivo_bloqueo']);
         $this->assertStringContainsString('pendiente', $stCC['motivo_bloqueo']);
     }
+
+    public function testChipControlCalidadEnCapturaMatrizTieneIdDetalle(): void {
+        $vista = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php');
+        $this->assertStringContainsString('/control-calidad/ver?id_detalle=<?= (int)($detalle[\'id\'] ?? ($idDetalle ?? 0)) ?>', $vista, 'El chip de CC debe tener id_detalle vinculado al detalle actual');
+        $this->assertStringNotContainsString('/control-calidad/ver?id_detalle=<?= $idDetalle ?>', $vista, 'No debe existir el link con variable indefinida');
+
+        $controlador = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Controladores/OperacionesControlador.php');
+        $this->assertStringContainsString("'idDetalle' => \$idDetalle", $controlador, 'El controlador debe inyectar idDetalle a la vista');
+    }
+
+    public function testRoundTripMedicionesYReplicasConSinonimos(): void {
+        $vista = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php');
+        $this->assertStringContainsString('buscarValorEnFila', $vista, 'La vista debe usar buscarValorEnFila para round-trip de valores');
+        $this->assertStringContainsString('sincronizarSinonimosFila', $vista, 'La vista debe sincronizar sinónimos al serializar el payload');
+        $this->assertStringContainsString('DICCIONARIO_SINONIMOS', $vista);
+
+        // Simular round-trip de mediciones de OS-2026-0006 (id_detalle=20)
+        $filasGuardadas = [
+            [
+                'Código laboratorio' => 'MS-9994-26',
+                'Fecha de moldeo' => '2026-10-01',
+                'Fecha de ensayo' => '2026-10-29',
+                'Edad (días)' => '28',
+                'Diámetro (cm)' => '15.0',
+                'Área (cm²)' => '176.71',
+                'Carga (kg)' => '37110',
+                'Resistencia (kg/cm²)' => '210.0',
+                'f\'c especificado' => '210.0',
+                '% Resistencia' => '100.0%',
+                'Tipo de fractura' => 'Cono'
+            ],
+            [
+                'Código laboratorio' => 'MS-9995-26',
+                'Fecha de moldeo' => '2026-10-01',
+                'Fecha de ensayo' => '2026-10-29',
+                'Edad (días)' => '28',
+                'Diámetro (cm)' => '15.0',
+                'Área (cm²)' => '176.71',
+                'Carga (kg)' => '37500',
+                'Resistencia (kg/cm²)' => '212.2',
+                'f\'c especificado' => '210.0',
+                '% Resistencia' => '101.0%',
+                'Tipo de fractura' => 'Cono'
+            ],
+            [
+                'Código laboratorio' => 'MS-9994-26-CR',
+                '_es_replica' => true,
+                '_muestra_origen' => 'MS-9994-26',
+                'Fecha de moldeo' => '2026-10-01',
+                'Fecha de ensayo' => '2026-10-29',
+                'Edad (días)' => '28',
+                'Diámetro (cm)' => '15.0',
+                'Área (cm²)' => '176.71',
+                'Carga (kg)' => '37300',
+                'Resistencia (kg/cm²)' => '211.1',
+                'f\'c especificado' => '210.0',
+                '% Resistencia' => '100.5%',
+                'Tipo de fractura' => 'Cono'
+            ]
+        ];
+
+        // Normalización y obtención de pares CC con mediciones
+        $normalizadas = normalizarReplicasMatriz($filasGuardadas);
+        $this->assertCount(3, $normalizadas);
+
+        $pares = obtenerParesControlCalidad($normalizadas);
+        $this->assertCount(1, $pares);
+        $this->assertSame('MS-9994-26', $pares[0]['codigo_original']);
+        $this->assertSame('MS-9994-26-CR', $pares[0]['codigo_replica']);
+
+        // Verificar que detectó diferencias numéricas en Carga y Resistencia
+        $difs = $pares[0]['diferencias'];
+        $this->assertArrayHasKey('Carga (kg)', $difs);
+        $this->assertSame(37110.0, $difs['Carga (kg)']['original']);
+        $this->assertSame(37300.0, $difs['Carga (kg)']['replica']);
+        $this->assertSame(190.0, $difs['Carga (kg)']['diferencia']);
+
+        $this->assertArrayHasKey('Resistencia (kg/cm²)', $difs);
+        $this->assertSame(210.0, $difs['Resistencia (kg/cm²)']['original']);
+        $this->assertSame(211.1, $difs['Resistencia (kg/cm²)']['replica']);
+    }
 }

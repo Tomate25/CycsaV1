@@ -1758,6 +1758,7 @@ class OperacionesControlador extends ControladorBase {
         $this->renderizar('operaciones/vistas/captura_matriz', [
             'titulo' => 'Captura de Matriz Técnica - ' . $detalle['descripcion_ensayo'],
             'detalle' => $detalle,
+            'idDetalle' => $idDetalle,
             'columnas' => $columnas,
             'muestrasSeteadas' => $muestrasSeteadas,
             'formatosSchemaJson' => $formatosSchemaJson,
