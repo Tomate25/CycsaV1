@@ -419,20 +419,70 @@ class OrdenesServicioControlador extends ControladorBase {
                 return;
             }
 
-            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-            $stmt = $db->prepare("UPDATE ordenes_servicio SET estado = 'Aprobada', motivo_observacion = NULL WHERE id = :id");
-            $exito = $stmt->execute(['id' => $idOS]);
-
-            if ($exito) {
-                require_once dirname(__DIR__, 3) . '/Helpers/funciones.php';
-                $codigoTexto = $os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '');
-                registrarBitacora('ordenes_servicio', 'aprobar', 'Orden de Servicio ' . $codigoTexto . ' aprobada formalmente por supervisor ' . ($_SESSION['usuario_nombre'] ?? 'Supervisor'), $idOS);
-                $_SESSION['exito'] = 'Orden de Servicio ' . ($os['codigo_os'] ?? '') . ' aprobada con éxito. Ya puede registrar Hojas de Solicitud CYCSA-RT-FM-13.';
-            } else {
-                $_SESSION['error'] = 'Error al aprobar la Orden de Servicio.';
+            $idsPermitidos = $this->normalizarIdsEnsayosPermitidos($datos['ensayos_permitidos'] ?? []);
+            if ($idsPermitidos === []) {
+                $_SESSION['error'] = 'Debe habilitar al menos un ensayo de la cotización para aprobar la Orden de Servicio.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
             }
+
+            $osModelo = new OrdenServicioModelo();
+            if (!$osModelo->ensayosPertenecenACotizacion((int)$os['id_cotizacion'], $idsPermitidos)) {
+                $_SESSION['error'] = 'Uno o más ensayos no pertenecen a la cotización de esta Orden de Servicio.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $osModelo->asegurarTablaEnsayosPermitidos();
+            try {
+                $db->beginTransaction();
+                $stmt = $db->prepare("UPDATE ordenes_servicio SET estado = 'Aprobada', motivo_observacion = NULL WHERE id = :id");
+                $stmt->execute(['id' => $idOS]);
+                $osModelo->guardarEnsayosPermitidos($idOS, $idsPermitidos, (int)($_SESSION['usuario_id'] ?? 0));
+                $db->commit();
+            } catch (\Throwable $e) {
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+                error_log('Error al aprobar O/S ' . $idOS . ': ' . $e->getMessage());
+                $_SESSION['error'] = 'Error al aprobar la Orden de Servicio.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            require_once dirname(__DIR__, 3) . '/Helpers/funciones.php';
+            $codigoTexto = $os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '');
+            $listaIds = implode(', ', $idsPermitidos);
+            registrarBitacora(
+                'ordenes_servicio',
+                'aprobar',
+                'Orden de Servicio ' . $codigoTexto . ' aprobada formalmente por supervisor ' . ($_SESSION['usuario_nombre'] ?? 'Supervisor') . '. Ensayos habilitados (IDs): ' . $listaIds,
+                $idOS
+            );
+            $_SESSION['exito'] = 'Orden de Servicio ' . ($os['codigo_os'] ?? '') . ' aprobada con éxito. Ensayos habilitados: ' . $listaIds . '. Ya puede registrar Hojas de Solicitud CYCSA-RT-FM-13.';
 
             $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
         }
+    }
+
+    /**
+     * @param mixed $valor
+     * @return array<int>
+     */
+    private function normalizarIdsEnsayosPermitidos(mixed $valor): array {
+        if (!is_array($valor)) {
+            $valor = ($valor === null || $valor === '') ? [] : [$valor];
+        }
+        $ids = [];
+        foreach ($valor as $id) {
+            $id = (int)$id;
+            if ($id > 0) {
+                $ids[$id] = $id;
+            }
+        }
+        $lista = array_values($ids);
+        sort($lista, SORT_NUMERIC);
+        return $lista;
     }
 }

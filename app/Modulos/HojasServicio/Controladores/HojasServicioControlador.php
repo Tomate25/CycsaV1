@@ -163,6 +163,9 @@ class HojasServicioControlador extends ControladorBase {
         $totalContratado = 0;
         if (!empty($osCompleta['ensayos']) && is_array($osCompleta['ensayos'])) {
             foreach ($osCompleta['ensayos'] as $ens) {
+                if (array_key_exists('permitido', $ens) && (int)$ens['permitido'] !== 1) {
+                    continue;
+                }
                 $totalContratado += (float)($ens['cantidad'] ?? 1);
             }
         }
@@ -224,12 +227,17 @@ class HojasServicioControlador extends ControladorBase {
         $ensayosOS = [];
         if (!empty($osCompleta['ensayos']) && is_array($osCompleta['ensayos'])) {
             foreach ($osCompleta['ensayos'] as $ens) {
+                if (array_key_exists('permitido', $ens) && (int)$ens['permitido'] !== 1) {
+                    continue;
+                }
                 $eId = (int)($ens['id_producto'] ?? ($ens['producto_id'] ?? ($ens['id'] ?? 1)));
                 $eNom = $ens['nombre_ensayo'] ?? ($ens['ensayo_servicio'] ?? ($ens['descripcion_ensayo'] ?? 'Ensayo'));
                 $ensayosOS[] = [
                     'id' => $eId,
+                    'id_detalle' => (int)($ens['id'] ?? 0),
                     'nombre' => $eNom,
                     'cantidad' => (float)($ens['cantidad'] ?? 1),
+                    'permitido' => 1,
                     'plantillas_disponibles' => $pltModelo->obtenerPlantillasDisponiblesParaEnsayo($eId, $clienteId),
                     'plantilla_sugerida' => $pltModelo->obtenerPlantillaSugerida($eId, $clienteId)
                 ];
@@ -321,7 +329,7 @@ class HojasServicioControlador extends ControladorBase {
             $plantillaGlobalId = (int)($datos['plantilla_global_id'] ?? 0);
             if ($plantillaGlobalId <= 0) {
                 $pltMod = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
-                $ensayosOS = $modelo->obtenerDetallesCotizacion((int)($os['id_cotizacion'] ?? 0));
+                $ensayosOS = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)($os['id_cotizacion'] ?? 0)));
                 $primerEnsayoId = (int)($ensayosOS[0]['id_producto'] ?? 1);
                 $sug = $pltMod->obtenerPlantillaSugerida($primerEnsayoId, (int)($os['id_cliente'] ?? 0));
                 if (!empty($sug['id'])) {

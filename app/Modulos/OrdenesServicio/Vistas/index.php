@@ -282,6 +282,25 @@
                                             'Estado 6: Ejecucion Ensayos', 'Estado 7: Revision Resultados', 
                                             'Finalizado', 'En Proceso'
                                         ]);
+
+                        $ensayosAprobarModal = [];
+                        foreach (($os['items'] ?? []) as $itEns) {
+                            $idDetalleEns = (int)($itEns['id'] ?? 0);
+                            if ($idDetalleEns <= 0) {
+                                continue;
+                            }
+                            $ensayosAprobarModal[] = [
+                                'id' => $idDetalleEns,
+                                'nombre' => (string)($itEns['descripcion_ensayo'] ?? 'Ensayo'),
+                                'norma' => (string)($itEns['norma_astm'] ?? ''),
+                                'codigo' => (string)($itEns['codigo_servicio'] ?? ''),
+                            ];
+                        }
+                        $ensayosAprobarJson = htmlspecialchars(
+                            json_encode($ensayosAprobarModal, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
+                            ENT_QUOTES,
+                            'UTF-8'
+                        );
                         ?>
                         <!-- FILA PRINCIPAL -->
                         <tr class="fila-principal" id="fila-os-<?= $os['id'] ?>" onclick="toggleFilaDesplegable(<?= $os['id'] ?>, event)">
@@ -378,7 +397,8 @@
                                     <?php if (!$esOSAprobada): ?>
                                         <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
                                             <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669; border-color:#059669; min-height:38px; font-weight:700;" 
-                                                    onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>')">
+                                                    data-ensayos="<?= $ensayosAprobarJson ?>"
+                                                    onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>', this)">
                                                 <i class="fa-solid fa-check-double"></i> Aprobar O/S
                                             </button>
                                         <?php else: ?>
@@ -687,7 +707,8 @@
                                                         <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
                                                             <div style="margin-top:12px;">
                                                                 <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669; border-color:#059669; font-size:12.5px; padding:6px 16px;"
-                                                                        onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>')">
+                                                                        data-ensayos="<?= $ensayosAprobarJson ?>"
+                                                                        onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>', this)">
                                                                     <i class="fa-solid fa-check-double"></i> Aprobar Orden de Servicio Ahora
                                                                 </button>
                                                             </div>
@@ -1319,9 +1340,15 @@
                 <div><strong style="color:#0f172a;">Proyecto:</strong> <span id="aprobar_os_proyecto">--</span></div>
             </div>
 
-            <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:12px 15px; margin-bottom:20px; font-size:13px; color:#065f46; line-height:1.5;">
+            <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:12px 15px; margin-bottom:14px; font-size:13px; color:#065f46; line-height:1.5;">
                 <i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>
                 Al aprobar formalmente esta Orden de Servicio, el equipo técnico y de laboratorio quedará habilitado para registrar las <strong>Hojas de Solicitud CYCSA-RT-FM-13</strong> y proceder con la recepción o muestreo de especímenes.
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <div style="font-size:12px; font-weight:700; color:#0f172a; margin-bottom:6px;">Ensayos habilitados para recepción</div>
+                <p style="font-size:12px; color:#64748b; margin:0 0 8px 0;">Todos vienen marcados. Desmarque los que no se ejecutarán en esta O/S. La selección queda fija al aprobar y exige al menos un ensayo.</p>
+                <div id="aprobar_os_ensayos" style="max-height:220px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; background:#fff;"></div>
             </div>
 
             <div style="display:flex; justify-content:flex-end; gap:10px;">
@@ -1419,14 +1446,57 @@
     // =========================================================================
     // 0. APROBACIÓN DE ORDEN DE SERVICIO (PASO PREVIO OBLIGATORIO)
     // =========================================================================
-    function abrirModalAprobarOS(idOS, codigoOS, cliente, proyecto) {
+    function abrirModalAprobarOS(idOS, codigoOS, cliente, proyecto, btn) {
         document.getElementById('aprobar_os_id').value = idOS;
         document.getElementById('aprobar_os_codigo').innerText = codigoOS;
         document.getElementById('aprobar_os_cliente').innerText = cliente || '--';
         document.getElementById('aprobar_os_proyecto').innerText = proyecto || '--';
+        const cont = document.getElementById('aprobar_os_ensayos');
+        if (cont) {
+            cont.innerHTML = '';
+            let ensayos = [];
+            try {
+                ensayos = JSON.parse((btn && btn.getAttribute('data-ensayos')) || '[]');
+            } catch (e) {
+                ensayos = [];
+            }
+            if (!Array.isArray(ensayos) || ensayos.length === 0) {
+                const aviso = document.createElement('div');
+                aviso.style.cssText = 'color:#b45309; font-size:12.5px; padding:6px 2px;';
+                aviso.textContent = 'Esta O/S no tiene ensayos en la cotización. No se puede aprobar sin al menos un ensayo.';
+                cont.appendChild(aviso);
+            } else {
+                ensayos.forEach(function (ens) {
+                    const etiqueta = document.createElement('label');
+                    etiqueta.style.cssText = 'display:flex; align-items:flex-start; gap:8px; padding:6px 2px; border-bottom:1px solid #f1f5f9; font-size:13px; color:#0f172a; cursor:pointer;';
+                    const chk = document.createElement('input');
+                    chk.type = 'checkbox';
+                    chk.name = 'ensayos_permitidos[]';
+                    chk.value = String(ens.id);
+                    chk.checked = true;
+                    chk.style.marginTop = '3px';
+                    const texto = document.createElement('span');
+                    const nombre = ens.nombre || 'Ensayo';
+                    const extra = [ens.codigo, ens.norma].filter(Boolean).join(' · ');
+                    texto.textContent = extra ? (nombre + ' (' + extra + ')') : nombre;
+                    etiqueta.appendChild(chk);
+                    etiqueta.appendChild(texto);
+                    cont.appendChild(etiqueta);
+                });
+            }
+        }
         const m = document.getElementById('modalAprobarOS');
         if (m) m.style.display = 'flex';
     }
+
+    document.getElementById('form-aprobar-os')?.addEventListener('submit', function (ev) {
+        const checks = this.querySelectorAll('input[name="ensayos_permitidos[]"]');
+        const alguno = Array.prototype.some.call(checks, function (chk) { return chk.checked; });
+        if (!checks.length || !alguno) {
+            ev.preventDefault();
+            alert('Seleccione al menos un ensayo para habilitar en la Orden de Servicio.');
+        }
+    });
 
     function cerrarModalAprobarOS() {
         const m = document.getElementById('modalAprobarOS');
@@ -1697,7 +1767,9 @@
         prefijoMuestraActual = data.prefijo_muestra || 'MC';
         siguienteConsecutivoMuestra = parseInt(data.siguiente_consecutivo_muestra || 1, 10) || 1;
         siguienteConsecutivoMuestraInicial = siguienteConsecutivoMuestra;
-        window.ensayosDisponiblesOS = data.ensayos_disponibles_os || [];
+        window.ensayosDisponiblesOS = (data.ensayos_disponibles_os || []).filter(function (ens) {
+            return ens.permitido !== 0 && ens.permitido !== '0' && ens.permitido !== false;
+        });
         window.clienteIdActualHoja = data.cliente_id || '';
 
         poblarSelectorPlantillaGlobal(window.ensayosDisponiblesOS, window.clienteIdActualHoja);
@@ -1775,6 +1847,9 @@
             if (os.ensayos && os.ensayos.length > 0) {
                 let itemNum = 1;
                 os.ensayos.forEach(ens => {
+                    if (ens.permitido === 0 || ens.permitido === '0' || ens.permitido === false) {
+                        return;
+                    }
                     const tr = document.createElement('tr');
                     const codCampo = ens.codigo_hoja_campo || ens.codigo_servicio || '';
                     const cond = ens.condiciones_muestra || 'Estándar / Muestra sin alteración';

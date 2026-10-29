@@ -165,9 +165,155 @@ class OrdenServicioModelo {
                    WHERE cd.id_cotizacion = :id_cotizacion";
         $stmtDet = $this->db->prepare($sqlDet);
         $stmtDet->execute(['id_cotizacion' => $os['id_cotizacion']]);
-        $os['ensayos'] = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+        $ensayos = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+        $idsPermitidos = $this->obtenerIdsPermitidos((int)$os['id']);
+        foreach ($ensayos as &$ensayo) {
+            $permitido = $idsPermitidos === null || in_array((int)$ensayo['id'], $idsPermitidos, true);
+            $ensayo['permitido'] = $permitido ? 1 : 0;
+        }
+        unset($ensayo);
+        $os['ensayos'] = array_values(array_filter(
+            $ensayos,
+            static fn(array $ensayo): bool => (int)($ensayo['permitido'] ?? 1) === 1
+        ));
 
         return $os;
+    }
+
+    /**
+     * Crea la tabla de whitelist si aún no existe.
+     * No debe ejecutarse dentro de una transacción abierta cuando la tabla falta:
+     * el DDL de MySQL confirma la transacción de forma implícita.
+     */
+    public function asegurarTablaEnsayosPermitidos(): void {
+        if ($this->tablaEnsayosPermitidosDisponible()) {
+            return;
+        }
+        $ruta = dirname(__DIR__, 4) . '/database/migrations/025_orden_servicio_ensayos_permitidos.php';
+        if (!file_exists($ruta)) {
+            return;
+        }
+        require_once $ruta;
+        if (!function_exists('ejecutarMigracion025')) {
+            return;
+        }
+        ob_start();
+        try {
+            ejecutarMigracion025($this->db);
+        } finally {
+            ob_end_clean();
+        }
+    }
+
+    public function tablaEnsayosPermitidosDisponible(): bool {
+        $fila = $this->db->query("SHOW TABLES LIKE 'orden_servicio_ensayos_permitidos'")->fetch(PDO::FETCH_NUM);
+        return (bool)$fila;
+    }
+
+    /**
+     * Inserta la whitelist fija de la O/S. No borra filas previas ni toca cotizacion_detalles.
+     *
+     * @param array<int|string> $idsDetalle
+     */
+    public function guardarEnsayosPermitidos(int $idOS, array $idsDetalle, ?int $creadoPor = null): bool {
+        $this->asegurarTablaEnsayosPermitidos();
+        if (!$this->tablaEnsayosPermitidosDisponible()) {
+            throw new \RuntimeException('No fue posible preparar la whitelist de ensayos de la Orden de Servicio.');
+        }
+
+        $ids = $this->normalizarIdsDetalle($idsDetalle);
+        if ($ids === []) {
+            return false;
+        }
+        if (!$this->ensayosPertenecenACotizacionDeOS($idOS, $ids)) {
+            throw new \InvalidArgumentException('Uno o más ensayos no pertenecen a la cotización de esta Orden de Servicio.');
+        }
+
+        $stmt = $this->db->prepare(
+            "INSERT IGNORE INTO orden_servicio_ensayos_permitidos (id_os, id_cotizacion_detalle, creado_por, creado_en)
+             VALUES (:id_os, :id_detalle, :creado_por, NOW())"
+        );
+        $creado = ($creadoPor !== null && $creadoPor > 0) ? $creadoPor : null;
+        foreach ($ids as $idDetalle) {
+            $stmt->execute([
+                'id_os' => $idOS,
+                'id_detalle' => $idDetalle,
+                'creado_por' => $creado,
+            ]);
+        }
+        return true;
+    }
+
+    /**
+     * IDs de cotizacion_detalles habilitados.
+     * null = legado / todos permitidos (la O/S no tiene filas de whitelist).
+     *
+     * @return array<int>|null
+     */
+    public function obtenerIdsPermitidos(int $idOS): ?array {
+        if ($idOS <= 0 || !$this->tablaEnsayosPermitidosDisponible()) {
+            return null;
+        }
+        $stmt = $this->db->prepare(
+            "SELECT id_cotizacion_detalle
+             FROM orden_servicio_ensayos_permitidos
+             WHERE id_os = :id_os
+             ORDER BY id_cotizacion_detalle ASC"
+        );
+        $stmt->execute(['id_os' => $idOS]);
+        $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        return $ids === [] ? null : $ids;
+    }
+
+    public function esEnsayoPermitido(int $idOS, int $idDetalle): bool {
+        $ids = $this->obtenerIdsPermitidos($idOS);
+        if ($ids === null) {
+            return true;
+        }
+        return in_array($idDetalle, $ids, true);
+    }
+
+    /**
+     * @param array<int|string> $idsDetalle
+     */
+    public function ensayosPertenecenACotizacion(int $idCotizacion, array $idsDetalle): bool {
+        $ids = $this->normalizarIdsDetalle($idsDetalle);
+        if ($ids === [] || $idCotizacion <= 0) {
+            return false;
+        }
+        $marcas = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM cotizacion_detalles WHERE id_cotizacion = ? AND id IN ($marcas)"
+        );
+        $stmt->execute(array_merge([$idCotizacion], $ids));
+        return (int)$stmt->fetchColumn() === count($ids);
+    }
+
+    /**
+     * @param array<int|string> $idsDetalle
+     * @return array<int>
+     */
+    private function normalizarIdsDetalle(array $idsDetalle): array {
+        $ids = [];
+        foreach ($idsDetalle as $idDetalle) {
+            $idDetalle = (int)$idDetalle;
+            if ($idDetalle > 0) {
+                $ids[$idDetalle] = $idDetalle;
+            }
+        }
+        $lista = array_values($ids);
+        sort($lista, SORT_NUMERIC);
+        return $lista;
+    }
+
+    /**
+     * @param array<int> $idsDetalle
+     */
+    private function ensayosPertenecenACotizacionDeOS(int $idOS, array $idsDetalle): bool {
+        $stmt = $this->db->prepare("SELECT id_cotizacion FROM ordenes_servicio WHERE id = :id");
+        $stmt->execute(['id' => $idOS]);
+        $idCotizacion = (int)$stmt->fetchColumn();
+        return $this->ensayosPertenecenACotizacion($idCotizacion, $idsDetalle);
     }
 
     /**

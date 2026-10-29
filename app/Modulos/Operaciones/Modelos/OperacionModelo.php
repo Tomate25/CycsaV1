@@ -8,6 +8,12 @@ use Exception;
 
 class OperacionModelo extends ModeloBase {
 
+    private ?string $ultimoErrorRecepcion = null;
+
+    public function obtenerUltimoErrorRecepcion(): ?string {
+        return $this->ultimoErrorRecepcion;
+    }
+
     /**
      * Obtiene cotizaciones aprobadas para poder generar una Orden de Servicio (O/S).
      */
@@ -153,8 +159,32 @@ class OperacionModelo extends ModeloBase {
      * Obtiene los productos/ensayos de una O/S y su estado de recepción (aislado por O/S y soportando múltiples muestras por servicio).
      */
     public function obtenerItemsOS(int $idOS): array {
+        $flagPermitido = '1 AS permitido';
+        $filtroPermitido = '';
+        $whitelist = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
+        if ($whitelist->tablaEnsayosPermitidosDisponible()) {
+            $flagPermitido = "CASE
+                WHEN NOT EXISTS (
+                    SELECT 1 FROM orden_servicio_ensayos_permitidos p0 WHERE p0.id_os = os.id
+                ) THEN 1
+                WHEN EXISTS (
+                    SELECT 1 FROM orden_servicio_ensayos_permitidos p1
+                    WHERE p1.id_os = os.id AND p1.id_cotizacion_detalle = cd.id
+                ) THEN 1
+                ELSE 0
+            END AS permitido";
+            $filtroPermitido = " AND (
+                NOT EXISTS (SELECT 1 FROM orden_servicio_ensayos_permitidos p2 WHERE p2.id_os = os.id)
+                OR EXISTS (
+                    SELECT 1 FROM orden_servicio_ensayos_permitidos p3
+                    WHERE p3.id_os = os.id AND p3.id_cotizacion_detalle = cd.id
+                )
+            )";
+        }
+
         $sql = "SELECT cd.id, cd.id AS id_detalle, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad AS cantidad, cd.cantidad AS cantidad_facturada,
                        p.formato_id, fe.archivo_markdown, fe.nombre AS formato_nombre,
+                       {$flagPermitido},
                        (SELECT COUNT(DISTINCT lm.id)
                         FROM ensayo_edades ee
                         JOIN lotes_muestras lm ON ee.id_lote = lm.id
@@ -176,10 +206,14 @@ class OperacionModelo extends ModeloBase {
                 JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
                 LEFT JOIN productos p ON cd.id_producto = p.id
                 LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
-                WHERE os.id = :id_os";
+                WHERE os.id = :id_os{$filtroPermitido}";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id_os' => $idOS]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_values(array_filter(
+            $items,
+            static fn(array $item): bool => (int)($item['permitido'] ?? 1) === 1
+        ));
     }
 
     /**
@@ -231,27 +265,61 @@ class OperacionModelo extends ModeloBase {
     }
 
     /**
+     * Deja solo los detalles habilitados para la O/S.
+     * Sin filas de whitelist (legado) conserva el listado completo.
+     *
+     * @param array<int, array<string, mixed>> $detalles
+     * @return array<int, array<string, mixed>>
+     */
+    public function filtrarDetallesPermitidos(int $idOS, array $detalles): array {
+        $whitelist = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
+        $ids = $whitelist->obtenerIdsPermitidos($idOS);
+        if ($ids === null) {
+            foreach ($detalles as &$detalle) {
+                $detalle['permitido'] = 1;
+            }
+            unset($detalle);
+            return array_values($detalles);
+        }
+
+        $habilitados = array_fill_keys($ids, true);
+        $salida = [];
+        foreach ($detalles as $detalle) {
+            $idDetalle = (int)($detalle['id'] ?? 0);
+            if (!isset($habilitados[$idDetalle])) {
+                continue;
+            }
+            $detalle['permitido'] = 1;
+            $salida[] = $detalle;
+        }
+        return $salida;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $muestras
+     */
+    private function afirmarEnsayosDeRecepcionPermitidos(int $idOS, array $muestras): void {
+        $whitelist = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
+        foreach ($muestras as $muestra) {
+            $idDetalle = (int)($muestra['id_detalle_cotizacion'] ?? 0);
+            if (!$whitelist->esEnsayoPermitido($idOS, $idDetalle)) {
+                throw new \InvalidArgumentException(
+                    'El ensayo (detalle #' . $idDetalle . ') no está habilitado en la Orden de Servicio aprobada.'
+                );
+            }
+        }
+    }
+
+    /**
      * Registra el ingreso de muestras y especímenes (Fase Recepción).
      */
     public function registrarRecepcion(array $datos): bool {
+        $this->ultimoErrorRecepcion = null;
         try {
             $this->db->beginTransaction();
 
             $idOS = (int)$datos['id_os'];
             $idHoja = (int)($datos['id_hoja'] ?? 0);
-            
-            // 🔒 Limpieza atómica y transaccional si se solicita re-procesamiento
-            if (!empty($datos['limpiar_previas'])) {
-                if ($idHoja > 0) {
-                    $this->db->prepare("DELETE FROM ensayo_edades WHERE id_lote IN (SELECT lm.id FROM lotes_muestras lm JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id WHERE rm.id_os = :id_os AND rm.id_hoja = :id_hoja)")->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
-                    $this->db->prepare("DELETE FROM lotes_muestras WHERE id_recepcion IN (SELECT id FROM recepcion_muestras WHERE id_os = :id_os AND id_hoja = :id_hoja)")->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
-                    $this->db->prepare("DELETE FROM recepcion_muestras WHERE id_os = :id_os AND id_hoja = :id_hoja")->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
-                } else {
-                    $this->db->prepare("DELETE FROM ensayo_edades WHERE id_lote IN (SELECT lm.id FROM lotes_muestras lm JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id WHERE rm.id_os = :id_os)")->execute(['id_os' => $idOS]);
-                    $this->db->prepare("DELETE FROM lotes_muestras WHERE id_recepcion IN (SELECT id FROM recepcion_muestras WHERE id_os = :id_os)")->execute(['id_os' => $idOS]);
-                    $this->db->prepare("DELETE FROM recepcion_muestras WHERE id_os = :id_os")->execute(['id_os' => $idOS]);
-                }
-            }
 
             $entregadoPor = trim($datos['entregado_por'] ?? '');
             $observaciones = trim($datos['observaciones'] ?? '');
@@ -282,6 +350,21 @@ class OperacionModelo extends ModeloBase {
                     'edades_dias' => $datos['edades_dias'] ?? [],
                     'edades_identificadores' => $datos['edades_identificadores'] ?? []
                 ];
+            }
+
+            $this->afirmarEnsayosDeRecepcionPermitidos($idOS, $muestrasData);
+
+            // La limpieza solo corre si cada ensayo del ingreso está habilitado.
+            if (!empty($datos['limpiar_previas'])) {
+                if ($idHoja > 0) {
+                    $this->db->prepare("DELETE FROM ensayo_edades WHERE id_lote IN (SELECT lm.id FROM lotes_muestras lm JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id WHERE rm.id_os = :id_os AND rm.id_hoja = :id_hoja)")->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
+                    $this->db->prepare("DELETE FROM lotes_muestras WHERE id_recepcion IN (SELECT id FROM recepcion_muestras WHERE id_os = :id_os AND id_hoja = :id_hoja)")->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
+                    $this->db->prepare("DELETE FROM recepcion_muestras WHERE id_os = :id_os AND id_hoja = :id_hoja")->execute(['id_os' => $idOS, 'id_hoja' => $idHoja]);
+                } else {
+                    $this->db->prepare("DELETE FROM ensayo_edades WHERE id_lote IN (SELECT lm.id FROM lotes_muestras lm JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id WHERE rm.id_os = :id_os)")->execute(['id_os' => $idOS]);
+                    $this->db->prepare("DELETE FROM lotes_muestras WHERE id_recepcion IN (SELECT id FROM recepcion_muestras WHERE id_os = :id_os)")->execute(['id_os' => $idOS]);
+                    $this->db->prepare("DELETE FROM recepcion_muestras WHERE id_os = :id_os")->execute(['id_os' => $idOS]);
+                }
             }
 
             // ADQUIRIR CANDADO DE CONCURRENCIA PARA RECEPCION DE MUESTRAS
@@ -459,11 +542,16 @@ class OperacionModelo extends ModeloBase {
             } catch (Exception $lex) {}
             return true;
         } catch (Exception $e) {
-            $this->db->rollBack();
+            $this->ultimoErrorRecepcion = $e->getMessage();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             try {
                 $this->db->prepare("SELECT RELEASE_LOCK('lock_recepcion_muestras')")->execute();
             } catch (Exception $lex) {}
-            error_log("Error al registrar recepción LIMS: " . $e->getMessage());
+            if (!str_contains($e->getMessage(), 'no está habilitado')) {
+                error_log("Error al registrar recepción LIMS: " . $e->getMessage());
+            }
             return false;
         }
     }

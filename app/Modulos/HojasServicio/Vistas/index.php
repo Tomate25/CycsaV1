@@ -1332,6 +1332,9 @@
                     if (osRef.ensayos && osRef.ensayos.length > 0) {
                         let itemNum = 1;
                         osRef.ensayos.forEach(ens => {
+                            if (ens.permitido === 0 || ens.permitido === '0' || ens.permitido === false) {
+                                return;
+                            }
                             const tr = document.createElement('tr');
                             const codCampo = ens.codigo_hoja_campo || ens.codigo_servicio || '';
                             const cond = ens.condiciones_muestra || 'Estándar / Muestra sin alteración';
@@ -1453,7 +1456,9 @@
 
                 // Establecer variables globales de cliente y ensayos
                 window.clienteIdActualHoja = data.cliente_id || null;
-                window.ensayosDisponiblesOS = data.ensayos_disponibles_os || [];
+                window.ensayosDisponiblesOS = (data.ensayos_disponibles_os || []).filter(function (ens) {
+                    return ens.permitido !== 0 && ens.permitido !== '0' && ens.permitido !== false;
+                });
                 window.detallesRelacionales = data.detalles_muestras_relacionales || [];
 
                 poblarSelectorPlantillaGlobal(window.ensayosDisponiblesOS, window.clienteIdActualHoja);

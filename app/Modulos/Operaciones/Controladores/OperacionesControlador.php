@@ -215,8 +215,8 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        // Obtener los detalles de la cotización para saber qué servicios/ensayos de compresión se cobraron
-        $servicios = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
+        // Obtener los detalles de la cotización y dejar solo los ensayos habilitados en la O/S
+        $servicios = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']));
         
         // Obtener los ítems de la O/S para saber cuáles ya tienen recepción registrada
         $itemsOS = $modelo->obtenerItemsOS($idOS);
@@ -331,7 +331,10 @@ class OperacionesControlador extends ControladorBase {
             if ($modelo->registrarRecepcion($datos)) {
                 $_SESSION['exito'] = 'Recepción de muestras registrada exitosamente. Se ha generado la Hoja de Solicitud de Análisis Ciega para laboratorio.';
             } else {
-                $_SESSION['error'] = 'Error al registrar la recepción de muestras.';
+                $detalleRecepcion = $modelo->obtenerUltimoErrorRecepcion() ?? '';
+                $_SESSION['error'] = str_contains($detalleRecepcion, 'no está habilitado')
+                    ? $detalleRecepcion
+                    : 'Error al registrar la recepción de muestras.';
             }
 
             $respuesta->redirigir('/Cycsa/publico/operaciones');
@@ -1102,7 +1105,7 @@ class OperacionesControlador extends ControladorBase {
         $siguienteConsecutivo = $modelo->obtenerSiguienteConsecutivoMuestra($anioActual, $prefijoMuestraOS);
         $tecnicos = $modelo->obtenerTecnicosActivos();
 
-        $detalles = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
+        $detalles = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']));
         $hsCtrl = new \Cycsa\Modulos\HojasServicio\Controladores\HojasServicioControlador();
         $detectado = $hsCtrl->detectarParametrosYNaturaleza($detalles);
 
