@@ -8,6 +8,7 @@
 
 require_once dirname(__DIR__, 2) . '/app/Core/Conexion.php';
 
+if (!function_exists('ejecutarMigracion022')) {
 function ejecutarMigracion022(PDO $db): void {
     // 1. Agregar columnas a cotizaciones si no existen
     $colsCot = $db->query("SHOW COLUMNS FROM cotizaciones")->fetchAll(PDO::FETCH_COLUMN);
@@ -54,6 +55,7 @@ function ejecutarMigracion022(PDO $db): void {
         WHEN LOWER(forma_pago) LIKE '%contra%' THEN 'contra_entrega'
         ELSE 'contado'
     END WHERE condicion_comercial IS NULL OR condicion_comercial = ''");
+}
 }
 
 if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'] ?? '')) {

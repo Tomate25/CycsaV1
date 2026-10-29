@@ -21,5 +21,6 @@
         <env name="APP_ENV" value="testing"/>
         <env name="APP_DEBUG" value="1"/>
         <env name="DB_NAME" value="cycsa_test"/>
+        <const name="PHPUNIT_RUNNING" value="true"/>
     </php>
 </phpunit>

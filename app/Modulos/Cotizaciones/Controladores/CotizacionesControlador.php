@@ -319,80 +319,9 @@ class CotizacionesControlador extends ControladorBase {
             $cot = $modelo->obtenerPorId($id);
 
             if ($eraRechazada) {
-                // Registrar en la bitácora
-                registrarBitacora('cotizaciones', 'editar_reenviar', 'Corregida y re-enviada cotización al cliente: ' . $cot['codigo'] . ' (Nueva Versión: ' . $cot['version'] . ')', $id);
-
-                // Enviar el correo electrónico con el nuevo PDF de forma automática
-                $detalles = $modelo->obtenerDetalles($id);
-                $pdfContenido = generarCotizacionPDF($cot, $detalles);
-
-                $destinatario = !empty($cot['cliente_email']) ? $cot['cliente_email'] : '';
-                $titulo_correo = "Cotización Oficial Corregida - CYCSA - " . $cot['codigo'];
-                $token = $cot['token_seguridad'];
-                $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id=" . codificarId($id) . "&token={$token}";
-
-                $mensaje = "
-                <html>
-                <head>
-                  <title>Cotización Oficial Corregida CYCSA</title>
-                </head>
-                <body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">
-                  <div style=\"max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;\">
-                    <h2 style=\"color: #103487; border-bottom: 2px solid #103487; padding-bottom: 10px;\">Envío de Cotización Corregida</h2>
-                    <p>Estimado Cliente <strong>" . htmlspecialchars($cot['cliente_nombre'], ENT_QUOTES, 'UTF-8') . "</strong>,</p>
-                    <p>Le hacemos llegar la propuesta económica corregida y actualizada bajo el código de cotización <strong>" . htmlspecialchars($cot['codigo'], ENT_QUOTES, 'UTF-8') . "</strong> (Versión " . $cot['version'] . ").</p>
-                    
-                    <div style=\"background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e9ecef;\">
-                        <p style=\"margin: 5px 0;\"><strong>Código de Oferta:</strong> " . htmlspecialchars($cot['codigo'], ENT_QUOTES, 'UTF-8') . "</p>
-                        <p style=\"margin: 5px 0;\"><strong>Versión:</strong> " . $cot['version'] . "</p>
-                        <p style=\"margin: 5px 0;\"><strong>Proyecto:</strong> " . htmlspecialchars($cot['nombre_proyecto'], ENT_QUOTES, 'UTF-8') . "</p>
-                        <p style=\"margin: 5px 0;\"><strong>Monto Total:</strong> C$ " . number_format($cot['total'], 2) . "</p>
-                    </div>
-                    
-                    <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center;\">
-                        <h3 style=\"margin-top: 0; color: #1e293b; font-family: Arial, sans-serif;\">¿Desea aceptar o rechazar esta nueva propuesta?</h3>
-                        <p style=\"color: #64748b; font-size: 14px; margin-bottom: 20px;\">Puede revisar los detalles completos de la cotización y registrar su decisión en línea de forma segura haciendo clic en el siguiente botón:</p>
-                        <a href=\"" . htmlspecialchars($urlDecision, ENT_QUOTES, 'UTF-8') . "\" style=\"background-color: #103487; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block; box-shadow: 0 4px 6px -1px rgba(16, 52, 135, 0.2);\">Revisar y Decidir en Línea</a>
-                    </div>
-                    
-                    <p>Por favor revise las condiciones. Quedamos a la espera de su confirmación para proceder con la orden.</p>
-                    <hr style=\"border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;\">
-                    <p style=\"font-size: 14px; font-weight: bold; color: #103487;\">CYCSA Laboratorio de Ensayos</p>
-                  </div>
-                </body>
-                </html>
-                ";
-
-                $adjuntos = [
-                    [
-                        'contenido' => $pdfContenido,
-                        'nombre' => "Cotizacion_{$cot['codigo']}_V{$cot['version']}.pdf"
-                    ]
-                ];
-
-                if (!empty($destinatario)) {
-                    enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
-
-                    // Registro local en logs
-                    $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
-                    if (!file_exists(dirname($rutaLog))) {
-                        @mkdir(dirname($rutaLog), 0777, true);
-                    }
-                    $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización CORREGIDA Y RE-ENVIADA. Destinatario: {$destinatario} | Cotización: {$cot['codigo']} | Versión: {$cot['version']} | Monto: C$ " . number_format($cot['total'], 2) . "\n";
-                    @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
-
-                    $_SESSION['envio_exitoso'] = "¡Cotización corregida (V" . $cot['version'] . ") enviada automáticamente al cliente!";
-                } else {
-                    // Registro local en logs
-                    $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
-                    if (!file_exists(dirname($rutaLog))) {
-                        @mkdir(dirname($rutaLog), 0777, true);
-                    }
-                    $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización CORREGIDA (Entrega Manual - Sin correo). Cotización: {$cot['codigo']} | Versión: {$cot['version']} | Monto: C$ " . number_format($cot['total'], 2) . "\n";
-                    @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
-
-                    $_SESSION['envio_exitoso'] = "¡Cotización corregida (V" . $cot['version'] . ") guardada (Cliente sin correo registrado)!";
-                }
+                // Regla P0.1: Al editar una cotizacion rechazada por el cliente, pasa obligatoriamente a En Revision (NO auto-enviar)
+                registrarBitacora('cotizaciones', 'editar_reenviar', 'Corregida cotizacion rechazada y enviada a revision interna: ' . $cot['codigo'] . ' (Nueva Version: ' . $cot['version'] . ')', $id);
+                $_SESSION['envio_exitoso'] = "¡Cotizacion " . $cot['codigo'] . " corregida exitosamente (Nueva Version " . $cot['version'] . ") y enviada a revision interna (requiere aprobacion previa al envio)!";
             } elseif ($eraObservada) {
                 // Registrar en la bitácora cuando se corrige una cotización observada por Gerencia
                 registrarBitacora('cotizaciones', 'editar_reenviar', 'Corregida y re-enviada cotización a revisión interna: ' . $cot['codigo'] . ' (Nueva Versión: ' . $cot['version'] . ')', $id);
@@ -547,16 +476,10 @@ class CotizacionesControlador extends ControladorBase {
             $esRechazada = ($cotizacion['estado'] === 'Rechazada por Cliente');
             
             if ($esRechazada) {
-                // Si la cotización estaba rechazada, al re-enviarla directamente se versiona y se envía
-                $exito = $modelo->volverEnviarRechazada($id);
-                if (!$exito) {
-                    $_SESSION['envio_exitoso'] = "Error al procesar el re-envío de la cotización.";
-                    $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
-                    return;
-                }
-                // Recargar cotización para obtener nueva versión, token, etc.
-                $cotizacion = $modelo->obtenerPorId($id);
-                $token = $cotizacion['token_seguridad'];
+                // Regla P0.1: Bloquear envio directo al cliente si la cotizacion esta rechazada. Requiere edicion y aprobacion interna previa.
+                $_SESSION['error'] = "La cotizacion " . htmlspecialchars($cotizacion['codigo']) . " se encuentra rechazada por el cliente. Debe editarse y pasar por aprobacion interna antes de poder enviarse nuevamente.";
+                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+                return;
             } elseif (empty($token)) {
                 $token = bin2hex(random_bytes(32));
                 $modelo->actualizarEstado($id, 'Enviada al Cliente', $cotizacion['id_usuario_revisor'] ?? $_SESSION['usuario_id'], $cotizacion['motivo_observacion'], $token);

@@ -1,123 +1,1216 @@
-<?php
-
-namespace Tests\Unit;
-
-use PHPUnit\Framework\TestCase;
-use Cycsa\Nucleo\Conexion;
-use Cycsa\Modulos\Operaciones\Modelos\CierreOperacionLims;
-use PDO;
-
-class OperacionesFacturacionCondicionTest extends TestCase {
-
-    private function getDb(): ?PDO {
-        try {
-            return Conexion::obtenerInstancia();
-        } catch (\Throwable $e) {
-            return null;
-        }
-    }
-
-    public function testMigracion022CamposFacturaInformeExisten(): void {
-        $db = $this->getDb();
-        if (!$db) {
-            $this->markTestSkipped('BD de pruebas no disponible.');
-        }
-
-        $colsCot = $db->query("SHOW COLUMNS FROM cotizaciones")->fetchAll(PDO::FETCH_COLUMN);
-        $this->assertContains('id_cliente_factura', $colsCot);
-        $this->assertContains('id_cliente_informe', $colsCot);
-        $this->assertContains('condicion_comercial', $colsCot);
-
-        $colsOS = $db->query("SHOW COLUMNS FROM ordenes_servicio")->fetchAll(PDO::FETCH_COLUMN);
-        $this->assertContains('id_cliente_factura', $colsOS);
-        $this->assertContains('id_cliente_informe', $colsOS);
-        $this->assertContains('condicion_comercial', $colsOS);
-    }
-
-    public function testResolverMetadatosPriorizaClienteInformeSobreClienteGeneral(): void {
-        $detalle = [
-            'id' => 999,
-            'cliente_nombre' => 'CONSTRUCTORA PAGADORA S.A.',
-            'cliente_factura_nombre' => 'CONSTRUCTORA PAGADORA S.A.',
-            'cliente_informe_nombre' => 'MINISTERIO DE TRANSPORTE E INFRAESTRUCTURA (MTI)',
-            'nombre_proyecto' => 'Puente Paso Real Km 140',
-            'codigo_documento' => 'CYCSA-RT-FM-22'
-        ];
-
-        $meta = resolverMetadatosEnsayo($detalle);
-
-        // La figura jurídica del informe de ensayo debe ser el MTI (ISO/IEC 17025)
-        $this->assertSame('MINISTERIO DE TRANSPORTE E INFRAESTRUCTURA (MTI)', $meta['cliente_nombre']);
-        $this->assertSame('Puente Paso Real Km 140', $meta['proyecto']);
-    }
-
-    public function testCondicionCreditoPermiteCierreConFacturaDocumentadaYSaldoAbierto(): void {
-        $ensayoAprobado = [
-            'descripcion_ensayo' => 'Resistencia de Concreto a 28 días',
-            'resultados_json' => json_encode([
-                'filas' => [['Carga' => 55000, 'Código laboratorio' => 'C-01']],
-                'revision' => ['estado' => 'aprobada', 'estado_label' => 'Aprobada por Supervisión']
-            ])
-        ];
-
-        // Caso 1: Crédito con CxC documentada (saldo C$ 45,000 pendiente) -> CIERRE AUTORIZADO
-        $cxcAbierta = [
-            'saldo' => 45000.00,
-            'estado' => 'Pendiente',
-            'factura_numero' => 'FAC-COT-2026-0099'
-        ];
-
-        $errorCredito = CierreOperacionLims::validar([$ensayoAprobado], $cxcAbierta, 'credito');
-        $this->assertNull($errorCredito, 'En condición crédito con CxC documentada el cierre debe permitirse');
-
-        // Caso 2: Crédito sin documento CxC registrado -> BLOQUEO
-        $errorSinCxc = CierreOperacionLims::validar([$ensayoAprobado], null, 'credito');
-        $this->assertNotNull($errorSinCxc);
-        $this->assertStringContainsString('crédito', $errorSinCxc);
-    }
-
-    public function testCondicionContadoBloqueaCierreSiExisteSaldoPendiente(): void {
-        $ensayoAprobado = [
-            'descripcion_ensayo' => 'Compactación in situ',
-            'resultados_json' => json_encode([
-                'filas' => [['Densidad' => 1.95, 'Código laboratorio' => 'D-01']],
-                'revision' => ['estado' => 'aprobada', 'estado_label' => 'Aprobada por Supervisión']
-            ])
-        ];
-
-        // Caso 1: Contado con saldo pendiente (C$ 500) -> BLOQUEADO
-        $cxcSaldo = [
-            'saldo' => 500.00,
-            'estado' => 'Parcial',
-            'factura_numero' => 'FAC-COT-2026-0100'
-        ];
-        $errorContado = CierreOperacionLims::validar([$ensayoAprobado], $cxcSaldo, 'contado');
-        $this->assertNotNull($errorContado);
-        $this->assertStringContainsString('saldo C$ 0.00', $errorContado);
-
-        // Caso 2: Contado pagado al 100% (saldo C$ 0.00) -> AUTORIZADO
-        $cxcPagada = [
-            'saldo' => 0.00,
-            'estado' => 'Pagado',
-            'factura_numero' => 'FAC-COT-2026-0100'
-        ];
-        $errorPagado = CierreOperacionLims::validar([$ensayoAprobado], $cxcPagada, 'contado');
-        $this->assertNull($errorPagado);
-    }
-
-    public function testCierreExigeEnsayosCompletamenteAprobadosIndependienteDeCondicionComercial(): void {
-        $ensayoEnRevision = [
-            'descripcion_ensayo' => 'Granulometría',
-            'resultados_json' => json_encode([
-                'filas' => [['Malla' => '#4', 'Pasa' => 95]],
-                'revision' => ['estado' => 'en_revision', 'estado_label' => 'En Revisión']
-            ])
-        ];
-
-        // Incluso con crédito y factura pagada, si el ensayo técnico no está aprobado, SE BLOQUEA
-        $cxcOk = ['saldo' => 0.00, 'estado' => 'Pagado'];
-        $error = CierreOperacionLims::validar([$ensayoEnRevision], $cxcOk, 'credito');
-        $this->assertNotNull($error);
-        $this->assertStringContainsString('Todos los ensayos deben estar APROBADOS', $error);
-    }
-}
+<?php
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+namespace Tests\Unit;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+use PHPUnit\Framework\TestCase;
+
+
+
+
+
+
+
+use Cycsa\Nucleo\Conexion;
+
+
+
+
+
+
+
+use Cycsa\Modulos\Operaciones\Modelos\CierreOperacionLims;
+
+
+
+
+
+
+
+use PDO;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class OperacionesFacturacionCondicionTest extends TestCase {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private function getDb(): ?PDO {
+
+
+
+
+
+
+
+        try {
+
+
+
+
+
+
+
+            return Conexion::obtenerInstancia();
+
+
+
+
+
+
+
+        } catch (\Throwable $e) {
+
+
+
+
+
+
+
+            return null;
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function testMigracion022CamposFacturaInformeExisten(): void {
+
+
+
+
+
+
+
+        $db = $this->getDb();
+
+
+
+
+
+
+
+        if (!$db) {
+
+
+
+
+
+
+
+            $this->markTestSkipped('BD de pruebas no disponible.');
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        $colsCot = $db->query("SHOW COLUMNS FROM cotizaciones")->fetchAll(PDO::FETCH_COLUMN);
+
+
+
+
+
+
+
+        $this->assertContains('id_cliente_factura', $colsCot);
+
+
+
+
+
+
+
+        $this->assertContains('id_cliente_informe', $colsCot);
+
+
+
+
+
+
+
+        $this->assertContains('condicion_comercial', $colsCot);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        $colsOS = $db->query("SHOW COLUMNS FROM ordenes_servicio")->fetchAll(PDO::FETCH_COLUMN);
+
+
+
+
+
+
+
+        $this->assertContains('id_cliente_factura', $colsOS);
+
+
+
+
+
+
+
+        $this->assertContains('id_cliente_informe', $colsOS);
+
+
+
+
+
+
+
+        $this->assertContains('condicion_comercial', $colsOS);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function testResolverMetadatosPriorizaClienteInformeSobreClienteGeneral(): void {
+
+
+
+
+
+
+
+        $detalle = [
+
+
+
+
+
+
+
+            'id' => 999,
+
+
+
+
+
+
+
+            'cliente_nombre' => 'CONSTRUCTORA PAGADORA S.A.',
+
+
+
+
+
+
+
+            'cliente_factura_nombre' => 'CONSTRUCTORA PAGADORA S.A.',
+
+
+
+
+
+
+
+            'cliente_informe_nombre' => 'MINISTERIO DE TRANSPORTE E INFRAESTRUCTURA (MTI)',
+
+
+
+
+
+
+
+            'nombre_proyecto' => 'Puente Paso Real Km 140',
+
+
+
+
+
+
+
+            'codigo_documento' => 'CYCSA-RT-FM-22'
+
+
+
+
+
+
+
+        ];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        $meta = resolverMetadatosEnsayo($detalle);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // La figura jurídica del informe de ensayo debe ser el MTI (ISO/IEC 17025)
+
+
+
+
+
+
+
+        $this->assertSame('MINISTERIO DE TRANSPORTE E INFRAESTRUCTURA (MTI)', $meta['cliente_nombre']);
+
+
+
+
+
+
+
+        $this->assertSame('Puente Paso Real Km 140', $meta['proyecto']);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function testCondicionCreditoPermiteCierreConFacturaDocumentadaYSaldoAbierto(): void {
+
+
+
+
+
+
+
+        $ensayoAprobado = [
+
+
+
+
+
+
+
+            'descripcion_ensayo' => 'Resistencia de Concreto a 28 días',
+
+
+
+
+
+
+
+            'resultados_json' => json_encode([
+
+
+
+
+
+
+
+                'filas' => [['Carga' => 55000, 'Código laboratorio' => 'C-01']],
+
+
+
+
+
+
+
+                'revision' => ['estado' => 'aprobada', 'estado_label' => 'Aprobada por Supervisión']
+
+
+
+
+
+
+
+            ])
+
+
+
+
+
+
+
+        ];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Caso 1: Crédito con CxC documentada (saldo C$ 45,000 pendiente) -> CIERRE AUTORIZADO
+
+
+
+
+
+
+
+        $cxcAbierta = [
+
+
+
+
+
+
+
+            'saldo' => 45000.00,
+
+
+
+
+
+
+
+            'estado' => 'Pendiente',
+
+
+
+
+
+
+
+            'factura_numero' => 'FAC-COT-2026-0099'
+
+
+
+
+
+
+
+        ];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        $errorCredito = CierreOperacionLims::validar([$ensayoAprobado], $cxcAbierta, 'credito');
+
+
+
+
+
+
+
+        $this->assertNull($errorCredito, 'En condición crédito con CxC documentada el cierre debe permitirse');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Caso 2: Crédito sin documento CxC registrado -> BLOQUEO
+
+
+
+
+
+
+
+        $errorSinCxc = CierreOperacionLims::validar([$ensayoAprobado], null, 'credito');
+
+
+
+
+
+
+
+        $this->assertNotNull($errorSinCxc);
+
+
+
+
+
+
+
+        $this->assertStringContainsString('crédito', $errorSinCxc);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function testCondicionContadoBloqueaCierreSiExisteSaldoPendiente(): void {
+
+
+
+
+
+
+
+        $ensayoAprobado = [
+
+
+
+
+
+
+
+            'descripcion_ensayo' => 'Compactación in situ',
+
+
+
+
+
+
+
+            'resultados_json' => json_encode([
+
+
+
+
+
+
+
+                'filas' => [['Densidad' => 1.95, 'Código laboratorio' => 'D-01']],
+
+
+
+
+
+
+
+                'revision' => ['estado' => 'aprobada', 'estado_label' => 'Aprobada por Supervisión']
+
+
+
+
+
+
+
+            ])
+
+
+
+
+
+
+
+        ];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Caso 1: Contado con saldo pendiente (C$ 500) -> BLOQUEADO
+
+
+
+
+
+
+
+        $cxcSaldo = [
+
+
+
+
+
+
+
+            'saldo' => 500.00,
+
+
+
+
+
+
+
+            'estado' => 'Parcial',
+
+
+
+
+
+
+
+            'factura_numero' => 'FAC-COT-2026-0100'
+
+
+
+
+
+
+
+        ];
+
+
+
+
+
+
+
+        $errorContado = CierreOperacionLims::validar([$ensayoAprobado], $cxcSaldo, 'contado');
+
+
+
+
+
+
+
+        $this->assertNotNull($errorContado);
+
+
+
+
+
+
+
+        $this->assertStringContainsString('saldo C$ 0.00', $errorContado);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Caso 2: Contado pagado al 100% (saldo C$ 0.00) -> AUTORIZADO
+
+
+
+
+
+
+
+        $cxcPagada = [
+
+
+
+
+
+
+
+            'saldo' => 0.00,
+
+
+
+
+
+
+
+            'estado' => 'Pagado',
+
+
+
+
+
+
+
+            'factura_numero' => 'FAC-COT-2026-0100'
+
+
+
+
+
+
+
+        ];
+
+
+
+
+
+
+
+        $errorPagado = CierreOperacionLims::validar([$ensayoAprobado], $cxcPagada, 'contado');
+
+
+
+
+
+
+
+        $this->assertNull($errorPagado);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function testCierreExigeEnsayosCompletamenteAprobadosIndependienteDeCondicionComercial(): void {
+
+
+
+
+
+
+
+        $ensayoEnRevision = [
+
+
+
+
+
+
+
+            'descripcion_ensayo' => 'Granulometría',
+
+
+
+
+
+
+
+            'resultados_json' => json_encode([
+
+
+
+
+
+
+
+                'filas' => [['Malla' => '#4', 'Pasa' => 95]],
+
+
+
+
+
+
+
+                'revision' => ['estado' => 'en_revision', 'estado_label' => 'En Revisión']
+
+
+
+
+
+
+
+            ])
+
+
+
+
+
+
+
+        ];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Incluso con crédito y factura pagada, si el ensayo técnico no está aprobado, SE BLOQUEA
+
+
+
+
+
+
+
+        $cxcOk = ['saldo' => 0.00, 'estado' => 'Pagado'];
+
+
+
+
+
+
+
+        $error = CierreOperacionLims::validar([$ensayoEnRevision], $cxcOk, 'credito');
+
+
+
+
+
+
+
+        $this->assertNotNull($error);
+
+
+
+
+
+
+
+        $this->assertStringContainsString('Todos los ensayos deben estar APROBADOS', $error);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    public function testCondicionComercialCustomOrdenServicio(): void {
+
+
+
+
+
+
+
+        // Textos libres de crédito deben clasificarse como 'credito'
+
+
+
+
+
+
+
+        $this->assertSame('credito', determinarCondicionComercial('Crédito 30 días'));
+
+
+
+
+
+
+
+        $this->assertSame('credito', determinarCondicionComercial('credito 15 dias'));
+
+
+
+
+
+
+
+        $this->assertSame('credito', determinarCondicionComercial('Plazo 30 días'));
+
+
+
+
+
+
+
+        $this->assertSame('credito', determinarCondicionComercial('Pago diferido a 45 días'));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Solo Contado y Contra entrega explícitos deben clasificarse como 'contado'
+
+
+
+
+
+
+
+        $this->assertSame('contado', determinarCondicionComercial('Contado'));
+
+
+
+
+
+
+
+        $this->assertSame('contado', determinarCondicionComercial('Pago contra entrega'));
+
+
+
+
+
+
+
+        $this->assertSame('contado', determinarCondicionComercial('Efectivo contra entrega'));
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function testFacturarSinResultados(): void {
+        $db = $this->getDb();
+        if (!$db) {
+            $this->markTestSkipped('Base de datos no disponible.');
+        }
+
+        $cli = $db->query("SELECT id FROM clientes LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        $usr = $db->query("SELECT id FROM usuarios LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        if (!$cli || !$usr) {
+            $this->markTestSkipped('No hay clientes o usuarios disponibles.');
+        }
+        $idCliente = (int)$cli['id'];
+        $idUsuario = (int)$usr['id'];
+
+        // Código corto < 20 chars
+        $codCot = 'CF-' . substr(bin2hex(random_bytes(5)), 0, 10);
+        $codOS = 'OS-' . substr(bin2hex(random_bytes(5)), 0, 10);
+
+        $stmtCot = $db->prepare("INSERT INTO cotizaciones (codigo, id_cliente, condicion_comercial, tipo_moneda, subtotal, impuesto, total, estado, id_usuario_creador)
+            VALUES (:cod, :cli, 'credito', 'NIO', 5000, 750, 5750, 'Aprobada', :usr)");
+        $stmtCot->execute(['cod' => $codCot, 'cli' => $idCliente, 'usr' => $idUsuario]);
+        $idCot = (int)$db->lastInsertId();
+
+        $stmtOS = $db->prepare("INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, id_cliente_factura, id_cliente_informe, condicion_comercial, forma_pago, estado)
+            VALUES (:cod, :idcot, :cli_fact, :cli_inf, 'credito', 'Crédito 30 días', 'En Proceso')");
+        $stmtOS->execute(['cod' => $codOS, 'idcot' => $idCot, 'cli_fact' => $idCliente, 'cli_inf' => $idCliente]);
+        $idOS = (int)$db->lastInsertId();
+
+        // Detalle con resultados_json VACÍO
+        $stmtDet = $db->prepare("INSERT INTO cotizacion_detalles (id_cotizacion, descripcion_ensayo, cantidad, precio_unitario, subtotal, resultados_json)
+            VALUES (:idcot, 'Ensayo Pendiente de Ejecución', 1, 5000, 5000, NULL)");
+        $stmtDet->execute(['idcot' => $idCot]);
+
+        try {
+            // Facturar anticipadamente (en cualquier etapa antes de emitir resultados)
+            $facturaNum = 'FAC-' . substr(bin2hex(random_bytes(4)), 0, 8);
+            $stmtCxc = $db->prepare("INSERT INTO cuentas_por_cobrar 
+                (id_cliente, factura_numero, monto, saldo, estado, fecha_emision, fecha_vencimiento, notas)
+                VALUES (:id_cliente, :factura_numero, :monto, :saldo, :estado, :fecha, :venc, :notas)");
+            $stmtCxc->execute([
+                'id_cliente' => $idCliente,
+                'factura_numero' => $facturaNum,
+                'monto' => 5750,
+                'saldo' => 5750,
+                'estado' => 'Pendiente',
+                'fecha' => date('Y-m-d'),
+                'venc' => date('Y-m-d', strtotime('+30 days')),
+                'notas' => 'Facturación anticipada sin resultados técnicos cargados'
+            ]);
+            $cxcId = (int)$db->lastInsertId();
+
+            $this->assertGreaterThan(0, $cxcId, 'La cuenta por cobrar debe poder registrarse sin resultados de matriz');
+
+            $cxcGuardada = $db->query("SELECT * FROM cuentas_por_cobrar WHERE id = {$cxcId}")->fetch(PDO::FETCH_ASSOC);
+            $this->assertSame($facturaNum, $cxcGuardada['factura_numero']);
+            $this->assertEquals(5750.00, (float)$cxcGuardada['monto']);
+
+        } finally {
+            $db->prepare("DELETE FROM cuentas_por_cobrar WHERE factura_numero LIKE 'FAC-%'")->execute();
+            $db->prepare("DELETE FROM cotizacion_detalles WHERE id_cotizacion = :id")->execute(['id' => $idCot]);
+            $db->prepare("DELETE FROM ordenes_servicio WHERE id = :id")->execute(['id' => $idOS]);
+            $db->prepare("DELETE FROM cotizaciones WHERE id = :id")->execute(['id' => $idCot]);
+        }
+    }
+
+    public function testClienteFacturaVsClienteInforme(): void {
+        $db = $this->getDb();
+        if (!$db) {
+            $this->markTestSkipped('Base de datos no disponible.');
+        }
+
+        // Obtener dos clientes distintos
+        $clientes = $db->query("SELECT id, nombre_razon_social FROM clientes ORDER BY id ASC LIMIT 2")->fetchAll(PDO::FETCH_ASSOC);
+        $usr = $db->query("SELECT id FROM usuarios LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        if (count($clientes) < 2 || !$usr) {
+            $this->markTestSkipped('Se requieren al menos 2 clientes y un usuario para probar la separación factura vs informe.');
+        }
+
+        $clienteFactura = $clientes[0];
+        $clienteInforme = $clientes[1];
+        $idUsuario = (int)$usr['id'];
+
+        $codCot = 'CS-' . substr(bin2hex(random_bytes(5)), 0, 10);
+        $codOS = 'OS-' . substr(bin2hex(random_bytes(5)), 0, 10);
+
+        $stmtCot = $db->prepare("INSERT INTO cotizaciones 
+            (codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, tipo_moneda, subtotal, impuesto, total, estado, id_usuario_creador)
+            VALUES (:cod, :cli_pago, :cli_fact, :cli_inf, 'credito', 'NIO', 1000, 150, 1150, 'Aprobada', :usr)");
+        $stmtCot->execute([
+            'cod' => $codCot,
+            'cli_pago' => $clienteFactura['id'],
+            'cli_fact' => $clienteFactura['id'],
+            'cli_inf' => $clienteInforme['id'],
+            'usr' => $idUsuario
+        ]);
+        $idCot = (int)$db->lastInsertId();
+
+        $stmtOS = $db->prepare("INSERT INTO ordenes_servicio 
+            (codigo_os, id_cotizacion, id_cliente_factura, id_cliente_informe, condicion_comercial, forma_pago, estado)
+            VALUES (:cod, :idcot, :cli_fact, :cli_inf, 'credito', 'Crédito 30 días', 'En Proceso')");
+        $stmtOS->execute([
+            'cod' => $codOS,
+            'idcot' => $idCot,
+            'cli_fact' => $clienteFactura['id'],
+            'cli_inf' => $clienteInforme['id']
+        ]);
+        $idOS = (int)$db->lastInsertId();
+
+        try {
+            // Consulta de facturación (debe resolver cliente de factura)
+            $stmtFact = $db->prepare("SELECT os.*, cli.id AS cli_factura_id, cli.nombre_razon_social AS cli_factura_nombre
+                FROM ordenes_servicio os
+                JOIN clientes cli ON cli.id = COALESCE(os.id_cliente_factura, os.id_cliente_informe)
+                WHERE os.id = :id");
+            $stmtFact->execute(['id' => $idOS]);
+            $resFact = $stmtFact->fetch(PDO::FETCH_ASSOC);
+
+            $this->assertEquals($clienteFactura['id'], $resFact['cli_factura_id'], 'La facturación debe remitirse al cliente pagador');
+
+            // Consulta de informe técnico (debe resolver cliente de informe)
+            $stmtInf = $db->prepare("SELECT os.*, cli.id AS cli_informe_id, cli.nombre_razon_social AS cli_informe_nombre
+                FROM ordenes_servicio os
+                JOIN clientes cli ON cli.id = COALESCE(os.id_cliente_informe, os.id_cliente_factura)
+                WHERE os.id = :id");
+            $stmtInf->execute(['id' => $idOS]);
+            $resInf = $stmtInf->fetch(PDO::FETCH_ASSOC);
+
+            $this->assertEquals($clienteInforme['id'], $resInf['cli_informe_id'], 'El informe debe remitirse al cliente técnico/destinatario');
+            $this->assertNotEquals($resFact['cli_factura_id'], $resInf['cli_informe_id']);
+
+        } finally {
+            $db->prepare("DELETE FROM ordenes_servicio WHERE id = :id")->execute(['id' => $idOS]);
+            $db->prepare("DELETE FROM cotizaciones WHERE id = :id")->execute(['id' => $idCot]);
+        }
+    }
+}

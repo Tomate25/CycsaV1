@@ -110,18 +110,31 @@ class OrdenesServicioControlador extends ControladorBase {
         $osModelo = new OrdenServicioModelo();
         $codigoOS = !empty($datos['codigo_os']) ? trim($datos['codigo_os']) : $osModelo->generarCodigoOS();
 
+        $cotizacionModelo = new CotizacionModelo();
+        $cotizacion = $cotizacionModelo->obtenerPorId($idCotizacion);
+
+        $formaPago = !empty(trim($datos['forma_pago'] ?? ''))
+            ? trim($datos['forma_pago'])
+            : (!empty($cotizacion['condicion_pago']) ? trim($cotizacion['condicion_pago']) : 'Pago contra entrega');
+        $condicionComercial = !empty($datos['condicion_comercial'])
+            ? trim($datos['condicion_comercial'])
+            : (!empty($cotizacion['condicion_comercial']) ? trim($cotizacion['condicion_comercial']) : determinarCondicionComercial($formaPago));
+
         // Determinar estado inicial según la decisión de muestreo en campo
         $estadoInicial = $requiereMuestreo ? 'Pendiente de Muestreo' : 'Estado 1: Recepcion';
 
         $idOS = $osModelo->crear([
             'codigo_os' => $codigoOS,
             'id_cotizacion' => $idCotizacion,
-            'id_cliente' => (int)($datos['id_cliente'] ?? 0),
+            'id_cliente' => (int)($datos['id_cliente'] ?? ($cotizacion['id_cliente'] ?? 0)),
+            'id_cliente_factura' => !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)($cotizacion['id_cliente_factura'] ?? ($datos['id_cliente'] ?? 0)),
+            'id_cliente_informe' => !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)($cotizacion['id_cliente_informe'] ?? ($datos['id_cliente'] ?? 0)),
+            'condicion_comercial' => $condicionComercial,
             'elaborado_por' => $_SESSION['usuario_nombre'] ?? 'Administración',
             'fecha_emision' => $datos['fecha_emision'] ?? date('Y-m-d'),
-            'atencion_a' => trim($datos['atencion_a'] ?? ''),
-            'nombre_proyecto' => trim($datos['nombre_proyecto'] ?? ''),
-            'forma_pago' => trim($datos['forma_pago'] ?? 'Pago contra entrega'),
+            'atencion_a' => trim($datos['atencion_a'] ?? ($cotizacion['atencion_a'] ?? '')),
+            'nombre_proyecto' => trim($datos['nombre_proyecto'] ?? ($cotizacion['nombre_proyecto'] ?? '')),
+            'forma_pago' => $formaPago,
             'notas_condiciones' => trim($datos['notas_condiciones'] ?? ''),
             'contactos_json' => $datos['contactos'] ?? [],
             'requiere_muestreo' => $requiereMuestreo ? 1 : 0,

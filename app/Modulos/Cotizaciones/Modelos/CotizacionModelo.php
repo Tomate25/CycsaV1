@@ -195,7 +195,8 @@ class CotizacionModelo extends ModeloBase {
                     $stmtCheck->execute(['id_cot' => $id]);
                     $idClienteFactura = !empty($cotInfo['id_cliente_factura']) ? (int)$cotInfo['id_cliente_factura'] : $idCliente;
                     $idClienteInforme = !empty($cotInfo['id_cliente_informe']) ? (int)$cotInfo['id_cliente_informe'] : $idCliente;
-                    $condComercial = !empty($cotInfo['condicion_comercial']) ? $cotInfo['condicion_comercial'] : (str_contains(strtolower($cotInfo['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado');
+                    $condComercial = !empty($cotInfo['condicion_comercial']) ? $cotInfo['condicion_comercial'] : determinarCondicionComercial($cotInfo['condicion_pago'] ?? '');
+                    $formaPagoOS = !empty($cotInfo['condicion_pago']) ? trim($cotInfo['condicion_pago']) : ($condComercial === 'credito' ? 'Crédito' : 'Pago contra entrega');
 
                     if (!$stmtCheck->fetch()) {
                         $anio = (int)date('Y');
@@ -204,8 +205,8 @@ class CotizacionModelo extends ModeloBase {
                         $consecutivo = (int)$stmtCount->fetchColumn() + 1;
                         $codigoOS = sprintf("OS-%d-%04d", $anio, $consecutivo);
 
-                        $sqlOS = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, tipo_contrato, fecha_emision, estado, requiere_muestreo) 
-                                  VALUES (:codigo_os, :id_cotizacion, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, 'Puntual', CURRENT_DATE, 'Estado 1: Recepcion', NULL)";
+                        $sqlOS = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, forma_pago, tipo_contrato, fecha_emision, estado, requiere_muestreo) 
+                                  VALUES (:codigo_os, :id_cotizacion, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :forma_pago, 'Puntual', CURRENT_DATE, 'Estado 1: Recepcion', NULL)";
                         $stmtOS = $this->db->prepare($sqlOS);
                         $stmtOS->execute([
                             'codigo_os' => $codigoOS,
@@ -213,7 +214,8 @@ class CotizacionModelo extends ModeloBase {
                             'id_cliente' => $idClienteFactura,
                             'id_cliente_factura' => $idClienteFactura,
                             'id_cliente_informe' => $idClienteInforme,
-                            'condicion_comercial' => $condComercial
+                            'condicion_comercial' => $condComercial,
+                            'forma_pago' => $formaPagoOS
                         ]);
                     }
 
@@ -387,7 +389,7 @@ class CotizacionModelo extends ModeloBase {
                 // Al corregir una cotización observada o rechazada, se incrementa la versión oficial
                 $nuevaVersion = $vNumParaArchivar + 1;
                 if ($oldCot['estado'] === 'Rechazada por Cliente') {
-                    $nuevoEstado = 'Enviada al Cliente';
+                    $nuevoEstado = 'En Revision';
                     $token = bin2hex(random_bytes(32));
                     $motivoRechazo = null; // Se limpia la observación/motivo de rechazo de la versión vieja
                 } elseif ($oldCot['estado'] === 'Observada') {
@@ -511,7 +513,7 @@ class CotizacionModelo extends ModeloBase {
             $nuevoToken = bin2hex(random_bytes(32));
 
             $sqlUpd = "UPDATE cotizaciones 
-                       SET estado = 'Enviada al Cliente', 
+                       SET estado = 'En Revision', 
                            version = :version, 
                            token_seguridad = :token, 
                            motivo_rechazo_cliente = NULL 

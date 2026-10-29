@@ -1821,7 +1821,7 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
  * - Muestra única: CYCSA-INF-[TIPO]-[NUM]-[AÑO] (ej. CYCSA-INF-MS-0001-26)
  * Detecta prefijos MS (Muestra Suelo / Simple) y MC (Muestra Concreto / Campo) y año de dos dígitos.
  */
-function generarCodigoInformeEnsayo($datosMuestrasOFilas = [], ?string $fechaRef = null, ?string $tipoMuestra = null): string {
+function generarCodigoInformeEnsayo($datosMuestrasOFilas = [], ?string $fechaRef = null, ?string $tipoMuestra = null, ?string $codigoOS = null): string {
     $codigos = [];
 
     if (is_string($datosMuestrasOFilas)) {
@@ -1892,14 +1892,23 @@ function generarCodigoInformeEnsayo($datosMuestrasOFilas = [], ?string $fechaRef
             $num = (int)$matches[2];
             $anio = !empty($matches[3]) ? substr($matches[3], -2) : $anioRef;
             $grupos[$pref][$anio][] = $num;
-        } elseif (preg_match('/(\d+)/', $cod, $matches)) {
-            $num = (int)$matches[1];
-            $grupos[$prefijoDefault][$anioRef][] = $num;
+        } elseif (preg_match('/^\D*(\d+)\D*$/', $cod, $matches)) {
+            $numSecuencia = (int)$matches[1];
+            if (!empty($codigoOS) && preg_match('/(?:OS-)?(?:\d{4}-)?(\d+)/i', $codigoOS, $mOS)) {
+                $baseOsNum = (int)$mOS[1];
+                $grupos[$prefijoDefault][$anioRef][] = $baseOsNum;
+            } else {
+                $grupos[$prefijoDefault][$anioRef][] = $numSecuencia;
+            }
         }
     }
 
     if (empty($grupos)) {
-        return "CYCSA-INF-{$prefijoDefault}-0001-{$anioRef}";
+        $corr = '0001';
+        if (!empty($codigoOS) && preg_match('/(?:OS-)?(?:\d{4}-)?(\d+)/i', $codigoOS, $mOS)) {
+            $corr = sprintf("%04d", (int)$mOS[1]);
+        }
+        return "CYCSA-INF-{$prefijoDefault}-{$corr}-{$anioRef}";
     }
 
     $bloquesInforme = [];
@@ -3347,14 +3356,92 @@ function generarCodigoCalidadLIMS(string $codigoBase, string $tipo = 'replica', 
  * Codifica un ID numérico de forma reversible (Hashids).
  */
 /**
- * Determina si un ensayo o ítem corresponde a compactación / densidad in situ
- * en donde no se emite solicitud de muestras de laboratorio físicas, sino que pasa directo
- * a Operaciones para llenado de matriz técnica.
+ * Determina de forma robusta la condición comercial ('contado' o 'credito') a partir
+ * de la condición de pago o texto libre registrado (ej. 'Crédito 30 días', 'Contra entrega').
+ * Regla: Si contiene explícitamente 'contado' o 'contra entrega' es 'contado'; cualquier otro
+ * texto libre (ej. crédito personalizado con días) se clasifica como 'credito'.
+ */
+function determinarCondicionComercial(?string $texto): string {
+    if ($texto === null || trim($texto) === '') {
+        return 'contado';
+    }
+    $normalizado = mb_strtolower(trim($texto), 'UTF-8');
+    if (str_contains($normalizado, 'contado') || str_contains($normalizado, 'contra entrega') || str_contains($normalizado, 'contra-entrega')) {
+        return 'contado';
+    }
+    return 'credito';
+}
+
+/**
+ * Resuelve de forma infalible la plantilla Markdown oficial correspondiente a un ensayo técnico,
+ * evitando que ensayos de compactación / in situ (ASTM D6938, D1556, D5030) caigan accidentalmente
+ * en la tabla genérica de compresión (resistencia_de_concreto.md).
+ */
+function resolverArchivoMarkdownEnsayo(array $detalle): string {
+    $texto = mb_strtolower(
+        ($detalle['norma_astm'] ?? '') . ' ' .
+        ($detalle['descripcion_ensayo'] ?? '') . ' ' .
+        ($detalle['nombre_comercial'] ?? '') . ' ' .
+        ($detalle['nombre_ensayo'] ?? '') . ' ' .
+        ($detalle['ensayo_servicio'] ?? ''),
+        'UTF-8'
+    );
+
+    // 1. ASTM D6938 / Densímetro nuclear (CYCSA-RT-FM-22 B, PE-25)
+    if (str_contains($texto, 'd6938') || str_contains($texto, 'd 6938') || str_contains($texto, 'densimetro') || str_contains($texto, 'densímetro')) {
+        return 'compactacion_densimetro_nuclear.md';
+    }
+
+    // 2. ASTM D1556 / Cono de arena (CYCSA-RT-FM-22 B, PE-20)
+    if (str_contains($texto, 'd1556') || str_contains($texto, 'd 1556') || str_contains($texto, 'cono de arena')) {
+        return 'formato_de_compactacion_por_cono_de_arena.md';
+    }
+
+    // 3. ASTM D5030 / Reemplazo de agua (CYCSA-RT-FM-22 B, PE-46)
+    if (str_contains($texto, 'd5030') || str_contains($texto, 'd 5030') || str_contains($texto, 'reemplazo de agua')) {
+        return 'formato_de_compactacion_por_reemplazo_de_agua_no_acreditado.md';
+    }
+
+    // 4. ASTM D698 / D1557 / Proctor Estándar o Modificado (CYCSA-RT-FM-22 C, PE-18 / PE-19)
+    if (str_contains($texto, 'd698') || str_contains($texto, 'd 698') || str_contains($texto, 'd1557') || str_contains($texto, 'd 1557') || str_contains($texto, 'proctor')) {
+        return 'proctor_estandar.md';
+    }
+
+    // 5. Si ya viene asignado un archivo markdown válido y no es una asociación errónea
+    $mdActual = trim((string)($detalle['archivo_markdown'] ?? ''));
+    if ($mdActual !== '') {
+        return $mdActual;
+    }
+
+    return 'resistencia_de_concreto.md';
+}
+
+/**
+ * Determina si un ensayo o ítem corresponde estrictamente a compactación / densidad in situ
+ * (Densímetro Nuclear, Cono de Arena, Reemplazo de Agua) en donde no se emite solicitud de
+ * muestras de laboratorio físicas, sino que pasa directo a Operaciones para llenado de matriz técnica.
+ * NOTA ISO 17025: Proctor (ASTM D698/D1557) es un ensayo de laboratorio y NO es in situ;
+ * requiere formalmente recepción y custodia de muestras en laboratorio (MS-XXXX-26).
  */
 function esItemCompactacion(array $item): bool {
+    $texto = mb_strtolower(
+        ($item['descripcion_ensayo'] ?? '') . ' ' . 
+        ($item['nombre_comercial'] ?? '') . ' ' . 
+        ($item['nombre_ensayo'] ?? '') . ' ' . 
+        ($item['norma_astm'] ?? '') . ' ' . 
+        ($item['formato_nombre'] ?? '') . ' ' .
+        ($item['ensayo_servicio'] ?? ''),
+        'UTF-8'
+    );
+
+    // Proctor es ensayo de suelos en laboratorio, descartar explícitamente como in situ
+    if (str_contains($texto, 'proctor') || str_contains($texto, 'd698') || str_contains($texto, 'd1557')) {
+        return false;
+    }
+
     $formatoId = (int)($item['formato_id'] ?? 0);
-    // Formatos técnicos: 1 (Densímetro Nuclear), 3 (Cono de Arena), 4 (Reemplazo de Agua), 15 (Proctor Estándar / Modificado)
-    if (in_array($formatoId, [1, 3, 4, 15])) {
+    // Formatos técnicos in situ: 1 (Densímetro Nuclear), 3 (Cono de Arena), 4 (Reemplazo de Agua)
+    if (in_array($formatoId, [1, 3, 4], true)) {
         return true;
     }
     
@@ -3362,28 +3449,17 @@ function esItemCompactacion(array $item): bool {
     if (in_array($archivoMd, [
         'compactacion_densimetro_nuclear.md',
         'formato_de_compactacion_por_cono_de_arena.md',
-        'formato_de_compactacion_por_reemplazo_de_agua_no_acreditado.md',
-        'proctor_estandar.md'
-    ])) {
+        'formato_de_compactacion_por_reemplazo_de_agua_no_acreditado.md'
+    ], true)) {
         return true;
     }
     
-    $texto = mb_strtolower(
-        ($item['descripcion_ensayo'] ?? '') . ' ' . 
-        ($item['nombre_comercial'] ?? '') . ' ' . 
-        ($item['nombre_ensayo'] ?? '') . ' ' . 
-        ($item['norma_astm'] ?? '') . ' ' . 
-        ($item['formato_nombre'] ?? '') . ' ' .
-        ($item['ensayo_servicio'] ?? '')
-    );
-    
-    $patrones = [
-        'compactac', 'proctor', 'cono de arena', 'densimetro', 
-        'densímetro', 'reemplazo de agua', 'd698', 'd1557', 'd1556', 'd6938', 'd5030'
+    $patronesInSitu = [
+        'cono de arena', 'densimetro', 'densímetro', 'reemplazo de agua', 'd1556', 'd6938', 'd5030'
     ];
     
-    foreach ($patrones as $p) {
-        if (strpos($texto, $p) !== false) {
+    foreach ($patronesInSitu as $p) {
+        if (str_contains($texto, $p)) {
             return true;
         }
     }

@@ -1,11 +1,11 @@
 <?php
 // Vista Imprimible Oficial de Matriz de Ensayo / Cálculo con Membrete Horizontal CYCSA (Estilo Sencillo y Sobrio con Espacio Amplio para Firmas)
-$archivoMd = $detalle['archivo_markdown'] ?? '';
+$archivoMd = resolverArchivoMarkdownEnsayo($detalle);
 $schemaInfo = $schemaInfo ?? obtenerEsquemaPlantillaEnsayo($archivoMd, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
 $listaVersiones = $listaVersiones ?? [];
 $infoVersionImpresion = $infoVersionImpresion ?? ['version' => 1, 'es_actual' => true, 'motivo' => '', 'fecha' => '', 'usuario' => ''];
 $versionActual = $versionActual ?? 1;
-$columnas = $schemaInfo['columns'] ?? ($columnas ?? []);
+$columnas = !empty($schemaInfo['columns']) ? $schemaInfo['columns'] : ($columnas ?? []);
 $tituloInforme = $schemaInfo['titulo_informe'] ?? 'INFORME DE ENSAYO';
 $subtituloLaboratorio = $schemaInfo['subtitulo_laboratorio'] ?? 'Laboratorio de Ensayos y Control de Calidad';
 $firmanteNombre = $schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira';
@@ -123,10 +123,16 @@ if (empty($resultados) && !empty($muestrasSeteadas)) {
 $datosParaCodigo = !empty($resultados) ? $resultados : (!empty($muestrasSeteadas) ? $muestrasSeteadas : ($detalle['resultados_json'] ?? []));
 $reemision = $dec['reemision'] ?? [];
 $versionActualNum = (int)($dec['version_actual'] ?? 1);
-$sustituyeA = $reemision['sustituye_a'] ?? null;
-$motivoReemision = $reemision['motivo'] ?? null;
+// Regla: Cintillo y sufijo de reemisión SOLO si version_actual > 1 (nunca en 1ª emisión)
+$sustituyeA = ($versionActualNum > 1) ? ($reemision['sustituye_a'] ?? null) : null;
+$motivoReemision = ($versionActualNum > 1) ? ($reemision['motivo'] ?? null) : null;
 
-$codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null), $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''));
+$codigoInformeConsecutivo = generarCodigoInformeEnsayo(
+    $datosParaCodigo,
+    $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null),
+    $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''),
+    $detalle['codigo_os'] ?? null
+);
 if ($versionActualNum > 1 && !empty($sustituyeA)) {
     $codigoInformeConsecutivo .= '-' . ($versionActualNum - 1);
 }

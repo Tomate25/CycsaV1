@@ -239,6 +239,39 @@ class MigradorServicio {
                     $resultados['020_proyectos'] = ob_get_clean();
                 }
             }
+
+            // =========================================================================
+            // FASE 15: Migración 021 - Corrección Administrativa y Versiones
+            // =========================================================================
+            $ruta021 = dirname(__DIR__, 4) . '/database/migrations/021_correccion_administrativa_versiones.php';
+            if (file_exists($ruta021)) {
+                ob_start();
+                include $ruta021;
+                $resultados['021_correccion_admin'] = ob_get_clean();
+            }
+
+            // =========================================================================
+            // FASE 16: Migración 022 - Cliente Informe vs Factura y Reglas Comerciales
+            // =========================================================================
+            $ruta022 = dirname(__DIR__, 4) . '/database/migrations/022_cliente_informe_condicion_comercial.php';
+            if (file_exists($ruta022)) {
+                ob_start();
+                require_once $ruta022;
+                if (function_exists('ejecutarMigracion022')) {
+                    ejecutarMigracion022($db);
+                }
+                $resultados['022_cliente_informe'] = ob_get_clean();
+            }
+
+            // =========================================================================
+            // FASE 17: Migración 023 - Formatos de Compactación y Condiciones O/S
+            // =========================================================================
+            $ruta023 = dirname(__DIR__, 4) . '/database/migrations/023_correccion_catalogos_formato_compactacion.php';
+            if (file_exists($ruta023)) {
+                ob_start();
+                include $ruta023;
+                $resultados['023_formatos_compactacion'] = ob_get_clean();
+            }
         } catch (Throwable $e) {
             error_log("Error en MigradorServicio: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             $resultados['error'] = $e->getMessage();

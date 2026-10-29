@@ -176,7 +176,13 @@ class OrdenServicioModelo {
     public function crear(array $datos): int {
         $idClienteFactura = !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)($datos['id_cliente'] ?? 0);
         $idClienteInforme = !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)($datos['id_cliente'] ?? 0);
-        $condComercial = !empty($datos['condicion_comercial']) ? trim($datos['condicion_comercial']) : (str_contains(strtolower($datos['forma_pago'] ?? ''), 'credito') ? 'credito' : 'contado');
+        $formaPago = trim($datos['forma_pago'] ?? ($datos['condicion_pago'] ?? ''));
+        if ($formaPago === '') {
+            $formaPago = (!empty($datos['condicion_comercial']) && $datos['condicion_comercial'] === 'credito') ? 'Crédito' : 'Pago contra entrega';
+        }
+        $condComercial = !empty($datos['condicion_comercial']) 
+            ? trim($datos['condicion_comercial']) 
+            : determinarCondicionComercial($formaPago);
 
         $sql = "INSERT INTO ordenes_servicio (
                     codigo_os, id_cotizacion, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, elaborado_por, fecha_emision,
@@ -200,7 +206,7 @@ class OrdenServicioModelo {
             'fecha_emision' => $datos['fecha_emision'] ?? date('Y-m-d'),
             'atencion_a' => $datos['atencion_a'] ?? '',
             'nombre_proyecto' => $datos['nombre_proyecto'] ?? '',
-            'forma_pago' => $datos['forma_pago'] ?? 'Pago contra entrega',
+            'forma_pago' => $formaPago,
             'notas_condiciones' => $datos['notas_condiciones'] ?? '',
             'contactos_json' => is_array($datos['contactos_json'] ?? null) ? json_encode($datos['contactos_json']) : ($datos['contactos_json'] ?? '[]'),
             'requiere_muestreo' => !empty($datos['requiere_muestreo']) ? 1 : 0,

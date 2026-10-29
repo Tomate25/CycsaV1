@@ -1660,7 +1660,13 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+        $archivoMd = resolverArchivoMarkdownEnsayo($detalle);
+        $detalle['archivo_markdown'] = $archivoMd;
+        $columnas = $this->obtenerColumnasFormato($archivoMd);
+        if (empty($columnas)) {
+            $schemaInfoRes = obtenerEsquemaPlantillaEnsayo($archivoMd, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
+            $columnas = $schemaInfoRes['columns'] ?? [];
+        }
         if (empty($columnas)) {
             $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
         }
@@ -1687,8 +1693,10 @@ class OperacionesControlador extends ControladorBase {
                 }
             }
 
-            // Si la O/S no tiene registrada ninguna Hoja RT-FM-13: Redirigir limpiamente a O/S sin alertas intrusivas
+            // Si la O/S in situ no tiene registrada ninguna muestra en la Hoja RT-FM-13:
+            // Alerta clara e informativa antes de redirigir a la O/S
             if (empty($muestrasDeclaradas)) {
+                $_SESSION['error'] = 'Para ensayos in situ de la Orden de Servicio ' . ($detalle['codigo_os'] ?? 'O/S') . ', la Hoja de Solicitud (CYCSA-RT-FM-13) debe incluir las muestras o puntos de muestreo registrados antes de capturar la matriz técnica.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . (int)$detalle['id_os']);
                 return;
             }
@@ -2407,7 +2415,8 @@ class OperacionesControlador extends ControladorBase {
             $codigoBase = generarCodigoInformeEnsayo(
                 $filas,
                 $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null),
-                $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? '')
+                $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''),
+                $detalle['codigo_os'] ?? null
             );
             $codigoPrevio = ($versionActual > 1) ? "{$codigoBase}-" . ($versionActual - 1) : $codigoBase;
             $nuevaVersionActual = $versionActual + 1;
