@@ -6,6 +6,7 @@ use Cycsa\Nucleo\ControladorBase;
 use Cycsa\Nucleo\Peticion;
 use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo;
+use Cycsa\Modulos\OrdenesServicio\Servicios\DocumentoRgFm39Servicio;
 use Cycsa\Modulos\Cotizaciones\Modelos\CotizacionModelo;
 
 class OrdenesServicioControlador extends ControladorBase {
@@ -377,6 +378,40 @@ class OrdenesServicioControlador extends ControladorBase {
             'titulo' => 'Orden de Servicio ' . $os['codigo_os'],
             'os' => $os
         ]);
+    }
+
+    /**
+     * PDF oficial CYCSA-RG-FM-39. Mismo HTML que la vista de detalle / impresión.
+     */
+    public function descargarPdf(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $idOS = (int)($_GET['id'] ?? 0);
+        $osModelo = new OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS);
+
+        if (!$os) {
+            $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        $pdf = DocumentoRgFm39Servicio::pdf($os);
+        $nombre = preg_replace('/[^A-Za-z0-9._-]+/', '_', (string)($os['codigo_os'] ?? 'orden'));
+        $nombre = trim((string)$nombre, '._-');
+        if ($nombre === '') {
+            $nombre = 'orden-servicio';
+        }
+        $nombre .= '-RG-FM-39.pdf';
+
+        if (!headers_sent()) {
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="' . $nombre . '"');
+        }
+        echo $pdf;
+        if (!defined('PHPUNIT_RUNNING')) {
+            exit;
+        }
     }
 
     /**

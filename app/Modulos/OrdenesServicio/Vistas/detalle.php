@@ -99,6 +99,9 @@ if (!empty($os['contactos_json'])) {
             <i class="fa-solid fa-arrow-left"></i> Volver a Órdenes
         </a>
         <div style="display: flex; gap: 10px;">
+            <a href="/Cycsa/publico/ordenes-servicio/descargar-pdf?id=<?= (int)($os['id'] ?? 0) ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary">
+                <i class="fa-solid fa-file-pdf"></i> Descargar PDF Oficial
+            </a>
             <button onclick="window.print()" class="btn-cycsa btn-cycsa-primary">
                 <i class="fa-solid fa-print"></i> Imprimir Orden de Servicio
             </button>
@@ -173,11 +176,35 @@ if (!empty($os['contactos_json'])) {
                     <th style="width: 80px;">Línea</th>
                     <th>Descripción</th>
                     <th style="width: 110px;">Cantidad</th>
+                    <th style="width: 190px;">Código laboratorio</th>
                 </tr>
             </thead>
             <tbody>
+                <?php
+                $codigosOs = [];
+                foreach (($os['codigos_muestra'] ?? []) as $codigoOs) {
+                    $codigoOs = trim((string)$codigoOs);
+                    if ($codigoOs !== '') {
+                        $codigosOs[$codigoOs] = $codigoOs;
+                    }
+                }
+                $codigosOs = array_values($codigosOs);
+                ?>
                 <?php if (!empty($os['ensayos'])): ?>
                     <?php foreach ($os['ensayos'] as $idx => $ensayo): ?>
+                        <?php
+                        if (array_key_exists('permitido', $ensayo) && (int)$ensayo['permitido'] !== 1) {
+                            continue;
+                        }
+                        $codigosEnsayo = [];
+                        foreach (($ensayo['codigos_laboratorio'] ?? []) as $codigoEnsayo) {
+                            $codigoEnsayo = trim((string)$codigoEnsayo);
+                            if ($codigoEnsayo !== '') {
+                                $codigosEnsayo[$codigoEnsayo] = $codigoEnsayo;
+                            }
+                        }
+                        $codigosEnsayo = array_values($codigosEnsayo);
+                        ?>
                         <tr>
                             <td style="text-align: center; font-weight: 700;"><?= $idx + 1 ?></td>
                             <td>
@@ -191,6 +218,9 @@ if (!empty($os['contactos_json'])) {
                             <td style="text-align: center; font-weight: 700;">
                                 <?= number_format($ensayo['cantidad'], 1) ?>
                             </td>
+                            <td style="text-align: center; font-family: monospace; font-weight: 700;">
+                                <?= $codigosEnsayo !== [] ? htmlspecialchars(implode(', ', $codigosEnsayo), ENT_QUOTES, 'UTF-8') : '—' ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
@@ -198,6 +228,57 @@ if (!empty($os['contactos_json'])) {
                         <td style="text-align: center; font-weight: 700;">1</td>
                         <td>Determinación de la resistencia del concreto.</td>
                         <td style="text-align: center; font-weight: 700;">1.0</td>
+                        <td style="text-align: center;">—</td>
+                    </tr>
+                <?php endif; ?>
+                <?php if ($codigosOs !== []): ?>
+                    <tr>
+                        <td style="text-align: center; font-weight: 700;">—</td>
+                        <td>Códigos de laboratorio recepcionados (MS/MC)</td>
+                        <td style="text-align: center; font-weight: 700;"><?= count($codigosOs) ?></td>
+                        <td style="text-align: center; font-family: monospace; font-weight: 700;">
+                            <?= htmlspecialchars(implode(', ', $codigosOs), ENT_QUOTES, 'UTF-8') ?>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+
+        <?php $informesVinculados = $os['informes_vinculados'] ?? []; ?>
+        <table class="os-table-border">
+            <thead>
+                <tr>
+                    <th>Informe vinculado</th>
+                    <th style="width: 140px;">Estado</th>
+                    <th style="width: 140px;">Documento</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (!empty($informesVinculados)): ?>
+                    <?php foreach ($informesVinculados as $informe): ?>
+                        <?php
+                        $informeAprobado = (int)($informe['aprobado'] ?? 0) === 1;
+                        $urlInforme = $informeAprobado ? trim((string)($informe['url_pdf'] ?? '')) : '';
+                        ?>
+                        <tr>
+                            <td style="font-family: monospace; font-weight: 700;">
+                                <?= htmlspecialchars((string)($informe['codigo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                            </td>
+                            <td style="text-align: center;">
+                                <?= htmlspecialchars((string)($informe['estado'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                            </td>
+                            <td style="text-align: center;">
+                                <?php if ($urlInforme !== ''): ?>
+                                    <a href="<?= htmlspecialchars($urlInforme, ENT_QUOTES, 'UTF-8') ?>">Abrir PDF</a>
+                                <?php else: ?>
+                                    —
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="3">Sin informes vinculados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -235,7 +316,7 @@ if (!empty($os['contactos_json'])) {
                 <?php endif; ?>
             </div>
 
-            <p style="margin-top: 10px;">Cotización #<?= htmlspecialchars($os['cotizacion_codigo']) ?></p>
+            <p style="margin-top: 10px;">Cotización origen #<?= htmlspecialchars((string)($os['cotizacion_codigo'] ?? ''), ENT_QUOTES, 'UTF-8') ?><?php if (isset($os['cotizacion_version']) && $os['cotizacion_version'] !== '' && $os['cotizacion_version'] !== null): ?> · Versión <?= htmlspecialchars((string)$os['cotizacion_version'], ENT_QUOTES, 'UTF-8') ?><?php endif; ?></p>
         </div>
 
         <!-- FIRMAS -->
