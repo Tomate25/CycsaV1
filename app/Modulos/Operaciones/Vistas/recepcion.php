@@ -1,5 +1,10 @@
 <?php
 // Recepcion form view - LIMS Sample Reception
+if (isset($servicios) && is_array($servicios)) {
+    $servicios = array_values(array_filter($servicios, static function ($servicio): bool {
+        return !is_array($servicio) || !array_key_exists('permitido', $servicio) || (int)$servicio['permitido'] === 1;
+    }));
+}
 ?>
 <style>
     .form-box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-top: 15px; }

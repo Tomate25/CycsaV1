@@ -104,7 +104,7 @@ class LaboratorioControlador extends ControladorBase {
         $solicitudesAprobadasRecientes = [];
 
         foreach ($todasOrdenes as $o) {
-            $ensayos = $operacionModelo->obtenerDetallesCotizacion((int)$o['id_cotizacion']);
+            $ensayos = $operacionModelo->filtrarDetallesPermitidos((int)$o['id_os'], $operacionModelo->obtenerDetallesCotizacion((int)$o['id_cotizacion']));
             // Omitir si la orden contiene exclusivamente ensayos in situ de compactación (no ingresan a laboratorio)
             if (!empty($ensayos) && esOrdenSoloCompactacion($ensayos)) {
                 continue;
@@ -933,7 +933,7 @@ class LaboratorioControlador extends ControladorBase {
                 $muestrasDeclaradasRT = json_decode($hoja['muestras_json'], true) ?: [];
             }
 
-            $servicios = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
+            $servicios = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']));
             $idDetalleCotizacion = (int)($datos['id_detalle_cotizacion'] ?? ($servicios[0]['id'] ?? 0));
             $tipoMuestraCalculado = !empty($os['requiere_muestreo']) ? 'Campo' : 'Laboratorio';
 
@@ -1012,7 +1012,10 @@ class LaboratorioControlador extends ControladorBase {
                 $numHojaTexto = !empty($hoja['numero_registro']) ? " [Reg: {$hoja['numero_registro']}]" : "";
                 $_SESSION['exito'] = "Muestras de la Hoja RT-FM-13{$numHojaTexto} aceptadas e ingresadas exitosamente a la Bandeja Anónima de Laboratorio ({$prefijoAsignado}-XXXX-" . date('y') . ").";
             } else {
-                $_SESSION['error'] = 'Ocurrió un error al registrar el ingreso de muestras al laboratorio.';
+                $detalleRecepcion = $modelo->obtenerUltimoErrorRecepcion() ?? '';
+                $_SESSION['error'] = str_contains($detalleRecepcion, 'no está habilitado')
+                    ? $detalleRecepcion
+                    : 'Ocurrió un error al registrar el ingreso de muestras al laboratorio.';
             }
 
             $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=bandeja');
@@ -1113,7 +1116,7 @@ class LaboratorioControlador extends ControladorBase {
         }
 
         $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS, $idHoja > 0 ? $idHoja : null);
-        $ensayos = $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']);
+        $ensayos = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']));
 
         if ($idHoja > 0) {
             $stmtMin = $db->prepare("SELECT MIN(id) FROM hojas_solicitud WHERE id_os = :id_os");

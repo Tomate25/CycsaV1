@@ -272,6 +272,27 @@ class MigradorServicio {
                 include $ruta023;
                 $resultados['023_formatos_compactacion'] = ob_get_clean();
             }
+
+            // =========================================================================
+            // FASE 18: Migración 025 - Whitelist de ensayos al aprobar O/S (Sprint C.2)
+            // =========================================================================
+            $ruta025 = dirname(__DIR__, 4) . '/database/migrations/025_orden_servicio_ensayos_permitidos.php';
+            if (file_exists($ruta025)) {
+                ob_start();
+                try {
+                    require_once $ruta025;
+                    if (function_exists('ejecutarMigracion025')) {
+                        ejecutarMigracion025($db);
+                    }
+                    $resultados['025_ensayos_permitidos'] = ob_get_clean();
+                } catch (Throwable $e025) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 025: ' . $e025->getMessage());
+                    $resultados['025_ensayos_permitidos'] = '[025 WARN] ' . $e025->getMessage();
+                }
+            }
         } catch (Throwable $e) {
             error_log("Error en MigradorServicio: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             $resultados['error'] = $e->getMessage();

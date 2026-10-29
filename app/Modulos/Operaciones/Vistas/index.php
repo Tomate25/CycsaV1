@@ -393,6 +393,9 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                 </thead>
                 <tbody>
                     <?php foreach ($ordenes as $o): 
+                        $o['items'] = array_values(array_filter($o['items'] ?? [], static function ($it): bool {
+                            return !is_array($it) || !array_key_exists('permitido', $it) || (int)$it['permitido'] === 1;
+                        }));
                         $totalItemsOS = count($o['items']);
                         $matricesLlenadas = 0;
                         foreach ($o['items'] as $it) {
@@ -1362,6 +1365,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
 
                 const tbody = document.getElementById('tbody-matriz-items-os');
                 tbody.innerHTML = '';
+                data.items = (data.items || []).filter(it => it.permitido !== 0 && it.permitido !== '0' && it.permitido !== false);
 
                 if (data.items.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#64748b;">No hay ensayos registrados para esta Orden de Servicio.</td></tr>';
