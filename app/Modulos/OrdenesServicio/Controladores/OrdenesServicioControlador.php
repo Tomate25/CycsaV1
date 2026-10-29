@@ -144,7 +144,7 @@ class OrdenesServicioControlador extends ControladorBase {
         ]);
 
         if ($idOS > 0) {
-            registrarBitacora('ordenes_servicio', 'crear', "Orden de Servicio creada: {$codigoOS} (Muestreo: " . ($requiereMuestreo ? 'Sí' : 'No') . ")", $idOS);
+            registrarEventoOS('ordenes_servicio', 'crear', "Orden de Servicio creada: {$codigoOS} (Muestreo: " . ($requiereMuestreo ? 'Sí' : 'No') . ")", $idOS);
 
             // BIFURCACIÓN (PASO 2)
             if ($requiereMuestreo) {
@@ -240,12 +240,12 @@ class OrdenesServicioControlador extends ControladorBase {
 
         if ($exito) {
             if ($esFinalizar) {
-                registrarBitacora('ordenes_servicio', 'finalizar_muestreo', "Muestreo finalizado (retorno al lab) y guardado para la Orden de Servicio ID: {$idOS}", $idOS);
+                registrarEventoOS('ordenes_servicio', 'finalizar_muestreo', "Muestreo finalizado (retorno al lab) y guardado para la Orden de Servicio ID: {$idOS}", $idOS);
                 $_SESSION['exito'] = 'Muestreo en campo finalizado con éxito. El técnico retornó con los especímenes al laboratorio. Abriendo Hoja de Servicio (CYCSA-RT-FM-13)...';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS . '&abrir_hoja=1&prefijo=MC');
                 return;
             } else {
-                registrarBitacora('ordenes_servicio', 'programar_muestreo', "Programación de muestreo y checklist guardados para la Orden de Servicio ID: {$idOS}", $idOS);
+                registrarEventoOS('ordenes_servicio', 'programar_muestreo', "Programación de muestreo y checklist guardados para la Orden de Servicio ID: {$idOS}", $idOS);
                 $_SESSION['exito'] = 'Programación de muestreo y Lista de Chequeo CYCSA-RT-FM-40 B guardada con éxito.';
             }
         } else {
@@ -298,7 +298,7 @@ class OrdenesServicioControlador extends ControladorBase {
         $exito = $osModelo->finalizarMuestreo($idOS);
 
         if ($exito) {
-            registrarBitacora('ordenes_servicio', 'finalizar_muestreo', "Muestreo finalizado para la Orden de Servicio ID: {$idOS}", $idOS);
+            registrarEventoOS('ordenes_servicio', 'finalizar_muestreo', "Muestreo finalizado para la Orden de Servicio ID: {$idOS}", $idOS);
             if ($esAjax) {
                 $respuesta->enviarJson(['status' => 'success', 'message' => 'Muestreo finalizado con éxito.']);
                 return;
@@ -374,9 +374,15 @@ class OrdenesServicioControlador extends ControladorBase {
             return;
         }
 
+        $mostrarBitacora = puedeVerBitacoraOS();
         $this->renderizar('OrdenesServicio/Vistas/detalle', [
             'titulo' => 'Orden de Servicio ' . $os['codigo_os'],
-            'os' => $os
+            'os' => $os,
+            'mostrar_bitacora' => $mostrarBitacora,
+            'bitacora_logs' => $mostrarBitacora ? obtenerBitacoraOS($idOS, 200) : [],
+            'bitacora_modulo_nombre' => 'Orden de Servicio ' . ($os['codigo_os'] ?? ''),
+            'bitacora_limite' => 200,
+            'bitacora_abierta' => false,
         ]);
     }
 
@@ -489,16 +495,60 @@ class OrdenesServicioControlador extends ControladorBase {
             require_once dirname(__DIR__, 3) . '/Helpers/funciones.php';
             $codigoTexto = $os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '');
             $listaIds = implode(', ', $idsPermitidos);
-            registrarBitacora(
+            registrarEventoOS(
                 'ordenes_servicio',
                 'aprobar',
                 'Orden de Servicio ' . $codigoTexto . ' aprobada formalmente por supervisor ' . ($_SESSION['usuario_nombre'] ?? 'Supervisor') . '. Ensayos habilitados (IDs): ' . $listaIds,
-                $idOS
+                $idOS,
+                ['datos' => ['ensayos_permitidos' => $idsPermitidos]]
             );
             $_SESSION['exito'] = 'Orden de Servicio ' . ($os['codigo_os'] ?? '') . ' aprobada con éxito. Ensayos habilitados: ' . $listaIds . '. Ya puede registrar Hojas de Solicitud CYCSA-RT-FM-13.';
 
             $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
         }
+    }
+
+    /**
+     * Línea de tiempo de una O/S. Solo lectura.
+     * Acceso: rol de sesión 1, 2 o 3, o tienePermiso('bitacora','ver').
+     * GET no muta datos; CSRF no aplica. AuthMiddleware exige sesión.
+     */
+    public function bitacora(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        if (!puedeVerBitacoraOS()) {
+            $_SESSION['error'] = 'No tiene permiso para consultar la bitácora de la Orden de Servicio.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        $idOS = (int)($_GET['id'] ?? 0);
+        $osModelo = new OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS);
+        if (!$os) {
+            $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        $filtros = [
+            'usuario' => trim((string)($_GET['usuario'] ?? '')),
+            'accion' => trim((string)($_GET['accion'] ?? '')),
+            'entidad_tipo' => trim((string)($_GET['entidad_tipo'] ?? '')),
+            'entidad_id' => (int)($_GET['entidad_id'] ?? 0),
+            'desde' => trim((string)($_GET['desde'] ?? '')),
+            'hasta' => trim((string)($_GET['hasta'] ?? '')),
+        ];
+
+        $this->renderizar('OrdenesServicio/Vistas/bitacora', [
+            'titulo' => 'Bitácora ' . ($os['codigo_os'] ?? ''),
+            'os' => $os,
+            'filtros' => $filtros,
+            'bitacora_logs' => obtenerBitacoraOS($idOS, 300, $filtros),
+            'bitacora_modulo_nombre' => 'Orden de Servicio ' . ($os['codigo_os'] ?? ''),
+            'bitacora_limite' => 300,
+            'bitacora_abierta' => true,
+        ]);
     }
 
     /**

@@ -46,6 +46,25 @@ $bitacora_acciones_nombre = [
     'crear_rol'                  => 'Creación Rol',
     'editar_rol'                 => 'Edición Rol',
     'eliminar_rol'               => 'Eliminación Rol',
+    'aprobar'                    => 'Aprobación O/S',
+    'finalizar_muestreo'         => 'Muestreo Finalizado',
+    'omitir_espera'              => 'Omitir Espera',
+    'aprobar_revision_resultados'=> 'Aprobación de Resultados',
+    'guardar_matriz'             => 'Guardar Matriz',
+    'aprobar_matriz'             => 'Aprobar Matriz',
+    'devolver_matriz'            => 'Devolver Matriz',
+    'congelar_plantillas'        => 'Congelar Plantillas RT-FM-13',
+    'cambio_plantilla'           => 'Cambio de Plantilla',
+    'cerrar_orden'               => 'Cierre de O/S',
+    'enviar_matriz_cliente'      => 'Envío Matriz al Cliente',
+    'alerta_regresion'           => 'Alerta de Regresión',
+    'correccion_administrativa'  => 'Corrección Administrativa',
+    'subir_logo_acreditacion'    => 'Logo de Acreditación',
+    'eliminar_logo_acreditacion' => 'Retiro de Logo',
+    'aprobada'                   => 'Matriz Aprobada',
+    'devuelta'                   => 'Matriz Devuelta',
+    'enviado_revision'           => 'Enviado a Revisión',
+    'corregido_y_reenviado'      => 'Corregido y Reenviado',
 ];
 
 // — Determinar clase de badge e ícono —
@@ -54,6 +73,11 @@ if (!function_exists('bitacora_badge_info')) {
     {
         $a = mb_strtolower($accion);
 
+        if (str_contains($a, 'congelar'))                                       return ['bitacora-badge-gray',    'fa-lock'];
+        if (str_contains($a, 'cerrar') || str_contains($a, 'finalizar'))        return ['bitacora-badge-emerald', 'fa-box-archive'];
+        if (str_contains($a, 'hoja_') || $a === 'emitir_solicitud')             return ['bitacora-badge-blue',    'fa-file-lines'];
+        if (str_contains($a, 'guardar') || str_contains($a, 'omitir'))          return ['bitacora-badge-amber',   'fa-floppy-disk'];
+        if (str_contains($a, 'regresion') || str_contains($a, 'regresión'))     return ['bitacora-badge-red',     'fa-triangle-exclamation'];
         if (str_contains($a, 'crear'))                                          return ['bitacora-badge-green',   'fa-plus'];
         if (str_contains($a, 'editar') || str_contains($a, 'actualizar'))       return ['bitacora-badge-amber',   'fa-pen'];
         if (str_contains($a, 'eliminar') || str_contains($a, 'desactivar'))     return ['bitacora-badge-red',     'fa-trash-can'];
@@ -70,8 +94,13 @@ if (!function_exists('bitacora_badge_info')) {
 if (!isset($bitacora_logs) || !is_array($bitacora_logs)) {
     $bitacora_logs = [];
 }
-// Limitamos a 50 para optimizar rendimiento de carga inicial
-$bitacora_logs = array_slice($bitacora_logs, 0, 50);
+// Limitamos para optimizar la carga. Quien incluye el parcial puede subir el tope.
+$bitacora_limite = isset($bitacora_limite) ? (int)$bitacora_limite : 50;
+if ($bitacora_limite <= 0) {
+    $bitacora_limite = 50;
+}
+$bitacora_logs = array_slice($bitacora_logs, 0, $bitacora_limite);
+$bitacora_abierta = !empty($bitacora_abierta);
 
 if (!isset($bitacora_modulo_nombre)) {
     $bitacora_modulo_nombre = 'Módulo';
@@ -303,14 +332,14 @@ if (!isset($bitacora_modulo_nombre)) {
 <!-- ======================== BITÁCORA – HTML ======================== -->
 <div class="bitacora-panel">
     <!-- Botón Toggle Principal -->
-    <button type="button" class="bitacora-toggle-btn" onclick="toggleBitacoraPanel()">
+    <button type="button" class="bitacora-toggle-btn<?= $bitacora_abierta ? ' active' : '' ?>" onclick="toggleBitacoraPanel()">
         <i class="fa-solid fa-clock-rotate-left"></i>
         Historial de Actividad (<?= count($bitacora_logs) ?> registros)
         <i class="fa-solid fa-chevron-down bitacora-chevron"></i>
     </button>
 
     <!-- Contenido Flujo de Actividades -->
-    <div id="bitacoraContent" class="bitacora-content">
+    <div id="bitacoraContent" class="bitacora-content<?= $bitacora_abierta ? ' bitacora-open' : '' ?>">
         <?php if (empty($bitacora_logs)): ?>
             <div class="bitacora-empty">
                 <i class="fa-solid fa-inbox"></i>
@@ -345,7 +374,13 @@ if (!isset($bitacora_modulo_nombre)) {
                     }
 
                     // Metadata para búsqueda
-                    $busqueda_metadata = strtolower($usuario . ' ' . $accion_label . ' ' . $descripcion . ' ' . $fecha);
+                    $entidadTxt = trim((string)($log['entidad_tipo'] ?? ''));
+                    if (!empty($log['entidad_id'])) {
+                        $entidadTxt .= ' #' . (int)$log['entidad_id'];
+                    }
+                    $rolTxt = trim((string)($log['usuario_rol'] ?? ''));
+                    $fuenteTxt = (string)($log['fuente'] ?? '');
+                    $busqueda_metadata = strtolower($usuario . ' ' . $rolTxt . ' ' . $accion_label . ' ' . $accion_raw . ' ' . $descripcion . ' ' . $fecha . ' ' . $entidadTxt . ' ' . $fuenteTxt);
                 ?>
                     <div class="bitacora-item" data-text="<?= htmlspecialchars($busqueda_metadata, ENT_QUOTES, 'UTF-8') ?>">
                         <div class="bitacora-marker">
@@ -356,6 +391,9 @@ if (!isset($bitacora_modulo_nombre)) {
                                 <span class="bitacora-user-name">
                                     <i class="fa-solid fa-user-circle"></i>
                                     <?= $usuario ?>
+                                    <?php if ($rolTxt !== ''): ?>
+                                        <span style="font-weight:500; color:#64748b;">· rol <?= htmlspecialchars($rolTxt, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php endif; ?>
                                 </span>
                                 <span class="bitacora-time-badge">
                                     <i class="fa-regular fa-clock"></i>
@@ -366,6 +404,12 @@ if (!isset($bitacora_modulo_nombre)) {
                                 <span class="bitacora-badge <?= $badgeClass ?>">
                                     <?= htmlspecialchars($accion_label) ?>
                                 </span>
+                                <?php if ($entidadTxt !== ''): ?>
+                                    <span class="bitacora-badge bitacora-badge-gray"><?= htmlspecialchars($entidadTxt, ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php endif; ?>
+                                <?php if ($fuenteTxt === 'json'): ?>
+                                    <span class="bitacora-badge bitacora-badge-amber">Historial matriz</span>
+                                <?php endif; ?>
                                 <span class="bitacora-msg"><?= $descripcion ?></span>
                                 <?php if (!empty($log['ip'])): ?>
                                     <span class="bitacora-ip-tag" title="Dirección IP de conexión">

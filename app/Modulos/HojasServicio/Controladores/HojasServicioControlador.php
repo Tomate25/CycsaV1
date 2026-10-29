@@ -413,7 +413,11 @@ class HojasServicioControlador extends ControladorBase {
 
                 if ($esRecepcionFisica) {
                     $pltModelo->bloquearYCongelarDetallesRecepcion($idHojaGuardada, $usuarioId);
-                    registrarBitacora('hojas_servicio', 'congelar_plantillas', "Plantillas congeladas y bloqueadas por recepción física en Hoja RT-FM-13 #{$idHojaGuardada}", $idHojaGuardada);
+                    registrarEventoOS('hojas_servicio', 'congelar_plantillas', "Plantillas congeladas y bloqueadas por recepción física en Hoja RT-FM-13 #{$idHojaGuardada}", $idOS, [
+                        'entidad_tipo' => 'rtfm13',
+                        'entidad_id' => (int)$idHojaGuardada,
+                        'id_referencia' => (int)$idHojaGuardada,
+                    ]);
                 }
 
                 require_once dirname(__DIR__, 4) . '/app/Helpers/funciones.php';
@@ -434,7 +438,11 @@ class HojasServicioControlador extends ControladorBase {
 
                 $numReg = $hoja['numero_registro'] ?? ('#' . $hoja['id']);
                 $codigoTexto = $os['codigo_os'] . " (Hoja Reg: {$numReg})";
-                registrarBitacora('hojas_servicio', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada/actualizada y PDF generado para Orden de Servicio ' . $codigoTexto, $idOS);
+                registrarEventoOS('hojas_servicio', 'hoja_solicitud', 'Hoja de Solicitud CYCSA-RT-FM-13 guardada/actualizada y PDF generado para Orden de Servicio ' . $codigoTexto, $idOS, [
+                    'entidad_tipo' => 'rtfm13',
+                    'entidad_id' => (int)($hoja['id'] ?? $idHojaGuardada),
+                    'datos' => ['id_hoja' => (int)($hoja['id'] ?? $idHojaGuardada)],
+                ]);
                 
                 // Nota: Si la O/S estaba "Observada", se mantiene su estado para que el usuario pueda enviarla a revisión formal con el botón correspondiente.
 
@@ -478,7 +486,10 @@ class HojasServicioControlador extends ControladorBase {
 
             if ($modelo->actualizarEstadoOS($idOS, 'Estado 2: Revision')) {
                 $codigoTexto = $os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '');
-                registrarBitacora('hojas_servicio', 'cambiar_estado', 'Orden de Servicio ' . $codigoTexto . ' enviada a revisión de supervisor.', $idOS);
+                registrarEventoOS('hojas_servicio', 'cambiar_estado', 'Orden de Servicio ' . $codigoTexto . ' enviada a revisión de supervisor.', $idOS, [
+                    'entidad_tipo' => 'rtfm13',
+                    'datos' => ['estado' => 'Estado 2: Revision'],
+                ]);
                 $_SESSION['exito'] = 'Hoja de Servicio enviada a revisión del supervisor correctamente.';
             } else {
                 $_SESSION['error'] = 'Error al enviar la Hoja de Servicio a revisión.';
@@ -542,7 +553,10 @@ class HojasServicioControlador extends ControladorBase {
                 $exito = $stmt->execute(['motivo' => $motivo, 'id' => $idOS]);
                 if ($exito) {
                     $codigoTexto = $os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '');
-                    registrarBitacora('hojas_servicio', 'cambiar_estado', 'Orden de Servicio ' . $codigoTexto . ' observada por supervisor: ' . $motivo, $idOS);
+                    registrarEventoOS('hojas_servicio', 'cambiar_estado', 'Orden de Servicio ' . $codigoTexto . ' observada por supervisor: ' . $motivo, $idOS, [
+                        'entidad_tipo' => 'rtfm13',
+                        'datos' => ['estado' => 'Estado 2: Observada', 'motivo' => $motivo],
+                    ]);
                     $_SESSION['exito'] = 'La Hoja de Servicio ha sido observada y devuelta al emisor.';
                 }
             } else {
@@ -551,7 +565,10 @@ class HojasServicioControlador extends ControladorBase {
                 $exito = $stmt->execute(['estado' => $nuevoEstado, 'req' => $reqMuestreo, 'id' => $idOS]);
                 if ($exito) {
                     $codigoTexto = $os['codigo_os'] . (!empty($os['cliente_nombre']) ? ' (' . $os['cliente_nombre'] . ')' : '');
-                    registrarBitacora('hojas_servicio', 'cambiar_estado', 'Orden de Servicio ' . $codigoTexto . ' aprobada y pasada a estado: ' . $nuevoEstado, $idOS);
+                    registrarEventoOS('hojas_servicio', 'cambiar_estado', 'Orden de Servicio ' . $codigoTexto . ' aprobada y pasada a estado: ' . $nuevoEstado, $idOS, [
+                        'entidad_tipo' => 'rtfm13',
+                        'datos' => ['estado' => $nuevoEstado],
+                    ]);
                     $_SESSION['exito'] = 'La Hoja de Servicio ha sido aprobada correctamente.';
                 }
             }

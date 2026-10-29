@@ -1072,7 +1072,9 @@ class LaboratorioControlador extends ControladorBase {
 
             $modelo = new OperacionModelo();
             if ($modelo->actualizarEstadoOS($idOS, $nuevoEstado, !empty($motivo) ? $motivo : null)) {
-                registrarBitacora('laboratorio', 'cambiar_estado', "Estado de Solicitud/OS #{$idOS} actualizado a {$nuevoEstado}" . (!empty($motivo) ? " con motivo: {$motivo}" : ""), $idOS);
+                registrarEventoOS('laboratorio', 'cambiar_estado', "Estado de Solicitud/OS #{$idOS} actualizado a {$nuevoEstado}" . (!empty($motivo) ? " con motivo: {$motivo}" : ""), $idOS, [
+                    'datos' => ['estado' => $nuevoEstado],
+                ]);
                 if ($esAjax) {
                     $respuesta->enviarJson(['status' => 'success', 'message' => 'Estado actualizado exitosamente.']);
                     return;

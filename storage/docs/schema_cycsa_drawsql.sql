@@ -41,8 +41,16 @@ CREATE TABLE `bitacora` (
   `id_referencia` int(11) DEFAULT NULL,
   `ip` varchar(45) NOT NULL,
   `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `entidad_tipo` varchar(40) DEFAULT NULL,
+  `entidad_id` int(11) DEFAULT NULL,
+  `id_os` int(11) DEFAULT NULL,
+  `usuario_rol` varchar(50) DEFAULT NULL,
+  `datos_json` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `id_usuario` (`id_usuario`),
+  KEY `idx_bitacora_id_os` (`id_os`),
+  KEY `idx_bitacora_entidad` (`entidad_tipo`, `entidad_id`),
+  KEY `idx_bitacora_fecha` (`fecha_creacion`),
   CONSTRAINT `bitacora_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

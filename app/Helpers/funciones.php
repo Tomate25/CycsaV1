@@ -1268,18 +1268,45 @@ function obtenerBaseUrl(): string {
 
 /**
  * Registra una acción de auditoría en la tabla `bitacora`.
+ *
+ * Firma legacy intacta. El 5.º argumento opcional $ctx escribe las columnas
+ * de la migración 027 cuando existen:
+ * entidad_tipo, entidad_id, id_os, usuario_rol, datos|datos_json.
+ * Sin $ctx el INSERT usa solo las columnas históricas.
+ * usuario_rol sale de $ctx o, si falta, de $_SESSION['usuario_rol'].
  */
-function registrarBitacora(string $modulo, string $accion, string $descripcion, ?int $id_referencia = null): bool {
+function registrarBitacora(string $modulo, string $accion, string $descripcion, ?int $id_referencia = null, ?array $ctx = null): bool {
     try {
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
         
         $id_usuario = $_SESSION['usuario_id'] ?? null;
         $usuario_nombre = $_SESSION['usuario_nombre'] ?? 'Sistema / Cliente';
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-        
-        $sql = "INSERT INTO bitacora (id_usuario, usuario_nombre, modulo, accion, descripcion, id_referencia, ip) 
-                VALUES (:id_usuario, :usuario_nombre, :modulo, :accion, :descripcion, :id_referencia, :ip)";
-        
+
+        $usarCtx = is_array($ctx) && bitacoraColumnasEntidadDisponibles($db);
+        if (!$usarCtx) {
+            $sql = "INSERT INTO bitacora (id_usuario, usuario_nombre, modulo, accion, descripcion, id_referencia, ip) 
+                    VALUES (:id_usuario, :usuario_nombre, :modulo, :accion, :descripcion, :id_referencia, :ip)";
+            $stmt = $db->prepare($sql);
+            return $stmt->execute([
+                'id_usuario' => $id_usuario,
+                'usuario_nombre' => $usuario_nombre,
+                'modulo' => $modulo,
+                'accion' => $accion,
+                'descripcion' => $descripcion,
+                'id_referencia' => $id_referencia,
+                'ip' => $ip
+            ]);
+        }
+
+        $normalizado = bitacoraNormalizarContexto($ctx);
+        $sql = "INSERT INTO bitacora (
+                    id_usuario, usuario_nombre, modulo, accion, descripcion, id_referencia, ip,
+                    entidad_tipo, entidad_id, id_os, usuario_rol, datos_json
+                ) VALUES (
+                    :id_usuario, :usuario_nombre, :modulo, :accion, :descripcion, :id_referencia, :ip,
+                    :entidad_tipo, :entidad_id, :id_os, :usuario_rol, :datos_json
+                )";
         $stmt = $db->prepare($sql);
         return $stmt->execute([
             'id_usuario' => $id_usuario,
@@ -1288,11 +1315,399 @@ function registrarBitacora(string $modulo, string $accion, string $descripcion, 
             'accion' => $accion,
             'descripcion' => $descripcion,
             'id_referencia' => $id_referencia,
-            'ip' => $ip
+            'ip' => $ip,
+            'entidad_tipo' => $normalizado['entidad_tipo'],
+            'entidad_id' => $normalizado['entidad_id'],
+            'id_os' => $normalizado['id_os'],
+            'usuario_rol' => $normalizado['usuario_rol'],
+            'datos_json' => $normalizado['datos_json'],
         ]);
     } catch (\Exception $e) {
         error_log("Error en bitácora: " . $e->getMessage());
         return false;
+    }
+}
+
+/**
+ * Atajo de auditoría ligada a una Orden de Servicio.
+ * $extra: entidad_tipo (default os), entidad_id (default id de la O/S),
+ * id_referencia (default id de la O/S), usuario_rol, datos.
+ */
+function registrarEventoOS(string $modulo, string $accion, string $descripcion, int $idOS, array $extra = []): bool {
+    $idReferencia = array_key_exists('id_referencia', $extra)
+        ? $extra['id_referencia']
+        : ($idOS > 0 ? $idOS : null);
+    if ($idReferencia !== null) {
+        $idReferencia = (int)$idReferencia;
+        if ($idReferencia <= 0) {
+            $idReferencia = null;
+        }
+    }
+
+    $ctx = [
+        'entidad_tipo' => $extra['entidad_tipo'] ?? 'os',
+        'entidad_id' => array_key_exists('entidad_id', $extra) ? $extra['entidad_id'] : ($idOS > 0 ? $idOS : null),
+        'id_os' => $idOS > 0 ? $idOS : null,
+    ];
+    if (array_key_exists('usuario_rol', $extra)) {
+        $ctx['usuario_rol'] = $extra['usuario_rol'];
+    }
+    if (array_key_exists('datos', $extra)) {
+        $ctx['datos'] = $extra['datos'];
+    }
+
+    return registrarBitacora($modulo, $accion, $descripcion, $idReferencia, $ctx);
+}
+
+/**
+ * true cuando la migración 027 ya agregó las cinco columnas de entidad.
+ * Un resultado negativo no se cachea: la migración puede correr en el mismo proceso.
+ */
+function bitacoraColumnasEntidadDisponibles(?\PDO $db = null): bool {
+    static $disponible = false;
+    if ($disponible) {
+        return true;
+    }
+    try {
+        $db = $db ?: \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmt = $db->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'bitacora'
+               AND COLUMN_NAME IN ('entidad_tipo','entidad_id','id_os','usuario_rol','datos_json')"
+        );
+        $disponible = ((int)$stmt->fetchColumn()) >= 5;
+    } catch (\Throwable $e) {
+        $disponible = false;
+    }
+    return $disponible;
+}
+
+/**
+ * Acciones cuyo id_referencia NO es el id de la O/S.
+ * El legado solo se une a la línea de tiempo cuando el id sí es la orden.
+ */
+function bitacoraAccionesReferenciaNoOS(): array {
+    return [
+        'guardar_matriz',
+        'subir_logo_acreditacion',
+        'eliminar_logo_acreditacion',
+        'enviar_matriz_cliente',
+        'congelar_plantillas',
+        'cambio_plantilla',
+        'modificar_plan_rotura',
+        'generar_informe_parcial',
+        'revision_informe',
+        'generar_informe_consolidado',
+        'invalidar_informe_consolidado',
+        'reemitir_informe',
+        'reidentificar_muestra',
+    ];
+}
+
+/**
+ * @param array<string, mixed> $ctx
+ * @return array{entidad_tipo:?string,entidad_id:?int,id_os:?int,usuario_rol:?string,datos_json:?string}
+ */
+function bitacoraNormalizarContexto(array $ctx): array {
+    $tipo = isset($ctx['entidad_tipo']) ? trim((string)$ctx['entidad_tipo']) : '';
+    $tipo = $tipo === '' ? null : mb_substr($tipo, 0, 40);
+
+    $entidadId = bitacoraEnteroPositivo($ctx['entidad_id'] ?? null);
+    $idOs = bitacoraEnteroPositivo($ctx['id_os'] ?? null);
+
+    $rol = $ctx['usuario_rol'] ?? null;
+    if ($rol === null || $rol === '') {
+        $rol = $_SESSION['usuario_rol'] ?? null;
+    }
+    if ($rol === null || $rol === '') {
+        $rol = null;
+    } else {
+        $rol = mb_substr((string)$rol, 0, 50);
+    }
+
+    $datos = $ctx['datos'] ?? ($ctx['datos_json'] ?? null);
+    $datosJson = null;
+    if (is_array($datos)) {
+        $encoded = json_encode($datos, JSON_UNESCAPED_UNICODE);
+        $datosJson = $encoded === false ? null : $encoded;
+    } elseif (is_string($datos) && $datos !== '') {
+        $datosJson = $datos;
+    }
+
+    return [
+        'entidad_tipo' => $tipo,
+        'entidad_id' => $entidadId,
+        'id_os' => $idOs,
+        'usuario_rol' => $rol,
+        'datos_json' => $datosJson,
+    ];
+}
+
+/**
+ * @param mixed $valor
+ */
+function bitacoraEnteroPositivo($valor): ?int {
+    if ($valor === null || $valor === '') {
+        return null;
+    }
+    $numero = (int)$valor;
+    return $numero > 0 ? $numero : null;
+}
+
+/**
+ * Lectura de la bitácora de una O/S.
+ * Roles 1 (administración), 2 (administración operativa) y 3 (supervisor),
+ * o cualquier rol con tienePermiso('bitacora','ver').
+ * El panel global /panel/bitacora sigue limitado al rol 1.
+ */
+function puedeVerBitacoraOS(): bool {
+    $rol = (int)($_SESSION['usuario_rol'] ?? 0);
+    if (in_array($rol, [1, 2, 3], true)) {
+        return true;
+    }
+    return function_exists('tienePermiso') && tienePermiso('bitacora', 'ver');
+}
+
+/**
+ * Línea de tiempo cronológica (más antiguo primero) de una Orden de Servicio.
+ * 1) Filas con id_os.
+ * 2) Legado mapeable: id_referencia = O/S en módulos de orden/operación/hoja/lab,
+ *    excluyendo acciones cuyo id no es la O/S.
+ * 3) Historial JSON de revisión de matrices (fuente=json). No sustituye resultados_json.
+ *
+ * Filtros opcionales: usuario, accion, entidad_tipo, entidad_id, desde, hasta (Y-m-d).
+ *
+ * @param array<string, mixed> $filtros
+ */
+function obtenerBitacoraOS(int $idOS, int $limite = 200, array $filtros = []): array {
+    if ($idOS <= 0) {
+        return [];
+    }
+    $limite = $limite > 0 ? $limite : 200;
+
+    try {
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $filas = bitacoraConsultarFilasOS($db, $idOS);
+        foreach (bitacoraHistorialJsonDeOS($db, $idOS) as $extra) {
+            $filas[] = $extra;
+        }
+    } catch (\Throwable $e) {
+        error_log('Error al obtener bitácora de O/S: ' . $e->getMessage());
+        return [];
+    }
+
+    $filas = bitacoraAplicarFiltros($filas, $filtros);
+    usort($filas, static function (array $a, array $b): int {
+        $fa = (string)($a['fecha_creacion'] ?? '');
+        $fb = (string)($b['fecha_creacion'] ?? '');
+        if ($fa === $fb) {
+            return ((int)($a['id'] ?? 0)) <=> ((int)($b['id'] ?? 0));
+        }
+        return $fa <=> $fb;
+    });
+
+    if (count($filas) > $limite) {
+        $filas = array_slice($filas, -$limite);
+    }
+    return array_values($filas);
+}
+
+/**
+ * @return array<int, array<string, mixed>>
+ */
+function bitacoraConsultarFilasOS(\PDO $db, int $idOS): array {
+    $exclusiones = bitacoraAccionesReferenciaNoOS();
+    $params = [];
+    $marcas = [];
+    foreach ($exclusiones as $i => $accion) {
+        $clave = 'ex' . $i;
+        $marcas[] = ':' . $clave;
+        $params[$clave] = $accion;
+    }
+    $lista = implode(', ', $marcas);
+    $modulos = "'ordenes_servicio','operaciones','hojas_servicio','laboratorio'";
+
+    if (bitacoraColumnasEntidadDisponibles($db)) {
+        $sql = "SELECT * FROM bitacora WHERE id_os = :id_os_directo
+                UNION ALL
+                SELECT * FROM bitacora
+                WHERE id_os IS NULL
+                  AND modulo IN ({$modulos})
+                  AND id_referencia = :id_ref_legado
+                  AND accion NOT IN ({$lista})";
+        $params['id_os_directo'] = $idOS;
+        $params['id_ref_legado'] = $idOS;
+    } else {
+        $sql = "SELECT * FROM bitacora
+                WHERE modulo IN ({$modulos})
+                  AND id_referencia = :id_ref_legado
+                  AND accion NOT IN ({$lista})";
+        $params['id_ref_legado'] = $idOS;
+    }
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $filas = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    return is_array($filas) ? $filas : [];
+}
+
+/**
+ * @return array<int, array<string, mixed>>
+ */
+function bitacoraHistorialJsonDeOS(\PDO $db, int $idOS): array {
+    try {
+        $tieneDetalles = $db->query("SHOW TABLES LIKE 'cotizacion_detalles'")->fetch(PDO::FETCH_NUM);
+        $tieneOrdenes = $db->query("SHOW TABLES LIKE 'ordenes_servicio'")->fetch(PDO::FETCH_NUM);
+        if (!$tieneDetalles || !$tieneOrdenes) {
+            return [];
+        }
+        $stmt = $db->prepare(
+            "SELECT cd.id, cd.descripcion_ensayo, cd.resultados_json
+             FROM cotizacion_detalles cd
+             INNER JOIN ordenes_servicio os ON os.id_cotizacion = cd.id_cotizacion
+             WHERE os.id = :id"
+        );
+        $stmt->execute(['id' => $idOS]);
+        $salida = [];
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $salida = array_merge($salida, bitacoraFilasDesdeHistorialMatriz(
+                $idOS,
+                (int)$row['id'],
+                (string)($row['descripcion_ensayo'] ?? 'ensayo'),
+                isset($row['resultados_json']) ? (string)$row['resultados_json'] : null
+            ));
+        }
+        return $salida;
+    } catch (\Throwable $e) {
+        error_log('Bitácora O/S: historial JSON de matriz no disponible: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Convierte revision.historial de resultados_json en filas de línea de tiempo.
+ * fuente=json. No escribe ni reemplaza el JSON de la matriz.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function bitacoraFilasDesdeHistorialMatriz(int $idOS, int $idDetalle, string $descripcionEnsayo, ?string $resultadosJson): array {
+    if ($resultadosJson === null || $resultadosJson === '') {
+        return [];
+    }
+    $dec = json_decode($resultadosJson, true);
+    if (!is_array($dec)) {
+        return [];
+    }
+    $historial = $dec['revision']['historial'] ?? null;
+    if (!is_array($historial)) {
+        return [];
+    }
+
+    $filas = [];
+    foreach ($historial as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $accionJson = trim((string)($item['accion'] ?? 'evento_matriz'));
+        if ($accionJson === '') {
+            $accionJson = 'evento_matriz';
+        }
+        $nota = trim((string)($item['nota'] ?? ($item['motivo'] ?? '')));
+        $filas[] = [
+            'id' => null,
+            'id_usuario' => $item['usuario_id'] ?? null,
+            'usuario_nombre' => (string)($item['usuario'] ?? 'Sistema / Cliente'),
+            'usuario_rol' => null,
+            'modulo' => 'operaciones',
+            'accion' => $accionJson,
+            'descripcion' => 'Historial de matriz (' . $descripcionEnsayo . '): ' . $accionJson . ($nota !== '' ? ' — ' . $nota : ''),
+            'id_referencia' => $idDetalle,
+            'ip' => null,
+            'fecha_creacion' => (string)($item['fecha'] ?? ''),
+            'entidad_tipo' => 'matriz',
+            'entidad_id' => $idDetalle,
+            'id_os' => $idOS,
+            'datos_json' => null,
+            'fuente' => 'json',
+        ];
+    }
+    return $filas;
+}
+
+/**
+ * @param array<int, array<string, mixed>> $filas
+ * @param array<string, mixed> $filtros
+ * @return array<int, array<string, mixed>>
+ */
+function bitacoraAplicarFiltros(array $filas, array $filtros): array {
+    $usuario = trim((string)($filtros['usuario'] ?? ''));
+    $accion = trim((string)($filtros['accion'] ?? ''));
+    $entidad = trim((string)($filtros['entidad_tipo'] ?? ''));
+    $entidadId = bitacoraEnteroPositivo($filtros['entidad_id'] ?? null) ?? 0;
+    $desde = bitacoraFechaFiltro($filtros['desde'] ?? '');
+    $hasta = bitacoraFechaFiltro($filtros['hasta'] ?? '');
+
+    if ($usuario === '' && $accion === '' && $entidad === '' && $entidadId === 0 && $desde === '' && $hasta === '') {
+        return $filas;
+    }
+
+    $salida = [];
+    foreach ($filas as $fila) {
+        if ($usuario !== '') {
+            $nombre = (string)($fila['usuario_nombre'] ?? '');
+            $idUsuario = (string)($fila['id_usuario'] ?? '');
+            if (mb_stripos($nombre, $usuario) === false && $idUsuario !== $usuario) {
+                continue;
+            }
+        }
+        if ($accion !== '' && (string)($fila['accion'] ?? '') !== $accion) {
+            continue;
+        }
+        if ($entidad !== '' && (string)($fila['entidad_tipo'] ?? '') !== $entidad) {
+            continue;
+        }
+        if ($entidadId > 0 && (int)($fila['entidad_id'] ?? 0) !== $entidadId) {
+            continue;
+        }
+        $fecha = substr((string)($fila['fecha_creacion'] ?? ''), 0, 10);
+        if ($desde !== '' && ($fecha === '' || $fecha < $desde)) {
+            continue;
+        }
+        if ($hasta !== '' && ($fecha === '' || $fecha > $hasta)) {
+            continue;
+        }
+        $salida[] = $fila;
+    }
+    return $salida;
+}
+
+/**
+ * @param mixed $valor
+ */
+function bitacoraFechaFiltro($valor): string {
+    $texto = trim((string)$valor);
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $texto) ? $texto : '';
+}
+
+function bitacoraIdOsPorDetalleEnsayo(int $idDetalle): int {
+    if ($idDetalle <= 0) {
+        return 0;
+    }
+    try {
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmt = $db->prepare(
+            "SELECT os.id
+             FROM cotizacion_detalles cd
+             INNER JOIN ordenes_servicio os ON os.id_cotizacion = cd.id_cotizacion
+             WHERE cd.id = :id
+             ORDER BY os.id DESC
+             LIMIT 1"
+        );
+        $stmt->execute(['id' => $idDetalle]);
+        return (int)$stmt->fetchColumn();
+    } catch (\Throwable $e) {
+        return 0;
     }
 }
 

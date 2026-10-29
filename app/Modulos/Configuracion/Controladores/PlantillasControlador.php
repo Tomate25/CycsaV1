@@ -456,7 +456,27 @@ class PlantillasControlador extends ControladorBase {
 
         try {
             $this->modelo->cambiarPlantillaMuestraConMotivo($detalleId, $nuevaPlantillaId, $nuevaVersionId, $motivo, $usuarioId);
-            registrarBitacora('hojas_servicio', 'cambio_plantilla', "Plantilla de muestra detalle #{$detalleId} cambiada a #{$nuevaPlantillaId}. Motivo: {$motivo}", $detalleId);
+            $idOsPlantilla = 0;
+            try {
+                $dbPlantilla = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                $stmtOsPlantilla = $dbPlantilla->prepare(
+                    'SELECT hs.id_os
+                     FROM hojas_solicitud_detalles d
+                     INNER JOIN hojas_solicitud hs ON hs.id = d.id_hoja_solicitud
+                     WHERE d.id = :id
+                     LIMIT 1'
+                );
+                $stmtOsPlantilla->execute(['id' => $detalleId]);
+                $idOsPlantilla = (int)$stmtOsPlantilla->fetchColumn();
+            } catch (Throwable $e) {
+                $idOsPlantilla = 0;
+            }
+            registrarEventoOS('hojas_servicio', 'cambio_plantilla', "Plantilla de muestra detalle #{$detalleId} cambiada a #{$nuevaPlantillaId}. Motivo: {$motivo}", $idOsPlantilla, [
+                'entidad_tipo' => 'rtfm13',
+                'entidad_id' => $detalleId,
+                'id_referencia' => $detalleId,
+                'datos' => ['plantilla_id' => $nuevaPlantillaId],
+            ]);
 
             $respuesta->enviarJson([
                 'status' => 'success',

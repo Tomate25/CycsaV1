@@ -532,6 +532,18 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     </div>
 </div>
 
+<?php if (!empty($detalle['id_os']) && function_exists('puedeVerBitacoraOS') && puedeVerBitacoraOS()): ?>
+<div style="background:#f8fafc; border:1px solid #dbeafe; border-radius:8px; padding:10px 14px; margin:-8px 0 16px 0; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+    <span style="font-size:12.5px; color:#334155;">
+        <i class="fa-solid fa-clock-rotate-left" style="color:#103487;"></i>
+        Auditoría de la orden <?= htmlspecialchars((string)($detalle['codigo_os'] ?? ''), ENT_QUOTES, 'UTF-8') ?> y de este ensayo.
+    </span>
+    <a href="/Cycsa/publico/ordenes-servicio/bitacora?id=<?= (int)$detalle['id_os'] ?>&entidad_tipo=matriz&entidad_id=<?= (int)$detalle['id'] ?>" style="font-size:12.5px; font-weight:700; color:#103487; text-decoration:none;">
+        Ver bitácora de la O/S
+    </a>
+</div>
+<?php endif; ?>
+
 <?php if ($esModoHistorico): ?>
     <!-- ALERTA MODO LECTURA HISTÓRICA -->
     <div style="background: #fff1f2; border: 2px solid #f87171; border-radius: 10px; padding: 16px 20px; margin-bottom: 22px; display: flex; gap: 14px; align-items: flex-start; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.1);">

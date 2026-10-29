@@ -756,7 +756,13 @@ class OperacionModelo extends ModeloBase {
 
             // Registrar regresión en bitácora si se detectó
             if ($alertaRegresion) {
-                registrarBitacora('operaciones', 'alerta_regresion', $mensajeRegresion);
+                $idOsRegresion = $this->resolverIdOsDesdeEnsayo($idEnsayo, (int)($info['id_detalle_cotizacion'] ?? 0));
+                registrarEventoOS('operaciones', 'alerta_regresion', $mensajeRegresion, $idOsRegresion, [
+                    'entidad_tipo' => 'muestra',
+                    'entidad_id' => $idEnsayo,
+                    'id_referencia' => $idOsRegresion > 0 ? $idOsRegresion : null,
+                    'datos' => ['id_ensayo' => $idEnsayo, 'id_lote' => $idLote],
+                ]);
             }
 
             $mensaje = 'Resultado de ensaye cargado correctamente.';
@@ -780,6 +786,31 @@ class OperacionModelo extends ModeloBase {
             $msg = $esTesting ? ('Error interno: ' . $e->getMessage()) : 'No fue posible registrar la ruptura de la muestra. Verifique los parámetros técnicos.';
             return ['exito' => false, 'mensaje' => $msg, 'alerta_regresion' => false];
         }
+    }
+
+    private function resolverIdOsDesdeEnsayo(int $idEnsayo, int $idDetalleCotizacion): int {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT rm.id_os
+                 FROM ensayo_edades ee
+                 INNER JOIN lotes_muestras lm ON lm.id = ee.id_lote
+                 INNER JOIN recepcion_muestras rm ON rm.id = lm.id_recepcion
+                 WHERE ee.id = :id
+                 LIMIT 1"
+            );
+            $stmt->execute(['id' => $idEnsayo]);
+            $idOs = (int)$stmt->fetchColumn();
+            if ($idOs > 0) {
+                return $idOs;
+            }
+        } catch (\Throwable $e) {
+            error_log('Bitácora regresión: no se resolvió la O/S por recepción: ' . $e->getMessage());
+        }
+
+        if ($idDetalleCotizacion > 0 && function_exists('bitacoraIdOsPorDetalleEnsayo')) {
+            return bitacoraIdOsPorDetalleEnsayo($idDetalleCotizacion);
+        }
+        return 0;
     }
 
     /**
