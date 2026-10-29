@@ -1079,6 +1079,42 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         ['tipodefractura', 'fractura']
     ];
 
+    function extraerUnidadDeNombreColumna(nombreCol) {
+        if (!nombreCol) return '';
+        const m = String(nombreCol).match(/\(([^)]+)\)/);
+        if (!m) return '';
+        return m[1].trim().toLowerCase().replace(/²/g, '2').replace(/³/g, '3');
+    }
+
+    function convertirUnidadMedicion(valorNum, uOri, uDes) {
+        if (isNaN(valorNum) || valorNum === null || valorNum === undefined || valorNum === '') return valorNum;
+        uOri = (uOri || '').toLowerCase();
+        uDes = (uDes || '').toLowerCase();
+        if (uOri === uDes || !uOri || !uDes) return valorNum;
+
+        // Carga / Masa: kg <-> lb
+        if (uOri === 'kg' && uDes === 'lb') return parseFloat((valorNum * 2.20462262).toFixed(1));
+        if (uOri === 'lb' && uDes === 'kg') return parseFloat((valorNum * 0.45359237).toFixed(1));
+
+        // Área: cm² <-> in²
+        if (uOri === 'cm2' && uDes === 'in2') return parseFloat((valorNum / 6.4516).toFixed(2));
+        if (uOri === 'in2' && uDes === 'cm2') return parseFloat((valorNum * 6.4516).toFixed(2));
+
+        // Resistencia / Presión: kg/cm² <-> lb/in² (psi)
+        if ((uOri === 'kg/cm2' || uOri === 'kgcm2') && (uDes === 'lb/in2' || uDes === 'lbin2' || uDes === 'psi')) {
+            return parseFloat((valorNum * 14.223343).toFixed(1));
+        }
+        if ((uOri === 'lb/in2' || uOri === 'lbin2' || uOri === 'psi') && (uDes === 'kg/cm2' || uDes === 'kgcm2')) {
+            return parseFloat((valorNum * 0.070307).toFixed(1));
+        }
+
+        // Longitud: in <-> cm
+        if (uOri === 'in' && uDes === 'cm') return parseFloat((valorNum * 2.54).toFixed(1));
+        if (uOri === 'cm' && uDes === 'in') return parseFloat((valorNum / 2.54).toFixed(2));
+
+        return valorNum;
+    }
+
     function buscarValorEnFila(rowData, col, calcCol) {
         if (!rowData || typeof rowData !== 'object') return '';
         
@@ -1094,6 +1130,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         
         const colNorm = normalizarTextoClave(col);
         const calcNorm = calcCol ? normalizarTextoClave(calcCol) : '';
+        const uDes = extraerUnidadDeNombreColumna(col) || extraerUnidadDeNombreColumna(calcCol);
         
         // 3. Coincidencia normalizada directa (ignora mayúsculas, tildes, signos y espacios)
         for (const key in rowData) {
@@ -1101,12 +1138,17 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             const keyNorm = normalizarTextoClave(key);
             if (keyNorm === colNorm || (calcNorm && keyNorm === calcNorm)) {
                 if (rowData[key] !== undefined && rowData[key] !== null && String(rowData[key]).trim() !== '') {
-                    return String(rowData[key]);
+                    const uOri = extraerUnidadDeNombreColumna(key);
+                    const rawVal = rowData[key];
+                    if (uOri && uDes && uOri !== uDes && !isNaN(parseFloat(rawVal))) {
+                        return String(convertirUnidadMedicion(parseFloat(rawVal), uOri, uDes));
+                    }
+                    return String(rawVal);
                 }
             }
         }
         
-        // 4. Coincidencia por grupo de sinónimos técnicos
+        // 4. Coincidencia por grupo de sinónimos técnicos con conversión dimensional de unidades
         for (const grupo of DICCIONARIO_SINONIMOS) {
             if (grupo.includes(colNorm) || (calcNorm && grupo.includes(calcNorm))) {
                 for (const key in rowData) {
@@ -1114,7 +1156,12 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                     const keyNorm = normalizarTextoClave(key);
                     if (grupo.includes(keyNorm)) {
                         if (rowData[key] !== undefined && rowData[key] !== null && String(rowData[key]).trim() !== '') {
-                            return String(rowData[key]);
+                            const uOri = extraerUnidadDeNombreColumna(key);
+                            const rawVal = rowData[key];
+                            if (uOri && uDes && uOri !== uDes && !isNaN(parseFloat(rawVal))) {
+                                return String(convertirUnidadMedicion(parseFloat(rawVal), uOri, uDes));
+                            }
+                            return String(rawVal);
                         }
                     }
                 }
@@ -1133,13 +1180,21 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     function sincronizarSinonimosFila(fila, saveKey, val) {
         if (!fila || typeof fila !== 'object' || !saveKey) return;
         const keyNorm = normalizarTextoClave(saveKey);
+        const uSrc = extraerUnidadDeNombreColumna(saveKey);
+        const valNum = parseFloat(val);
+
         for (const grupo of DICCIONARIO_SINONIMOS) {
             if (grupo.includes(keyNorm)) {
                 for (const k in fila) {
                     if (k.startsWith('_')) continue;
                     const targetNorm = normalizarTextoClave(k);
                     if (grupo.includes(targetNorm)) {
-                        fila[k] = val;
+                        const uDst = extraerUnidadDeNombreColumna(k);
+                        if (uSrc && uDst && uSrc !== uDst && !isNaN(valNum)) {
+                            fila[k] = String(convertirUnidadMedicion(valNum, uSrc, uDst));
+                        } else {
+                            fila[k] = val;
+                        }
                     }
                 }
             }
