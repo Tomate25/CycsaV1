@@ -6,7 +6,17 @@ $listaVersiones = $listaVersiones ?? [];
 $infoVersionImpresion = $infoVersionImpresion ?? ['version' => 1, 'es_actual' => true, 'motivo' => '', 'fecha' => '', 'usuario' => ''];
 $versionActual = $versionActual ?? 1;
 $columnas = !empty($schemaInfo['columns']) ? $schemaInfo['columns'] : ($columnas ?? []);
-$tituloInforme = $schemaInfo['titulo_informe'] ?? 'INFORME DE ENSAYO';
+if (empty($columnas) || count($columnas) <= 6) {
+    $descLower = mb_strtolower(($detalle['descripcion_ensayo'] ?? '') . ' ' . $archivoMd, 'UTF-8');
+    if (strpos($descLower, 'concreto') !== false || strpos($descLower, 'cilindro') !== false || strpos($descLower, 'compresi') !== false) {
+        $columnas = [
+            "Código laboratorio", "Nombre muestra", "Área (in²)", "Reven. (in)", "Reven. (cm)",
+            "Temp. (°C)", "Carga (lb)", "Peso Volumétrico (kg/m³)", "Diseño de concreto (lb/in²)",
+            "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"
+        ];
+    }
+}
+$tituloInforme = !empty($schemaInfo['titulo_informe']) ? $schemaInfo['titulo_informe'] : 'INFORME DE ENSAYO';
 $subtituloLaboratorio = $schemaInfo['subtitulo_laboratorio'] ?? 'Laboratorio de Ensayos y Control de Calidad';
 $firmanteNombre = $schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira';
 $firmanteCargo = $schemaInfo['firmante_cargo'] ?? 'Gerente General';
@@ -491,7 +501,7 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
 
         /* Estilos de Impresión */
         @media print {
-            .barra-pantalla {
+            .barra-pantalla, .no-print, nav, .btn-matriz-action, #modalEnviarPrint {
                 display: none !important;
             }
             body {
@@ -511,6 +521,7 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
 </head>
 <body>
 
+    <?php if (empty($sinBarraPantalla) && !isset($_GET['pdf']) && (!isset($_GET['modo']) || $_GET['modo'] !== 'pdf')): ?>
     <!-- BARRA FLOTANTE EN PANTALLA -->
     <div class="barra-pantalla">
         <div style="display: flex; align-items: center; gap: 12px;">
@@ -565,6 +576,7 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
             <?php endif; ?>
         </div>
     </div>
+    <?php endif; ?>
 
     <!-- PÁGINA IMPRIMIBLE CON MEMBRETE AJUSTADA -->
     <div class="pagina-hoja">
@@ -663,10 +675,11 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                             <tr>
                                 <th style="width: 20px;">#</th>
                                 <?php foreach ($columnas as $col): 
-                                    $metodo = $colMethods[$col] ?? '';
+                                    $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col; // Corrección B.7 PE-25 unidad estricta para peso volumétrico
+                                    $metodo = $colMethods[$col] ?? ($colMethods[$colLabel] ?? '');
                                 ?>
                                     <th>
-                                        <?= htmlspecialchars($col) ?>
+                                        <?= htmlspecialchars($colLabel) ?>
                                         <?php if (!empty($metodo)): ?>
                                             <span class="metodo-sub"><?= htmlspecialchars($metodo) ?></span>
                                         <?php endif; ?>
@@ -684,7 +697,7 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                                     <tr>
                                         <td style="font-weight: bold;"><?= $numFila ?></td>
                                         <?php foreach ($columnas as $col): 
-                                            $val = is_array($fila) ? ($fila[$col] ?? ($fila[$schemaInfo['column_aliases'][$col] ?? ''] ?? '')) : '';
+                                            $val = is_array($fila) ? buscarValorEnFilaPHP($fila, $col, $schemaInfo['column_aliases'][$col] ?? null) : '';
                                             $isCode = ($col === 'Código laboratorio' || $col === 'Codigo Lab');
                                             $isNum = is_numeric(str_replace(['%', ',', ' '], '', (string)$val)) && !empty($val);
                                         ?>
@@ -712,6 +725,21 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                         <div class="disclaimer-formato">
                             <?= htmlspecialchars($disclaimerOficial) ?>
                         </div>
+                        <?php 
+                        if (strpos($codigoFormatoOficial, 'RT-FM-22 B') !== false || strpos($archivoMd, 'compactacion') !== false) {
+                            $tieneNota1 = false;
+                            foreach ($notasOficiales as $idxNota => $notaExistente) {
+                                if (stripos($notaExistente, 'Nota 1') !== false || stripos($notaExistente, 'TROXLER') !== false || stripos($notaExistente, 'Muestra tomada con equipo') !== false) {
+                                    $notasOficiales[$idxNota] = $metadatos['nota_equipo_densimetro'] ?? $notaExistente;
+                                    $tieneNota1 = true;
+                                    break;
+                                }
+                            }
+                            if (!$tieneNota1 && !empty($metadatos['nota_equipo_densimetro'])) {
+                                $notasOficiales[] = $metadatos['nota_equipo_densimetro'];
+                            }
+                        }
+                        ?>
                         <?php if (!empty($notasOficiales)): ?>
                             <div class="notas-formato">
                                 <?php foreach ($notasOficiales as $nota): ?>
@@ -742,6 +770,7 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
             <!-- LÍNEA DE CIERRE OFICIAL (SERIE CYCSA-RT-FM-22) -->
             <div class="linea-cierre-doc">-------------------------------- Última Línea ---------------------------------</div>
 
+            <?php if (($schemaInfo['num_firmas'] ?? 1) == 3): ?>
             <!-- BLOQUE DE FIRMAS TÉCNICAS CON ESPACIO CALIBRADO -->
             <div class="bloque-firmas">
                 <div class="columna-firma">
@@ -766,6 +795,17 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                     </div>
                 </div>
             </div>
+            <?php else: ?>
+            <div class="bloque-firmas" style="display: flex; justify-content: center;">
+                <div class="columna-firma" style="width: 260px; max-width: 50%;">
+                    <div class="espacio-para-firma"></div>
+                    <div class="linea-firma">
+                        <div class="firma-nombre"><?= htmlspecialchars($firmanteNombre) ?></div>
+                        <div class="firma-cargo"><?= htmlspecialchars($firmanteCargo) ?></div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
         </div>
 

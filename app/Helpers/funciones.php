@@ -1769,6 +1769,131 @@ function obtenerEsquemaPlantillaEnsayo(?string $archivoMd, ?int $formatoId = nul
     return $esquemaBase;
 }
 
+function normalizarTextoClavePHP(string $txt): string {
+    if (empty($txt)) return '';
+    $txt = str_replace(['²', '³'], ['2', '3'], $txt);
+    $txt = mb_strtolower($txt, 'UTF-8');
+    $txt = str_replace(
+        ['á', 'é', 'í', 'ó', 'ú', 'ñ'],
+        ['a', 'e', 'i', 'o', 'u', 'n'],
+        $txt
+    );
+    return preg_replace('/[^a-z0-9]/', '', $txt);
+}
+
+function extraerUnidadDeNombreColumnaPHP(string $nombreCol): string {
+    if (preg_match('/\(([^)]+)\)/', $nombreCol, $m)) {
+        $u = trim(mb_strtolower($m[1], 'UTF-8'));
+        return str_replace(['²', '³'], ['2', '3'], $u);
+    }
+    return '';
+}
+
+function convertirUnidadMedicionPHP(float $val, string $uOri, string $uDes): float {
+    $uOri = strtolower($uOri);
+    $uDes = strtolower($uDes);
+    if ($uOri === $uDes || empty($uOri) || empty($uDes)) return $val;
+
+    // Carga / Masa: kg <-> lb
+    if ($uOri === 'kg' && $uDes === 'lb') return round($val * 2.20462262, 1);
+    if ($uOri === 'lb' && $uDes === 'kg') return round($val * 0.45359237, 1);
+
+    // Área: cm² <-> in²
+    if ($uOri === 'cm2' && $uDes === 'in2') return round($val / 6.4516, 2);
+    if ($uOri === 'in2' && $uDes === 'cm2') return round($val * 6.4516, 2);
+
+    // Resistencia / Presión: kg/cm² <-> lb/in² (psi)
+    if (($uOri === 'kg/cm2' || $uOri === 'kgcm2') && ($uDes === 'lb/in2' || $uDes === 'lbin2' || $uDes === 'psi')) {
+        return round($val * 14.223343, 1);
+    }
+    if (($uOri === 'lb/in2' || $uOri === 'lbin2' || $uOri === 'psi') && ($uDes === 'kg/cm2' || $uDes === 'kgcm2')) {
+        return round($val * 0.070307, 1);
+    }
+
+    // Longitud: in <-> cm
+    if ($uOri === 'in' && $uDes === 'cm') return round($val * 2.54, 1);
+    if ($uOri === 'cm' && $uDes === 'in') return round($val / 2.54, 2);
+
+    return $val;
+}
+
+function buscarValorEnFilaPHP(array $fila, string $col, ?string $calcCol = null): string {
+    if (isset($fila[$col]) && $fila[$col] !== null && trim((string)$fila[$col]) !== '') {
+        return (string)$fila[$col];
+    }
+    if (!empty($calcCol) && isset($fila[$calcCol]) && $fila[$calcCol] !== null && trim((string)$fila[$calcCol]) !== '') {
+        return (string)$fila[$calcCol];
+    }
+
+    $colNorm = normalizarTextoClavePHP($col);
+    $calcNorm = !empty($calcCol) ? normalizarTextoClavePHP($calcCol) : '';
+    $uDes = extraerUnidadDeNombreColumnaPHP($col) ?: (!empty($calcCol) ? extraerUnidadDeNombreColumnaPHP($calcCol) : '');
+
+    // 1. Coincidencia normalizada directa
+    foreach ($fila as $k => $v) {
+        if (str_starts_with((string)$k, '_')) continue;
+        $kNorm = normalizarTextoClavePHP((string)$k);
+        if ($kNorm === $colNorm || (!empty($calcNorm) && $kNorm === $calcNorm)) {
+            if ($v !== null && trim((string)$v) !== '') {
+                $uOri = extraerUnidadDeNombreColumnaPHP((string)$k);
+                if (!empty($uOri) && !empty($uDes) && $uOri !== $uDes && is_numeric(str_replace(['%', ' '], '', (string)$v))) {
+                    return (string)convertirUnidadMedicionPHP((float)$v, $uOri, $uDes);
+                }
+                return (string)$v;
+            }
+        }
+    }
+
+    // 2. Coincidencia por grupos de sinónimos técnicos
+    $gruposSinonimos = [
+        ['carga', 'cargalb', 'cargakg', 'cargamaxima', 'cargamaximalb', 'cargamaximakg'],
+        ['rcompresionkgcm2', 'resistenciakgcm2', 'rcompresionlbin2', 'rcompresionlbpin2', 'resistencialbin2', 'resistencialbpin2', 'rcompresionpsi', 'resistenciapsi', 'resistencia', 'rcompresion', 'resistenciaalacompresion'],
+        ['fechadefabricacion', 'fechademoldeo', 'fechamoldeo', 'fechafabricacion', 'fechadecolado', 'fechacolado'],
+        ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura'],
+        ['edaddias', 'edad'],
+        ['disenodeconcretolbin2', 'disenodeconcretokgcm2', 'fcespecificado', 'fckgcm2', 'fc', 'disenokgcm2', 'diseno'],
+        ['areain2', 'areacm2', 'areain', 'areacm', 'area'],
+        ['nombremuestra', 'nombredelamuestra', 'identificacion', 'muestra', 'codigodecampo', 'codigocampo'],
+        ['revenin', 'revenimientoin', 'revenimiento'],
+        ['revencm', 'revenimientocm'],
+        ['tempc', 'temperaturac', 'temperatura', 'temp'],
+        ['pesovolumetricokgm3', 'pesovolumetrico', 'pvsmaxkgm3', 'pvssitiokgm3', 'pvs'],
+        ['pvsmaxkgm3', 'pvsmax'],
+        ['pvssitiokgm3', 'pvssitiokgcm2', 'pvssitio'],
+        ['humedaddepct', 'humedaddecampopct', 'humedadsitiopct', 'humedadcampo'],
+        ['compactacionpp', 'compactacionpct', 'porcentajecompactacion'],
+        ['diametrocm', 'diametroin', 'diametro'],
+        ['porcentajeresistencia', 'porcentajecumplimiento'],
+        ['tipodefractura', 'fractura']
+    ];
+
+    foreach ($gruposSinonimos as $grupo) {
+        if (in_array($colNorm, $grupo, true) || (!empty($calcNorm) && in_array($calcNorm, $grupo, true))) {
+            foreach ($fila as $k => $v) {
+                if (str_starts_with((string)$k, '_')) continue;
+                $kNorm = normalizarTextoClavePHP((string)$k);
+                if (in_array($kNorm, $grupo, true)) {
+                    if ($v !== null && trim((string)$v) !== '') {
+                        $uOri = extraerUnidadDeNombreColumnaPHP((string)$k);
+                        if (!empty($uOri) && !empty($uDes) && $uOri !== $uDes && is_numeric(str_replace(['%', ' '], '', (string)$v))) {
+                            return (string)convertirUnidadMedicionPHP((float)$v, $uOri, $uDes);
+                        }
+                        return (string)$v;
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Fallback para Nombre muestra
+    if ($colNorm === 'nombremuestra' || $calcNorm === 'nombremuestra') {
+        if (!empty($fila['_muestra_origen'])) return $fila['_muestra_origen'] . ' (Réplica CR)';
+        if (!empty($fila['Código laboratorio'])) return (string)$fila['Código laboratorio'];
+    }
+
+    return '';
+}
+
 function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $metadatosGuardados = []): array {
     // Si metadatosGuardados tiene cliente_nombre, respetarlo; de lo contrario priorizar la figura jurídica de informe (ISO/IEC 17025)
     $clienteNom = !empty($metadatosGuardados['cliente_nombre']) 
@@ -1793,6 +1918,39 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
     $ensayoRealizado = !empty($schemaInfo['ensayo_titulo']) ? $schemaInfo['ensayo_titulo'] : (!empty($metadatosGuardados['ensayo_realizado']) ? $metadatosGuardados['ensayo_realizado'] : (!empty($detalle['ensayo_realizado']) ? $detalle['ensayo_realizado'] : ($detalle['descripcion_ensayo'] ?? 'Ensayo de Laboratorio')));
     $metodoMuestreo = !empty($schemaInfo['metodo_muestreo']) ? $schemaInfo['metodo_muestreo'] : (!empty($metadatosGuardados['metodo_muestreo']) ? $metadatosGuardados['metodo_muestreo'] : (!empty($detalle['metodo_muestreo']) ? $detalle['metodo_muestreo'] : (!empty($detalle['norma_astm']) ? $detalle['norma_astm'] : (!empty($detalle['prod_norma_astm']) ? $detalle['prod_norma_astm'] : 'DE-ASTM D6938-23'))));
     $codigoFormato = !empty($schemaInfo['codigo_formato']) ? $schemaInfo['codigo_formato'] : (!empty($detalle['codigo_formato']) ? $detalle['codigo_formato'] : (!empty($detalle['codigo_documento']) ? $detalle['codigo_documento'] : 'CYCSA-RT-FM-22'));
+    
+    // Normalizar variante normativa CYCSA-RT-FM-22 [A/B/C/F] (V1-R2)
+    $descLower = mb_strtolower(($detalle['descripcion_ensayo'] ?? '') . ' ' . ($detalle['archivo_markdown'] ?? '') . ' ' . $tipoMuestra . ' ' . $ensayoRealizado, 'UTF-8');
+    if (strpos($codigoFormato, 'RT-FM-22') !== false) {
+        if (!preg_match('/V\d+/i', $codigoFormato)) {
+            $letraVar = '';
+            if (preg_match('/RT-FM-22\s*([A-Za-z])/i', $codigoFormato, $mVar)) {
+                $letraVar = strtoupper($mVar[1]);
+            }
+            if (empty($letraVar)) {
+                if (strpos($descLower, 'concreto') !== false || strpos($descLower, 'cilindro') !== false || strpos($descLower, 'flexion') !== false || strpos($descLower, 'compresi') !== false) {
+                    $letraVar = 'A';
+                } elseif (strpos($descLower, 'compacta') !== false || strpos($descLower, 'dens') !== false || strpos($descLower, 'proctor') !== false || strpos($descLower, 'suelo') !== false || strpos($descLower, 'cono') !== false) {
+                    $letraVar = 'B';
+                } elseif (strpos($descLower, 'granulo') !== false || strpos($descLower, 'agregado') !== false || strpos($descLower, 'malla') !== false) {
+                    $letraVar = 'C';
+                } elseif (strpos($descLower, 'asfalto') !== false) {
+                    $letraVar = 'F';
+                } else {
+                    $letraVar = 'A';
+                }
+            }
+            $codigoFormato = "CYCSA-RT-FM-22 {$letraVar} (V1-R2)";
+        }
+    }
+
+    // B.5: Equipamiento asignado / Densímetro Nuclear (Nota 1 oficial)
+    $equipoMarca = $metadatosGuardados['equipo_marca'] ?? ($metadatosGuardados['densimetro_marca'] ?? (!empty($detalle['equipo_marca']) ? $detalle['equipo_marca'] : 'TROXLER'));
+    $equipoModelo = $metadatosGuardados['equipo_modelo'] ?? ($metadatosGuardados['densimetro_modelo'] ?? (!empty($detalle['equipo_modelo']) ? $detalle['equipo_modelo'] : '3440'));
+    $equipoSerie = $metadatosGuardados['equipo_serie'] ?? ($metadatosGuardados['densimetro_serie'] ?? (!empty($detalle['equipo_serie']) ? $detalle['equipo_serie'] : '62677'));
+    $equipoCodigo = $metadatosGuardados['equipo_codigo'] ?? ($metadatosGuardados['densimetro_codigo'] ?? (!empty($detalle['equipo_codigo']) ? $detalle['equipo_codigo'] : 'Eq-6555'));
+    $notaEquipoDensimetro = "Nota 1: Muestra tomada con equipo {$equipoMarca}, Modelo: {$equipoModelo}, N/S : {$equipoSerie} {$equipoCodigo}";
+
     $logoAcreditacion = !empty($metadatosGuardados['logo_acreditacion']) ? $metadatosGuardados['logo_acreditacion'] : (!empty($detalle['logo_acreditacion']) ? $detalle['logo_acreditacion'] : '');
 
     return [
@@ -1811,6 +1969,11 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
         'metodo_muestreo' => $metodoMuestreo,
         'codigo_formato' => $codigoFormato,
         'logo_acreditacion' => $logoAcreditacion,
+        'equipo_marca' => $equipoMarca,
+        'equipo_modelo' => $equipoModelo,
+        'equipo_serie' => $equipoSerie,
+        'equipo_codigo' => $equipoCodigo,
+        'nota_equipo_densimetro' => $notaEquipoDensimetro,
     ];
 }
 
@@ -1971,7 +2134,8 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $options->set('fontCache', dirname(__DIR__, 2) . '/storage/cache');
     $dompdf = new Dompdf($options);
 
-    $archivoMd = $detalle['archivo_markdown'] ?? '';
+    $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
+    $detalle['archivo_markdown'] = $archivoMd;
     $schemaInfo = obtenerEsquemaPlantillaEnsayo($archivoMd, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
 
     $orientacion = !empty($detalle['orientacion']) 
@@ -2039,8 +2203,17 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     }
 
     $columnas = $schemaInfo['columns'] ?? $columnas;
-    if (empty($columnas)) {
-        $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
+    if (empty($columnas) || count($columnas) <= 6) {
+        $descLower = mb_strtolower(($detalle['descripcion_ensayo'] ?? '') . ' ' . $archivoMd, 'UTF-8');
+        if (strpos($descLower, 'concreto') !== false || strpos($descLower, 'cilindro') !== false || strpos($descLower, 'compresi') !== false) {
+            $columnas = [
+                "Código laboratorio", "Nombre muestra", "Área (in²)", "Reven. (in)", "Reven. (cm)",
+                "Temp. (°C)", "Carga (lb)", "Peso Volumétrico (kg/m³)", "Diseño de concreto (lb/in²)",
+                "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"
+            ];
+        } elseif (empty($columnas)) {
+            $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
+        }
     }
 
     $resultados = [];
@@ -2106,13 +2279,18 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $sustituyeA = $reemision['sustituye_a'] ?? null;
     $motivoReemision = $reemision['motivo'] ?? null;
 
-    $codigoInformeConsecutivo = htmlspecialchars(generarCodigoInformeEnsayo($datosParaCodigo, $metaOficial['fecha_muestreo'] ?? ($metaOficial['fecha_ingreso'] ?? null), $metaOficial['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? '')), ENT_QUOTES, 'UTF-8');
+    $codigoInformeConsecutivo = htmlspecialchars(generarCodigoInformeEnsayo(
+        $datosParaCodigo,
+        $metaOficial['fecha_muestreo'] ?? ($metaOficial['fecha_ingreso'] ?? null),
+        $metaOficial['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''),
+        $detalle['codigo_os'] ?? null
+    ), ENT_QUOTES, 'UTF-8');
     if ($versionActual > 1 && !empty($sustituyeA)) {
         $codigoInformeConsecutivo .= '-' . ($versionActual - 1);
     }
 
     $bannerSustituyeHtml = '';
-    if (!empty($sustituyeA)) {
+    if ($versionActual > 1 && !empty($sustituyeA)) {
         $bannerSustituyeHtml = '<div style="font-size: 8px; font-weight: bold; color: #b91c1c; background: #fee2e2; border: 1px solid #f87171; padding: 2px 6px; margin-top: 2px; border-radius: 3px; display: inline-block;">SUSTITUYE AL INFORME: ' . htmlspecialchars($sustituyeA, ENT_QUOTES, 'UTF-8') . ' (Motivo: ' . htmlspecialchars($motivoReemision, ENT_QUOTES, 'UTF-8') . ')</div>';
     }
 
@@ -2130,8 +2308,10 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
 
     $theadThs = '<th style="width: 18px; border: 1px solid #000; background: #f3f4f6; padding: 3px 2px; text-align: center;">#</th>';
     foreach ($columnas as $col) {
-        $metodo = $colMethods[$col] ?? '';
-        $theadThs .= '<th style="border: 1px solid #000; background: #f3f4f6; padding: 3px 2px; text-align: center; font-size: 7.5px;">' . htmlspecialchars($col, ENT_QUOTES, 'UTF-8') . (!empty($metodo) ? '<br><span style="font-size: 6.5px; font-weight: normal; color: #555;">' . htmlspecialchars($metodo, ENT_QUOTES, 'UTF-8') . '</span>' : '') . '</th>';
+        $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col; // Corrección B.7 PE-25 unidad estricta para peso volumétrico
+        $metodo = $colMethods[$col] ?? ($colMethods[$colLabel] ?? '');
+        $fontSizeTh = (count($columnas) >= 12) ? '6.5px' : '7.5px';
+        $theadThs .= '<th style="border: 1px solid #000; background: #f3f4f6; padding: 3px 2px; text-align: center; font-size: ' . $fontSizeTh . ';">' . htmlspecialchars($colLabel, ENT_QUOTES, 'UTF-8') . (!empty($metodo) ? '<br><span style="font-size: 6px; font-weight: normal; color: #555;">' . htmlspecialchars($metodo, ENT_QUOTES, 'UTF-8') . '</span>' : '') . '</th>';
     }
 
     $tbodyTrs = '';
@@ -2142,12 +2322,13 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             $tbodyTrs .= '<tr>';
             $tbodyTrs .= '<td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-weight: bold;">' . $numFila . '</td>';
             foreach ($columnas as $col) {
-                $val = is_array($fila) ? ($fila[$col] ?? ($fila[$schemaInfo['column_aliases'][$col] ?? ''] ?? '')) : '';
+                $val = is_array($fila) ? buscarValorEnFilaPHP($fila, $col, $schemaInfo['column_aliases'][$col] ?? null) : '';
                 $isCode = ($col === 'Código laboratorio' || $col === 'Codigo Lab');
                 $isNum = is_numeric(str_replace(['%', ',', ' '], '', (string)$val)) && !empty($val);
                 $align = $isNum ? 'right' : ($col === 'Nombre muestra' ? 'left' : 'center');
                 $fontW = $isCode ? 'bold' : 'normal';
-                $tbodyTrs .= '<td style="border: 1px solid #000; padding: 2.5px 3px; text-align: ' . $align . '; font-weight: ' . $fontW . ';">' . htmlspecialchars((string)$val, ENT_QUOTES, 'UTF-8') . '</td>';
+                $fontSizeTd = (count($columnas) >= 12) ? '6.8px' : '7.2px';
+                $tbodyTrs .= '<td style="border: 1px solid #000; padding: 2.5px 2px; font-size: ' . $fontSizeTd . '; text-align: ' . $align . '; font-weight: ' . $fontW . ';">' . htmlspecialchars((string)$val, ENT_QUOTES, 'UTF-8') . '</td>';
             }
             $tbodyTrs .= '</tr>';
         }
@@ -2159,6 +2340,21 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
                 $tbodyTrs .= '<td style="border: 1px solid #000; padding: 2.5px 3px; text-align: center; color: #777;">&mdash;</td>';
             }
             $tbodyTrs .= '</tr>';
+        }
+    }
+
+    // B.5: Si es formato RT-FM-22 B (compactación), asegurar Nota 1 estructurada de densímetro
+    if (strpos($codigoFormatoOficial, 'RT-FM-22 B') !== false || strpos($archivoMd, 'compactacion') !== false) {
+        $tieneNota1 = false;
+        foreach ($notasOficiales as $idxNota => $notaExistente) {
+            if (stripos($notaExistente, 'Nota 1') !== false || stripos($notaExistente, 'TROXLER') !== false || stripos($notaExistente, 'Muestra tomada con equipo') !== false) {
+                $notasOficiales[$idxNota] = $metaOficial['nota_equipo_densimetro'];
+                $tieneNota1 = true;
+                break;
+            }
+        }
+        if (!$tieneNota1 && !empty($metaOficial['nota_equipo_densimetro'])) {
+            $notasOficiales[] = $metaOficial['nota_equipo_densimetro'];
         }
     }
 
@@ -2189,6 +2385,51 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             $logoAcredHtml = '<div style="position: absolute; top: 6mm; left: 47mm; height: 26mm; width: 34mm; text-align: center;"><img src="' . $base64Acred . '" style="max-height: 24mm; max-width: 34mm; object-fit: contain;"></div>';
             $leftZonaCabecera = '83mm';
         }
+    }
+
+    $numFirmas = (int)($schemaInfo['num_firmas'] ?? 1);
+    if ($numFirmas === 3) {
+        $firmasHtml = <<<FIRMAS
+    <table class="firmas-tbl">
+        <tr>
+            <td style="width: 33.33%;">
+                <div style="height: 14px;"></div>
+                <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="font-weight: bold; font-size: 8px;">{$tecnicoNom}</div>
+                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Ejecutado por (Técnico Responsable)</div>
+                </div>
+            </td>
+            <td style="width: 33.33%;">
+                <div style="height: 14px;"></div>
+                <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="font-weight: bold; font-size: 8px;">Supervisión de Ensayos</div>
+                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Revisado por (Supervisor de Área)</div>
+                </div>
+            </td>
+            <td style="width: 33.33%;">
+                <div style="height: 14px;"></div>
+                <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="font-weight: bold; font-size: 8px;">{$firmanteNombre}</div>
+                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Aprobado ({$firmanteCargo} / ISO 17025)</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+FIRMAS;
+    } else {
+        $firmasHtml = <<<FIRMAS
+    <table class="firmas-tbl" style="margin: 4px auto 0 auto; width: 60%;">
+        <tr>
+            <td style="text-align: center; vertical-align: top;">
+                <div style="height: 14px;"></div>
+                <div style="display: inline-block; min-width: 220px; border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="font-weight: bold; font-size: 8.5px;">{$firmanteNombre}</div>
+                    <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">{$firmanteCargo}</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+FIRMAS;
     }
 
     $html = <<<HTML
@@ -2394,31 +2635,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
 
     <div class="linea-cierre-doc">-------------------------------- Última Línea ---------------------------------</div>
 
-    <table class="firmas-tbl">
-        <tr>
-            <td>
-                <div style="height: 14px;"></div>
-                <div style="border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8px;">{$tecnicoNom}</div>
-                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Ejecutado por (Técnico Responsable)</div>
-                </div>
-            </td>
-            <td>
-                <div style="height: 14px;"></div>
-                <div style="border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8px;">Supervisión de Ensayos</div>
-                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Revisado por (Supervisor de Área)</div>
-                </div>
-            </td>
-            <td>
-                <div style="height: 14px;"></div>
-                <div style="border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8px;">{$firmanteNombre}</div>
-                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Aprobado ({$firmanteCargo} / ISO 17025)</div>
-                </div>
-            </td>
-        </tr>
-    </table>
+    {$firmasHtml}
 </div>
 
 </body>

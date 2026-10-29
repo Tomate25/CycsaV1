@@ -595,7 +595,9 @@ class OperacionesControlador extends ControladorBase {
             $cotizacion = $stmtCot->fetch(PDO::FETCH_ASSOC);
 
             // Generar PDF usando el helper existente
-            $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+            $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
+        $detalle['archivo_markdown'] = $archivoMd;
+        $columnas = $this->obtenerColumnasFormato($archivoMd, $detalle['descripcion_ensayo'] ?? '');
             if (empty($columnas)) {
                 $columnas = ["Código laboratorio", "Nombre muestra", "Resultado"];
             }
@@ -886,8 +888,31 @@ class OperacionesControlador extends ControladorBase {
         }
     }
 
-    private function obtenerColumnasFormato(?string $archivo_markdown): array {
-        return obtenerEsquemaPlantillaEnsayo($archivo_markdown)['columns'] ?? [];
+    private function obtenerColumnasFormato(?string $archivo_markdown, ?string $descripcion_ensayo = null): array {
+        if (empty($archivo_markdown) && !empty($descripcion_ensayo)) {
+            $desc = mb_strtolower($descripcion_ensayo, 'UTF-8');
+            if ((strpos($desc, 'compresi') !== false && strpos($desc, 'concreto') !== false) || strpos($desc, 'cilindro') !== false) {
+                $archivo_markdown = 'resistencia_de_concreto.md';
+            } elseif (strpos($desc, 'dens') !== false || (strpos($desc, 'compacta') !== false && strpos($desc, 'nuclear') !== false)) {
+                $archivo_markdown = 'compactacion_densimetro_nuclear.md';
+            } elseif (strpos($desc, 'cono') !== false && strpos($desc, 'arena') !== false) {
+                $archivo_markdown = 'formato_de_compactacion_por_cono_de_arena.md';
+            } elseif (strpos($desc, 'granulo') !== false) {
+                $archivo_markdown = 'analisis_granulometrico_agregados.md';
+            }
+        }
+        $cols = obtenerEsquemaPlantillaEnsayo($archivo_markdown)['columns'] ?? [];
+        if ((empty($cols) || count($cols) <= 6) && !empty($descripcion_ensayo)) {
+            $desc = mb_strtolower($descripcion_ensayo, 'UTF-8');
+            if ((strpos($desc, 'compresi') !== false && strpos($desc, 'concreto') !== false) || strpos($desc, 'cilindro') !== false) {
+                $cols = [
+                    "Código laboratorio", "Nombre muestra", "Área (in²)", "Reven. (in)", "Reven. (cm)",
+                    "Temp. (°C)", "Carga (lb)", "Peso Volumétrico (kg/m³)", "Diseño de concreto (lb/in²)",
+                    "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"
+                ];
+            }
+        }
+        return $cols;
     }
 
     public function actualizarEstado(Peticion $peticion, Respuesta $respuesta): void {
@@ -2702,7 +2727,9 @@ class OperacionesControlador extends ControladorBase {
             }
         }
 
-        $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+        $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
+        $detalle['archivo_markdown'] = $archivoMd;
+        $columnas = $this->obtenerColumnasFormato($archivoMd, $detalle['descripcion_ensayo'] ?? '');
         if (empty($columnas)) {
             $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
         }
@@ -2886,7 +2913,9 @@ class OperacionesControlador extends ControladorBase {
             }
         }
 
-        $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+        $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
+        $detalle['archivo_markdown'] = $archivoMd;
+        $columnas = $this->obtenerColumnasFormato($archivoMd, $detalle['descripcion_ensayo'] ?? '');
         $muestrasSeteadas = [];
 
         $decResultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
@@ -3046,7 +3075,9 @@ class OperacionesControlador extends ControladorBase {
         }
 
         // Generar PDF idéntico a la impresión oficial con membrete horizontal
-        $columnas = $this->obtenerColumnasFormato($detalle['archivo_markdown']);
+        $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
+        $detalle['archivo_markdown'] = $archivoMd;
+        $columnas = $this->obtenerColumnasFormato($archivoMd, $detalle['descripcion_ensayo'] ?? '');
         $muestrasSeteadas = [];
         $pdfBytes = generarMatrizTecnicaPDF($detalle, $muestrasSeteadas, $columnas);
 

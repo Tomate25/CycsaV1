@@ -4,7 +4,8 @@ $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
 $esLaboratorista = ($rolUsuario === 6);
 $esSupervisor = in_array($rolUsuario, [1, 2, 3]);
 $revisionInfo = obtenerEstadoRevisionMatriz($detalle['resultados_json'] ?? '');
-$archivoMd = $detalle['archivo_markdown'] ?? '';
+$archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
+$detalle['archivo_markdown'] = $archivoMd;
 $isGranulometria = (strpos($archivoMd, 'granulometria') !== false || strpos($archivoMd, 'granulomnetria') !== false);
 
 $listaVersiones = $listaVersiones ?? [];
@@ -33,7 +34,7 @@ if (!empty($detalle['resultados_json'])) {
 if (empty($datosParaCodigo) && !empty($muestrasSeteadas)) {
     $datosParaCodigo = $muestrasSeteadas;
 }
-$codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null), $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''));
+$codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null), $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''), $detalle['codigo_os'] ?? null);
 ?>
 <style>
     :root {
@@ -845,6 +846,40 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 <button type="button" id="btn_quitar_acreditacion" class="btn btn-sm btn-outline-danger" style="<?= !empty($metadatos['logo_acreditacion']) ? '' : 'display: none;' ?> padding: 6px 12px; font-size: 12.5px; cursor: pointer; border-radius: 6px; background: #fff; border: 1.5px solid #dc2626; color: #dc2626;" onclick="quitarLogoAcreditacion()">
                     <i class="fa-solid fa-trash-can me-1"></i> Quitar
                 </button>
+            </div>
+        </div>
+
+        <!-- Apartado Oficial para Equipamiento Asignado (Nota 1 Densímetro Nuclear TROXLER) -->
+        <div class="apartado-equipo-box" style="margin-top: 14px; padding: 14px 18px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                <div style="font-weight: 700; font-size: 13.5px; color: #166534; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-microchip"></i>
+                    <span>Muestra tomada con equipo (Nota 1 Oficial de Ensayo / Densímetro Nuclear)</span>
+                </div>
+                <span style="font-size: 11px; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+                    CYCSA-PE-25 / PE-20
+                </span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                <div>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Marca del Equipo:</label>
+                    <input type="text" name="metadatos[equipo_marca]" id="meta_equipo_marca" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_marca'] ?? 'TROXLER', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. TROXLER">
+                </div>
+                <div>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Modelo:</label>
+                    <input type="text" name="metadatos[equipo_modelo]" id="meta_equipo_modelo" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_modelo'] ?? '3440', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. 3440">
+                </div>
+                <div>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Número de Serie (N/S):</label>
+                    <input type="text" name="metadatos[equipo_serie]" id="meta_equipo_serie" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_serie'] ?? '62677', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. 62677">
+                </div>
+                <div>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Código Interno CYCSA:</label>
+                    <input type="text" name="metadatos[equipo_codigo]" id="meta_equipo_codigo" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_codigo'] ?? 'Eq-6555', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Eq-6555">
+                </div>
+            </div>
+            <div style="margin-top: 8px; font-size: 11.5px; color: #166534; font-style: italic;">
+                * Se imprimirá en el informe oficial como: <strong>Nota 1: Muestra tomada con equipo [Marca], Modelo: [Modelo], N/S : [Serie] [Código]</strong>
             </div>
         </div>
     </div>
