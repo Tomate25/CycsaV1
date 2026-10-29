@@ -63,10 +63,12 @@ class CotizacionDescripcionMultilineaTest extends TestCase {
 
         $output = [];
         $exitCode = 1;
-        @exec('python3 ' . escapeshellarg($tempScript) . ' ' . escapeshellarg($tempPdf), $output, $exitCode);
+        $pyCmd = (PHP_OS_FAMILY === 'Windows') ? 'python' : 'python3';
+        @exec($pyCmd . ' ' . escapeshellarg($tempScript) . ' ' . escapeshellarg($tempPdf), $output, $exitCode);
         if ($exitCode !== 0) {
             $output = [];
-            @exec('python ' . escapeshellarg($tempScript) . ' ' . escapeshellarg($tempPdf), $output, $exitCode);
+            $fallback = ($pyCmd === 'python') ? 'py' : 'python';
+            @exec($fallback . ' ' . escapeshellarg($tempScript) . ' ' . escapeshellarg($tempPdf), $output, $exitCode);
         }
         @unlink($tempPdf);
         @unlink($tempScript);

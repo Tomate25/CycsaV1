@@ -287,15 +287,29 @@ class OrdenServicioRgFm39MsMcTest extends TestCase {
         file_put_contents($tempPdf, $pdfBytes);
         file_put_contents(
             $tempScript,
-            "import sys\nimport io\nimport pymupdf\nsys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')\ndoc = pymupdf.open(sys.argv[1])\nfor page in doc:\n    print(page.get_text())\n"
+            "import sys
+import io
+import pymupdf
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+doc = pymupdf.open(sys.argv[1])
+for page in doc:
+    print(page.get_text())
+"
         );
         $output = [];
         $exitCode = 1;
-        @exec('python3 ' . escapeshellarg($tempScript) . ' ' . escapeshellarg($tempPdf), $output, $exitCode);
+        $pyCmd = (PHP_OS_FAMILY === 'Windows') ? 'python' : 'python3';
+        @exec($pyCmd . ' ' . escapeshellarg($tempScript) . ' ' . escapeshellarg($tempPdf), $output, $exitCode);
+        if ($exitCode !== 0) {
+            $output = [];
+            $fallback = ($pyCmd === 'python') ? 'py' : 'python';
+            @exec($fallback . ' ' . escapeshellarg($tempScript) . ' ' . escapeshellarg($tempPdf), $output, $exitCode);
+        }
         @unlink($tempPdf);
         @unlink($tempScript);
         $this->assertSame(0, $exitCode, 'No fue posible extraer el texto del PDF.');
-        return implode("\n", $output);
+        return implode("
+", $output);
     }
 
     private function ejecutarMigracion025(): void {
