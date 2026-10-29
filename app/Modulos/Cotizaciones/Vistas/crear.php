@@ -8,6 +8,7 @@
     .form-label { display: block; margin-bottom: 8px; color: #495057; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
     .form-control { width: 100%; padding: 10px 15px; border: 1px solid #ced4da; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 14px; transition: border-color 0.2s; }
     .form-control:focus { outline: none; border-color: var(--cycsa-azul); box-shadow: 0 0 0 3px rgba(16, 52, 135, 0.1); }
+    textarea.spec-desc-adicional { resize: vertical; min-height: 64px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; word-wrap: break-word; margin-top: 4px; }
     
     /* Estilos para la tabla dinámica de ensayos */
     .tabla-detalles { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
@@ -258,7 +259,6 @@
                             <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
                             <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
                             <input type="hidden" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo de entrega...">
-                            <input type="hidden" name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" value="">
                             <input type="hidden" name="ensayo_id_producto[]" value="" class="prod-id-input">
                             <input type="text" name="ensayo_desc[]" class="form-control spec-desc" required placeholder="Nombre comercial / Ensayo..." autocomplete="off" list="productos-datalist" onchange="completarPrecio(this)">
                             <div style="margin-top: 3px; font-size: 10px;">
@@ -266,6 +266,8 @@
                                     <i class="fa-solid fa-pen-fancy"></i> Campo Libre
                                 </span>
                             </div>
+                            <label style="display:block; margin-top:6px; margin-bottom:3px; font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.3px;">Descripción adicional</label>
+                            <textarea name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" rows="3" placeholder="Descripción larga del ítem. Admite varias líneas." style="resize: vertical; min-height: 64px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; word-wrap: break-word;"></textarea>
                         </td>
                         <td>
                             <textarea name="ensayo_condiciones[]" class="form-control spec-condiciones" rows="2" placeholder="Condiciones de muestra / empaque..." style="resize: vertical; font-size: 12px;"></textarea>
@@ -726,7 +728,6 @@
                 <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" placeholder="Ej: ASTM C39">
                 <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" placeholder="Ej: FR-CONC-01">
                 <input type="hidden" name="ensayo_obs[]" class="form-control spec-obs" placeholder="Tiempo entrega...">
-                <input type="hidden" name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" value="">
                 <input type="hidden" name="ensayo_id_producto[]" value="" class="prod-id-input">
                 <input type="text" name="ensayo_desc[]" class="form-control spec-desc" required placeholder="Nombre comercial / Ensayo..." autocomplete="off" list="productos-datalist" onchange="completarPrecio(this)">
                 <div style="margin-top: 3px; font-size: 10px;">
@@ -734,6 +735,8 @@
                         <i class="fa-solid fa-pen-fancy"></i> Campo Libre
                     </span>
                 </div>
+                <label style="display:block; margin-top:6px; margin-bottom:3px; font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.3px;">Descripción adicional</label>
+                <textarea name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" rows="3" placeholder="Descripción larga del ítem. Admite varias líneas." style="resize: vertical; min-height: 64px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; word-wrap: break-word;"></textarea>
             </td>
             <td>
                 <textarea name="ensayo_condiciones[]" class="form-control spec-condiciones" rows="2" placeholder="Condiciones de muestra / empaque..." style="resize: vertical; font-size: 12px;"></textarea>
@@ -1258,7 +1261,6 @@
                 <input type="hidden" name="ensayo_norma[]" class="form-control spec-norma" value="${escapeHtml(norma)}">
                 <input type="hidden" name="ensayo_formato[]" class="form-control spec-formato" value="${escapeHtml(formato)}">
                 <input type="hidden" name="ensayo_obs[]" class="form-control spec-obs" value="${escapeHtml(obs)}">
-                <input type="hidden" name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" value="${escapeHtml(descAdicional)}">
                 <input type="hidden" name="ensayo_id_producto[]" value="${escapeHtml(idProducto.toString())}" class="prod-id-input">
                 <input type="text" name="ensayo_desc[]" class="form-control spec-desc" required placeholder="Nombre comercial / Ensayo..." autocomplete="off" list="productos-datalist" onchange="completarPrecio(this)" value="${escapeHtml(descripcion)}" ${isCatalogo ? 'readonly style="background-color: #f1f5f9; color: #1e293b; font-weight: 600; cursor: not-allowed; border-color: #cbd5e1;"' : ''}>
                 <div style="margin-top: 3px; font-size: 10px;">
@@ -1266,6 +1268,8 @@
                         ${isCatalogo ? '<i class="fa-solid fa-lock"></i> Catálogo (Bloqueado)' : '<i class="fa-solid fa-pen-fancy"></i> Campo Libre'}
                     </span>
                 </div>
+                <label style="display:block; margin-top:6px; margin-bottom:3px; font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.3px;">Descripción adicional</label>
+                <textarea name="ensayo_descripcion_adicional[]" class="form-control spec-desc-adicional" rows="3" placeholder="Descripción larga del ítem. Admite varias líneas." style="resize: vertical; min-height: 64px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; word-wrap: break-word;">${escapeHtml(descAdicional)}</textarea>
             </td>
             <td>
                 <textarea name="ensayo_condiciones[]" class="form-control spec-condiciones" rows="2" placeholder="Condiciones de muestra / empaque..." style="resize: vertical; font-size: 12px;">${escapeHtml(condiciones)}</textarea>
