@@ -2,6 +2,9 @@
 // Vista imprimible de la Lista de Chequeo Oficial CYCSA-RT-FM-40 B
 $pm = is_array($os['programacion_muestreo'] ?? null) ? $os['programacion_muestreo'] : [];
 $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) : [];
+if (!is_array($chk)) {
+    $chk = [];
+}
 
 $logoBase64 = '';
 $logoPath = __DIR__ . '/../../../../publico/img/logo.png';
@@ -314,6 +317,33 @@ if (file_exists($logoPath)) {
                         <td style="text-align:center;"><span class="check-box-print"><?= $chkP ? 'X' : '' ?></span></td>
                     </tr>
                     <?php endforeach; ?>
+                    <?php
+                    $customSeg = [];
+                    if (isset($chk['custom_seg']) && is_array($chk['custom_seg'])) {
+                        foreach ($chk['custom_seg'] as $filaCustom) {
+                            if (is_array($filaCustom)) {
+                                $customSeg[] = $filaCustom;
+                            }
+                        }
+                    }
+                    foreach ($customSeg as $customItem):
+                        $nombreCustom = is_scalar($customItem['nombre'] ?? null) ? trim((string)$customItem['nombre']) : '';
+                        $cantA = is_scalar($customItem['cant_a'] ?? null) ? (string)$customItem['cant_a'] : '';
+                        $chkA = !empty($customItem['chk_a']);
+                        $cantP = is_scalar($customItem['cant_p'] ?? null) ? (string)$customItem['cant_p'] : '';
+                        $chkP = !empty($customItem['chk_p']);
+                        if ($nombreCustom === '' && $cantA === '' && $cantP === '' && !$chkA && !$chkP) {
+                            continue;
+                        }
+                    ?>
+                    <tr>
+                        <td><?= htmlspecialchars($nombreCustom, ENT_QUOTES, 'UTF-8') ?></td>
+                        <td style="text-align:center;"><?= htmlspecialchars($cantA, ENT_QUOTES, 'UTF-8') ?></td>
+                        <td style="text-align:center;"><span class="check-box-print"><?= $chkA ? 'X' : '' ?></span></td>
+                        <td style="text-align:center;"><?= htmlspecialchars($cantP, ENT_QUOTES, 'UTF-8') ?></td>
+                        <td style="text-align:center;"><span class="check-box-print"><?= $chkP ? 'X' : '' ?></span></td>
+                    </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -359,6 +389,33 @@ if (file_exists($logoPath)) {
                         <td style="text-align:center;"><?= htmlspecialchars($cantA) ?></td>
                         <td style="text-align:center;"><span class="check-box-print"><?= $chkA ? 'X' : '' ?></span></td>
                         <td style="text-align:center;"><?= htmlspecialchars($cantP) ?></td>
+                        <td style="text-align:center;"><span class="check-box-print"><?= $chkP ? 'X' : '' ?></span></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php
+                    $customMue = [];
+                    if (isset($chk['custom_mue']) && is_array($chk['custom_mue'])) {
+                        foreach ($chk['custom_mue'] as $filaCustom) {
+                            if (is_array($filaCustom)) {
+                                $customMue[] = $filaCustom;
+                            }
+                        }
+                    }
+                    foreach ($customMue as $customItem):
+                        $nombreCustom = is_scalar($customItem['nombre'] ?? null) ? trim((string)$customItem['nombre']) : '';
+                        $cantA = is_scalar($customItem['cant_a'] ?? null) ? (string)$customItem['cant_a'] : '';
+                        $chkA = !empty($customItem['chk_a']);
+                        $cantP = is_scalar($customItem['cant_p'] ?? null) ? (string)$customItem['cant_p'] : '';
+                        $chkP = !empty($customItem['chk_p']);
+                        if ($nombreCustom === '' && $cantA === '' && $cantP === '' && !$chkA && !$chkP) {
+                            continue;
+                        }
+                    ?>
+                    <tr>
+                        <td><?= htmlspecialchars($nombreCustom, ENT_QUOTES, 'UTF-8') ?></td>
+                        <td style="text-align:center;"><?= htmlspecialchars($cantA, ENT_QUOTES, 'UTF-8') ?></td>
+                        <td style="text-align:center;"><span class="check-box-print"><?= $chkA ? 'X' : '' ?></span></td>
+                        <td style="text-align:center;"><?= htmlspecialchars($cantP, ENT_QUOTES, 'UTF-8') ?></td>
                         <td style="text-align:center;"><span class="check-box-print"><?= $chkP ? 'X' : '' ?></span></td>
                     </tr>
                     <?php endforeach; ?>

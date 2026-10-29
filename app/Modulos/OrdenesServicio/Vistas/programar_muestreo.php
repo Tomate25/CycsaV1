@@ -5,6 +5,9 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $pm = $os['programacion_muestreo'] ?? null;
 $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) : [];
+if (!is_array($chk)) {
+    $chk = [];
+}
 ?>
 <style>
     .cycsa-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 25px; margin-bottom: 25px; }
@@ -34,6 +37,12 @@ $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) 
     .chk-table tr:hover { background: #f8fafc; }
     .chk-input-cant { width: 64px; min-height: 36px; padding: 6px; text-align: center; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 13.5px; font-weight: 600; box-sizing: border-box; }
     .chk-checkbox { width: 20px; height: 20px; cursor: pointer; }
+    .chk-custom-nombre-wrap { display: flex; align-items: center; gap: 6px; }
+    .chk-custom-nombre { flex: 1; min-width: 0; min-height: 36px; padding: 6px 8px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: 'Inter', sans-serif; box-sizing: border-box; }
+    .chk-custom-nombre:focus { outline: none; border-color: var(--cycsa-azul); box-shadow: 0 0 0 3px rgba(16, 52, 135, 0.08); }
+    .btn-quitar-custom { flex: 0 0 auto; width: 32px; height: 32px; border: 1px solid #fecaca; background: #fff1f2; color: #b91c1c; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-quitar-custom:hover { background: #ffe4e6; }
+    .chk-agregar-bar { padding: 8px 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
 
     /* BARRA FLOTANTE STICKY DE ACCIÓN RÁPIDA */
     .sticky-bar-muestreo {
@@ -196,7 +205,7 @@ $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) 
                                 <th style="text-align:center; width:45px;" title="Post-muestreo">Post</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="tbody-checklist-seg">
                             <?php
                             $itemsSeguridad = [
                                 'Mascarilla', 'Lentes de Seguridad', 'Casco', 'Chaleco', 
@@ -228,8 +237,52 @@ $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) 
                                 </td>
                             </tr>
                             <?php endforeach; ?>
+                            <?php
+                            $customSeg = [];
+                            if (isset($chk['custom_seg']) && is_array($chk['custom_seg'])) {
+                                foreach ($chk['custom_seg'] as $filaCustom) {
+                                    if (is_array($filaCustom)) {
+                                        $customSeg[] = $filaCustom;
+                                    }
+                                }
+                            }
+                            foreach ($customSeg as $iCustom => $customItem):
+                                $nombreCustom = is_scalar($customItem['nombre'] ?? null) ? (string)$customItem['nombre'] : '';
+                                $cantA = is_scalar($customItem['cant_a'] ?? null) ? (string)$customItem['cant_a'] : '';
+                                $chkA = !empty($customItem['chk_a']);
+                                $cantP = is_scalar($customItem['cant_p'] ?? null) ? (string)$customItem['cant_p'] : '';
+                                $chkP = !empty($customItem['chk_p']);
+                            ?>
+                            <tr class="chk-custom-row" data-seccion="seg">
+                                <td>
+                                    <div class="chk-custom-nombre-wrap">
+                                        <input type="text" data-campo="nombre" name="chk[custom_seg][<?= (int)$iCustom ?>][nombre]" value="<?= htmlspecialchars($nombreCustom, ENT_QUOTES, 'UTF-8') ?>" placeholder="Ítem adicional" maxlength="150" class="chk-custom-nombre">
+                                        <button type="button" class="btn-quitar-custom" onclick="quitarItemChecklist(this)" title="Quitar ítem" aria-label="Quitar ítem">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td style="text-align:center;">
+                                    <input type="text" data-campo="cant_a" name="chk[custom_seg][<?= (int)$iCustom ?>][cant_a]" value="<?= htmlspecialchars($cantA, ENT_QUOTES, 'UTF-8') ?>" placeholder="-" class="chk-input-cant chk-cant-a">
+                                </td>
+                                <td style="text-align:center;">
+                                    <input type="checkbox" data-campo="chk_a" name="chk[custom_seg][<?= (int)$iCustom ?>][chk_a]" value="1" <?= $chkA ? 'checked' : '' ?> class="chk-checkbox chk-box-a">
+                                </td>
+                                <td style="text-align:center;">
+                                    <input type="text" data-campo="cant_p" name="chk[custom_seg][<?= (int)$iCustom ?>][cant_p]" value="<?= htmlspecialchars($cantP, ENT_QUOTES, 'UTF-8') ?>" placeholder="-" class="chk-input-cant">
+                                </td>
+                                <td style="text-align:center;">
+                                    <input type="checkbox" data-campo="chk_p" name="chk[custom_seg][<?= (int)$iCustom ?>][chk_p]" value="1" <?= $chkP ? 'checked' : '' ?> class="chk-checkbox">
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <div class="chk-agregar-bar">
+                        <button type="button" class="btn-cycsa btn-cycsa-secondary" style="font-size:12px; padding:6px 12px;" onclick="agregarItemChecklist('seg')">
+                            + Agregar ítem
+                        </button>
+                    </div>
                 </div>
 
                 <!-- COLUMNA B: TOMA DE MUESTRAS (DENSÍMETRO NUCLEAR) -->
@@ -247,7 +300,7 @@ $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) 
                                 <th style="text-align:center; width:45px;" title="Post-muestreo">Post</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="tbody-checklist-mue">
                             <?php
                             $itemsMuestras = [
                                 'Densímetro Nuclear', 'Base de parafina', 'Placa guía para pin', 
@@ -280,8 +333,52 @@ $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) 
                                 </td>
                             </tr>
                             <?php endforeach; ?>
+                            <?php
+                            $customMue = [];
+                            if (isset($chk['custom_mue']) && is_array($chk['custom_mue'])) {
+                                foreach ($chk['custom_mue'] as $filaCustom) {
+                                    if (is_array($filaCustom)) {
+                                        $customMue[] = $filaCustom;
+                                    }
+                                }
+                            }
+                            foreach ($customMue as $iCustom => $customItem):
+                                $nombreCustom = is_scalar($customItem['nombre'] ?? null) ? (string)$customItem['nombre'] : '';
+                                $cantA = is_scalar($customItem['cant_a'] ?? null) ? (string)$customItem['cant_a'] : '';
+                                $chkA = !empty($customItem['chk_a']);
+                                $cantP = is_scalar($customItem['cant_p'] ?? null) ? (string)$customItem['cant_p'] : '';
+                                $chkP = !empty($customItem['chk_p']);
+                            ?>
+                            <tr class="chk-custom-row" data-seccion="mue">
+                                <td>
+                                    <div class="chk-custom-nombre-wrap">
+                                        <input type="text" data-campo="nombre" name="chk[custom_mue][<?= (int)$iCustom ?>][nombre]" value="<?= htmlspecialchars($nombreCustom, ENT_QUOTES, 'UTF-8') ?>" placeholder="Ítem adicional" maxlength="150" class="chk-custom-nombre">
+                                        <button type="button" class="btn-quitar-custom" onclick="quitarItemChecklist(this)" title="Quitar ítem" aria-label="Quitar ítem">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td style="text-align:center;">
+                                    <input type="text" data-campo="cant_a" name="chk[custom_mue][<?= (int)$iCustom ?>][cant_a]" value="<?= htmlspecialchars($cantA, ENT_QUOTES, 'UTF-8') ?>" placeholder="-" class="chk-input-cant chk-cant-a">
+                                </td>
+                                <td style="text-align:center;">
+                                    <input type="checkbox" data-campo="chk_a" name="chk[custom_mue][<?= (int)$iCustom ?>][chk_a]" value="1" <?= $chkA ? 'checked' : '' ?> class="chk-checkbox chk-box-a">
+                                </td>
+                                <td style="text-align:center;">
+                                    <input type="text" data-campo="cant_p" name="chk[custom_mue][<?= (int)$iCustom ?>][cant_p]" value="<?= htmlspecialchars($cantP, ENT_QUOTES, 'UTF-8') ?>" placeholder="-" class="chk-input-cant">
+                                </td>
+                                <td style="text-align:center;">
+                                    <input type="checkbox" data-campo="chk_p" name="chk[custom_mue][<?= (int)$iCustom ?>][chk_p]" value="1" <?= $chkP ? 'checked' : '' ?> class="chk-checkbox">
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <div class="chk-agregar-bar">
+                        <button type="button" class="btn-cycsa btn-cycsa-secondary" style="font-size:12px; padding:6px 12px;" onclick="agregarItemChecklist('mue')">
+                            + Agregar ítem
+                        </button>
+                    </div>
                 </div>
 
             </div>
@@ -373,6 +470,71 @@ $chk = !empty($pm['checklist_json']) ? json_decode($pm['checklist_json'], true) 
 function marcarTodoChecklistSalida() {
     document.querySelectorAll('.chk-box-a').forEach(cb => {
         cb.checked = true;
+    });
+}
+
+function reindexarChecklistCustom(seccion) {
+    var tbodyId = seccion === 'seg' ? 'tbody-checklist-seg' : 'tbody-checklist-mue';
+    var pref = seccion === 'seg' ? 'custom_seg' : 'custom_mue';
+    var tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    tbody.querySelectorAll('tr.chk-custom-row').forEach(function (tr, idx) {
+        tr.querySelectorAll('[data-campo]').forEach(function (input) {
+            var campo = input.getAttribute('data-campo');
+            input.name = 'chk[' + pref + '][' + idx + '][' + campo + ']';
+        });
+    });
+}
+
+function agregarItemChecklist(seccion) {
+    var tbodyId = seccion === 'seg' ? 'tbody-checklist-seg' : 'tbody-checklist-mue';
+    var pref = seccion === 'seg' ? 'custom_seg' : 'custom_mue';
+    var tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    var idx = tbody.querySelectorAll('tr.chk-custom-row').length;
+    var tr = document.createElement('tr');
+    tr.className = 'chk-custom-row';
+    tr.setAttribute('data-seccion', seccion);
+    tr.innerHTML =
+        '<td>' +
+            '<div class="chk-custom-nombre-wrap">' +
+                '<input type="text" data-campo="nombre" name="chk[' + pref + '][' + idx + '][nombre]" value="" placeholder="Ítem adicional" maxlength="150" class="chk-custom-nombre">' +
+                '<button type="button" class="btn-quitar-custom" onclick="quitarItemChecklist(this)" title="Quitar ítem" aria-label="Quitar ítem">' +
+                    '<i class="fa-solid fa-xmark"></i>' +
+                '</button>' +
+            '</div>' +
+        '</td>' +
+        '<td style="text-align:center;">' +
+            '<input type="text" data-campo="cant_a" name="chk[' + pref + '][' + idx + '][cant_a]" value="" placeholder="-" class="chk-input-cant chk-cant-a">' +
+        '</td>' +
+        '<td style="text-align:center;">' +
+            '<input type="checkbox" data-campo="chk_a" name="chk[' + pref + '][' + idx + '][chk_a]" value="1" class="chk-checkbox chk-box-a">' +
+        '</td>' +
+        '<td style="text-align:center;">' +
+            '<input type="text" data-campo="cant_p" name="chk[' + pref + '][' + idx + '][cant_p]" value="" placeholder="-" class="chk-input-cant">' +
+        '</td>' +
+        '<td style="text-align:center;">' +
+            '<input type="checkbox" data-campo="chk_p" name="chk[' + pref + '][' + idx + '][chk_p]" value="1" class="chk-checkbox">' +
+        '</td>';
+    tbody.appendChild(tr);
+    reindexarChecklistCustom(seccion);
+    var nombre = tr.querySelector('[data-campo="nombre"]');
+    if (nombre) nombre.focus();
+}
+
+function quitarItemChecklist(btn) {
+    var tr = btn.closest('tr.chk-custom-row');
+    if (!tr) return;
+    var seccion = tr.getAttribute('data-seccion') || 'seg';
+    tr.remove();
+    reindexarChecklistCustom(seccion);
+}
+
+var formProgramacion = document.getElementById('form-programacion-muestreo');
+if (formProgramacion) {
+    formProgramacion.addEventListener('submit', function () {
+        reindexarChecklistCustom('seg');
+        reindexarChecklistCustom('mue');
     });
 }
 </script>
