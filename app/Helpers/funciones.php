@@ -1242,8 +1242,38 @@ function tienePermiso(string $modulo, string $accion = 'ver'): bool {
     if (is_string($permisos)) {
         $permisos = json_decode($permisos, true);
     }
-    
-    return isset($permisos[$modulo][$accion]) && ($permisos[$modulo][$accion] == 1 || $permisos[$modulo][$accion] === true);
+    if (!is_array($permisos)) {
+        return false;
+    }
+
+    // 1. Verificación directa del módulo y acción
+    if (isset($permisos[$modulo][$accion]) && ($permisos[$modulo][$accion] == 1 || $permisos[$modulo][$accion] === true)) {
+        return true;
+    }
+
+    // 2. Mapeo de alias y sub-módulos para retrocompatibilidad y coherencia operativa
+    $aliasModulo = [
+        'ordenes_servicio' => ['cotizaciones', 'operaciones'],
+        'ventas'           => ['cotizaciones'],
+        'control_calidad'  => ['laboratorio', 'operaciones'],
+        'equipos_bodegas'  => ['laboratorio', 'operaciones', 'inventario'],
+        'plantillas'       => ['laboratorio', 'operaciones'],
+        'rrhh'             => ['nomina', 'contabilidad'],
+        'nomina'           => ['contabilidad'],
+        'prestamos'        => ['contabilidad'],
+        'activos_fijos'    => ['contabilidad'],
+        'proyectos'        => ['operaciones', 'contabilidad'],
+    ];
+
+    if (isset($aliasModulo[$modulo])) {
+        foreach ($aliasModulo[$modulo] as $fallbackMod) {
+            if (isset($permisos[$fallbackMod][$accion]) && ($permisos[$fallbackMod][$accion] == 1 || $permisos[$fallbackMod][$accion] === true)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 /**

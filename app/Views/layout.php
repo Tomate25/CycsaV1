@@ -485,19 +485,23 @@
             </li>
             
             <li class="menu-categoria">Módulos</li>
-            <?php if (tienePermiso('cotizaciones', 'ver')): ?>
+            <?php if (tienePermiso('ventas', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/ventas" class="<?= strpos($rutaActual, '/ventas') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-cash-register"></i>
                     <span class="menu-texto">Ventas</span>
                 </a>
             </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('cotizaciones', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/cotizaciones" class="<?= strpos($rutaActual, '/cotizaciones') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
                     <span class="menu-texto">Cotizaciones</span>
                 </a>
             </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('ordenes_servicio', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/ordenes-servicio" class="<?= strpos($rutaActual, '/ordenes-servicio') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-file-contract"></i>

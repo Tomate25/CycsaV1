@@ -30,7 +30,7 @@ class PanelControlador extends ControladorBase {
         // Construir cajón de aplicaciones según los permisos del usuario
         $cajon_aplicaciones = [];
         
-        // 1. Cotizaciones (Inicio de flujo comercial)
+        // 1. Cotizaciones y Gestión Comercial
         if (tienePermiso('cotizaciones', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Cotizaciones',
@@ -39,6 +39,8 @@ class PanelControlador extends ControladorBase {
                 'desc' => 'Creación y seguimiento de propuestas comerciales.',
                 'color' => 'linear-gradient(135deg, #d97706, #b45309)', // Naranja
             ];
+        }
+        if (tienePermiso('ordenes_servicio', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Órdenes de Servicio',
                 'link' => '/Cycsa/publico/ordenes-servicio',
@@ -46,6 +48,8 @@ class PanelControlador extends ControladorBase {
                 'desc' => 'Gestión de órdenes CYCSA-RG-FM-39 V1, logística de campo y registro de Hojas RT-FM-13.',
                 'color' => 'linear-gradient(135deg, #103487, #1e40af)', // Azul CYCSA
             ];
+        }
+        if (tienePermiso('ventas', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Ventas',
                 'link' => '/Cycsa/publico/ventas',

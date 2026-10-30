@@ -91,42 +91,16 @@ class UsuariosControlador extends ControladorBase {
             if ($modelo->emailExiste($email)) {
                 $this->renderizar('usuarios/vistas/crear', ['titulo' => 'Nuevo Usuario', 'roles' => $modelo->obtenerRoles(), 'error' => 'Este correo electrónico ya está registrado.']); return;
             }
-            
-            // Procesamiento de permisos
+            // Procesamiento de permisos dinámicos
             $permisosJson = null;
             if ($id_rol != 1) {
-                $permisosInput = $datos['permisos'] ?? [];
-                $permisos = [
-                    'clientes' => [
-                        'ver' => isset($permisosInput['clientes']['ver']) ? 1 : 0,
-                        'crear_editar' => isset($permisosInput['clientes']['crear_editar']) ? 1 : 0
-                    ],
-                    'productos' => [
-                        'ver' => isset($permisosInput['productos']['ver']) ? 1 : 0,
-                        'crear_editar' => isset($permisosInput['productos']['crear_editar']) ? 1 : 0
-                    ],
-                    'cotizaciones' => [
-                        'ver' => isset($permisosInput['cotizaciones']['ver']) ? 1 : 0,
-                        'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0,
-                        'aprobar' => isset($permisosInput['cotizaciones']['aprobar']) ? 1 : 0
-                    ],
-                    'inventario' => [
-                        'ver' => isset($permisosInput['inventario']['ver']) ? 1 : 0,
-                        'crear_editar' => isset($permisosInput['inventario']['crear_editar']) ? 1 : 0
-                    ],
-                    'compras' => [
-                        'ver' => isset($permisosInput['compras']['ver']) ? 1 : 0,
-                        'crear_editar' => isset($permisosInput['compras']['crear_editar']) ? 1 : 0
-                    ],
-                    'contabilidad' => [
-                        'ver' => isset($permisosInput['contabilidad']['ver']) ? 1 : 0
-                    ],
-                    'laboratorio' => [
-                        'ver' => isset($permisosInput['laboratorio']['ver']) ? 1 : 0,
-                        'crear_editar' => isset($permisosInput['laboratorio']['crear_editar']) ? 1 : 0
-                    ]
-                ];
-                $permisosJson = json_encode($permisos);
+                if (isset($datos['personalizar_permisos']) && empty($datos['personalizar_permisos'])) {
+                    $permisosJson = null;
+                } else {
+                    $permisosInput = $datos['permisos'] ?? [];
+                    $permisos = $this->normalizarPermisos($permisosInput);
+                    $permisosJson = !empty($permisos) ? json_encode($permisos, JSON_UNESCAPED_UNICODE) : null;
+                }
             }
             
             if ($modelo->guardarUsuario($nombre, $email, $password, $id_rol, $permisosJson)) {
@@ -197,42 +171,16 @@ class UsuariosControlador extends ControladorBase {
         if ($modelo->emailExiste($email, (int)$id)) {
             $this->renderizar('usuarios/vistas/editar', ['titulo' => 'Editar Usuario', 'error' => 'El correo ya pertenece a otro usuario.', 'usuario' => $datos, 'roles' => $modelo->obtenerRoles()]); return;
         }
-
-        // Procesamiento de permisos
+        // Procesamiento de permisos dinámicos
         $permisosJson = null;
         if ($id_rol != 1) {
-            $permisosInput = $datos['permisos'] ?? [];
-            $permisos = [
-                'clientes' => [
-                    'ver' => isset($permisosInput['clientes']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['clientes']['crear_editar']) ? 1 : 0
-                ],
-                'productos' => [
-                    'ver' => isset($permisosInput['productos']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['productos']['crear_editar']) ? 1 : 0
-                ],
-                'cotizaciones' => [
-                    'ver' => isset($permisosInput['cotizaciones']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0,
-                    'aprobar' => isset($permisosInput['cotizaciones']['aprobar']) ? 1 : 0
-                ],
-                'inventario' => [
-                    'ver' => isset($permisosInput['inventario']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['inventario']['crear_editar']) ? 1 : 0
-                ],
-                'compras' => [
-                    'ver' => isset($permisosInput['compras']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['compras']['crear_editar']) ? 1 : 0
-                ],
-                'contabilidad' => [
-                    'ver' => isset($permisosInput['contabilidad']['ver']) ? 1 : 0
-                ],
-                'laboratorio' => [
-                    'ver' => isset($permisosInput['laboratorio']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['laboratorio']['crear_editar']) ? 1 : 0
-                ]
-            ];
-            $permisosJson = json_encode($permisos);
+            if (isset($datos['personalizar_permisos']) && empty($datos['personalizar_permisos'])) {
+                $permisosJson = null;
+            } else {
+                $permisosInput = $datos['permisos'] ?? [];
+                $permisos = $this->normalizarPermisos($permisosInput);
+                $permisosJson = !empty($permisos) ? json_encode($permisos, JSON_UNESCAPED_UNICODE) : null;
+            }
         }
 
         $datosActualizados = [
@@ -328,5 +276,28 @@ class UsuariosControlador extends ControladorBase {
         
         $respuesta->redirigir('/Cycsa/publico/usuarios');
         return;
+    }
+
+    /**
+     * Normaliza y valida de forma segura los permisos recibidos del formulario.
+     */
+    private function normalizarPermisos(array $permisosInput): array {
+        $permisos = [];
+        foreach ($permisosInput as $modulo => $acciones) {
+            if (!is_array($acciones)) {
+                continue;
+            }
+            $modSanitizado = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$modulo);
+            if ($modSanitizado === '') {
+                continue;
+            }
+            foreach ($acciones as $accion => $valor) {
+                $accSanitizada = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$accion);
+                if ($accSanitizada !== '' && !empty($valor)) {
+                    $permisos[$modSanitizado][$accSanitizada] = 1;
+                }
+            }
+        }
+        return $permisos;
     }
 }

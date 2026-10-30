@@ -71,39 +71,10 @@ class RolesControlador extends ControladorBase {
                 $this->renderizar('usuarios/vistas/roles/crear', ['titulo' => 'Crear Nuevo Rol', 'error' => 'Este nombre de rol ya está registrado.']); return;
             }
 
-            // Procesar Permisos marcados en el checklist
+            // Procesar Permisos marcados en el checklist dinámicamente
             $permisosInput = $datos['permisos'] ?? [];
-            $permisos = [
-                'clientes' => [
-                    'ver' => isset($permisosInput['clientes']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['clientes']['crear_editar']) ? 1 : 0
-                ],
-                'productos' => [
-                    'ver' => isset($permisosInput['productos']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['productos']['crear_editar']) ? 1 : 0
-                ],
-                'cotizaciones' => [
-                    'ver' => isset($permisosInput['cotizaciones']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0,
-                    'aprobar' => isset($permisosInput['cotizaciones']['aprobar']) ? 1 : 0
-                ],
-                'inventario' => [
-                    'ver' => isset($permisosInput['inventario']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['inventario']['crear_editar']) ? 1 : 0
-                ],
-                'compras' => [
-                    'ver' => isset($permisosInput['compras']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['compras']['crear_editar']) ? 1 : 0
-                ],
-                'contabilidad' => [
-                    'ver' => isset($permisosInput['contabilidad']['ver']) ? 1 : 0
-                ],
-                'laboratorio' => [
-                    'ver' => isset($permisosInput['laboratorio']['ver']) ? 1 : 0,
-                    'crear_editar' => isset($permisosInput['laboratorio']['crear_editar']) ? 1 : 0
-                ]
-            ];
-            $permisosJson = json_encode($permisos);
+            $permisos = $this->normalizarPermisos($permisosInput);
+            $permisosJson = !empty($permisos) ? json_encode($permisos, JSON_UNESCAPED_UNICODE) : null;
 
             $modelo->guardar($nombre, $descripcion, $permisosJson);
             registrarBitacora('usuarios', 'crear_rol', 'Creado rol: ' . $nombre);
@@ -161,39 +132,10 @@ class RolesControlador extends ControladorBase {
             $this->renderizar('usuarios/vistas/roles/editar', ['titulo' => 'Editar Rol', 'error' => 'Este nombre de rol ya está registrado.', 'rol' => $rol]); return;
         }
 
-        // Procesar Permisos
+        // Procesar Permisos dinámicamente
         $permisosInput = $datos['permisos'] ?? [];
-        $permisos = [
-            'clientes' => [
-                'ver' => isset($permisosInput['clientes']['ver']) ? 1 : 0,
-                'crear_editar' => isset($permisosInput['clientes']['crear_editar']) ? 1 : 0
-            ],
-            'productos' => [
-                'ver' => isset($permisosInput['productos']['ver']) ? 1 : 0,
-                'crear_editar' => isset($permisosInput['productos']['crear_editar']) ? 1 : 0
-            ],
-            'cotizaciones' => [
-                'ver' => isset($permisosInput['cotizaciones']['ver']) ? 1 : 0,
-                'crear_editar' => isset($permisosInput['cotizaciones']['crear_editar']) ? 1 : 0,
-                'aprobar' => isset($permisosInput['cotizaciones']['aprobar']) ? 1 : 0
-            ],
-            'inventario' => [
-                'ver' => isset($permisosInput['inventario']['ver']) ? 1 : 0,
-                'crear_editar' => isset($permisosInput['inventario']['crear_editar']) ? 1 : 0
-            ],
-            'compras' => [
-                'ver' => isset($permisosInput['compras']['ver']) ? 1 : 0,
-                'crear_editar' => isset($permisosInput['compras']['crear_editar']) ? 1 : 0
-            ],
-            'contabilidad' => [
-                'ver' => isset($permisosInput['contabilidad']['ver']) ? 1 : 0
-            ],
-            'laboratorio' => [
-                'ver' => isset($permisosInput['laboratorio']['ver']) ? 1 : 0,
-                'crear_editar' => isset($permisosInput['laboratorio']['crear_editar']) ? 1 : 0
-            ]
-        ];
-        $permisosJson = json_encode($permisos);
+        $permisos = $this->normalizarPermisos($permisosInput);
+        $permisosJson = !empty($permisos) ? json_encode($permisos, JSON_UNESCAPED_UNICODE) : null;
 
         $modelo->actualizar((int)$id, $nombre, $descripcion, $permisosJson);
         registrarBitacora('usuarios', 'editar_rol', 'Actualizado rol: ' . $nombre, (int)$id);
@@ -236,5 +178,28 @@ class RolesControlador extends ControladorBase {
 
         $respuesta->redirigir('/Cycsa/publico/roles');
         return;
+    }
+
+    /**
+     * Normaliza y valida de forma segura los permisos recibidos del formulario.
+     */
+    private function normalizarPermisos(array $permisosInput): array {
+        $permisos = [];
+        foreach ($permisosInput as $modulo => $acciones) {
+            if (!is_array($acciones)) {
+                continue;
+            }
+            $modSanitizado = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$modulo);
+            if ($modSanitizado === '') {
+                continue;
+            }
+            foreach ($acciones as $accion => $valor) {
+                $accSanitizada = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$accion);
+                if ($accSanitizada !== '' && !empty($valor)) {
+                    $permisos[$modSanitizado][$accSanitizada] = 1;
+                }
+            }
+        }
+        return $permisos;
     }
 }

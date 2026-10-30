@@ -90,23 +90,8 @@ class AutenticacionControlador extends ControladorBase {
                     $_SESSION['usuario_nombre'] = $usuario['nombre'];
                     $_SESSION['usuario_rol'] = $usuario['id_rol'];
                     
-                    $permisos = null;
-                    if (!empty($usuario['permisos'])) {
-                        $permisos = json_decode($usuario['permisos'], true);
-                    } else {
-                        try {
-                            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-                            $stmtRol = $db->prepare("SELECT permisos FROM roles WHERE id = :id_rol LIMIT 1");
-                            $stmtRol->execute(['id_rol' => $usuario['id_rol']]);
-                            $rolPermisos = $stmtRol->fetchColumn();
-                            if (!empty($rolPermisos)) {
-                                $permisos = json_decode($rolPermisos, true);
-                            }
-                        } catch (\Exception $e) {
-                            error_log("Error al obtener permisos del rol: " . $e->getMessage());
-                        }
-                    }
-                    $_SESSION['usuario_permisos'] = $permisos;
+                    $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                    $_SESSION['usuario_permisos'] = $this->resolverPermisosUsuario($usuario, $db);
                     
                     // Guardar la nueva sesión en la base de datos para invalidar anteriores
                     try {
@@ -233,20 +218,7 @@ class AutenticacionControlador extends ControladorBase {
         $_SESSION['usuario_nombre'] = $usuario['nombre'];
         $_SESSION['usuario_rol'] = $usuario['id_rol'];
 
-        $permisos = null;
-        if (!empty($usuario['permisos'])) {
-            $permisos = json_decode($usuario['permisos'], true);
-        } else {
-            try {
-                $stmtRol = $db->prepare("SELECT permisos FROM roles WHERE id = :id_rol LIMIT 1");
-                $stmtRol->execute(['id_rol' => $usuario['id_rol']]);
-                $rolPermisos = $stmtRol->fetchColumn();
-                if (!empty($rolPermisos)) {
-                    $permisos = json_decode($rolPermisos, true);
-                }
-            } catch (\Exception $e) {}
-        }
-        $_SESSION['usuario_permisos'] = $permisos;
+        $_SESSION['usuario_permisos'] = $this->resolverPermisosUsuario($usuario, $db);
 
         try {
             $stmtSess = $db->prepare("UPDATE usuarios SET session_id = :session_id WHERE id = :id");
@@ -319,5 +291,43 @@ class AutenticacionControlador extends ControladorBase {
             'titulo' => 'Iniciar Sesión - Cycsa',
             'error' => 'La recuperación y desbloqueo de cuentas es administrada exclusivamente por el Administrador/Supervisor.'
         ]);
+    }
+
+    /**
+     * Carga y combina los permisos del rol y los permisos personalizados del usuario.
+     */
+    private function resolverPermisosUsuario(array $usuario, \PDO $db): ?array {
+        $permisos = [];
+        if (!empty($usuario['id_rol'])) {
+            try {
+                $stmtRol = $db->prepare("SELECT permisos FROM roles WHERE id = :id_rol LIMIT 1");
+                $stmtRol->execute(['id_rol' => $usuario['id_rol']]);
+                $rolPermisosRaw = $stmtRol->fetchColumn();
+                if (!empty($rolPermisosRaw)) {
+                    $rolPermisos = json_decode($rolPermisosRaw, true);
+                    if (is_array($rolPermisos)) {
+                        $permisos = $rolPermisos;
+                    }
+                }
+            } catch (\Exception $e) {
+                error_log("Error al obtener permisos del rol: " . $e->getMessage());
+            }
+        }
+
+        if (!empty($usuario['permisos'])) {
+            $userPermisos = json_decode($usuario['permisos'], true);
+            if (is_array($userPermisos)) {
+                foreach ($userPermisos as $mod => $accs) {
+                    if (!is_array($accs)) continue;
+                    foreach ($accs as $acc => $val) {
+                        if (!empty($val)) {
+                            $permisos[$mod][$acc] = 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        return !empty($permisos) ? $permisos : null;
     }
 }
