@@ -5,6 +5,8 @@
 # Scripts de prueba sueltos y volcados SQL con datos sensibles
 prueba.php
 cycsa_db_backup.sql
+cycsa_db_para_produccion.sql
+*.sql
 database/cycsa_*.sql
 database/backups/
 
