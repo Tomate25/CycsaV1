@@ -670,6 +670,38 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
 
                 <!-- TABLA DE RESULTADOS DE MATRIZ TÉCNICA (SENCILLA) -->
                 <div class="contenedor-tabla-matriz">
+                    <?php
+    $colMethods = [
+        'P.V.S Max (kg/m³)' => 'ASTM D698 / D1557',
+        'P.V.S. Máx (kg/m³)' => 'ASTM D698 / D1557',
+        'Humedad Óptima ((% )(P/P))' => 'ASTM D2216',
+        'Humedad Óptima (% P/P)' => 'ASTM D2216',
+        'P.V.S.Sitio (kg/m³)' => 'ASTM D6938 / D1556',
+        'P.V.S. Sitio (kg/m³)' => 'ASTM D6938 / D1556',
+        'Humedad Sitio ((%) (P/P))' => 'ASTM D6938 / D2216',
+        'Humedad Sitio (% P/P)' => 'ASTM D6938 / D2216',
+        'Compactación ((%) (P/P))' => 'Método In Situ',
+        'Compactación (% P/P)' => 'Método In Situ',
+        'Espesor (cm)' => 'In Situ',
+        'Profundidad (cm)' => 'In Situ',
+        'Área (in²)' => 'ASTM C39',
+        'Área (cm²)' => 'ASTM C39',
+        'Reven. (in)' => 'ASTM C143',
+        'Reven. (cm)' => 'ASTM C143',
+        'Temp. (°C)' => 'ASTM C1064',
+        'Carga (lb)' => 'ASTM C39',
+        'Carga (kg)' => 'ASTM C39',
+        'Peso Volumétrico (kg/m³)' => 'ASTM C29',
+        'Diseño de concreto (lb/in²)' => 'ASTM C39',
+        'R. Compresión (lb/in²)' => 'ASTM C39',
+        'R. Compresión (kg/cm²)' => 'ASTM C39',
+        'Módulo de Ruptura (kg/cm²)' => 'ASTM C78',
+        'Módulo de Ruptura (lb/in²)' => 'ASTM C78',
+        'Luz entre apoyos (cm)' => 'ASTM C78',
+        'Ancho promedio (cm)' => 'ASTM C78',
+        'Altura promedio (cm)' => 'ASTM C78'
+    ];
+                    ?>
                     <table class="tabla-matriz-print">
                         <thead>
                             <tr>

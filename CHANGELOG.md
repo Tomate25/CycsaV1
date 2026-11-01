@@ -2,6 +2,15 @@
 
 Todas las novedades, cambios notables, correcciones y actualizaciones de CYCSA ERP & LIMS se documentarán en este archivo.
 
+## [Sprint D.3] - P5 Formatos de Informes (RT-FM-22 B|C|F + 21 PE)
+
+### Añadido y Perfeccionado
+- **Fila y Subtítulos de Métodos Normativos en Cabecera**: Mapeo y renderizado de la norma oficial bajo cada columna en la cabecera técnica de impresión y PDF (matriz_print.php y generarMatrizTecnicaPDF): ASTM D698 / D1557, ASTM D6938 / D1556, ASTM D2216, ASTM C39, ASTM C78, ASTM C143, ASTM C1064, ASTM C29.
+- **Paridad Estricta RT-FM-22 B (Compactación)**: Renderizado garantizado con columna #, fila de método, unidades corregidas a kg/m³ (PE-25) y Nota 1 estructurada para densímetro nuclear (Troxler modelo, N/S, Eq).
+- **Paridad Estricta RT-FM-22 C y F (21 Procedimientos de Ensayo - PE)**: Validación cruzada de metadatos y esquemas para vigas/flexión (CYCSA-RT-FM-22 C (V1-R2) / PE-10), suelos/granulometría/asfalto (CYCSA-RT-FM-22 F (V1-R2) / PE-16), cono de arena (PE-20) y CBR (PE-46).
+- **Supresión de UI en Salida Impresa y PDF**: Confirmada la eliminación total de botones o controles de interfaz en documentos exportados para clientes y auditoría ISO 17025.
+- **Suite de Pruebas de Paridad Ampliada (InformesOficialesParidadTest.php)**: 10 tests cubriendo el 100% de los requisitos con 73 aserciones unitarias en verde.
+
 ## [Sprint D.2] - P3 Administrativo, Facturación y Versiones (Integración Completa)
 
 ### Añadido y Perfeccionado

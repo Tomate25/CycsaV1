@@ -360,4 +360,64 @@ class InformesOficialesParidadTest extends TestCase {
         $textoPdf = $this->extraerTextoDePdf($pdfBytes);
         $this->assertStringContainsString('CYCSA-INF-MS-9994-9995-26', $textoPdf);
     }
+
+    /**
+     * B.10: Fila / Subtítulo de Método Normativo en Cabecera de Tabla
+     */
+    public function testB10ParidadFilaMetodoEnCabecera(): void {
+        $detalleCompactacion = $this->getDetallePruebaCompactacion();
+        $pdfBytes = generarMatrizTecnicaPDF($detalleCompactacion);
+        $textoPdf = $this->extraerTextoDePdf($pdfBytes);
+
+        // Cabeceras con métodos normativos asociados
+        $this->assertStringContainsString('ASTM D698 / D1557', $textoPdf);
+        $this->assertStringContainsString('ASTM D6938 / D1556', $textoPdf);
+
+        $printView = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php');
+        $this->assertStringContainsString('$colMethods', $printView);
+        $this->assertStringContainsString('metodo-sub', $printView);
+    }
+
+    /**
+     * B.11: Paridad de Formatos y Ensayos Adicionales (RT-FM-22 C, RT-FM-22 F y 21 PE)
+     */
+    public function testB11ParidadFormatosAdicionalesCYCSARtFm22C_F_21PE(): void {
+        // Flexión en vigas (PE-10) -> RT-FM-22 C
+        $metaFlexion = resolverMetadatosEnsayo([
+            'descripcion_ensayo' => 'Resistencia a la Flexión de Vigas de Concreto',
+            'codigo_servicio' => 'ENS-CONC-02',
+            'norma_astm' => 'ASTM C78 / C78M',
+            'codigo_formato' => 'CYCSA-RT-FM-22 C'
+        ]);
+        $this->assertSame('CYCSA-RT-FM-22 C (V1-R2)', $metaFlexion['codigo_formato']);
+
+        // Granulometría de Suelos y Límites (PE-16 / PE-17) -> RT-FM-22 F
+        $metaGranulo = resolverMetadatosEnsayo([
+            'descripcion_ensayo' => 'Análisis Granulométrico y Límites de Atterberg',
+            'codigo_servicio' => 'ENS-SUEL-01',
+            'norma_astm' => 'ASTM D6913 / D4318',
+            'codigo_formato' => 'CYCSA-RT-FM-22 F'
+        ]);
+        $this->assertSame('CYCSA-RT-FM-22 F (V1-R2)', $metaGranulo['codigo_formato']);
+
+        // Densidad in situ PE-20 (cono de arena ASTM D1556) y PE-25 (densímetro nuclear ASTM D6938)
+        $metaCono = resolverMetadatosEnsayo([
+            'descripcion_ensayo' => 'Densidad de campo por Cono de Arena',
+            'norma_astm' => 'ASTM D1556 / D1556M'
+        ]);
+        $this->assertSame('CYCSA-RT-FM-22 B (V1-R2)', $metaCono['codigo_formato']);
+
+        $metaNuclear = resolverMetadatosEnsayo([
+            'descripcion_ensayo' => 'Densidad y Humedad in situ por Métodos Nucleares',
+            'norma_astm' => 'ASTM D6938'
+        ]);
+        $this->assertSame('CYCSA-RT-FM-22 B (V1-R2)', $metaNuclear['codigo_formato']);
+
+        // CBR de Suelos (PE-46 ASTM D1883)
+        $metaCbr = resolverMetadatosEnsayo([
+            'descripcion_ensayo' => 'Relación de Soporte de California (CBR)',
+            'norma_astm' => 'ASTM D1883'
+        ]);
+        $this->assertNotEmpty($metaCbr['codigo_formato']);
+    }
 }
