@@ -388,12 +388,16 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         <a href="/Cycsa/publico/operaciones" style="color: #64748b; text-decoration: none; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
             <i class="fa-solid fa-arrow-left"></i> Volver a Operaciones
         </a>
-        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap;">
-            <h2 style="margin: 0; color: #1e293b; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-flask-vial" style="color: var(--cycsa-azul);"></i> <?= htmlspecialchars($ensayoTituloOficial, ENT_QUOTES, 'UTF-8') ?>
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 2px; flex-wrap: wrap;">
+            <h2 style="margin: 0; color: #1e293b; font-size: 17px; font-weight: 800; display: flex; align-items: center; gap: 8px;" title="<?= htmlspecialchars($ensayoTituloOficial, ENT_QUOTES, 'UTF-8') ?>">
+                <i class="fa-solid fa-flask-vial" style="color: var(--cycsa-azul);"></i> 
+                <span><?= htmlspecialchars($schemaInfo['codigo_formato'] ?? $metadatos['codigo_formato'] ?? 'RT-FM-22') ?></span>
+                <span style="font-family: monospace; font-size: 13px; font-weight: 700; color: var(--cycsa-azul); background: #eff6ff; border: 1px solid #bfdbfe; padding: 2px 7px; border-radius: 6px;">
+                    <?= htmlspecialchars($detalle['codigo_os']) ?>
+                </span>
             </h2>
-            <span style="font-family: monospace; font-size: 13px; font-weight: 700; color: var(--cycsa-azul); background: #eff6ff; border: 1px solid #bfdbfe; padding: 3px 8px; border-radius: 6px;">
-                O/S: <?= htmlspecialchars($detalle['codigo_os']) ?>
+            <span class="text-secondary d-none d-md-inline" style="font-size: 12.5px; max-width: 480px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?= htmlspecialchars($ensayoTituloOficial, ENT_QUOTES, 'UTF-8') ?>">
+                &bull; <?= htmlspecialchars($ensayoTituloOficial, ENT_QUOTES, 'UTF-8') ?>
             </span>
         </div>
     </div>
@@ -628,68 +632,8 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
     <input type="hidden" name="resultados_json" id="input_resultados_json" value="">
 
-    <!-- SECCIÓN 1: GRILLA DE CAPTURA Y MEDICIONES (PRIORIDAD OPERATIVA) -->
-    <div class="seccion-form" style="margin-bottom: 24px; padding: 22px; border-radius: 8px; border: 1px solid #cbd5e1; border-top: 4px solid var(--cycsa-azul, #103487); background: #ffffff;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
-            <h3 style="margin: 0; color: #1e293b; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-table-cells" style="color: var(--cycsa-azul);"></i> Grilla de Captura y Mediciones de Ensayo
-            </h3>
-            <span style="font-size: 12px; color: #64748b; font-weight: 600;">
-                <i class="fa-solid fa-keyboard me-1"></i> Ingrese lecturas y réplicas directamente en la tabla
-            </span>
-        </div>
-        <!-- CONTENEDOR DE LA TABLA DINÁMICA -->
-            <div id="replicas-control-bar" style="display:none; margin: 0 0 14px; padding: 13px 15px; border: 1px solid #99f6e4; background: #f0fdfa; border-radius: 9px; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
-                <div style="font-size: 12.5px; color: #115e59; line-height: 1.45;">
-                    <strong><i class="fa-solid fa-code-compare"></i> Réplicas de Control de Calidad</strong><br>
-                    Marque la casilla de las muestras que requieren réplica. Se cargará automáticamente una fila duplicada con el sufijo <strong>-CR</strong> para capturar sus mediciones de forma independiente.
-                </div>
-                <?php if (!$esModoHistorico): ?>
-                <button type="button" class="btn-matriz-secondary" onclick="sincronizarReplicasSeleccionadas()" style="background:#0f766e; color:#fff; border-color:#0f766e;">
-                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar réplicas
-                </button>
-                <?php endif; ?>
-            </div>
-            <div class="tabla-matriz-wrapper">
-                <table class="tabla-matriz" id="tabla-captura-matriz">
-                    <thead id="tabla-header">
-                        <!-- Generado por JavaScript según el archivo markdown -->
-                    </thead>
-                    <tbody id="tabla-body">
-                        <!-- Filas generadas por JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-            <div style="margin-top: 14px; color: #475569; font-size: 12px;">
-                <strong><?= htmlspecialchars($schemaInfo['disclaimer'] ?? '') ?></strong>
-                <?php foreach (($schemaInfo['notas'] ?? []) as $nota): ?>
-                    <div><?= htmlspecialchars($nota) ?></div>
-                <?php endforeach; ?>
-                <div style="margin-top: 8px;">Firmante oficial: <?= htmlspecialchars($schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira') ?> — <?= htmlspecialchars($schemaInfo['firmante_cargo'] ?? 'Gerente General') ?></div>
-            </div>
-
-            <!-- ALERTA DE PÉRDIDA POR LAVADO -->
-            <div id="alerta-lavado-norma" style="display:none; margin-top:15px; padding:12px 16px; border-radius:8px; font-size:13px; font-weight:600;"></div>
-
-            <!-- BARRA INFORMATIVA INFERIOR (EL GUARDADO SE REALIZA DESDE LA BARRA STICKY SUPERIOR) -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 16px; flex-wrap: wrap; gap: 12px;">
-                <span style="font-size:13px; color:#0369a1; font-weight:600;">
-                    <i class="fa-solid fa-shield-halved"></i> Formato técnico oficial sincronizado con <?= htmlspecialchars($detalle['archivo_markdown'] ?: 'ISO 17025') ?>
-                </span>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <a href="/Cycsa/publico/operaciones" class="btn-matriz-back" style="height: 38px; padding: 0 16px; display: inline-flex; align-items: center;">
-                        <i class="fa-solid fa-arrow-left me-1"></i> Regresar a Operaciones
-                    </a>
-                    <button type="button" onclick="guardarMatrizFullSubmit()" class="btn-matriz-primary" style="height: 38px; padding: 0 18px; font-size: 13px;">
-                        <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Matriz
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- SECCIÓN 2: CABECERA DEL INFORME Y METADATOS OFICIALES (COLAPSABLE) -->
-    <details class="mb-4" style="background: white; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); overflow: hidden;">
+    <details class="mb-3" style="background: white; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); overflow: hidden;">
         <summary style="padding: 16px 22px; cursor: pointer; font-size: 15px; font-weight: 700; color: #1e293b; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; list-style: none;">
             <span class="d-flex align-items-center gap-2">
                 <i class="fa-solid fa-file-invoice text-primary"></i>
@@ -948,6 +892,66 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             </div>
         </div>
     </details>
+
+    <!-- SECCIÓN 1: GRILLA DE CAPTURA Y MEDICIONES (PRIORIDAD OPERATIVA) -->
+    <div class="seccion-form" style="margin-bottom: 24px; padding: 22px; border-radius: 8px; border: 1px solid #cbd5e1; border-top: 4px solid var(--cycsa-azul, #103487); background: #ffffff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="margin: 0; color: #1e293b; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-table-cells" style="color: var(--cycsa-azul);"></i> Grilla de Captura y Mediciones de Ensayo
+            </h3>
+            <span style="font-size: 12px; color: #64748b; font-weight: 600;">
+                <i class="fa-solid fa-keyboard me-1"></i> Ingrese lecturas y réplicas directamente en la tabla
+            </span>
+        </div>
+        <!-- CONTENEDOR DE LA TABLA DINÁMICA -->
+            <div id="replicas-control-bar" style="display:none; margin: 0 0 14px; padding: 13px 15px; border: 1px solid #99f6e4; background: #f0fdfa; border-radius: 9px; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+                <div style="font-size: 12.5px; color: #115e59; line-height: 1.45;">
+                    <strong><i class="fa-solid fa-code-compare"></i> Réplicas de Control de Calidad</strong><br>
+                    Marque la casilla de las muestras que requieren réplica. Se cargará automáticamente una fila duplicada con el sufijo <strong>-CR</strong> para capturar sus mediciones de forma independiente.
+                </div>
+                <?php if (!$esModoHistorico): ?>
+                <button type="button" class="btn-matriz-secondary" onclick="sincronizarReplicasSeleccionadas()" style="background:#0f766e; color:#fff; border-color:#0f766e;">
+                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar réplicas
+                </button>
+                <?php endif; ?>
+            </div>
+            <div class="tabla-matriz-wrapper">
+                <table class="tabla-matriz" id="tabla-captura-matriz">
+                    <thead id="tabla-header">
+                        <!-- Generado por JavaScript según el archivo markdown -->
+                    </thead>
+                    <tbody id="tabla-body">
+                        <!-- Filas generadas por JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 14px; color: #475569; font-size: 12px;">
+                <strong><?= htmlspecialchars($schemaInfo['disclaimer'] ?? '') ?></strong>
+                <?php foreach (($schemaInfo['notas'] ?? []) as $nota): ?>
+                    <div><?= htmlspecialchars($nota) ?></div>
+                <?php endforeach; ?>
+                <div style="margin-top: 8px;">Firmante oficial: <?= htmlspecialchars($schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira') ?> — <?= htmlspecialchars($schemaInfo['firmante_cargo'] ?? 'Gerente General') ?></div>
+            </div>
+
+            <!-- ALERTA DE PÉRDIDA POR LAVADO -->
+            <div id="alerta-lavado-norma" style="display:none; margin-top:15px; padding:12px 16px; border-radius:8px; font-size:13px; font-weight:600;"></div>
+
+            <!-- BARRA INFORMATIVA INFERIOR (EL GUARDADO SE REALIZA DESDE LA BARRA STICKY SUPERIOR) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 16px; flex-wrap: wrap; gap: 12px;">
+                <span style="font-size:13px; color:#0369a1; font-weight:600;">
+                    <i class="fa-solid fa-shield-halved"></i> Formato técnico oficial sincronizado con <?= htmlspecialchars($detalle['archivo_markdown'] ?: 'ISO 17025') ?>
+                </span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <a href="/Cycsa/publico/operaciones" class="btn-matriz-back" style="height: 38px; padding: 0 16px; display: inline-flex; align-items: center;">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Regresar a Operaciones
+                    </a>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
 </form>
 
 <script>
@@ -1461,6 +1465,10 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 input.dataset.col = calcCol;
                 input.dataset.saveCol = col;
                 input.dataset.row = rIdx;
+                if (input.value) {
+                    input.title = input.value;
+                }
+                input.addEventListener('change', () => { input.title = input.value; });
 
                 if (isGranulo) {
                     if (calcCol === 'Malla') {
