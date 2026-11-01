@@ -3,8 +3,8 @@
 $rolSesion = (int)($_SESSION['usuario_rol'] ?? 0);
 $esSupervisor = in_array($rolSesion, [1, 2, 3]);
 
-$cliInfNom = $o['cliente_informe_nombre'] ?? $o['cliente_nombre'];
-$cliFactNom = $o['cliente_factura_nombre'] ?? $o['cliente_nombre'];
+$cliInfNom = $o['cliente_informe_nombre'] ?? ($o['cliente_nombre'] ?? 'Cliente General');
+$cliFactNom = $o['cliente_factura_nombre'] ?? ($o['cliente_nombre'] ?? 'Cliente General');
 $condComAct = strtolower(trim($o['condicion_comercial_activa'] ?? $o['condicion_comercial'] ?? $o['condicion_pago'] ?? $o['forma_pago'] ?? 'contado'));
 $esCreditoFila = ($condComAct === 'credito');
 
@@ -71,7 +71,7 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                 </span>
             </div>
             <div style="font-size: 13px; color: #64748b; margin-top: 4px;">
-                Proyecto: <strong style="color: #1e293b;"><?= htmlspecialchars($o['nombre_proyecto']) ?></strong> &bull; Cotización: <strong><?= htmlspecialchars($o['cot_codigo']) ?></strong> &bull; Emisión: <?= date('d/m/Y', strtotime($o['fecha_emision'])) ?>
+                Proyecto: <strong style="color: #1e293b;"><?= htmlspecialchars($o['nombre_proyecto'] ?? 'Sin Proyecto') ?></strong> &bull; Cotización: <strong><?= htmlspecialchars($o['cot_codigo'] ?? '') ?></strong> &bull; Emisión: <?= !empty($o['fecha_emision']) ? date('d/m/Y', strtotime($o['fecha_emision'])) : 'N/A' ?>
             </div>
         </div>
 
@@ -86,7 +86,7 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                 </a>
             <?php endif; ?>
 
-            <?php if ($o['puede_cerrar']): ?>
+            <?php if (!empty($o['puede_cerrar'])): ?>
                 <button type="button" onclick="abrirModalCerrarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')" class="btn btn-success btn-sm fw-bold" style="padding: 7px 16px; border-radius: 6px;">
                     <i class="fa-solid fa-lock me-1"></i> Finalizar y Archivar Orden
                 </button>
@@ -128,7 +128,7 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
             <!-- PASO 4: CIERRE -->
             <?php if (in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'])): ?>
                 <span class="lims-step-chip step-ok"><i class="fa-solid fa-box-archive"></i> 4 Orden Archivada</span>
-            <?php elseif ($o['puede_cerrar']): ?>
+            <?php elseif (!empty($o['puede_cerrar'])): ?>
                 <span class="lims-step-chip step-ready"><i class="fa-solid fa-flag-checkered"></i> 4 Lista para Cierre</span>
             <?php else: ?>
                 <span class="lims-step-chip step-muted"><i class="fa-solid fa-lock"></i> 4 Cierre Bloqueado</span>
@@ -272,7 +272,7 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                         <?php if ($esCreditoFila): ?>
                             <?= $o['cxc'] !== null ? 'Factura/CxC documentada' : 'Pendiente generar CxC' ?>
                         <?php else: ?>
-                            <?= $o['comercial_100'] ? 'Factura cancelada (C$ 0.00)' : ('Saldo pendiente C$ ' . number_format($o['saldo_os'], 2)) ?>
+                            <?= $o['comercial_100'] ? 'Factura cancelada (C$ 0.00)' : ('Saldo pendiente C$ ' . number_format((float)($o['saldo_os'] ?? 0), 2)) ?>
                         <?php endif; ?>
                     </span>
                 </div>
@@ -287,7 +287,7 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                         <span class="badge bg-secondary" style="font-size: 13px; padding: 10px 18px; border-radius: 20px;">
                             <i class="fa-solid fa-box-archive me-1"></i> Orden Archivada en Histórico
                         </span>
-                    <?php elseif ($o['puede_cerrar']): ?>
+                    <?php elseif (!empty($o['puede_cerrar'])): ?>
                         <button type="button" 
                                 onclick="abrirModalCerrarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')" 
                                 class="btn btn-success" 

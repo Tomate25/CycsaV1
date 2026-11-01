@@ -367,14 +367,10 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                 </a>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="badge bg-light text-secondary border" style="font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px;">
-                    <i class="fa-solid fa-table-columns text-primary me-1"></i> Detalle Maestro en Panel Lateral
-                </span>
-            </div>
+
         </div>
 
-        <div style="overflow-x: auto; border: 1px solid var(--color-slate-200); border-radius: 10px;">
+        <div class="lims-table-container" style="overflow-x: auto; border: 1px solid var(--color-slate-200); border-radius: 10px; min-height: 320px;">
             <table class="tabla-cycsa" id="tabla-lims-os">
                 <thead>
                     <tr>
@@ -482,7 +478,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                                 'icono' => 'fa-solid fa-folder-open',
                                 'texto' => 'Ver Detalle',
                                 'clase' => 'btn-outline-primary',
-                                'titulo' => 'Consultar detalle completo en panel lateral'
+                                'titulo' => 'Consultar detalle'
                             ];
                         }
                     ?>
@@ -615,17 +611,17 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
                                 <?php endif; ?>
 
                                 <!-- SECONDARY DETALLE -->
-                                <button type="button" onclick="abrirDetalleOS(<?= $o['id'] ?>, document.querySelector('#os-row-<?= $o['id'] ?> .btn-toggle-detail'))" class="btn btn-outline-secondary btn-sm" style="height:36px; padding: 0 12px; font-size: 12.5px; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;" title="Abrir panel lateral de detalle">
+                                <button type="button" onclick="abrirDetalleOS(<?= $o['id'] ?>, document.querySelector('#os-row-<?= $o['id'] ?> .btn-toggle-detail'))" class="btn btn-outline-secondary btn-sm" style="height:36px; padding: 0 12px; font-size: 12.5px; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;" title="Ver detalle de la orden">
                                     <i class="fa-solid fa-folder-open"></i> Detalle
                                 </button>
 
                                 <!-- MENÚ ⋮ MÁS (BOOTSTRAP 5 DROPDOWN) -->
                                 <div class="dropdown d-inline-block">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-no-caret" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="height:36px; width:36px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:6px;" title="Más opciones de la orden">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-no-caret" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" style="height:36px; width:36px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:6px;" title="Más opciones de la orden">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 13px;">
-                                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirDetalleOS(<?= $o['id'] ?>)"><i class="fa-solid fa-folder-open me-2 text-primary"></i> Ver Detalle en Panel Lateral</a></li>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 13px; z-index: 1060;">
+                                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirDetalleOS(<?= $o['id'] ?>)"><i class="fa-solid fa-folder-open me-2 text-primary"></i> Ver Detalle</a></li>
                                         <li><a class="dropdown-item py-2" href="/Cycsa/publico/operaciones/ver?id_os=<?= $o['id'] ?>"><i class="fa-solid fa-arrow-up-right-from-square me-2 text-primary"></i> Ver en Página Completa</a></li>
                                         <?php if ($tieneHojaServicio): ?>
                                             <li><a class="dropdown-item py-2" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $o['id'] ?>" target="_blank"><i class="fa-solid fa-file-pdf me-2 text-info"></i> Descargar RT-FM-13 (PDF)</a></li>
@@ -866,7 +862,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
 
 <!-- OFFCANVAS DRAWER (MAESTRO-DETALLE LATERAL) -->
 <div class="lims-drawer-overlay" id="lims-drawer-overlay" onclick="cerrarLimsDrawer()"></div>
-<aside class="lims-drawer" id="lims-drawer" aria-label="Panel Lateral de Detalle">
+<aside class="lims-drawer" id="lims-drawer" aria-label="Detalle de Orden">
     <div class="lims-drawer-header">
         <div style="flex: 1; min-width: 0;">
             <h3 id="lims-drawer-title" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
@@ -879,7 +875,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
             <a id="lims-drawer-btn-full" href="#" class="btn btn-outline-primary btn-sm" style="font-size: 12px; font-weight: 600; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" title="Abrir en página completa dedicada">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i> <span class="d-none d-sm-inline">Página Completa</span>
             </a>
-            <button type="button" class="lims-drawer-close" onclick="cerrarLimsDrawer()" title="Cerrar Panel Lateral (Esc)">
+            <button type="button" class="lims-drawer-close" onclick="cerrarLimsDrawer()" title="Cerrar Detalle (Esc)">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -1293,6 +1289,19 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
 
     // Inicialización y eventos al cargar el DOM
     document.addEventListener('DOMContentLoaded', function() {
+        // Configurar dropdowns de acciones con estrategia fixed para evitar clipping por overflow
+        if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+            document.querySelectorAll('#tabla-lims-os .dropdown-toggle').forEach(function(btn) {
+                try {
+                    new bootstrap.Dropdown(btn, {
+                        boundary: 'viewport',
+                        popperConfig: function(defaultBsPopperConfig) {
+                            return Object.assign({}, defaultBsPopperConfig, { strategy: 'fixed' });
+                        }
+                    });
+                } catch (e) {}
+            });
+        }
         // Click en fila para abrir drawer (si no se clickeó un botón o enlace)
         document.querySelectorAll('tr[id^="os-row-"]').forEach(row => {
             row.addEventListener('click', function(e) {

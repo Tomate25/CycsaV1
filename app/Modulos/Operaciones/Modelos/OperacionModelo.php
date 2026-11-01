@@ -224,7 +224,7 @@ class OperacionModelo extends ModeloBase {
                        os.requiere_muestreo, os.tecnico_muestreo, os.vehiculo_muestreo, os.fecha_muestreo, os.hora_muestreo,
                        os.id_cliente_factura, os.id_cliente_informe,
                        COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
-                       cot.codigo AS cot_codigo, cot.condicion_pago,
+                       cot.codigo AS cot_codigo, cot.condicion_pago, cot.total AS cot_total,
                        COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
                        COALESCE(NULLIF(cot.direccion_proyecto, ''), NULLIF(cli.direccion, ''), '') AS direccion_proyecto,
                        COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
@@ -246,6 +246,13 @@ class OperacionModelo extends ModeloBase {
         $stmt->execute(['id' => $idOS]);
         $res = $stmt->fetch(PDO::FETCH_ASSOC);
         return $res ?: null;
+    }
+
+    /**
+     * Alias aditivo para obtenerOSPorId($idOS).
+     */
+    public function obtenerPorId(int $idOS): ?array {
+        return $this->obtenerOSPorId($idOS);
     }
     
 

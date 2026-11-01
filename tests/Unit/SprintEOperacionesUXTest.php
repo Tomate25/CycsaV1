@@ -39,7 +39,8 @@ class SprintEOperacionesUXTest extends TestCase {
         // Debe contener el Drawer como único contenedor maestro-detalle
         $this->assertStringContainsString('id="lims-drawer"', $content, 'Debe existir el elemento aside id="lims-drawer"');
         $this->assertStringContainsString('id="lims-drawer-btn-full"', $content, 'El drawer debe contar con botón para abrir en página completa');
-        $this->assertStringContainsString('Detalle Maestro en Panel Lateral', $content, 'Debe indicar que el detalle opera en panel lateral');
+        $this->assertStringNotContainsString('Detalle Maestro en Panel Lateral', $content, 'No debe existir el label residual redundante de Panel Lateral');
+        $this->assertStringContainsString('lims-table-container', $content, 'La tabla debe contar con contenedor responsivo optimizado');
 
         // NO debe existir el toggle/switcher de acordeón
         $this->assertStringNotContainsString('id="btn-vista-accordion"', $content, 'No debe existir el botón switcher a modo acordeón');
@@ -138,5 +139,11 @@ class SprintEOperacionesUXTest extends TestCase {
         $this->assertStringContainsString('tab-full-ensayos', $verContent);
         $this->assertStringContainsString('tab-full-cierre', $verContent);
         $this->assertStringContainsString('acciones_ensayo.php', $verContent);
+    }
+
+    public function testOperacionModeloHasGettersForVer(): void {
+        $refMod = new ReflectionClass(\Cycsa\Modulos\Operaciones\Modelos\OperacionModelo::class);
+        $this->assertTrue($refMod->hasMethod('obtenerOSPorId'), 'OperacionModelo debe implementar obtenerOSPorId');
+        $this->assertTrue($refMod->hasMethod('obtenerPorId'), 'OperacionModelo debe implementar alias aditivo obtenerPorId');
     }
 }

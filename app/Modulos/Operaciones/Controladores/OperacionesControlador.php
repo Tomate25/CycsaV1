@@ -1573,7 +1573,7 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $modelo = new OperacionModelo();
-        $orden = $modelo->obtenerPorId($idOS);
+        $orden = method_exists($modelo, 'obtenerOSPorId') ? $modelo->obtenerOSPorId($idOS) : $modelo->obtenerPorId($idOS);
         if (!$orden) {
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
