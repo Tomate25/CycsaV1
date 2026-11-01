@@ -1558,6 +1558,97 @@ class OperacionesControlador extends ControladorBase {
         ]);
     }
 
+    public function ver(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (($_SESSION['usuario_rol'] ?? 0) == 6) {
+            $respuesta->redirigir('/Cycsa/publico/laboratorio');
+            return;
+        }
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
+        if ($idOS <= 0) {
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $modelo = new OperacionModelo();
+        $orden = $modelo->obtenerPorId($idOS);
+        if (!$orden) {
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        $db = Conexion::obtenerInstancia();
+        $orden['items'] = $modelo->obtenerItemsOS($idOS);
+        $orden['items'] = array_values(array_filter($orden['items'] ?? [], static function ($it): bool {
+            return !is_array($it) || !array_key_exists('permitido', $it) || (int)$it['permitido'] === 1;
+        }));
+        $orden['hoja_solicitud'] = $modelo->obtenerHojaSolicitudPorOS($idOS);
+
+        $stmtRecCount = $db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_os = :id_os");
+        $stmtRecCount->execute(['id_os' => $idOS]);
+        $orden['muestras_aceptadas_lab'] = (int)$stmtRecCount->fetchColumn();
+
+        $facturaNum = 'FAC-' . ($orden['cot_codigo'] ?? '');
+        $orden['factura_numero'] = $facturaNum;
+        $stmtCxc = $db->prepare("SELECT * FROM cuentas_por_cobrar WHERE factura_numero = :fn LIMIT 1");
+        $stmtCxc->execute(['fn' => $facturaNum]);
+        $orden['cxc'] = $stmtCxc->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        $totalEnsayos = count($orden['items']);
+        $ensayosAprobados = 0;
+        $ensayosConResultados = 0;
+        foreach ($orden['items'] as &$it) {
+            $it['revision_info'] = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
+            if ($it['revision_info']['estado'] === 'aprobada') {
+                $ensayosAprobados++;
+            }
+            if ($it['revision_info']['tiene_resultados']) {
+                $ensayosConResultados++;
+            }
+        }
+        unset($it);
+
+        $orden['total_ensayos'] = $totalEnsayos;
+        $orden['ensayos_aprobados'] = $ensayosAprobados;
+        $orden['ensayos_con_resultados'] = $ensayosConResultados;
+        $orden['tecnico_100'] = ($totalEnsayos > 0 && $ensayosAprobados === $totalEnsayos);
+
+        $montoOS = (float)($orden['cot_total'] ?? 0.0);
+        $saldoOS = $orden['cxc'] ? (float)$orden['cxc']['saldo'] : $montoOS;
+        $estadoPago = $orden['cxc'] ? $orden['cxc']['estado'] : 'Pendiente';
+        $condicionCom = strtolower(trim($orden['condicion_comercial'] ?? $orden['condicion_pago'] ?? $orden['forma_pago'] ?? 'contado'));
+        $esCredito = ($condicionCom === 'credito');
+
+        if ($esCredito) {
+            $orden['comercial_100'] = ($orden['cxc'] !== null);
+        } else {
+            $orden['comercial_100'] = ($orden['cxc'] !== null && $estadoPago === 'Pagado' && $saldoOS <= 0.01);
+        }
+        $orden['saldo_os'] = $saldoOS;
+        $orden['estado_pago'] = $estadoPago;
+        $orden['condicion_comercial_activa'] = $condicionCom;
+        $orden['puede_cerrar'] = ($orden['tecnico_100'] && $orden['comercial_100'] && !in_array($orden['estado'], ['Finalizado', 'Archivado', 'Cerrado']));
+
+        $this->renderizar('operaciones/vistas/ver', [
+            'titulo' => 'Detalle de Operación - ' . $orden['codigo_os'],
+            'o' => $orden,
+            'orden' => $orden,
+            'id_os' => $idOS,
+            'tecnicos' => $modelo->obtenerTecnicosActivos(),
+            'vehiculos' => $modelo->obtenerVehiculosActivos(),
+            'exito' => $_SESSION['exito'] ?? null,
+            'error' => $_SESSION['error'] ?? null,
+            'bitacora_logs' => obtenerBitacoraModulo('operaciones')
+        ]);
+        unset($_SESSION['exito'], $_SESSION['error']);
+    }
+
     public function detalleAjax(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));

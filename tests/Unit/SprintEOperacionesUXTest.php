@@ -122,4 +122,21 @@ class SprintEOperacionesUXTest extends TestCase {
         $refOp = new ReflectionClass(OperacionesControlador::class);
         $this->assertTrue($refOp->hasMethod('detalleAjax'), 'OperacionesControlador debe implementar detalleAjax');
     }
+
+    public function testOperacionesVerRouteAndFullPageView(): void {
+        $routesContent = file_get_contents($this->routesPath);
+        $this->assertStringContainsString('/operaciones/ver', $routesContent, 'Ruta /operaciones/ver debe estar registrada');
+
+        $refOp = new ReflectionClass(OperacionesControlador::class);
+        $this->assertTrue($refOp->hasMethod('ver'), 'OperacionesControlador debe implementar método ver');
+
+        $verViewPath = dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/ver.php';
+        $this->assertFileExists($verViewPath, 'Debe existir la vista ver.php para página completa');
+
+        $verContent = file_get_contents($verViewPath);
+        $this->assertStringContainsString('tab-full-resumen', $verContent);
+        $this->assertStringContainsString('tab-full-ensayos', $verContent);
+        $this->assertStringContainsString('tab-full-cierre', $verContent);
+        $this->assertStringContainsString('acciones_ensayo.php', $verContent);
+    }
 }

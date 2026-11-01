@@ -183,6 +183,7 @@ $app->enrutador->get('/contabilidad/resultados', [ContabilidadControlador::class
 
 // 🔒 RUTAS DEL MÓDULO DE OPERACIONES (REQUERIDO: SESIÓN ACTIVA)
 $app->enrutador->get('/operaciones', [OperacionesControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/operaciones/ver', [OperacionesControlador::class, 'ver'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/crear-os', [OperacionesControlador::class, 'crearOS'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/recepcion', [OperacionesControlador::class, 'recepcionForm'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/guardar-recepcion', [OperacionesControlador::class, 'guardarRecepcion'], [AuthMiddleware::class]);
