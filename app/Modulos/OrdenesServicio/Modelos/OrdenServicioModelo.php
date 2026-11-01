@@ -568,7 +568,14 @@ class OrdenServicioModelo {
             'estado' => $datos['estado'] ?? 'Borrador'
         ]);
 
-        return (int)$this->db->lastInsertId();
+        $idInsertado = (int)$this->db->lastInsertId();
+        if ($idInsertado <= 0 && !empty($datos['codigo_os'])) {
+            $stmtSelect = $this->db->prepare("SELECT id FROM ordenes_servicio WHERE codigo_os = :codigo LIMIT 1");
+            $stmtSelect->execute(['codigo' => $datos['codigo_os']]);
+            $idInsertado = (int)$stmtSelect->fetchColumn();
+        }
+
+        return $idInsertado;
     }
 
     /**

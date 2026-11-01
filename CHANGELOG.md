@@ -2,6 +2,14 @@
 
 Todas las novedades, cambios notables, correcciones y actualizaciones de CYCSA ERP & LIMS se documentarán en este archivo.
 
+## [Sprint D.1] - Deuda C.5 Bitácora (Integridad)
+
+### Añadido y Endurecido
+- **Atomicidad en creación de O/S (crearOS)**: Obtención estricta y atómica del ID generado en la misma conexión (lastInsertId() con fallback a consulta por código de O/S único), garantizando que el id_os asentado en bitácora sea exactamente el ID de la O/S creada.
+- **Nombres legibles de roles en UI**: Implementación de obtenerNombreRol() que traduce IDs numéricos (1=Administrador, 2=Vendedor, 3=Supervisor, etc.) a nombres legibles en la vista de bitácora general y timeline parcial de O/S.
+- **Paginación y filtros en SQL**: Optimización del panel global de auditoría (PanelControlador::bitacora) para filtrar y paginar a nivel de base de datos (LIMIT / OFFSET de 50 registros) con conteo de total de páginas, evitando la carga masiva en memoria PHP.
+- **Auditoría Append-Only a nivel de aplicación**: Se ratifica el diseño append-only sin rutas ni controladores para editar o eliminar registros de bitácora. Nota de diseño: La bitácora opera a nivel de lógica de aplicación (no depende de triggers de BD).
+
 ## [Sprint C.5] - Bitácora quién-hizo-qué (O/S, matriz, RT-FM-13)
 
 ### Añadido

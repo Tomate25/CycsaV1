@@ -379,8 +379,9 @@ if (!isset($bitacora_modulo_nombre)) {
                         $entidadTxt .= ' #' . (int)$log['entidad_id'];
                     }
                     $rolTxt = trim((string)($log['usuario_rol'] ?? ''));
+                    $rolNombre = $rolTxt !== '' && function_exists('obtenerNombreRol') ? obtenerNombreRol($rolTxt) : $rolTxt;
                     $fuenteTxt = (string)($log['fuente'] ?? '');
-                    $busqueda_metadata = strtolower($usuario . ' ' . $rolTxt . ' ' . $accion_label . ' ' . $accion_raw . ' ' . $descripcion . ' ' . $fecha . ' ' . $entidadTxt . ' ' . $fuenteTxt);
+                    $busqueda_metadata = strtolower($usuario . ' ' . $rolTxt . ' ' . $rolNombre . ' ' . $accion_label . ' ' . $accion_raw . ' ' . $descripcion . ' ' . $fecha . ' ' . $entidadTxt . ' ' . $fuenteTxt);
                 ?>
                     <div class="bitacora-item" data-text="<?= htmlspecialchars($busqueda_metadata, ENT_QUOTES, 'UTF-8') ?>">
                         <div class="bitacora-marker">
@@ -391,8 +392,8 @@ if (!isset($bitacora_modulo_nombre)) {
                                 <span class="bitacora-user-name">
                                     <i class="fa-solid fa-user-circle"></i>
                                     <?= $usuario ?>
-                                    <?php if ($rolTxt !== ''): ?>
-                                        <span style="font-weight:500; color:#64748b;">· rol <?= htmlspecialchars($rolTxt, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php if ($rolNombre !== ''): ?>
+                                        <span style="font-weight:600; color:#475569; background:#f1f5f9; padding:1px 7px; border-radius:12px; font-size:11px; border:1px solid #cbd5e1;" data-rol="rol <?= htmlspecialchars($rolTxt, ENT_QUOTES, 'UTF-8') ?>">· <?= htmlspecialchars($rolNombre, ENT_QUOTES, 'UTF-8') ?></span>
                                     <?php endif; ?>
                                 </span>
                                 <span class="bitacora-time-badge">

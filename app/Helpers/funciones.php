@@ -4692,3 +4692,33 @@ function detectarCambiosNumericosEnParesCC(array $paresPrevios, array $paresNuev
     return array_values(array_unique($modificados));
 }
 
+
+/**
+ * Retorna el nombre legible oficial de un rol según su ID numérico o clave.
+ */
+function obtenerNombreRol(mixed $idRol): string {
+    static $cacheRoles = null;
+    if ($cacheRoles === null) {
+        $cacheRoles = [
+            1 => 'Administrador',
+            2 => 'Vendedor',
+            3 => 'Supervisor',
+            4 => 'Asistente',
+            5 => 'Auxiliar',
+            6 => 'Laboratorio',
+            7 => 'Compras',
+        ];
+        try {
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $stmt = $db->query("SELECT id, nombre FROM roles");
+            while ($r = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                $cacheRoles[(int)$r['id']] = (string)$r['nombre'];
+            }
+        } catch (\Throwable $e) {}
+    }
+    if (is_numeric($idRol)) {
+        $id = (int)$idRol;
+        return $cacheRoles[$id] ?? ('Rol ' . $id);
+    }
+    return !empty($idRol) ? (string)$idRol : 'Sin rol';
+}

@@ -438,8 +438,25 @@ class PanelControlador extends ControladorBase {
             $params['id_os'] = $id_os_sel;
         }
         
-        $sql .= " ORDER BY b.id DESC LIMIT 300";
-        
+        $entidad_id_sel = (int)($_GET['entidad_id'] ?? 0);
+        if ($columnasEntidad && $entidad_id_sel > 0) {
+            $sql .= " AND b.entidad_id = :entidad_id";
+            $params['entidad_id'] = $entidad_id_sel;
+        }
+
+        // Paginación en SQL
+        $porPagina = 50;
+        $paginaActual = max(1, (int)($_GET['p'] ?? ($_GET['pagina'] ?? 1)));
+        $offset = ($paginaActual - 1) * $porPagina;
+
+        // Conteo total filtrado
+        $sqlCount = "SELECT COUNT(*) FROM bitacora b WHERE 1=1" . substr($sql, strpos($sql, "WHERE 1=1") + 9);
+        $stmtCount = $db->prepare($sqlCount);
+        $stmtCount->execute($params);
+        $totalFiltrados = (int)$stmtCount->fetchColumn();
+        $totalPaginas = max(1, (int)ceil($totalFiltrados / $porPagina));
+
+        $sql .= " ORDER BY b.id DESC LIMIT {$porPagina} OFFSET {$offset}";
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -479,6 +496,12 @@ class PanelControlador extends ControladorBase {
             'fecha_hasta' => $fecha_hasta,
             'id_os_seleccionado' => $id_os_sel > 0 ? $id_os_sel : '',
             'columnas_entidad' => $columnasEntidad,
+            'paginacion' => [
+                'pagina' => $paginaActual,
+                'por_pagina' => $porPagina,
+                'total' => $totalFiltrados,
+                'total_paginas' => $totalPaginas
+            ],
             'stats' => [
                 'total' => $total_logs,
                 'hoy' => $logs_hoy,

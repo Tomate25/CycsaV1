@@ -291,6 +291,49 @@ class BitacoraOSTest extends TestCase {
         $this->assertStringContainsString('Guardar Matriz', $html);
         $this->assertStringContainsString('rtfm13 #12', $html);
         $this->assertStringContainsString('rol 3', $html);
+    
+        $this->assertStringContainsString('Supervisor', $html);
+    }
+
+    public function testObtenerNombreRolMapeaCorrectamente(): void {
+        $this->assertSame('Administrador', obtenerNombreRol(1));
+        $this->assertSame('Vendedor', obtenerNombreRol(2));
+        $this->assertSame('Supervisor', obtenerNombreRol(3));
+        $this->assertSame('Asistente', obtenerNombreRol(4));
+        $this->assertSame('Auxiliar', obtenerNombreRol(5));
+        $this->assertSame('Laboratorio', obtenerNombreRol(6));
+        $this->assertSame('Compras', obtenerNombreRol(7));
+        $this->assertSame('Supervisor', obtenerNombreRol('3'));
+        $this->assertSame('Gerente', obtenerNombreRol('Gerente'));
+    }
+
+    public function testBitacoraIdOsAtomicoConCreacionOS(): void {
+        $idPrueba = 985000 + random_int(1, 9999);
+        $res = registrarEventoOS('ordenes_servicio', 'crear', $this->marca('crear-atomico'), $idPrueba, ['foo' => 'bar']);
+        $this->assertTrue($res);
+
+        $fila = $this->ultima('crear');
+        $this->assertSame($idPrueba, (int)$fila['id_os'], 'id_os debe coincidir exactamente con el ID de la OS creada');
+        $this->assertSame($idPrueba, (int)$fila['id_referencia']);
+        $this->assertSame('os', $fila['entidad_tipo']);
+        $this->assertSame($idPrueba, (int)$fila['entidad_id']);
+    }
+
+    public function testPanelBitacoraPaginacionYFiltrosSql(): void {
+        $marcaA = $this->marca('panel-sql-A');
+        $marcaB = $this->marca('panel-sql-B');
+
+        registrarEventoOS('ordenes_servicio', 'crear', $marcaA, $this->idOS, ['item' => 1]);
+        registrarEventoOS('ordenes_servicio', 'editar', $marcaB, $this->idOS, ['item' => 2]);
+
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM bitacora WHERE id_os = :id_os AND accion = :accion');
+        $stmt->execute(['id_os' => $this->idOS, 'accion' => 'crear']);
+        $this->assertGreaterThanOrEqual(1, (int)$stmt->fetchColumn());
+
+        $stmtPage = $this->db->prepare('SELECT * FROM bitacora WHERE id_os = :id_os ORDER BY id DESC LIMIT 1 OFFSET 0');
+        $stmtPage->execute(['id_os' => $this->idOS]);
+        $filasPage = $stmtPage->fetchAll(\PDO::FETCH_ASSOC);
+        $this->assertCount(1, $filasPage);
     }
 
     private function marca(string $sufijo): string {

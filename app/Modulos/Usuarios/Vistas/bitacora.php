@@ -405,7 +405,7 @@ function formatearDescripcionBitacora(array $log): string {
                                             <div class="detail-value">
                                                 <strong><?= htmlspecialchars($log['usuario_nombre'], ENT_QUOTES, 'UTF-8') ?></strong>
                                                 <?php if (!empty($log['usuario_rol'])): ?>
-                                                    <span style="display:block; font-size:12px; color:#64748b;">Rol <?= htmlspecialchars((string)$log['usuario_rol'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                    <span style="display:block; font-size:12px; color:#475569; font-weight:600;">Rol: <?= htmlspecialchars(function_exists('obtenerNombreRol') ? obtenerNombreRol($log['usuario_rol']) : $log['usuario_rol'], ENT_QUOTES, 'UTF-8') ?></span>
                                                 <?php endif; ?>
                                                 <?php if (!$log['id_usuario']): ?>
                                                     <span style="display: block; font-size: 12px; color: #a1a1aa; font-style: italic;">Acción anónima (Cliente o Proceso Automático)</span>
@@ -444,6 +444,32 @@ function formatearDescripcionBitacora(array $log): string {
                 <?php endif; ?>
             </tbody>
         </table>
+
+        <?php if (!empty($paginacion) && ($paginacion['total_paginas'] ?? 1) > 1): ?>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; font-size:13px; color:#64748b; flex-wrap:wrap; gap:12px;">
+            <div>
+                Mostrando página <strong><?= (int)$paginacion['pagina'] ?></strong> de <strong><?= (int)$paginacion['total_paginas'] ?></strong> (Total: <strong><?= number_format((int)$paginacion['total']) ?></strong> registros filtrados)
+            </div>
+            <div style="display:flex; gap:8px;">
+                <?php
+                $queryParams = $_GET;
+                if ($paginacion['pagina'] > 1): 
+                    $queryParams['p'] = $paginacion['pagina'] - 1;
+                ?>
+                    <a href="/Cycsa/publico/panel/bitacora?<?= http_build_query($queryParams) ?>" class="btn-premium" style="background:#f1f5f9; color:#1e293b; border:1px solid #cbd5e1; padding:6px 14px; text-decoration:none;">
+                        &laquo; Anterior
+                    </a>
+                <?php endif; ?>
+                <?php if ($paginacion['pagina'] < $paginacion['total_paginas']): 
+                    $queryParams['p'] = $paginacion['pagina'] + 1;
+                ?>
+                    <a href="/Cycsa/publico/panel/bitacora?<?= http_build_query($queryParams) ?>" class="btn-premium" style="padding:6px 14px; text-decoration:none;">
+                        Siguiente &raquo;
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
