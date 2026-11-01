@@ -1647,6 +1647,10 @@ class OperacionesControlador extends ControladorBase {
         ");
         $stmt->execute(['id' => $idDetalle]);
         $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($detalle) {
+            $detalle['id'] = (int)$idDetalle;
+            $detalle['id_detalle'] = (int)$idDetalle;
+        }
 
         if (!$detalle) {
             $_SESSION['error'] = 'Producto o ensayo no encontrado.';
@@ -1793,6 +1797,8 @@ class OperacionesControlador extends ControladorBase {
                     break;
                 }
             }
+        } elseif (isset($decResultados['metadatos']) && is_array($decResultados['metadatos'])) {
+            $metadatosGuardados = $decResultados['metadatos'];
         }
 
         $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
@@ -2204,6 +2210,10 @@ class OperacionesControlador extends ControladorBase {
                                   WHERE cd.id = :id LIMIT 1");
             $stmt->execute(['id' => $idDetalle]);
             $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($detalle) {
+            $detalle['id'] = (int)$idDetalle;
+            $detalle['id_detalle'] = (int)$idDetalle;
+        }
 
             if (!$detalle) {
                 $_SESSION['error'] = 'Ensayo no encontrado.';
@@ -2335,6 +2345,10 @@ class OperacionesControlador extends ControladorBase {
                                   WHERE cd.id = :id LIMIT 1");
             $stmt->execute(['id' => $idDetalle]);
             $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($detalle) {
+            $detalle['id'] = (int)$idDetalle;
+            $detalle['id_detalle'] = (int)$idDetalle;
+        }
 
             if (!$detalle) {
                 $_SESSION['error'] = 'Ensayo no encontrado.';
@@ -2466,6 +2480,10 @@ class OperacionesControlador extends ControladorBase {
                                   WHERE cd.id = :id LIMIT 1");
             $stmt->execute(['id' => $idDetalle]);
             $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($detalle) {
+            $detalle['id'] = (int)$idDetalle;
+            $detalle['id_detalle'] = (int)$idDetalle;
+        }
 
             if (!$detalle) {
                 $_SESSION['error'] = 'Ensayo no encontrado.';
@@ -2759,6 +2777,10 @@ class OperacionesControlador extends ControladorBase {
         ");
         $stmt->execute(['id' => $idDetalle]);
         $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($detalle) {
+            $detalle['id'] = (int)$idDetalle;
+            $detalle['id_detalle'] = (int)$idDetalle;
+        }
 
         if (!$detalle) {
             $_SESSION['error'] = 'Producto o ensayo no encontrado.';
@@ -2945,6 +2967,10 @@ class OperacionesControlador extends ControladorBase {
         ");
         $stmt->execute(['id' => $idDetalle]);
         $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($detalle) {
+            $detalle['id'] = (int)$idDetalle;
+            $detalle['id_detalle'] = (int)$idDetalle;
+        }
 
         if (!$detalle) {
             $_SESSION['error'] = 'Producto o ensayo no encontrado.';
@@ -3053,6 +3079,10 @@ class OperacionesControlador extends ControladorBase {
         ");
         $stmt->execute(['id' => $idDetalle]);
         $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($detalle) {
+            $detalle['id'] = (int)$idDetalle;
+            $detalle['id_detalle'] = (int)$idDetalle;
+        }
 
         if (!$detalle) {
             $_SESSION['error'] = 'Producto o ensayo no encontrado.';
@@ -3372,6 +3402,10 @@ class OperacionesControlador extends ControladorBase {
         ");
         $stmt->execute(['id' => $idDetalle]);
         $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($detalle) {
+            $detalle['id'] = (int)$idDetalle;
+            $detalle['id_detalle'] = (int)$idDetalle;
+        }
 
         if (!$detalle) {
             $_SESSION['error'] = 'El control de calidad solicitado no fue encontrado.';

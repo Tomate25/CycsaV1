@@ -3,6 +3,10 @@
 $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
 $esLaboratorista = ($rolUsuario === 6);
 $esSupervisor = in_array($rolUsuario, [1, 2, 3]);
+$idDetalleActivo = (int)(!empty($idDetalle) ? $idDetalle : (!empty($detalle['id']) ? $detalle['id'] : ($_GET['id_detalle'] ?? $_GET['id'] ?? 0)));
+$idDetalle = $idDetalleActivo;
+$detalle['id'] = $idDetalleActivo;
+$detalle['id_detalle'] = $idDetalleActivo;
 $revisionInfo = obtenerEstadoRevisionMatriz($detalle['resultados_json'] ?? '');
 $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
 $detalle['archivo_markdown'] = $archivoMd;
@@ -613,7 +617,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
 <form id="form-matriz-completa" method="POST" action="/Cycsa/publico/operaciones/guardar-matriz-producto" enctype="multipart/form-data" onsubmit="prepararEnvioMatriz(event)">
     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-    <input type="hidden" name="id_detalle" value="<?= $detalle['id'] ?>">
+    <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
     <input type="hidden" name="resultados_json" id="input_resultados_json" value="">
 
     <!-- SECCIÓN 1: GRILLA DE CAPTURA Y MEDICIONES (PRIORIDAD OPERATIVA) -->
@@ -1118,9 +1122,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         ['revenin', 'revenimientoin', 'revenimiento'],
         ['revencm', 'revenimientocm'],
         ['tempc', 'temperaturac', 'temperatura', 'temp'],
-        ['pesovolumetricokgm3', 'pesovolumetrico', 'pvsmaxkgm3', 'pvssitiokgm3', 'pvs'],
-        ['pvsmaxkgm3', 'pvsmax'],
-        ['pvssitiokgm3', 'pvssitiokgcm2', 'pvssitio'],
+        ['pesovolumetricokgm3', 'pesovolumetrico', 'pvs'],
+        ['pvsmaxkgm3', 'pvsmax', 'pesovolumetricomaximo', 'pesovolumetricomaximokgm3'],
+        ['pvssitiokgm3', 'pvssitiokgcm2', 'pvssitio', 'pesovolumetricositio', 'pesovolumetricositiokgm3'],
         ['humedaddepct', 'humedaddecampopct', 'humedadsitiopct', 'humedadcampo'],
         ['compactacionpp', 'compactacionpct', 'porcentajecompactacion'],
         ['diametrocm', 'diametroin', 'diametro'],
@@ -1228,6 +1232,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
     function sincronizarSinonimosFila(fila, saveKey, val) {
         if (!fila || typeof fila !== 'object' || !saveKey) return;
+        if (val === undefined || val === null || String(val).trim() === '' || String(val).trim() === '—') {
+            return;
+        }
         const keyNorm = normalizarTextoClave(saveKey);
         const uSrc = extraerUnidadDeNombreColumna(saveKey);
         const valNum = parseFloat(val);
@@ -1237,11 +1244,11 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 for (const k in fila) {
                     if (k.startsWith('_')) continue;
                     const targetNorm = normalizarTextoClave(k);
-                    if (grupo.includes(targetNorm)) {
+                    if (targetNorm !== keyNorm && grupo.includes(targetNorm)) {
                         const uDst = extraerUnidadDeNombreColumna(k);
                         if (uSrc && uDst && uSrc !== uDst && !isNaN(valNum)) {
                             fila[k] = String(convertirUnidadMedicion(valNum, uSrc, uDst));
-                        } else {
+                        } else if (!uSrc || !uDst || uSrc === uDst) {
                             fila[k] = val;
                         }
                     }
@@ -1733,15 +1740,28 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         const isUserEdit = !!(ev && (ev.type === 'input' || ev.type === 'change'));
         const rows = document.querySelectorAll('#tabla-body tr');
         rows.forEach(tr => {
-            const cargaInput = tr.querySelector('input[data-col="Carga (lb)"]') || tr.querySelector('input[data-col="Carga (kg)"]');
-            const areaInput = tr.querySelector('input[data-col="Área (in²)"]') || tr.querySelector('input[data-col="Área (cm²)"]');
+            const cargaInput = tr.querySelector('input[data-col="Carga (lb)"]') || 
+                               tr.querySelector('input[data-save-col="Carga (lb)"]') || 
+                               tr.querySelector('input[data-col="Carga (kg)"]') || 
+                               tr.querySelector('input[data-save-col="Carga (kg)"]');
+            const areaInput = tr.querySelector('input[data-col="Área (in²)"]') || 
+                              tr.querySelector('input[data-save-col="Área (in²)"]') || 
+                              tr.querySelector('input[data-col="Área (cm²)"]') || 
+                              tr.querySelector('input[data-save-col="Área (cm²)"]');
             const rPsiInput = tr.querySelector('input[data-col="R. Compresión (lb/in²)"]') || 
-                              tr.querySelector('input[data-col="Estimación R. compresión (lb/in²)"]');
+                              tr.querySelector('input[data-save-col="R. Compresión (lb/in²)"]') || 
+                              tr.querySelector('input[data-col="Estimación R. compresión (lb/in²)"]') || 
+                              tr.querySelector('input[data-save-col="Estimación R. compresión (lb/in²)"]');
             const rKgInput = tr.querySelector('input[data-col="R. Compresión (kg/cm²)"]') || 
+                             tr.querySelector('input[data-save-col="R. Compresión (kg/cm²)"]') || 
                              tr.querySelector('input[data-col="R. Compresión. (kg/cm²)"]') || 
+                             tr.querySelector('input[data-save-col="R. Compresión. (kg/cm²)"]') || 
                              tr.querySelector('input[data-col="R. compresión. (kg/cm²)"]') || 
+                             tr.querySelector('input[data-save-col="R. compresión. (kg/cm²)"]') || 
                              tr.querySelector('input[data-col="R. a la compresión (kg/cm²)"]') || 
-                             tr.querySelector('input[data-col="Estimación R. compresión (kg/cm²)"]');
+                             tr.querySelector('input[data-save-col="R. a la compresión (kg/cm²)"]') || 
+                             tr.querySelector('input[data-col="Estimación R. compresión (kg/cm²)"]') || 
+                             tr.querySelector('input[data-save-col="Estimación R. compresión (kg/cm²)"]');
 
             if (cargaInput && areaInput) {
                 const carga = parseFloat(cargaInput.value) || 0;
@@ -1796,19 +1816,27 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         });
     }
 
-    function recalculateCompactacion() {
+    function recalculateCompactacion(ev) {
+        const isUserEdit = !!(ev && (ev.type === 'input' || ev.type === 'change'));
         const rows = document.querySelectorAll('#tabla-body tr');
         rows.forEach(tr => {
-            const pvsMaxInput = tr.querySelector('input[data-col="P.V.S Max (kg/m³)"]') || tr.querySelector('input[data-col="**P.V.S Max (kg/m³)"]');
-            const pvsSitioInput = tr.querySelector('input[data-col="P.V.S.Sitio (kg/cm²)"]') || tr.querySelector('input[data-col="P.V.S.Sitio (kg/m³)"]');
-            const compInput = tr.querySelector('input[data-col="Compactación ((%) (P/P))"]');
+            const pvsMaxInput = tr.querySelector('input[data-col="P.V.S Max (kg/m³)"]') || 
+                                tr.querySelector('input[data-save-col="P.V.S Max (kg/m³)"]') || 
+                                tr.querySelector('input[data-col="**P.V.S Max (kg/m³)"]') ||
+                                tr.querySelector('input[data-save-col="**P.V.S Max (kg/m³)"]');
+            const pvsSitioInput = tr.querySelector('input[data-col="P.V.S.Sitio (kg/cm²)"]') || 
+                                  tr.querySelector('input[data-save-col="P.V.S.Sitio (kg/cm²)"]') || 
+                                  tr.querySelector('input[data-col="P.V.S.Sitio (kg/m³)"]') ||
+                                  tr.querySelector('input[data-save-col="P.V.S.Sitio (kg/m³)"]');
+            const compInput = tr.querySelector('input[data-col="Compactación ((%) (P/P))"]') ||
+                              tr.querySelector('input[data-save-col="Compactación ((%) (P/P))"]');
 
             if (pvsMaxInput && pvsSitioInput && compInput) {
                 const max = parseFloat(pvsMaxInput.value) || 0;
                 const sitio = parseFloat(pvsSitioInput.value) || 0;
                 if (max > 0 && sitio > 0) {
                     compInput.value = ((sitio / max) * 100).toFixed(1);
-                } else {
+                } else if (isUserEdit) {
                     compInput.value = '';
                 }
             }
@@ -1998,12 +2026,16 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         }
     }
 
+    let enviandoMatriz = false;
     function guardarMatrizFullSubmit() {
+        if (enviandoMatriz) return;
+        enviandoMatriz = true;
         prepararEnvioMatriz();
         const form = document.getElementById('form-matriz-completa');
         if (form) {
-            form.dispatchEvent(new Event('submit', { cancelable: true }));
             form.submit();
+        } else {
+            enviandoMatriz = false;
         }
     }
 
