@@ -1558,6 +1558,27 @@ class OperacionesControlador extends ControladorBase {
         ]);
     }
 
+    public function detalleAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
+        if ($idOS <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'ID de orden inválido']);
+            return;
+        }
+        $modelo = new OperacionModelo();
+        $orden = $modelo->obtenerPorId($idOS);
+        if (!$orden) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de servicio no encontrada']);
+            return;
+        }
+        $items = $modelo->obtenerItemsDetalle($idOS);
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'orden' => $orden,
+            'items' => $items
+        ]);
+    }
+
     public function obtenerMatrizOSAjax(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         $idOS = (int)($_GET['id_os'] ?? 0);

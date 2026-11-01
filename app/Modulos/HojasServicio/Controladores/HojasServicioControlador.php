@@ -40,6 +40,26 @@ class HojasServicioControlador extends ControladorBase {
         return;
     }
 
+    public function crearRedirect(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
+        if ($idOS > 0) {
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
+            return;
+        }
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+    }
+
+    public function detalleRedirect(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
+        if ($idOS > 0) {
+            $respuesta->redirigir('/Cycsa/publico/hojas-servicio/descargar?id_os=' . $idOS);
+            return;
+        }
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+    }
+
     public function hojaSolicitudDatosAjax(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         
