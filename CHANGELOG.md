@@ -2,6 +2,23 @@
 
 Todas las novedades, cambios notables, correcciones y actualizaciones de CYCSA ERP & LIMS se documentarán en este archivo.
 
+## [Sprint D.5] - Verificación Cruzada y Regresiones Integrales (Finalización Sprint D)
+
+### Verificado y Certificado al 100%
+- **Suite Integral de Verificación Cruzada (SprintDCrossVerificationTest.php)**: 10/10 pruebas unitarias automatizadas cubriendo el 100% de los criterios del Sprint D:
+  1. Celdas de medición de captura-matriz persisten y renderizan tras recarga (round-trip intacto).
+  2. Chip de Control de Calidad en matriz vincula id_detalle válido del ensayo activo.
+  3. Encabezados de informe oficial completos con marcadores ** de cliente y precedencia ISO 17025.
+  4. Campo dedicado 'Muestra tomada con equipo' genera Nota 1 Troxler oficial sin mezcla con notas libres.
+  5. Ensayos de compactación (cono/densímetro) direccionan a RT-FM-22 B con unidad kg/m³ estricta en PE-25.
+  6. Smoke C.1 a C.6 integrados (PDF O/S, traslados, whitelist, bitácora, checklist).
+  7. Separación de Destinatario de Informe ≠ Cliente Pagador validada en BD, modelo e informe.
+  8. Módulo de Ventas factura y emite CxC en cualquier fase de la O/S sin requerir resultados técnicos de lab y sin romper candados de CC/matriz.
+  9. Corrección administrativa emite versión N+1 inmutable con rótulo "SUSTITUYE AL INFORME" y versión anterior preservada.
+  10. Versionado de cotizaciones con snapshot JSON inmutable y O/S persistiendo cotizacion_version.
+- **Suite Completa PHPUnit**: 441/441 pruebas pasando en verde (100%), 4973 aserciones, cero errores, cero advertencias.
+- **Túnel Cloudflare Activo y Verificado**: HTTP 200 verificado tanto en local como vía https://delhi-depot-subaru-labor.trycloudflare.com/Cycsa/publico/.
+
 ## [Sprint D.4] - P4 UX Densificación de O/S y Operaciones (Sin Quitar Procesos)
 
 ### Optimizado y Densificado (100% Aditivo)
