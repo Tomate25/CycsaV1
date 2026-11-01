@@ -2,6 +2,16 @@
 
 Todas las novedades, cambios notables, correcciones y actualizaciones de CYCSA ERP & LIMS se documentarán en este archivo.
 
+## [Sprint D.2] - P3 Administrativo, Facturación y Versiones (Integración Completa)
+
+### Añadido y Perfeccionado
+- **Migración 028 (`028_orden_servicio_cotizacion_version`)**: Soporte aditivo de la columna `cotizacion_version INT NOT NULL DEFAULT 1` en `ordenes_servicio`, vinculando cada O/S formalizada a la versión exacta aprobada de la cotización.
+- **Destinatario de Informe ≠ Pagador Comercial (ISO 17025)**: Separación integral entre la figura jurídica técnica (`id_cliente_informe` / `cliente_informe_nombre`) que figura en los encabezados oficiales de ensayo (RT-FM-22, CYCSA-INF-*) y el pagador comercial (`id_cliente_factura` / `cliente_factura_nombre`) utilizado en Ventas, Facturación y Cuentas por Cobrar (CxC).
+- **Selectores dedicados en UI de O/S (`crear.php`)**: Presentación explícita de dos selectores claros con etiquetas diferenciadas: "Cliente que Paga (Facturación / CxC)" y "Cliente del Informe (Destinatario Técnico / ISO 17025)". Desglose en `detalle.php` de O/S.
+- **Corrección Administrativa y Reemisión Inmutable**: Generación de nueva versión N+1 (ej. `MS-XXXX-YY-N`) con leyenda `"SUSTITUYE AL INFORME: ..."` sin sobreescritura destructiva, preservando versión previa como anulada/sustituida y exigiendo re-aprobación.
+- **Facturación flexible e independiente de Laboratorio**: Confirmada y blindada la capacidad del módulo de Ventas para emitir factura y CxC en cualquier etapa de la O/S sin requerir resultados de laboratorio y sin vulnerar los candados técnicos de Control de Calidad.
+- **Versionado de Cotizaciones**: Persistencia de snapshot JSON inmutable en `cotizacion_versiones` al modificar propuestas negociadas/observadas/rechazadas, con incremento de versión y reflejo en el PDF oficial.
+
 ## [Sprint D.1] - Deuda C.5 Bitácora (Integridad)
 
 ### Añadido y Endurecido

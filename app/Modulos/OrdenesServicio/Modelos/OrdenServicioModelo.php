@@ -36,6 +36,10 @@ class OrdenServicioModelo {
         $sql = "SELECT os.*, 
                        cot.codigo AS cotizacion_codigo, 
                        cli.nombre_razon_social AS cliente_nombre,
+                       cli_inf.nombre_razon_social AS cliente_informe_nombre,
+                       cli_fac.nombre_razon_social AS cliente_factura_nombre,
+                       cli_inf.nombre_razon_social AS cliente_informe_nombre,
+                       cli_fac.nombre_razon_social AS cliente_factura_nombre,
                        COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
                        COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
                        COALESCE(NULLIF(cot.direccion_proyecto, ''), NULLIF(cli.direccion, ''), '') AS direccion_proyecto,
@@ -53,6 +57,8 @@ class OrdenServicioModelo {
                 FROM ordenes_servicio os
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id
+                LEFT JOIN clientes cli_inf ON cli_inf.id = COALESCE(os.id_cliente_informe, cot.id_cliente_informe, cot.id_cliente)
+                LEFT JOIN clientes cli_fac ON cli_fac.id = COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente)
                 LEFT JOIN programacion_muestreo pm ON pm.id_orden_servicio = os.id
                 LEFT JOIN tecnicos t ON pm.id_tecnico = t.id
                 LEFT JOIN (SELECT id, CONCAT(marca, ' ', modelo, ' (', placa, ')') AS vehiculo_info FROM vehiculos) v ON pm.id_vehiculo = v.id
@@ -119,6 +125,8 @@ class OrdenServicioModelo {
                        u_cot.nombre AS cotizacion_creador_nombre,
                        COALESCE(NULLIF(os.elaborado_por, ''), u_cot.nombre, 'Personal Autorizado') AS elaborado_por,
                        cli.nombre_razon_social AS cliente_nombre,
+                       cli_inf.nombre_razon_social AS cliente_informe_nombre,
+                       cli_fac.nombre_razon_social AS cliente_factura_nombre,
                        COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
                        COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
                        COALESCE(NULLIF(cot.direccion_proyecto, ''), NULLIF(cli.direccion, ''), '') AS direccion_proyecto,
@@ -131,6 +139,8 @@ class OrdenServicioModelo {
                 JOIN cotizaciones cot ON os.id_cotizacion = cot.id
                 LEFT JOIN usuarios u_cot ON cot.id_usuario_creador = u_cot.id
                 JOIN clientes cli ON cot.id_cliente = cli.id
+                LEFT JOIN clientes cli_inf ON cli_inf.id = COALESCE(os.id_cliente_informe, cot.id_cliente_informe, cot.id_cliente)
+                LEFT JOIN clientes cli_fac ON cli_fac.id = COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente)
                 WHERE os.id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $id]);
@@ -539,11 +549,11 @@ class OrdenServicioModelo {
             : determinarCondicionComercial($formaPago);
 
         $sql = "INSERT INTO ordenes_servicio (
-                    codigo_os, id_cotizacion, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, elaborado_por, fecha_emision,
+                    codigo_os, id_cotizacion, cotizacion_version, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, elaborado_por, fecha_emision,
                     atencion_a, nombre_proyecto, forma_pago, notas_condiciones,
                     contactos_json, requiere_muestreo, tipo_contrato, estado
                 ) VALUES (
-                    :codigo_os, :id_cotizacion, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :elaborado_por, :fecha_emision,
+                    :codigo_os, :id_cotizacion, :cotizacion_version, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :elaborado_por, :fecha_emision,
                     :atencion_a, :nombre_proyecto, :forma_pago, :notas_condiciones,
                     :contactos_json, :requiere_muestreo, :tipo_contrato, :estado
                 )";
@@ -552,6 +562,7 @@ class OrdenServicioModelo {
         $stmt->execute([
             'codigo_os' => $datos['codigo_os'],
             'id_cotizacion' => $datos['id_cotizacion'],
+            'cotizacion_version' => !empty($datos['cotizacion_version']) ? (int)$datos['cotizacion_version'] : 1,
             'id_cliente' => $idClienteFactura,
             'id_cliente_factura' => $idClienteFactura,
             'id_cliente_informe' => $idClienteInforme,

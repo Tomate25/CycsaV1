@@ -51,6 +51,7 @@
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="id_cotizacion" value="<?= $cotizacion['id'] ?>">
         <input type="hidden" name="id_cliente" value="<?= $cotizacion['id_cliente'] ?>">
+        <input type="hidden" name="cotizacion_version" value="<?= (int)($cotizacion['version'] ?? 1) ?>">
 
         <!-- DATOS PRINCIPALES DE LA O/S -->
         <div class="cycsa-card">
@@ -73,14 +74,45 @@
                 </div>
             </div>
 
+            <?php
+            $idClienteFacturaActual = (int)($cotizacion['id_cliente_factura'] ?? $cotizacion['id_cliente'] ?? 0);
+            $idClienteInformeActual = (int)($cotizacion['id_cliente_informe'] ?? $cotizacion['id_cliente'] ?? 0);
+            $listaClientes = $clientes ?? [];
+            ?>
             <div class="form-grid-2">
                 <div class="form-group-cycsa">
-                    <label>Cliente (Razón Social):</label>
-                    <input type="text" class="form-control-cycsa form-control-readonly" value="<?= htmlspecialchars($cotizacion['cliente_nombre']) ?>" readonly>
+                    <label style="font-weight: 700; color: #103487;">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> Cliente que Paga (Facturación / CxC):
+                    </label>
+                    <?php if (!empty($listaClientes)): ?>
+                        <select name="id_cliente_factura" class="form-control-cycsa" style="font-weight: 600;">
+                            <?php foreach ($listaClientes as $c): ?>
+                                <option value="<?= $c['id'] ?>" <?= ((int)$c['id'] === $idClienteFacturaActual) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($c['nombre_razon_social']) ?> (<?= htmlspecialchars($c['numero_ruc'] ?? 'S/R') ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php else: ?>
+                        <input type="hidden" name="id_cliente_factura" value="<?= $idClienteFacturaActual ?>">
+                        <input type="text" class="form-control-cycsa form-control-readonly" value="<?= htmlspecialchars($cotizacion['cliente_nombre']) ?>" readonly>
+                    <?php endif; ?>
                 </div>
                 <div class="form-group-cycsa">
-                    <label>Cédula / RUC:</label>
-                    <input type="text" class="form-control-cycsa form-control-readonly" value="<?= htmlspecialchars($cotizacion['cliente_ruc'] ?? 'N/A') ?>" readonly>
+                    <label style="font-weight: 700; color: #047857;">
+                        <i class="fa-solid fa-flask-vial"></i> Cliente del Informe (Destinatario Técnico / ISO 17025):
+                    </label>
+                    <?php if (!empty($listaClientes)): ?>
+                        <select name="id_cliente_informe" class="form-control-cycsa" style="font-weight: 600;">
+                            <?php foreach ($listaClientes as $c): ?>
+                                <option value="<?= $c['id'] ?>" <?= ((int)$c['id'] === $idClienteInformeActual) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($c['nombre_razon_social']) ?> (<?= htmlspecialchars($c['numero_ruc'] ?? 'S/R') ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php else: ?>
+                        <input type="hidden" name="id_cliente_informe" value="<?= $idClienteInformeActual ?>">
+                        <input type="text" class="form-control-cycsa form-control-readonly" value="<?= htmlspecialchars($cotizacion['cliente_nombre']) ?>" readonly>
+                    <?php endif; ?>
                 </div>
             </div>
 

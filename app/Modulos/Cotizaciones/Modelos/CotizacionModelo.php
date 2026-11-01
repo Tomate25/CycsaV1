@@ -305,7 +305,7 @@ class CotizacionModelo extends ModeloBase {
                 $stmtDetalle->execute([
                     'id_cotizacion' => $idCotizacion,
                     'id_producto' => $detalle['id_producto'],
-                    'descripcion' => $detalle['descripcion'],
+                    'descripcion' => $detalle['descripcion'] ?? ($detalle['descripcion_ensayo'] ?? ''),
                     'condiciones_muestra' => $detalle['condiciones_muestra'] ?? null,
                     'procedimiento' => $detalle['procedimiento'] ?? null,
                     'unidad_medida' => $detalle['unidad_medida'] ?? 'Unidad',
@@ -315,7 +315,7 @@ class CotizacionModelo extends ModeloBase {
                     'observaciones' => $detalle['observaciones'] ?? null,
                     'descripcion_adicional' => $detalle['descripcion_adicional'] ?? null,
                     'cantidad' => $detalle['cantidad'],
-                    'precio' => $detalle['precio'],
+                    'precio' => $detalle['precio'] ?? ($detalle['precio_unitario'] ?? 0.0),
                     'subtotal' => $detalle['subtotal']
                 ]);
             }
@@ -424,7 +424,7 @@ class CotizacionModelo extends ModeloBase {
                 $stmtDetalle->execute([
                     'id_cotizacion' => $id,
                     'id_producto' => $det['id_producto'],
-                    'descripcion' => $det['descripcion'],
+                    'descripcion' => $det['descripcion'] ?? ($det['descripcion_ensayo'] ?? ''),
                     'condiciones_muestra' => $det['condiciones_muestra'] ?? null,
                     'procedimiento' => $det['procedimiento'] ?? null,
                     'unidad_medida' => $det['unidad_medida'] ?? 'Unidad',
@@ -434,7 +434,7 @@ class CotizacionModelo extends ModeloBase {
                     'observaciones' => $det['observaciones'] ?? null,
                     'descripcion_adicional' => $det['descripcion_adicional'] ?? null,
                     'cantidad' => $det['cantidad'],
-                    'precio' => $det['precio'],
+                    'precio' => $det['precio'] ?? ($det['precio_unitario'] ?? 0.0),
                     'subtotal' => $det['subtotal']
                 ]);
             }

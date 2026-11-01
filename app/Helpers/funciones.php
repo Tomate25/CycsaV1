@@ -897,7 +897,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         </div>";
     }
 
-    $clienteNombre = htmlspecialchars($cotizacion['cliente_nombre'] ?? '', ENT_QUOTES, 'UTF-8');
+    $clienteNombre = htmlspecialchars($cotizacion['cliente_informe_nombre'] ?? $cotizacion['cliente_nombre'] ?? '', ENT_QUOTES, 'UTF-8');
     $clienteRuc = htmlspecialchars($cotizacion['cliente_ruc'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
     $atencionA = htmlspecialchars($cotizacion['atencion_a'] ?? 'N/A', ENT_QUOTES, 'UTF-8');
     $proyectoNombre = htmlspecialchars($cotizacion['nombre_proyecto'] ?? '', ENT_QUOTES, 'UTF-8');

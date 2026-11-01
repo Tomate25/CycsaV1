@@ -138,9 +138,15 @@ if (!empty($os['contactos_json'])) {
             </div>
 
             <div class="os-meta-row">
-                <span class="os-meta-label">Cliente:</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['cliente_nombre']) ?></span>
+                <span class="os-meta-label">Cliente (Informe):</span>
+                <span class="os-meta-value"><?= htmlspecialchars($os['cliente_informe_nombre'] ?: $os['cliente_nombre']) ?></span>
             </div>
+            <?php if (!empty($os['cliente_factura_nombre']) && $os['cliente_factura_nombre'] !== ($os['cliente_informe_nombre'] ?: $os['cliente_nombre'])): ?>
+            <div class="os-meta-row">
+                <span class="os-meta-label">Cliente (Pagador):</span>
+                <span class="os-meta-value" style="color: #103487; font-weight: 700;"><?= htmlspecialchars($os['cliente_factura_nombre']) ?></span>
+            </div>
+            <?php endif; ?>
             <div class="os-meta-row">
                 <span class="os-meta-label">Fecha:</span>
                 <span class="os-meta-value"><?= date('Y-m-d', strtotime($os['fecha_emision'])) ?></span>

@@ -80,7 +80,8 @@ class OrdenesServicioControlador extends ControladorBase {
             'titulo' => 'Nueva Orden de Servicio - CYCSA-RG-FM-39 V1',
             'cotizacion' => $cotizacion,
             'detalles' => $detalles,
-            'codigo_os' => $nuevoCodigoOS
+            'codigo_os' => $nuevoCodigoOS,
+            'clientes' => \Cycsa\Nucleo\Conexion::obtenerInstancia()->query("SELECT id, nombre_razon_social, numero_ruc FROM clientes ORDER BY nombre_razon_social ASC")->fetchAll(\PDO::FETCH_ASSOC)
         ]);
     }
 
@@ -127,6 +128,7 @@ class OrdenesServicioControlador extends ControladorBase {
         $idOS = $osModelo->crear([
             'codigo_os' => $codigoOS,
             'id_cotizacion' => $idCotizacion,
+            'cotizacion_version' => (int)($datos['cotizacion_version'] ?? ($cotizacion['version'] ?? 1)),
             'id_cliente' => (int)($datos['id_cliente'] ?? ($cotizacion['id_cliente'] ?? 0)),
             'id_cliente_factura' => !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)($cotizacion['id_cliente_factura'] ?? ($datos['id_cliente'] ?? 0)),
             'id_cliente_informe' => !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)($cotizacion['id_cliente_informe'] ?? ($datos['id_cliente'] ?? 0)),
