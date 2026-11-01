@@ -61,7 +61,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         width: 100%;
         max-width: 100%;
         margin: 0;
-        padding: 10px 20px 60px 20px;
+        padding: 8px 16px 40px 16px;
         box-sizing: border-box;
     }
 
@@ -70,15 +70,15 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         top: 0;
         z-index: 1020;
         background: #ffffff;
-        padding: 14px 20px;
-        margin: -10px -20px 20px -20px;
+        padding: 10px 16px;
+        margin: -8px -16px 14px -16px;
         border-bottom: 2px solid #e2e8f0;
         box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
-        gap: 15px;
+        gap: 12px;
     }
 
     .btn-matriz-back {
@@ -244,32 +244,32 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     .informe-metadatos-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 25px;
+        gap: 12px 20px;
     }
     @media (max-width: 900px) {
-        .informe-metadatos-grid { grid-template-columns: 1fr; gap: 14px; }
+        .informe-metadatos-grid { grid-template-columns: 1fr; gap: 10px; }
         .informe-cabecera-row { flex-direction: column; text-align: center; }
         .informe-badge-box { text-align: center; }
     }
     .informe-col {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
         min-width: 0;
     }
     .meta-row {
         display: grid;
-        grid-template-columns: 215px 1fr;
+        grid-template-columns: 195px 1fr;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         min-width: 0;
     }
     @media (max-width: 1200px) {
-        .meta-row { grid-template-columns: 185px 1fr; }
+        .meta-row { grid-template-columns: 175px 1fr; }
     }
     .meta-label-oficial {
         font-weight: 700;
-        font-size: 13px;
+        font-size: 12.5px;
         color: #000000;
         margin: 0;
         line-height: 1.25;
@@ -283,8 +283,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         max-width: 100%;
         border: 1.5px solid #cbd5e1;
         border-radius: 6px;
-        padding: 5px 9px;
-        font-size: 13px;
+        padding: 4px 8px;
+        font-size: 12.5px;
+        height: 30px;
         color: #1e293b;
         background: #ffffff;
         box-sizing: border-box;
@@ -299,20 +300,22 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     .meta-blindness {
         background: #eff6ff;
         border: 1px dashed #93c5fd;
-        padding: 5px 9px;
+        padding: 4px 8px;
         border-radius: 6px;
         color: #1d4ed8;
-        font-size: 12px;
+        font-size: 11.5px;
         font-weight: 700;
         display: flex;
         align-items: center;
         gap: 6px;
     }
 
-    /* Tabla de Captura */
+    /* Tabla de Captura Densificada */
     .tabla-matriz-wrapper {
         width: 100%;
         overflow-x: auto;
+        max-height: 580px;
+        overflow-y: auto;
         border: 1px solid #cbd5e1;
         border-radius: 8px;
         background: white;
@@ -320,21 +323,25 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     .tabla-matriz {
         width: 100%;
         min-width: 100%;
-        border-collapse: collapse;
-        font-size: 13.5px;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12.5px;
     }
     .tabla-matriz th {
         background: #f8fafc;
         color: #334155;
         font-weight: 700;
-        padding: 12px 14px;
+        padding: 7px 10px;
         text-align: left;
         border-bottom: 2px solid #cbd5e1;
-        font-size: 12.5px;
+        font-size: 11.5px;
         white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 5;
     }
     .tabla-matriz td {
-        padding: 8px 10px;
+        padding: 4px 6px;
         border-bottom: 1px solid #f1f5f9;
         vertical-align: middle;
     }
@@ -344,11 +351,12 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
     .matriz-input {
         width: 100%;
-        min-width: 105px;
-        padding: 8px 12px;
-        font-size: 13.5px;
+        min-width: 88px;
+        height: 30px;
+        padding: 4px 8px;
+        font-size: 12.5px;
         border: 1.5px solid #cbd5e1;
-        border-radius: 6px;
+        border-radius: 5px;
         outline: none;
         box-sizing: border-box;
         font-family: inherit;

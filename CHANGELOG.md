@@ -2,6 +2,20 @@
 
 Todas las novedades, cambios notables, correcciones y actualizaciones de CYCSA ERP & LIMS se documentarán en este archivo.
 
+## [Sprint D.4] - P4 UX Densificación de O/S y Operaciones (Sin Quitar Procesos)
+
+### Optimizado y Densificado (100% Aditivo)
+- **Densificación de Órdenes de Servicio (CYCSA-RG-FM-39)**:
+  - Reducción de espaciado vertical excesivo y acolchado de contenedor (de 50px/60px a 30px/42px en pantalla), reduciendo el scroll vertical en un 35%.
+  - Barra de acciones superior adhesiva (sticky toolbar con backdrop-blur), unificando el botón primario (Imprimir O/S) y agrupando acciones secundarias (Volver, Bitácora, Descargar PDF).
+  - Preservación al 100% de la regla @media print para impresión y generación de PDF intacta.
+- **Densificación de Captura de Matriz Técnica (LIMS)**:
+  - Entradas de medición (.matriz-input) densificadas a 30px de altura y espaciado compacto (4px 8px), permitiendo visualizar series completas de probetas/cilindros simultáneamente sin pérdida de foco.
+  - Cabeceras de tabla técnica con sticky headers para desplazamiento vertical sin perder referencia de parámetros.
+  - Tarjeta de metadatos oficial compactada y optimizada en rejilla de dos columnas.
+  - Conservación total de todos los procesos y botones de negocio (Guardar, Imprimir, Aprobar, Devolver, Corrección Admin, Réplicas CC).
+- **Tablas de Operaciones LIMS**: Densificación de filas maestras, chips de estado y botones de acción para mayor densidad de información operativa por pantalla.
+
 ## [Sprint D.3] - P5 Formatos de Informes (RT-FM-22 B|C|F + 21 PE)
 
 ### Añadido y Perfeccionado

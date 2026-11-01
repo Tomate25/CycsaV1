@@ -23,16 +23,16 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     }
 
     .tabla-cycsa { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; font-size: 14px; }
-    .tabla-cycsa th { background-color: var(--color-slate-50); color: var(--color-slate-600); padding: 14px 16px; text-align: left; font-weight: 700; border-bottom: 2px solid var(--color-slate-200); text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
-    .tabla-cycsa td { padding: 14px 16px; border-bottom: 1px solid var(--color-slate-100); vertical-align: middle; color: var(--color-slate-700); transition: background-color 0.2s; }
+    .tabla-cycsa th { background-color: var(--color-slate-50); color: var(--color-slate-600); padding: 10px 14px; text-align: left; font-weight: 700; border-bottom: 2px solid var(--color-slate-200); text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+    .tabla-cycsa td { padding: 9px 12px; border-bottom: 1px solid var(--color-slate-100); vertical-align: middle; color: var(--color-slate-700); transition: background-color 0.2s; }
     .tabla-cycsa tbody tr:not(.detalle-os-row):hover { background-color: #f8fafc; }
     
-    .badge-prioridad { padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; display: inline-block; }
+    .badge-prioridad { padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; display: inline-block; }
     .prioridad-Alta { background-color: #fee2e2; color: #b91c1c; }
     .prioridad-Media { background-color: #ffedd5; color: #c2410c; }
     .prioridad-Normal { background-color: #dcfce7; color: #15803d; }
     
-    .badge-estado { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; border: 1px solid transparent; }
+    .badge-estado { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; border: 1px solid transparent; }
     
     /* Estado Badge Colors */
     .estado-Estado-1-Recepcion { background-color: #f1f5f9; color: #475569; border-color: #cbd5e1; }
@@ -90,7 +90,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
     .form-control { padding: 10px 14px; border: 1px solid var(--color-slate-300); border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; outline: none; transition: all 0.2s; color: var(--color-slate-800); }
     .form-control:focus { border-color: var(--cycsa-azul); box-shadow: 0 0 0 3px rgba(16, 52, 135, 0.1); }
     
-    .btn-accion { border: none; background: none; cursor: pointer; padding: 8px 14px; min-height: 36px; border-radius: 6px; font-size: 13px; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    .btn-accion { border: none; background: none; cursor: pointer; padding: 5px 11px; min-height: 32px; border-radius: 6px; font-size: 13px; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
     .btn-os { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
     .btn-os:hover { background-color: #dbeafe; transform: translateY(-1px); }
     .btn-recepcion { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }

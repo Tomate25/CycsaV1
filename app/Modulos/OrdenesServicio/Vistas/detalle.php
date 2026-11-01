@@ -6,71 +6,90 @@ if (!empty($os['contactos_json'])) {
 }
 ?>
 <style>
-    .os-wrapper { background: #f1f5f9; padding: 35px 20px; min-height: 100vh; }
+    .os-wrapper { background: #f1f5f9; padding: 18px 20px 40px 20px; min-height: 100vh; }
     .os-container { 
         max-width: 960px; 
         margin: 0 auto; 
         background: white; 
-        padding: 50px 60px; 
+        padding: 30px 42px; 
         border-radius: 8px; 
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+        box-shadow: 0 4px 18px rgba(0,0,0,0.06); 
         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
         color: #111; 
         position: relative;
-        line-height: 1.5;
-        font-size: 14px;
+        line-height: 1.45;
+        font-size: 13.5px;
     }
     
-    .os-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 2px solid #103487; padding-bottom: 18px; }
+    .os-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #103487; padding-bottom: 14px; }
     .os-logo-box { display: flex; align-items: center; gap: 14px; }
-    .os-logo-box img { max-height: 70px; object-fit: contain; }
+    .os-logo-box img { max-height: 60px; object-fit: contain; }
     
     .os-header-right { text-align: right; }
-    .os-main-title { font-size: 24px; font-weight: 800; color: #103487; letter-spacing: 0.5px; margin: 0; }
-    .os-doc-code { font-size: 14px; font-weight: 700; color: #333; margin-top: 4px; }
+    .os-main-title { font-size: 22px; font-weight: 800; color: #103487; letter-spacing: 0.5px; margin: 0; }
+    .os-doc-code { font-size: 13px; font-weight: 700; color: #333; margin-top: 3px; }
     
-    /* Rejilla de Información de la O/S (Escala 100% Nítida) */
+    /* Rejilla de Información de la O/S (Escala 100% Nítida y Densificada) */
     .os-meta-grid { 
         display: grid; 
         grid-template-columns: 1fr 1fr; 
-        gap: 8px 28px; 
-        font-size: 14px; 
-        margin-bottom: 28px; 
+        gap: 6px 24px; 
+        font-size: 13px; 
+        margin-bottom: 20px; 
     }
-    .os-meta-row { display: flex; gap: 10px; }
-    .os-meta-label { font-weight: 700; color: #000; min-width: 120px; }
+    .os-meta-row { display: flex; gap: 8px; }
+    .os-meta-label { font-weight: 700; color: #000; min-width: 125px; }
     .os-meta-value { color: #1e293b; font-weight: 400; flex: 1; }
 
     /* Tabla de Ensayos CYCSA-RG-FM-39 V1 */
-    .os-table-border { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 14px; border: 1.5px solid #000; }
-    .os-table-border th { background: #ffffff; color: #000; font-weight: 700; text-align: center; padding: 10px 12px; border: 1px solid #000; font-size: 13.5px; text-transform: uppercase; }
-    .os-table-border td { padding: 10px 14px; border: 1px solid #000; font-size: 13.5px; }
+    .os-table-border { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; border: 1.5px solid #000; }
+    .os-table-border th { background: #ffffff; color: #000; font-weight: 700; text-align: center; padding: 7px 10px; border: 1px solid #000; font-size: 12.5px; text-transform: uppercase; }
+    .os-table-border td { padding: 7px 10px; border: 1px solid #000; font-size: 12.5px; }
 
     /* Notas y Contactos */
-    .os-section-notes { font-size: 13px; color: #111; line-height: 1.6; margin-bottom: 35px; }
-    .os-section-notes p { margin: 0 0 6px 0; }
+    .os-section-notes { font-size: 12.5px; color: #111; line-height: 1.5; margin-bottom: 22px; }
+    .os-section-notes p { margin: 0 0 4px 0; }
     
-    .os-contacts-list { margin-top: 12px; margin-bottom: 16px; font-size: 13.5px; }
-    .os-contacts-list div { margin-bottom: 4px; }
+    .os-contacts-list { margin-top: 8px; margin-bottom: 12px; font-size: 12.5px; }
+    .os-contacts-list div { margin-bottom: 3px; }
 
     /* Firmas Oficiales de la O/S */
     .os-signatures-grid { 
         display: grid; 
         grid-template-columns: repeat(4, 1fr); 
-        gap: 20px; 
-        margin-top: 55px; 
-        margin-bottom: 30px;
+        gap: 16px; 
+        margin-top: 35px; 
+        margin-bottom: 20px;
         text-align: center; 
-        font-size: 12px; 
+        font-size: 11.5px; 
         color: #111; 
     }
-    .os-sig-col { border-top: 1.5px solid #000; padding-top: 8px; font-weight: 600; min-height: 65px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .os-sig-col { border-top: 1.5px solid #000; padding-top: 6px; font-weight: 600; min-height: 55px; display: flex; flex-direction: column; justify-content: flex-start; }
 
     /* Pie de página Oficial */
-    .os-footer-line { border-top: 3px solid #103487; margin-top: 35px; padding-top: 12px; display: flex; justify-content: space-between; font-size: 11.5px; color: #103487; font-weight: 600; line-height: 1.45; }
+    .os-footer-line { border-top: 2.5px solid #103487; margin-top: 24px; padding-top: 10px; display: flex; justify-content: space-between; font-size: 11px; color: #103487; font-weight: 600; line-height: 1.4; }
 
-    .btn-action-bar { max-width: 960px; margin: 0 auto 18px auto; display: flex; justify-content: space-between; align-items: center; }
-    .btn-cycsa { display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; min-height: 38px; padding: 8px 18px; border-radius: 6px; font-size: 13.5px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .btn-action-bar { 
+        max-width: 960px; 
+        margin: 0 auto 14px auto; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        position: sticky;
+        top: 10px;
+        z-index: 100;
+        background: rgba(241, 245, 249, 0.95);
+        backdrop-filter: blur(4px);
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+    .os-btn-group-secondary {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .btn-cycsa { display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; min-height: 36px; padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s; text-decoration: none; }
     .btn-cycsa-primary { background: var(--cycsa-azul); color: white; }
     .btn-cycsa-primary:hover { background: #0c2766; color: white; }
     .btn-cycsa-secondary { background: white; color: #334155; border-color: #cbd5e1; }
@@ -98,7 +117,7 @@ if (!empty($os['contactos_json'])) {
         <a href="/Cycsa/publico/ordenes-servicio" class="btn-cycsa btn-cycsa-secondary">
             <i class="fa-solid fa-arrow-left"></i> Volver a Órdenes
         </a>
-        <div style="display: flex; gap: 10px;">
+        <div class="os-btn-group-secondary">
             <?php if (!empty($mostrar_bitacora)): ?>
             <a href="/Cycsa/publico/ordenes-servicio/bitacora?id=<?= (int)($os['id'] ?? 0) ?>" class="btn-cycsa btn-cycsa-secondary">
                 <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
