@@ -2416,7 +2416,27 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
     $equipoModelo = $metadatosGuardados['equipo_modelo'] ?? ($metadatosGuardados['densimetro_modelo'] ?? (!empty($detalle['equipo_modelo']) ? $detalle['equipo_modelo'] : '3440'));
     $equipoSerie = $metadatosGuardados['equipo_serie'] ?? ($metadatosGuardados['densimetro_serie'] ?? (!empty($detalle['equipo_serie']) ? $detalle['equipo_serie'] : '62677'));
     $equipoCodigo = $metadatosGuardados['equipo_codigo'] ?? ($metadatosGuardados['densimetro_codigo'] ?? (!empty($detalle['equipo_codigo']) ? $detalle['equipo_codigo'] : 'Eq-6555'));
-    $notaEquipoDensimetro = "Nota 1: Muestra tomada con equipo {$equipoMarca}, Modelo: {$equipoModelo}, N/S : {$equipoSerie} {$equipoCodigo}";
+
+    $muestraTomadaConEquipo = !empty($metadatosGuardados['muestra_tomada_con_equipo'])
+        ? trim($metadatosGuardados['muestra_tomada_con_equipo'])
+        : (!empty($detalle['muestra_tomada_con_equipo']) ? trim($detalle['muestra_tomada_con_equipo']) : "{$equipoMarca}, Modelo: {$equipoModelo}, N/S : {$equipoSerie} {$equipoCodigo}");
+
+    if (!empty($metadatosGuardados['muestra_tomada_con_equipo'])) {
+        $valCustom = trim($metadatosGuardados['muestra_tomada_con_equipo']);
+        if (stripos($valCustom, 'Nota 1') === 0 || stripos($valCustom, 'Muestra tomada con equipo') !== false) {
+            $notaEquipoDensimetro = $valCustom;
+        } else {
+            $notaEquipoDensimetro = "Nota 1: Muestra tomada con equipo {$valCustom}";
+        }
+    } else {
+        $notaEquipoDensimetro = "Nota 1: Muestra tomada con equipo {$equipoMarca}, Modelo: {$equipoModelo}, N/S : {$equipoSerie} {$equipoCodigo}";
+    }
+
+    $normaTecnica = !empty($schemaInfo['norma'])
+        ? $schemaInfo['norma']
+        : (!empty($detalle['norma_astm'])
+            ? $detalle['norma_astm']
+            : (!empty($metadatosGuardados['norma_tecnica']) ? $metadatosGuardados['norma_tecnica'] : $metodoMuestreo));
 
     $logoAcreditacion = !empty($metadatosGuardados['logo_acreditacion']) ? $metadatosGuardados['logo_acreditacion'] : (!empty($detalle['logo_acreditacion']) ? $detalle['logo_acreditacion'] : '');
 
@@ -2434,8 +2454,10 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
         'ubicacion' => $ubicacion,
         'ensayo_realizado' => $ensayoRealizado,
         'metodo_muestreo' => $metodoMuestreo,
+        'norma_tecnica' => $normaTecnica,
         'codigo_formato' => $codigoFormato,
         'logo_acreditacion' => $logoAcreditacion,
+        'muestra_tomada_con_equipo' => $muestraTomadaConEquipo,
         'equipo_marca' => $equipoMarca,
         'equipo_modelo' => $equipoModelo,
         'equipo_serie' => $equipoSerie,
