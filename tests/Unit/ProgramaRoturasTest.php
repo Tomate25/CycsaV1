@@ -392,4 +392,33 @@ class ProgramaRoturasTest extends TestCase {
         );
         $this->assertTrue($resModifCalidadOk['exito']);
     }
+    public function testLaboratorioDetalleViewScriptTagsAndModalButtons(): void {
+        $viewPath = dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/laboratorio_detalle.php';
+        $this->assertFileExists($viewPath);
+        $content = file_get_contents($viewPath);
+
+        // Validar presencia de botón y llamada a abrirModalConfigurarPlan
+        $this->assertStringContainsString('onclick="abrirModalConfigurarPlan()"', $content);
+        $this->assertStringContainsString('Configurar Plan de Roturas Ahora', $content);
+
+        // Validar modal y funciones JavaScript correspondientes
+        $this->assertStringContainsString('id="modalPlanRotura"', $content);
+        $this->assertStringContainsString('function abrirModalConfigurarPlan()', $content);
+        $this->assertStringContainsString('function cerrarModalPlanRotura()', $content);
+        $this->assertStringContainsString('function abrirModalModificarPlanAutorizado()', $content);
+        $this->assertStringContainsString('function recalcularPlanEspecimenes()', $content);
+
+        // Validar que no existan etiquetas HTML dentro de los bloques script
+        preg_match_all('/<script>(.*?)<\/script>/s', $content, $matches);
+        $this->assertNotEmpty($matches[1], 'Debe haber bloques script validos.');
+        foreach ($matches[1] as $idx => $script) {
+            $this->assertStringNotContainsString('<div id="modalReemitirInforme"', $script, 'El modal de reemision no debe estar dentro del script.');
+            $this->assertStringNotContainsString('<!-- Modal', $script, 'Un bloque script no debe contener comentarios HTML de modales.');
+        }
+
+        // Conteo simétrico de etiquetas script
+        $opens = substr_count($content, '<script>');
+        $closes = substr_count($content, '</script>');
+        $this->assertEquals($opens, $closes, 'El número de etiquetas <script> y </script> debe ser exactamente igual.');
+    }
 }

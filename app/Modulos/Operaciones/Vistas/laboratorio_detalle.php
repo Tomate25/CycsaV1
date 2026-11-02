@@ -459,8 +459,12 @@ $puedeEditarPlan = ($totalEnsayados === 0);
             <input type="hidden" name="muestra_id" value="<?= (int)$muestra['muestra_id'] ?>">
 
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
-                <div style="font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 4px;">EspecÃ­menes Disponibles: <span id="lbl_total_disp" style="color:var(--cycsa-azul);"><?= $totalEspecimenes ?></span></div>
-                <div style="font-size: 12px; color: #64748b;">Defina las edades en dÃ­as y cuÃ¡ntas probetas ensayar en cada fecha. La suma no puede exceder el total de especÃ­menes. Los sobrantes quedan como testigos.</div>
+                <div style="font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                    Especímenes: <span id="lbl_total_disp" style="color:var(--cycsa-azul);"><?= $totalEspecimenes > 0 ? ($totalEspecimenes . ' disponibles en recepción') : 'Se generarán automáticamente según el plan' ?></span>
+                </div>
+                <div style="font-size: 12px; color: #64748b;">
+                    Defina las edades en días y cuántas probetas ensayar en cada fecha. <?= $totalEspecimenes > 0 ? 'Los sobrantes quedarán registrados como testigos.' : 'El plan creará las probetas necesarias correlativas con su código de muestra.' ?>
+                </div>
             </div>
 
             <div id="contenedor_edades_inputs" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
@@ -477,7 +481,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     </div>
                     <div style="flex: 2;">
                         <label style="font-size: 11px; font-weight: 700; color: #64748b;">Cantidad Probetas:</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="cantidad[]" class="form-control input-cant-plan" min="1" max="<?= $totalEspecimenes ?>" value="1" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
+                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="cantidad[]" class="form-control input-cant-plan" min="1" value="1" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
                     </div>
                     <div style="flex: 1; margin-top: 18px;">
                         <button type="button" class="btn-accion btn-secondary-lab" onclick="eliminarFilaEdad(this)" style="color: #ef4444;"><i class="fa-solid fa-trash"></i></button>
@@ -496,7 +500,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     </div>
                     <div style="flex: 2;">
                         <label style="font-size: 11px; font-weight: 700; color: #64748b;">Cantidad Probetas:</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="cantidad[]" class="form-control input-cant-plan" min="1" max="<?= $totalEspecimenes ?>" value="2" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
+                        <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="cantidad[]" class="form-control input-cant-plan" min="1" value="2" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
                     </div>
                     <div style="flex: 1; margin-top: 18px;">
                         <button type="button" class="btn-accion btn-secondary-lab" onclick="eliminarFilaEdad(this)" style="color: #ef4444;"><i class="fa-solid fa-trash"></i></button>
@@ -510,9 +514,13 @@ $puedeEditarPlan = ($totalEnsayados === 0);
 
             <!-- Sumatoria y Testigos en tiempo real -->
             <div style="background: #f1f5f9; padding: 10px 14px; border-radius: 8px; margin-bottom: 20px; font-size: 12.5px;">
-                Asignadas: <strong id="lbl_suma_asignada" style="color: #103487;">3</strong> / <?= $totalEspecimenes ?> | Sobrantes como Testigo: <strong id="lbl_sobrantes_testigo" style="color: #059669;"><?= max(0, $totalEspecimenes - 3) ?></strong>
+                <?php if ($totalEspecimenes > 0): ?>
+                    Asignadas: <strong id="lbl_suma_asignada" style="color: #103487;">3</strong> / <?= $totalEspecimenes ?> | Sobrantes como Testigo: <strong id="lbl_sobrantes_testigo" style="color: #059669;"><?= max(0, $totalEspecimenes - 3) ?></strong>
+                <?php else: ?>
+                    Total de probetas a generar y ensayar: <strong id="lbl_suma_asignada" style="color: #103487;">3</strong>
+                <?php endif; ?>
                 <div id="alerta_exceso" style="display: none; color: #b91c1c; font-weight: 700; margin-top: 4px;">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Error: La suma de probetas supera las recibidas.
+                    <i class="fa-solid fa-triangle-exclamation"></i> Error: Asigne al menos una probeta al plan.
                 </div>
             </div>
 
@@ -687,12 +695,18 @@ $puedeEditarPlan = ($totalEnsayados === 0);
 const TOTAL_ESPECIMENES = <?= (int)$totalEspecimenes ?>;
 
 function abrirModalConfigurarPlan() {
-    document.getElementById('modalPlanRotura').style.display = 'block';
+    const m = document.getElementById('modalPlanRotura');
+    if (m) m.style.display = 'block';
     recalcularPlanEspecimenes();
 }
 
+function abrirModalModificarPlanAutorizado() {
+    abrirModalConfigurarPlan();
+}
+
 function cerrarModalPlanRotura() {
-    document.getElementById('modalPlanRotura').style.display = 'none';
+    const m = document.getElementById('modalPlanRotura');
+    if (m) m.style.display = 'none';
 }
 
 function agregarFilaEdad() {
@@ -714,7 +728,7 @@ function agregarFilaEdad() {
         </div>
         <div style="flex: 2;">
             <label style="font-size: 11px; font-weight: 700; color: #64748b;">Cantidad Probetas:</label>
-            <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="cantidad[]" class="form-control input-cant-plan" min="1" max="${TOTAL_ESPECIMENES}" value="1" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
+            <input type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" name="cantidad[]" class="form-control input-cant-plan" min="1" value="1" style="width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;" oninput="recalcularPlanEspecimenes()">
         </div>
         <div style="flex: 1; margin-top: 18px;">
             <button type="button" class="btn-accion btn-secondary-lab" onclick="eliminarFilaEdad(this)" style="color: #ef4444;"><i class="fa-solid fa-trash"></i></button>
@@ -739,9 +753,14 @@ function recalcularPlanEspecimenes() {
         suma += parseInt(i.value || 0, 10);
     });
 
-    document.getElementById('lbl_suma_asignada').innerText = suma;
-    const sobrantes = Math.max(0, TOTAL_ESPECIMENES - suma);
-    document.getElementById('lbl_sobrantes_testigo').innerText = sobrantes;
+    const lblSuma = document.getElementById('lbl_suma_asignada');
+    if (lblSuma) lblSuma.innerText = suma;
+
+    const lblSobrantes = document.getElementById('lbl_sobrantes_testigo');
+    if (lblSobrantes) {
+        const sobrantes = TOTAL_ESPECIMENES > 0 ? Math.max(0, TOTAL_ESPECIMENES - suma) : 0;
+        lblSobrantes.innerText = sobrantes;
+    }
 
     const alerta = document.getElementById('alerta_exceso');
     const btnGuardar = document.getElementById('btn_guardar_plan');
@@ -862,8 +881,10 @@ function abrirModalDevolverInforme(informeId) {
 }
 
 function cerrarModalDevolverInforme() {
-    document.getElementById('modalDevolverInforme').style.display = 'none';
+    const modal = document.getElementById('modalDevolverInforme');
+    if (modal) modal.style.display = 'none';
 }
+</script>
 
 <!-- Modal 4: Reemitir Informe (Calidad / N+1) -->
 <div id="modalReemitirInforme" class="modal-lab">
@@ -872,7 +893,7 @@ function cerrarModalDevolverInforme() {
             <h3 style="margin: 0; color: #1e293b; font-size: 16px; font-weight: 700;">
                 <i class="fa-solid fa-arrows-rotate" style="color:#d97706;"></i> Reemitir Informe Oficial (ISO/IEC 17025)
             </h3>
-            <button onclick="cerrarModalReemitirInforme()" style="border: none; background: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            <button type="button" onclick="cerrarModalReemitirInforme()" style="border: none; background: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
         </div>
 
         <form method="POST" action="/Cycsa/publico/laboratorio/reemitir-informe">
@@ -901,12 +922,32 @@ function cerrarModalDevolverInforme() {
 
 <script>
 function abrirModalReemitirInforme(id, numero) {
-    document.getElementById('reem_informe_id').value = id;
-    document.getElementById('reem_informe_numero').innerText = numero;
-    document.getElementById('modalReemitirInforme').style.display = 'block';
+    const idElem = document.getElementById('reem_informe_id');
+    const numElem = document.getElementById('reem_informe_numero');
+    if (idElem) idElem.value = id;
+    if (numElem) numElem.innerText = numero;
+    const modal = document.getElementById('modalReemitirInforme');
+    if (modal) modal.style.display = 'block';
 }
+
 function cerrarModalReemitirInforme() {
-    document.getElementById('modalReemitirInforme').style.display = 'none';
+    const modal = document.getElementById('modalReemitirInforme');
+    if (modal) modal.style.display = 'none';
 }
-</script>
+
+// Cerrar modales al hacer clic fuera del contenido
+window.addEventListener('click', function(e) {
+    const modales = [
+        'modalPlanRotura',
+        'modalRegistrarRotura',
+        'modalDevolverInforme',
+        'modalReemitirInforme'
+    ];
+    modales.forEach(function(mId) {
+        const m = document.getElementById(mId);
+        if (m && e.target === m) {
+            m.style.display = 'none';
+        }
+    });
+});
 </script>
