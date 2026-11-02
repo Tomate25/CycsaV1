@@ -144,6 +144,9 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
         <button type="button" class="btn btn-sm btn-tab-full" onclick="cambiarTabFull(this, 'tab-full-ensayos')" style="flex: 1; padding: 10px 16px; font-size: 13.5px; font-weight: 700; border-radius: 8px; background: transparent; color: #475569; border: none;">
             <i class="fa-solid fa-flask text-info me-1"></i> Ensayos Técnicos (<?= $totalItemsOS ?>)
         </button>
+        <button type="button" class="btn btn-sm btn-tab-full" onclick="cambiarTabFull(this, 'tab-full-informes')" style="flex: 1; padding: 10px 16px; font-size: 13.5px; font-weight: 700; border-radius: 8px; background: transparent; color: #475569; border: none;">
+            <i class="fa-solid fa-file-shield text-primary me-1"></i> Informes y Versiones (<?= count($informes_unificados ?? []) ?>)
+        </button>
         <button type="button" class="btn btn-sm btn-tab-full" onclick="cambiarTabFull(this, 'tab-full-cierre')" style="flex: 1; padding: 10px 16px; font-size: 13.5px; font-weight: 700; border-radius: 8px; background: transparent; color: #475569; border: none;">
             <i class="fa-solid fa-shield-halved <?= $o['puede_cerrar'] ? 'text-success' : 'text-warning' ?> me-1"></i> Cierre LIMS
         </button>
@@ -302,6 +305,157 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                                 title="Cierre bloqueado: Requiere 100% de ensayos aprobados y cobro comercial liquidado.">
                             <i class="fa-solid fa-lock"></i> Cierre LIMS Bloqueado
                         </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 4: INFORMES Y VERSIONES (LAB P2) -->
+        <div id="tab-full-informes" class="tab-pane-full" style="display: none;">
+            <!-- SUBSECCIÓN 1: INFORMES UNIFICADOS -->
+            <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 22px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b;">
+                        <i class="fa-solid fa-file-shield text-primary me-2"></i> Informes de Ensayo Oficiales (Fachada Unificada)
+                    </h3>
+                    <span class="badge bg-primary-subtle text-primary border" style="font-size: 12px; padding: 4px 10px;">
+                        <?= count($informes_unificados ?? []) ?> informe(s) emitido(s)
+                    </span>
+                </div>
+
+                <?php if (empty($informes_unificados)): ?>
+                    <div style="text-align: center; padding: 32px 20px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                        <i class="fa-solid fa-file-circle-question text-muted" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>
+                        <span style="font-size: 13.5px; color: #64748b; font-weight: 600;">No se han emitido informes formales aún para esta orden de servicio.</span>
+                        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Los informes parciales y consolidados generados desde Laboratorio aparecerán automáticamente aquí con trazabilidad SHA-256.</div>
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" style="margin-bottom: 0; font-size: 13px;">
+                            <thead class="table-light" style="font-size: 12px; text-transform: uppercase; color: #64748b;">
+                                <tr>
+                                    <th>Código Informe</th>
+                                    <th>Tipo</th>
+                                    <th>Versión</th>
+                                    <th>Estado</th>
+                                    <th>Fecha Emisión</th>
+                                    <th>Firma SHA-256</th>
+                                    <th class="text-end">Documento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($informes_unificados as $inf): ?>
+                                    <tr>
+                                        <td class="fw-bold font-monospace text-primary">
+                                            <?= htmlspecialchars($inf['numero'] ?? 'S/N') ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                <?= strtoupper(htmlspecialchars($inf['tipo'] ?? 'general')) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info-subtle text-info border">
+                                                v<?= (int)($inf['version'] ?? 1) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php if (($inf['estado'] ?? '') === 'aprobado'): ?>
+                                                <span class="badge bg-success-subtle text-success border border-success">Aprobado</span>
+                                            <?php elseif (($inf['estado'] ?? '') === 'anulado'): ?>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger">Anulado</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-warning-subtle text-warning border border-warning"><?= htmlspecialchars(ucfirst($inf['estado'] ?? 'Pendiente')) ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="color: #64748b; font-size: 12px;">
+                                            <?= htmlspecialchars($inf['fecha_aprobacion'] ?? ($inf['fecha_emision'] ?? '—')) ?>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($inf['sha256'])): ?>
+                                                <span class="font-monospace text-muted" style="font-size: 11px;" title="<?= htmlspecialchars($inf['sha256']) ?>">
+                                                    <i class="fa-solid fa-fingerprint text-secondary me-1"></i><?= substr($inf['sha256'], 0, 10) ?>…
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted" style="font-size: 11px;">Pendiente</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-end">
+                                            <?php if (!empty($inf['pdf'])): ?>
+                                                <a href="/Cycsa/publico/<?= htmlspecialchars($inf['pdf']) ?>" target="_blank" class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 12px;">
+                                                    <i class="fa-solid fa-file-pdf text-danger me-1"></i> PDF
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted" style="font-size: 11px;">No adjunto</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- SUBSECCIÓN 2: CONSOLIDADO MULTI-MUESTRA Y HISTORIAL VERSIONES -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px;">
+                <!-- CONSOLIDADO MULTI-MUESTRA -->
+                <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 22px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                    <h3 style="margin: 0 0 14px 0; font-size: 15px; font-weight: 700; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <i class="fa-solid fa-layer-group text-primary me-2"></i> Resumen Consolidado Multi-Muestra
+                    </h3>
+                    <div style="font-size: 13px; color: #475569; margin-bottom: 12px;">
+                        Total Muestras Conectadas: <strong><?= (int)($consolidado_lab['total_muestras'] ?? 0) ?></strong> &bull; Versión Consolidada: <strong>v<?= (int)($consolidado_lab['version_consolidado'] ?? 1) ?></strong>
+                    </div>
+                    <?php if (empty($consolidado_lab['muestras'])): ?>
+                        <div style="padding: 16px; background: #f8fafc; border-radius: 6px; font-size: 12.5px; color: #64748b; text-align: center;">
+                            No hay especímenes de rotura vinculados a esta orden todavía.
+                        </div>
+                    <?php else: ?>
+                        <div style="max-height: 260px; overflow-y: auto;">
+                            <?php foreach ($consolidado_lab['muestras'] as $m): ?>
+                                <div style="padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; font-size: 12.5px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span class="fw-bold text-dark font-monospace"><?= htmlspecialchars($m['codigo_muestra'] ?? 'Muestra') ?></span>
+                                        <span class="badge bg-secondary-subtle text-secondary border"><?= count($m['especimenes'] ?? []) ?> especímenes</span>
+                                    </div>
+                                    <div style="color: #64748b; font-size: 11.5px; margin-top: 3px;">
+                                        <?= htmlspecialchars($m['observaciones'] ?? 'Sin observaciones') ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- HISTORIAL VERSIONES CRIPTOGRÁFICO -->
+                <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 22px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                    <h3 style="margin: 0 0 14px 0; font-size: 15px; font-weight: 700; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i> Historial de Versiones e Integridad
+                    </h3>
+                    <?php if (empty($historial_versiones_lab)): ?>
+                        <div style="padding: 16px; background: #f8fafc; border-radius: 6px; font-size: 12.5px; color: #64748b; text-align: center;">
+                            Sin historial de reemisiones registrado. Versión inicial activa.
+                        </div>
+                    <?php else: ?>
+                        <div style="max-height: 260px; overflow-y: auto;">
+                            <?php foreach ($historial_versiones_lab as $ver): ?>
+                                <div style="padding: 10px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; margin-bottom: 8px; font-size: 12.5px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span class="fw-bold text-success">Versión <?= (int)($ver['version'] ?? 1) ?></span>
+                                        <span class="text-muted" style="font-size: 11px;"><?= htmlspecialchars(substr($ver['fecha'] ?? '', 0, 16)) ?></span>
+                                    </div>
+                                    <div style="color: #166534; font-size: 11.5px; margin-top: 2px;">
+                                        <strong>Motivo:</strong> <?= htmlspecialchars($ver['motivo'] ?? 'Emisión Oficial') ?>
+                                    </div>
+                                    <?php if (!empty($ver['sha256'])): ?>
+                                        <div class="font-monospace text-muted" style="font-size: 10.5px; margin-top: 3px;" title="<?= htmlspecialchars($ver['sha256']) ?>">
+                                            <i class="fa-solid fa-shield-halved me-1 text-success"></i><?= substr($ver['sha256'], 0, 16) ?>…
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>

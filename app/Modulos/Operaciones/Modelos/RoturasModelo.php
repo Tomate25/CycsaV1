@@ -1186,45 +1186,58 @@ class RoturasModelo {
             }
         }
 
-        $anio = (int)date('Y');
-        $numeroInforme = $this->obtenerSiguienteNumeroInforme($anio);
+        try {
+            $this->db->beginTransaction();
 
-        // Calcular versión real N+1 acumulada para el consolidado de esta muestra (Lab P2)
-        $stmtMaxVer = $this->db->prepare("
-            SELECT COALESCE(MAX(version), 0) + 1
-            FROM informes_rotura
-            WHERE muestra_id = :id AND tipo = 'consolidado'
-        ");
-        $stmtMaxVer->execute(['id' => $muestraId]);
-        $versionReal = (int)$stmtMaxVer->fetchColumn() ?: 1;
+            $anio = (int)date('Y');
+            $numeroInforme = $this->obtenerSiguienteNumeroInforme($anio);
 
-        $pdfConsolidado = 'almacen/informes/' . $numeroInforme . '_v' . $versionReal . '.pdf';
-        $shaConsolidado = hash('sha256', "INFORME:{$numeroInforme}|VER:{$versionReal}|MUESTRA:{$muestraId}|CONSOL|FECHA:" . date('Y-m-d H:i:s'));
+            // Calcular versión real N+1 acumulada para el consolidado de esta muestra (Lab P2) con bloqueo de fila
+            $stmtMaxVer = $this->db->prepare("
+                SELECT COALESCE(MAX(version), 0) + 1
+                FROM informes_rotura
+                WHERE muestra_id = :id AND tipo = 'consolidado'
+                FOR UPDATE
+            ");
+            $stmtMaxVer->execute(['id' => $muestraId]);
+            $versionReal = (int)$stmtMaxVer->fetchColumn() ?: 1;
 
-        $stmtInsert = $this->db->prepare("
-            INSERT INTO informes_rotura (tipo, muestra_id, plan_edad_id, numero, version, estado, aprobado_por, fecha_aprobacion, pdf, sha256)
-            VALUES ('consolidado', :muestra_id, NULL, :numero, :version, 'aprobado', :aprobado_por, NOW(), :pdf, :sha256)
-        ");
-        $stmtInsert->execute([
-            'muestra_id' => $muestraId,
-            'numero' => $numeroInforme,
-            'version' => $versionReal,
-            'aprobado_por' => $usuarioId,
-            'pdf' => $pdfConsolidado,
-            'sha256' => $shaConsolidado
-        ]);
-        $informeId = (int)$this->db->lastInsertId();
+            $pdfConsolidado = 'almacen/informes/' . $numeroInforme . '_v' . $versionReal . '.pdf';
+            $shaConsolidado = hash('sha256', "INFORME:{$numeroInforme}|VER:{$versionReal}|MUESTRA:{$muestraId}|CONSOL|FECHA:" . date('Y-m-d H:i:s'));
 
-        registrarBitacora('laboratorio', 'generar_informe_consolidado', "Informe CONSOLIDADO {$numeroInforme} emitido y aprobado para muestra #{$muestraId}", $informeId);
+            $stmtInsert = $this->db->prepare("
+                INSERT INTO informes_rotura (tipo, muestra_id, plan_edad_id, numero, version, estado, aprobado_por, fecha_aprobacion, pdf, sha256)
+                VALUES ('consolidado', :muestra_id, NULL, :numero, :version, 'aprobado', :aprobado_por, NOW(), :pdf, :sha256)
+            ");
+            $stmtInsert->execute([
+                'muestra_id' => $muestraId,
+                'numero' => $numeroInforme,
+                'version' => $versionReal,
+                'aprobado_por' => $usuarioId,
+                'pdf' => $pdfConsolidado,
+                'sha256' => $shaConsolidado
+            ]);
+            $informeId = (int)$this->db->lastInsertId();
 
-        return [
-            'exito' => true,
-            'mensaje' => "Informe Consolidado {$numeroInforme} emitido exitosamente.",
-            'informe_id' => $informeId,
-            'numero' => $numeroInforme,
-            'pdf' => $pdfConsolidado,
-            'sha256' => $shaConsolidado
-        ];
+            registrarBitacora('laboratorio', 'generar_informe_consolidado', "Informe CONSOLIDADO {$numeroInforme} emitido y aprobado para muestra #{$muestraId}", $informeId);
+
+            $this->db->commit();
+
+            return [
+                'exito' => true,
+                'mensaje' => "Informe Consolidado {$numeroInforme} emitido exitosamente.",
+                'informe_id' => $informeId,
+                'numero' => $numeroInforme,
+                'pdf' => $pdfConsolidado,
+                'sha256' => $shaConsolidado
+            ];
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("Error en generarInformeConsolidado: " . $e->getMessage());
+            return ['exito' => false, 'mensaje' => 'Error emitiendo informe consolidado: ' . $e->getMessage()];
+        }
     }
 
     /**

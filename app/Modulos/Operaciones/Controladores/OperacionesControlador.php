@@ -8,6 +8,7 @@ use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\Operaciones\Modelos\OperacionModelo;
 use Cycsa\Modulos\Operaciones\Modelos\CierreOperacionLims;
 use Cycsa\Nucleo\Conexion;
+use Cycsa\Modulos\Operaciones\Servicios\InformeLaboratorioServicio;
 use PDO;
 
 class OperacionesControlador extends ControladorBase {
@@ -1635,11 +1636,19 @@ class OperacionesControlador extends ControladorBase {
         $orden['condicion_comercial_activa'] = $condicionCom;
         $orden['puede_cerrar'] = ($orden['tecnico_100'] && $orden['comercial_100'] && !in_array($orden['estado'], ['Finalizado', 'Archivado', 'Cerrado']));
 
+        $informeLabServicio = new InformeLaboratorioServicio();
+        $informesUnificados = $informeLabServicio->obtenerInformesUnificadosOS($idOS);
+        $consolidadoLab = $informeLabServicio->obtenerConsolidadoMultiMuestra($idOS);
+        $historialVersionesLab = $informeLabServicio->obtenerHistorialVersiones($idOS);
+
         $this->renderizar('operaciones/vistas/ver', [
             'titulo' => 'Detalle de Operación - ' . $orden['codigo_os'],
             'o' => $orden,
             'orden' => $orden,
             'id_os' => $idOS,
+            'informes_unificados' => $informesUnificados,
+            'consolidado_lab' => $consolidadoLab,
+            'historial_versiones_lab' => $historialVersionesLab,
             'tecnicos' => $modelo->obtenerTecnicosActivos(),
             'vehiculos' => $modelo->obtenerVehiculosActivos(),
             'exito' => $_SESSION['exito'] ?? null,
