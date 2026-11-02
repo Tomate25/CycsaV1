@@ -2730,31 +2730,87 @@
     function aplicarFiltroWhitelistReq(ensayos, esNueva) {
         const colConc = document.getElementById('hs_col_concreto');
         const colSuel = document.getElementById('hs_col_suelo');
-        if (!colConc || !colSuel || !Array.isArray(ensayos) || ensayos.length === 0) return;
 
-        const textoTotal = ensayos.map(e => ((e.nombre || '') + ' ' + (e.norma || '') + ' ' + (e.descripcion_ensayo || '') + ' ' + (e.norma_astm || '')).toLowerCase()).join(' ');
-        const tieneConcreto = /concreto|compresi[oó]n|cilindro|viga|adoqu[ií]n|bloque|flexi[oó]n|c39|c78/i.test(textoTotal);
-        const tieneSuelo = /suelo|granulometr[ií]a|l[ií]mite|atterberg|humedad|proctor|cbr|densidad|corte|infiltraci[oó]n|sucs|d698|d1557|d6938|d1556|d4318/i.test(textoTotal);
+        const mapaCheckboxes = {
+            'req_resistencia_concreto': ['hs_req_concreto', 'hs_req_resistencia_concreto'],
+            'req_resistencia_adoquin': ['hs_req_adoquin', 'hs_req_resistencia_adoquin'],
+            'req_resistencia_bloques': ['hs_req_bloques', 'hs_req_resistencia_bloques'],
+            'req_granulometria': ['hs_req_granulometria'],
+            'req_limites_atterberg': ['hs_req_limites', 'hs_req_limites_atterberg'],
+            'req_humedad': ['hs_req_humedad'],
+            'req_resistencia_corte': ['hs_req_resistencia_corte', 'hs_req_corte'],
+            'req_clasificacion_sucs_hr': ['hs_req_clasificacion_sucs_hr', 'hs_req_sucs'],
+            'req_proctor_sm': ['hs_req_proctor', 'hs_req_proctor_sm'],
+            'req_infiltracion': ['hs_req_infiltracion'],
+            'req_cbr': ['hs_req_cbr'],
+            'req_densidad': ['hs_req_densidad'],
+            'req_otros_materiales': ['hs_req_otros_materiales', 'hs_req_otros_mat']
+        };
 
-        if (tieneConcreto && !tieneSuelo) {
-            colConc.style.border = '2px solid #0284c7';
-            colConc.style.background = '#f0f9ff';
-            colSuel.style.opacity = '0.65';
-            if (esNueva) {
-                const elConc = document.getElementById('hs_req_concreto') || document.getElementById('hs_req_resistencia_concreto');
-                if (elConc && !elConc.checked) elConc.checked = true;
-            }
-        } else if (tieneSuelo && !tieneConcreto) {
-            colSuel.style.border = '2px solid #0284c7';
-            colSuel.style.background = '#f0f9ff';
-            colConc.style.opacity = '0.65';
-        } else {
-            colConc.style.border = '1px solid #e2e8f0';
-            colConc.style.background = '#f8fafc';
-            colConc.style.opacity = '1';
-            colSuel.style.border = '1px solid #e2e8f0';
-            colSuel.style.background = '#f8fafc';
-            colSuel.style.opacity = '1';
+        // Si no hay whitelist o es legado (ensayos vacío/null), permitir todo
+        if (!Array.isArray(ensayos) || ensayos.length === 0) {
+            Object.values(mapaCheckboxes).flat().forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.disabled = false;
+                    if (el.parentElement) el.parentElement.style.opacity = '1';
+                }
+            });
+            if (colConc) { colConc.style.opacity = '1'; colConc.style.border = '1px solid #e2e8f0'; colConc.style.background = '#f8fafc'; }
+            if (colSuel) { colSuel.style.opacity = '1'; colSuel.style.border = '1px solid #e2e8f0'; colSuel.style.background = '#f8fafc'; }
+            return;
+        }
+
+        const textoTotal = ensayos.map(e => ((e.nombre || e.nombre_ensayo || '') + ' ' + (e.norma || '') + ' ' + (e.descripcion_ensayo || '') + ' ' + (e.norma_astm || '') + ' ' + (e.procedimiento || '')).toLowerCase()).join(' ');
+
+        const flagsPermitidos = {
+            'req_resistencia_concreto': /compresi|concreto|cilindro|c39|viga|c78|c42/i.test(textoTotal),
+            'req_resistencia_adoquin': /adoqu|c936/i.test(textoTotal),
+            'req_resistencia_bloques': /bloque|c90|mamposter/i.test(textoTotal),
+            'req_granulometria': /granulo|c136|c117/i.test(textoTotal),
+            'req_limites_atterberg': /atterberg|consistencia|l[ií]mite|d4318/i.test(textoTotal),
+            'req_humedad': /humedad|d2216/i.test(textoTotal),
+            'req_resistencia_corte': /corte|triaxial|veleta|d3080/i.test(textoTotal),
+            'req_clasificacion_sucs_hr': /sucs|clasificaci|d2487|aashto/i.test(textoTotal),
+            'req_proctor_sm': /proctor|compactaci|d698|d1557/i.test(textoTotal),
+            'req_infiltracion': /infiltraci|porchet|permeabil/i.test(textoTotal),
+            'req_cbr': /cbr|california|d1883/i.test(textoTotal),
+            'req_densidad': /densidad|cono|dens[ií]metro|d1556|d6938/i.test(textoTotal),
+            'req_otros_materiales': /acero|ferroscan|metal|asfalto|otro/i.test(textoTotal)
+        };
+
+        for (const [campo, ids] of Object.entries(mapaCheckboxes)) {
+            const estaPermitido = !!flagsPermitidos[campo];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (esNueva) {
+                        el.disabled = !estaPermitido;
+                        if (!estaPermitido) el.checked = false;
+                        if (el.parentElement) {
+                            el.parentElement.style.opacity = estaPermitido ? '1' : '0.4';
+                            el.parentElement.title = estaPermitido ? 'Ensayo autorizado en la Orden de Servicio' : 'No incluido en los ensayos autorizados de la Orden de Servicio';
+                        }
+                    } else {
+                        el.disabled = false;
+                        if (el.parentElement) el.parentElement.style.opacity = '1';
+                    }
+                }
+            });
+        }
+
+        const tieneConcreto = flagsPermitidos['req_resistencia_concreto'] || flagsPermitidos['req_resistencia_adoquin'] || flagsPermitidos['req_resistencia_bloques'];
+        const tieneSuelo = flagsPermitidos['req_granulometria'] || flagsPermitidos['req_limites_atterberg'] || flagsPermitidos['req_humedad'] || flagsPermitidos['req_densidad'] || flagsPermitidos['req_proctor_sm'] || flagsPermitidos['req_cbr'] || flagsPermitidos['req_resistencia_corte'] || flagsPermitidos['req_infiltracion'] || flagsPermitidos['req_clasificacion_sucs_hr'];
+
+        if (colConc) {
+            colConc.style.opacity = tieneConcreto ? '1' : '0.5';
+            colConc.style.border = tieneConcreto ? '2px solid #0284c7' : '1px solid #e2e8f0';
+            colConc.style.background = tieneConcreto ? '#f0f9ff' : '#f8fafc';
+        }
+        if (colSuel) {
+            colSuel.style.opacity = tieneSuelo ? '1' : '0.5';
+            colSuel.style.border = tieneSuelo ? '2px solid #0284c7' : '1px solid #e2e8f0';
+            colSuel.style.background = tieneSuelo ? '#f0f9ff' : '#f8fafc';
         }
     }
 

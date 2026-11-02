@@ -401,6 +401,29 @@ class HojasServicioControlador extends ControladorBase {
             }
             $datos['identificacion_muestras_json'] = json_encode($identMuestras);
 
+            // Validación y saneamiento server-side de Whitelist de Ensayos (H.1):
+            // Si la O/S tiene whitelist aprobada y es una hoja nueva, desactivar categorías no contempladas
+            $osModelo = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
+            $idsPermitidos = $osModelo->obtenerIdsPermitidos($idOS);
+            if ($idsPermitidos !== null && $idHoja <= 0) {
+                $detallesPermitidos = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)($os['id_cotizacion'] ?? 0)));
+                $resFlags = $this->detectarParametrosYNaturaleza($detallesPermitidos);
+                $flagsPermitidos = $resFlags['flags'] ?? [];
+
+                $camposReq = [
+                    'req_resistencia_concreto', 'req_resistencia_adoquin', 'req_resistencia_bloques',
+                    'req_granulometria', 'req_limites_atterberg', 'req_humedad', 'req_resistencia_corte',
+                    'req_clasificacion_sucs_hr', 'req_proctor_sm', 'req_infiltracion', 'req_cbr', 'req_densidad',
+                    'req_otros_materiales'
+                ];
+
+                foreach ($camposReq as $campo) {
+                    if (!empty($datos[$campo]) && empty($flagsPermitidos[$campo])) {
+                        $datos[$campo] = 0;
+                    }
+                }
+            }
+
             $idHojaGuardada = 0;
             if ($modelo->guardarHojaSolicitud($datos, $idHojaGuardada)) {
                 $os = $modelo->obtenerOSPorId($idOS);
