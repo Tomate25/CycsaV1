@@ -609,6 +609,27 @@ class InventarioModelo extends ModeloBase {
             // Sincronizar stock total del insumo
             $this->sincronizarStockInsumo($insumoId);
 
+            // G.4: Hook contable automático en Consumo de Insumo por Ensayo
+            if ($costoTotal > 0) {
+                try {
+                    $contabilidadMod = new \Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo();
+                    $cuentaCosto = \Cycsa\Modulos\Contabilidad\Modelos\ConfigCuentasModelo::obtenerIdPorClave('COSTO_MAT_LAB', $this->db) ?: 221;
+                    $cuentaInventario = \Cycsa\Modulos\Contabilidad\Modelos\ConfigCuentasModelo::obtenerIdPorClave('INVENTARIO_LAB', $this->db) ?: 84;
+                    $contabilidadMod->registrarAsientoContable(
+                        date('Y-m-d'),
+                        "Consumo de Material/Insumo {$insumo['nombre']} - Ensayo #{$ensayoId} ({$tipoEnsayo})",
+                        'CONSUMO_INVENTARIO',
+                        $ensayoId,
+                        [
+                            ['id_cuenta_contable' => $cuentaCosto, 'debe' => $costoTotal, 'haber' => 0.0],
+                            ['id_cuenta_contable' => $cuentaInventario, 'debe' => 0.0, 'haber' => $costoTotal]
+                        ]
+                    );
+                } catch (\Throwable $ex) {
+                    error_log("G.4 Hook contable consumo error: " . $ex->getMessage());
+                }
+            }
+
             if ($iniciadaTransaccion) {
                 $this->db->commit();
             }

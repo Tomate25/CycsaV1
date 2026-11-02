@@ -731,6 +731,31 @@ class ComprasModelo extends ModeloBase {
                 ]);
             }
 
+            // G.4: Hook contable automático en Recepción de Compra inventariable
+            $totalRecepcion = 0.0;
+            foreach ($detalles as $det) {
+                $totalRecepcion += (float)($det['cantidad_recibida'] ?? 0) * (float)($det['costo_unitario'] ?? 0);
+            }
+            if ($totalRecepcion > 0 && $estado === 'completada') {
+                try {
+                    $contabilidadMod = new \Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo();
+                    $cuentaInventario = \Cycsa\Modulos\Contabilidad\Modelos\ConfigCuentasModelo::obtenerIdPorClave('INVENTARIO_LAB', $this->db) ?: 84;
+                    $cuentaProveedores = \Cycsa\Modulos\Contabilidad\Modelos\ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES', $this->db) ?: 121;
+                    $contabilidadMod->registrarAsientoContable(
+                        $fechaRecepcion,
+                        "Recepción de Compra #{$recepcionId} (Factura: " . ($numeroFactura ?: 'S/N') . ")",
+                        'RECEPCION_COMPRA',
+                        $recepcionId,
+                        [
+                            ['id_cuenta_contable' => $cuentaInventario, 'debe' => $totalRecepcion, 'haber' => 0.0],
+                            ['id_cuenta_contable' => $cuentaProveedores, 'debe' => 0.0, 'haber' => $totalRecepcion]
+                        ]
+                    );
+                } catch (\Throwable $ex) {
+                    error_log("G.4 Hook contable recepcion error: " . $ex->getMessage());
+                }
+            }
+
             $this->db->commit();
             return $recepcionId;
         } catch (Throwable $e) {

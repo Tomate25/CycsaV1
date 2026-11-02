@@ -347,7 +347,11 @@ class ContabilidadModelo extends ModeloBase {
             }
 
 
-            // Register Journal Entry (Debit Client / Credit Sales Revenue 4010104)
+            // Register Journal Entry (Debit Client / Credit Sales Revenue)
+            $incomeAcc = ConfigCuentasModelo::obtenerIdPorClave('INGRESO_LAB_G', $this->db);
+            if (!$incomeAcc) {
+                $incomeAcc = (int)$this->db->query("SELECT id FROM cuentas_contables WHERE codigo LIKE '40101%' AND tipo = 'DETALLE' LIMIT 1")->fetchColumn() ?: 208; // TODO config: fallback legacy catálogo ingresos
+            }
             $this->registrarAsientoContable(
                 $datos['fecha_emision'],
                 "Registro de Venta / Factura N° " . $datos['factura_numero'],
@@ -355,7 +359,7 @@ class ContabilidadModelo extends ModeloBase {
                 $cxcId,
                 [
                     ['id_cuenta_contable' => $cxcAcc, 'debe' => $datos['monto'], 'haber' => 0.0],
-                    ['id_cuenta_contable' => 206, 'debe' => 0.0, 'haber' => $datos['monto']]
+                    ['id_cuenta_contable' => $incomeAcc, 'debe' => 0.0, 'haber' => $datos['monto']]
                 ]
             );
 
@@ -540,8 +544,10 @@ class ContabilidadModelo extends ModeloBase {
             $cxpId = (int)$this->db->lastInsertId();
             $expenseAcc = !empty($datos['id_cuenta_contable']) ? (int)$datos['id_cuenta_contable'] : null;
             if (!$expenseAcc) {
-                // Find standard 501/601 expense account (default 221 Materiales)
-                $expenseAcc = 221;
+                $expenseAcc = ConfigCuentasModelo::obtenerIdPorClave('COSTO_MAT_LAB', $this->db);
+                if (!$expenseAcc) {
+                    $expenseAcc = (int)$this->db->query("SELECT id FROM cuentas_contables WHERE codigo LIKE '50103%' AND tipo = 'DETALLE' LIMIT 1")->fetchColumn() ?: 221; // TODO config: fallback legacy catálogo costos
+                }
             }
 
             // Usar ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES') dinámicamente en lugar del ID hardcodeado 121
@@ -1021,16 +1027,15 @@ class ContabilidadModelo extends ModeloBase {
                 'descripcion' => "Pago a Proveedor Factura N° " . $cxp['factura_numero']
             ]);
 
-            // Register Asiento for Pago CXP
-            // Debit: Suppliers Payable Liability (ID 121 / '2010101 - CUENTAS POR PAGAR PROVEEDORES')
-            // Credit: Bank Account ($idBancoCuenta -> id_cuenta_contable)
+            // Register Asiento for Pago CXP (G.1b dinámico)
+            $cuentaProvPagoId = ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES', $this->db) ?: 121; // TODO config: fallback legacy catálogo proveedores
             $this->registrarAsientoContable(
                 $fecha,
                 "Pago a Proveedor Factura N° " . $cxp['factura_numero'] . " - Ref: " . $referencia,
                 'CXP_PAGO',
                 $idCxp,
                 [
-                    ['id_cuenta_contable' => 121, 'debe' => $monto, 'haber' => 0.0],
+                    ['id_cuenta_contable' => $cuentaProvPagoId, 'debe' => $monto, 'haber' => 0.0],
                     ['id_cuenta_contable' => $banco['id_cuenta_contable'], 'debe' => 0.0, 'haber' => $monto]
                 ]
             );
@@ -1463,9 +1468,11 @@ class ContabilidadModelo extends ModeloBase {
 
             $cxcDefaultAcc = $findAccount('10102', 'CLIENTES');
             $cxpDefaultAcc = $findAccount('201', 'PROVEEDORES');
-            $incomeDefaultAcc = 206; // PROYECTOS GRABADOS
-            $expenseDefaultAcc = 221; // MATERIALES DE CONSTRUCCION
-            $capitalDefaultAcc = 183; // CAPITAL PAGADO
+            $incomeDefaultAcc = ConfigCuentasModelo::obtenerIdPorClave('INGRESO_LAB_G', $this->db) ?: 208; // TODO config: fallback legacy catálogo ingresos
+            $expenseDefaultAcc = ConfigCuentasModelo::obtenerIdPorClave('COSTO_MAT_LAB', $this->db) ?: 221; // TODO config: fallback legacy catálogo costos
+            $capitalDefaultAcc = (int)($this->db->query("SELECT id FROM cuentas_contables WHERE codigo LIKE '301%' AND tipo = 'DETALLE' LIMIT 1")->fetchColumn() ?: 183);
+            $ivaPagarAcc = ConfigCuentasModelo::obtenerIdPorClave('IVA_POR_PAGAR', $this->db) ?: 154; // TODO config: fallback legacy catálogo iva por pagar
+            $ivaAcreditableAcc = ConfigCuentasModelo::obtenerIdPorClave('IVA_ACREDITABLE', $this->db) ?: 82; // TODO config: fallback legacy catálogo iva acreditable
 
             // 2. Saldos Iniciales de Bancos
             $bancos = $this->db->query("SELECT id, banco_nombre, numero_cuenta, id_cuenta_contable, saldo_inicial, fecha_registro FROM bancos_cuentas")->fetchAll(PDO::FETCH_ASSOC);
@@ -1502,7 +1509,7 @@ class ContabilidadModelo extends ModeloBase {
                     [
                         ['id_cuenta_contable' => $debitAcc, 'debe' => $total, 'haber' => 0.0],
                         ['id_cuenta_contable' => $incomeDefaultAcc, 'debe' => 0.0, 'haber' => $subtotal],
-                        ['id_cuenta_contable' => 154, 'debe' => 0.0, 'haber' => $iva] // 2010508 - IVA POR PAGAR
+                        ['id_cuenta_contable' => $ivaPagarAcc, 'debe' => 0.0, 'haber' => $iva] // 2010508 - IVA POR PAGAR
                     ]
                 );
             }
@@ -1522,7 +1529,7 @@ class ContabilidadModelo extends ModeloBase {
                     $cxp['id'],
                     [
                         ['id_cuenta_contable' => $debitAcc, 'debe' => $subtotal, 'haber' => 0.0],
-                        ['id_cuenta_contable' => 82, 'debe' => $iva, 'haber' => 0.0], // 1010601 - IVA 15% ACREDITABLE
+                        ['id_cuenta_contable' => $ivaAcreditableAcc, 'debe' => $iva, 'haber' => 0.0], // 1010601 - IVA 15% ACREDITABLE
                         ['id_cuenta_contable' => $cxpDefaultAcc, 'debe' => 0.0, 'haber' => $total]
                     ]
                 );
@@ -1808,5 +1815,34 @@ class ContabilidadModelo extends ModeloBase {
         $stmt = $this->db->prepare("SELECT * FROM partidas_diario_detalles WHERE id_partida = :id");
         $stmt->execute(['id' => $idPartida]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Registra un asiento contable para anticipos a proveedores (G.4).
+     */
+    public function registrarAnticipoProveedor(int $idProveedor, float $monto, int $idBancoCuenta, string $referencia = '', ?string $fecha = null): int {
+        $fecha = $fecha ?: date('Y-m-d');
+        $cuentaAnticipo = ConfigCuentasModelo::obtenerIdPorClave('ANTICIPO_PROVEEDORES', $this->db);
+        if (!$cuentaAnticipo) {
+            $cuentaAnticipo = (int)($this->db->query("SELECT id FROM cuentas_contables WHERE codigo = '1010501' LIMIT 1")->fetchColumn() ?: 78);
+        }
+
+        $stmtBco = $this->db->prepare("SELECT id_cuenta_contable FROM bancos_cuentas WHERE id = :id");
+        $stmtBco->execute(['id' => $idBancoCuenta]);
+        $cuentaBanco = (int)$stmtBco->fetchColumn();
+        if (!$cuentaBanco) {
+            $cuentaBanco = ConfigCuentasModelo::obtenerIdPorClave('CAJA_PRINCIPAL', $this->db) ?: 4;
+        }
+
+        return $this->registrarAsientoContable(
+            $fecha,
+            "Anticipo a Proveedor #{$idProveedor} - Ref: " . ($referencia ?: 'S/R'),
+            'ANTICIPO_PROV',
+            $idProveedor,
+            [
+                ['id_cuenta_contable' => $cuentaAnticipo, 'debe' => $monto, 'haber' => 0.0],
+                ['id_cuenta_contable' => $cuentaBanco, 'debe' => 0.0, 'haber' => $monto]
+            ]
+        );
     }
 }
