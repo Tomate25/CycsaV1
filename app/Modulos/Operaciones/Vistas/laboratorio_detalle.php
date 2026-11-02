@@ -745,8 +745,9 @@ function recalcularPlanEspecimenes() {
 
     const alerta = document.getElementById('alerta_exceso');
     const btnGuardar = document.getElementById('btn_guardar_plan');
-    if (suma > TOTAL_ESPECIMENES) {
+    if (suma <= 0) {
         alerta.style.display = 'block';
+        alerta.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error: Asigne al menos una probeta al plan.';
         btnGuardar.disabled = true;
         btnGuardar.style.opacity = '0.5';
     } else {

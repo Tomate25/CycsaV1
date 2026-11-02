@@ -1328,7 +1328,8 @@ class OperacionesControlador extends ControladorBase {
         $this->verificarPermiso($respuesta, 'crear_editar');
 
         if ($peticion->esPost()) {
-            if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])) {
+            $rolActual = (int)($_SESSION['usuario_rol'] ?? 0);
+            if (!in_array($rolActual, [1, 2, 3]) && !tienePermiso('operaciones', 'aprobar') && !tienePermiso('control_calidad', 'aprobar')) {
                 $_SESSION['error'] = 'No tiene permisos de supervisor para realizar la revisión de calidad de resultados.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
@@ -1381,7 +1382,8 @@ class OperacionesControlador extends ControladorBase {
                 $_SESSION['error'] = 'Error al procesar la revisión de resultados.';
             }
 
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            $redir = $this->resolverRedireccionSegura($datos['redirect_to'] ?? null, '/Cycsa/publico/operaciones');
+            $respuesta->redirigir($redir);
         }
     }
 
@@ -2300,7 +2302,8 @@ class OperacionesControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         
         // Roles autorizados: 1: Superadmin, 2: Administrador, 3: Supervisor
-        if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 2, 3])) {
+        $rolActual = (int)($_SESSION['usuario_rol'] ?? 0);
+        if (!in_array($rolActual, [1, 2, 3]) && !tienePermiso('operaciones', 'aprobar') && !tienePermiso('control_calidad', 'aprobar')) {
             $_SESSION['error'] = 'No tiene permisos de supervisión para aprobar matrices de ensayo.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
@@ -2428,7 +2431,8 @@ class OperacionesControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         
         // Roles autorizados: 1: Superadmin, 2: Administrador, 3: Supervisor
-        if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 2, 3])) {
+        $rolActual = (int)($_SESSION['usuario_rol'] ?? 0);
+        if (!in_array($rolActual, [1, 2, 3]) && !tienePermiso('operaciones', 'aprobar') && !tienePermiso('control_calidad', 'aprobar')) {
             $_SESSION['error'] = 'No tiene permisos de supervisión para devolver matrices de ensayo.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
@@ -2766,7 +2770,8 @@ class OperacionesControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         
         // Roles autorizados: 1: Superadmin, 2: Administrador, 3: Supervisor
-        if (!in_array($_SESSION['usuario_rol'] ?? 0, [1, 2, 3])) {
+        $rolActual = (int)($_SESSION['usuario_rol'] ?? 0);
+        if (!in_array($rolActual, [1, 2, 3]) && !tienePermiso('operaciones', 'aprobar') && !tienePermiso('operaciones', 'crear_editar')) {
             $_SESSION['error'] = 'No tiene permisos de supervisión para cerrar o archivar órdenes de servicio.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;

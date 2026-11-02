@@ -2,7 +2,7 @@
 // Vista de Captura de Matriz Técnica - Dinámica y Específica para los 21 Formatos CYCSA
 $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
 $esLaboratorista = ($rolUsuario === 6);
-$esSupervisor = in_array($rolUsuario, [1, 2, 3]);
+$esSupervisor = in_array($rolUsuario, [1, 2, 3]) || tienePermiso('operaciones', 'aprobar') || tienePermiso('control_calidad', 'aprobar');
 $idDetalleActivo = (int)(!empty($idDetalle) ? $idDetalle : (!empty($detalle['id']) ? $detalle['id'] : ($_GET['id_detalle'] ?? $_GET['id'] ?? 0)));
 $idDetalle = $idDetalleActivo;
 $detalle['id'] = $idDetalleActivo;

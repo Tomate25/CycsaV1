@@ -17,16 +17,20 @@ class EquiposBodegasTrasladosTest extends TestCase {
 
     private PDO $db;
     private EquiposBodegasModelo $modelo;
+    private static bool $migracionesListas = false;
 
     protected function setUp(): void {
         parent::setUp();
         $this->db = Conexion::obtenerInstancia();
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $this->incluirMigracion('008_equipos_calibracion_y_catalogo_hc.php');
-        $this->incluirMigracion('018_activos_fijos_depreciacion.php');
-        $this->incluirMigracion('020_proyectos_ordenes_obra.php');
-        $this->incluirMigracion('026_equipos_bodegas_traslados.php');
+        if (!self::$migracionesListas) {
+            $this->incluirMigracion('008_equipos_calibracion_y_catalogo_hc.php');
+            $this->incluirMigracion('018_activos_fijos_depreciacion.php');
+            $this->incluirMigracion('020_proyectos_ordenes_obra.php');
+            $this->incluirMigracion('026_equipos_bodegas_traslados.php');
+            self::$migracionesListas = true;
+        }
 
         $this->modelo = new EquiposBodegasModelo($this->db);
     }

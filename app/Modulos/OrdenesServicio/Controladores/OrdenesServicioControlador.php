@@ -452,9 +452,9 @@ class OrdenesServicioControlador extends ControladorBase {
     public function aprobarOS(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
 
-        // Rol supervisor (3) o administrador (1)
+        // Rol supervisor (3) o administrador (1) o con permiso explícito
         $rol = (int)($_SESSION['usuario_rol'] ?? 0);
-        if ($rol !== 1 && $rol !== 3) {
+        if (!in_array($rol, [1, 3]) && !tienePermiso('ordenes_servicio', 'aprobar')) {
             $_SESSION['error'] = 'No tiene permisos de supervisor para aprobar la Orden de Servicio.';
             $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
             return;

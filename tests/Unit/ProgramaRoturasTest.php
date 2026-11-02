@@ -95,13 +95,13 @@ class ProgramaRoturasTest extends TestCase {
     }
 
     /**
-     * Prueba 2: Validación de cantidades del plan (no superar recibidos y asignar testigos).
+     * Prueba 2: El plan amplía los especímenes existentes y conserva testigos.
      */
     public function testValidacionCantidadesDelPlanYAsignacionTestigos(): void {
         $fechaMoldeo = date('Y-m-d', strtotime('-7 days'));
         $this->modelo->crearEspecimenesParaMuestra($this->recepcionId, 4, $fechaMoldeo);
 
-        // Intento 1: Exceder la cantidad (5 > 4) -> Debe ser rechazado
+        // El plan requiere 5 probetas y solo existen 4: debe crear la faltante.
         $resExceso = $this->modelo->guardarPlanRotura(
             $this->recepcionId,
             null,
@@ -111,10 +111,13 @@ class ProgramaRoturasTest extends TestCase {
             ],
             1
         );
-        $this->assertFalse($resExceso['exito']);
-        $this->assertStringContainsString('no puede superar los especímenes recibidos', $resExceso['mensaje']);
+        $this->assertTrue($resExceso['exito']);
 
-        // Intento 2: Asignar 3 probetas de 4 -> Debe quedar 1 como testigo
+        $stmtTotal = $this->db->prepare("SELECT COUNT(*) FROM especimenes WHERE muestra_id = :mid");
+        $stmtTotal->execute(['mid' => $this->recepcionId]);
+        $this->assertEquals(5, (int)$stmtTotal->fetchColumn());
+
+        // Editar el plan a 3 probetas de 5 debe dejar 2 como testigos.
         $resValido = $this->modelo->guardarPlanRotura(
             $this->recepcionId,
             null,
@@ -126,14 +129,37 @@ class ProgramaRoturasTest extends TestCase {
         );
         $this->assertTrue($resValido['exito']);
 
-        // Verificar que 3 están programadas y 1 como testigo
+        // Verificar que 3 están programadas y 2 como testigo
         $stmtProg = $this->db->prepare("SELECT COUNT(*) FROM especimenes WHERE muestra_id = :mid AND estado = 'programado'");
         $stmtProg->execute(['mid' => $this->recepcionId]);
         $this->assertEquals(3, (int)$stmtProg->fetchColumn());
 
         $stmtTestigo = $this->db->prepare("SELECT COUNT(*) FROM especimenes WHERE muestra_id = :mid AND estado = 'testigo'");
         $stmtTestigo->execute(['mid' => $this->recepcionId]);
-        $this->assertEquals(1, (int)$stmtTestigo->fetchColumn());
+        $this->assertEquals(2, (int)$stmtTestigo->fetchColumn());
+    }
+
+    public function testPlanCreaEspecimenesCuandoLaMuestraNoTienePrevios(): void {
+        $resultado = $this->modelo->guardarPlanRotura(
+            $this->recepcionId,
+            null,
+            [
+                ['edad_dias' => 7, 'cantidad' => 2],
+                ['edad_dias' => 28, 'cantidad' => 2]
+            ],
+            1
+        );
+
+        $this->assertTrue($resultado['exito']);
+
+        $stmt = $this->db->prepare("SELECT codigo_lab, estado FROM especimenes WHERE muestra_id = :mid ORDER BY id ASC");
+        $stmt->execute(['mid' => $this->recepcionId]);
+        $especimenes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->assertCount(4, $especimenes);
+        $this->assertSame($this->codigoLab . '-C1', $especimenes[0]['codigo_lab']);
+        $this->assertSame($this->codigoLab . '-C4', $especimenes[3]['codigo_lab']);
+        $this->assertSame('programado', $especimenes[0]['estado']);
     }
 
     /**

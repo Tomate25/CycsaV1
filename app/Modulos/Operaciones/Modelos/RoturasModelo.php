@@ -240,7 +240,7 @@ class RoturasModelo {
 
     /**
      * Guarda o actualiza el Plan de Roturas de una muestra.
-     * Regla: La suma de especímenes en el plan no puede exceder el total de especímenes recibidos.
+     * Regla: La suma del plan determina cuántos especímenes deben existir.
      * Los sobrantes quedan en estado 'testigo'.
      */
     public function guardarPlanRotura(int $muestraId, ?int $plantillaVersionId, array $edadesConfig, int $usuarioId): array {
@@ -262,22 +262,7 @@ class RoturasModelo {
                 $plantillaVersionId = $muestraData['plantilla_version_id'] ?: null;
             }
 
-            // Obtener todos los especímenes de la muestra
-            $stmtEsp = $this->db->prepare("SELECT id, estado, fecha_moldeo FROM especimenes WHERE muestra_id = :id ORDER BY id ASC");
-            $stmtEsp->execute(['id' => $muestraId]);
-            $todosEspecimenes = $stmtEsp->fetchAll(PDO::FETCH_ASSOC);
-            $totalEspecimenes = count($todosEspecimenes);
-
-            if (!empty($todosEspecimenes[0]['fecha_moldeo'])) {
-                $fechaMoldeo = $todosEspecimenes[0]['fecha_moldeo'];
-            }
-
-            if ($totalEspecimenes === 0) {
-                $this->db->rollBack();
-                return ['exito' => false, 'mensaje' => 'La muestra no cuenta con especímenes registrados para armar un plan de rotura.'];
-            }
-
-            // Validar suma de especímenes programados
+            // Validar la configuración antes de crear o asignar especímenes.
             $sumaProgramada = 0;
             foreach ($edadesConfig as $e) {
                 $cant = (int)($e['cantidad'] ?? 0);
@@ -288,12 +273,32 @@ class RoturasModelo {
                 $sumaProgramada += $cant;
             }
 
-            if ($sumaProgramada > $totalEspecimenes) {
+            if ($sumaProgramada <= 0) {
                 $this->db->rollBack();
-                return [
-                    'exito' => false,
-                    'mensaje' => "La suma de especímenes programados ({$sumaProgramada}) no puede superar los especímenes recibidos ({$totalEspecimenes})."
-                ];
+                return ['exito' => false, 'mensaje' => 'Debe asignar al menos un espécimen al plan de roturas.'];
+            }
+
+            // El plan es la fuente de verdad para la cantidad. Si faltan probetas,
+            // se crean con su sufijo correlativo antes de realizar las asignaciones.
+            $stmtTotal = $this->db->prepare("SELECT COUNT(*) FROM especimenes WHERE muestra_id = :id");
+            $stmtTotal->execute(['id' => $muestraId]);
+            $totalRegistrados = (int)$stmtTotal->fetchColumn();
+            if ($totalRegistrados < $sumaProgramada) {
+                $creados = $this->crearEspecimenesParaMuestra($muestraId, $sumaProgramada, (string)$fechaMoldeo);
+                if (!$creados) {
+                    $this->db->rollBack();
+                    return ['exito' => false, 'mensaje' => 'No fue posible crear los especímenes definidos por el plan.'];
+                }
+            }
+
+            // Obtener todos los especímenes de la muestra, incluidos los recién creados.
+            $stmtEsp = $this->db->prepare("SELECT id, estado, fecha_moldeo FROM especimenes WHERE muestra_id = :id ORDER BY id ASC");
+            $stmtEsp->execute(['id' => $muestraId]);
+            $todosEspecimenes = $stmtEsp->fetchAll(PDO::FETCH_ASSOC);
+            $totalEspecimenes = count($todosEspecimenes);
+
+            if (!empty($todosEspecimenes[0]['fecha_moldeo'])) {
+                $fechaMoldeo = $todosEspecimenes[0]['fecha_moldeo'];
             }
 
             // 2. Verificar si ya existe plan previo

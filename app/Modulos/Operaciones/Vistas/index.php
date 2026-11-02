@@ -1,7 +1,7 @@
 <?php
 // Operations index view - LIMS Dashboard (Premium Redesign)
 $rolSesion = (int)($_SESSION['usuario_rol'] ?? 0);
-$esSupervisor = in_array($rolSesion, [1, 2, 3]);
+$esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', 'aprobar') || tienePermiso('control_calidad', 'aprobar');
 ?>
 <style>
     :root {

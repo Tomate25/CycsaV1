@@ -321,32 +321,6 @@ class LaboratorioControlador extends ControladorBase {
             return;
         }
 
-        // Si la muestra no tiene especímenes en la tabla nueva, crearlos automáticamente según lote
-        if (empty($detalle['especimenes'])) {
-            $stmtLoteData = $db->prepare("SELECT fecha_moldeo, nombre_lote FROM lotes_muestras WHERE id_recepcion = :mid");
-            $stmtLoteData->execute(['mid' => $muestraId]);
-            $loteFila = $stmtLoteData->fetch(PDO::FETCH_ASSOC);
-
-            // Contar cantidad de especímenes declarados en ensayo_edades o asignar default de 3
-            $stmtCountEd = $db->prepare("SELECT COUNT(*) FROM ensayo_edades ee JOIN lotes_muestras lm ON ee.id_lote = lm.id WHERE lm.id_recepcion = :mid");
-            $stmtCountEd->execute(['mid' => $muestraId]);
-            $cantEsp = (int)$stmtCountEd->fetchColumn();
-            if ($cantEsp <= 0) {
-                $cantEsp = 3;
-            }
-
-            $roturasModelo->crearEspecimenesParaMuestra(
-                $muestraId,
-                $cantEsp,
-                $loteFila['fecha_moldeo'] ?? date('Y-m-d'),
-                'cilindro_concreto',
-                '15 x 30 cm'
-            );
-
-            // Recargar detalle
-            $detalle = $roturasModelo->obtenerDetalleMuestraAnonima($muestraId);
-        }
-
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
@@ -985,29 +959,6 @@ class LaboratorioControlador extends ControladorBase {
             ];
 
             if ($modelo->registrarRecepcion($payloadRecepcion)) {
-                // Crear automáticamente los especímenes en la tabla especimenes para las muestras que aún no los tienen
-                $roturasModelo = new RoturasModelo();
-                if ($actualHojaId) {
-                    $stmtMuestrasCreadas = $db->prepare("SELECT rm.id, lm.fecha_moldeo 
-                        FROM recepcion_muestras rm 
-                        JOIN lotes_muestras lm ON lm.id_recepcion = rm.id 
-                        WHERE rm.id_os = :id_os AND rm.id_hoja = :id_hoja
-                          AND rm.id NOT IN (SELECT DISTINCT muestra_id FROM especimenes)");
-                    $stmtMuestrasCreadas->execute(['id_os' => $idOS, 'id_hoja' => $actualHojaId]);
-                } else {
-                    $stmtMuestrasCreadas = $db->prepare("SELECT rm.id, lm.fecha_moldeo 
-                        FROM recepcion_muestras rm 
-                        JOIN lotes_muestras lm ON lm.id_recepcion = rm.id 
-                        WHERE rm.id_os = :id_os
-                          AND rm.id NOT IN (SELECT DISTINCT muestra_id FROM especimenes)");
-                    $stmtMuestrasCreadas->execute(['id_os' => $idOS]);
-                }
-                $creadas = $stmtMuestrasCreadas->fetchAll(PDO::FETCH_ASSOC);
-
-                foreach ($creadas as $c) {
-                    $roturasModelo->crearEspecimenesParaMuestra((int)$c['id'], 3, $c['fecha_moldeo'] ?? date('Y-m-d'));
-                }
-
                 $prefijoAsignado = ($tipoMuestraCalculado === 'Campo') ? 'MC' : 'MS';
                 $numHojaTexto = !empty($hoja['numero_registro']) ? " [Reg: {$hoja['numero_registro']}]" : "";
                 $_SESSION['exito'] = "Muestras de la Hoja RT-FM-13{$numHojaTexto} aceptadas e ingresadas exitosamente a la Bandeja Anónima de Laboratorio ({$prefijoAsignado}-XXXX-" . date('y') . ").";

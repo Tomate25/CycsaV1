@@ -1,7 +1,7 @@
 <?php
 // Dedicated full-page view for a single Operation (O/S)
 $rolSesion = (int)($_SESSION['usuario_rol'] ?? 0);
-$esSupervisor = in_array($rolSesion, [1, 2, 3]);
+$esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', 'aprobar') || tienePermiso('control_calidad', 'aprobar');
 
 $cliInfNom = $o['cliente_informe_nombre'] ?? ($o['cliente_nombre'] ?? 'Cliente General');
 $cliFactNom = $o['cliente_factura_nombre'] ?? ($o['cliente_nombre'] ?? 'Cliente General');
@@ -56,6 +56,17 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
 
 <div class="lims-ver-container">
 
+    <?php if (!empty($exito)): ?>
+        <div class="alert alert-success d-flex align-items-center gap-2 mb-3" style="border-radius: 8px; font-size: 13.5px; padding: 12px 18px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;">
+            <i class="fa-solid fa-circle-check"></i> <?= htmlspecialchars($exito) ?>
+        </div>
+    <?php endif; ?>
+    <?php if (!empty($error)): ?>
+        <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" style="border-radius: 8px; font-size: 13.5px; padding: 12px 18px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
+            <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?>
+        </div>
+    <?php endif; ?>
+
     <!-- BARRA SUPERIOR DE RETORNO Y TÍTULO -->
     <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px 24px; margin-bottom: 22px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
         <div>
@@ -86,9 +97,15 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                 </a>
             <?php endif; ?>
 
+            <?php if ($esSupervisor && !in_array($o['estado'], ['Estado 7: Revision Resultados', 'Finalizado', 'Archivado', 'Cerrado'])): ?>
+                <button type="button" onclick="abrirModalRevisionResultados(<?= (int)$o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')" class="btn btn-primary btn-sm fw-bold" style="padding: 7px 16px; border-radius: 6px; background-color: #0284c7; border-color: #0369a1;">
+                    <i class="fa-solid fa-clipboard-check me-1"></i> Aprobar Revisión Técnica
+                </button>
+            <?php endif; ?>
+
             <?php if (!empty($o['puede_cerrar'])): ?>
                 <button type="button" onclick="abrirModalCerrarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')" class="btn btn-success btn-sm fw-bold" style="padding: 7px 16px; border-radius: 6px;">
-                    <i class="fa-solid fa-lock me-1"></i> Finalizar y Archivar Orden
+                    <i class="fa-solid fa-circle-check me-1"></i> Aprobar y Archivar Orden
                 </button>
             <?php endif; ?>
         </div>
@@ -282,10 +299,10 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                 <?php if (!$o['puede_cerrar']): ?>
                     <div style="font-size: 12.5px; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px;">
                         <i class="fa-solid fa-circle-exclamation me-1"></i>
-                        <?= !$o['tecnico_100'] ? 'Faltan ensayos por aprobar formalmente por supervisión técnica.' : ($esCreditoFila ? 'Falta generar la cuenta por cobrar en el sistema.' : 'Saldo comercial pendiente de cobro (condición Contado).') ?>
+                        <?= !$o['tecnico_100'] ? 'Faltan ensayos por aprobar formalmente por supervisión técnica (' . $o['ensayos_aprobados'] . '/' . $o['total_ensayos'] . ' aprobados).' : ($esCreditoFila ? 'Falta generar la cuenta por cobrar en el sistema.' : 'Saldo comercial pendiente de cobro (condición Contado: C$ ' . number_format((float)($o['saldo_os'] ?? 0), 2) . ').') ?>
                     </div>
                 <?php endif; ?>
-                <div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <?php if (in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'])): ?>
                         <span class="badge bg-secondary" style="font-size: 13px; padding: 10px 18px; border-radius: 20px;">
                             <i class="fa-solid fa-box-archive me-1"></i> Orden Archivada en Histórico
@@ -295,7 +312,7 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                                 onclick="abrirModalCerrarOS(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')" 
                                 class="btn btn-success" 
                                 style="height: 40px; font-size: 13.5px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; background-color: #16a34a; border-color: #15803d;">
-                            <i class="fa-solid fa-lock"></i> Finalizar y Archivar Orden
+                            <i class="fa-solid fa-circle-check"></i> Aprobar y Archivar Orden
                         </button>
                     <?php else: ?>
                         <button type="button" 
@@ -304,6 +321,22 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                                 style="height: 40px; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: not-allowed; opacity: 0.7;" 
                                 title="Cierre bloqueado: Requiere 100% de ensayos aprobados y cobro comercial liquidado.">
                             <i class="fa-solid fa-lock"></i> Cierre LIMS Bloqueado
+                        </button>
+                        <?php if (!$o['tecnico_100']): ?>
+                            <button type="button" 
+                                    onclick="cambiarTabFull(document.querySelectorAll('.btn-tab-full')[1], 'tab-full-ensayos')" 
+                                    class="btn btn-outline-primary" 
+                                    style="height: 40px; font-size: 13px; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-flask me-1"></i> Ir a Ensayos para Aprobar (<?= $o['ensayos_aprobados'] ?>/<?= $o['total_ensayos'] ?>)
+                            </button>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    <?php if ($esSupervisor && !in_array($o['estado'], ['Estado 7: Revision Resultados', 'Finalizado', 'Archivado', 'Cerrado'])): ?>
+                        <button type="button" 
+                                onclick="abrirModalRevisionResultados(<?= (int)$o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')" 
+                                class="btn btn-outline-info" 
+                                style="height: 40px; font-size: 13px; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; color: #0284c7; border-color: #0284c7;">
+                            <i class="fa-solid fa-clipboard-check me-1"></i> Aprobar Revisión Técnica O/S
                         </button>
                     <?php endif; ?>
                 </div>
@@ -464,25 +497,249 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
 
 </div>
 
-<!-- MODALES COMPARTIDOS -->
-<!-- MODAL CIERRE -->
+<!-- ========================================================================= -->
+<!-- MODALES COMPARTIDOS DE OPERACIONES LIMS                                    -->
+<!-- ========================================================================= -->
+
+<!-- 1. MODAL SUPERVISOR: CIERRE DEFINITIVO / APROBAR Y ARCHIVAR ORDEN -->
 <div id="modalConfirmarCierreOS" class="modal-premium" style="display: none;">
     <div class="modal-premium-content" style="width: 480px; max-width: 95vw;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
             <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700;">
-                <i class="fa-solid fa-box-archive text-success me-1"></i> Cierre Definitivo de O/S
+                <i class="fa-solid fa-circle-check text-success me-1"></i> Aprobar y Cierre Definitivo de O/S
             </h3>
             <button type="button" onclick="cerrarModalCierreOS()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
         </div>
         <form method="POST" action="/Cycsa/publico/operaciones/cerrar-operacion">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <input type="hidden" name="id_os" id="cierre_id_os" value="">
-            <p style="font-size: 13.5px; color: #475569; margin-bottom: 16px;">
-                ¿Confirma el cierre y archivo de la orden <strong id="cierre_codigo_os" style="color: #0f3b68;"></strong>? La orden pasará a la bandeja de <strong>Histórico / Archivo LIMS</strong>.
+            <input type="hidden" name="id_os" id="cierre_id_os" value="<?= (int)$o['id'] ?>">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/ver?id_os=<?= (int)$o['id'] ?>">
+            <p style="font-size: 13.5px; color: #475569; margin-bottom: 16px; line-height: 1.5;">
+                ¿Confirma el cierre y archivo formal de la orden <strong id="cierre_codigo_os" style="color: #0f3b68;"><?= htmlspecialchars($o['codigo_os']) ?></strong>? La orden pasará formalmente a la bandeja de <strong>Histórico / Archivo LIMS</strong>.
             </p>
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" onclick="cerrarModalCierreOS()" class="btn btn-secondary btn-sm">Cancelar</button>
-                <button type="submit" class="btn btn-success btn-sm fw-bold">Confirmar Cierre LIMS</button>
+                <button type="submit" class="btn btn-success btn-sm fw-bold">Aprobar y Archivar Orden</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. MODAL SUPERVISOR: REVISIÓN Y APROBACIÓN TÉCNICA DE LA ORDEN -->
+<div id="modalRevisionResultados" class="modal-premium" style="display: none;">
+    <div class="modal-premium-content" style="width: 520px; max-width: 95vw;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700;">
+                <i class="fa-solid fa-clipboard-check text-primary me-1"></i> Revisión Técnica de Calidad: <span id="qc_codigo_os" style="color:var(--cycsa-azul);"><?= htmlspecialchars($o['codigo_os']) ?></span>
+            </h3>
+            <button type="button" onclick="cerrarModalRevisionResultados()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <form method="POST" action="/Cycsa/publico/operaciones/procesar-revision-resultados" id="qc-form">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id_os" id="qc_id_os" value="<?= (int)$o['id'] ?>">
+            <input type="hidden" name="decision" id="qc_decision" value="Aprobar">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/ver?id_os=<?= (int)$o['id'] ?>">
+
+            <p style="font-size: 13.5px; color:#475569; margin-bottom: 16px; line-height: 1.5;">
+                Como supervisor de calidad, valide si los resultados cargados por el personal técnico cumplen con los estándares y tolerancias para autorizar la orden a estado <strong>Revisión Resultados Aprobada</strong>.
+            </p>
+
+            <div class="form-group" id="qc-group-obs" style="display:none; margin-bottom: 16px;">
+                <label style="font-weight: 700; font-size: 12.5px; color: #b91c1c; display: block; margin-bottom: 6px;">Detalle los Resultados Observados (Requerido para devolución):</label>
+                <textarea name="motivo_observacion" id="qc_motivo" class="form-control" rows="3" style="width:100%; box-sizing:border-box; border:1px solid #f87171; border-radius:6px; padding:8px 10px; font-size:13px;" placeholder="Ej: Corregir valor de carga en la probeta B de 7 días..."></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; border-top:1px solid #f1f5f9; padding-top:14px;">
+                <button type="button" onclick="ejecutarQCObservar()" class="btn btn-outline-danger btn-sm fw-bold"><i class="fa-solid fa-rotate-left"></i> Devolver / Observar</button>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" onclick="cerrarModalRevisionResultados()" class="btn btn-secondary btn-sm">Cancelar</button>
+                    <button type="button" onclick="ejecutarQCAprobar()" class="btn btn-success btn-sm fw-bold" id="btn-qc-aprobar" style="background:#10b981; border-color:#10b981;">
+                        <i class="fa-solid fa-circle-check"></i> Aprobar Revisión Técnica
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 3. MODAL SUPERVISOR: APROBAR MATRIZ DE ENSAYO INDIVIDUAL -->
+<div id="modalAprobarMatrizIndex" class="modal-premium" style="display:none;">
+    <div class="modal-premium-content" style="width: 480px; max-width: 95vw;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+            <h3 style="margin:0; color:#1e293b; font-size:17px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Aprobar Matriz Técnica
+            </h3>
+            <button type="button" onclick="cerrarModalAprobarEnIndex()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#94a3b8;">&times;</button>
+        </div>
+        <p style="font-size:13.5px; color:#475569; margin:0 0 10px 0; line-height:1.5;">
+            ¿Confirma la aprobación técnica y de calidad de los resultados y cálculos para este ensayo?
+        </p>
+        <p style="font-size:13px; color:#0f172a; font-weight:700; margin:0 0 15px 0;">
+            Ensayo: <span id="aprob_index_ensayo" style="color:var(--cycsa-azul);"></span>
+        </p>
+        <form method="POST" action="/Cycsa/publico/operaciones/aprobar-matriz-producto">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id_detalle" id="aprob_index_id_detalle" value="">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/ver?id_os=<?= (int)$o['id'] ?>">
+            
+            <div style="margin-bottom:16px;">
+                <label style="font-size:12.5px; font-weight:600; color:#334155; display:block; margin-bottom:6px;">Nota de Aprobación (Opcional):</label>
+                <input type="text" name="nota_aprobacion" class="form-control" style="width:100%; box-sizing:border-box; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;" placeholder="Ej: Conforme con tolerancias y especificaciones ASTM.">
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" onclick="cerrarModalAprobarEnIndex()" class="btn btn-secondary btn-sm">Cancelar</button>
+                <button type="submit" class="btn btn-success btn-sm fw-bold" style="background:#059669; border-color:#059669;">
+                    <i class="fa-solid fa-check"></i> Aprobar Matriz
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 4. MODAL SUPERVISOR: DEVOLVER MATRIZ DE ENSAYO INDIVIDUAL -->
+<div id="modalDevolverMatrizIndex" class="modal-premium" style="display:none;">
+    <div class="modal-premium-content" style="width: 520px; max-width: 95vw;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #fee2e2; padding-bottom:12px;">
+            <h3 style="margin:0; color:#b91c1c; font-size:17px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-rotate-left" style="color:#dc2626;"></i> Devolver Matriz Técnica (Observaciones)
+            </h3>
+            <button type="button" onclick="cerrarModalDevolverEnIndex()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#94a3b8;">&times;</button>
+        </div>
+        <p style="font-size:13px; color:#475569; margin:0 0 10px 0;">
+            Ensayo: <strong id="dev_index_ensayo" style="color:#0f172a;"></strong>
+        </p>
+        <p style="font-size:13px; color:#475569; margin:0 0 15px 0;">
+            Indique las observaciones técnicas para que el laboratorista realice los ajustes necesarios.
+        </p>
+        <form method="POST" action="/Cycsa/publico/operaciones/devolver-matriz-producto">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id_detalle" id="dev_index_id_detalle" value="">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/ver?id_os=<?= (int)$o['id'] ?>">
+            
+            <div style="margin-bottom:16px;">
+                <label style="font-size:12.5px; font-weight:700; color:#1e293b; display:block; margin-bottom:6px;">Motivo u Observaciones Técnicas * :</label>
+                <textarea name="motivo_devolucion" required rows="4" style="width:100%; box-sizing:border-box; padding:10px 12px; border:1.5px solid #f87171; border-radius:6px; font-size:13.5px; font-family:inherit; resize:vertical;" placeholder="Ej: Corregir el valor de carga en la probeta #2. Se observa discrepancia con la aguja de la prensa."></textarea>
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" onclick="cerrarModalDevolverEnIndex()" class="btn btn-secondary btn-sm">Cancelar</button>
+                <button type="submit" class="btn btn-danger btn-sm fw-bold" style="background:#dc2626; border-color:#dc2626;">
+                    <i class="fa-solid fa-rotate-left"></i> Devolver al Laboratorio
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 5. MODAL: VER OBSERVACIÓN DE DEVOLUCIÓN -->
+<div id="modalVerObservacionDevolucion" class="modal-premium" style="display:none;">
+    <div class="modal-premium-content" style="width: 480px; max-width: 95vw; border-color: #fecaca;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #fee2e2; padding-bottom:12px;">
+            <h3 style="margin:0; color:#b91c1c; font-size:17px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-comment-dots" style="color:#dc2626;"></i> Observación del Supervisor
+            </h3>
+            <button type="button" onclick="cerrarModalVerObservacionDevolucion()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#94a3b8;">&times;</button>
+        </div>
+        <p style="font-size:13px; color:#475569; margin:0 0 10px 0;">
+            Ensayo: <strong id="ver_obs_ensayo" style="color:#0f172a;"></strong>
+        </p>
+        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:14px; margin-bottom:16px;">
+            <p id="ver_obs_motivo" style="font-size:13.5px; color:#991b1b; margin:0; line-height:1.5; white-space:pre-wrap;"></p>
+        </div>
+        <div style="font-size:12px; color:#64748b; margin-bottom:18px;">
+            Devuelto por: <strong id="ver_obs_usuario"></strong> el <span id="ver_obs_fecha"></span>
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+            <button type="button" onclick="cerrarModalVerObservacionDevolucion()" class="btn btn-secondary btn-sm">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- 6. MODAL: ENVIAR MATRIZ EN PDF AL CLIENTE -->
+<div id="modalEnviarMatriz" class="modal-premium" style="display:none;">
+    <div class="modal-premium-content" style="width: 500px; max-width: 95vw;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+            <h3 style="margin:0; color:#1e293b; font-size:17px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-paper-plane text-success"></i> Enviar Matriz al Cliente
+            </h3>
+            <button type="button" onclick="cerrarModalEnviarMatriz()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#94a3b8;">&times;</button>
+        </div>
+        <form method="POST" action="/Cycsa/publico/operaciones/enviar-matriz-cliente">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id_detalle" id="env_index_id_detalle" value="">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/ver?id_os=<?= (int)$o['id'] ?>">
+            
+            <div style="margin-bottom:14px;">
+                <label style="font-size:12.5px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Ensayo:</label>
+                <div id="env_index_ensayo" style="font-weight:700; color:#0f172a; font-size:13.5px;"></div>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="font-size:12.5px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Cliente:</label>
+                <input type="text" id="env_index_cliente" name="cliente_nombre" class="form-control" style="width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;" readonly>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-size:12.5px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Correo Destinatario * :</label>
+                <input type="email" id="env_index_email" name="destinatario_email" class="form-control" style="width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;" required>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" onclick="cerrarModalEnviarMatriz()" class="btn btn-secondary btn-sm">Cancelar</button>
+                <button type="submit" class="btn btn-success btn-sm fw-bold">
+                    <i class="fa-solid fa-paper-plane me-1"></i> Enviar Correo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 7. MODAL: REEMISIÓN ADMIN (BASE-N) -->
+<div id="modalCorreccionAdminIndex" class="modal-premium" style="display:none;">
+    <div class="modal-premium-content" style="width: 540px; max-width: 95vw;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+            <h3 style="margin:0; color:#1e293b; font-size:17px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-pen-ruler" style="color:#d97706;"></i> Reemitir Informe (Corrección Administrativa)
+            </h3>
+            <button type="button" onclick="cerrarModalCorreccionAdminIndex()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#94a3b8;">&times;</button>
+        </div>
+        <p style="font-size:13px; color:#0f172a; font-weight:700; margin:0 0 10px 0;">
+            Ensayo: <span id="corr_index_ensayo_nombre" style="color:var(--cycsa-azul);"></span>
+        </p>
+        <form method="POST" action="/Cycsa/publico/operaciones/solicitar-correccion-admin">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id_detalle" id="corr_index_id_detalle" value="">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/ver?id_os=<?= (int)$o['id'] ?>">
+
+            <div style="background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:10px 14px; border-radius:8px; font-size:12.5px; margin-bottom:14px; line-height:1.4;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Se emitirá una nueva versión correlativa <strong>(ej: MS-XXXX-26-1)</strong> que sustituirá a la versión previa. La matriz pasará a <strong>EN REVISIÓN</strong> para su re-aprobación obligatoria.
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12.5px; font-weight:700; color:#334155; margin-bottom:4px;">
+                    Motivo obligatorio de la corrección: <span style="color:#dc2626;">*</span>
+                </label>
+                <textarea name="motivo_correccion" id="corr_index_motivo" rows="2" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:13px; font-family:inherit; box-sizing:border-box;" placeholder="Ej. Corrección de razón social / proyecto a solicitud del cliente..." required></textarea>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12.5px; font-weight:700; color:#334155; margin-bottom:4px;">
+                    Nombre o Razón Social (para el informe):
+                </label>
+                <input type="text" name="cliente_nombre" id="corr_index_cliente" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:13px; box-sizing:border-box;">
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12.5px; font-weight:700; color:#334155; margin-bottom:4px;">
+                    Proyecto:
+                </label>
+                <input type="text" name="nombre_proyecto" id="corr_index_proyecto" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:13px; box-sizing:border-box;">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" onclick="cerrarModalCorreccionAdminIndex()" class="btn btn-secondary btn-sm">Cancelar</button>
+                <button type="submit" class="btn btn-warning btn-sm fw-bold" style="background:#d97706; border-color:#d97706; color:white;">
+                    <i class="fa-solid fa-file-pen me-1"></i> Guardar y Reemitir
+                </button>
             </div>
         </form>
     </div>
@@ -495,9 +752,11 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
             b.style.background = 'transparent';
             b.style.color = '#475569';
         });
-        btn.classList.add('active');
-        btn.style.background = 'var(--cycsa-azul, #103487)';
-        btn.style.color = 'white';
+        if (btn) {
+            btn.classList.add('active');
+            btn.style.background = 'var(--cycsa-azul, #103487)';
+            btn.style.color = 'white';
+        }
 
         document.querySelectorAll('.tab-pane-full').forEach(p => p.style.display = 'none');
         const target = document.getElementById(tabId);
@@ -505,12 +764,174 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
     }
 
     function abrirModalCerrarOS(idOS, codigoOS) {
-        document.getElementById('cierre_id_os').value = idOS;
-        document.getElementById('cierre_codigo_os').innerText = codigoOS;
-        document.getElementById('modalConfirmarCierreOS').style.display = 'block';
+        const idElem = document.getElementById('cierre_id_os');
+        const codeElem = document.getElementById('cierre_codigo_os');
+        if (idElem) idElem.value = idOS;
+        if (codeElem && codigoOS) codeElem.innerText = codigoOS;
+        const modal = document.getElementById('modalConfirmarCierreOS');
+        if (modal) modal.style.display = 'block';
     }
 
     function cerrarModalCierreOS() {
-        document.getElementById('modalConfirmarCierreOS').style.display = 'none';
+        const modal = document.getElementById('modalConfirmarCierreOS');
+        if (modal) modal.style.display = 'none';
     }
+
+    // Modal QC Revisión Técnica
+    function abrirModalRevisionResultados(id, code) {
+        const idElem = document.getElementById('qc_id_os');
+        const codeElem = document.getElementById('qc_codigo_os');
+        if (idElem) idElem.value = id;
+        if (codeElem && code) codeElem.innerText = code;
+        const group = document.getElementById('qc-group-obs');
+        if (group) group.style.display = 'none';
+        const motivo = document.getElementById('qc_motivo');
+        if (motivo) motivo.value = '';
+        const btnAprob = document.getElementById('btn-qc-aprobar');
+        if (btnAprob) btnAprob.style.display = 'inline-flex';
+        const modal = document.getElementById('modalRevisionResultados');
+        if (modal) modal.style.display = 'block';
+    }
+
+    function cerrarModalRevisionResultados() {
+        const modal = document.getElementById('modalRevisionResultados');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function ejecutarQCAprobar() {
+        const dec = document.getElementById('qc_decision');
+        if (dec) dec.value = 'Aprobar';
+        const form = document.getElementById('qc-form');
+        if (form) form.submit();
+    }
+
+    function ejecutarQCObservar() {
+        const group = document.getElementById('qc-group-obs');
+        if (!group) return;
+        if (group.style.display === 'none') {
+            group.style.display = 'block';
+            const motivo = document.getElementById('qc_motivo');
+            if (motivo) motivo.focus();
+            const btnAprob = document.getElementById('btn-qc-aprobar');
+            if (btnAprob) btnAprob.style.display = 'none';
+        } else {
+            const motivo = document.getElementById('qc_motivo');
+            if (!motivo || !motivo.value.trim()) {
+                alert('Debe indicar un motivo u observación si desea devolver los resultados.');
+                return;
+            }
+            const dec = document.getElementById('qc_decision');
+            if (dec) dec.value = 'Rechazar';
+            const form = document.getElementById('qc-form');
+            if (form) form.submit();
+        }
+    }
+
+    // Modal Aprobación Individual de Matriz
+    function abrirModalAprobarEnIndex(idDetalle, nombreEnsayo) {
+        const idElem = document.getElementById('aprob_index_id_detalle');
+        const nomElem = document.getElementById('aprob_index_ensayo');
+        if (idElem) idElem.value = idDetalle;
+        if (nomElem) nomElem.innerText = nombreEnsayo;
+        const modal = document.getElementById('modalAprobarMatrizIndex');
+        if (modal) modal.style.display = 'block';
+    }
+
+    function cerrarModalAprobarEnIndex() {
+        const modal = document.getElementById('modalAprobarMatrizIndex');
+        if (modal) modal.style.display = 'none';
+    }
+
+    // Modal Devolución Individual de Matriz
+    function abrirModalDevolverEnIndex(idDetalle, nombreEnsayo) {
+        const idElem = document.getElementById('dev_index_id_detalle');
+        const nomElem = document.getElementById('dev_index_ensayo');
+        if (idElem) idElem.value = idDetalle;
+        if (nomElem) nomElem.innerText = nombreEnsayo;
+        const modal = document.getElementById('modalDevolverMatrizIndex');
+        if (modal) modal.style.display = 'block';
+    }
+
+    function cerrarModalDevolverEnIndex() {
+        const modal = document.getElementById('modalDevolverMatrizIndex');
+        if (modal) modal.style.display = 'none';
+    }
+
+    // Modal Ver Observación
+    function verObservacionDevolucion(idDetalle, nombreEnsayo, motivo, usuario, fecha) {
+        const ensElem = document.getElementById('ver_obs_ensayo');
+        const motElem = document.getElementById('ver_obs_motivo');
+        const usrElem = document.getElementById('ver_obs_usuario');
+        const fecElem = document.getElementById('ver_obs_fecha');
+        if (ensElem) ensElem.innerText = nombreEnsayo;
+        if (motElem) motElem.innerText = motivo || 'Sin observaciones registradas.';
+        if (usrElem) usrElem.innerText = usuario || 'Supervisor';
+        if (fecElem) fecElem.innerText = fecha || '';
+        const modal = document.getElementById('modalVerObservacionDevolucion');
+        if (modal) modal.style.display = 'block';
+    }
+
+    function cerrarModalVerObservacionDevolucion() {
+        const modal = document.getElementById('modalVerObservacionDevolucion');
+        if (modal) modal.style.display = 'none';
+    }
+
+    // Modal Enviar Matriz al Cliente
+    function abrirModalEnviarMatriz(idDetalle, nombreEnsayo, clienteNombre, clienteEmail, codigoOS) {
+        const idElem = document.getElementById('env_index_id_detalle');
+        const ensElem = document.getElementById('env_index_ensayo');
+        const cliElem = document.getElementById('env_index_cliente');
+        const emlElem = document.getElementById('env_index_email');
+        if (idElem) idElem.value = idDetalle;
+        if (ensElem) ensElem.innerText = nombreEnsayo;
+        if (cliElem) cliElem.value = clienteNombre || '';
+        if (emlElem) emlElem.value = clienteEmail || '';
+        const modal = document.getElementById('modalEnviarMatriz');
+        if (modal) modal.style.display = 'block';
+    }
+
+    function cerrarModalEnviarMatriz() {
+        const modal = document.getElementById('modalEnviarMatriz');
+        if (modal) modal.style.display = 'none';
+    }
+
+    // Modal Corrección Administrativa / Reemisión
+    function abrirModalCorreccionAdminIndex(idDetalle, nombreEnsayo, cliente, proyecto, ubicacion) {
+        const idElem = document.getElementById('corr_index_id_detalle');
+        const ensElem = document.getElementById('corr_index_ensayo_nombre');
+        const motElem = document.getElementById('corr_index_motivo');
+        const cliElem = document.getElementById('corr_index_cliente');
+        const proElem = document.getElementById('corr_index_proyecto');
+        if (idElem) idElem.value = idDetalle;
+        if (ensElem) ensElem.innerText = nombreEnsayo || '';
+        if (motElem) motElem.value = '';
+        if (cliElem) cliElem.value = cliente || '';
+        if (proElem) proElem.value = proyecto || '';
+        const modal = document.getElementById('modalCorreccionAdminIndex');
+        if (modal) modal.style.display = 'block';
+    }
+
+    function cerrarModalCorreccionAdminIndex() {
+        const modal = document.getElementById('modalCorreccionAdminIndex');
+        if (modal) modal.style.display = 'none';
+    }
+
+    // Cerrar modales con clic fuera
+    window.addEventListener('click', function(e) {
+        const modales = [
+            'modalConfirmarCierreOS',
+            'modalRevisionResultados',
+            'modalAprobarMatrizIndex',
+            'modalDevolverMatrizIndex',
+            'modalVerObservacionDevolucion',
+            'modalEnviarMatriz',
+            'modalCorreccionAdminIndex'
+        ];
+        modales.forEach(function(mId) {
+            const m = document.getElementById(mId);
+            if (m && e.target === m) {
+                m.style.display = 'none';
+            }
+        });
+    });
 </script>

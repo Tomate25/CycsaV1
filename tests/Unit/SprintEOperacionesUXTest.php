@@ -176,4 +176,22 @@ class SprintEOperacionesUXTest extends TestCase {
         $content = file_get_contents($this->indexViewPath);
         $this->assertStringContainsString('/* deprecated E.1 — no borrar para retrocompatibilidad de estilos */', $content);
     }
+
+    public function testVerOperacionContieneModalesYFuncionesAprobacion(): void {
+        $verPath = dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/ver.php';
+        $content = file_get_contents($verPath);
+
+        // Modales indispensables para aprobación y cierre en vista completa
+        $this->assertStringContainsString('id="modalAprobarMatrizIndex"', $content, 'Debe existir modalAprobarMatrizIndex');
+        $this->assertStringContainsString('id="modalConfirmarCierreOS"', $content, 'Debe existir modalConfirmarCierreOS');
+        $this->assertStringContainsString('id="modalDevolverMatrizIndex"', $content, 'Debe existir modalDevolverMatrizIndex');
+        $this->assertStringContainsString('id="modalRevisionResultados"', $content, 'Debe existir modalRevisionResultados');
+
+        // Funciones JavaScript correspondientes invocadas desde acciones_ensayo.php
+        $this->assertStringContainsString('function abrirModalAprobarEnIndex(', $content, 'Debe existir función abrirModalAprobarEnIndex');
+        $this->assertStringContainsString('function abrirModalDevolverEnIndex(', $content, 'Debe existir función abrirModalDevolverEnIndex');
+        $this->assertStringContainsString('function abrirModalEnviarMatriz(', $content, 'Debe existir función abrirModalEnviarMatriz');
+        $this->assertStringContainsString('function abrirModalRevisionResultados(', $content, 'Debe existir función abrirModalRevisionResultados');
+        $this->assertStringContainsString('function abrirModalCerrarOS(', $content, 'Debe existir función abrirModalCerrarOS');
+    }
 }
