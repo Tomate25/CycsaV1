@@ -131,4 +131,24 @@ class SprintFOrdenesServicioListaTest extends TestCase {
         $this->assertStringContainsString('id="hs_col_suelo"', $content, 'Debe existir id="hs_col_suelo" en sección 3.2');
         $this->assertStringContainsString('aplicarFiltroWhitelistReq', $content, 'Debe existir la función JS aplicarFiltroWhitelistReq');
     }
+
+    public function testConteosDistinctNoInflanConMultiplesMuestreos(): void {
+        $conteos = $this->modelo->obtenerConteosTabsOSLista();
+        $this->assertIsArray($conteos);
+        $this->assertArrayHasKey('activas', $conteos);
+        $this->assertArrayHasKey('muestreo', $conteos);
+        $this->assertArrayHasKey('historico', $conteos);
+        $this->assertArrayHasKey('todas', $conteos);
+
+        // La suma de activas + historico nunca debe superar al total de órdenes distintas
+        $this->assertLessThanOrEqual($conteos['todas'], $conteos['activas'] + $conteos['historico']);
+
+        // Verificar consulta de obtenerTodas con aliases cliente_informe y cliente_factura
+        $todas = $this->modelo->obtenerTodas('', 'todas');
+        if (!empty($todas)) {
+            $primera = $todas[0];
+            $this->assertArrayHasKey('cliente_informe', $primera, 'Debe incluir alias cliente_informe');
+            $this->assertArrayHasKey('cliente_factura', $primera, 'Debe incluir alias cliente_factura');
+        }
+    }
 }

@@ -37,7 +37,9 @@ class OrdenServicioModelo {
                        cot.codigo AS cotizacion_codigo, 
                        cli.nombre_razon_social AS cliente_nombre,
                        cli_inf.nombre_razon_social AS cliente_informe_nombre,
+                       cli_inf.nombre_razon_social AS cliente_informe,
                        cli_fac.nombre_razon_social AS cliente_factura_nombre,
+                       cli_fac.nombre_razon_social AS cliente_factura,
                        COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
                        COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
                        COALESCE(NULLIF(cot.direccion_proyecto, ''), NULLIF(cli.direccion, ''), '') AS direccion_proyecto,
@@ -774,12 +776,12 @@ class OrdenServicioModelo {
      */
     public function obtenerConteosTabsOSLista(): array {
         $sql = "SELECT 
-                    COUNT(CASE WHEN os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL THEN 1 END) AS activas,
-                    COUNT(CASE WHEN (os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL) 
+                    COUNT(DISTINCT CASE WHEN os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL THEN os.id END) AS activas,
+                    COUNT(DISTINCT CASE WHEN (os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL) 
                                 AND (os.requiere_muestreo = 1 OR os.requiere_muestreo = '1') 
-                                AND (os.tecnico_muestreo IS NULL OR os.tecnico_muestreo = '' OR os.fecha_muestreo IS NULL OR pm.estado_muestreo IN ('Programado', 'En Proceso', 'En Campo') OR pm.id IS NULL) THEN 1 END) AS muestreo,
-                    COUNT(CASE WHEN os.estado IN ('Finalizado', 'Archivado', 'Cerrado') THEN 1 END) AS historico,
-                    COUNT(*) AS todas
+                                AND (os.tecnico_muestreo IS NULL OR os.tecnico_muestreo = '' OR os.fecha_muestreo IS NULL OR pm.estado_muestreo IN ('Programado', 'En Proceso', 'En Campo') OR pm.id IS NULL) THEN os.id END) AS muestreo,
+                    COUNT(DISTINCT CASE WHEN os.estado IN ('Finalizado', 'Archivado', 'Cerrado') THEN os.id END) AS historico,
+                    COUNT(DISTINCT os.id) AS todas
                 FROM ordenes_servicio os
                 LEFT JOIN programacion_muestreo pm ON pm.id_orden_servicio = os.id";
         try {
