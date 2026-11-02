@@ -813,9 +813,9 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
             $descHtml .= "<div style=\"margin-top:3px; color:#334155; font-size:8px; line-height:1.35; font-weight:normal; word-wrap:break-word; overflow-wrap:break-word; white-space:normal;\">{$descAdicional}</div>";
         }
 
-        $condiciones = htmlspecialchars($det['condiciones_muestra'] ?? '', ENT_QUOTES, 'UTF-8');
+        $condiciones = nl2br(htmlspecialchars($det['condiciones_muestra'] ?? '', ENT_QUOTES, 'UTF-8'));
         $condHtml = !empty($condiciones) 
-            ? "<div style=\"background: #fffbeb; border: 1px solid #fef3c7; padding: 2px 4px; border-radius: 2px; color: #78350f;\">{$condiciones}</div>"
+            ? "<div style=\"background: #fffbeb; border: 1px solid #fef3c7; padding: 2px 4px; border-radius: 2px; color: #78350f; white-space: pre-wrap; line-height: 1.35;\">{$condiciones}</div>"
             : '<span style="color: #94a3b8; font-style: italic;">Estándar</span>';
 
         $procedimientoText = htmlspecialchars($det['procedimiento'] ?? ($det['norma_astm'] ?? 'Norma ASTM'), ENT_QUOTES, 'UTF-8');

@@ -8,6 +8,80 @@
         --cycsa-azul-light: #eff6ff;
     }
 
+    /* TOOLBAR Y PESTAÑAS RÁPIDAS (ESTILO LIMS/OPERACIONES) */
+    .lims-toolbar-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding-bottom: 14px;
+        border-bottom: 2px solid #f1f5f9;
+    }
+    .lims-quick-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .quick-tab-link {
+        padding: 8px 14px;
+        min-height: 36px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        color: #475569;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        transition: all 0.2s;
+    }
+    .quick-tab-link:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+    .quick-tab-link.active {
+        background: #103487;
+        color: white;
+        border-color: #103487;
+        box-shadow: 0 2px 6px rgba(16, 52, 135, 0.2);
+    }
+    .quick-tab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 700;
+        background: rgba(0, 0, 0, 0.08);
+        color: inherit;
+    }
+    .quick-tab-link.active .quick-tab-badge {
+        background: rgba(255, 255, 255, 0.25);
+        color: white;
+    }
+    .os-table-container {
+        overflow-x: auto;
+        min-height: 340px;
+    }
+    .os-acciones-menu {
+        font-size: 13px;
+        min-width: 220px;
+        max-height: 380px;
+        overflow-y: auto;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 6px 0;
+        z-index: 1065 !important;
+    }
+
     /* MÓDULO O/S: TOKENS DE DISEÑO Y TIPOGRAFÍA */
     .os-modulo-container {
         max-width: 1440px;
@@ -219,22 +293,68 @@
         </div>
     </div>
 
-    <!-- BUSCADOR -->
-    <form method="GET" action="/Cycsa/publico/ordenes-servicio" class="search-bar-premium">
-        <div style="flex: 1; min-width: 280px; position: relative;">
-            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;"></i>
-            <input type="text" name="q" placeholder="Buscar por código O/S, cotización, cliente o proyecto..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control-cycsa" style="padding-left: 38px; min-height: 40px;">
+    <!-- PESTAÑAS DE ESTADO (QUICK TABS SPRINT F) -->
+    <div class="lims-toolbar-top">
+        <div class="lims-quick-tabs">
+            <a href="/Cycsa/publico/ordenes-servicio?tab=activas<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'activas') ? 'active' : '' ?>">
+                <i class="fa-solid fa-bolt"></i> Órdenes Activas
+                <span class="quick-tab-badge"><?= $conteosTabs['activas'] ?? 0 ?></span>
+            </a>
+            <a href="/Cycsa/publico/ordenes-servicio?tab=muestreo<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'muestreo') ? 'active' : '' ?>">
+                <i class="fa-solid fa-truck-pickup"></i> Requiere Muestreo
+                <span class="quick-tab-badge"><?= $conteosTabs['muestreo'] ?? 0 ?></span>
+            </a>
+            <a href="/Cycsa/publico/ordenes-servicio?tab=historico<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'historico') ? 'active' : '' ?>">
+                <i class="fa-solid fa-box-archive"></i> Histórico / Finalizadas
+                <span class="quick-tab-badge"><?= $conteosTabs['historico'] ?? 0 ?></span>
+            </a>
+            <a href="/Cycsa/publico/ordenes-servicio?tab=todas<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'todas') ? 'active' : '' ?>">
+                <i class="fa-solid fa-list-ul"></i> Todas
+                <span class="quick-tab-badge"><?= $conteosTabs['todas'] ?? 0 ?></span>
+            </a>
         </div>
-        <div style="display: flex; gap: 10px;">
-            <button type="submit" class="btn-cycsa btn-cycsa-primary" style="min-height: 40px; padding: 8px 18px;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
-            <?php if(!empty($busqueda)): ?>
-                <a href="/Cycsa/publico/ordenes-servicio" class="btn-cycsa btn-cycsa-secondary" style="min-height: 40px; padding: 8px 16px;"><i class="fa-solid fa-xmark"></i> Limpiar</a>
-            <?php endif; ?>
+    </div>
+
+    <!-- BUSCADOR Y FILTROS -->
+    <form method="GET" action="/Cycsa/publico/ordenes-servicio" class="search-bar-premium" style="display:flex; flex-direction:column; gap:12px;">
+        <input type="hidden" name="tab" value="<?= htmlspecialchars($tabActiva ?? 'activas', ENT_QUOTES, 'UTF-8') ?>">
+        <div style="display: flex; gap: 12px; width: 100%; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 280px; position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;"></i>
+                <input type="text" name="q" placeholder="Buscar por código O/S, cotización, cliente o proyecto..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control-cycsa" style="padding-left: 38px; min-height: 40px;">
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button type="submit" class="btn-cycsa btn-cycsa-primary" style="min-height: 40px; padding: 8px 18px;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+                <?php if(!empty($busqueda) || !empty($filtros['estado']) || !empty($filtros['desde']) || !empty($filtros['hasta'])): ?>
+                    <a href="/Cycsa/publico/ordenes-servicio?tab=<?= urlencode($tabActiva ?? 'activas') ?>" class="btn-cycsa btn-cycsa-secondary" style="min-height: 40px; padding: 8px 16px;"><i class="fa-solid fa-xmark"></i> Limpiar</a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <!-- FILTROS SECUNDARIOS SPRINT F -->
+        <div style="display: flex; gap: 14px; width: 100%; flex-wrap: wrap; align-items: center; font-size: 13px; color: #475569; padding-top: 4px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label for="filtro_estado" style="font-weight:600; white-space:nowrap;"><i class="fa-solid fa-filter me-1 text-secondary"></i> Estado:</label>
+                <select name="estado" id="filtro_estado" class="form-control-cycsa" style="width: auto; padding: 6px 12px; min-height: 36px; font-size: 13px;">
+                    <option value="">-- Todos los estados --</option>
+                    <option value="Pendiente" <?= (($filtros['estado'] ?? '') === 'Pendiente') ? 'selected' : '' ?>>Pendiente / Por Aprobar</option>
+                    <option value="En Proceso" <?= (($filtros['estado'] ?? '') === 'En Proceso') ? 'selected' : '' ?>>En Proceso</option>
+                    <option value="Finalizado" <?= (($filtros['estado'] ?? '') === 'Finalizado') ? 'selected' : '' ?>>Finalizado</option>
+                    <option value="Archivado" <?= (($filtros['estado'] ?? '') === 'Archivado') ? 'selected' : '' ?>>Archivado</option>
+                </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label for="filtro_desde" style="font-weight:600; white-space:nowrap;"><i class="fa-regular fa-calendar me-1 text-secondary"></i> Desde:</label>
+                <input type="date" name="desde" id="filtro_desde" value="<?= htmlspecialchars($filtros['desde'] ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control-cycsa" style="width: auto; padding: 6px 10px; min-height: 36px; font-size: 13px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label for="filtro_hasta" style="font-weight:600; white-space:nowrap;">Hasta:</label>
+                <input type="date" name="hasta" id="filtro_hasta" value="<?= htmlspecialchars($filtros['hasta'] ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control-cycsa" style="width: auto; padding: 6px 10px; min-height: 36px; font-size: 13px;">
+            </div>
         </div>
     </form>
 
     <!-- TABLA DE REGISTROS CON DESPLIEGUE INTELIGENTE (5 COLUMNAS DESDENSIFICADAS) -->
-    <div style="overflow-x: auto;">
+    <div class="os-table-container">
         <table class="tabla-cycsa">
             <thead>
                 <tr>
@@ -247,7 +367,9 @@
             </thead>
             <tbody>
                 <?php if (!empty($ordenes)): ?>
-                    <?php foreach ($ordenes as $os): ?>
+                    <?php foreach ($ordenes as $os): 
+                        $esFinalizadaOArchivo = in_array($os['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true);
+                    ?>
                         <?php
                         // Determinar estado de muestreo para Casos A, B y C
                         $estadoMuestreo = 'sin_decidir';
@@ -433,10 +555,10 @@
 
                                     <!-- MENÚ DESPLEGABLE MÁS ACCIONES (BOOTSTRAP 5 DROPDOWN) -->
                                     <div class="dropdown" style="display: inline-block;">
-                                        <button class="dropdown-btn-mas dropdown-toggle-no-caret" type="button" id="dropdownMenuOS<?= $os['id'] ?>" data-bs-toggle="dropdown" aria-expanded="false" title="Más opciones de la Orden de Servicio">
+                                        <button class="dropdown-btn-mas dropdown-toggle-no-caret" type="button" id="dropdownMenuOS<?= $os['id'] ?>" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" title="Más opciones de la Orden de Servicio">
                                             <i class="fa-solid fa-ellipsis-vertical"></i>
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="dropdownMenuOS<?= $os['id'] ?>" style="font-size: 13px; min-width: 220px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 6px 0; z-index: 1050;">
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm os-acciones-menu" aria-labelledby="dropdownMenuOS<?= $os['id'] ?>">
                                             <li>
                                                 <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>">
                                                     <i class="fa-solid fa-file-lines me-2" style="color:var(--cycsa-azul);"></i> Ver Documento O/S (FM-39)
@@ -491,8 +613,8 @@
                                             
                                             <li><hr class="dropdown-divider my-1"></li>
                                             <li>
-                                                <a class="dropdown-item py-2" href="/Cycsa/publico/operaciones">
-                                                    <i class="fa-solid fa-flask-vial me-2 text-info"></i> Ir a Operaciones / Lab
+                                                <a class="dropdown-item py-2" href="/Cycsa/publico/operaciones/ver?id_os=<?= $os['id'] ?>">
+                                                    <i class="fa-solid fa-arrow-up-right-from-square me-2 text-primary"></i> Ver en Operaciones (Página Completa)
                                                 </a>
                                             </li>
                                         </ul>
@@ -844,10 +966,17 @@
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #64748b; padding: 50px 20px;">
-                            <i class="fa-solid fa-folder-open" style="font-size: 36px; margin-bottom: 12px; display: block; opacity: 0.5;"></i>
-                            <div style="font-size: 15px; font-weight: 600; color: #334155;">No se encontraron Órdenes de Servicio registradas</div>
-                            <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Las nuevas órdenes aprobadas desde cotizaciones aparecerán aquí automáticamente.</div>
+                        <td colspan="5" style="text-align: center; color: #64748b; padding: 45px 20px;">
+                            <div style="font-size: 38px; color: #cbd5e1; margin-bottom: 12px;"><i class="fa-solid fa-folder-open"></i></div>
+                            <div style="font-size: 16px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                                <?= ($tabActiva === 'historico') ? 'Histórico de Órdenes Vacío' : (($tabActiva === 'muestreo') ? 'No hay órdenes pendientes de muestreo' : 'No se encontraron Órdenes de Servicio activas') ?>
+                            </div>
+                            <p style="font-size: 13.5px; color: #64748b; margin-bottom: 14px;">
+                                <?= !empty($busqueda) ? 'No hay resultados que coincidan con la búsqueda actual.' : 'Explore las demás pestañas o genere una nueva Orden de Servicio desde Cotizaciones.' ?>
+                            </p>
+                            <?php if ($tabActiva !== 'todas'): ?>
+                                <a href="/Cycsa/publico/ordenes-servicio?tab=todas" class="btn-cycsa btn-cycsa-secondary" style="font-size: 12.5px;"><i class="fa-solid fa-list-ul"></i> Ver Todas las Órdenes</a>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endif; ?>
@@ -1126,7 +1255,7 @@
                 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom: 20px;">
                     <!-- Columna Concreto -->
-                    <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                    <div id="hs_col_concreto" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; transition: all 0.2s;">
                         <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--cycsa-azul); font-family:'Outfit';"><i class="fa-solid fa-cube"></i> 3.1 Muestra de Concreto, Adoquines, Bloques</h4>
                         <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
                             <label><input type="checkbox" name="req_resistencia_concreto" value="1" id="hs_req_concreto"> Resistencia de conc</label>
@@ -1140,7 +1269,7 @@
                     </div>
 
                     <!-- Columna Suelos -->
-                    <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                    <div id="hs_col_suelo" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; transition: all 0.2s;">
                         <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--cycsa-azul); font-family:'Outfit';"><i class="fa-solid fa-mountain"></i> 3.2 Muestras de Suelo</h4>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12.5px;">
                             <label><input type="checkbox" name="req_granulometria" value="1" id="hs_req_granulometria"> Granulometria</label>
@@ -1778,6 +1907,7 @@
         window.clienteIdActualHoja = data.cliente_id || '';
 
         poblarSelectorPlantillaGlobal(window.ensayosDisponiblesOS, window.clienteIdActualHoja);
+        aplicarFiltroWhitelistReq(window.ensayosDisponiblesOS, !!data.es_nueva);
 
         // Set id_hoja hidden field
         const elIdHoja = document.getElementById('hs_id_hoja');
@@ -2558,6 +2688,19 @@
 
     // Validación obligatoria en el envío del formulario RT-FM-13
     document.addEventListener('DOMContentLoaded', () => {
+        // Inicializar dropdowns de acciones con estrategia fixed para evitar clipping por overflow
+        if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+            document.querySelectorAll('.dropdown-btn-mas').forEach(function(btn) {
+                try {
+                    new bootstrap.Dropdown(btn, {
+                        boundary: 'viewport',
+                        popperConfig: function(defaultBsPopperConfig) {
+                            return Object.assign({}, defaultBsPopperConfig, { strategy: 'fixed' });
+                        }
+                    });
+                } catch (e) {}
+            });
+        }
         const formHS = document.getElementById('form-hoja-solicitud');
         if (formHS) {
             formHS.addEventListener('submit', function(e) {
@@ -2582,6 +2725,38 @@
             });
         }
     });
+
+    
+    function aplicarFiltroWhitelistReq(ensayos, esNueva) {
+        const colConc = document.getElementById('hs_col_concreto');
+        const colSuel = document.getElementById('hs_col_suelo');
+        if (!colConc || !colSuel || !Array.isArray(ensayos) || ensayos.length === 0) return;
+
+        const textoTotal = ensayos.map(e => ((e.nombre || '') + ' ' + (e.norma || '') + ' ' + (e.descripcion_ensayo || '') + ' ' + (e.norma_astm || '')).toLowerCase()).join(' ');
+        const tieneConcreto = /concreto|compresi[oó]n|cilindro|viga|adoqu[ií]n|bloque|flexi[oó]n|c39|c78/i.test(textoTotal);
+        const tieneSuelo = /suelo|granulometr[ií]a|l[ií]mite|atterberg|humedad|proctor|cbr|densidad|corte|infiltraci[oó]n|sucs|d698|d1557|d6938|d1556|d4318/i.test(textoTotal);
+
+        if (tieneConcreto && !tieneSuelo) {
+            colConc.style.border = '2px solid #0284c7';
+            colConc.style.background = '#f0f9ff';
+            colSuel.style.opacity = '0.65';
+            if (esNueva) {
+                const elConc = document.getElementById('hs_req_concreto') || document.getElementById('hs_req_resistencia_concreto');
+                if (elConc && !elConc.checked) elConc.checked = true;
+            }
+        } else if (tieneSuelo && !tieneConcreto) {
+            colSuel.style.border = '2px solid #0284c7';
+            colSuel.style.background = '#f0f9ff';
+            colConc.style.opacity = '0.65';
+        } else {
+            colConc.style.border = '1px solid #e2e8f0';
+            colConc.style.background = '#f8fafc';
+            colConc.style.opacity = '1';
+            colSuel.style.border = '1px solid #e2e8f0';
+            colSuel.style.background = '#f8fafc';
+            colSuel.style.opacity = '1';
+        }
+    }
 
     function cerrarModalHojaSolicitud() {
         modHS.style.display = 'none';

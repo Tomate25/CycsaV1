@@ -29,7 +29,28 @@ class OrdenesServicioControlador extends ControladorBase {
         
         $modelo = new OrdenServicioModelo();
         $busqueda = trim($_GET['q'] ?? '');
-        $ordenes = $modelo->obtenerTodas($busqueda);
+        $tabSolicitada = strtolower(trim($_GET['tab'] ?? 'activas'));
+        $whitelistTabs = ['activas', 'muestreo', 'historico', 'todas'];
+        if (!in_array($tabSolicitada, $whitelistTabs, true)) {
+            $tabSolicitada = 'activas';
+        }
+
+        $idOSAuto = (int)($_GET['id_os'] ?? 0);
+        if ($idOSAuto > 0) {
+            $tabDeOS = $modelo->determinarTabDeOS($idOSAuto);
+            if (!isset($_GET['tab']) || ($tabSolicitada !== 'todas' && $tabSolicitada !== $tabDeOS)) {
+                $tabSolicitada = $tabDeOS;
+            }
+        }
+
+        $filtros = [
+            'estado' => trim($_GET['estado'] ?? ''),
+            'desde' => trim($_GET['desde'] ?? ''),
+            'hasta' => trim($_GET['hasta'] ?? '')
+        ];
+
+        $ordenes = $modelo->obtenerTodas($busqueda, $tabSolicitada, $filtros);
+        $conteosTabs = $modelo->obtenerConteosTabsOSLista();
 
         // Cargar técnicos activos para el autocompletado en la Hoja RT-FM-13
         $opModelo = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
@@ -46,7 +67,10 @@ class OrdenesServicioControlador extends ControladorBase {
             'ordenes' => $ordenes,
             'tecnicos' => $tecnicos,
             'busqueda' => $busqueda,
-            'id_os_auto' => (int)($_GET['id_os'] ?? 0)
+            'tabActiva' => $tabSolicitada,
+            'conteosTabs' => $conteosTabs,
+            'filtros' => $filtros,
+            'id_os_auto' => $idOSAuto
         ]);
     }
 

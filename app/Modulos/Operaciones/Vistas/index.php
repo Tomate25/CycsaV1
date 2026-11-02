@@ -189,6 +189,7 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]);
         background: rgba(255, 255, 255, 0.25);
         color: white;
     }
+    /* deprecated E.1 — no borrar para retrocompatibilidad de estilos */
     .view-switcher-group {
         display: inline-flex;
         background: #f1f5f9;

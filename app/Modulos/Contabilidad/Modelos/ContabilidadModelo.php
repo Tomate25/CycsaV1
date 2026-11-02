@@ -337,7 +337,13 @@ class ContabilidadModelo extends ModeloBase {
                 // Encontrar la cuenta estándar 10102 o 103 de cobro
                 $stmtF = $this->db->prepare("SELECT id FROM cuentas_contables WHERE (codigo LIKE '10102%' OR codigo LIKE '103%') AND tipo = 'DETALLE' ORDER BY codigo ASC LIMIT 1");
                 $stmtF->execute();
-                $cxcAcc = (int)($stmtF->fetchColumn() ?: 13);
+                $cxcAcc = ConfigCuentasModelo::obtenerIdPorClave('CLIENTES', $this->db);
+                if (!$cxcAcc) {
+                    $cxcAcc = (int)$stmtF->fetchColumn();
+                }
+                if (!$cxcAcc) {
+                    throw new \RuntimeException("La cuenta contable 'CLIENTES' no está configurada en config_cuentas.");
+                }
             }
 
 
@@ -539,7 +545,13 @@ class ContabilidadModelo extends ModeloBase {
             }
 
             // Usar ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES') dinámicamente en lugar del ID hardcodeado 121
-            $cuentaProveedoresId = ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES') ?? 121;
+            $cuentaProveedoresId = ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES', $this->db);
+            if (!$cuentaProveedoresId) {
+                $cuentaProveedoresId = (int)$this->db->query("SELECT id FROM cuentas_contables WHERE codigo = '2010101' LIMIT 1")->fetchColumn();
+            }
+            if (!$cuentaProveedoresId) {
+                throw new \RuntimeException("La cuenta contable 'PROVEEDORES' no está configurada en config_cuentas.");
+            }
 
             // Register Journal Entry (Debit Expense / Credit Accounts Payable)
             $this->registrarAsientoContable(
@@ -673,15 +685,14 @@ class ContabilidadModelo extends ModeloBase {
                             $cuentaIrId = (int)($stmtIr10->fetchColumn() ?: 151);
                         }
                     } else {
-                        $cuentaIrId = ConfigCuentasModelo::obtenerIdPorClave('IR_FUENTE_2', $this->db) ?? 154;
-                        if ($cuentaIrId === 154) {
-                            $stmtCheck = $this->db->prepare("SELECT id FROM cuentas_contables WHERE id = 154 LIMIT 1");
-                            $stmtCheck->execute();
-                            if (!$stmtCheck->fetchColumn()) {
-                                $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '2010502' LIMIT 1");
-                                $stmtCode->execute();
-                                $cuentaIrId = (int)($stmtCode->fetchColumn() ?: 154);
-                            }
+                        $cuentaIrId = ConfigCuentasModelo::obtenerIdPorClave('IR_FUENTE_2', $this->db);
+                        if (!$cuentaIrId) {
+                            $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '2010502' LIMIT 1");
+                            $stmtCode->execute();
+                            $cuentaIrId = (int)$stmtCode->fetchColumn();
+                        }
+                        if (!$cuentaIrId) {
+                            throw new \RuntimeException("La cuenta contable 'IR_FUENTE_2' no está configurada en config_cuentas.");
                         }
                     }
 
@@ -795,15 +806,14 @@ class ContabilidadModelo extends ModeloBase {
 
             // DEBE: IVA acreditable por la suma del IVA de las líneas
             if ($totalIva > 0.0001) {
-                $cuentaIvaId = ConfigCuentasModelo::obtenerIdPorClave('IVA_ACREDITABLE', $this->db) ?? 206;
-                if ($cuentaIvaId === 206) {
-                    $stmtCheck = $this->db->prepare("SELECT id FROM cuentas_contables WHERE id = 206 LIMIT 1");
-                    $stmtCheck->execute();
-                    if (!$stmtCheck->fetchColumn()) {
-                        $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '1010601' LIMIT 1");
-                        $stmtCode->execute();
-                        $cuentaIvaId = (int)($stmtCode->fetchColumn() ?: 206);
-                    }
+                $cuentaIvaId = ConfigCuentasModelo::obtenerIdPorClave('IVA_ACREDITABLE', $this->db);
+                if (!$cuentaIvaId) {
+                    $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '1010601' LIMIT 1");
+                    $stmtCode->execute();
+                    $cuentaIvaId = (int)$stmtCode->fetchColumn();
+                }
+                if (!$cuentaIvaId) {
+                    throw new \RuntimeException("La cuenta contable 'IVA_ACREDITABLE' no está configurada en config_cuentas.");
                 }
                 $asientoLineas[] = [
                     'id_cuenta_contable' => $cuentaIvaId,
@@ -846,15 +856,14 @@ class ContabilidadModelo extends ModeloBase {
             }
 
             // HABER: Proveedores por el saldo neto a pagar
-            $cuentaProveedoresId = ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES', $this->db) ?? 121;
-            if ($cuentaProveedoresId === 121) {
-                $stmtCheck = $this->db->prepare("SELECT id FROM cuentas_contables WHERE id = 121 LIMIT 1");
-                $stmtCheck->execute();
-                if (!$stmtCheck->fetchColumn()) {
-                    $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '2010101' LIMIT 1");
-                    $stmtCode->execute();
-                    $cuentaProveedoresId = (int)($stmtCode->fetchColumn() ?: 121);
-                }
+            $cuentaProveedoresId = ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES', $this->db);
+            if (!$cuentaProveedoresId) {
+                $stmtCode = $this->db->prepare("SELECT id FROM cuentas_contables WHERE codigo = '2010101' LIMIT 1");
+                $stmtCode->execute();
+                $cuentaProveedoresId = (int)$stmtCode->fetchColumn();
+            }
+            if (!$cuentaProveedoresId) {
+                throw new \RuntimeException("La cuenta contable 'PROVEEDORES' no está configurada en config_cuentas.");
             }
 
             $asientoLineas[] = [
@@ -1735,5 +1744,69 @@ class ContabilidadModelo extends ModeloBase {
             return null;
         }
     }
-}
 
+    /**
+     * Registra un asiento de reverso espejo (asiento inverso aditivo) sin destruir el historial contable.
+     * Invierte exactamente los débitos y créditos de la partida original para neutralizar su saldo contable.
+     *
+     * @param int $idAsientoOriginal ID de la partida a revertir
+     * @param string $motivo Causa o justificación de la anulación
+     * @param int $idUsuario Usuario que autoriza la reversión
+     * @return int ID de la nueva partida contable de reverso
+     */
+    public function registrarAsientoReverso(int $idAsientoOriginal, string $motivo, int $idUsuario = 1): int {
+        $stmtP = $this->db->prepare("SELECT * FROM partidas_diario WHERE id = :id");
+        $stmtP->execute(['id' => $idAsientoOriginal]);
+        $partidaOriginal = $stmtP->fetch(\PDO::FETCH_ASSOC);
+        if (!$partidaOriginal) {
+            throw new \RuntimeException("La partida contable ID {$idAsientoOriginal} no existe para generar reverso.");
+        }
+
+        $stmtD = $this->db->prepare("SELECT * FROM partidas_diario_detalles WHERE id_partida = :id");
+        $stmtD->execute(['id' => $idAsientoOriginal]);
+        $detallesOriginales = $stmtD->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($detallesOriginales)) {
+            throw new \RuntimeException("La partida contable ID {$idAsientoOriginal} no contiene detalles para revertir.");
+        }
+
+        $conceptoReverso = "REVERSO: " . ($motivo ?: 'Anulación/Corrección') . " (Ref: PD-" . str_pad((string)$idAsientoOriginal, 5, '0', STR_PAD_LEFT) . " - " . ($partidaOriginal['concepto'] ?? '') . ")";
+        $fechaReverso = date('Y-m-d');
+        $origenReverso = 'REVERSO';
+        $origenId = $partidaOriginal['id_origen'] ?? $idAsientoOriginal;
+
+        $detallesInversos = [];
+        foreach ($detallesOriginales as $det) {
+            $detallesInversos[] = [
+                'id_cuenta_contable' => (int)$det['id_cuenta_contable'],
+                'debe' => (float)$det['haber'], // Invertido: crédito original pasa a débito
+                'haber' => (float)$det['debe'],  // Invertido: débito original pasa a crédito
+            ];
+        }
+
+        $idPartidaReverso = $this->registrarAsientoContable($fechaReverso, $conceptoReverso, $origenReverso, $origenId, $detallesInversos);
+        if (!$idPartidaReverso) {
+            throw new \RuntimeException("Error al registrar la partida contable de reverso espejo.");
+        }
+
+        return $idPartidaReverso;
+    }
+
+    /**
+     * Obtiene una partida de diario por su ID.
+     */
+    public function obtenerPartidaPorId(int $id): ?array {
+        $stmt = $this->db->prepare("SELECT * FROM partidas_diario WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /**
+     * Obtiene los detalles de una partida de diario por el ID de la partida.
+     */
+    public function obtenerDetallesPartida(int $idPartida): array {
+        $stmt = $this->db->prepare("SELECT * FROM partidas_diario_detalles WHERE id_partida = :id");
+        $stmt->execute(['id' => $idPartida]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+}

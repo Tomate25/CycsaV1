@@ -166,7 +166,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                     </td>
                     <td style="vertical-align: top; padding: 12px; font-size: 12px; color: #78350f;">
                         <?php if (!empty($detalle['condiciones_muestra'])): ?>
-                            <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 6px 10px; border-radius: 4px;">
+                            <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 6px 10px; border-radius: 4px; white-space: pre-wrap; line-height: 1.4;">
                                 <?= nl2br(htmlspecialchars($detalle['condiciones_muestra'], ENT_QUOTES, 'UTF-8')) ?>
                             </div>
                         <?php else: ?>

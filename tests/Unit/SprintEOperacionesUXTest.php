@@ -146,4 +146,34 @@ class SprintEOperacionesUXTest extends TestCase {
         $this->assertTrue($refMod->hasMethod('obtenerOSPorId'), 'OperacionModelo debe implementar obtenerOSPorId');
         $this->assertTrue($refMod->hasMethod('obtenerPorId'), 'OperacionModelo debe implementar alias aditivo obtenerPorId');
     }
+
+    public function testOperacionModeloObtenerOSPorIdRetornaDatosReales(): void {
+        $modelo = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
+        $os = $modelo->obtenerOSPorId(1);
+        if ($os !== null) {
+            $this->assertArrayHasKey('id', $os);
+            $this->assertArrayHasKey('codigo_os', $os);
+            $this->assertArrayHasKey('cliente_nombre', $os);
+            $this->assertArrayHasKey('condicion_comercial', $os);
+            // Verificar alias obtenerPorId
+            $os2 = $modelo->obtenerPorId(1);
+            $this->assertEquals($os['id'], $os2['id']);
+            $this->assertEquals($os['codigo_os'], $os2['codigo_os']);
+        } else {
+            $this->assertNull($os);
+        }
+    }
+
+    public function testHojasServicioRedirectsAreDocumentedAsRetrocompatibility(): void {
+        $hsCtrlPath = dirname(__DIR__, 2) . '/app/Modulos/HojasServicio/Controladores/HojasServicioControlador.php';
+        $content = file_get_contents($hsCtrlPath);
+        $this->assertStringContainsString('Capa de retrocompatibilidad HTTP 302', $content);
+        $this->assertStringContainsString('crearRedirect', $content);
+        $this->assertStringContainsString('detalleRedirect', $content);
+    }
+
+    public function testOperacionesViewPreservesDeprecatedSwitcherAsComment(): void {
+        $content = file_get_contents($this->indexViewPath);
+        $this->assertStringContainsString('/* deprecated E.1 — no borrar para retrocompatibilidad de estilos */', $content);
+    }
 }

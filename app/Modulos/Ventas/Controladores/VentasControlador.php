@@ -82,7 +82,7 @@ class VentasControlador extends ControladorBase {
         }
 
         $db = Conexion::obtenerInstancia();
-        $stmtOS = $db->prepare("SELECT os.*, cot.codigo AS cot_codigo, cot.total AS cot_total, cot.id_cliente,
+        $stmtOS = $db->prepare("SELECT os.*, cot.codigo AS cot_codigo, cot.subtotal AS cot_subtotal, cot.iva AS cot_iva, cot.total AS cot_total, cot.id_cliente,
                                       COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente) AS id_cliente_factura_efectivo,
                                       cli.nombre_razon_social AS cliente_nombre, cli.numero_ruc AS cliente_ruc
                                FROM ordenes_servicio os
@@ -153,13 +153,50 @@ class VentasControlador extends ControladorBase {
                     'descripcion' => "Cobro de Factura $facturaNum (O/S {$os['codigo_os']}) - Banco {$bancoInfo['banco_nombre']}"]);
             }
 
-            $idCuentaDebe = $metodoPago === 'credito' ? 13 : 4;
-            if ($metodoPago === 'transferencia' && !empty($bancoInfo['id_cuenta_contable'])) {
-                $idCuentaDebe = (int)$bancoInfo['id_cuenta_contable'];
-            }
-            $idCuentaHaber = 208;
-            $stmt = $db->prepare('SELECT id FROM cuentas_contables WHERE id = :id');
-            $stmt->execute(['id' => $idCuentaHaber]);
+                        $cuentaClientesId = \Cycsa\Modulos\Contabilidad\Modelos\ConfigCuentasModelo::obtenerIdPorClave('CLIENTES', $db) ?: 13;
+            $cuentaCajaId = \Cycsa\Modulos\Contabilidad\Modelos\ConfigCuentasModelo::obtenerIdPorClave('CAJA_PRINCIPAL', $db) ?: 4;
+            $cuentaIngresoId = \Cycsa\Modulos\Contabilidad\Modelos\ConfigCuentasModelo::obtenerIdPorClave('INGRESO_LAB_G', $db);
+            if (!$cuentaIngresoId) {
+                $cuentaIngresoId = (int)($db->query("SELECT id FROM cuentas_contables WHERE codigo LIKE '40101%' AND tipo = 'DETALLE' LIMIT 1")->fetchColumn() ?: 208);
+            }
+            $cuentaIvaPagarId = \Cycsa\Modulos\Contabilidad\Modelos\ConfigCuentasModelo::obtenerIdPorClave('IVA_POR_PAGAR', $db) ?: 154;
+
+            $idCuentaDebe = $metodoPago === 'credito' ? $cuentaClientesId : $cuentaCajaId;
+            if ($metodoPago === 'transferencia' && !empty($bancoInfo['id_cuenta_contable'])) {
+                $idCuentaDebe = (int)$bancoInfo['id_cuenta_contable'];
+            }
+            $idCuentaHaber = $cuentaIngresoId;
+
+            $concepto = match ($metodoPago) {
+                'efectivo' => "Cobro Factura $facturaNum en Efectivo - O/S {$os['codigo_os']} - Cliente: {$os['cliente_nombre']}",
+                'transferencia' => "Cobro Factura $facturaNum vía Transferencia - O/S {$os['codigo_os']} - Ref: " . ($referencia ?: 'S/R'),
+                'credito' => "Emisión de Factura a Crédito $facturaNum ($diasCredito días) - O/S {$os['codigo_os']}",
+            };
+
+            $cotTotal = (float)($os['cot_total'] ?? 0);
+            $cotIva = (float)($os['cot_iva'] ?? 0);
+            $tieneIva = ($cotIva > 0.001 && $cotTotal > 0.001);
+
+            $partidasAsiento = [];
+            if ($tieneIva && $cuentaIvaPagarId) {
+                $ratioIva = $cotIva / $cotTotal;
+                $montoIva = round($monto * $ratioIva, 2);
+                $montoSubtotal = round($monto - $montoIva, 2);
+
+                $partidasAsiento = [
+                    ['id_cuenta_contable' => $idCuentaDebe, 'debe' => $monto, 'haber' => 0.0],
+                    ['id_cuenta_contable' => $idCuentaHaber, 'debe' => 0.0, 'haber' => $montoSubtotal],
+                    ['id_cuenta_contable' => $cuentaIvaPagarId, 'debe' => 0.0, 'haber' => $montoIva],
+                ];
+            } else {
+                $partidasAsiento = [
+                    ['id_cuenta_contable' => $idCuentaDebe, 'debe' => $monto, 'haber' => 0.0],
+                    ['id_cuenta_contable' => $idCuentaHaber, 'debe' => 0.0, 'haber' => $monto],
+                ];
+            }
+
+            $contabilidad = new \Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo();
+            $partidaId = $contabilidad->registrarAsientoContable($fecha, $concepto, 'FACTURACION', $cxcId, $partidasAsiento);
             if (!$stmt->fetchColumn()) {
                 $idCuentaHaber = (int)($db->query("SELECT id FROM cuentas_contables WHERE codigo LIKE '40101%' AND tipo = 'DETALLE' LIMIT 1")->fetchColumn() ?: 206);
             }

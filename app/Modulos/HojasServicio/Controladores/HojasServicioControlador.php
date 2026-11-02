@@ -40,6 +40,9 @@ class HojasServicioControlador extends ControladorBase {
         return;
     }
 
+    /**
+     * Capa de retrocompatibilidad HTTP 302: Redirige accesos legados a /hojas-servicio/crear hacia el flujo modal real en Órdenes de Servicio.
+     */
     public function crearRedirect(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
@@ -50,6 +53,9 @@ class HojasServicioControlador extends ControladorBase {
         $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
     }
 
+    /**
+     * Capa de retrocompatibilidad HTTP 302: Redirige accesos legados a /hojas-servicio/detalle hacia la descarga oficial PDF de la Hoja RT-FM-13.
+     */
     public function detalleRedirect(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));

@@ -32,12 +32,10 @@ class OrdenServicioModelo {
     /**
      * Obtiene todas las órdenes de servicio con datos de cotización y cliente
      */
-    public function obtenerTodas(string $busqueda = ''): array {
+    public function obtenerTodas(string $busqueda = '', string $tab = 'activas', array $filtros = []): array {
         $sql = "SELECT os.*, 
                        cot.codigo AS cotizacion_codigo, 
                        cli.nombre_razon_social AS cliente_nombre,
-                       cli_inf.nombre_razon_social AS cliente_informe_nombre,
-                       cli_fac.nombre_razon_social AS cliente_factura_nombre,
                        cli_inf.nombre_razon_social AS cliente_informe_nombre,
                        cli_fac.nombre_razon_social AS cliente_factura_nombre,
                        COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
@@ -67,19 +65,57 @@ class OrdenServicioModelo {
                     INNER JOIN (SELECT id_os, MAX(id) AS max_id FROM hojas_solicitud GROUP BY id_os) hs2 ON hs1.id = hs2.max_id
                 ) hs ON hs.id_os = os.id";
         
-        if (!empty($busqueda)) {
-            $sql .= " WHERE os.codigo_os LIKE :q OR cot.codigo LIKE :q OR cli.nombre_razon_social LIKE :q OR os.nombre_proyecto LIKE :q";
+        $where = [];
+        $params = [];
+
+        // Filtro por Tab
+        $tab = strtolower(trim($tab));
+        if ($tab === 'historico' || $tab === 'archivo') {
+            $where[] = "os.estado IN ('Finalizado', 'Archivado', 'Cerrado')";
+        } elseif ($tab === 'muestreo') {
+            $where[] = "(os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL)";
+            $where[] = "(os.requiere_muestreo = 1 OR os.requiere_muestreo = '1') AND (os.tecnico_muestreo IS NULL OR os.tecnico_muestreo = '' OR os.fecha_muestreo IS NULL OR pm.estado_muestreo IN ('Programado', 'En Proceso', 'En Campo') OR pm.id IS NULL)";
+        } elseif ($tab === 'todas') {
+            // Sin filtro de tab
+        } else {
+            // Default: 'activas'
+            $where[] = "(os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL)";
+        }
+
+        // Filtro por Búsqueda (con paréntesis en los ORs)
+        if ($busqueda !== '') {
+            $where[] = "(os.codigo_os LIKE :q1 OR cot.codigo LIKE :q2 OR cli.nombre_razon_social LIKE :q3 OR os.nombre_proyecto LIKE :q4)";
+            $term = '%' . trim($busqueda) . '%';
+            $params['q1'] = $term;
+            $params['q2'] = $term;
+            $params['q3'] = $term;
+            $params['q4'] = $term;
+        }
+
+        // Filtros adicionales: estado exacto
+        if (!empty($filtros['estado'])) {
+            $where[] = "os.estado = :f_estado";
+            $params['f_estado'] = $filtros['estado'];
+        }
+
+        // Filtros adicionales: desde / hasta (fecha_emision)
+        if (!empty($filtros['desde'])) {
+            $where[] = "os.fecha_emision >= :f_desde";
+            $params['f_desde'] = $filtros['desde'] . ' 00:00:00';
+        }
+        if (!empty($filtros['hasta'])) {
+            $where[] = "os.fecha_emision <= :f_hasta";
+            $params['f_hasta'] = $filtros['hasta'] . ' 23:59:59';
+        }
+
+        if (!empty($where)) {
+            $sql .= " WHERE " . implode(' AND ', $where);
         }
 
         $sql .= " ORDER BY os.id DESC";
 
         $stmt = $this->db->prepare($sql);
-        if (!empty($busqueda)) {
-            $term = '%' . $busqueda . '%';
-            $stmt->execute(['q' => $term]);
-        } else {
-            $stmt->execute();
-        }
+        $stmt->execute($params);
 
         $ordenes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($ordenes as &$osItem) {
@@ -731,5 +767,56 @@ class OrdenServicioModelo {
     public function obtenerVehiculos(): array {
         $stmt = $this->db->query("SELECT id, marca, modelo, placa FROM vehiculos WHERE activo = 1 ORDER BY marca ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Obtiene los conteos en tiempo real para las pestañas de Órdenes de Servicio.
+     */
+    public function obtenerConteosTabsOSLista(): array {
+        $sql = "SELECT 
+                    COUNT(CASE WHEN os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL THEN 1 END) AS activas,
+                    COUNT(CASE WHEN (os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado') OR os.estado IS NULL) 
+                                AND (os.requiere_muestreo = 1 OR os.requiere_muestreo = '1') 
+                                AND (os.tecnico_muestreo IS NULL OR os.tecnico_muestreo = '' OR os.fecha_muestreo IS NULL OR pm.estado_muestreo IN ('Programado', 'En Proceso', 'En Campo') OR pm.id IS NULL) THEN 1 END) AS muestreo,
+                    COUNT(CASE WHEN os.estado IN ('Finalizado', 'Archivado', 'Cerrado') THEN 1 END) AS historico,
+                    COUNT(*) AS todas
+                FROM ordenes_servicio os
+                LEFT JOIN programacion_muestreo pm ON pm.id_orden_servicio = os.id";
+        try {
+            $stmt = $this->db->query($sql);
+            $res = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return [
+                'activas' => (int)($res['activas'] ?? 0),
+                'muestreo' => (int)($res['muestreo'] ?? 0),
+                'historico' => (int)($res['historico'] ?? 0),
+                'todas' => (int)($res['todas'] ?? 0),
+            ];
+        } catch (\Throwable $e) {
+            return ['activas' => 0, 'muestreo' => 0, 'historico' => 0, 'todas' => 0];
+        }
+    }
+
+    /**
+     * Determina a qué pestaña corresponde una O/S por su ID para auto-apertura.
+     */
+    public function determinarTabDeOS(int $idOS): string {
+        try {
+            $stmt = $this->db->prepare("SELECT estado, requiere_muestreo, tecnico_muestreo, fecha_muestreo FROM ordenes_servicio WHERE id = :id");
+            $stmt->execute(['id' => $idOS]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (!$row) {
+                return 'activas';
+            }
+            $estado = $row['estado'] ?? '';
+            if (in_array($estado, ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+                return 'historico';
+            }
+            if (($row['requiere_muestreo'] == 1) && (empty($row['tecnico_muestreo']) || empty($row['fecha_muestreo']))) {
+                return 'muestreo';
+            }
+            return 'activas';
+        } catch (\Throwable $e) {
+            return 'activas';
+        }
     }
 }
