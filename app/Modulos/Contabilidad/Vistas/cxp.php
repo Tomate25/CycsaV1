@@ -92,6 +92,9 @@ foreach ($cxpList as $item) {
             </a>
 
             <?php if (tienePermiso('contabilidad', 'crear_editar')): ?>
+            <button type="button" onclick="abrirModalAnticipoProv()" style="background: #0284c7; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: background 0.3s; font-size: 13.5px;">
+                <i class="fa-solid fa-hand-holding-dollar"></i> Registrar Anticipo
+            </button>
             <button id="btnAbrirModal" style="background: var(--cycsa-azul); color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: background 0.3s; font-size: 13.5px;">
                 <i class="fa-solid fa-plus"></i> Registrar CXP
             </button>
@@ -766,4 +769,71 @@ foreach ($cxpList as $item) {
             document.getElementById('input_lineas_json').value = JSON.stringify(lineasArray);
         }
     };
+
+    function abrirModalAnticipoProv() {
+        document.getElementById('modalAnticipoProv').style.display = 'block';
+    }
+    function cerrarModalAnticipoProv() {
+        document.getElementById('modalAnticipoProv').style.display = 'none';
+    }
 </script>
+
+<!-- MODAL ANTICIPO A PROVEEDOR (G.4 / CONTA RESIDUALES) -->
+<div id="modalAnticipoProv" class="modal-premium" style="display: none;">
+    <div class="modal-premium-content" style="width: 480px; max-width: 95vw;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;">
+                <i class="fa-solid fa-hand-holding-dollar text-primary me-2"></i> Registrar Anticipo a Proveedor
+            </h3>
+            <button type="button" onclick="cerrarModalAnticipoProv()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;">&times;</button>
+        </div>
+        <form method="POST" action="/Cycsa/publico/contabilidad/anticipo-proveedor">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+
+            <div class="form-group">
+                <label style="font-weight: 600; font-size: 13px;">Proveedor Destino *</label>
+                <select name="id_proveedor" class="form-control" required>
+                    <option value="">-- Seleccionar Proveedor --</option>
+                    <?php foreach ($proveedores ?? [] as $prov): ?>
+                        <option value="<?= (int)$prov['id'] ?>"><?= htmlspecialchars($prov['nombre'] ?? ('Proveedor #' . $prov['id']), ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label style="font-weight: 600; font-size: 13px;">Monto de Anticipo (C$) *</label>
+                    <input type="number" step="0.01" min="0.01" name="monto_anticipo" class="form-control" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label style="font-weight: 600; font-size: 13px;">Fecha de Pago *</label>
+                    <input type="date" name="fecha_anticipo" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label style="font-weight: 600; font-size: 13px;">Cuenta Bancaria / Caja de Origen *</label>
+                <select name="id_banco_cuenta" class="form-control" required>
+                    <option value="">-- Seleccionar Cuenta de Origen --</option>
+                    <?php foreach ($bancos ?? [] as $banco): ?>
+                        <option value="<?= (int)$banco['id'] ?>"><?= htmlspecialchars($banco['banco_nombre'] . ' - ' . $banco['numero_cuenta'] . ' (Saldo: C$ ' . number_format($banco['saldo_actual'], 2) . ')', ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label style="font-weight: 600; font-size: 13px;">Referencia / N° Transacción</label>
+                <input type="text" name="referencia" class="form-control" placeholder="Ej. CH-10294 o TRANS-8812">
+            </div>
+
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; font-size: 12px; color: #166534;">
+                <i class="fa-solid fa-circle-info me-1"></i> Genera automáticamente la partida contable: <strong>Debe:</strong> Anticipos a Proveedores (1010501) | <strong>Haber:</strong> Banco/Caja.
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" onclick="cerrarModalAnticipoProv()" class="btn btn-secondary" style="padding: 8px 16px; border-radius: 6px; font-size: 13.5px;">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="padding: 8px 20px; border-radius: 6px; font-size: 13.5px; background: #0284c7; border: none; font-weight: 600;">Registrar Asiento de Anticipo</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -171,6 +171,7 @@ $app->enrutador->get('/contabilidad/cxp/exportar', [ContabilidadControlador::cla
 $app->enrutador->get('/contabilidad/cxp/detalle', [ContabilidadControlador::class, 'detalleCxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-cxp', [ContabilidadControlador::class, 'guardarCxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/pagar-cxp', [ContabilidadControlador::class, 'pagarCxp'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
+$app->enrutador->post('/contabilidad/anticipo-proveedor', [ContabilidadControlador::class, 'anticipoProveedor'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/bancos', [ContabilidadControlador::class, 'bancos'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-banco', [ContabilidadControlador::class, 'guardarBanco'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->post('/contabilidad/guardar-transaccion', [ContabilidadControlador::class, 'guardarTransaccion'], [AuthMiddleware::class, ContabilidadMiddleware::class]);

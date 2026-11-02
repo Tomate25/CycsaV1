@@ -128,6 +128,17 @@ class ConfigCuentasModelo extends ModeloBase {
     }
 
     /**
+     * Obtiene obligatoriamente el ID de la cuenta contable o lanza excepción si no está configurada (Conta Residuales).
+     */
+    public static function obtenerIdPorClaveOrFail(string $clave, ?PDO $db = null): int {
+        $id = self::obtenerIdPorClave($clave, $db);
+        if ($id === null || $id <= 0) {
+            throw new \RuntimeException("Cuenta contable obligatoria no configurada en config_cuentas: '{$clave}'");
+        }
+        return $id;
+    }
+
+    /**
      * Lógica interna de consulta y auto-resolución de ID por clave mnemónica.
      */
     public function consultarIdPorClaveInterno(string $clave): ?int {

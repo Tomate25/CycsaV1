@@ -126,6 +126,7 @@ class ContabilidadControlador extends ControladorBase {
             'clientes' => $clienteModelo->obtenerTodos(),
             'cuentasDetalle' => $modelo->obtenerCuentasDetalle(),
             'bancos' => $modelo->obtenerCuentasBancarias(),
+            'proveedores' => $modelo->obtenerProveedoresActivos(),
             'busqueda' => $busqueda,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
@@ -223,6 +224,7 @@ class ContabilidadControlador extends ControladorBase {
             'cxpList' => $modelo->obtenerCxp($busqueda),
             'cuentasDetalle' => $modelo->obtenerCuentasDetalle(),
             'bancos' => $modelo->obtenerCuentasBancarias(),
+            'proveedores' => $modelo->obtenerProveedoresActivos(),
             'busqueda' => $busqueda,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null
@@ -427,6 +429,48 @@ class ContabilidadControlador extends ControladorBase {
                 $_SESSION['exito'] = 'Pago registrado, egreso del banco y documento emitido exitosamente.';
             } else {
                 $_SESSION['error'] = 'Error al procesar el pago. Verifique saldos o conexión.';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/contabilidad/cxp');
+        }
+    }
+
+    public function anticipoProveedor(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            $modelo = new ContabilidadModelo();
+
+            if (!isset($datos['csrf_token']) || $datos['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/contabilidad/cxp');
+                return;
+            }
+
+            $idProveedor = (int)($datos['id_proveedor'] ?? 0);
+            $monto = (float)($datos['monto_anticipo'] ?? 0);
+            $idBanco = (int)($datos['id_banco_cuenta'] ?? 0);
+            $ref = trim($datos['referencia'] ?? '');
+            $fecha = !empty($datos['fecha_anticipo']) ? $datos['fecha_anticipo'] : date('Y-m-d');
+
+            if ($idProveedor <= 0 || $monto <= 0 || $idBanco <= 0) {
+                $_SESSION['error'] = 'Proveedor, monto y cuenta bancaria de origen son obligatorios para el anticipo.';
+                $respuesta->redirigir('/Cycsa/publico/contabilidad/cxp');
+                return;
+            }
+
+            try {
+                $asientoId = $modelo->registrarAnticipoProveedor($idProveedor, $monto, $idBanco, $ref, $fecha);
+                if ($asientoId > 0) {
+                    registrarBitacora('contabilidad', 'anticipo_proveedor', "Anticipo de C$ {$monto} registrado a proveedor #{$idProveedor} (Asiento #{$asientoId})");
+                    $_SESSION['exito'] = "Anticipo a proveedor registrado exitosamente con Asiento Contable #{$asientoId}.";
+                } else {
+                    $_SESSION['error'] = 'No se pudo generar el asiento contable del anticipo.';
+                }
+            } catch (\Throwable $e) {
+                $_SESSION['error'] = 'Error al registrar anticipo: ' . $e->getMessage();
             }
 
             $respuesta->redirigir('/Cycsa/publico/contabilidad/cxp');

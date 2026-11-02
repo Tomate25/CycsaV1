@@ -1028,7 +1028,7 @@ class ContabilidadModelo extends ModeloBase {
             ]);
 
             // Register Asiento for Pago CXP (G.1b dinámico)
-            $cuentaProvPagoId = ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES', $this->db) ?: 121; // TODO config: fallback legacy catálogo proveedores
+            $cuentaProvPagoId = ConfigCuentasModelo::obtenerIdPorClaveOrFail('PROVEEDORES', $this->db);
             $this->registrarAsientoContable(
                 $fecha,
                 "Pago a Proveedor Factura N° " . $cxp['factura_numero'] . " - Ref: " . $referencia,
@@ -1468,11 +1468,11 @@ class ContabilidadModelo extends ModeloBase {
 
             $cxcDefaultAcc = $findAccount('10102', 'CLIENTES');
             $cxpDefaultAcc = $findAccount('201', 'PROVEEDORES');
-            $incomeDefaultAcc = ConfigCuentasModelo::obtenerIdPorClave('INGRESO_LAB_G', $this->db) ?: 208; // TODO config: fallback legacy catálogo ingresos
-            $expenseDefaultAcc = ConfigCuentasModelo::obtenerIdPorClave('COSTO_MAT_LAB', $this->db) ?: 221; // TODO config: fallback legacy catálogo costos
-            $capitalDefaultAcc = (int)($this->db->query("SELECT id FROM cuentas_contables WHERE codigo LIKE '301%' AND tipo = 'DETALLE' LIMIT 1")->fetchColumn() ?: 183);
-            $ivaPagarAcc = ConfigCuentasModelo::obtenerIdPorClave('IVA_POR_PAGAR', $this->db) ?: 154; // TODO config: fallback legacy catálogo iva por pagar
-            $ivaAcreditableAcc = ConfigCuentasModelo::obtenerIdPorClave('IVA_ACREDITABLE', $this->db) ?: 82; // TODO config: fallback legacy catálogo iva acreditable
+            $incomeDefaultAcc = ConfigCuentasModelo::obtenerIdPorClaveOrFail('INGRESO_LAB_G', $this->db);
+            $expenseDefaultAcc = ConfigCuentasModelo::obtenerIdPorClaveOrFail('COSTO_MAT_LAB', $this->db);
+            $capitalDefaultAcc = (int)($this->db->query("SELECT id FROM cuentas_contables WHERE codigo LIKE '301%' AND tipo = 'DETALLE' LIMIT 1")->fetchColumn() ?: 183); // TODO config: capital contable estándar
+            $ivaPagarAcc = ConfigCuentasModelo::obtenerIdPorClaveOrFail('IVA_POR_PAGAR', $this->db);
+            $ivaAcreditableAcc = ConfigCuentasModelo::obtenerIdPorClaveOrFail('IVA_ACREDITABLE', $this->db);
 
             // 2. Saldos Iniciales de Bancos
             $bancos = $this->db->query("SELECT id, banco_nombre, numero_cuenta, id_cuenta_contable, saldo_inicial, fecha_registro FROM bancos_cuentas")->fetchAll(PDO::FETCH_ASSOC);
@@ -1820,18 +1820,23 @@ class ContabilidadModelo extends ModeloBase {
     /**
      * Registra un asiento contable para anticipos a proveedores (G.4).
      */
+    public function obtenerProveedoresActivos(): array {
+        try {
+            return $this->db->query("SELECT id, COALESCE(razon_social, nombre_comercial, 'Proveedor #' || id) AS nombre FROM proveedores WHERE activo = 1 ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     public function registrarAnticipoProveedor(int $idProveedor, float $monto, int $idBancoCuenta, string $referencia = '', ?string $fecha = null): int {
         $fecha = $fecha ?: date('Y-m-d');
-        $cuentaAnticipo = ConfigCuentasModelo::obtenerIdPorClave('ANTICIPO_PROVEEDORES', $this->db);
-        if (!$cuentaAnticipo) {
-            $cuentaAnticipo = (int)($this->db->query("SELECT id FROM cuentas_contables WHERE codigo = '1010501' LIMIT 1")->fetchColumn() ?: 78);
-        }
+        $cuentaAnticipo = ConfigCuentasModelo::obtenerIdPorClaveOrFail('ANTICIPO_PROVEEDORES', $this->db);
 
         $stmtBco = $this->db->prepare("SELECT id_cuenta_contable FROM bancos_cuentas WHERE id = :id");
         $stmtBco->execute(['id' => $idBancoCuenta]);
         $cuentaBanco = (int)$stmtBco->fetchColumn();
         if (!$cuentaBanco) {
-            $cuentaBanco = ConfigCuentasModelo::obtenerIdPorClave('CAJA_PRINCIPAL', $this->db) ?: 4;
+            $cuentaBanco = ConfigCuentasModelo::obtenerIdPorClaveOrFail('CAJA_PRINCIPAL', $this->db);
         }
 
         return $this->registrarAsientoContable(
