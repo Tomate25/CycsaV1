@@ -89,6 +89,8 @@ final_sql = header + cleaned_sql + footer
 
 # Destinos de exportación
 destinos = [
+    r"C:\Users\abdia\Downloads\cycsa_db_para_produccion.sql",
+    r"C:\Users\abdia\Downloads\cycsa_db_produccion.sql",
     r"C:\Users\abdia\Desktop\cycsa_db_para_produccion.sql",
     r"C:\Users\abdia\OneDrive\Desktop\cycsa_db_para_produccion.sql",
     r"C:\xampp\htdocs\Cycsa\cycsa_db_para_produccion.sql"
