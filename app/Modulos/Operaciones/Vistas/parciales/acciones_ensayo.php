@@ -124,12 +124,15 @@ $descEnsayoEsc = htmlspecialchars(addslashes($it['descripcion_ensayo'] ?? ''), E
         <span class="lims-bloqueo-chip" style="height: 36px; padding: 0 14px; font-size: 12.5px; font-weight: 600; border-radius: 6px; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 6px;" title="Las muestras físicas deben ser recibidas y aceptadas en el módulo de Laboratorio">
             <i class="fa-solid fa-hourglass-half"></i> Custodia Lab Pendiente
         </span>
-        <a href="/Cycsa/publico/laboratorio?tab=kanban" 
-           class="btn btn-outline-warning btn-sm text-dark fw-bold" 
-           style="height: 36px; padding: 0 12px; font-size: 12.5px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" 
-           title="Ir a Laboratorio para recepcionar y aceptar físicamente las muestras">
-            <i class="fa-solid fa-flask text-warning"></i> Aprobar Muestras en Lab
-        </a>
+        <?php if (tienePermiso('laboratorio', 'ver')): ?>
+            <a href="/Cycsa/publico/laboratorio?tab=kanban" 
+               target="_blank"
+               class="btn btn-outline-warning btn-sm text-dark fw-bold" 
+               style="height: 36px; padding: 0 12px; font-size: 12.5px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" 
+               title="Abrir módulo de Laboratorio en nueva pestaña para recepcionar y aceptar físicamente las muestras">
+                <i class="fa-solid fa-flask text-warning"></i> Aprobar Muestras en Lab
+            </a>
+        <?php endif; ?>
     <?php else: ?>
         <!-- ENSAYO CON MUESTRAS EN CUSTODIA / LISTO PARA MATRIZ -->
         <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" 

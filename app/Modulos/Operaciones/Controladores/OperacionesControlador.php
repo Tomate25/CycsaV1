@@ -33,10 +33,7 @@ class OperacionesControlador extends ControladorBase {
     public function index(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         
-        if (($_SESSION['usuario_rol'] ?? 0) == 6) {
-            $respuesta->redirigir('/Cycsa/publico/laboratorio');
-            return;
-        }
+
 
         $this->verificarPermiso($respuesta, 'ver');
 
@@ -403,10 +400,7 @@ class OperacionesControlador extends ControladorBase {
         
         $idLote = (int)($_GET['id_lote'] ?? 0);
         
-        if (($_SESSION['usuario_rol'] ?? 0) == 6) {
-            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?id_lote=' . $idLote);
-            return;
-        }
+
 
         $this->verificarPermiso($respuesta, 'ver');
 
@@ -1563,10 +1557,7 @@ class OperacionesControlador extends ControladorBase {
 
     public function ver(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
-        if (($_SESSION['usuario_rol'] ?? 0) == 6) {
-            $respuesta->redirigir('/Cycsa/publico/laboratorio');
-            return;
-        }
+
         $this->verificarPermiso($respuesta, 'ver');
 
         $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
@@ -1825,7 +1816,7 @@ class OperacionesControlador extends ControladorBase {
         // Para COMPACTACIONES / ENSAYOS IN SITU no se emite solicitud de muestras a laboratorio: pasan directo a llenado de matriz técnica en Operaciones.
         if (!$esCompactacion && empty($muestrasLabList)) {
             $_SESSION['error'] = 'Las muestras de la Orden de Servicio (' . ($detalle['codigo_os'] ?? 'O/S') . ') aún no han sido aceptadas e ingresadas en el Laboratorio. Primero debe realizar la aceptación técnica en el módulo de Laboratorio para asignar los códigos oficiales (MS-XXXX-26).';
-            $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=kanban');
+            $respuesta->redirigir('/Cycsa/publico/operaciones/ver?id_os=' . (int)$detalle['id_os']);
             return;
         }
 

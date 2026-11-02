@@ -632,8 +632,8 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
                                         <?php if ($requiereMuestreo): ?>
                                             <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirModalMuestreo(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['codigo_os'])) ?>')"><i class="fa-solid fa-truck-pickup me-2 text-secondary"></i> <?= $tieneTecnico ? 'Reasignar Muestreo' : 'Programar Muestreo' ?></a></li>
                                         <?php endif; ?>
-                                        <?php if (!$esSoloCompactacion): ?>
-                                            <li><a class="dropdown-item py-2" href="/Cycsa/publico/laboratorio?tab=kanban"><i class="fa-solid fa-flask me-2 text-success"></i> Recepción en Laboratorio</a></li>
+                                        <?php if (!$esSoloCompactacion && tienePermiso('laboratorio', 'ver')): ?>
+                                            <li><a class="dropdown-item py-2 text-muted" href="/Cycsa/publico/laboratorio?tab=kanban" target="_blank"><i class="fa-solid fa-flask me-2 text-success"></i> Módulo Laboratorio (Recepción)</a></li>
                                         <?php endif; ?>
                                         <?php if ($o['puede_cerrar'] && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'])): ?>
                                             <li><hr class="dropdown-divider"></li>
@@ -1163,11 +1163,34 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
 
     function intentarRellenarMatrizProducto(tieneHoja, tieneAceptacionLab, idOS, codigoOS, idDetalle) {
         if (!tieneHoja) {
-            window.location.href = '/Cycsa/publico/ordenes-servicio?id_os=' + idOS;
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'RT-FM-13 Requerida',
+                    text: 'Debe generar o asociar primero la Hoja de Servicio RT-FM-13 para la orden ' + codigoOS + '.',
+                    confirmButtonText: 'Ir a registrarla'
+                }).then((res) => {
+                    if (res.isConfirmed) {
+                        window.location.href = '/Cycsa/publico/ordenes-servicio?id_os=' + idOS;
+                    }
+                });
+            } else {
+                alert('Debe generar primero la Hoja de Servicio RT-FM-13 para la orden ' + codigoOS + '.');
+                window.location.href = '/Cycsa/publico/ordenes-servicio?id_os=' + idOS;
+            }
             return;
         }
         if (!tieneAceptacionLab) {
-            window.location.href = '/Cycsa/publico/laboratorio?tab=kanban';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Custodia Lab Pendiente',
+                    text: 'Las muestras físicas de la orden ' + codigoOS + ' aún están pendientes de custodia y recepción formal en el módulo de Laboratorio.',
+                    confirmButtonText: 'Entendido'
+                });
+            } else {
+                alert('Las muestras físicas de la orden ' + codigoOS + ' aún están pendientes de custodia y recepción formal en el módulo de Laboratorio.');
+            }
             return;
         }
         window.location.href = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' + idDetalle;
