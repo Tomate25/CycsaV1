@@ -90,7 +90,6 @@ class SprintH1ReqWhitelistTest extends TestCase {
     }
 
     public function testSaneamientoServerSideDesactivaCategoriasNoPermitidasEnHojaNueva(): void {
-        // Simular lógica del controlador para hoja nueva con whitelist
         $flagsPermitidos = [
             'req_resistencia_concreto' => 1,
             'req_granulometria' => 0
@@ -98,18 +97,14 @@ class SprintH1ReqWhitelistTest extends TestCase {
 
         $datosEnviados = [
             'req_resistencia_concreto' => 1,
-            'req_granulometria' => 1 // Intento de activar ensayo no autorizado
+            'req_granulometria' => 1 // Intento de activar ensayo no autorizado por whitelist
         ];
 
-        $camposReq = ['req_resistencia_concreto', 'req_granulometria'];
-        foreach ($camposReq as $campo) {
-            if (!empty($datosEnviados[$campo]) && empty($flagsPermitidos[$campo])) {
-                $datosEnviados[$campo] = 0;
-            }
-        }
+        // Invocación directa de la lógica real extraída en HojasServicioControlador
+        $saneados = $this->hojaControlador->sanitizarCamposReqSegunFlags($datosEnviados, $flagsPermitidos);
 
-        $this->assertEquals(1, $datosEnviados['req_resistencia_concreto'], 'El ensayo autorizado debe mantenerse en 1');
-        $this->assertEquals(0, $datosEnviados['req_granulometria'], 'El ensayo no autorizado debe ser saneado a 0');
+        $this->assertEquals(1, $saneados['req_resistencia_concreto'], 'El ensayo autorizado debe mantenerse en 1');
+        $this->assertEquals(0, $saneados['req_granulometria'], 'El ensayo no autorizado debe ser saneado a 0 por el controlador');
     }
 
     public function testVistaContieneMapeoYLogicaCompletaDeDeshabilitacion(): void {

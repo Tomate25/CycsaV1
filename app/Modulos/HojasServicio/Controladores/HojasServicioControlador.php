@@ -409,19 +409,7 @@ class HojasServicioControlador extends ControladorBase {
                 $detallesPermitidos = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)($os['id_cotizacion'] ?? 0)));
                 $resFlags = $this->detectarParametrosYNaturaleza($detallesPermitidos);
                 $flagsPermitidos = $resFlags['flags'] ?? [];
-
-                $camposReq = [
-                    'req_resistencia_concreto', 'req_resistencia_adoquin', 'req_resistencia_bloques',
-                    'req_granulometria', 'req_limites_atterberg', 'req_humedad', 'req_resistencia_corte',
-                    'req_clasificacion_sucs_hr', 'req_proctor_sm', 'req_infiltracion', 'req_cbr', 'req_densidad',
-                    'req_otros_materiales'
-                ];
-
-                foreach ($camposReq as $campo) {
-                    if (!empty($datos[$campo]) && empty($flagsPermitidos[$campo])) {
-                        $datos[$campo] = 0;
-                    }
-                }
+                $datos = $this->sanitizarCamposReqSegunFlags($datos, $flagsPermitidos);
             }
 
             $idHojaGuardada = 0;
@@ -712,6 +700,26 @@ class HojasServicioControlador extends ControladorBase {
      * Analiza los ensayos contratados en la O/S y deduce automáticamente la naturaleza
      * de la muestra y los parámetros/análisis de la Hoja RT-FM-13 (Sección 3).
      */
+    /**
+     * Sanea server-side los campos req_* desactivando categorías no permitidas en la whitelist.
+     */
+    public function sanitizarCamposReqSegunFlags(array $datos, array $flagsPermitidos): array {
+        $camposReq = [
+            'req_resistencia_concreto', 'req_resistencia_adoquin', 'req_resistencia_bloques',
+            'req_granulometria', 'req_limites_atterberg', 'req_humedad', 'req_resistencia_corte',
+            'req_clasificacion_sucs_hr', 'req_proctor_sm', 'req_infiltracion', 'req_cbr', 'req_densidad',
+            'req_otros_materiales'
+        ];
+
+        foreach ($camposReq as $campo) {
+            if (!empty($datos[$campo]) && empty($flagsPermitidos[$campo])) {
+                $datos[$campo] = 0;
+            }
+        }
+
+        return $datos;
+    }
+
     public function detectarParametrosYNaturaleza(array $ensayos): array {
         $nats = [];
         $flags = [

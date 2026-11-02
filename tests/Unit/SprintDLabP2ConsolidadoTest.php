@@ -96,4 +96,17 @@ class SprintDLabP2ConsolidadoTest extends TestCase {
             $this->assertArrayHasKey('usuario', $item);
         }
     }
+
+    public function testOperacionesVerRutaCableadaConInformeLaboratorioServicio(): void {
+        $sourceCtrl = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Controladores/OperacionesControlador.php');
+        $this->assertStringContainsString('new InformeLaboratorioServicio()', $sourceCtrl, 'OperacionesControlador debe instanciar InformeLaboratorioServicio');
+        $this->assertStringContainsString('obtenerInformesUnificadosOS($idOS)', $sourceCtrl, 'OperacionesControlador::ver debe invocar obtenerInformesUnificadosOS');
+        $this->assertStringContainsString('obtenerConsolidadoMultiMuestra($idOS)', $sourceCtrl, 'OperacionesControlador::ver debe invocar obtenerConsolidadoMultiMuestra');
+        $this->assertStringContainsString('obtenerHistorialVersiones($idOS)', $sourceCtrl, 'OperacionesControlador::ver debe invocar obtenerHistorialVersiones');
+
+        $sourceView = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/ver.php');
+        $this->assertStringContainsString('id="tab-full-informes"', $sourceView, 'ver.php debe contener el contenedor de pestaña tab-full-informes');
+        $this->assertStringContainsString('Informes y Versiones', $sourceView, 'ver.php debe renderizar el botón de la pestaña Informes y Versiones');
+        $this->assertStringContainsString('informes_unificados', $sourceView, 'ver.php debe iterar sobre informes_unificados');
+    }
 }

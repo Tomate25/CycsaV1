@@ -5,36 +5,47 @@ namespace Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use Cycsa\Modulos\Contabilidad\Modelos\ContabilidadModelo;
 use Cycsa\Modulos\Contabilidad\Modelos\ConfigCuentasModelo;
+use Cycsa\Modulos\Compras\Modelos\ComprasModelo;
+use Cycsa\Modulos\Inventario\Modelos\InventarioModelo;
 use Cycsa\Nucleo\Conexion;
 use PDO;
 
 /**
- * Sprint G.4 & G.1b: Erradicación de hardcodes contables y Hooks automáticos G.4
- *
- * Cobertura de pruebas unitarias:
- * 1. Verificación de ausencia de IDs fijos mágicos en ContabilidadModelo (206, 121, 221).
- * 2. Asiento contable para Anticipo a Proveedor (ANTICIPO_PROV).
- * 3. Asiento contable para Recepción de Compra inventariable (RECEPCION_COMPRA).
- * 4. Asiento contable para Consumo de Insumos por Ensayo (CONSUMO_INVENTARIO).
+ * Sprint G.4 & G.1b / Epic 2 & 3: Erradicación de hardcodes contables y Hooks automáticos G.4
  */
 class SprintG4ContabilidadHooksTest extends TestCase {
 
     private PDO $db;
     private ContabilidadModelo $contaModelo;
+    private ComprasModelo $comprasModelo;
+    private InventarioModelo $inventarioModelo;
     private array $idsLimpieza = [
-        'partidas' => []
+        'partidas' => [],
+        'recepciones' => [],
+        'insumos' => []
     ];
 
     protected function setUp(): void {
         parent::setUp();
         $this->db = Conexion::obtenerInstancia();
         $this->contaModelo = new ContabilidadModelo();
+        $this->comprasModelo = new ComprasModelo();
+        $this->inventarioModelo = new InventarioModelo();
     }
 
     protected function tearDown(): void {
         foreach ($this->idsLimpieza['partidas'] as $idPartida) {
             $this->db->exec("DELETE FROM partidas_diario_detalles WHERE id_partida = {$idPartida}");
             $this->db->exec("DELETE FROM partidas_diario WHERE id = {$idPartida}");
+        }
+        foreach ($this->idsLimpieza['recepciones'] as $idRec) {
+            $this->db->exec("DELETE FROM recepciones_compra_detalle WHERE recepcion_id = {$idRec}");
+            $this->db->exec("DELETE FROM recepciones_compra WHERE id = {$idRec}");
+        }
+        foreach ($this->idsLimpieza['insumos'] as $idIns) {
+            $this->db->exec("DELETE FROM inventario_lotes WHERE insumo_id = {$idIns}");
+            $this->db->exec("DELETE FROM inventario_movimientos WHERE insumo_id = {$idIns}");
+            $this->db->exec("DELETE FROM inventario_insumos WHERE id = {$idIns}");
         }
         parent::tearDown();
     }
@@ -43,26 +54,35 @@ class SprintG4ContabilidadHooksTest extends TestCase {
         $archivo = dirname(__DIR__, 2) . '/app/Modulos/Contabilidad/Modelos/ContabilidadModelo.php';
         $contenido = file_get_contents($archivo);
 
-        // En guardarCxc, la cuenta 206 no debe estar hardcodeada
         $this->assertStringNotContainsString(
             "['id_cuenta_contable' => 206, 'debe' => 0.0, 'haber' => \$datos['monto']]",
             $contenido,
             'guardarCxc debe resolver la cuenta de ingresos dinámicamente, no hardcoded a 206'
         );
 
-        // En registrarPagoCxp, la cuenta 121 no debe estar fija sin resolución
         $this->assertStringNotContainsString(
             "['id_cuenta_contable' => 121, 'debe' => \$monto, 'haber' => 0.0]",
             $contenido,
             'registrarPagoCxp debe resolver la cuenta de proveedores dinámicamente'
         );
 
-        // En reconstruirDiario, las cuentas default no deben ser hardcodes fijos sin config
         $this->assertStringNotContainsString(
             "\$incomeDefaultAcc = 206;",
             $contenido,
             'reconstruirDiario debe resolver la cuenta de ingresos con ConfigCuentas'
         );
+    }
+
+    public function testConfigCuentasModeloObtenerIdPorClaveOrFailLanzaExcepcionAudible(): void {
+        // Clave existente debe retornar int > 0
+        $idClientes = ConfigCuentasModelo::obtenerIdPorClaveOrFail('CLIENTES', $this->db);
+        $this->assertIsInt($idClientes);
+        $this->assertGreaterThan(0, $idClientes);
+
+        // Clave inexistente debe lanzar RuntimeException audible, nunca fallar silencioso
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Cuenta contable obligatoria no configurada en config_cuentas: 'CLAVE_INEXISTENTE_XYZ'");
+        ConfigCuentasModelo::obtenerIdPorClaveOrFail('CLAVE_INEXISTENTE_XYZ', $this->db);
     }
 
     public function testRegistrarAnticipoProveedorGeneraAsientoBalanceado(): void {
@@ -99,55 +119,93 @@ class SprintG4ContabilidadHooksTest extends TestCase {
         $this->assertEquals($totalDebe, $totalHaber, 'DEBE == HABER estricto');
     }
 
-    public function testAsientoRecepcionCompraBalanceado(): void {
-        $monto = 4800.50;
-        $idRecepcion = 99992;
-        $cuentaInventario = ConfigCuentasModelo::obtenerIdPorClave('INVENTARIO_LAB', $this->db) ?: 84;
-        $cuentaProveedores = ConfigCuentasModelo::obtenerIdPorClave('PROVEEDORES', $this->db) ?: 121;
+    public function testComprasModeloRegistrarRecepcionCompraEjecutaHookRealYBalancea(): void {
+        $cabecera = [
+            'proveedor_id' => 1,
+            'numero_factura' => 'FAC-HOOK-TEST-' . uniqid(),
+            'fecha_recepcion' => date('Y-m-d'),
+            'recibido_por' => 1,
+            'observaciones' => 'Prueba unitaria hook G.4 recepción compra',
+            'estado' => 'completada'
+        ];
 
-        $idPartida = $this->contaModelo->registrarAsientoContable(
-            date('Y-m-d'),
-            "Recepción de Compra #{$idRecepcion} - Test G.4",
-            'RECEPCION_COMPRA',
-            $idRecepcion,
+        $detalles = [
             [
-                ['id_cuenta_contable' => $cuentaInventario, 'debe' => $monto, 'haber' => 0.0],
-                ['id_cuenta_contable' => $cuentaProveedores, 'debe' => 0.0, 'haber' => $monto]
+                'orden_compra_detalle_id' => null,
+                'insumo_id' => 0,
+                'cantidad_recibida' => 5,
+                'costo_unitario' => 200.00,
+                'lote' => 'LOTE-TEST-01',
+                'fecha_vencimiento' => null
             ]
-        );
+        ];
 
-        $this->assertGreaterThan(0, $idPartida);
-        $this->idsLimpieza['partidas'][] = $idPartida;
+        $recepcionId = $this->comprasModelo->registrarRecepcionCompra(0, $cabecera, $detalles);
+        $this->assertGreaterThan(0, $recepcionId);
+        $this->idsLimpieza['recepciones'][] = $recepcionId;
 
-        $detalles = $this->contaModelo->obtenerDetallesPartida($idPartida);
-        $this->assertCount(2, $detalles);
-        $this->assertEquals($monto, (float)$detalles[0]['debe']);
-        $this->assertEquals($monto, (float)$detalles[1]['haber']);
+        // Verificar que el hook G.4 generó la partida contable correspondiente
+        $stmtP = $this->db->prepare("SELECT id FROM partidas_diario WHERE origen = 'RECEPCION_COMPRA' AND origen_id = :ref LIMIT 1");
+        $stmtP->execute(['ref' => $recepcionId]);
+        $partidaId = (int)$stmtP->fetchColumn();
+
+        $this->assertGreaterThan(0, $partidaId, 'La recepción debe haber creado automáticamente un asiento contable');
+        $this->idsLimpieza['partidas'][] = $partidaId;
+
+        $detallesPartida = $this->contaModelo->obtenerDetallesPartida($partidaId);
+        $this->assertCount(2, $detallesPartida);
+
+        $totalDebe = 0.0;
+        $totalHaber = 0.0;
+        foreach ($detallesPartida as $d) {
+            $totalDebe += (float)$d['debe'];
+            $totalHaber += (float)$d['haber'];
+        }
+
+        $this->assertEquals(1000.00, $totalDebe);
+        $this->assertEquals(1000.00, $totalHaber);
     }
 
-    public function testAsientoConsumoInventarioBalanceado(): void {
-        $costoConsumo = 320.00;
-        $idEnsayo = 99993;
-        $cuentaCosto = ConfigCuentasModelo::obtenerIdPorClave('COSTO_MAT_LAB', $this->db) ?: 221;
-        $cuentaInventario = ConfigCuentasModelo::obtenerIdPorClave('INVENTARIO_LAB', $this->db) ?: 84;
+    public function testInventarioModeloRegistrarConsumoEnsayoEjecutaHookRealYBalancea(): void {
+        // Crear insumo de prueba con lote activo
+        $stmtIns = $this->db->prepare("
+            INSERT INTO inventario_insumos (nombre, codigo, unidad_medida, cantidad)
+            VALUES ('Reactivo Test G4', 'INS-G4-" . uniqid() . "', 'unidad', 10)
+        ");
+        $stmtIns->execute();
+        $insumoId = (int)$this->db->lastInsertId();
+        $this->idsLimpieza['insumos'][] = $insumoId;
 
-        $idPartida = $this->contaModelo->registrarAsientoContable(
-            date('Y-m-d'),
-            "Consumo de Insumo Cemento / Reactivo - Ensayo #{$idEnsayo}",
-            'CONSUMO_INVENTARIO',
-            $idEnsayo,
-            [
-                ['id_cuenta_contable' => $cuentaCosto, 'debe' => $costoConsumo, 'haber' => 0.0],
-                ['id_cuenta_contable' => $cuentaInventario, 'debe' => 0.0, 'haber' => $costoConsumo]
-            ]
+        $stmtLote = $this->db->prepare("
+            INSERT INTO inventario_lotes (insumo_id, lote, costo_unitario, cantidad_inicial, saldo, estado)
+            VALUES (:insumo_id, 'LOTE-G4-TEST', 50.00, 10, 10, 'activo')
+        ");
+        $stmtLote->execute(['insumo_id' => $insumoId]);
+
+        $ensayoId = 99994;
+        $resultado = $this->inventarioModelo->registrarConsumoEnsayo(
+            $insumoId,
+            2.0, // 2 unidades * 50.0 = C$ 100.00
+            $ensayoId,
+            'Compresión Concreto',
+            1,
+            'Consumo test G.4'
         );
 
-        $this->assertGreaterThan(0, $idPartida);
-        $this->idsLimpieza['partidas'][] = $idPartida;
+        $this->assertTrue($resultado['exito']);
+        $this->assertEquals(100.00, (float)$resultado['costo_total']);
 
-        $detalles = $this->contaModelo->obtenerDetallesPartida($idPartida);
-        $this->assertCount(2, $detalles);
-        $this->assertEquals($costoConsumo, (float)$detalles[0]['debe']);
-        $this->assertEquals($costoConsumo, (float)$detalles[1]['haber']);
+        // Verificar el asiento contable generado
+        $stmtP = $this->db->prepare("SELECT id FROM partidas_diario WHERE origen = 'CONSUMO_INVENTARIO' AND origen_id = :ref LIMIT 1");
+        $stmtP->execute(['ref' => $ensayoId]);
+        $partidaId = (int)$stmtP->fetchColumn();
+
+        $this->assertGreaterThan(0, $partidaId, 'El consumo debe haber creado automáticamente un asiento contable');
+        $this->idsLimpieza['partidas'][] = $partidaId;
+
+        $detallesPartida = $this->contaModelo->obtenerDetallesPartida($partidaId);
+        $this->assertCount(2, $detallesPartida);
+        $this->assertEquals(100.00, (float)$detallesPartida[0]['debe']);
+        $this->assertEquals(100.00, (float)$detallesPartida[1]['haber']);
     }
 }
