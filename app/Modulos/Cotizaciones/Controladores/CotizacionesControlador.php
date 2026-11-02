@@ -226,12 +226,28 @@ class CotizacionesControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('cotizaciones', 'crear_editar')) {
             $respuesta->redirigir('/Cycsa/publico/cotizaciones');
-            exit;
+            if (!defined('PHPUNIT_RUNNING')) { exit; }
+            return;
         }
         $id = decodificarId($_GET['id'] ?? '') ?? (int)($_GET['id'] ?? 0);
         $modelo = new CotizacionModelo();
         $cot = $modelo->obtenerPorId($id);
-        if ($cot['estado'] !== 'Observada' && $cot['estado'] !== 'Rechazada por Cliente') { $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id='.codificarId($id)); return; }
+        $estadosPermitidos = ['Borrador', 'Observada', 'Rechazada por Cliente'];
+        if (!in_array($cot['estado'], $estadosPermitidos, true)) {
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+            return;
+        }
+
+        // Para Borrador: mismo criterio de permiso que en detalle (creador o rol admin)
+        if ($cot['estado'] === 'Borrador') {
+            $esCreador = (($_SESSION['usuario_id'] ?? 0) == ($cot['id_usuario_creador'] ?? 0));
+            $esAdmin = (($_SESSION['usuario_rol'] ?? 0) == 1);
+            if (!$esCreador && !$esAdmin) {
+                $_SESSION['error'] = 'No tienes permiso para editar este borrador de cotización.';
+                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+                return;
+            }
+        }
         $prodModelo = new ProductoModelo();
         $configModelo = new ConfiguracionModelo();
         $this->renderizar('cotizaciones/vistas/editar', [
@@ -250,7 +266,8 @@ class CotizacionesControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('cotizaciones', 'crear_editar')) {
             $respuesta->redirigir('/Cycsa/publico/cotizaciones');
-            exit;
+            if (!defined('PHPUNIT_RUNNING')) { exit; }
+            return;
         }
         $datos = $peticion->obtenerDatos();
         $id = decodificarId($datos['id'] ?? '') ?? (int)($datos['id'] ?? 0);
@@ -272,8 +289,26 @@ class CotizacionesControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/cotizaciones');
             return;
         }
+        $estadosEditables = ['Borrador', 'Observada', 'Rechazada por Cliente'];
+        if (!in_array($cotizacionPrev['estado'], $estadosEditables, true)) {
+            $_SESSION['error'] = 'No se puede editar una cotización en estado ' . htmlspecialchars($cotizacionPrev['estado'], ENT_QUOTES, 'UTF-8') . '.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+            return;
+        }
+
+        if ($cotizacionPrev['estado'] === 'Borrador') {
+            $esCreador = (($_SESSION['usuario_id'] ?? 0) == ($cotizacionPrev['id_usuario_creador'] ?? 0));
+            $esAdmin = (($_SESSION['usuario_rol'] ?? 0) == 1);
+            if (!$esCreador && !$esAdmin) {
+                $_SESSION['error'] = 'No tienes permiso para editar este borrador de cotización.';
+                $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+                return;
+            }
+        }
+
         $eraRechazada = ($cotizacionPrev['estado'] === 'Rechazada por Cliente');
         $eraObservada = ($cotizacionPrev['estado'] === 'Observada');
+        $eraBorrador = ($cotizacionPrev['estado'] === 'Borrador');
 
         $notasJson = isset($datos['notas']) ? json_encode($datos['notas']) : null;
 
@@ -327,13 +362,19 @@ class CotizacionesControlador extends ControladorBase {
                 registrarBitacora('cotizaciones', 'editar_reenviar', 'Corregida y re-enviada cotización a revisión interna: ' . $cot['codigo'] . ' (Nueva Versión: ' . $cot['version'] . ')', $id);
                 $_SESSION['envio_exitoso'] = "¡Cotización " . $cot['codigo'] . " corregida exitosamente (Nueva Versión " . $cot['version'] . ") y re-enviada a revisión!";
             } else {
-                registrarBitacora('cotizaciones', 'editar', 'Modificada/Corregida cotización: ' . $cot['codigo'] . ' (estado: En Revision)', $id);
+                if ($eraBorrador) {
+                    registrarBitacora('cotizaciones', 'editar', 'Modificada cotización en borrador: ' . $cot['codigo'], $id);
+                } else {
+                    registrarBitacora('cotizaciones', 'editar', 'Modificada/Corregida cotización: ' . $cot['codigo'] . ' (estado: En Revision)', $id);
+                }
                 $_SESSION['envio_exitoso'] = "¡Cotización " . $cot['codigo'] . " actualizada exitosamente!";
             }
             $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
             return;
         } else {
-            $_SESSION['error'] = 'Ocurrió un error al guardar los cambios de la cotización. Por favor intente nuevamente.';
+            if (empty($_SESSION['error'])) {
+                $_SESSION['error'] = 'Ocurrió un error al guardar los cambios de la cotización. Por favor intente nuevamente.';
+            }
             $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
             return;
         }
@@ -826,11 +867,12 @@ class CotizacionesControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('cotizaciones', 'crear_editar')) {
             $respuesta->redirigir('/Cycsa/publico/cotizaciones');
-            exit;
+            if (!defined('PHPUNIT_RUNNING')) { exit; }
+            return;
         }
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
-            $id = (int)($datos['id'] ?? 0);
+            $id = decodificarId($datos['id'] ?? '') ?? (int)($datos['id'] ?? 0);
             
             // CSRF Check
             if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $datos['csrf_token'])) {
@@ -843,6 +885,7 @@ class CotizacionesControlador extends ControladorBase {
             if ($cot && $cot['estado'] === 'Borrador') {
                 $modelo->actualizarEstado($id, 'En Revision', $cot['id_usuario_revisor'] ?? $_SESSION['usuario_id'], $cot['motivo_observacion'], $cot['token_seguridad']);
                 registrarBitacora('cotizaciones', 'enviar_revision', 'Cotización enviada a revisión de Gerencia: ' . $cot['codigo'], $id);
+                $_SESSION['envio_exitoso'] = "¡Cotización " . $cot['codigo'] . " enviada a revisión de Gerencia exitosamente!";
             }
              $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
         }

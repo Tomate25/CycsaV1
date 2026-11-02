@@ -339,16 +339,24 @@ class CotizacionModelo extends ModeloBase {
 
             // 1. Obtener la cotización actual antes de sobrescribirla
             $oldCot = $this->obtenerPorId($id);
+            if (!$oldCot || !in_array($oldCot['estado'], ['Borrador', 'Observada', 'Rechazada por Cliente'], true)) {
+                if (!$yaEnTransaccion && $this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                return false;
+            }
 
-            // 2. Si el estado actual es 'Rechazada por Cliente' u 'Observada', guardamos la versión histórica (versión anterior)
+            // 2. Resolver estado, versiones y auditoría según estado previo
             $token = $oldCot['token_seguridad'] ?? null;
-            $nuevoEstado = 'En Revision';
-            $vNumParaArchivar = max(1, (int)($oldCot['version'] ?? 1));
-            $nuevaVersion = $vNumParaArchivar;
             $motivoRechazo = $oldCot['motivo_rechazo_cliente'] ?? null;
             $motivoObs = $oldCot['motivo_observacion'] ?? null;
 
-            if ($oldCot && ($oldCot['estado'] === 'Rechazada por Cliente' || $oldCot['estado'] === 'Observada')) {
+            if ($oldCot['estado'] === 'Borrador') {
+                // Borrador: se conserva estado Borrador, sin crear versión histórica y sin bump de versión
+                $nuevoEstado = 'Borrador';
+                $nuevaVersion = (int)($oldCot['version'] ?? 0);
+            } elseif ($oldCot['estado'] === 'Rechazada por Cliente' || $oldCot['estado'] === 'Observada') {
+                $vNumParaArchivar = max(1, (int)($oldCot['version'] ?? 1));
                 $oldDets = $this->obtenerDetalles($id);
 
                 $detallesSnapshot = [];

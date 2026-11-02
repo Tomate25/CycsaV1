@@ -497,7 +497,7 @@
     <div style="display: flex; gap: 15px; justify-content: flex-end; margin-bottom: 50px;">
         <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cotizacion['id']) ?>" style="padding: 12px 25px; border-radius: 4px; text-decoration: none; color: #6c757d; font-weight: 500; background: #f8f9fa; border: 1px solid #ddd;">Cancelar</a>
         <button type="submit" style="background: var(--cycsa-azul); color: white; border: none; padding: 12px 25px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; font-size: 15px; box-shadow: 0 4px 6px rgba(16, 52, 135, 0.2);">
-            <i class="fa-solid fa-save"></i> Guardar Cambios y Re-enviar
+            <i class="fa-solid fa-save"></i> <?= ($cotizacion['estado'] === 'Borrador') ? 'Guardar Cambios' : 'Guardar Cambios y Re-enviar' ?>
         </button>
     </div>
 </form>

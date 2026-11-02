@@ -341,11 +341,14 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                 <h3 style="margin: 0 0 5px 0; color: #475569;"><i class="fa-solid fa-file-lines"></i> Cotización en Borrador</h3>
                 <p style="margin: 0; font-size: 14px; color: #64748b;">Esta cotización se encuentra en borrador. Envíala a revisión para que la gerencia pueda revisarla y aprobarla.</p>
             </div>
-            <form action="/Cycsa/publico/cotizaciones/enviar-revision" method="POST" style="margin: 0;">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
-                <button type="submit" style="background: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-paper-plane"></i> Enviar a Revisión</button>
-            </form>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" style="background: #0284c7; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-weight: 600; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; gap: 8px;"><i class="fa-solid fa-pen-to-square"></i> Editar</a>
+                <form action="/Cycsa/publico/cotizaciones/enviar-revision" method="POST" style="margin: 0;">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
+                    <button type="submit" style="background: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; gap: 8px;"><i class="fa-solid fa-paper-plane"></i> Enviar a Revisión</button>
+                </form>
+            </div>
         </div>
     <?php endif; ?>
 
