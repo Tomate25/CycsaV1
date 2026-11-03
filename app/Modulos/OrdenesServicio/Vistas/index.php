@@ -612,7 +612,6 @@
                                                         </a>
                                                     </li>
                                                 <?php endif; ?>
-                                            <?php endif; ?>
                                             <?php else: ?>
                                                 <li><hr class="dropdown-divider my-1"></li>
                                                 <li>
