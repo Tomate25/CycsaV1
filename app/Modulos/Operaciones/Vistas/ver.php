@@ -87,10 +87,15 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
         </div>
 
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <?php if ($tieneHojaServicio): ?>
-                <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $o['id'] ?>" target="_blank" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; padding: 7px 14px; border-radius: 6px;">
-                    <i class="fa-solid fa-file-pdf text-info me-1"></i> Ver RT-FM-13 (PDF)
-                </a>
+            <?php 
+            $hojasOS = !empty($o['hojas_solicitud']) ? $o['hojas_solicitud'] : (!empty($o['hoja_solicitud']) ? [$o['hoja_solicitud']] : []);
+            ?>
+            <?php if (!empty($hojasOS)): ?>
+                <?php foreach ($hojasOS as $hOS): ?>
+                    <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $o['id'] ?>&id_hoja=<?= $hOS['id'] ?>" target="_blank" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; padding: 7px 14px; border-radius: 6px;" title="Ver RT-FM-13: <?= htmlspecialchars($hOS['descripcion_ensayo'] ?? '') ?>">
+                        <i class="fa-solid fa-file-pdf text-info me-1"></i> RT-FM-13 (<?= htmlspecialchars($hOS['numero_registro'] ?? '#' . $hOS['id']) ?><?= !empty($hOS['descripcion_ensayo']) ? ' · ' . htmlspecialchars($hOS['descripcion_ensayo']) : '' ?>)
+                    </a>
+                <?php endforeach; ?>
             <?php else: ?>
                 <a href="/Cycsa/publico/ordenes-servicio?id_os=<?= $o['id'] ?>" class="btn btn-warning btn-sm text-dark fw-bold" style="padding: 7px 14px; border-radius: 6px;">
                     <i class="fa-solid fa-file-signature me-1"></i> Registrar RT-FM-13

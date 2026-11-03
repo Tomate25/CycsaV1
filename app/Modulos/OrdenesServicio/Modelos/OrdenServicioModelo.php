@@ -138,11 +138,17 @@ class OrdenServicioModelo {
 
             // Cargar todas las Hojas de Solicitud de la O/S (Soporte Contratos Activos y Múltiples RT-FM-13)
             $stmtHojas = $this->db->prepare("
-                SELECT id, codigo_documento, numero_registro, fecha_creacion, fecha_hora_toma_muestra, fecha_hora_llegada_laboratorio,
-                       nombre_persona_toma_muestra, nombre_persona_entrega_muestra, muestras_json, procedencia_punto_muestreo
-                FROM hojas_solicitud 
-                WHERE id_os = :id_os 
-                ORDER BY id ASC
+                SELECT hs.id, hs.id_detalle_cotizacion, hs.id_producto, hs.ensayo_id, hs.codigo_documento, hs.numero_registro,
+                       hs.fecha_creacion, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio,
+                       hs.nombre_persona_toma_muestra, hs.nombre_persona_entrega_muestra, hs.muestras_json, hs.procedencia_punto_muestreo,
+                       cd.descripcion_ensayo,
+                       COALESCE(cd.codigo_servicio, p.codigo_servicio, '') AS codigo_servicio,
+                       COALESCE(p.nombre_comercial, '') AS nombre_comercial
+                FROM hojas_solicitud hs
+                LEFT JOIN cotizacion_detalles cd ON hs.id_detalle_cotizacion = cd.id
+                LEFT JOIN productos p ON (hs.id_producto = p.id OR cd.id_producto = p.id)
+                WHERE hs.id_os = :id_os 
+                ORDER BY hs.id ASC
             ");
             $stmtHojas->execute(['id_os' => $osItem['id']]);
             $hojasList = $stmtHojas->fetchAll(PDO::FETCH_ASSOC);

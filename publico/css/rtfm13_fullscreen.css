@@ -1,0 +1,965 @@
+/**
+ * CYCSA ERP - Rediseño de Hoja de Solicitud de Servicio RT-FM-13 (Pantalla Completa)
+ * Código Oficial: CYCSA-RT-FM-13 (ISO/IEC 17025)
+ * Archivo: publico/css/rtfm13_fullscreen.css
+ */
+
+:root {
+    --rtfm13-azul: #103487;
+    --rtfm13-azul-dark: #0c2766;
+    --rtfm13-azul-light: #eff6ff;
+    --rtfm13-azul-border: #bfdbfe;
+    --rtfm13-verde: #059669;
+    --rtfm13-verde-dark: #047857;
+    --rtfm13-verde-light: #d1fae5;
+    --rtfm13-ambar: #d97706;
+    --rtfm13-ambar-light: #fef3c7;
+    --rtfm13-rojo: #dc2626;
+    --rtfm13-rojo-light: #fee2e2;
+    --rtfm13-slate-50: #f8fafc;
+    --rtfm13-slate-100: #f1f5f9;
+    --rtfm13-slate-200: #e2e8f0;
+    --rtfm13-slate-300: #cbd5e1;
+    --rtfm13-slate-400: #94a3b8;
+    --rtfm13-slate-600: #475569;
+    --rtfm13-slate-700: #334155;
+    --rtfm13-slate-800: #1e293b;
+    --rtfm13-slate-900: #0f172a;
+    --rtfm13-radius: 10px;
+    --rtfm13-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --rtfm13-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --rtfm13-shadow-lg: 0 20px 45px -10px rgba(15, 23, 42, 0.25);
+    --rtfm13-font-title: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --rtfm13-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ==========================================================================
+   1. CONTENEDOR MODAL PANTALLA COMPLETA (VIEWPORT AMPLIO)
+   ========================================================================== */
+#modalHojaSolicitud.modal-premium {
+    position: fixed !important;
+    z-index: 9999 !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    background-color: rgba(15, 23, 42, 0.72) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    display: none;
+}
+
+#modalHojaSolicitud .modal-premium-content,
+#modalHojaSolicitud .modal-rtfm13-content {
+    width: 99vw !important;
+    max-width: 99vw !important;
+    height: 96vh !important;
+    max-height: 96vh !important;
+    margin: 0.8vh auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.4), 0 0 0 1px rgba(226, 232, 240, 0.9) !important;
+    padding: 0 !important;
+    border: none !important;
+    box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   2. CABECERA FIJA SUPERIOR (STICKY TOP)
+   ========================================================================== */
+.rtfm13-header-sticky {
+    padding: 14px 26px;
+    background: #ffffff;
+    border-bottom: 2px solid var(--rtfm13-slate-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.rtfm13-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.rtfm13-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(16, 52, 135, 0.1), rgba(16, 52, 135, 0.04));
+    border: 1.5px solid rgba(16, 52, 135, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--rtfm13-azul);
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.rtfm13-title-group h3 {
+    margin: 0;
+    color: var(--rtfm13-slate-900);
+    font-family: var(--rtfm13-font-title);
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.25;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rtfm13-badges-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.badge-rtfm13-doc {
+    background: #0284c7;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 6px;
+    letter-spacing: 0.4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.badge-rtfm13-os {
+    background: var(--rtfm13-azul-light);
+    color: var(--rtfm13-azul);
+    border: 1px solid var(--rtfm13-azul-border);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.badge-rtfm13-os strong {
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.badge-rtfm13-status {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: uppercase;
+}
+
+.badge-rtfm13-status-borrador {
+    background: var(--rtfm13-ambar-light);
+    color: var(--rtfm13-ambar);
+    border: 1px solid #fde68a;
+}
+
+.badge-rtfm13-status-emitida {
+    background: var(--rtfm13-verde-light);
+    color: var(--rtfm13-verde-dark);
+    border: 1px solid #86efac;
+}
+
+.badge-rtfm13-status-congelada {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+.badge-rtfm13-prefix {
+    background: #f8fafc;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge-rtfm13-prefix strong {
+    color: var(--rtfm13-azul);
+    font-family: monospace;
+    font-weight: 800;
+}
+
+.rtfm13-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.rtfm13-btn-close {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1.5px solid var(--rtfm13-slate-200);
+    background: #ffffff;
+    color: var(--rtfm13-slate-400);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.rtfm13-btn-close:hover {
+    background: var(--rtfm13-rojo-light);
+    color: var(--rtfm13-rojo);
+    border-color: #fca5a5;
+    transform: rotate(90deg);
+}
+
+/* ==========================================================================
+   3. CUERPO SCROLLABLE INDEPENDIENTE
+   ========================================================================== */
+.rtfm13-body-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 20px 28px;
+    background: #f8fafc;
+    box-sizing: border-box;
+    scroll-behavior: smooth;
+}
+
+.rtfm13-body-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+.rtfm13-body-scroll::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+.rtfm13-body-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.rtfm13-body-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* ==========================================================================
+   4. SELECTOR PROMINENTE DE PRODUCTO / ENSAYO DE LA O/S
+   ========================================================================== */
+.rtfm13-ensayo-selector-card {
+    background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+    border: 1.5px solid #93c5fd;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 3px 10px rgba(16, 52, 135, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.rtfm13-ensayo-selector-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: var(--rtfm13-azul);
+    border-radius: 12px 0 0 12px;
+}
+
+.rtfm13-ensayo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.rtfm13-ensayo-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rtfm13-ensayo-title i {
+    font-size: 20px;
+    color: var(--rtfm13-azul);
+}
+
+.rtfm13-ensayo-title-text strong {
+    font-family: var(--rtfm13-font-title);
+    font-size: 14.5px;
+    color: var(--rtfm13-slate-900);
+    display: block;
+}
+
+.rtfm13-ensayo-title-text span {
+    font-size: 12px;
+    color: var(--rtfm13-slate-600);
+}
+
+.rtfm13-ensayo-pills-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.rtfm13-ensayo-pill {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: var(--rtfm13-slate-700);
+}
+
+.rtfm13-ensayo-pill.highlight {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+}
+
+.rtfm13-select-ensayo {
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--rtfm13-slate-900);
+    background-color: #ffffff;
+    border: 2px solid #93c5fd;
+    border-radius: 8px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.rtfm13-select-ensayo:hover {
+    border-color: var(--rtfm13-azul);
+}
+
+.rtfm13-select-ensayo:focus {
+    border-color: var(--rtfm13-azul);
+    box-shadow: 0 0 0 4px rgba(16, 52, 135, 0.15);
+}
+
+/* ==========================================================================
+   5. SELECTOR DE HOJAS / ENTREGAS (TABS MULTIENTREGA)
+   ========================================================================== */
+.rtfm13-tabs-container {
+    background: #ffffff;
+    border: 1.5px solid var(--rtfm13-slate-200);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: var(--rtfm13-shadow-sm);
+}
+
+.rtfm13-tabs-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.rtfm13-tabs-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--rtfm13-slate-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ==========================================================================
+   6. REJILLA SPLIT (PANEL REFERENCIA O/S + FORMULARIO PRINCIPAL)
+   ========================================================================== */
+.rtfm13-split-layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+@media (max-width: 1100px) {
+    .rtfm13-split-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
+   7. PANEL LATERAL: REFERENCIA O/S (SOLO LECTURA)
+   ========================================================================== */
+.rtfm13-sidebar-ref {
+    background: #ffffff;
+    border: 1.5px solid var(--rtfm13-slate-200);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: sticky;
+    top: 0;
+    max-height: calc(96vh - 160px);
+    overflow-y: auto;
+    box-shadow: var(--rtfm13-shadow-sm);
+    box-sizing: border-box;
+}
+
+.rtfm13-sidebar-ref-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1.5px solid var(--rtfm13-slate-200);
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+}
+
+.rtfm13-sidebar-ref-title {
+    font-family: var(--rtfm13-font-title);
+    font-weight: 700;
+    color: var(--rtfm13-azul);
+    font-size: 13px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.rtfm13-sidebar-data-list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    font-size: 12.5px;
+    color: var(--rtfm13-slate-700);
+}
+
+.rtfm13-sidebar-data-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--rtfm13-slate-200);
+}
+
+.rtfm13-sidebar-data-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.rtfm13-sidebar-data-item span.label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--rtfm13-slate-400);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.rtfm13-sidebar-data-item span.val {
+    font-weight: 600;
+    color: var(--rtfm13-slate-900);
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.rtfm13-sidebar-logistica {
+    background: #f0f9ff;
+    border: 1.5px solid #bae6fd;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 14px;
+}
+
+.rtfm13-sidebar-logistica-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #0369a1;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.rtfm13-sidebar-ensayos-box {
+    margin-top: 16px;
+}
+
+.rtfm13-sidebar-ensayos-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    background: #ffffff;
+    border: 1px solid var(--rtfm13-slate-200);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.rtfm13-sidebar-ensayos-table th {
+    background: var(--rtfm13-slate-100);
+    color: var(--rtfm13-slate-600);
+    font-weight: 700;
+    padding: 7px 8px;
+    text-align: left;
+    border-bottom: 1.5px solid var(--rtfm13-slate-200);
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.4px;
+}
+
+.rtfm13-sidebar-ensayos-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--rtfm13-slate-100);
+    color: var(--rtfm13-slate-800);
+    vertical-align: middle;
+}
+
+.rtfm13-sidebar-ensayos-table tr:hover {
+    background: #f8fafc;
+}
+
+/* ==========================================================================
+   8. TARJETAS DE SECCIÓN DEL FORMULARIO RT-FM-13
+   ========================================================================== */
+.rtfm13-section-card {
+    background: #ffffff;
+    border: 1.5px solid var(--rtfm13-slate-200);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--rtfm13-shadow-sm);
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+.rtfm13-section-card:hover {
+    border-color: #cbd5e1;
+}
+
+.rtfm13-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1.5px solid var(--rtfm13-slate-200);
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+}
+
+.rtfm13-section-title {
+    font-family: var(--rtfm13-font-title);
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--rtfm13-azul);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+/* Rejillas Responsive de Formularios */
+.rtfm13-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 14px;
+    align-items: flex-end;
+}
+
+.rtfm13-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+}
+
+@media (max-width: 900px) {
+    .rtfm13-grid-3,
+    .rtfm13-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.rtfm13-form-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.rtfm13-form-group label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--rtfm13-slate-600);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.rtfm13-input {
+    width: 100%;
+    height: 40px;
+    padding: 8px 13px;
+    font-size: 13.5px;
+    font-family: var(--rtfm13-font-body);
+    color: var(--rtfm13-slate-900);
+    background-color: #ffffff;
+    border: 1.5px solid var(--rtfm13-slate-300);
+    border-radius: 7px;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.rtfm13-input:focus {
+    outline: none;
+    border-color: var(--rtfm13-azul);
+    box-shadow: 0 0 0 3px rgba(16, 52, 135, 0.1);
+}
+
+.rtfm13-input[readonly] {
+    background-color: var(--rtfm13-slate-100);
+    color: var(--rtfm13-slate-600);
+    cursor: default;
+}
+
+.rtfm13-input-mono {
+    font-family: monospace;
+    font-weight: 700;
+}
+
+/* Pastillas Interactivas de Naturaleza de la Muestra */
+.rtfm13-nat-pills-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+    margin-bottom: 16px;
+}
+
+.rtfm13-nat-pill-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #ffffff;
+    border: 1.5px solid var(--rtfm13-slate-300);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rtfm13-slate-700);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.rtfm13-nat-pill-label:hover {
+    background: var(--rtfm13-slate-50);
+    border-color: var(--rtfm13-azul);
+}
+
+.rtfm13-nat-pill-label:has(input:checked) {
+    background: var(--rtfm13-azul-light);
+    border-color: var(--rtfm13-azul);
+    color: var(--rtfm13-azul);
+    font-weight: 700;
+    box-shadow: 0 2px 5px rgba(16, 52, 135, 0.1);
+}
+
+.rtfm13-nat-pill-label input[type="checkbox"] {
+    accent-color: var(--rtfm13-azul);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+}
+
+/* ==========================================================================
+   9. SELECTOR DE PREFIJOS OFICIALES (MC / MS)
+   ========================================================================== */
+.rtfm13-prefix-segmented {
+    display: inline-flex;
+    align-items: center;
+    background: var(--rtfm13-slate-100);
+    border: 1.5px solid var(--rtfm13-slate-300);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 3px;
+}
+
+.rtfm13-prefix-segmented span.label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--rtfm13-slate-600);
+    padding: 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.rtfm13-prefix-btn {
+    border: none;
+    background: transparent;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rtfm13-slate-600);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.rtfm13-prefix-btn:hover {
+    color: var(--rtfm13-slate-900);
+}
+
+.rtfm13-prefix-btn.active {
+    background: #ffffff;
+    color: var(--rtfm13-azul);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================================================
+   10. TABLA DINÁMICA DE MUESTRAS / ESPECÍMENES
+   ========================================================================== */
+.rtfm13-table-wrap {
+    overflow-x: auto;
+    border: 1.5px solid var(--rtfm13-slate-200);
+    border-radius: 10px;
+    background: #ffffff;
+    margin-bottom: 20px;
+}
+
+.rtfm13-table-muestras {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.rtfm13-table-muestras thead th {
+    background: var(--rtfm13-slate-100);
+    color: var(--rtfm13-slate-700);
+    font-weight: 700;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1.5px solid var(--rtfm13-slate-200);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.rtfm13-table-muestras tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rtfm13-slate-200);
+    vertical-align: middle;
+}
+
+.rtfm13-table-muestras tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.rtfm13-table-muestras tbody tr:hover {
+    background-color: #fafafa;
+}
+
+.rtfm13-sample-code-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--rtfm13-azul);
+}
+
+/* ==========================================================================
+   11. CASILLAS DE ENSAYOS REQUERIDOS (CONCRETO / SUELO / OTROS)
+   ========================================================================== */
+.rtfm13-tests-card {
+    background: var(--rtfm13-slate-50);
+    border: 1.5px solid var(--rtfm13-slate-200);
+    border-radius: 10px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.rtfm13-tests-card.active-category {
+    border-color: #0284c7;
+    background: #f0f9ff;
+}
+
+.rtfm13-tests-card h4 {
+    margin: 0 0 12px 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--rtfm13-azul);
+    font-family: var(--rtfm13-font-title);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    padding-bottom: 8px;
+}
+
+.rtfm13-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--rtfm13-slate-800);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
+    user-select: none;
+}
+
+.rtfm13-checkbox-label:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.rtfm13-checkbox-label input[type="checkbox"] {
+    accent-color: var(--rtfm13-azul);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* ==========================================================================
+   12. BANNER DE RECEPCIÓN Y CONGELAMIENTO LIMS ISO 17025
+   ========================================================================== */
+.rtfm13-lims-card {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1.5px solid #f59e0b;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* ==========================================================================
+   13. BARRA DE ACCIONES INFERIOR FIJA (STICKY BOTTOM)
+   ========================================================================== */
+.rtfm13-footer-sticky {
+    padding: 14px 28px;
+    background: #ffffff;
+    border-top: 2px solid var(--rtfm13-slate-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    bottom: 0;
+    z-index: 1000;
+    flex-shrink: 0;
+    box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.06);
+}
+
+.rtfm13-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--rtfm13-slate-600);
+}
+
+.rtfm13-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.rtfm13-btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 9px 24px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: var(--rtfm13-font-body);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1.5px solid transparent;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.rtfm13-btn-cancel {
+    background: #ffffff;
+    color: var(--rtfm13-slate-700);
+    border-color: var(--rtfm13-slate-300);
+}
+
+.rtfm13-btn-cancel:hover {
+    background: var(--rtfm13-slate-100);
+    color: var(--rtfm13-slate-900);
+    border-color: var(--rtfm13-slate-400);
+}
+
+.rtfm13-btn-draft {
+    background: #f0f9ff;
+    color: #0369a1;
+    border-color: #bae6fd;
+}
+
+.rtfm13-btn-draft:hover {
+    background: #e0f2fe;
+    color: #0284c7;
+    border-color: #7dd3fc;
+}
+
+.rtfm13-btn-submit {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    border-color: #059669;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.rtfm13-btn-submit:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    transform: translateY(-1px);
+}

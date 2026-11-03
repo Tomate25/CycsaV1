@@ -1585,6 +1585,7 @@ class OperacionesControlador extends ControladorBase {
             return !is_array($it) || !array_key_exists('permitido', $it) || (int)$it['permitido'] === 1;
         }));
         $orden['hoja_solicitud'] = $modelo->obtenerHojaSolicitudPorOS($idOS);
+        $orden['hojas_solicitud'] = $modelo->obtenerHojasSolicitudPorOS($idOS);
 
         $stmtRecCount = $db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_os = :id_os");
         $stmtRecCount->execute(['id_os' => $idOS]);

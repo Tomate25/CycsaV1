@@ -1,6 +1,7 @@
 <?php
 // Vista principal - Listado Unificado de Órdenes de Servicio & Hojas de Recepción (CYCSA ERP Premium Style)
 ?>
+<link rel="stylesheet" href="/Cycsa/publico/css/rtfm13_fullscreen.css">
 <style>
     :root {
         --cycsa-azul: #103487;
@@ -856,9 +857,14 @@
                                                         <?php foreach ($listaHojas as $idxH => $hItem): ?>
                                                             <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                                                                 <div>
-                                                                    <div style="font-size:13px; font-weight:700; color:var(--cycsa-azul);">
+                                                                    <div style="font-size:13px; font-weight:700; color:var(--cycsa-azul); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                                                         <i class="fa-solid fa-file-invoice"></i> <?= htmlspecialchars($hItem['codigo_documento'] ?? 'CYCSA-RT-FM-13') ?> 
                                                                         <span style="font-family:monospace; color:#0f172a; background:#e2e8f0; padding:2px 7px; border-radius:4px; font-size:12px;">Reg: <?= htmlspecialchars($hItem['numero_registro'] ?? ('#' . $hItem['id'])) ?></span>
+                                                                        <?php if (!empty($hItem['descripcion_ensayo'])): ?>
+                                                                            <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:11px; font-weight:600;">
+                                                                                <i class="fa-solid fa-flask"></i> <?= htmlspecialchars($hItem['descripcion_ensayo']) ?>
+                                                                            </span>
+                                                                        <?php endif; ?>
                                                                     </div>
                                                                     <div style="font-size:11.5px; color:#64748b; margin-top:3px;">
                                                                         <i class="fa-solid fa-vials"></i> <?= (int)($hItem['total_muestras'] ?? 0) ?> espécimen(es) • 
@@ -1099,6 +1105,19 @@
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id_os" id="hs_id_os">
                 <input type="hidden" name="id_hoja" id="hs_id_hoja" value="0">
+
+                <!-- SELECTOR OBLIGATORIO DE PRODUCTO / ENSAYO DE LA O/S (EPIC 3 - AGY-RT13) -->
+                <div style="background:#eff6ff; border:1.5px solid #93c5fd; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
+                    <label for="id_detalle_cotizacion_modal" style="font-size:13px; font-weight:700; color:#1e40af; display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <i class="fa-solid fa-flask-vial" style="color:#2563eb;"></i> Producto / Ensayo Cotizado de la Orden de Servicio <span class="text-danger" style="color:#dc2626;">*</span>
+                    </label>
+                    <select name="id_detalle_cotizacion" id="id_detalle_cotizacion_modal" class="form-select form-select-sm" required style="font-size:13px; font-weight:600; padding:8px 12px; border-radius:6px; border:1.5px solid #93c5fd; width:100%;" onchange="alCambiarProductoModalRTFM13(this.value)">
+                        <option value="">-- Seleccione el Producto / Ensayo de la O/S --</option>
+                    </select>
+                    <div style="font-size:11.5px; color:#64748b; margin-top:5px;">
+                        Cada Hoja CYCSA-RT-FM-13 ampara un producto/ensayo específico de la cotización aprobada.
+                    </div>
+                </div>
 
                 <!-- 1. METADATOS Y CONTROL INTERNO -->
                 <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-clipboard-check"></i> A rellenar por el laboratorio (Control Interno)</div>
@@ -1849,7 +1868,7 @@
     let idOSModalActual = 0;
     let codigoOSModalActual = '';
 
-    function abrirModalHojaSolicitud(idOS, code, idHoja = 0, esNueva = false, prefijo = '') {
+    function abrirModalHojaSolicitud(idOS, code, idHoja = 0, esNueva = false, prefijo = '', idDetalle = 0) {
         idOSModalActual = idOS;
         codigoOSModalActual = code;
         document.getElementById('hs_codigo_os_label').innerText = code;
@@ -1868,6 +1887,9 @@
         }
         if (prefijo) {
             url += '&prefijo=' + encodeURIComponent(prefijo);
+        }
+        if (idDetalle > 0) {
+            url += '&id_detalle_cotizacion=' + encodeURIComponent(idDetalle);
         }
 
         fetch(url)
@@ -1892,6 +1914,15 @@
                 alert('Error al comunicarse con el servidor: ' + err.message);
                 cerrarModalHojaSolicitud();
             });
+    }
+
+    function alCambiarProductoModalRTFM13(idDetalle) {
+        if (!idDetalle || !idOSModalActual) return;
+        const elIdHoja = document.getElementById('hs_id_hoja');
+        const esNueva = (!elIdHoja || elIdHoja.value == '0' || elIdHoja.value == '');
+        if (esNueva) {
+            abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true, prefijoMuestraActual, parseInt(idDetalle, 10));
+        }
     }
 
     function cargarNuevaHojaEnModal() {
@@ -1925,6 +1956,38 @@
             elIdHoja.value = data.es_nueva ? 0 : (h.id || 0);
         }
 
+        // Poblar Selector de Producto / Ensayo de la O/S
+        const selProd = document.getElementById('id_detalle_cotizacion_modal');
+        if (selProd) {
+            selProd.innerHTML = '<option value="">-- Seleccione el Producto / Ensayo de la O/S --</option>';
+            const productos = data.productos_permitidos_os || data.productos_permitidos || [];
+            const idActualProd = h.id_detalle_cotizacion || 0;
+            
+            productos.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id_detalle_cotizacion;
+                let label = (p.codigo_servicio ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo');
+                if (p.tiene_hoja && (!idActualProd || p.id_detalle_cotizacion != idActualProd)) {
+                    label += ' (Ya tiene Hoja #' + (p.id_hoja_creada || '') + ')';
+                }
+                opt.textContent = label;
+                if (idActualProd && p.id_detalle_cotizacion == idActualProd) {
+                    opt.selected = true;
+                }
+                selProd.appendChild(opt);
+            });
+
+            if (idActualProd) {
+                selProd.value = idActualProd;
+            } else if (data.es_nueva && productos.length > 0) {
+                // Seleccionar automáticamente el primer producto sin hoja o el primero
+                const prodSinHoja = productos.find(p => !p.tiene_hoja) || productos[0];
+                if (prodSinHoja) {
+                    selProd.value = prodSinHoja.id_detalle_cotizacion;
+                }
+            }
+        }
+
         // Renderizado del Selector de Hojas / Entregas
         const selContainer = document.getElementById('hs_selector_hojas_container');
         const tabsContainer = document.getElementById('hs_lista_tabs_hojas');
@@ -1943,7 +2006,8 @@
                     const btnTab = document.createElement('button');
                     btnTab.type = 'button';
                     btnTab.style.cssText = `padding: 5px 12px; font-size: 11.5px; font-weight: 600; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid ${isSelected ? '#0284c7' : '#cbd5e1'}; background: ${isSelected ? '#e0f2fe' : 'white'}; color: ${isSelected ? '#0369a1' : '#475569'}; transition: all 0.15s;`;
-                    btnTab.innerHTML = `<i class="fa-solid fa-file-lines" style="color:${isSelected ? '#0284c7' : '#94a3b8'};"></i> Hoja #${itemHoja.numero_secuencial || (idx + 1)} <span style="font-size:10px; font-family:monospace; background:${isSelected ? '#bae6fd' : '#f1f5f9'}; padding:1px 5px; border-radius:4px; font-weight:700;">${itemHoja.numero_registro || 'Sin Reg'}</span>`;
+                    let labelProd = itemHoja.descripcion_ensayo ? ` · <span style="font-size:10px; color:#0369a1; font-weight:600;">${escapeHtml(itemHoja.descripcion_ensayo)}</span>` : '';
+                    btnTab.innerHTML = `<i class="fa-solid fa-file-lines" style="color:${isSelected ? '#0284c7' : '#94a3b8'};"></i> Hoja #${itemHoja.numero_secuencial || (idx + 1)} <span style="font-size:10px; font-family:monospace; background:${isSelected ? '#bae6fd' : '#f1f5f9'}; padding:1px 5px; border-radius:4px; font-weight:700;">${itemHoja.numero_registro || 'Sin Reg'}</span>${labelProd}`;
                     btnTab.onclick = () => {
                         abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, itemHoja.id, false);
                     };

@@ -991,7 +991,16 @@ class OperacionModelo extends ModeloBase {
      * Obtiene todas las hojas de solicitud (CYCSA-RT-FM-13) asociadas a una O/S ordenadas cronológicamente.
      */
     public function obtenerHojasSolicitudPorOS(int $idOS): array {
-        $stmt = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os ORDER BY id ASC");
+        $sql = "SELECT hs.*, 
+                       cd.descripcion_ensayo,
+                       COALESCE(cd.codigo_servicio, p.codigo_servicio, '') AS codigo_servicio,
+                       COALESCE(p.nombre_comercial, '') AS nombre_comercial
+                FROM hojas_solicitud hs
+                LEFT JOIN cotizacion_detalles cd ON hs.id_detalle_cotizacion = cd.id
+                LEFT JOIN productos p ON (hs.id_producto = p.id OR cd.id_producto = p.id)
+                WHERE hs.id_os = :id_os 
+                ORDER BY hs.id ASC";
+        $stmt = $this->db->prepare($sql);
         $stmt->execute(['id_os' => $idOS]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -1000,7 +1009,15 @@ class OperacionModelo extends ModeloBase {
      * Obtiene una hoja de solicitud específica por su ID.
      */
     public function obtenerHojaSolicitudPorId(int $idHoja): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id = :id");
+        $sql = "SELECT hs.*, 
+                       cd.descripcion_ensayo,
+                       COALESCE(cd.codigo_servicio, p.codigo_servicio, '') AS codigo_servicio,
+                       COALESCE(p.nombre_comercial, '') AS nombre_comercial
+                FROM hojas_solicitud hs
+                LEFT JOIN cotizacion_detalles cd ON hs.id_detalle_cotizacion = cd.id
+                LEFT JOIN productos p ON (hs.id_producto = p.id OR cd.id_producto = p.id)
+                WHERE hs.id = :id";
+        $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $idHoja]);
         $res = $stmt->fetch(PDO::FETCH_ASSOC);
         return $res ?: null;
@@ -1011,15 +1028,22 @@ class OperacionModelo extends ModeloBase {
      * Si se pasa $idHoja se busca esa en específico; de lo contrario retorna la más reciente.
      */
     public function obtenerHojaSolicitudPorOS(int $idOS, ?int $idHoja = null): ?array {
+        $sqlBase = "SELECT hs.*, 
+                           cd.descripcion_ensayo,
+                           COALESCE(cd.codigo_servicio, p.codigo_servicio, '') AS codigo_servicio,
+                           COALESCE(p.nombre_comercial, '') AS nombre_comercial
+                    FROM hojas_solicitud hs
+                    LEFT JOIN cotizacion_detalles cd ON hs.id_detalle_cotizacion = cd.id
+                    LEFT JOIN productos p ON (hs.id_producto = p.id OR cd.id_producto = p.id)";
         if ($idHoja !== null && $idHoja > 0) {
-            $stmt = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id = :id AND id_os = :id_os");
+            $stmt = $this->db->prepare("$sqlBase WHERE hs.id = :id AND hs.id_os = :id_os");
             $stmt->execute(['id' => $idHoja, 'id_os' => $idOS]);
             $res = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($res) {
                 return $res;
             }
         }
-        $stmt = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os ORDER BY id DESC LIMIT 1");
+        $stmt = $this->db->prepare("$sqlBase WHERE hs.id_os = :id_os ORDER BY hs.id DESC LIMIT 1");
         $stmt->execute(['id_os' => $idOS]);
         $res = $stmt->fetch(PDO::FETCH_ASSOC);
         return $res ?: null;
@@ -1066,6 +1090,20 @@ class OperacionModelo extends ModeloBase {
                 return false;
             }
             $idHoja = (int)($datos['id_hoja'] ?? 0);
+            $idDetalleCotizacion = !empty($datos['id_detalle_cotizacion']) ? (int)$datos['id_detalle_cotizacion'] : null;
+            $idProducto = !empty($datos['id_producto']) ? (int)$datos['id_producto'] : null;
+            $ensayoId = !empty($datos['ensayo_id']) ? (int)$datos['ensayo_id'] : null;
+
+            if ($idDetalleCotizacion > 0 && ($idProducto === null || $ensayoId === null)) {
+                $stmtDet = $this->db->prepare("SELECT id_producto FROM cotizacion_detalles WHERE id = :id");
+                $stmtDet->execute(['id' => $idDetalleCotizacion]);
+                $prodIdFromDet = $stmtDet->fetchColumn();
+                if ($prodIdFromDet) {
+                    if ($idProducto === null) $idProducto = (int)$prodIdFromDet;
+                    if ($ensayoId === null) $ensayoId = (int)$prodIdFromDet;
+                }
+            }
+
             $fechaHoraLlegada = !empty($datos['fecha_hora_llegada_laboratorio']) ? $datos['fecha_hora_llegada_laboratorio'] : null;
             $codigoDoc = trim($datos['codigo_documento'] ?? 'CYCSA-RT-FM-13');
             $numeroRegistro = trim($datos['numero_registro'] ?? '');
@@ -1126,6 +1164,11 @@ class OperacionModelo extends ModeloBase {
             $existing = null;
             if ($idHoja > 0) {
                 $existing = $this->obtenerHojaSolicitudPorId($idHoja);
+                if ($existing && $idDetalleCotizacion === null) {
+                    $idDetalleCotizacion = !empty($existing['id_detalle_cotizacion']) ? (int)$existing['id_detalle_cotizacion'] : null;
+                    $idProducto = $idProducto ?? (!empty($existing['id_producto']) ? (int)$existing['id_producto'] : null);
+                    $ensayoId = $ensayoId ?? (!empty($existing['ensayo_id']) ? (int)$existing['ensayo_id'] : null);
+                }
             }
             
             $lockAcquired = false;
@@ -1218,6 +1261,9 @@ class OperacionModelo extends ModeloBase {
 
             if ($existing) {
                 $sql = "UPDATE hojas_solicitud SET 
+                            id_detalle_cotizacion = :id_det_cot,
+                            id_producto = :id_prod,
+                            ensayo_id = :ensayo_id,
                             fecha_hora_llegada_laboratorio = :f_llegada,
                             codigo_documento = :cod_doc,
                             numero_registro = :num_reg,
@@ -1257,14 +1303,14 @@ class OperacionModelo extends ModeloBase {
                         WHERE id = :id_hoja";
             } else {
                 $sql = "INSERT INTO hojas_solicitud (
-                            id_os, fecha_hora_llegada_laboratorio, codigo_documento, numero_registro, nombre_empresa_o_cliente, razon_social, direccion_proyecto, telefono, correo_electronico, nombre_persona_entrega_muestra,
+                            id_os, id_detalle_cotizacion, id_producto, ensayo_id, fecha_hora_llegada_laboratorio, codigo_documento, numero_registro, nombre_empresa_o_cliente, razon_social, direccion_proyecto, telefono, correo_electronico, nombre_persona_entrega_muestra,
                             naturaleza_muestra, procedencia_punto_muestreo, nombre_persona_toma_muestra, fecha_hora_toma_muestra, condicion_muestreo_datos, muestras_json,
                             req_resistencia_concreto, req_resistencia_adoquin, req_resistencia_bloques, req_otros_concreto,
                             req_granulometria, req_limites_atterberg, req_humedad, req_resistencia_corte, req_clasificacion_sucs_hr, req_proctor_sm, req_infiltracion, req_cbr, req_densidad, req_otros_suelo,
                             req_otros_materiales, descripcion_otros_analisis,
                             analisis_adicionales, observaciones, nombre_recibe_cycsa, firma_recibe_cycsa, firma_cliente
                         ) VALUES (
-                            :id_os, :f_llegada, :cod_doc, :num_reg, :n_empresa, :razon_social, :dir, :tel, :email, :p_entrega,
+                            :id_os, :id_det_cot, :id_prod, :ensayo_id, :f_llegada, :cod_doc, :num_reg, :n_empresa, :razon_social, :dir, :tel, :email, :p_entrega,
                             :naturaleza, :proc, :p_toma, :f_toma, :cond_m, :m_json,
                             :rc_con, :rc_ado, :rc_blo, :rc_ot,
                             :rg, :rl, :rh, :rs, :rc_sucs, :rp, :ri, :rcbr, :rd, :rs_ot,
@@ -1274,6 +1320,9 @@ class OperacionModelo extends ModeloBase {
             }
             
             $params = [
+                'id_det_cot' => $idDetalleCotizacion,
+                'id_prod' => $idProducto,
+                'ensayo_id' => $ensayoId,
                 'f_llegada' => $fechaHoraLlegada,
                 'cod_doc' => $codigoDoc,
                 'num_reg' => $numeroRegistro,

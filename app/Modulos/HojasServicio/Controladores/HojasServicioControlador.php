@@ -116,7 +116,68 @@ class HojasServicioControlador extends ControladorBase {
         $lugarMuestreo = $osCompleta['programacion_muestreo']['lugar_muestreo'] ?? '';
         $cantEstimadaProg = (int)($osCompleta['programacion_muestreo']['cantidad_muestras_est'] ?? 0);
 
-        $detectado = $this->detectarParametrosYNaturaleza($osCompleta['ensayos'] ?? []);
+        $idDetalleParam = (int)($_GET['id_detalle_cotizacion'] ?? ($hoja['id_detalle_cotizacion'] ?? 0));
+
+        // Mapear qué detalles ya tienen una hoja creada
+        $detallesConHoja = [];
+        foreach ($todasHojas as $th) {
+            if (!empty($th['id_detalle_cotizacion'])) {
+                $detallesConHoja[(int)$th['id_detalle_cotizacion']] = (int)$th['id'];
+            }
+        }
+
+        $productosPermitidos = [];
+        $detalleSeleccionado = null;
+        if (!empty($osCompleta['ensayos']) && is_array($osCompleta['ensayos'])) {
+            foreach ($osCompleta['ensayos'] as $ens) {
+                if (array_key_exists('permitido', $ens) && (int)$ens['permitido'] !== 1) {
+                    continue;
+                }
+                $idDet = (int)($ens['id'] ?? 0);
+                $tieneHoja = isset($detallesConHoja[$idDet]);
+                $idProd = (int)($ens['id_producto'] ?? ($ens['producto_id'] ?? 0));
+                $pItem = [
+                    'id_detalle_cotizacion' => $idDet,
+                    'id_producto' => $idProd,
+                    'ensayo_id' => $idProd,
+                    'descripcion_ensayo' => $ens['descripcion_ensayo'] ?? ($ens['nombre_ensayo'] ?? ''),
+                    'codigo_servicio' => $ens['codigo_servicio'] ?? '',
+                    'norma_astm' => $ens['norma_astm'] ?? '',
+                    'cantidad' => (float)($ens['cantidad'] ?? 1),
+                    'tiene_hoja' => $tieneHoja,
+                    'id_hoja_creada' => $detallesConHoja[$idDet] ?? null,
+                    'es_compactacion' => $this->esProductoCompactacion($ens)
+                ];
+                $productosPermitidos[] = $pItem;
+
+                if ($idDetalleParam > 0 && $idDet === $idDetalleParam) {
+                    $detalleSeleccionado = $ens;
+                }
+            }
+        }
+
+        if (!$detalleSeleccionado && !empty($productosPermitidos)) {
+            if ($esNueva) {
+                foreach ($osCompleta['ensayos'] as $ens) {
+                    if (!isset($detallesConHoja[(int)$ens['id']])) {
+                        $detalleSeleccionado = $ens;
+                        $idDetalleParam = (int)$ens['id'];
+                        break;
+                    }
+                }
+            }
+            if (!$detalleSeleccionado && !empty($osCompleta['ensayos'])) {
+                $detalleSeleccionado = $osCompleta['ensayos'][0];
+                $idDetalleParam = (int)$detalleSeleccionado['id'];
+            }
+        }
+
+        // Prefill de flags y naturaleza para este producto específico
+        if ($detalleSeleccionado) {
+            $detectado = $this->detectarParametrosYNaturaleza([$detalleSeleccionado]);
+        } else {
+            $detectado = $this->detectarParametrosYNaturaleza($osCompleta['ensayos'] ?? []);
+        }
 
         $nombreCliente = !empty($osCompleta['cliente_nombre']) ? $osCompleta['cliente_nombre'] : ($os['cliente_nombre'] ?? '');
         $direccionProyecto = !empty($osCompleta['direccion_proyecto']) ? $osCompleta['direccion_proyecto'] : (!empty($osCompleta['cliente_direccion']) ? $osCompleta['cliente_direccion'] : ($os['direccion_proyecto'] ?? ''));
@@ -141,6 +202,11 @@ class HojasServicioControlador extends ControladorBase {
             $hoja = array_merge([
                 'id' => 0,
                 'id_os' => $idOS,
+                'id_detalle_cotizacion' => $idDetalleParam,
+                'id_producto' => (int)($detalleSeleccionado['id_producto'] ?? 0),
+                'ensayo_id' => (int)($detalleSeleccionado['id_producto'] ?? 0),
+                'descripcion_ensayo' => $detalleSeleccionado['descripcion_ensayo'] ?? ($detalleSeleccionado['nombre_ensayo'] ?? ''),
+                'codigo_servicio' => $detalleSeleccionado['codigo_servicio'] ?? '',
                 'codigo_documento' => 'CYCSA-RT-FM-13',
                 'numero_registro' => $proximoNumeroRegistro,
                 'nombre_empresa_o_cliente' => $nombreCliente,
@@ -173,6 +239,13 @@ class HojasServicioControlador extends ControladorBase {
             if (empty($hoja['nombre_persona_toma_muestra']) && !empty($tecnicoMuestreo)) $hoja['nombre_persona_toma_muestra'] = $tecnicoMuestreo;
             if (empty($hoja['procedencia_punto_muestreo'])) $hoja['procedencia_punto_muestreo'] = $procedenciaPunto;
             if (empty($hoja['naturaleza_muestra'])) $hoja['naturaleza_muestra'] = $detectado['naturaleza_muestra_str'];
+            if (empty($hoja['id_detalle_cotizacion']) && $idDetalleParam > 0) {
+                $hoja['id_detalle_cotizacion'] = $idDetalleParam;
+            }
+            if (empty($hoja['descripcion_ensayo']) && $detalleSeleccionado) {
+                $hoja['descripcion_ensayo'] = $detalleSeleccionado['descripcion_ensayo'] ?? ($detalleSeleccionado['nombre_ensayo'] ?? '');
+                $hoja['codigo_servicio'] = $detalleSeleccionado['codigo_servicio'] ?? '';
+            }
         }
 
         $prefijoParam = strtoupper(trim($_GET['prefijo'] ?? ''));
@@ -241,7 +314,13 @@ class HojasServicioControlador extends ControladorBase {
                 'fecha_creacion' => $th['fecha_creacion'] ?? '',
                 'fecha_toma' => $th['fecha_hora_toma_muestra'] ?? '',
                 'toma_por' => $th['nombre_persona_toma_muestra'] ?? 'Cliente',
-                'total_muestras' => count($mArr)
+                'total_muestras' => count($mArr),
+                'id_detalle_cotizacion' => (int)($th['id_detalle_cotizacion'] ?? 0),
+                'id_producto' => (int)($th['id_producto'] ?? 0),
+                'ensayo_id' => (int)($th['ensayo_id'] ?? 0),
+                'descripcion_ensayo' => $th['descripcion_ensayo'] ?? '',
+                'codigo_servicio' => $th['codigo_servicio'] ?? '',
+                'nombre_comercial' => $th['nombre_comercial'] ?? ''
             ];
         }
 
@@ -304,7 +383,9 @@ class HojasServicioControlador extends ControladorBase {
             'os_referencia' => $osCompleta,
             'cliente_id' => $clienteId,
             'detalles_muestras_relacionales' => $detallesRelacionales,
-            'ensayos_disponibles_os' => $ensayosOS
+            'ensayos_disponibles_os' => $ensayosOS,
+            'productos_permitidos_os' => $productosPermitidos,
+            'productos_permitidos' => $productosPermitidos
         ]);
     }
 
@@ -350,6 +431,61 @@ class HojasServicioControlador extends ControladorBase {
                 $_SESSION['error'] = 'La Orden de Servicio debe estar en estado Aprobada para registrar o modificar Hojas de Solicitud (CYCSA-RT-FM-13).';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
+            }
+
+            // Exigir obligatorio $datos['id_detalle_cotizacion']. Si está vacío o es <= 0, rechazar
+            $idDetalleCotizacion = (int)($datos['id_detalle_cotizacion'] ?? 0);
+            if ($idDetalleCotizacion <= 0 && $idHoja > 0) {
+                $hojaExistente = $modelo->obtenerHojaSolicitudPorId($idHoja);
+                if ($hojaExistente && !empty($hojaExistente['id_detalle_cotizacion'])) {
+                    $idDetalleCotizacion = (int)$hojaExistente['id_detalle_cotizacion'];
+                    $datos['id_detalle_cotizacion'] = $idDetalleCotizacion;
+                }
+            }
+
+            if ($idDetalleCotizacion <= 0) {
+                $_SESSION['error'] = 'Debe seleccionar el producto o ensayo de la Orden de Servicio al que corresponde esta Hoja de Solicitud (CYCSA-RT-FM-13).';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            // Obtener id_producto y ensayo_id correspondientes a ese detalle cotizado desde cotizacion_detalles
+            $db = Conexion::obtenerInstancia();
+            $stmtDet = $db->prepare("SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
+                                     FROM cotizacion_detalles cd
+                                     LEFT JOIN productos p ON cd.id_producto = p.id
+                                     LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                                     WHERE cd.id = :id");
+            $stmtDet->execute(['id' => $idDetalleCotizacion]);
+            $detalle = $stmtDet->fetch(PDO::FETCH_ASSOC);
+
+            if (!$detalle) {
+                $_SESSION['error'] = 'El producto o ensayo seleccionado no existe.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            $idProducto = (int)($detalle['id_producto'] ?? 0);
+            $ensayoId = $idProducto > 0 ? $idProducto : 1;
+            $datos['id_producto'] = $idProducto;
+            $datos['ensayo_id'] = $ensayoId;
+
+            // Prefill de flags y naturaleza en base a ESE producto específico
+            $resFlags = $this->detectarParametrosYNaturaleza([$detalle]);
+            $flagsProducto = $resFlags['flags'] ?? [];
+
+            if (empty($datos['naturaleza_muestra'])) {
+                $datos['naturaleza_muestra'] = $resFlags['naturaleza_muestra_str'];
+            }
+
+            // Saneamiento server-side desactivando flags no pertenecientes a este producto
+            $datos = $this->sanitizarCamposReqSegunFlags($datos, $flagsProducto);
+            if ($idHoja <= 0) {
+                foreach ($flagsProducto as $k => $v) {
+                    if (!empty($v) && empty($datos[$k])) {
+                        $datos[$k] = $v;
+                    }
+                }
             }
             
             // Procesar tabla dinámica de especímenes y plantillas
@@ -408,15 +544,13 @@ class HojasServicioControlador extends ControladorBase {
             }
             $datos['identificacion_muestras_json'] = json_encode($identMuestras);
 
-            // Validación y saneamiento server-side de Whitelist de Ensayos (H.1):
-            // Si la O/S tiene whitelist aprobada y es una hoja nueva, desactivar categorías no contempladas
+            // Whitelist de la O/S: verificar que el producto seleccionado esté habilitado
             $osModelo = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
             $idsPermitidos = $osModelo->obtenerIdsPermitidos($idOS);
-            if ($idsPermitidos !== null && $idHoja <= 0) {
-                $detallesPermitidos = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)($os['id_cotizacion'] ?? 0)));
-                $resFlags = $this->detectarParametrosYNaturaleza($detallesPermitidos);
-                $flagsPermitidos = $resFlags['flags'] ?? [];
-                $datos = $this->sanitizarCamposReqSegunFlags($datos, $flagsPermitidos);
+            if ($idsPermitidos !== null && !in_array($idDetalleCotizacion, $idsPermitidos, true)) {
+                $_SESSION['error'] = 'El ensayo seleccionado no está habilitado en la whitelist de esta Orden de Servicio.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
             }
 
             $idHojaGuardada = 0;
@@ -490,12 +624,21 @@ class HojasServicioControlador extends ControladorBase {
                 
                 // Nota: Si la O/S estaba "Observada", se mantiene su estado para que el usuario pueda enviarla a revisión formal con el botón correspondiente.
 
-                $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado.';
+                $esCompactacion = $this->esProductoCompactacion($detalle);
+                if ($esCompactacion) {
+                    $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente. El seguimiento del ensayo de compactación se realiza en Operaciones LIMS.';
+                    $respuesta->redirigir('/Cycsa/publico/operaciones/ver?id_os=' . $idOS);
+                    return;
+                } else {
+                    $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado.';
+                    $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                    return;
+                }
             } else {
                 $_SESSION['error'] = 'Error al registrar la Hoja de Solicitud.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
             }
-
-            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
         }
     }
 
@@ -710,6 +853,42 @@ class HojasServicioControlador extends ControladorBase {
     /**
      * Sanea server-side los campos req_* desactivando categorías no permitidas en la whitelist.
      */
+    /**
+     * Determina si un detalle/producto corresponde a compactación (ASTM D6938, D1556, D698, D1557 o formato).
+     */
+    public function esProductoCompactacion(array $item): bool {
+        $texto = mb_strtolower(
+            ($item['descripcion_ensayo'] ?? '') . ' ' . 
+            ($item['nombre_comercial'] ?? '') . ' ' . 
+            ($item['nombre_ensayo'] ?? '') . ' ' . 
+            ($item['norma_astm'] ?? '') . ' ' . 
+            ($item['codigo_servicio'] ?? '') . ' ' .
+            ($item['formato_nombre'] ?? '') . ' ' . 
+            ($item['archivo_markdown'] ?? '') . ' ' .
+            ($item['ensayo_servicio'] ?? ''),
+            'UTF-8'
+        );
+
+        $textoLimpio = preg_replace('/[^a-z0-9]/', '', $texto);
+        if (str_contains($textoLimpio, 'd6938') || str_contains($textoLimpio, 'd1556') || str_contains($textoLimpio, 'd698') || str_contains($textoLimpio, 'd1557') || str_contains($textoLimpio, 'd5030')) {
+            return true;
+        }
+
+        $patrones = ['compactaci', 'densimetro', 'densímetro', 'cono de arena', 'reemplazo de agua', 'proctor'];
+        foreach ($patrones as $p) {
+            if (str_contains($texto, $p)) {
+                return true;
+            }
+        }
+
+        $formatoId = (int)($item['formato_id'] ?? 0);
+        if (in_array($formatoId, [1, 3, 4, 15], true)) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function sanitizarCamposReqSegunFlags(array $datos, array $flagsPermitidos): array {
         $camposReq = [
             'req_resistencia_concreto', 'req_resistencia_adoquin', 'req_resistencia_bloques',
