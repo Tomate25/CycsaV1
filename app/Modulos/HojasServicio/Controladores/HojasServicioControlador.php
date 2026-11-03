@@ -426,8 +426,18 @@ class HojasServicioControlador extends ControladorBase {
                 return;
             }
 
-            // Gate duro RT-FM-13: Validar que la O/S esté en estado 'Aprobada'
-            if ($os['estado'] !== 'Aprobada') {
+            // Gate duro RT-FM-13: Validar que la O/S esté en estado de aprobación válido
+            $estadosAprobados = [
+                'Aprobada',
+                'Estado 3: Aprobada',
+                'Estado 3: Ingreso Directo',
+                'Estado 3A: Programacion Muestreo',
+                'Estado 3B: Ejecucion Muestreo',
+                'Estado 4: Ingreso Laboratorio',
+                'Estado 5: Solicitud Tecnicos',
+                'Estado 6: Ejecucion Ensayos'
+            ];
+            if (!in_array($os['estado'], $estadosAprobados, true)) {
                 $_SESSION['error'] = 'La Orden de Servicio debe estar en estado Aprobada para registrar o modificar Hojas de Solicitud (CYCSA-RT-FM-13).';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
@@ -627,11 +637,11 @@ class HojasServicioControlador extends ControladorBase {
 
                 $esCompactacion = $this->esProductoCompactacion($detalle);
                 if ($esCompactacion) {
-                    $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente. El seguimiento del ensayo de compactación se realiza en Operaciones LIMS.';
+                    $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado. <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=' . $idOS . '&id_hoja=' . $idHojaGuardada . '" target="_blank" class="alert-link text-decoration-underline ms-2"><i class="fa-solid fa-file-pdf"></i> Ver PDF Oficial</a>. El seguimiento del ensayo de compactación se realiza en Operaciones LIMS.';
                     $respuesta->redirigir('/Cycsa/publico/operaciones/ver?id_os=' . $idOS);
                     return;
                 } else {
-                    $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado.';
+                    $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado. <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=' . $idOS . '&id_hoja=' . $idHojaGuardada . '" target="_blank" class="alert-link text-decoration-underline ms-2"><i class="fa-solid fa-file-pdf"></i> Ver PDF Oficial</a>.';
                     $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                     return;
                 }

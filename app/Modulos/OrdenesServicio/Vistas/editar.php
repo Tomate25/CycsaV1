@@ -1,6 +1,7 @@
 <?php
 // Vista para editar Orden de Servicio CYCSA-RG-FM-39 V1 (CYCSA ERP Premium Style)
-$esAprobada = ($os['estado'] === 'Aprobada');
+$estadosAprobados = ['Aprobada', 'Estado 3: Aprobada', 'Estado 3: Ingreso Directo', 'Estado 3A: Programacion Muestreo', 'Estado 3B: Ejecucion Muestreo', 'Estado 4: Ingreso Laboratorio', 'Estado 5: Solicitud Tecnicos', 'Estado 6: Ejecucion Ensayos'];
+$esAprobada = in_array($os['estado'] ?? '', $estadosAprobados, true);
 $esMultimes = !empty($os['es_multimes']);
 $idClienteFacturaActual = (int)($os['id_cliente_factura'] ?? $os['id_cliente'] ?? 0);
 $idClienteInformeActual = (int)($os['id_cliente_informe'] ?? $os['id_cliente'] ?? 0);

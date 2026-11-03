@@ -277,6 +277,21 @@
 
 <div class="os-modulo-container">
     
+    <?php if (!empty($_SESSION['exito'])): ?>
+        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert" style="border-radius:10px; font-size:14px; font-weight:600; box-shadow:0 2px 6px rgba(16,185,129,0.15);">
+            <i class="fa-solid fa-circle-check me-2"></i> <?= $_SESSION['exito'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php unset($_SESSION['exito']); ?>
+    <?php endif; ?>
+    <?php if (!empty($_SESSION['error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert" style="border-radius:10px; font-size:14px; font-weight:600; box-shadow:0 2px 6px rgba(239,68,68,0.15);">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> <?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
+
     <!-- CABECERA -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 15px;">
         <div>
@@ -1187,11 +1202,11 @@
                     <div class="rtfm13-grid-3">
                         <div class="rtfm13-form-group">
                             <label>Teléfono</label>
-                            <input type="text" name="telefono" id="hs_telefono" required class="rtfm13-input">
+                            <input type="text" name="telefono" id="hs_telefono" class="rtfm13-input" placeholder="Teléfono de contacto">
                         </div>
                         <div class="rtfm13-form-group">
                             <label>Correo Electrónico</label>
-                            <input type="email" name="correo_electronico" id="hs_email" required class="rtfm13-input">
+                            <input type="email" name="correo_electronico" id="hs_email" class="rtfm13-input" placeholder="correo@ejemplo.com">
                         </div>
                         <div class="rtfm13-form-group">
                             <label>Persona que entrega la muestra</label>
@@ -2068,7 +2083,14 @@
         }
 
         if (form.checkValidity && !form.checkValidity()) {
-            form.reportValidity();
+            const firstInvalid = form.querySelector(':invalid');
+            if (firstInvalid) {
+                const labelText = firstInvalid.closest('.rtfm13-form-group')?.querySelector('label')?.innerText || firstInvalid.name || 'campo requerido';
+                alert('Por favor complete el campo requerido: ' + labelText.replace(/[:*]/g, '').trim());
+                firstInvalid.focus();
+            } else if (form.reportValidity) {
+                form.reportValidity();
+            }
             if (e && e.preventDefault) e.preventDefault();
             return false;
         }
@@ -2337,8 +2359,8 @@
                 );
             });
         } else {
-            // No pre-poblar automáticamente especímenes; el usuario los agregará manualmente
-            mostrarEstadoVacioMuestras();
+            // Pre-poblar al menos 1 espécimen inicial con el correlativo correspondiente
+            agregarFilaMuestraModal();
         }
 
         // Checkboxes de Análisis con comprobación segura de nulidad

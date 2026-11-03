@@ -302,7 +302,17 @@ class OrdenesServicioControlador extends ControladorBase {
         $estadoActual = $os['estado'] ?? '';
         $requiereReaprobacion = false;
         $nuevoEstado = $estadoActual;
-        if ($estadoActual === 'Aprobada') {
+        $estadosAprobados = [
+            'Aprobada',
+            'Estado 3: Aprobada',
+            'Estado 3: Ingreso Directo',
+            'Estado 3A: Programacion Muestreo',
+            'Estado 3B: Ejecucion Muestreo',
+            'Estado 4: Ingreso Laboratorio',
+            'Estado 5: Solicitud Tecnicos',
+            'Estado 6: Ejecucion Ensayos'
+        ];
+        if (in_array($estadoActual, $estadosAprobados, true)) {
             $nuevoEstado = 'Estado 2: Revision';
             $requiereReaprobacion = true;
         }

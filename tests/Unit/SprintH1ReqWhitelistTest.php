@@ -261,4 +261,99 @@ class SprintH1ReqWhitelistTest extends TestCase {
         $this->assertEquals(1, (int)$hoja['req_humedad'], 'El parámetro atípico req_humedad debe persistir en BD con ADDENDUM P0');
         $this->assertEquals(1, (int)$hoja['req_granulometria'], 'El parámetro atípico req_granulometria debe persistir en BD con ADDENDUM P0');
     }
+
+    public function testGuardarHojaEnOSEstadoIngresoDirectoGeneraHojaYPdf(): void {
+        // 1. Cliente
+        $stmtCli = $this->db->prepare("INSERT INTO clientes (nombre_razon_social, numero_ruc, email, telefono) VALUES ('Cliente Directo SA', 'J0310000000005', 'directo@test.local', '88880005')");
+        $stmtCli->execute();
+        $idCliente = (int)$this->db->lastInsertId();
+        $this->limpiezaIds['id_cliente'] = $idCliente;
+
+        // 2. Producto Concreto
+        $stmtP1 = $this->db->query("SELECT id FROM productos WHERE nombre_comercial LIKE '%Concreto%' OR norma_astm LIKE '%C39%' LIMIT 1");
+        $idProd = (int)$stmtP1->fetchColumn();
+
+        // 3. Cotización y Detalle
+        $stmtCot = $this->db->prepare("INSERT INTO cotizaciones (codigo, id_cliente, id_usuario_creador, atencion_a, nombre_proyecto, condicion_pago, estado, subtotal, total) VALUES (:cod, :cli, 1, 'Ing. Directo', 'Proyecto Directo', 'Pago contra entrega', 'Aprobada por Cliente', 1000, 1150)");
+        $stmtCot->execute(['cod' => 'COT-DIR-' . uniqid(), 'cli' => $idCliente]);
+        $idCotizacion = (int)$this->db->lastInsertId();
+        $this->limpiezaIds['id_cotizacion'] = $idCotizacion;
+
+        $stmtDet = $this->db->prepare("INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, codigo_servicio, norma_astm, cantidad, precio_unitario, subtotal) VALUES (:cot, :prod, 'Concreto f\'c 280 (ASTM C39)', 'CYCSA-RT-FM-22 A', 'ASTM C39', 5, 500, 2500)");
+        $stmtDet->execute(['cot' => $idCotizacion, 'prod' => $idProd]);
+        $idDetalle = (int)$this->db->lastInsertId();
+
+        // 4. Orden de Servicio en estado 'Estado 3: Ingreso Directo'
+        $idOS = $this->osModelo->crear([
+            'codigo_os' => 'OS-DIR-' . uniqid(),
+            'id_cotizacion' => $idCotizacion,
+            'id_cliente' => $idCliente,
+            'id_cliente_factura' => $idCliente,
+            'id_cliente_informe' => $idCliente,
+            'atencion_a' => 'Ing. Directo',
+            'nombre_proyecto' => 'Proyecto Directo',
+            'forma_pago' => 'Pago contra entrega',
+            'condicion_comercial' => 'contado',
+            'tipo_contrato' => 'Puntual',
+            'estado' => 'Estado 3: Ingreso Directo'
+        ]);
+        $this->db->exec("UPDATE ordenes_servicio SET estado = 'Estado 3: Ingreso Directo' WHERE id = {$idOS}");
+        $this->limpiezaIds['id_os'] = $idOS;
+
+        // Whitelist para este detalle
+        $this->db->exec("INSERT INTO orden_servicio_ensayos_permitidos (id_os, id_cotizacion_detalle) VALUES ({$idOS}, {$idDetalle})");
+
+        // 5. POST para guardar/emitir RT-FM-13 con teléfono y correo vacíos
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            @session_start();
+        }
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SESSION['usuario_id'] = 1;
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_nombre'] = 'Admin Test Directo';
+        $_SESSION['csrf_token'] = 'csrf_dir_test_' . uniqid();
+        $_SESSION['usuario_permisos'] = [
+            'hojas_servicio' => ['crear_editar' => 1, 'ver' => 1],
+            'ordenes_servicio' => ['crear_editar' => 1, 'ver' => 1]
+        ];
+
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_os' => $idOS,
+            'id_hoja' => 0,
+            'id_detalle_cotizacion' => $idDetalle,
+            'numero_registro' => 'REG-DIR-' . uniqid(),
+            'nombre_empresa_o_cliente' => 'Cliente Directo SA',
+            'direccion_proyecto' => 'Sitio Obra',
+            'telefono' => '',
+            'correo_electronico' => '',
+            'nombre_persona_entrega_muestra' => 'Ing. Directo',
+            'procedencia_punto_muestreo' => 'Sitio Obra',
+            'nombre_persona_toma_muestra' => 'Cliente / Entregada por Cliente',
+            'fecha_hora_toma_muestra' => date('Y-m-d H:i'),
+            'nombre_recibe_cycsa' => 'Receptor Test',
+            'req_resistencia_concreto' => 1,
+            'm_nombre' => ['MS-0001-26'],
+            'm_desc' => ['Cilindro Concreto Directo']
+        ];
+
+        $peticion = new Peticion();
+        $respuesta = new TestRespuestaCapturaSprintH1();
+
+        $this->hojaControlador->guardarHojaSolicitud($peticion, $respuesta);
+
+        // 6. Verificar persistencia y generación de PDF
+        $this->assertNotEmpty($_SESSION['exito'] ?? null, 'Debe haber mensaje de éxito al emitir la hoja en Estado 3: Ingreso Directo.');
+        $this->assertNull($_SESSION['error'] ?? null, 'No debe haber error en sesión.');
+
+        $stmtH = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :os ORDER BY id DESC LIMIT 1");
+        $stmtH->execute(['os' => $idOS]);
+        $hoja = $stmtH->fetch(PDO::FETCH_ASSOC);
+
+        $this->assertNotEmpty($hoja, 'La hoja de solicitud debe haberse insertado.');
+        $this->limpiezaIds['id_hoja'] = (int)$hoja['id'];
+
+        $archivosPdf = glob(dirname(__DIR__, 2) . "/almacenamiento/solicitudes/*-H{$hoja['id']}.pdf");
+        $this->assertNotEmpty($archivosPdf, 'El PDF oficial individual debe haberse generado en almacenamiento/solicitudes.');
+    }
 }

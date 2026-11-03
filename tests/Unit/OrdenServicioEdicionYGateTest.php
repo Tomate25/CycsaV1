@@ -311,6 +311,14 @@ class OrdenServicioEdicionYGateTest extends TestCase {
         $this->assertGreaterThan(0, $idHojaValida, 'El ID de la hoja guardada debe ser mayor a cero.');
         $this->hojasCreadas[] = $idHojaValida;
 
+        // 5c2. O/S en estado 'Estado 3: Ingreso Directo' (DEBE PASAR EL GATE)
+        $this->db->prepare("UPDATE ordenes_servicio SET estado = 'Estado 3: Ingreso Directo' WHERE id = :id")->execute(['id' => $idOS]);
+        $idHojaIngresoDirecto = 0;
+        $resultadoIngresoDirecto = $this->opModelo->guardarHojaSolicitud($datosHoja, $idHojaIngresoDirecto);
+        $this->assertTrue($resultadoIngresoDirecto, 'En O/S con Estado 3: Ingreso Directo, la hoja RT-FM-13 debe guardarse con éxito.');
+        $this->assertGreaterThan(0, $idHojaIngresoDirecto);
+        $this->hojasCreadas[] = $idHojaIngresoDirecto;
+
         // 5d. O/S en estado 'Finalizado' (Cerrada)
         $this->db->prepare("UPDATE ordenes_servicio SET estado = 'Finalizado' WHERE id = :id")->execute(['id' => $idOS]);
         $idHojaCerrada = 0;

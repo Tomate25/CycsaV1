@@ -685,9 +685,19 @@ class OrdenServicioModelo {
 
         // Regla de consistencia: Si el estado actual es 'Aprobada' y se actualiza la O/S, transicionar a 'Estado 2: Revision'
         $nuevoEstado = $estadoActual;
+        $estadosAprobados = [
+            'Aprobada',
+            'Estado 3: Aprobada',
+            'Estado 3: Ingreso Directo',
+            'Estado 3A: Programacion Muestreo',
+            'Estado 3B: Ejecucion Muestreo',
+            'Estado 4: Ingreso Laboratorio',
+            'Estado 5: Solicitud Tecnicos',
+            'Estado 6: Ejecucion Ensayos'
+        ];
         if (isset($datos['estado'])) {
             $nuevoEstado = trim($datos['estado']);
-        } elseif ($estadoActual === 'Aprobada') {
+        } elseif (in_array($estadoActual, $estadosAprobados, true)) {
             $nuevoEstado = 'Estado 2: Revision';
         }
 
