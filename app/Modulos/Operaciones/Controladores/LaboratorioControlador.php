@@ -136,7 +136,11 @@ class LaboratorioControlador extends ControladorBase {
                 }
             }
 
-            $o['ensayos'] = $ensayos;
+            if (!empty($o['id_detalle_cotizacion']) && !empty($detHoja)) {
+                $o['ensayos'] = [$detHoja];
+            } else {
+                $o['ensayos'] = $ensayos;
+            }
             $o['muestras_declaradas'] = !empty($o['muestras_json']) ? (json_decode($o['muestras_json'], true) ?: []) : [];
             $o['total_muestras_declaradas'] = count($o['muestras_declaradas']);
 
@@ -1113,6 +1117,25 @@ class LaboratorioControlador extends ControladorBase {
 
         $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS, $idHoja > 0 ? $idHoja : null);
         $ensayos = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']));
+
+        if ($hoja && !empty($hoja['id_detalle_cotizacion'])) {
+            $idDetHoja = (int)$hoja['id_detalle_cotizacion'];
+            $ensayosHoja = array_values(array_filter($ensayos, fn($e) => (int)($e['id'] ?? 0) === $idDetHoja));
+            if (!empty($ensayosHoja)) {
+                $ensayos = $ensayosHoja;
+            } else {
+                $stmtD = $db->prepare("SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
+                                       FROM cotizacion_detalles cd
+                                       LEFT JOIN productos p ON cd.id_producto = p.id
+                                       LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                                       WHERE cd.id = :id");
+                $stmtD->execute(['id' => $idDetHoja]);
+                $detHojaPrint = $stmtD->fetch(PDO::FETCH_ASSOC);
+                if ($detHojaPrint) {
+                    $ensayos = [$detHojaPrint];
+                }
+            }
+        }
 
         if ($idHoja > 0) {
             $stmtMin = $db->prepare("SELECT MIN(id) FROM hojas_solicitud WHERE id_os = :id_os");

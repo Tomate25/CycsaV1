@@ -276,11 +276,15 @@
                 <td class="etiqueta-col">Ensayo a realizar:</td>
                 <td class="valor-col" style="font-weight: 700;">
                     <?php 
-                    $nombresEnsayos = [];
-                    foreach ($ensayos as $e) {
-                        $nombresEnsayos[] = htmlspecialchars($e['descripcion_ensayo'] ?? $e['nombre_ensayo'] ?? '');
+                    if (!empty($hoja['descripcion_ensayo'])) {
+                        echo htmlspecialchars($hoja['descripcion_ensayo']);
+                    } else {
+                        $nombresEnsayos = [];
+                        foreach ($ensayos as $e) {
+                            $nombresEnsayos[] = htmlspecialchars($e['descripcion_ensayo'] ?? $e['nombre_ensayo'] ?? '');
+                        }
+                        echo implode(' / ', array_filter($nombresEnsayos)) ?: 'Ensayos de Laboratorio Solicitados';
                     }
-                    echo implode(' / ', array_filter($nombresEnsayos)) ?: 'Ensayos de Laboratorio Solicitados';
                     ?>
                 </td>
             </tr>

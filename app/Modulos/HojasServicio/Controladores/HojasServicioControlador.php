@@ -359,8 +359,19 @@ class HojasServicioControlador extends ControladorBase {
             ];
         }
 
+        $idProductoHoja = (int)($detalleSeleccionado['id_producto'] ?? ($detalleSeleccionado['producto_id'] ?? ($hoja['id_producto'] ?? 0)));
+        if ($idProductoHoja <= 0 && !empty($ensayosOS)) {
+            $idProductoHoja = (int)($ensayosOS[0]['id'] ?? 1);
+        }
+        $pltSugeridaHoja = ($idProductoHoja > 0) ? $pltModelo->obtenerPlantillaSugerida($idProductoHoja, $clienteId) : null;
+        $esCompactacionHoja = $detalleSeleccionado ? $this->esProductoCompactacion($detalleSeleccionado) : false;
+
         $respuesta->enviarJson([
             'status' => 'success',
+            'producto_hoja_id' => $idProductoHoja,
+            'plantilla_sugerida_hoja' => $pltSugeridaHoja,
+            'es_compactacion_hoja' => $esCompactacionHoja,
+            'detalle_seleccionado' => $detalleSeleccionado,
             'hoja' => $hoja,
             'todas_las_hojas' => $listaHojasFrontend,
             'total_hojas' => $totalHojas,
@@ -509,9 +520,8 @@ class HojasServicioControlador extends ControladorBase {
             $plantillaGlobalId = (int)($datos['plantilla_global_id'] ?? 0);
             if ($plantillaGlobalId <= 0) {
                 $pltMod = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
-                $ensayosOS = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)($os['id_cotizacion'] ?? 0)));
-                $primerEnsayoId = (int)($ensayosOS[0]['id_producto'] ?? 1);
-                $sug = $pltMod->obtenerPlantillaSugerida($primerEnsayoId, (int)($os['id_cliente'] ?? 0));
+                // Usar estrictamente el producto/ensayo específico de esta hoja, nunca ensayosOS[0]
+                $sug = $pltMod->obtenerPlantillaSugerida($ensayoId, (int)($os['id_cliente'] ?? 0));
                 if (!empty($sug['id'])) {
                     $plantillaGlobalId = (int)$sug['id'];
                 }
@@ -549,7 +559,7 @@ class HojasServicioControlador extends ControladorBase {
                     'nombre_muestra' => $nom,
                     'descripcion' => trim($mDescripciones[$i] ?? ''),
                     'info_importante' => trim($mInfos[$i] ?? ''),
-                    'ensayo_id' => (int)($mEnsayos[$i] ?? 1),
+                    'ensayo_id' => !empty($mEnsayos[$i]) && (int)$mEnsayos[$i] > 0 ? (int)$mEnsayos[$i] : $ensayoId,
                     'plantilla_id' => (int)($mPlantillas[$i] ?? 0)
                 ];
             }
@@ -581,7 +591,7 @@ class HojasServicioControlador extends ControladorBase {
                         'codigo_muestra' => $nom,
                         'descripcion_ubicacion' => trim($mDescripciones[$i] ?? ''),
                         'observacion_edad' => trim($mInfos[$i] ?? ''),
-                        'ensayo_id' => (int)($mEnsayos[$i] ?? 1),
+                        'ensayo_id' => !empty($mEnsayos[$i]) && (int)$mEnsayos[$i] > 0 ? (int)$mEnsayos[$i] : $ensayoId,
                         'plantilla_id' => (int)($mPlantillas[$i] ?? 0),
                         'seleccion_manual' => !empty($mManuales[$i]) ? 1 : 0,
                         'motivo_cambio' => trim($mMotivos[$i] ?? '')

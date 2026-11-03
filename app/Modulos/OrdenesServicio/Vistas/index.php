@@ -1964,6 +1964,13 @@
         document.getElementById('hs_codigo_os_label').innerText = code;
         const elFootCode = document.getElementById('hs_footer_os_code');
         if (elFootCode) elFootCode.innerText = code;
+        const elHiddenPlt = document.getElementById('select_plantilla_global');
+        if (elHiddenPlt) elHiddenPlt.value = '';
+        const triggerTexto = document.getElementById('texto_plantilla_seleccionada');
+        if (triggerTexto) {
+            triggerTexto.innerHTML = '<span style="color:#64748b; font-size:12px;"><i class="fa-solid fa-layer-group me-1"></i>Seleccionar plantilla para toda la hoja...</span>';
+        }
+        window.plantillasCache = [];
         modHS.style.display = 'block';
         hsLoading.style.display = 'block';
         hsSplit.style.display = 'none';
@@ -2026,6 +2033,20 @@
         const esNueva = (!elIdHoja || elIdHoja.value == '0' || elIdHoja.value == '');
         if (esNueva) {
             abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true, prefijoMuestraActual, parseInt(idDetalle, 10));
+        } else {
+            const productos = window.productosPermitidosActuales || [];
+            const prod = productos.find(p => String(p.id_detalle_cotizacion) === String(idDetalle));
+            if (prod) {
+                window.productoHojaIdActual = prod.id_producto || prod.ensayo_id;
+                window.esCompactacionHojaActual = !!prod.es_compactacion;
+                const elHiddenPlt = document.getElementById('select_plantilla_global');
+                if (elHiddenPlt) elHiddenPlt.value = '';
+                const triggerTexto = document.getElementById('texto_plantilla_seleccionada');
+                if (triggerTexto) {
+                    triggerTexto.innerHTML = '<span style="color:#64748b; font-size:12px;"><i class="fa-solid fa-layer-group me-1"></i>Seleccionar plantilla para toda la hoja...</span>';
+                }
+                poblarSelectorPlantillaGlobal(window.productoHojaIdActual, window.clienteIdActualHoja, null);
+            }
         }
     }
 
@@ -2205,8 +2226,12 @@
             return ens.permitido !== 0 && ens.permitido !== '0' && ens.permitido !== false;
         });
         window.clienteIdActualHoja = data.cliente_id || '';
+        window.productoHojaIdActual = data.producto_hoja_id || (h ? (h.id_producto || h.ensayo_id || 0) : 0);
+        window.esCompactacionHojaActual = typeof data.es_compactacion_hoja !== 'undefined' ? !!data.es_compactacion_hoja : false;
+        window.plantillaSugeridaHojaActual = data.plantilla_sugerida_hoja || null;
+        window.productosPermitidosActuales = data.productos_permitidos_os || data.productos_permitidos || [];
 
-        poblarSelectorPlantillaGlobal(window.ensayosDisponiblesOS, window.clienteIdActualHoja);
+        poblarSelectorPlantillaGlobal(window.productoHojaIdActual, window.clienteIdActualHoja, window.plantillaSugeridaHojaActual);
         aplicarFiltroWhitelistReq(window.ensayosDisponiblesOS, !!data.es_nueva);
 
         // Set id_hoja hidden field
@@ -2407,11 +2432,13 @@
                     nom,
                     det.descripcion_ubicacion || '',
                     det.observacion_edad || '',
-                    det.ensayo_id || null,
+                    det.ensayo_id || window.productoHojaIdActual || null,
                     det.plantilla_id || null,
                     parseInt(det.seleccion_manual || 0),
                     det.motivo_cambio || '',
-                    parseInt(det.bloqueado_recepcion || 0)
+                    parseInt(det.bloqueado_recepcion || 0),
+                    det.plantilla_codigo || '',
+                    det.plantilla_nombre || ''
                 );
             });
         } else if (Array.isArray(muestrasArr) && muestrasArr.length > 0) {
@@ -2423,11 +2450,13 @@
                     nom,
                     m.descripcion || m.ubicacion || '',
                     m.info_importante || m.observaciones || '',
-                    m.ensayo_id || null,
+                    m.ensayo_id || window.productoHojaIdActual || null,
                     m.plantilla_id || null,
                     parseInt(m.seleccion_manual || 0),
                     m.motivo_cambio || '',
-                    parseInt(m.bloqueado || 0)
+                    parseInt(m.bloqueado || 0),
+                    m.plantilla_codigo || '',
+                    m.plantilla_nombre || ''
                 );
             });
         } else {
@@ -2528,7 +2557,7 @@
         actualizarContadorEspecimenes();
     }
 
-    function agregarFilaMuestraModal(tipo = null, nom = '', desc = '', info = '', ensayoId = null, plantillaId = null, seleccionManual = 0, motivoCambio = '', bloqueado = 0) {
+    function agregarFilaMuestraModal(tipo = null, nom = '', desc = '', info = '', ensayoId = null, plantillaId = null, seleccionManual = 0, motivoCambio = '', bloqueado = 0, codigoPlantillaPrevia = '', nombrePlantillaPrevia = '') {
         const tbody = document.getElementById('hs-tbody-muestras');
         if (!tbody) return;
 
@@ -2536,7 +2565,8 @@
         const filaVacia = document.getElementById('fila-sin-muestras');
         if (filaVacia) filaVacia.remove();
 
-        const prefijo = tipo || prefijoMuestraActual || 'MC';
+        const esCompactacion = !!window.esCompactacionHojaActual;
+        const prefijo = esCompactacion ? 'MC' : (tipo || prefijoMuestraActual || 'MC');
 
         if (nom === '') {
             const nextNum = recalcularConsecutivoMuestra(prefijo);
@@ -2544,10 +2574,10 @@
             nom = `${prefijo}-${consecutiveStr}-${anioActual2Digitos}`;
             siguienteConsecutivoMuestra = nextNum + 1;
             if (desc === '') {
-                desc = (prefijo === 'MS') ? 'Muestra entregada en laboratorio' : 'Muestra tomada en campo';
+                desc = esCompactacion ? 'Muestra tomada en campo' : ((prefijo === 'MS') ? 'Muestra entregada en laboratorio' : 'Muestra tomada en campo');
             }
             if (info === '') {
-                info = (prefijo === 'MS') ? 'Recepción Lab Central' : 'Muestreo en Obra';
+                info = esCompactacion ? 'Ensayo in situ' : ((prefijo === 'MS') ? 'Recepción Lab Central' : 'Muestreo en Obra');
             }
         }
 
@@ -2561,14 +2591,19 @@
 
         // Obtener datos legibles de la plantilla asignada
         let etiquetaPlantilla = 'Sin plantilla asignada';
-        let codigoPlantilla = '';
-        if (plantillaId && Array.isArray(window.plantillasCache)) {
+        let codigoPlantilla = codigoPlantillaPrevia || '';
+        if (codigoPlantillaPrevia || nombrePlantillaPrevia) {
+            etiquetaPlantilla = codigoPlantillaPrevia ? `${codigoPlantillaPrevia} · ${nombrePlantillaPrevia}` : nombrePlantillaPrevia;
+        }
+        if (plantillaId && Array.isArray(window.plantillasCache) && window.plantillasCache.length > 0) {
             const plt = window.plantillasCache.find(p => String(p.id) === String(plantillaId));
             if (plt) {
                 codigoPlantilla = plt.codigo || '';
                 etiquetaPlantilla = plt.codigo ? `${plt.codigo} · ${plt.nombre}` : plt.nombre;
             }
         }
+
+        const ensayoFinal = ensayoId || window.productoHojaIdActual || 1;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -2577,7 +2612,7 @@
                     <span class="badge ${prefijo === 'MS' ? 'bg-secondary' : 'bg-primary'}" style="font-size:10.5px; font-weight:700; padding:4px 6px; border-radius:4px;">${escapeHtml(prefijo)}</span>
                     <input type="text" name="m_nombre[]" value="${nom}" readonly required class="rtfm13-input rtfm13-input-mono" style="padding:6px 10px; font-size:12px; height:36px; color:var(--rtfm13-azul); background:#f8fafc; cursor:not-allowed;" title="Código consecutivo oficial asignado por el sistema">
                 </div>
-                <input type="hidden" name="m_ensayo_id[]" value="${ensayoId || 1}">
+                <input type="hidden" name="m_ensayo_id[]" value="${ensayoFinal}">
                 <input type="hidden" name="m_plantilla_id[]" value="${plantillaId || ''}" class="input-plantilla-muestra">
                 <input type="hidden" name="m_seleccion_manual[]" value="${seleccionManual}">
                 <input type="hidden" name="m_motivo_cambio[]" value="${escapeHtml(motivoCambio)}">
@@ -2629,7 +2664,7 @@
         return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
-    function poblarSelectorPlantillaGlobal(ensayos, clienteId) {
+    function poblarSelectorPlantillaGlobal(ensayoOProductoId, clienteId, plantillaSugeridaPrevia = null) {
         const hiddenInput = document.getElementById('select_plantilla_global');
         const listaCont = document.getElementById('lista_resultados_plantillas_ajax');
         if (!hiddenInput) return;
@@ -2639,9 +2674,17 @@
         }
 
         const cid = clienteId || window.clienteIdActualHoja || '';
-        const primerEnsayoId = (ensayos && ensayos.length > 0) ? ensayos[0].id : 0;
+        let ensayoIdParam = 0;
+        if (typeof ensayoOProductoId === 'number' || typeof ensayoOProductoId === 'string') {
+            ensayoIdParam = parseInt(ensayoOProductoId, 10) || 0;
+        } else if (Array.isArray(ensayoOProductoId) && ensayoOProductoId.length > 0) {
+            ensayoIdParam = parseInt(ensayoOProductoId[0].id, 10) || 0;
+        }
+        if (ensayoIdParam <= 0) {
+            ensayoIdParam = window.productoHojaIdActual || 0;
+        }
 
-        fetch(`/Cycsa/publico/plantillas/disponibles?ensayo_id=${primerEnsayoId}&cliente_id=${cid}`)
+        fetch(`/Cycsa/publico/plantillas/disponibles?ensayo_id=${ensayoIdParam}&cliente_id=${cid}`)
             .then(r => r.json())
             .then(res => {
                 if (res.status === 'success' && Array.isArray(res.plantillas) && res.plantillas.length > 0) {
@@ -2663,8 +2706,9 @@
                     renderizarListaDropdownPlantillas(window.plantillasCache);
 
                     // Seleccionar plantilla sugerida si no hay una elegida
-                    if (!hiddenInput.value && res.plantilla_sugerida) {
-                        seleccionarPlantillaGlobal(res.plantilla_sugerida.id, res.plantilla_sugerida.codigo, res.plantilla_sugerida.nombre, res.plantilla_sugerida.norma, false);
+                    const sugerida = plantillaSugeridaPrevia || res.plantilla_sugerida;
+                    if (!hiddenInput.value && sugerida) {
+                        seleccionarPlantillaGlobal(sugerida.id, sugerida.codigo, sugerida.nombre, sugerida.norma, false);
                     }
                 } else {
                     window.plantillasCache = [];
