@@ -118,6 +118,11 @@ if (!empty($os['contactos_json'])) {
             <i class="fa-solid fa-arrow-left"></i> Volver a Órdenes
         </a>
         <div class="os-btn-group-secondary">
+            <?php if (!in_array($os['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
+            <a href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= (int)($os['id'] ?? 0) ?>" class="btn-cycsa btn-cycsa-secondary">
+                <i class="fa-solid fa-pen-to-square"></i> Editar Orden de Servicio
+            </a>
+            <?php endif; ?>
             <?php if (!empty($mostrar_bitacora)): ?>
             <a href="/Cycsa/publico/ordenes-servicio/bitacora?id=<?= (int)($os['id'] ?? 0) ?>" class="btn-cycsa btn-cycsa-secondary">
                 <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
@@ -197,6 +202,21 @@ if (!empty($os['contactos_json'])) {
                 <span class="os-meta-label">Teléfono:</span>
                 <span class="os-meta-value"><?= htmlspecialchars($os['cliente_telefono'] ?: '(505) 8209-6275') ?></span>
             </div>
+                    <?php if (!empty($os['es_multimes'])): ?>
+            <div class="os-meta-row">
+                <span class="os-meta-label">Modalidad:</span>
+                <span class="os-meta-value">
+                    <span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11.5px; border: 1px solid #c7d2fe;">
+                        <i class="fa-solid fa-repeat"></i> Multi-mes (<?= htmlspecialchars($os['periodicidad'] ?? 'Mensual') ?>)
+                    </span>
+                    <?php if (!empty($os['fecha_inicio']) && !empty($os['fecha_fin'])): ?>
+                        <span style="font-size: 11.5px; color: #64748b; margin-left: 6px;">
+                            (<?= date('d/m/Y', strtotime($os['fecha_inicio'])) ?> &mdash; <?= date('d/m/Y', strtotime($os['fecha_fin'])) ?>)
+                        </span>
+                    <?php endif; ?>
+                </span>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- TABLA DE ENSAYOS / SERVICIOS -->

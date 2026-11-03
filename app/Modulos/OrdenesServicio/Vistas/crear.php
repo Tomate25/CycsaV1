@@ -134,7 +134,37 @@
                 </div>
             </div>
 
-            <div class="form-group-cycsa">
+                        <!-- SECCIÓN MULTI-MES -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px 18px; margin-bottom: 18px;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: #1e293b; font-size: 14px; margin: 0;">
+                        <input type="checkbox" name="es_multimes" id="chk_es_multimes" value="1" onchange="toggleMultiMes(this.checked)" style="width: 18px; height: 18px; accent-color: var(--cycsa-azul); cursor: pointer;">
+                        <span><i class="fa-solid fa-repeat" style="color: var(--cycsa-azul);"></i> Contrato Multi-mes (Proyectos continuos con entregas periódicas)</span>
+                    </label>
+                    <span id="multimes_badge" style="display: none; background: #e0e7ff; color: #3730a3; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 6px; border: 1px solid #c7d2fe;">
+                        <i class="fa-solid fa-check"></i> Activo
+                    </span>
+                </div>
+                <div id="seccion_multimes_campos" style="display: none; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                    <div class="form-group-cycsa" style="margin-bottom: 0;">
+                        <label>Fecha de Inicio del Contrato:</label>
+                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control-cycsa" value="<?= date('Y-m-d') ?>">
+                    </div>
+                    <div class="form-group-cycsa" style="margin-bottom: 0;">
+                        <label>Fecha de Finalización:</label>
+                        <input type="date" name="fecha_fin" id="fecha_fin" class="form-control-cycsa" value="<?= date('Y-m-d', strtotime('+3 months')) ?>">
+                    </div>
+                    <div class="form-group-cycsa" style="margin-bottom: 0;">
+                        <label>Periodicidad de Entregas:</label>
+                        <select name="periodicidad" id="periodicidad" class="form-control-cycsa" style="font-weight: 600;">
+                            <option value="Mensual" selected>Mensual</option>
+                            <option value="Quincenal">Quincenal</option>
+                            <option value="Trimestral">Trimestral</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+<div class="form-group-cycsa">
                 <label>Proyecto:</label>
                 <textarea name="nombre_proyecto" class="form-control-cycsa" rows="2" required><?= htmlspecialchars($cotizacion['nombre_proyecto'] ?? '') ?></textarea>
             </div>
@@ -225,6 +255,18 @@
 </div>
 
 <script>
+        function toggleMultiMes(activo) {
+        const contenedor = document.getElementById('seccion_multimes_campos');
+        const badge = document.getElementById('multimes_badge');
+        if (activo) {
+            contenedor.style.display = 'grid';
+            if (badge) badge.style.display = 'inline-block';
+        } else {
+            contenedor.style.display = 'none';
+            if (badge) badge.style.display = 'none';
+        }
+    }
+
     function actualizarBifurcacion(val) {
         const lblNo = document.getElementById('lbl-no');
         const lblSi = document.getElementById('lbl-si');

@@ -392,18 +392,9 @@
                         $estadoOS = $os['estado'];
                         $cantHojas = count($os['hojas_servicio'] ?? []);
 
-                        $esOSAprobada = !in_array($os['estado'], ['Estado 1: Recepcion', 'Pendiente', 'Borrador'])
-                                        || $cantHojas > 0
-                                        || !empty($os['id_hoja'])
-                                        || !empty($os['id_pm'])
-                                        || ($os['requiere_muestreo'] !== null && $os['requiere_muestreo'] !== '')
-                                        || in_array($os['estado'], [
-                                            'Aprobada', 'Estado 3: Aprobada', 'Estado 3: Ingreso Directo', 
-                                            'Estado 3A: Programacion Muestreo', 'Estado 3B: Ejecucion Muestreo', 
-                                            'Estado 4: Ingreso Laboratorio', 'Estado 5: Solicitud Tecnicos', 
-                                            'Estado 6: Ejecucion Ensayos', 'Estado 7: Revision Resultados', 
-                                            'Finalizado', 'En Proceso'
-                                        ]);
+                        // Gate duro: La O/S debe estar formalmente en estado 'Aprobada'
+                        $estadosAprobados = ['Aprobada', 'Estado 3: Aprobada', 'Estado 3: Ingreso Directo', 'Estado 3A: Programacion Muestreo', 'Estado 3B: Ejecucion Muestreo', 'Estado 4: Ingreso Laboratorio', 'Estado 5: Solicitud Tecnicos', 'Estado 6: Ejecucion Ensayos'];
+                        $esOSAprobada = in_array($os['estado'], $estadosAprobados, true);
 
                         $ensayosAprobarModal = [];
                         foreach (($os['items'] ?? []) as $itEns) {
@@ -440,6 +431,11 @@
                                         <span style="font-family: monospace; font-size: 11.5px; color: #475569; background: #f8fafc; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0; display: inline-block; margin-top: 3px;">
                                             <i class="fa-solid fa-file-invoice" style="font-size: 10.5px; color:#64748b;"></i> <?= htmlspecialchars($os['cotizacion_codigo'] ?? 'N/A') ?>
                                         </span>
+                                        <?php if (!empty($os['es_multimes'])): ?>
+                                            <span class="badge-premium" style="background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-size: 10.5px; padding: 2px 7px; margin-top: 3px; display: inline-block;" title="Contrato Multi-mes (<?= htmlspecialchars($os['periodicidad'] ?? 'Mensual') ?>)">
+                                                <i class="fa-solid fa-repeat"></i> Multi-mes
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
@@ -559,6 +555,13 @@
                                             <i class="fa-solid fa-ellipsis-vertical"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm os-acciones-menu" aria-labelledby="dropdownMenuOS<?= $os['id'] ?>">
+                                            <?php if (!in_array($os['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
+                                                <li>
+                                                    <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= $os['id'] ?>">
+                                                        <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Editar Orden de Servicio
+                                                    </a>
+                                                </li>
+                                            <?php endif; ?>
                                             <li>
                                                 <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>">
                                                     <i class="fa-solid fa-file-lines me-2" style="color:var(--cycsa-azul);"></i> Ver Documento O/S (FM-39)
@@ -609,6 +612,14 @@
                                                         </a>
                                                     </li>
                                                 <?php endif; ?>
+                                            <?php endif; ?>
+                                            <?php else: ?>
+                                                <li><hr class="dropdown-divider my-1"></li>
+                                                <li>
+                                                    <button type="button" class="dropdown-item py-2 text-muted disabled" disabled style="opacity: 0.6; cursor: not-allowed;" title="La Orden de Servicio debe estar en estado Aprobada para registrar Hojas de Solicitud (CYCSA-RT-FM-13)">
+                                                        <i class="fa-solid fa-lock me-2 text-muted"></i> + Nueva Hoja RT-FM-13 (Requiere Aprobación)
+                                                    </button>
+                                                </li>
                                             <?php endif; ?>
                                             
                                             <li><hr class="dropdown-divider my-1"></li>

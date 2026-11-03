@@ -149,6 +149,11 @@ class OrdenesServicioControlador extends ControladorBase {
         // Determinar estado inicial según la decisión de muestreo en campo
         $estadoInicial = $requiereMuestreo ? 'Pendiente de Muestreo' : 'Estado 1: Recepcion';
 
+        $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === '1' || $datos['es_multimes'] === 1 || $datos['es_multimes'] === 'on') ? 1 : 0;
+        $fechaInicio = !empty($datos['fecha_inicio']) ? trim($datos['fecha_inicio']) : null;
+        $fechaFin = !empty($datos['fecha_fin']) ? trim($datos['fecha_fin']) : null;
+        $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
+
         $idOS = $osModelo->crear([
             'codigo_os' => $codigoOS,
             'id_cotizacion' => $idCotizacion,
@@ -166,6 +171,10 @@ class OrdenesServicioControlador extends ControladorBase {
             'contactos_json' => $datos['contactos'] ?? [],
             'requiere_muestreo' => $requiereMuestreo ? 1 : 0,
             'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : 'Puntual',
+            'es_multimes' => $esMultimes,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin,
+            'periodicidad' => $periodicidad,
             'estado' => $estadoInicial
         ]);
 
@@ -188,7 +197,165 @@ class OrdenesServicioControlador extends ControladorBase {
         }
     }
 
+    
     /**
+     * Formulario para editar una Orden de Servicio existente
+     */
+    public function editar(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
+        if ($idOS <= 0) {
+            $_SESSION['error'] = 'Debe especificar una Orden de Servicio válida.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        $osModelo = new OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS);
+
+        if (!$os) {
+            $_SESSION['error'] = 'La Orden de Servicio solicitada no existe.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        // Bloquea si estado está en ['Finalizado', 'Archivado', 'Cerrado']
+        if (in_array($os['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+            $_SESSION['error'] = 'La Orden de Servicio está cerrada o archivada y no admite modificaciones.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        $cotizacionModelo = new CotizacionModelo();
+        $cotizacion = $cotizacionModelo->obtenerPorId((int)$os['id_cotizacion']);
+        $detalles = $cotizacion ? $cotizacionModelo->obtenerDetalles((int)$os['id_cotizacion']) : ($os['ensayos'] ?? []);
+
+        $clientes = \Cycsa\Nucleo\Conexion::obtenerInstancia()
+            ->query("SELECT id, nombre_razon_social, numero_ruc FROM clientes ORDER BY nombre_razon_social ASC")
+            ->fetchAll(\PDO::FETCH_ASSOC);
+
+        $this->renderizar('OrdenesServicio/Vistas/editar', [
+            'titulo' => 'Editar Orden de Servicio - ' . ($os['codigo_os'] ?? ''),
+            'os' => $os,
+            'cotizacion' => $cotizacion ?: ['codigo' => 'N/A', 'version' => 1, 'cliente_nombre' => $os['cliente_nombre'] ?? ''],
+            'detalles' => $detalles,
+            'clientes' => $clientes
+        ]);
+    }
+
+    /**
+     * Procesar la actualización de una Orden de Servicio
+     */
+    public function actualizar(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        if (!$peticion->esPost()) {
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+
+        // 🔒 Validar CSRF
+        $csrfToken = $datos['csrf_token'] ?? '';
+        if (empty($csrfToken) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$csrfToken)) {
+            $_SESSION['error'] = 'Token de seguridad inválido o sesión expirada.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        $idOS = (int)($datos['id_os'] ?? ($datos['id'] ?? 0));
+        if ($idOS <= 0) {
+            $_SESSION['error'] = 'Orden de Servicio inválida.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        $osModelo = new OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS);
+        if (!$os) {
+            $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        // Bloquea si la O/S está en ['Finalizado', 'Archivado', 'Cerrado']
+        if (in_array($os['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+            $_SESSION['error'] = 'La Orden de Servicio está cerrada o archivada y no admite modificaciones.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
+
+        require_once dirname(__DIR__, 3) . '/Helpers/funciones.php';
+        $formaPago = trim($datos['forma_pago'] ?? ($os['forma_pago'] ?? 'Pago contra entrega'));
+        $condicionComercial = !empty($datos['condicion_comercial'])
+            ? trim($datos['condicion_comercial'])
+            : (function_exists('determinarCondicionComercial') ? determinarCondicionComercial($formaPago) : 'contado');
+
+        $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === '1' || $datos['es_multimes'] === 1 || $datos['es_multimes'] === 'on') ? 1 : 0;
+        $fechaInicio = !empty($datos['fecha_inicio']) ? trim($datos['fecha_inicio']) : null;
+        $fechaFin = !empty($datos['fecha_fin']) ? trim($datos['fecha_fin']) : null;
+        $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
+
+        // Regla de consistencia: Si el estado actual es 'Aprobada' y se actualiza la O/S, transicionar a 'Estado 2: Revision'
+        $estadoActual = $os['estado'] ?? '';
+        $requiereReaprobacion = false;
+        $nuevoEstado = $estadoActual;
+        if ($estadoActual === 'Aprobada') {
+            $nuevoEstado = 'Estado 2: Revision';
+            $requiereReaprobacion = true;
+        }
+
+        $datosActualizar = [
+            'atencion_a' => trim($datos['atencion_a'] ?? ($os['atencion_a'] ?? '')),
+            'nombre_proyecto' => trim($datos['nombre_proyecto'] ?? ($os['nombre_proyecto'] ?? '')),
+            'forma_pago' => $formaPago,
+            'condicion_comercial' => $condicionComercial,
+            'id_cliente_factura' => !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)($os['id_cliente_factura'] ?? $os['id_cliente']),
+            'id_cliente_informe' => !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)($os['id_cliente_informe'] ?? $os['id_cliente']),
+            'notas_condiciones' => trim($datos['notas_condiciones'] ?? ($os['notas_condiciones'] ?? '')),
+            'contactos_json' => $datos['contactos'] ?? ($datos['contactos_json'] ?? ($os['contactos_json'] ?? [])),
+            'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : ($os['tipo_contrato'] ?? 'Puntual'),
+            'es_multimes' => $esMultimes,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin,
+            'periodicidad' => $periodicidad
+        ];
+
+        if ($requiereReaprobacion) {
+            $datosActualizar['estado'] = $nuevoEstado;
+        }
+
+        $actualizado = $osModelo->actualizar($idOS, $datosActualizar);
+
+        if ($actualizado) {
+            if ($requiereReaprobacion) {
+                registrarEventoOS(
+                    'ordenes_servicio',
+                    'actualizar',
+                    'O/S actualizada; requiere re-aprobación del supervisor',
+                    $idOS,
+                    ['datos' => ['estado_anterior' => $estadoActual, 'estado_nuevo' => $nuevoEstado]]
+                );
+                $_SESSION['exito'] = 'Orden de Servicio ' . $os['codigo_os'] . ' actualizada. Al estar aprobada previamente, pasó a Revisión y requiere re-aprobación del supervisor.';
+            } else {
+                registrarEventoOS(
+                    'ordenes_servicio',
+                    'actualizar',
+                    'Orden de Servicio ' . $os['codigo_os'] . ' actualizada exitosamente',
+                    $idOS
+                );
+                $_SESSION['exito'] = 'Orden de Servicio ' . $os['codigo_os'] . ' actualizada exitosamente.';
+            }
+        } else {
+            $_SESSION['error'] = 'Error al actualizar la Orden de Servicio.';
+        }
+
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/detalle?id=' . $idOS);
+    }
+
+/**
      * Vista de Programación de Muestreo en Campo (Logística - Paso 3)
      */
     public function programarMuestreo(Peticion $peticion, Respuesta $respuesta): void {

@@ -311,6 +311,27 @@ class MigradorServicio {
                     $resultados['026_equipos_bodegas'] = '[026 WARN] ' . $e026->getMessage();
                 }
             }
+
+            // =========================================================================
+            // FASE 20: Migración 029 - OS Multi-mes y RT-FM-13 por Producto (Fases 2-4)
+            // =========================================================================
+            $ruta029 = dirname(__DIR__, 4) . '/database/migrations/029_os_multimes_y_rtfm13_producto.php';
+            if (file_exists($ruta029)) {
+                ob_start();
+                try {
+                    require_once $ruta029;
+                    if (function_exists('ejecutarMigracion029')) {
+                        ejecutarMigracion029($db);
+                    }
+                    $resultados['029_os_multimes_rtfm13'] = ob_get_clean();
+                } catch (Throwable $e029) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 029: ' . $e029->getMessage());
+                    $resultados['029_os_multimes_rtfm13'] = '[029 WARN] ' . $e029->getMessage();
+                }
+            }
         } catch (Throwable $e) {
             error_log("Error en MigradorServicio: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             $resultados['error'] = $e->getMessage();

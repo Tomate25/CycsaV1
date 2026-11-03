@@ -9,6 +9,11 @@ use Exception;
 class OrdenServicioModelo {
 
     private PDO $db;
+    private ?string $ultimoError = null;
+
+    public function obtenerUltimoError(): ?string {
+        return $this->ultimoError;
+    }
 
     public function __construct() {
         $this->db = Conexion::obtenerInstancia();
@@ -586,14 +591,19 @@ class OrdenServicioModelo {
             ? trim($datos['condicion_comercial']) 
             : determinarCondicionComercial($formaPago);
 
+        $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === 1 || $datos['es_multimes'] === '1' || $datos['es_multimes'] === 'on') ? 1 : 0;
+        $fechaInicio = !empty($datos['fecha_inicio']) ? $datos['fecha_inicio'] : null;
+        $fechaFin = !empty($datos['fecha_fin']) ? $datos['fecha_fin'] : null;
+        $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
+
         $sql = "INSERT INTO ordenes_servicio (
                     codigo_os, id_cotizacion, cotizacion_version, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, elaborado_por, fecha_emision,
                     atencion_a, nombre_proyecto, forma_pago, notas_condiciones,
-                    contactos_json, requiere_muestreo, tipo_contrato, estado
+                    contactos_json, requiere_muestreo, tipo_contrato, es_multimes, fecha_inicio, fecha_fin, periodicidad, estado
                 ) VALUES (
                     :codigo_os, :id_cotizacion, :cotizacion_version, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :elaborado_por, :fecha_emision,
                     :atencion_a, :nombre_proyecto, :forma_pago, :notas_condiciones,
-                    :contactos_json, :requiere_muestreo, :tipo_contrato, :estado
+                    :contactos_json, :requiere_muestreo, :tipo_contrato, :es_multimes, :fecha_inicio, :fecha_fin, :periodicidad, :estado
                 )";
 
         $stmt = $this->db->prepare($sql);
@@ -614,6 +624,10 @@ class OrdenServicioModelo {
             'contactos_json' => is_array($datos['contactos_json'] ?? null) ? json_encode($datos['contactos_json']) : ($datos['contactos_json'] ?? '[]'),
             'requiere_muestreo' => !empty($datos['requiere_muestreo']) ? 1 : 0,
             'tipo_contrato' => $datos['tipo_contrato'] ?? 'Puntual',
+            'es_multimes' => $esMultimes,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin,
+            'periodicidad' => $periodicidad,
             'estado' => $datos['estado'] ?? 'Borrador'
         ]);
 
@@ -626,6 +640,88 @@ class OrdenServicioModelo {
 
         return $idInsertado;
     }
+
+    /**
+     * Actualiza los campos editables de una Orden de Servicio
+     */
+    public function actualizar(int $idOS, array $datos): bool {
+        if ($idOS <= 0) {
+            $this->ultimoError = 'ID de Orden de Servicio inválido.';
+            return false;
+        }
+
+        $stmtActual = $this->db->prepare("SELECT id, estado, codigo_os FROM ordenes_servicio WHERE id = :id");
+        $stmtActual->execute(['id' => $idOS]);
+        $actual = $stmtActual->fetch(PDO::FETCH_ASSOC);
+
+        if (!$actual) {
+            $this->ultimoError = 'Orden de Servicio no encontrada.';
+            return false;
+        }
+
+        $estadoActual = $actual['estado'] ?? '';
+        if (in_array($estadoActual, ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+            $this->ultimoError = 'La Orden de Servicio está cerrada o archivada y no admite modificaciones.';
+            return false;
+        }
+
+        $idClienteFactura = !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : null;
+        $idClienteInforme = !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : null;
+        $formaPago = trim($datos['forma_pago'] ?? '');
+        $condComercial = !empty($datos['condicion_comercial'])
+            ? trim($datos['condicion_comercial'])
+            : (function_exists('determinarCondicionComercial') ? determinarCondicionComercial($formaPago) : 'contado');
+
+        $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === 1 || $datos['es_multimes'] === '1' || $datos['es_multimes'] === 'on') ? 1 : 0;
+        $fechaInicio = !empty($datos['fecha_inicio']) ? $datos['fecha_inicio'] : null;
+        $fechaFin = !empty($datos['fecha_fin']) ? $datos['fecha_fin'] : null;
+        $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
+
+        // Regla de consistencia: Si el estado actual es 'Aprobada' y se actualiza la O/S, transicionar a 'Estado 2: Revision'
+        $nuevoEstado = $estadoActual;
+        if (isset($datos['estado'])) {
+            $nuevoEstado = trim($datos['estado']);
+        } elseif ($estadoActual === 'Aprobada') {
+            $nuevoEstado = 'Estado 2: Revision';
+        }
+
+        $sql = "UPDATE ordenes_servicio SET 
+                    atencion_a = :atencion_a,
+                    nombre_proyecto = :nombre_proyecto,
+                    forma_pago = :forma_pago,
+                    condicion_comercial = :condicion_comercial,
+                    id_cliente_factura = :id_cliente_factura,
+                    id_cliente_informe = :id_cliente_informe,
+                    notas_condiciones = :notas_condiciones,
+                    contactos_json = :contactos_json,
+                    tipo_contrato = :tipo_contrato,
+                    es_multimes = :es_multimes,
+                    fecha_inicio = :fecha_inicio,
+                    fecha_fin = :fecha_fin,
+                    periodicidad = :periodicidad,
+                    estado = :estado
+                WHERE id = :id";
+
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'id' => $idOS,
+            'atencion_a' => $datos['atencion_a'] ?? '',
+            'nombre_proyecto' => $datos['nombre_proyecto'] ?? '',
+            'forma_pago' => $formaPago,
+            'condicion_comercial' => $condComercial,
+            'id_cliente_factura' => $idClienteFactura,
+            'id_cliente_informe' => $idClienteInforme,
+            'notas_condiciones' => $datos['notas_condiciones'] ?? '',
+            'contactos_json' => is_array($datos['contactos_json'] ?? null) ? json_encode($datos['contactos_json']) : ($datos['contactos_json'] ?? '[]'),
+            'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : 'Puntual',
+            'es_multimes' => $esMultimes,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin,
+            'periodicidad' => $periodicidad,
+            'estado' => $nuevoEstado
+        ]);
+    }
+
 
     /**
      * Registrar o actualizar la programación de muestreo

@@ -146,6 +146,8 @@ $app->enrutador->get('/cotizaciones/imprimir-reporte-item', [CotizacionesControl
 $app->enrutador->get('/ordenes-servicio', [OrdenesServicioControlador::class, 'index'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/crear', [OrdenesServicioControlador::class, 'crear'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/guardar', [OrdenesServicioControlador::class, 'guardar'], [AuthMiddleware::class]);
+$app->enrutador->get('/ordenes-servicio/editar', [OrdenesServicioControlador::class, 'editar'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/actualizar', [OrdenesServicioControlador::class, 'actualizar'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/detalle', [OrdenesServicioControlador::class, 'detalle'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/bitacora', [OrdenesServicioControlador::class, 'bitacora'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/descargar-pdf', [OrdenesServicioControlador::class, 'descargarPdf'], [AuthMiddleware::class]);

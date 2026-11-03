@@ -344,6 +344,13 @@ class HojasServicioControlador extends ControladorBase {
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }
+
+            // Gate duro RT-FM-13: Validar que la O/S esté en estado 'Aprobada'
+            if ($os['estado'] !== 'Aprobada') {
+                $_SESSION['error'] = 'La Orden de Servicio debe estar en estado Aprobada para registrar o modificar Hojas de Solicitud (CYCSA-RT-FM-13).';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
             
             // Procesar tabla dinámica de especímenes y plantillas
             $identMuestras = [];

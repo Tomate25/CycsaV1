@@ -9,6 +9,11 @@ use Exception;
 class OperacionModelo extends ModeloBase {
 
     private ?string $ultimoErrorRecepcion = null;
+    private ?string $ultimoError = null;
+
+    public function obtenerUltimoError(): ?string {
+        return $this->ultimoError;
+    }
 
     public function obtenerUltimoErrorRecepcion(): ?string {
         return $this->ultimoErrorRecepcion;
@@ -1027,6 +1032,39 @@ class OperacionModelo extends ModeloBase {
     public function guardarHojaSolicitud(array $datos, ?int &$idGenerado = null): bool {
         try {
             $idOS = (int)$datos['id_os'];
+            if ($idOS <= 0) {
+                $this->ultimoError = 'ID de Orden de Servicio inválido.';
+                error_log("Error en guardarHojaSolicitud: " . $this->ultimoError);
+                return false;
+            }
+
+            // Validar existencia y estado de la O/S (Gate duro RT-FM-13)
+            $stmtOS = $this->db->prepare("SELECT estado FROM ordenes_servicio WHERE id = :id");
+            $stmtOS->execute(['id' => $idOS]);
+            $estadoOS = $stmtOS->fetchColumn();
+
+            if ($estadoOS === false || in_array($estadoOS, ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+                $this->ultimoError = 'La Orden de Servicio está cerrada o archivada y no admite modificaciones.';
+                error_log("Error en guardarHojaSolicitud: " . $this->ultimoError);
+                return false;
+            }
+
+            $estadosAprobados = [
+                'Aprobada',
+                'Estado 3: Aprobada',
+                'Estado 3: Ingreso Directo',
+                'Estado 3A: Programacion Muestreo',
+                'Estado 3B: Ejecucion Muestreo',
+                'Estado 4: Ingreso Laboratorio',
+                'Estado 5: Solicitud Tecnicos',
+                'Estado 6: Ejecucion Ensayos'
+            ];
+
+            if (!in_array($estadoOS, $estadosAprobados, true)) {
+                $this->ultimoError = 'La Orden de Servicio debe estar en estado Aprobada para registrar o modificar Hojas de Solicitud (CYCSA-RT-FM-13).';
+                error_log("Error en guardarHojaSolicitud: " . $this->ultimoError);
+                return false;
+            }
             $idHoja = (int)($datos['id_hoja'] ?? 0);
             $fechaHoraLlegada = !empty($datos['fecha_hora_llegada_laboratorio']) ? $datos['fecha_hora_llegada_laboratorio'] : null;
             $codigoDoc = trim($datos['codigo_documento'] ?? 'CYCSA-RT-FM-13');
