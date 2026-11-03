@@ -2977,6 +2977,8 @@
     });
 
     
+    const BLOQUEAR_REQ_POR_WHITELIST = false;
+
     function aplicarFiltroWhitelistReq(ensayos, esNueva) {
         const colConc = document.getElementById('hs_col_concreto');
         const colSuel = document.getElementById('hs_col_suelo');
@@ -3034,16 +3036,15 @@
             ids.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
-                    if (esNueva) {
-                        el.disabled = !estaPermitido;
-                        if (!estaPermitido) el.checked = false;
-                        if (el.parentElement) {
-                            el.parentElement.style.opacity = estaPermitido ? '1' : '0.4';
-                            el.parentElement.title = estaPermitido ? 'Ensayo autorizado en la Orden de Servicio' : 'No incluido en los ensayos autorizados de la Orden de Servicio';
-                        }
-                    } else {
-                        el.disabled = false;
-                        if (el.parentElement) el.parentElement.style.opacity = '1';
+                    // ADDENDUM P0 (Abdia 2026-11-02): Parámetros libres en RT-FM-13.
+                    // Los checkboxes de req_* NO se deshabilitan ni se desmarcan automáticamente.
+                    // El técnico puede marcar o desmarcar libremente cualquier parámetro.
+                    el.disabled = false;
+                    if (el.parentElement) {
+                        el.parentElement.style.opacity = '1';
+                        el.parentElement.title = estaPermitido 
+                            ? 'Ensayo sugerido según Orden de Servicio' 
+                            : 'Parámetro adicional disponible para selección libre';
                     }
                 }
             });

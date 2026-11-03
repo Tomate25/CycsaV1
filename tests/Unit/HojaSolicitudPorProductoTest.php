@@ -879,14 +879,10 @@ class HojaSolicitudPorProductoTest extends TestCase {
 
 
 
-        // En la BD debe persistir req_resistencia_concreto = 1 y req_granulometria = 0
-
+        // ADDENDUM P0 (Abdia 2026-11-02): En RT-FM-13, parámetros solicitados (req_*) son libres.
         $this->assertEquals(1, (int)$hojaGuardada['req_resistencia_concreto'], 'Debe pre-llenar req_resistencia_concreto para concreto.');
-
-        $this->assertEquals(0, (int)$hojaGuardada['req_granulometria'], 'Debe desactivar flags de suelo en hoja de concreto.');
-
-        $this->assertEquals(0, (int)$hojaGuardada['req_proctor_sm'], 'Debe desactivar flags de proctor en hoja de concreto.');
-
+        $this->assertEquals(1, (int)$hojaGuardada['req_granulometria'], 'Con ADDENDUM P0 debe persistir parámetro atípico de suelo marcado libremente.');
+        $this->assertEquals(1, (int)$hojaGuardada['req_proctor_sm'], 'Con ADDENDUM P0 debe persistir proctor marcado libremente.');
     }
 
 

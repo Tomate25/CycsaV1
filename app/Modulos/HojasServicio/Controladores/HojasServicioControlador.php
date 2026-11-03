@@ -478,8 +478,9 @@ class HojasServicioControlador extends ControladorBase {
                 $datos['naturaleza_muestra'] = $resFlags['naturaleza_muestra_str'];
             }
 
-            // Saneamiento server-side desactivando flags no pertenecientes a este producto
-            $datos = $this->sanitizarCamposReqSegunFlags($datos, $flagsProducto);
+            // ADDENDUM P0 (Abdia 2026-11-02): Parámetros libres en RT-FM-13.
+            // Los checkboxes de req_* NO se deshabilitan ni se fuerzan a 0 por producto/ensayo.
+            // El técnico marca lo que quiera. NO llamar a sanitizarCamposReqSegunFlags en el save path.
             if ($idHoja <= 0) {
                 foreach ($flagsProducto as $k => $v) {
                     if (!empty($v) && empty($datos[$k])) {
