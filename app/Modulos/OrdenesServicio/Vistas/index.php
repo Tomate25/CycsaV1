@@ -1005,73 +1005,81 @@
      MODAL DE REGISTRO / EDICIÓN DE HOJA DE SERVICIO (CYCSA-RT-FM-13)
      ========================================================================= -->
 <div id="modalHojaSolicitud" class="modal-premium">
-    <div class="modal-premium-content" style="max-width: 1380px; width: 96%; max-height: 94vh; display: flex; flex-direction: column; padding: 0; border-radius: 14px; overflow: hidden; background: white; margin: 2vh auto; box-shadow: 0 20px 45px rgba(0,0,0,0.25);">
+    <div class="modal-premium-content modal-rtfm13-content">
         
-        <!-- ENCABEZADO STICKY FIJO SUPERIOR -->
-        <div style="padding: 16px 26px; background: white; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; flex-shrink: 0;">
-            <div>
-                <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; display:flex; align-items:center; gap:10px;">
-                    <i class="fa-solid fa-file-signature" style="color:var(--cycsa-azul);"></i> Hoja de Solicitud de Servicio (CYCSA-RT-FM-13)
-                </h3>
-                <p style="margin: 3px 0 0 0; font-size: 13px; color: #64748b;">
-                    Orden de Servicio Vinculada: <strong id="hs_codigo_os_label" style="color:var(--cycsa-azul); font-family:monospace; font-size:14.5px;"></strong>
-                </p>
+        <!-- ENCABEZADO STICKY FIJO SUPERIOR (RT-FM-13 VIEWPORT AMPLIO) -->
+        <div class="rtfm13-header-sticky">
+            <div class="rtfm13-header-left">
+                <div class="rtfm13-icon-badge">
+                    <i class="fa-solid fa-file-signature"></i>
+                </div>
+                <div class="rtfm13-title-group">
+                    <h3>Hoja de Solicitud de Servicio · CYCSA-RT-FM-13</h3>
+                    <div class="rtfm13-badges-row">
+                        <span class="badge-rtfm13-doc"><i class="fa-solid fa-certificate"></i> RT-FM-13 V1 · ISO/IEC 17025</span>
+                        <span class="badge-rtfm13-os"><i class="fa-solid fa-file-contract"></i> O/S: <strong id="hs_codigo_os_label">--</strong></span>
+                        <span id="hs_badge_prefijo_header" class="badge-rtfm13-prefix"><i class="fa-solid fa-tag"></i> Muestras: <strong id="hs_prefijo_indicador">MC</strong></span>
+                        <span id="hs_badge_status_hoja" class="badge-rtfm13-status badge-rtfm13-status-borrador"><i class="fa-solid fa-clock-rotate-left"></i> Borrador</span>
+                    </div>
+                </div>
             </div>
-            <button type="button" onclick="cerrarModalHojaSolicitud()" class="btn-cerrar" style="font-size:28px; border:none; background:none; cursor:pointer; color:#64748b; line-height:1;" title="Cerrar modal">&times;</button>
+            <div class="rtfm13-header-right">
+                <button type="button" onclick="cerrarModalHojaSolicitud()" class="rtfm13-btn-close" title="Cerrar modal (Esc)">&times;</button>
+            </div>
         </div>
 
-        <!-- CUERPO PRINCIPAL CON SCROLL INDEPENDIENTE -->
-        <div style="flex: 1; overflow-y: auto; padding: 22px 26px;">
+        <!-- CUERPO PRINCIPAL CON SCROLL INDEPENDIENTE (VIEWPORT FLUIDO) -->
+        <div class="rtfm13-body-scroll">
         
-        <div id="loading-hoja-solicitud" style="text-align:center; padding: 50px; display:none;">
-            <i class="fa-solid fa-spinner fa-spin" style="font-size:36px; color:var(--cycsa-azul);"></i>
-            <p style="color:#64748b; margin-top:12px; font-size:14px; font-weight:600;">Cargando datos de la O/S y plantilla RT-FM-13...</p>
+        <div id="loading-hoja-solicitud" style="text-align:center; padding: 60px 20px; display:none;">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size:38px; color:var(--rtfm13-azul);"></i>
+            <p style="color:#64748b; margin-top:14px; font-size:14px; font-weight:600;">Cargando datos de la O/S y plantilla oficial RT-FM-13...</p>
         </div>
 
         <!-- SELECTOR DE HOJAS RT-FM-13 (Para Contratos Activos / Múltiples Entregas) -->
-        <div id="hs_selector_hojas_container" style="display:none; background:#f1f5f9; border:1.5px solid #cbd5e1; border-radius:8px; padding:12px 18px; margin-bottom:18px; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <span style="font-size:12px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.5px;">
-                    <i class="fa-solid fa-layer-group" style="color:var(--cycsa-azul);"></i> Hojas / Entregas:
+        <div id="hs_selector_hojas_container" class="rtfm13-tabs-container" style="display:none;">
+            <div class="rtfm13-tabs-left">
+                <span class="rtfm13-tabs-title">
+                    <i class="fa-solid fa-layer-group" style="color:var(--rtfm13-azul);"></i> Hojas / Entregas:
                 </span>
                 <div id="hs_lista_tabs_hojas" style="display:flex; gap:6px; flex-wrap:wrap;">
                     <!-- Tabs dinámicos inyectados por JS -->
                 </div>
             </div>
             <div>
-                <button type="button" id="hs_btn_nueva_entrega" onclick="cargarNuevaHojaEnModal()" class="btn-cycsa" style="background:#0284c7; color:white; font-size:12px; padding:6px 14px; border-radius:6px; font-weight:600; display:inline-flex; align-items:center; gap:6px; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                <button type="button" id="hs_btn_nueva_entrega" onclick="cargarNuevaHojaEnModal()" class="btn-cycsa btn-cycsa-primary" style="font-size:12px; padding:6px 14px; border-radius:6px; font-weight:600;">
                     <i class="fa-solid fa-plus-circle"></i> + Nueva Hoja RT-FM-13
                 </button>
             </div>
         </div>
 
-        <div id="wrapper-split-rt-fm-13" style="display:none; grid-template-columns: 340px 1fr; gap: 20px; align-items: flex-start;">
+        <div id="wrapper-split-rt-fm-13" class="rtfm13-split-layout" style="display:none;">
             
             <!-- PANEL LATERAL IZQUIERDO: REFERENCIA VISUAL DE LA ORDEN DE SERVICIO (SOLO LECTURA) -->
-            <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 16px; position: sticky; top: 0; max-height: 78vh; overflow-y: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
-                <div style="display:flex; align-items:center; justify-content:space-between; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 12px;">
-                    <span style="font-family:'Outfit'; font-weight:700; color:var(--cycsa-azul); font-size:12.5px; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
+            <div class="rtfm13-sidebar-ref">
+                <div class="rtfm13-sidebar-ref-header">
+                    <span class="rtfm13-sidebar-ref-title">
                         <i class="fa-solid fa-file-contract"></i> Referencia O/S
                     </span>
                     <span id="ref_os_badge_estado" style="font-size:10px; font-weight:700; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:10px; text-transform:uppercase;">Solo Lectura</span>
                 </div>
 
-                <div style="font-size: 12px; color: #334155; display: flex; flex-direction: column; gap: 7px;">
-                    <div><strong style="color:#0f172a;">Cliente:</strong> <span id="ref_os_cliente">--</span></div>
-                    <div><strong style="color:#0f172a;">RUC / Cédula:</strong> <span id="ref_os_rfc" style="font-family:monospace;">--</span></div>
-                    <div><strong style="color:#0f172a;">Atención a:</strong> <span id="ref_os_atencion">--</span></div>
-                    <div><strong style="color:#0f172a;">Proyecto:</strong> <span id="ref_os_proyecto">--</span></div>
-                    <div><strong style="color:#0f172a;">Dirección:</strong> <span id="ref_os_direccion">--</span></div>
-                    <div><strong style="color:#0f172a;">Cotización:</strong> <span id="ref_os_cotizacion" style="font-family:monospace;">--</span></div>
-                    <div><strong style="color:#0f172a;">Forma de Pago:</strong> <span id="ref_os_pago">--</span></div>
+                <div class="rtfm13-sidebar-data-list">
+                    <div class="rtfm13-sidebar-data-item"><span class="label">Cliente:</span> <span class="val" id="ref_os_cliente">--</span></div>
+                    <div class="rtfm13-sidebar-data-item"><span class="label">RUC / Cédula:</span> <span class="val font-monospace" id="ref_os_rfc">--</span></div>
+                    <div class="rtfm13-sidebar-data-item"><span class="label">Atención a:</span> <span class="val" id="ref_os_atencion">--</span></div>
+                    <div class="rtfm13-sidebar-data-item"><span class="label">Proyecto:</span> <span class="val" id="ref_os_proyecto">--</span></div>
+                    <div class="rtfm13-sidebar-data-item"><span class="label">Dirección:</span> <span class="val" id="ref_os_direccion">--</span></div>
+                    <div class="rtfm13-sidebar-data-item"><span class="label">Cotización:</span> <span class="val font-monospace" id="ref_os_cotizacion">--</span></div>
+                    <div class="rtfm13-sidebar-data-item"><span class="label">Forma de Pago:</span> <span class="val" id="ref_os_pago">--</span></div>
                 </div>
 
                 <!-- Logística de Campo si aplica -->
-                <div id="ref_os_logistica_box" style="display:none; background:white; border:1px solid #93c5fd; border-radius:8px; padding:10px; margin-top:12px;">
-                    <strong style="font-size:11px; color:#0369a1; text-transform:uppercase; display:block; margin-bottom:4px;">
+                <div id="ref_os_logistica_box" class="rtfm13-sidebar-logistica" style="display:none;">
+                    <div class="rtfm13-sidebar-logistica-title">
                         <i class="fa-solid fa-truck-pickup"></i> Logística de Muestreo en Campo
-                    </strong>
-                    <div style="font-size:11.5px; color:#1e293b;">
+                    </div>
+                    <div style="font-size:11.5px; color:#1e293b; display:flex; flex-direction:column; gap:4px;">
                         <div><strong>Técnico:</strong> <span id="ref_os_tecnico"></span></div>
                         <div><strong>Vehículo:</strong> <span id="ref_os_vehiculo"></span></div>
                         <div><strong>Fechas:</strong> <span id="ref_os_fechas"></span></div>
@@ -1079,17 +1087,17 @@
                 </div>
 
                 <!-- Tabla de Ensayos Solicitados por el Cliente -->
-                <div style="margin-top: 15px;">
+                <div class="rtfm13-sidebar-ensayos-box">
                     <strong style="font-size:11px; color:#0f172a; text-transform:uppercase; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                        <i class="fa-solid fa-vials" style="color:var(--cycsa-azul);"></i> Ensayos Solicitados (O/S)
+                        <i class="fa-solid fa-vials" style="color:var(--rtfm13-azul);"></i> Ensayos Solicitados (O/S)
                     </strong>
-                    <div style="overflow-x:auto; border:1px solid #cbd5e1; border-radius:6px; background:white;">
-                        <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                    <div style="overflow-x:auto;">
+                        <table class="rtfm13-sidebar-ensayos-table">
                             <thead>
-                                <tr style="background:#f1f5f9; font-size:10px; text-transform:uppercase; color:#475569;">
-                                    <th style="padding:6px 4px; text-align:center; border-bottom:1px solid #cbd5e1; width:20px;">#</th>
-                                    <th style="padding:6px; text-align:left; border-bottom:1px solid #cbd5e1;">Descripción</th>
-                                    <th style="padding:6px; text-align:center; border-bottom:1px solid #cbd5e1; width:35px;">Cant</th>
+                                <tr>
+                                    <th style="width:20px; text-align:center;">#</th>
+                                    <th>Descripción</th>
+                                    <th style="width:38px; text-align:center;">Cant</th>
                                 </tr>
                             </thead>
                             <tbody id="ref_os_tbody_ensayos">
@@ -1107,301 +1115,367 @@
                 <input type="hidden" name="id_hoja" id="hs_id_hoja" value="0">
 
                 <!-- SELECTOR OBLIGATORIO DE PRODUCTO / ENSAYO DE LA O/S (EPIC 3 - AGY-RT13) -->
-                <div style="background:#eff6ff; border:1.5px solid #93c5fd; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
-                    <label for="id_detalle_cotizacion_modal" style="font-size:13px; font-weight:700; color:#1e40af; display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                        <i class="fa-solid fa-flask-vial" style="color:#2563eb;"></i> Producto / Ensayo Cotizado de la Orden de Servicio <span class="text-danger" style="color:#dc2626;">*</span>
-                    </label>
-                    <select name="id_detalle_cotizacion" id="id_detalle_cotizacion_modal" class="form-select form-select-sm" required style="font-size:13px; font-weight:600; padding:8px 12px; border-radius:6px; border:1.5px solid #93c5fd; width:100%;" onchange="alCambiarProductoModalRTFM13(this.value)">
-                        <option value="">-- Seleccione el Producto / Ensayo de la O/S --</option>
-                    </select>
-                    <div style="font-size:11.5px; color:#64748b; margin-top:5px;">
-                        Cada Hoja CYCSA-RT-FM-13 ampara un producto/ensayo específico de la cotización aprobada.
+                <div class="rtfm13-ensayo-selector-card">
+                    <div class="rtfm13-ensayo-header">
+                        <div class="rtfm13-ensayo-title">
+                            <i class="fa-solid fa-flask-vial"></i>
+                            <div class="rtfm13-ensayo-title-text">
+                                <strong>Producto / Ensayo Cotizado de la Orden de Servicio <span class="text-danger" style="color:#dc2626;">*</span></strong>
+                                <span>Cada Hoja CYCSA-RT-FM-13 ampara un producto o ensayo específico de la cotización aprobada</span>
+                            </div>
+                        </div>
+                        <div class="rtfm13-ensayo-pills-row">
+                            <span id="hs_ensayo_cant_pill" class="rtfm13-ensayo-pill highlight">
+                                <i class="fa-solid fa-file-invoice text-primary"></i> <span id="hs_ensayo_info_text">Ítem O/S Vinculado</span>
+                            </span>
+                            <span id="hs_ensayo_muestras_count_pill" class="rtfm13-ensayo-pill">
+                                <i class="fa-solid fa-vials text-primary"></i> <span id="hs_cnt_especimenes_label">0 especímenes</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div style="position:relative; width:100%;">
+                        <select name="id_detalle_cotizacion" id="id_detalle_cotizacion_modal" class="rtfm13-select-ensayo" required onchange="alCambiarProductoModalRTFM13(this.value)">
+                            <option value="">-- Seleccione el Producto / Ensayo de la O/S --</option>
+                        </select>
+                    </div>
+                    <div style="font-size:11.5px; color:#64748b; margin-top:2px;">
+                        Seleccione el ítem técnico contratado en la cotización para sincronizar la plantilla recomendada y el control de especímenes.
                     </div>
                 </div>
 
                 <!-- 1. METADATOS Y CONTROL INTERNO -->
-                <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-clipboard-check"></i> A rellenar por el laboratorio (Control Interno)</div>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; margin-bottom: 15px; align-items:flex-end;">
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">No. Registro Laboratorio</label>
-                        <input type="text" name="numero_registro" id="hs_numero_registro" class="form-control-cycsa" style="font-size:13px; font-weight:700; height:38px; box-sizing:border-box;" placeholder="Ej: 23896">
+                <div class="rtfm13-section-card">
+                    <div class="rtfm13-section-header">
+                        <h4 class="rtfm13-section-title"><i class="fa-solid fa-clipboard-check"></i> A rellenar por el laboratorio (Control Interno)</h4>
+                        <span class="badge bg-light text-muted border font-monospace" style="font-size:11px;">Trazabilidad Interna</span>
                     </div>
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Fecha/Hora de Llegada al Lab</label>
-                        <input type="datetime-local" name="fecha_hora_llegada_laboratorio" id="hs_fecha_llegada" required class="form-control-cycsa" style="font-size:13px; height:38px; box-sizing:border-box;">
-                    </div>
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Código del Documento</label>
-                        <input type="text" name="codigo_documento" id="hs_codigo_documento" readonly class="form-control-cycsa" style="background:#f1f5f9; font-weight:700; font-size:13px; height:38px; box-sizing:border-box;" value="CYCSA-RT-FM-13">
+                    <div class="rtfm13-grid-3">
+                        <div class="rtfm13-form-group">
+                            <label>No. Registro Laboratorio</label>
+                            <input type="text" name="numero_registro" id="hs_numero_registro" class="rtfm13-input rtfm13-input-mono" placeholder="Ej: 23896">
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>Fecha/Hora de Llegada al Lab</label>
+                            <input type="datetime-local" name="fecha_hora_llegada_laboratorio" id="hs_fecha_llegada" required class="rtfm13-input">
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>Código del Documento</label>
+                            <input type="text" name="codigo_documento" id="hs_codigo_documento" readonly class="rtfm13-input rtfm13-input-mono" value="CYCSA-RT-FM-13">
+                        </div>
                     </div>
                 </div>
 
                 <!-- 2. DATOS DEL CLIENTE -->
-                <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-user-tie"></i> 1. Empresa o Cliente que Solicita el Servicio</div>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; margin-bottom: 12px; align-items:flex-end;">
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Nombre Empresa/Cliente</label>
-                        <input type="text" name="nombre_empresa_o_cliente" id="hs_nombre_empresa" required class="form-control-cycsa" style="height:38px; box-sizing:border-box;">
+                <div class="rtfm13-section-card">
+                    <div class="rtfm13-section-header">
+                        <h4 class="rtfm13-section-title"><i class="fa-solid fa-user-tie"></i> 1. Empresa o Cliente que Solicita el Servicio</h4>
                     </div>
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Razón Social</label>
-                        <input type="text" name="razon_social" id="hs_razon_social" class="form-control-cycsa" placeholder="Ej: CYCSA S.A. / Persona Natural" style="height:38px; box-sizing:border-box;">
+                    <div class="rtfm13-grid-3">
+                        <div class="rtfm13-form-group">
+                            <label>Nombre Empresa / Cliente</label>
+                            <input type="text" name="nombre_empresa_o_cliente" id="hs_nombre_empresa" required class="rtfm13-input">
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>Razón Social</label>
+                            <input type="text" name="razon_social" id="hs_razon_social" class="rtfm13-input" placeholder="Ej: CYCSA S.A. / Persona Natural">
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>Dirección Proyecto / Obra</label>
+                            <input type="text" name="direccion_proyecto" id="hs_direccion" required class="rtfm13-input">
+                        </div>
                     </div>
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Dirección Proyecto/Obra</label>
-                        <input type="text" name="direccion_proyecto" id="hs_direccion" required class="form-control-cycsa" style="height:38px; box-sizing:border-box;">
-                    </div>
-                </div>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; margin-bottom: 15px; align-items:flex-end;">
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Teléfono</label>
-                        <input type="text" name="telefono" id="hs_telefono" required class="form-control-cycsa" style="height:38px; box-sizing:border-box;">
-                    </div>
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Correo Electrónico</label>
-                        <input type="email" name="correo_electronico" id="hs_email" required class="form-control-cycsa" style="height:38px; box-sizing:border-box;">
-                    </div>
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Persona que entrega la muestra</label>
-                        <input type="text" name="nombre_persona_entrega_muestra" id="hs_persona_entrega" required class="form-control-cycsa" style="height:38px; box-sizing:border-box;">
+                    <div class="rtfm13-grid-3">
+                        <div class="rtfm13-form-group">
+                            <label>Teléfono</label>
+                            <input type="text" name="telefono" id="hs_telefono" required class="rtfm13-input">
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>Correo Electrónico</label>
+                            <input type="email" name="correo_electronico" id="hs_email" required class="rtfm13-input">
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>Persona que entrega la muestra</label>
+                            <input type="text" name="nombre_persona_entrega_muestra" id="hs_persona_entrega" required class="rtfm13-input">
+                        </div>
                     </div>
                 </div>
 
                 <!-- 3. DATOS DE LA MUESTRA -->
-                <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-flask-vial"></i> 1. Datos de la Muestra (1.1 y 1.2)</div>
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">1.1 Denominación-Descripción e Identificación de la Muestra &mdash; Naturaleza de la muestra:</label>
-                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:5px;">
-                        <?php foreach (['Concreto', 'Bloques', 'Suelo', 'Adoquines', 'Agregados', 'Otros materiales'] as $nat): ?>
-                            <label style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; font-size:13px; cursor:pointer;">
-                                <input type="checkbox" name="naturaleza_muestra[]" value="<?= $nat ?>" class="hs-nat-checkbox"> <?= $nat ?>
-                            </label>
-                        <?php endforeach; ?>
+                <div class="rtfm13-section-card">
+                    <div class="rtfm13-section-header">
+                        <h4 class="rtfm13-section-title"><i class="fa-solid fa-flask-vial"></i> 1. Datos de la Muestra (1.1 y 1.2)</h4>
                     </div>
-                </div>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; margin-bottom: 15px; align-items:flex-end;">
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;" title="Describir la ubicación del punto donde se tomó la muestra así como la comarca.">Procedencia/ Punto de muestreo:</label>
-                        <input type="text" name="procedencia_punto_muestreo" id="hs_procedencia" required class="form-control-cycsa" placeholder="Punto de toma y comarca" style="height:38px; box-sizing:border-box;">
-                    </div>
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">Persona quien tomó la muestra:</label>
-                        <input type="text" name="nombre_persona_toma_muestra" id="hs_persona_toma" list="lista_tecnicos_hs_os" required class="form-control-cycsa" placeholder="Nombre (Ej: Juan / Cliente)" style="height:38px; box-sizing:border-box;">
-                        <datalist id="lista_tecnicos_hs_os">
-                            <option value="Cliente / Entregada por Cliente"></option>
-                            <?php if (!empty($tecnicos)): ?>
-                                <?php foreach ($tecnicos as $t): ?>
-                                    <?php $nomTec = htmlspecialchars($t['nombre'] ?? $t['nombre_tecnico'] ?? ''); ?>
-                                    <option value="<?= $nomTec ?>"></option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </datalist>
-                    </div>
-                    <div class="form-group" style="display:flex; flex-direction:column; width:100%;">
-                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; white-space:nowrap;">1.2 Fecha y hora en que se tomó:</label>
-                        <input type="datetime-local" name="fecha_hora_toma_muestra" id="hs_fecha_toma" required class="form-control-cycsa" style="height:38px; box-sizing:border-box;">
-                    </div>
-                </div>
-
-                <!-- 4. IDENTIFICACIONES PROPIAS (TABLA DINÁMICA) -->
-                <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;">
-                    <span><i class="fa-solid fa-list-ol"></i> 2. Identificaciones Propias de la Muestra</span>
-                    <button type="button" class="btn-cycsa btn-cycsa-primary" style="padding:6px 14px; font-size:12.5px;" onclick="agregarFilaMuestraModal()">
-                        <i class="fa-solid fa-plus"></i> Agregar Muestra
-                    </button>
-                </div>
-
-                <!-- BARRA DE ASIGNACIÓN GENERAL DE PLANTILLA (SELECTOR INTERACTIVO AJAX AMPLIADO) -->
-                <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:12px 16px; margin-bottom:15px; position:relative;">
-                    <input type="hidden" id="select_plantilla_global" name="plantilla_global_id" value="">
-                    
-                    <!-- Fila Superior: Encabezado y Acciones -->
-                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <i class="fa-solid fa-layer-group text-success" style="font-size:18px;"></i>
-                            <span style="font-size:13px; font-weight:700; color:#166534;">Plantilla de Ensayo Predeterminada:</span>
-                            <span style="font-size:11.5px; color:#15803d; font-weight:500;">(Se asigna automáticamente a especímenes nuevos)</span>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <button type="button" class="btn-cycsa btn-cycsa-success" onclick="aplicarPlantillaATodasLasMuestras()" style="padding:6px 14px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-                                <i class="fa-solid fa-check-double"></i> Aplicar a todas las muestras
-                            </button>
-                            <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="abrirPreviewPlantillaGlobal()" style="padding:6px 12px; font-size:12px;" title="Ver maqueta de la plantilla seleccionada">
-                                <i class="fa-solid fa-eye"></i> Vista Previa
-                            </button>
+                    <div class="rtfm13-form-group" style="margin-bottom: 12px;">
+                        <label>1.1 Denominación-Descripción e Identificación de la Muestra &mdash; Naturaleza de la muestra:</label>
+                        <div class="rtfm13-nat-pills-wrap">
+                            <?php foreach (['Concreto', 'Bloques', 'Suelo', 'Adoquines', 'Agregados', 'Otros materiales'] as $nat): ?>
+                                <label class="rtfm13-nat-pill-label">
+                                    <input type="checkbox" name="naturaleza_muestra[]" value="<?= $nat ?>" class="hs-nat-checkbox"> <?= $nat ?>
+                                </label>
+                            <?php endforeach; ?>
                         </div>
                     </div>
+                    <div class="rtfm13-grid-3">
+                        <div class="rtfm13-form-group">
+                            <label title="Describir la ubicación del punto donde se tomó la muestra así como la comarca.">Procedencia / Punto de muestreo:</label>
+                            <input type="text" name="procedencia_punto_muestreo" id="hs_procedencia" required class="rtfm13-input" placeholder="Punto de toma y comarca">
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>Persona quien tomó la muestra:</label>
+                            <input type="text" name="nombre_persona_toma_muestra" id="hs_persona_toma" list="lista_tecnicos_hs_os" required class="rtfm13-input" placeholder="Nombre (Ej: Juan / Cliente)">
+                            <datalist id="lista_tecnicos_hs_os">
+                                <option value="Cliente / Entregada por Cliente"></option>
+                                <?php if (!empty($tecnicos)): ?>
+                                    <?php foreach ($tecnicos as $t): ?>
+                                        <?php $nomTec = htmlspecialchars($t['nombre'] ?? $t['nombre_tecnico'] ?? ''); ?>
+                                        <option value="<?= $nomTec ?>"></option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </datalist>
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>1.2 Fecha y hora en que se tomó:</label>
+                            <input type="datetime-local" name="fecha_hora_toma_muestra" id="hs_fecha_toma" required class="rtfm13-input">
+                        </div>
+                    </div>
+                </div>
 
-                    <!-- Fila Principal: Desplegable AJAX Full-Width -->
-                    <div style="position:relative; width:100%;">
-                        <div id="trigger_plantilla_global" onclick="toggleDropdownPlantillasGlobal()" style="background:white; border:1.5px solid #86efac; border-radius:8px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; min-height:42px; transition:all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.boxShadow='0 3px 8px rgba(22,163,74,0.12)';" onmouseout="this.style.borderColor='#86efac'; this.style.boxShadow='none';">
-                            <div id="texto_plantilla_seleccionada" style="display:flex; align-items:center; gap:10px; font-size:12.5px; color:#334155; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                <i class="fa-solid fa-file-waveform text-success" style="font-size:15px;"></i>
-                                <span style="font-weight:600;">-- Seleccionar Plantilla General --</span>
+                <!-- 4. IDENTIFICACIONES PROPIAS (TABLA DINÁMICA DE ESPECÍMENES) -->
+                <div class="rtfm13-section-card">
+                    <div class="rtfm13-section-header">
+                        <h4 class="rtfm13-section-title"><i class="fa-solid fa-list-ol"></i> 2. Identificaciones Propias de la Muestra</h4>
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <div class="rtfm13-prefix-segmented">
+                                <span class="label"><i class="fa-solid fa-tag me-1"></i>Prefijo:</span>
+                                <button type="button" id="btn_prefijo_mc" class="rtfm13-prefix-btn active" onclick="cambiarPrefijoOficial('MC')">
+                                    <i class="fa-solid fa-truck-pickup"></i> MC (Campo)
+                                </button>
+                                <button type="button" id="btn_prefijo_ms" class="rtfm13-prefix-btn" onclick="cambiarPrefijoOficial('MS')">
+                                    <i class="fa-solid fa-building"></i> MS (Sede/Lab)
+                                </button>
                             </div>
-                            <i class="fa-solid fa-chevron-down" style="color:#64748b; font-size:12px; margin-left:8px;"></i>
+                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="padding:6px 16px; font-size:12.5px;" onclick="agregarFilaMuestraModal()">
+                                <i class="fa-solid fa-plus"></i> Agregar Muestra
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- BARRA DE ASIGNACIÓN GENERAL DE PLANTILLA (SELECTOR INTERACTIVO AJAX AMPLIADO) -->
+                    <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:12px 16px; margin-bottom:15px; position:relative;">
+                        <input type="hidden" id="select_plantilla_global" name="plantilla_global_id" value="">
+                        
+                        <!-- Fila Superior: Encabezado y Acciones -->
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-layer-group text-success" style="font-size:18px;"></i>
+                                <span style="font-size:13px; font-weight:700; color:#166534;">Plantilla de Ensayo Predeterminada:</span>
+                                <span style="font-size:11.5px; color:#15803d; font-weight:500;">(Se asigna automáticamente a especímenes nuevos)</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <button type="button" class="btn-cycsa btn-cycsa-success" onclick="aplicarPlantillaATodasLasMuestras()" style="padding:6px 14px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                                    <i class="fa-solid fa-check-double"></i> Aplicar a todas las muestras
+                                </button>
+                                <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="abrirPreviewPlantillaGlobal()" style="padding:6px 12px; font-size:12px;" title="Ver maqueta de la plantilla seleccionada">
+                                    <i class="fa-solid fa-eye"></i> Vista Previa
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Panel Flotante Desplegable AJAX Espacioso -->
-                        <div id="dropdown_plantillas_panel" style="display:none; position:absolute; top:calc(100% + 6px); left:0; width:100%; background:white; border:1.5px solid #cbd5e1; border-radius:10px; box-shadow:0 16px 36px rgba(0,0,0,0.2); z-index:99999; padding:14px; box-sizing:border-box;">
-                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-                                <div style="position:relative; flex:1;">
-                                    <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
-                                    <input type="text" id="input_buscar_plantilla_ajax" placeholder="Buscar por código (ej: FM-22, FM-61, FM-35), nombre o norma técnica..." oninput="filtrarPlantillasAjax(this.value)" style="width:100%; padding:8px 12px 8px 34px; font-size:13px; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; outline:none;" autocomplete="off">
+                        <!-- Fila Principal: Desplegable AJAX Full-Width -->
+                        <div style="position:relative; width:100%;">
+                            <div id="trigger_plantilla_global" onclick="toggleDropdownPlantillasGlobal()" style="background:white; border:1.5px solid #86efac; border-radius:8px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; min-height:42px; transition:all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.boxShadow='0 3px 8px rgba(22,163,74,0.12)';" onmouseout="this.style.borderColor='#86efac'; this.style.boxShadow='none';">
+                                <div id="texto_plantilla_seleccionada" style="display:flex; align-items:center; gap:10px; font-size:12.5px; color:#334155; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    <i class="fa-solid fa-file-waveform text-success" style="font-size:15px;"></i>
+                                    <span style="font-weight:600;">-- Seleccionar Plantilla General --</span>
                                 </div>
-                                <button type="button" onclick="cerrarDropdownPlantillasGlobal()" class="btn btn-sm btn-outline-secondary" style="padding:6px 10px; font-size:14px; line-height:1; cursor:pointer;" title="Cerrar">&times;</button>
+                                <i class="fa-solid fa-chevron-down" style="color:#64748b; font-size:12px; margin-left:8px;"></i>
                             </div>
 
-                            <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
-                                <button type="button" class="btn-filtro-plt active" onclick="filtrarCategoriaPlantilla('todos', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #0284c7; background:#0284c7; color:white; cursor:pointer;">Todas (<span id="cnt_plt_todas">0</span>)</button>
-                                <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('cliente', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">⭐ Del Cliente (<span id="cnt_plt_cliente">0</span>)</button>
-                                <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('servicio', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">🎯 Recomendadas (<span id="cnt_plt_servicio">0</span>)</button>
-                            </div>
+                            <!-- Panel Flotante Desplegable AJAX Espacioso -->
+                            <div id="dropdown_plantillas_panel" style="display:none; position:absolute; top:calc(100% + 6px); left:0; width:100%; background:white; border:1.5px solid #cbd5e1; border-radius:10px; box-shadow:0 16px 36px rgba(0,0,0,0.2); z-index:99999; padding:14px; box-sizing:border-box;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                                    <div style="position:relative; flex:1;">
+                                        <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
+                                        <input type="text" id="input_buscar_plantilla_ajax" placeholder="Buscar por código (ej: FM-22, FM-61, FM-35), nombre o norma técnica..." oninput="filtrarPlantillasAjax(this.value)" style="width:100%; padding:8px 12px 8px 34px; font-size:13px; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; outline:none;" autocomplete="off">
+                                    </div>
+                                    <button type="button" onclick="cerrarDropdownPlantillasGlobal()" class="btn btn-sm btn-outline-secondary" style="padding:6px 10px; font-size:14px; line-height:1; cursor:pointer;" title="Cerrar">&times;</button>
+                                </div>
 
-                            <div id="lista_resultados_plantillas_ajax" style="max-height:280px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:6px;">
-                                <!-- Inyectado dinámicamente por AJAX -->
+                                <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+                                    <button type="button" class="btn-filtro-plt active" onclick="filtrarCategoriaPlantilla('todos', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #0284c7; background:#0284c7; color:white; cursor:pointer;">Todas (<span id="cnt_plt_todas">0</span>)</button>
+                                    <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('cliente', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">⭐ Del Cliente (<span id="cnt_plt_cliente">0</span>)</button>
+                                    <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('servicio', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">🎯 Recomendadas (<span id="cnt_plt_servicio">0</span>)</button>
+                                </div>
+
+                                <div id="lista_resultados_plantillas_ajax" style="max-height:280px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:6px;">
+                                    <!-- Inyectado dinámicamente por AJAX -->
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <table style="width:100%; border-collapse:collapse; margin-bottom:20px; border:1px solid #e2e8f0;" id="hs-tabla-muestras">
-                    <thead>
-                        <tr style="background:#f8fafc; font-size:11.5px; color:#475569; text-transform:uppercase;">
-                            <th style="width:20%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Identificación Espécimen</th>
-                            <th style="width:45%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Descripción de la Muestra / Elemento</th>
-                            <th style="width:25%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Plantilla Asignada</th>
-                            <th style="width:10%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:center;">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="hs-tbody-muestras">
-                        <!-- Filas inyectadas dinámicamente -->
-                    </tbody>
-                </table>
+                    <div class="rtfm13-table-wrap">
+                        <table class="rtfm13-table-muestras" id="hs-tabla-muestras">
+                            <thead>
+                                <tr>
+                                    <th style="width:22%;"><i class="fa-solid fa-barcode me-1 text-primary"></i> # Muestra / Código</th>
+                                    <th style="width:32%;"><i class="fa-solid fa-location-dot me-1 text-primary"></i> Ubicación / Identificación</th>
+                                    <th style="width:20%;"><i class="fa-solid fa-calendar-days me-1 text-primary"></i> Observaciones / Edad</th>
+                                    <th style="width:18%;"><i class="fa-solid fa-file-waveform me-1 text-primary"></i> Plantilla Técnica</th>
+                                    <th style="width:8%; text-align:center;"><i class="fa-solid fa-trash me-1"></i> Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hs-tbody-muestras">
+                                <!-- Filas inyectadas dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
                 <!-- 5. ANÁLISIS REQUERIDOS (CHECKBOXES) -->
-                <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-vial"></i> 3. Parámetros Solicitados</div>
-                
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom: 20px;">
-                    <!-- Columna Concreto -->
-                    <div id="hs_col_concreto" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; transition: all 0.2s;">
-                        <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--cycsa-azul); font-family:'Outfit';"><i class="fa-solid fa-cube"></i> 3.1 Muestra de Concreto, Adoquines, Bloques</h4>
-                        <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
-                            <label><input type="checkbox" name="req_resistencia_concreto" value="1" id="hs_req_concreto"> Resistencia de conc</label>
-                            <label><input type="checkbox" name="req_resistencia_adoquin" value="1" id="hs_req_adoquin"> Resistencia de adoquin</label>
-                            <label><input type="checkbox" name="req_resistencia_bloques" value="1" id="hs_req_bloques"> Resistencia bloques</label>
-                            <div style="margin-top:6px;">
-                                <label style="font-size:12px; color:#64748b;">Otros:</label>
-                                <input type="text" name="req_otros_concreto" id="hs_req_otros_concreto" class="form-control-cycsa" style="padding:6px 10px; font-size:12px;" placeholder="Otros análisis en concreto...">
+                <div class="rtfm13-section-card">
+                    <div class="rtfm13-section-header">
+                        <h4 class="rtfm13-section-title"><i class="fa-solid fa-vial"></i> 3. Parámetros Solicitados</h4>
+                    </div>
+                    
+                    <div class="rtfm13-grid-2">
+                        <!-- Columna Concreto -->
+                        <div id="hs_col_concreto" class="rtfm13-tests-card">
+                            <h4><i class="fa-solid fa-cube text-primary"></i> 3.1 Muestra de Concreto, Adoquines, Bloques</h4>
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_resistencia_concreto" value="1" id="hs_req_concreto"> Resistencia de concreto</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_resistencia_adoquin" value="1" id="hs_req_adoquin"> Resistencia de adoquín</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_resistencia_bloques" value="1" id="hs_req_bloques"> Resistencia bloques</label>
+                                <div style="margin-top:8px;">
+                                    <label style="font-size:12px; color:var(--rtfm13-slate-600); font-weight:600;">Otros análisis en concreto:</label>
+                                    <input type="text" name="req_otros_concreto" id="hs_req_otros_concreto" class="rtfm13-input" style="height:36px; font-size:12.5px;" placeholder="Otros análisis en concreto...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Columna Suelos -->
+                        <div id="hs_col_suelo" class="rtfm13-tests-card">
+                            <h4><i class="fa-solid fa-mountain text-primary"></i> 3.2 Muestras de Suelo</h4>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_granulometria" value="1" id="hs_req_granulometria"> Granulometría</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_limites_atterberg" value="1" id="hs_req_limites"> Límites de Atterberg</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_humedad" value="1" id="hs_req_humedad"> Humedad</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_resistencia_corte" value="1" id="hs_req_resistencia_corte"> Resistencia al corte</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_clasificacion_sucs_hr" value="1" id="hs_req_clasificacion_sucs_hr"> Clasificación SUCS/HR</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_proctor_sm" value="1" id="hs_req_proctor"> PROCTOR S/M</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_infiltracion" value="1" id="hs_req_infiltracion"> Infiltración</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_cbr" value="1" id="hs_req_cbr"> CBR</label>
+                                <label class="rtfm13-checkbox-label"><input type="checkbox" name="req_densidad" value="1" id="hs_req_densidad"> Densidad</label>
+                            </div>
+                            <div style="margin-top:8px;">
+                                <label style="font-size:12px; color:var(--rtfm13-slate-600); font-weight:600;">Otros análisis en suelos:</label>
+                                <input type="text" name="req_otros_suelo" id="hs_req_otros_suelo" class="rtfm13-input" style="height:36px; font-size:12.5px;" placeholder="Otros análisis en suelos...">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Columna Suelos -->
-                    <div id="hs_col_suelo" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; transition: all 0.2s;">
-                        <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--cycsa-azul); font-family:'Outfit';"><i class="fa-solid fa-mountain"></i> 3.2 Muestras de Suelo</h4>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12.5px;">
-                            <label><input type="checkbox" name="req_granulometria" value="1" id="hs_req_granulometria"> Granulometria</label>
-                            <label><input type="checkbox" name="req_limites_atterberg" value="1" id="hs_req_limites"> Límites de atterberg</label>
-                            <label><input type="checkbox" name="req_humedad" value="1" id="hs_req_humedad"> Humedad</label>
-                            <label><input type="checkbox" name="req_resistencia_corte" value="1" id="hs_req_resistencia_corte"> Resistencia al corte</label>
-                            <label><input type="checkbox" name="req_clasificacion_sucs_hr" value="1" id="hs_req_clasificacion_sucs_hr"> Clasificación SUCS/HR</label>
-                            <label><input type="checkbox" name="req_proctor_sm" value="1" id="hs_req_proctor"> PROCTOR S/M</label>
-                            <label><input type="checkbox" name="req_infiltracion" value="1" id="hs_req_infiltracion"> Infiltración</label>
-                            <label><input type="checkbox" name="req_cbr" value="1" id="hs_req_cbr"> CBR</label>
-                            <label><input type="checkbox" name="req_densidad" value="1" id="hs_req_densidad"> Densidad</label>
+                    <!-- 3.3 OTROS MATERIALES -->
+                    <div class="rtfm13-tests-card" style="margin-top:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #cbd5e1; padding-bottom:6px; margin-bottom:10px;">
+                            <label class="rtfm13-checkbox-label" style="font-weight:700; margin:0;">
+                                <input type="checkbox" name="req_otros_materiales" value="1" id="hs_req_otros_materiales"> 3.3 Otros Materiales &mdash; Otro
+                            </label>
                         </div>
-                        <div style="margin-top:8px;">
-                            <label style="font-size:12px; color:#64748b;">Otros:</label>
-                            <input type="text" name="req_otros_suelo" id="hs_req_otros_suelo" class="form-control-cycsa" style="padding:6px 10px; font-size:12px;" placeholder="Otros análisis en suelos...">
+                        <div class="rtfm13-form-group">
+                            <label style="font-size:12px; color:var(--rtfm13-slate-600); font-weight:600;">* Si seleccionó la casilla otros, favor indicar qué análisis necesita:</label>
+                            <input type="text" name="descripcion_otros_analisis" id="hs_descripcion_otros" class="rtfm13-input" style="height:36px; font-size:12.5px;" placeholder="Detalle el análisis requerido...">
                         </div>
-                    </div>
-                </div>
-
-                <!-- 3.3 OTROS MATERIALES -->
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:15px; border-radius:8px; margin-bottom:20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #cbd5e1; padding-bottom:6px; margin-bottom:10px;">
-                        <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#1e293b; cursor:pointer; margin:0;">
-                            <input type="checkbox" name="req_otros_materiales" value="1" id="hs_req_otros_materiales"> 3.3 Otros Materiales &mdash; Otro
-                        </label>
-                    </div>
-                    <div class="form-group" style="margin-bottom:10px;">
-                        <label style="font-size:12px; color:#475569; font-weight:600;">* Si seleccionó la casilla otros, favor decir que análisis necesita:</label>
-                        <input type="text" name="descripcion_otros_analisis" id="hs_descripcion_otros" class="form-control-cycsa" style="font-size:12.5px; padding:6px 10px;" placeholder="Detalle el análisis requerido...">
                     </div>
                 </div>
 
                 <!-- 6. ANÁLISIS ADICIONALES Y OBSERVACIONES -->
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom: 20px;">
-                    <div class="form-group">
-                        <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Analisis adicionales</label>
-                        <textarea name="analisis_adicionales" id="hs_analisis_adicionales" class="form-control-cycsa" rows="2" placeholder="Análisis adicionales requeridos..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Observaciones</label>
-                        <textarea name="observaciones" id="hs_observaciones" class="form-control-cycsa" rows="2" placeholder="Observaciones de recepción de muestra..."></textarea>
+                <div class="rtfm13-section-card">
+                    <div class="rtfm13-grid-2">
+                        <div class="rtfm13-form-group">
+                            <label>Análisis adicionales</label>
+                            <textarea name="analisis_adicionales" id="hs_analisis_adicionales" class="rtfm13-input" style="height:76px; resize:vertical;" placeholder="Análisis adicionales requeridos..."></textarea>
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>Observaciones</label>
+                            <textarea name="observaciones" id="hs_observaciones" class="rtfm13-input" style="height:76px; resize:vertical;" placeholder="Observaciones de recepción de muestra..."></textarea>
+                        </div>
                     </div>
                 </div>
 
                 <!-- 7. FIRMAS Y RECEPCIÓN CYCSA -->
-                <div style="font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;"><i class="fa-solid fa-signature"></i> Recepción y Conformidad</div>
-                <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:15px; margin-bottom:15px; align-items:center;">
-                    <div class="form-group">
-                        <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Persona de CYCSA quien recibe la muestra</label>
-                        <input type="text" name="nombre_recibe_cycsa" id="hs_nombre_recibe" required class="form-control-cycsa" placeholder="Nombre completo">
+                <div class="rtfm13-section-card">
+                    <div class="rtfm13-section-header">
+                        <h4 class="rtfm13-section-title"><i class="fa-solid fa-signature"></i> Recepción y Conformidad</h4>
                     </div>
-                    <div class="form-group">
-                        <label>&nbsp;</label>
-                        <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer; margin-top:6px;">
-                            <input type="checkbox" name="firma_recibe_cycsa" value="1" id="hs_firma_recibe_cycsa"> ¿Firma digital receptor?
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>&nbsp;</label>
-                        <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer; margin-top:6px;">
-                            <input type="checkbox" name="firma_cliente" value="1" id="hs_firma_cliente"> ¿Firma digital cliente?
-                        </label>
-                    </div>
-                </div>
-
-                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 12px; margin-bottom:15px; font-size:11.5px; color:#1e40af; line-height:1.4;">
-                    <strong>*.- Con este documento doy fe</strong>, que todo lo escrito lo he revisado y que he quedado de mutuo acuerdo de los servicios que me ofrecerá CYCSA en la muestra. Cualquier cambio deberá ser notificado previo a CYCSA de cualquier forma escrita para su debido registro.
-                </div>
-
-                <!-- CONTROL DE RECEPCIÓN FÍSICA Y CONGELAMIENTO ISO 17025 -->
-                <div style="background:#fef3c7; border:1.5px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <label style="display:flex; align-items:center; gap:8px; font-weight:700; color:#92400e; font-size:13px; cursor:pointer; margin:0;">
-                            <input type="checkbox" name="confirmar_recepcion_lims" value="1" id="chk_confirmar_recepcion_lims" style="transform:scale(1.2);">
-                            <span><i class="fa-solid fa-lock text-warning me-1"></i> Confirmar Recepción Física y Congelar Plantillas (LIMS / ISO 17025)</span>
-                        </label>
-                        <div style="font-size:11px; color:#b45309; margin-left:26px; margin-top:2px;">
-                            Al marcar esta opción, las plantillas de ensayo seleccionadas quedarán congeladas permanentemente para trazabilidad de auditoría.
+                    <div class="rtfm13-grid-3" style="align-items:center;">
+                        <div class="rtfm13-form-group">
+                            <label>Persona de CYCSA quien recibe la muestra</label>
+                            <input type="text" name="nombre_recibe_cycsa" id="hs_nombre_recibe" required class="rtfm13-input" placeholder="Nombre completo">
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>&nbsp;</label>
+                            <label class="rtfm13-checkbox-label" style="margin-top:6px;">
+                                <input type="checkbox" name="firma_recibe_cycsa" value="1" id="hs_firma_recibe_cycsa"> ¿Firma digital receptor?
+                            </label>
+                        </div>
+                        <div class="rtfm13-form-group">
+                            <label>&nbsp;</label>
+                            <label class="rtfm13-checkbox-label" style="margin-top:6px;">
+                                <input type="checkbox" name="firma_cliente" value="1" id="hs_firma_cliente"> ¿Firma digital cliente?
+                            </label>
                         </div>
                     </div>
-                    <span style="font-size:10.5px; background:#fffbeb; color:#92400e; border:1px solid #fde68a; padding:4px 8px; border-radius:6px; font-weight:700;">Trazabilidad ISO 17025</span>
-                </div>
 
-                <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1.5px solid #e2e8f0; padding-top:18px; margin-top:20px;">
-                    <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="cerrarModalHojaSolicitud()">Cancelar</button>
-                    <button type="submit" class="btn-cycsa btn-cycsa-success" style="padding:10px 26px; font-size:14px; font-weight:700;">
-                        <i class="fa-solid fa-floppy-disk"></i> Guardar Hoja de Solicitud (RT-FM-13)
-                    </button>
+                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; margin-top:12px; margin-bottom:15px; font-size:12px; color:#1e40af; line-height:1.45;">
+                        <strong>*.- Con este documento doy fe</strong>, que todo lo escrito lo he revisado y que he quedado de mutuo acuerdo de los servicios que me ofrecerá CYCSA en la muestra. Cualquier cambio deberá ser notificado previo a CYCSA de cualquier forma escrita para su debido registro.
+                    </div>
+
+                    <!-- CONTROL DE RECEPCIÓN FÍSICA Y CONGELAMIENTO ISO 17025 -->
+                    <div class="rtfm13-lims-card">
+                        <div>
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:700; color:#92400e; font-size:13px; cursor:pointer; margin:0;">
+                                <input type="checkbox" name="confirmar_recepcion_lims" value="1" id="chk_confirmar_recepcion_lims" style="transform:scale(1.25); accent-color:#d97706;">
+                                <span><i class="fa-solid fa-lock text-warning me-1"></i> Confirmar Recepción Física y Congelar Plantillas (LIMS / ISO 17025)</span>
+                            </label>
+                            <div style="font-size:11.5px; color:#b45309; margin-left:26px; margin-top:3px;">
+                                Al marcar esta opción, las plantillas de ensayo seleccionadas quedarán congeladas permanentemente para trazabilidad de auditoría.
+                            </div>
+                        </div>
+                        <span class="badge bg-warning text-dark border border-warning" style="font-size:11px; padding:5px 10px; font-weight:700;">
+                            <i class="fa-solid fa-shield-halved me-1"></i> ISO/IEC 17025
+                        </span>
+                    </div>
                 </div>
             </form>
         </div>
         </div>
 
         <!-- FOOTER STICKY INFERIOR FLOTANTE SIEMPRE VISIBLE -->
-        <div style="padding: 14px 26px; background: #f8fafc; border-top: 1.5px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; gap: 12px; position: sticky; bottom: 0; z-index: 1000; flex-shrink: 0; box-shadow: 0 -4px 15px rgba(0,0,0,0.04);">
-            <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height: 40px; padding: 8px 22px; font-size: 13.5px;" onclick="cerrarModalHojaSolicitud()">Cancelar</button>
-            <button type="submit" form="form-hoja-solicitud" class="btn-cycsa btn-cycsa-success" style="min-height: 40px; padding: 8px 28px; font-size: 14px; font-weight: 700; box-shadow: 0 2px 8px rgba(16,185,129,0.25);" onclick="var f = document.getElementById('form-hoja-solicitud'); if (f.checkValidity && !f.checkValidity()) { f.reportValidity(); } else { f.submit(); }">
-                <i class="fa-solid fa-floppy-disk"></i> Guardar Hoja de Solicitud (RT-FM-13)
-            </button>
+        <div class="rtfm13-footer-sticky">
+            <div class="rtfm13-footer-left">
+                <i class="fa-solid fa-file-invoice text-primary" style="font-size:18px;"></i>
+                <div>
+                    <span>CYCSA-RT-FM-13 · Especímenes en hoja: <strong id="hs_footer_cant_muestras" class="text-primary font-monospace" style="font-size:14px;">0</strong></span>
+                    <span class="mx-2 text-muted">|</span>
+                    <span>O/S: <strong id="hs_footer_os_code" class="font-monospace text-dark">--</strong></span>
+                </div>
+            </div>
+            <div class="rtfm13-footer-right">
+                <button type="button" class="rtfm13-btn-action rtfm13-btn-cancel" onclick="cerrarModalHojaSolicitud()">
+                    <i class="fa-solid fa-xmark"></i> Cancelar
+                </button>
+                <button type="button" class="rtfm13-btn-action rtfm13-btn-draft" onclick="guardarBorradorHoja()">
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Borrador
+                </button>
+                <button type="submit" form="form-hoja-solicitud" class="rtfm13-btn-action rtfm13-btn-submit" onclick="return validarYEnviarHojaOficial(event)">
+                    <i class="fa-solid fa-circle-check"></i> Emitir Hoja Oficial (RT-FM-13)
+                </button>
+            </div>
         </div>
 
     </div>
 </div>
+
 
 <!-- MODAL MOTIVO CAMBIO DE PLANTILLA SUGERIDA -->
 <div id="modalMotivoCambioPlantilla" class="modal-premium" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
@@ -1872,6 +1946,8 @@
         idOSModalActual = idOS;
         codigoOSModalActual = code;
         document.getElementById('hs_codigo_os_label').innerText = code;
+        const elFootCode = document.getElementById('hs_footer_os_code');
+        if (elFootCode) elFootCode.innerText = code;
         modHS.style.display = 'block';
         hsLoading.style.display = 'block';
         hsSplit.style.display = 'none';
@@ -1916,13 +1992,87 @@
             });
     }
 
+    function actualizarInfoProductoSeleccionado() {
+        const selProd = document.getElementById('id_detalle_cotizacion_modal');
+        const elInfo = document.getElementById('hs_ensayo_info_text');
+        if (!selProd || !elInfo) return;
+        if (selProd.selectedIndex > 0) {
+            elInfo.innerText = selProd.options[selProd.selectedIndex].text;
+        } else {
+            elInfo.innerText = 'Ítem O/S Vinculado';
+        }
+    }
+
     function alCambiarProductoModalRTFM13(idDetalle) {
+        actualizarInfoProductoSeleccionado();
         if (!idDetalle || !idOSModalActual) return;
         const elIdHoja = document.getElementById('hs_id_hoja');
         const esNueva = (!elIdHoja || elIdHoja.value == '0' || elIdHoja.value == '');
         if (esNueva) {
             abrirModalHojaSolicitud(idOSModalActual, codigoOSModalActual, 0, true, prefijoMuestraActual, parseInt(idDetalle, 10));
         }
+    }
+
+    function cambiarPrefijoOficial(prefix) {
+        if (prefix !== 'MC' && prefix !== 'MS') return;
+        prefijoMuestraActual = prefix;
+        const btnMC = document.getElementById('btn_prefijo_mc');
+        const btnMS = document.getElementById('btn_prefijo_ms');
+        if (btnMC && btnMS) {
+            if (prefix === 'MC') {
+                btnMC.classList.add('active');
+                btnMS.classList.remove('active');
+            } else {
+                btnMS.classList.add('active');
+                btnMC.classList.remove('active');
+            }
+        }
+        const elInd = document.getElementById('hs_prefijo_indicador');
+        if (elInd) elInd.innerText = prefix;
+    }
+
+    function actualizarContadorEspecimenes() {
+        const tbody = document.getElementById('hs-tbody-muestras');
+        const cnt = tbody ? tbody.querySelectorAll('tr:not(#fila-sin-muestras)').length : 0;
+        const elLabel = document.getElementById('hs_cnt_especimenes_label');
+        if (elLabel) elLabel.innerText = `${cnt} espécimen(es)`;
+        const elFoot = document.getElementById('hs_footer_cant_muestras');
+        if (elFoot) elFoot.innerText = cnt;
+    }
+
+    function guardarBorradorHoja() {
+        const chkRecepcion = document.getElementById('chk_confirmar_recepcion_lims');
+        if (chkRecepcion) {
+            chkRecepcion.checked = false;
+        }
+        const form = document.getElementById('form-hoja-solicitud');
+        if (form) {
+            if (form.checkValidity && !form.checkValidity()) {
+                form.reportValidity();
+            } else {
+                form.submit();
+            }
+        }
+    }
+
+    function validarYEnviarHojaOficial(e) {
+        const form = document.getElementById('form-hoja-solicitud');
+        if (!form) return true;
+        
+        const tbody = document.getElementById('hs-tbody-muestras');
+        const muestrasCount = tbody ? tbody.querySelectorAll('tr:not(#fila-sin-muestras)').length : 0;
+        if (muestrasCount === 0) {
+            alert('Atención: Debe agregar al menos una muestra antes de emitir la hoja oficial.');
+            if (e && e.preventDefault) e.preventDefault();
+            return false;
+        }
+
+        if (form.checkValidity && !form.checkValidity()) {
+            form.reportValidity();
+            if (e && e.preventDefault) e.preventDefault();
+            return false;
+        }
+        return true;
     }
 
     function cargarNuevaHojaEnModal() {
@@ -1942,6 +2092,21 @@
         prefijoMuestraActual = data.prefijo_muestra || 'MC';
         siguienteConsecutivoMuestra = parseInt(data.siguiente_consecutivo_muestra || 1, 10) || 1;
         siguienteConsecutivoMuestraInicial = siguienteConsecutivoMuestra;
+        cambiarPrefijoOficial(prefijoMuestraActual);
+
+        const badgeStat = document.getElementById('hs_badge_status_hoja');
+        if (badgeStat) {
+            if (data.es_nueva) {
+                badgeStat.className = 'badge-rtfm13-status badge-rtfm13-status-borrador';
+                badgeStat.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Borrador';
+            } else if (h && (h.congelado_recepcion || h.firma_recibe_cycsa)) {
+                badgeStat.className = 'badge-rtfm13-status badge-rtfm13-status-congelada';
+                badgeStat.innerHTML = '<i class="fa-solid fa-lock"></i> Congelada ISO 17025';
+            } else {
+                badgeStat.className = 'badge-rtfm13-status badge-rtfm13-status-emitida';
+                badgeStat.innerHTML = '<i class="fa-solid fa-circle-check"></i> Emitida #' + (h.numero_registro || h.id);
+            }
+        }
         window.ensayosDisponiblesOS = (data.ensayos_disponibles_os || []).filter(function (ens) {
             return ens.permitido !== 0 && ens.permitido !== '0' && ens.permitido !== false;
         });
@@ -2223,6 +2388,9 @@
         if (elFirmaRecibe) elFirmaRecibe.checked = (parseInt(h.firma_recibe_cycsa) === 1);
         const elFirmaCli = document.getElementById('hs_firma_cliente');
         if (elFirmaCli) elFirmaCli.checked = (parseInt(h.firma_cliente) === 1);
+
+        actualizarInfoProductoSeleccionado();
+        actualizarContadorEspecimenes();
     }
 
     function escapeHtml(str) {
@@ -2256,13 +2424,14 @@
         if (!tbody) return;
         tbody.innerHTML = `
             <tr id="fila-sin-muestras">
-                <td colspan="4" style="text-align:center; padding:32px 16px; color:#64748b; background:#f8fafc; border-radius:6px;">
-                    <div style="font-size:26px; color:#94a3b8; margin-bottom:6px;"><i class="fa-solid fa-vial-circle-check"></i></div>
-                    <div style="font-size:13px; font-weight:700; color:#334155;">No hay muestras registradas en esta hoja</div>
-                    <div style="font-size:11.5px; color:#64748b; margin-top:3px;">Haz clic en el botón verde <strong>"+ Agregar Muestra"</strong> para añadir los especímenes recibidos o muestreados.</div>
+                <td colspan="5" style="text-align:center; padding:36px 16px; color:#64748b; background:#f8fafc; border-radius:8px;">
+                    <div style="font-size:32px; color:#94a3b8; margin-bottom:8px;"><i class="fa-solid fa-vial-circle-check"></i></div>
+                    <div style="font-size:14px; font-weight:700; color:#1e293b;">No hay especímenes registrados en esta hoja</div>
+                    <div style="font-size:12px; color:#64748b; margin-top:4px;">Haga clic en el botón azul <strong>"+ Agregar Muestra"</strong> para ingresar los especímenes recibidos o recolectados en campo.</div>
                 </td>
             </tr>
         `;
+        actualizarContadorEspecimenes();
     }
 
     function agregarFilaMuestraModal(tipo = null, nom = '', desc = '', info = '', ensayoId = null, plantillaId = null, seleccionManual = 0, motivoCambio = '', bloqueado = 0) {
@@ -2309,41 +2478,48 @@
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td style="padding:6px 8px; vertical-align:middle; border-bottom:1px solid #e2e8f0;">
-                <input type="text" name="m_nombre[]" value="${nom}" readonly required class="form-control-cycsa" style="padding:6px 10px; font-size:12px; font-weight:700; font-family:monospace; color:var(--cycsa-azul); background:#f8fafc; cursor:not-allowed; border-color:#cbd5e1;" title="Código consecutivo asignado por el sistema">
-                <input type="hidden" name="m_info[]" value="${escapeHtml(info)}">
+            <td style="vertical-align:middle;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span class="badge ${prefijo === 'MS' ? 'bg-secondary' : 'bg-primary'}" style="font-size:10.5px; font-weight:700; padding:4px 6px; border-radius:4px;">${escapeHtml(prefijo)}</span>
+                    <input type="text" name="m_nombre[]" value="${nom}" readonly required class="rtfm13-input rtfm13-input-mono" style="padding:6px 10px; font-size:12px; height:36px; color:var(--rtfm13-azul); background:#f8fafc; cursor:not-allowed;" title="Código consecutivo oficial asignado por el sistema">
+                </div>
                 <input type="hidden" name="m_ensayo_id[]" value="${ensayoId || 1}">
                 <input type="hidden" name="m_plantilla_id[]" value="${plantillaId || ''}" class="input-plantilla-muestra">
                 <input type="hidden" name="m_seleccion_manual[]" value="${seleccionManual}">
                 <input type="hidden" name="m_motivo_cambio[]" value="${escapeHtml(motivoCambio)}">
                 <input type="hidden" name="m_bloqueado[]" value="${bloqueado}">
             </td>
-            <td style="padding:6px 8px; vertical-align:middle; border-bottom:1px solid #e2e8f0;">
-                <input type="text" name="m_desc[]" value="${escapeHtml(desc)}" class="form-control-cycsa" style="padding:6px 10px; font-size:12.5px;" required placeholder="Descripción de la muestra (ej: Concreto F'c 210 kg/cm² - Columnas Eje C-3 / Sub-base)">
+            <td style="vertical-align:middle;">
+                <input type="text" name="m_desc[]" value="${escapeHtml(desc)}" class="rtfm13-input" style="height:36px; font-size:12.5px;" required placeholder="Ubicación o elemento (ej: Columna Eje C-3)">
                 ${motivoCambio ? `<div style="font-size:10px; color:#b45309; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(motivoCambio)}"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(motivoCambio)}</div>` : ''}
             </td>
-            <td style="padding:6px 8px; vertical-align:middle; border-bottom:1px solid #e2e8f0;">
+            <td style="vertical-align:middle;">
+                <input type="text" name="m_info[]" value="${escapeHtml(info)}" class="rtfm13-input" style="height:36px; font-size:12.5px;" placeholder="Edad / Estado (ej: 7 días, húmeda)">
+            </td>
+            <td style="vertical-align:middle;">
                 <div class="col-plantilla-badge" style="display:flex; align-items:center; gap:6px;">
-                    <span class="badge badge-plt-display" style="background:${plantillaId ? '#e0f2fe' : '#f8fafc'}; color:${plantillaId ? '#0369a1' : '#64748b'}; border:1px solid ${plantillaId ? '#bae6fd' : '#cbd5e1'}; font-size:11px; padding:5px 8px; border-radius:6px; max-width:190px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block;" title="${escapeHtml(etiquetaPlantilla)}">
+                    <span class="badge badge-plt-display" style="background:${plantillaId ? '#e0f2fe' : '#f8fafc'}; color:${plantillaId ? '#0369a1' : '#64748b'}; border:1px solid ${plantillaId ? '#bae6fd' : '#cbd5e1'}; font-size:11px; padding:6px 10px; border-radius:6px; max-width:210px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block;" title="${escapeHtml(etiquetaPlantilla)}">
                         <i class="fa-solid fa-file-waveform me-1"></i>${escapeHtml(codigoPlantilla ? codigoPlantilla : etiquetaPlantilla)}
                     </span>
                 </div>
             </td>
-            <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; text-align:center; vertical-align:middle;">
+            <td style="text-align:center; vertical-align:middle;">
                 ${bloqueado ? 
-                    '<span style="background:#f1f5f9; color:#64748b; font-size:10px; font-weight:700; padding:3px 6px; border-radius:4px;">Bloqueado</span>' 
+                    '<span class="badge bg-light text-muted border" style="font-size:10px; font-weight:700; padding:4px 8px;"><i class="fa-solid fa-lock me-1"></i>Bloqueado</span>' 
                     : 
-                    '<button type="button" class="btn-cycsa btn-cycsa-danger" style="padding:5px 8px; font-size:11px;" onclick="eliminarFilaMuestraModal(this)" title="Eliminar muestra"><i class="fa-solid fa-trash"></i></button>'
+                    '<button type="button" class="btn btn-sm btn-outline-danger" style="padding:4px 8px; font-size:12px; border-radius:6px;" onclick="eliminarFilaMuestraModal(this)" title="Eliminar muestra"><i class="fa-solid fa-trash"></i></button>'
                 }
             </td>
         `;
         tbody.appendChild(tr);
+        actualizarContadorEspecimenes();
     }
 
     function eliminarFilaMuestraModal(btn) {
         const tr = btn.closest('tr');
         if (tr) tr.remove();
         siguienteConsecutivoMuestra = recalcularConsecutivoMuestra();
+        actualizarContadorEspecimenes();
         const tbody = document.getElementById('hs-tbody-muestras');
         if (tbody && tbody.querySelectorAll('tr').length === 0) {
             mostrarEstadoVacioMuestras();

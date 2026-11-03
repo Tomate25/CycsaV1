@@ -3,6 +3,7 @@
 ?>
 
 <!-- Estilos Específicos Premium para Hojas de Servicio -->
+<link rel="stylesheet" href="/Cycsa/publico/css/rtfm13_fullscreen.css">
 <style>
     .hs-card {
         background: white;
