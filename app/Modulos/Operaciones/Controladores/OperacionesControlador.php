@@ -1776,37 +1776,97 @@ class OperacionesControlador extends ControladorBase {
         }
 
         // Desbloqueo de captura técnica: Técnicos y laboratoristas capturan resultados libremente sin bloqueo de pago.
-        // 1. Verificar que exista la Hoja de Servicio (CYCSA-RT-FM-13) registrada
-        $stmtHoja = $db->prepare("SELECT id FROM hojas_solicitud WHERE id_os = :id_os LIMIT 1");
-        $stmtHoja->execute(['id_os' => $detalle['id_os']]);
-        $hojaExistente = $stmtHoja->fetchColumn();
+        // 1. Resolver la Hoja de Servicio (CYCSA-RT-FM-13) específica para este producto/ensayo
+        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
 
-        if (!$hojaExistente) {
-            $_SESSION['error'] = 'Debe registrar primero la Hoja de Solicitud de Servicio (CYCSA-RT-FM-13) para la Orden de Servicio ' . ($detalle['codigo_os'] ?? 'O/S') . ' antes de acceder a la matriz técnica.';
+        if (!$hoja) {
+            $_SESSION['error'] = 'Debe registrar primero la Hoja de Solicitud de Servicio (CYCSA-RT-FM-13) para este producto de la Orden de Servicio ' . ($detalle['codigo_os'] ?? 'O/S') . ' antes de acceder a la matriz técnica.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
         }
 
+        // Hidratar metadatos específicos de la hoja en el detalle
+        $detalle['procedencia_punto_muestreo'] = $hoja['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
+        $detalle['nombre_persona_entrega_muestra'] = $hoja['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
+        $detalle['fecha_hora_toma_muestra'] = $hoja['fecha_hora_toma_muestra'] ?? ($detalle['fecha_hora_toma_muestra'] ?? null);
+        $detalle['fecha_hora_llegada_laboratorio'] = $hoja['fecha_hora_llegada_laboratorio'] ?? ($detalle['fecha_hora_llegada_laboratorio'] ?? null);
+        $detalle['naturaleza_muestra'] = $hoja['naturaleza_muestra'] ?? ($detalle['naturaleza_muestra'] ?? '');
+        $detalle['observaciones'] = $hoja['observaciones'] ?? ($detalle['observaciones'] ?? '');
+        $detalle['id_hoja'] = (int)$hoja['id'];
+        $detalle['numero_registro'] = $hoja['numero_registro'] ?? '';
+
         $esCompactacion = esItemCompactacion($detalle);
+        $idHojaResolv = (int)$hoja['id'];
+        $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
+        $muestrasSeteadas = [];
 
-        // 1. Obtener muestras aceptadas formalmente en el laboratorio (recepcion_muestras)
-        $stmtMuestrasLab = $db->prepare("
-            SELECT rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote
-            FROM recepcion_muestras rm
-            LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
-            WHERE rm.id_os = :id_os
-            ORDER BY rm.id ASC
-        ");
-        $stmtMuestrasLab->execute(['id_os' => $detalle['id_os']]);
-        $muestrasLabList = $stmtMuestrasLab->fetchAll(PDO::FETCH_ASSOC);
+        if ($esCompactacion) {
+            // Regla de Visita CYCSA 2026-11-02: Ensayos de compactación in situ NO pasan por recepción de laboratorio.
+            // Las muestras/puntos se obtienen exclusivamente de la Hoja RT-FM-13 vinculada a este producto.
+            $stmtHsd = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion, observacion_edad FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :id_hoja ORDER BY orden ASC, id ASC");
+            $stmtHsd->execute(['id_hoja' => $idHojaResolv]);
+            $filasHsd = $stmtHsd->fetchAll(PDO::FETCH_ASSOC);
 
-        // Control de Trazabilidad (ISO 17025):
-        // Para ensayos convencionales de laboratorio con muestras físicas en custodia se requiere aceptación en Lab.
-        // Para COMPACTACIONES / ENSAYOS IN SITU no se emite solicitud de muestras a laboratorio: pasan directo a llenado de matriz técnica en Operaciones.
-        if (!$esCompactacion && empty($muestrasLabList)) {
-            $_SESSION['error'] = 'Las muestras de la Orden de Servicio (' . ($detalle['codigo_os'] ?? 'O/S') . ') aún no han sido aceptadas e ingresadas en el Laboratorio. Primero debe realizar la aceptación técnica en el módulo de Laboratorio para asignar los códigos oficiales (MS-XXXX-26).';
-            $respuesta->redirigir('/Cycsa/publico/operaciones/ver?id_os=' . (int)$detalle['id_os']);
-            return;
+            if (!empty($filasHsd)) {
+                foreach ($filasHsd as $idx => $fh) {
+                    $codLab = trim($fh['codigo_muestra'] ?? '');
+                    if (empty($codLab)) {
+                        $codLab = sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                    }
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => $codLab,
+                        'codigo_campo' => $codLab,
+                        'nombre_muestra' => !empty($fh['descripcion_ubicacion']) ? $fh['descripcion_ubicacion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                    ];
+                }
+            } else {
+                $mList = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
+                foreach ($mList as $idx => $md) {
+                    $codLab = !empty($md['nombre_muestra']) ? trim($md['nombre_muestra']) : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => $codLab,
+                        'codigo_campo' => $codLab,
+                        'nombre_muestra' => !empty($md['descripcion']) ? trim($md['descripcion']) : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                    ];
+                }
+            }
+
+            if (empty($muestrasSeteadas)) {
+                $_SESSION['error'] = 'Para ensayos in situ de la Orden de Servicio ' . ($detalle['codigo_os'] ?? 'O/S') . ', la Hoja de Solicitud (CYCSA-RT-FM-13) debe incluir las muestras o puntos de muestreo registrados antes de capturar la matriz técnica.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . (int)$detalle['id_os']);
+                return;
+            }
+        } else {
+            // Ensayos convencionales de laboratorio (concreto, suelo físico):
+            // Muestras aceptadas formalmente en Laboratorio, filtradas ESTRICTAMENTE por la hoja correspondiente.
+            $stmtMuestrasLab = $db->prepare("
+                SELECT rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote
+                FROM recepcion_muestras rm
+                LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+                WHERE rm.id_os = :id_os AND (rm.id_hoja = :id_hoja OR (rm.id_hoja IS NULL AND :id_hoja_fb = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = :id_os_fb)))
+                ORDER BY rm.id ASC
+            ");
+            $stmtMuestrasLab->execute([
+                'id_os' => $detalle['id_os'],
+                'id_hoja' => $idHojaResolv,
+                'id_hoja_fb' => $idHojaResolv,
+                'id_os_fb' => $detalle['id_os']
+            ]);
+            $muestrasLabList = $stmtMuestrasLab->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($muestrasLabList)) {
+                $_SESSION['error'] = 'Las muestras de la Orden de Servicio (' . ($detalle['codigo_os'] ?? 'O/S') . ') para este ensayo aún no han sido aceptadas e ingresadas en el Laboratorio. Primero debe realizar la aceptación técnica en el módulo de Laboratorio para asignar los códigos oficiales (MS-XXXX-26).';
+                $respuesta->redirigir('/Cycsa/publico/operaciones/ver?id_os=' . (int)$detalle['id_os']);
+                return;
+            }
+
+            foreach ($muestrasLabList as $idx => $ml) {
+                $muestrasSeteadas[] = [
+                    'codigo_lab' => $ml['codigo_muestra'],
+                    'codigo_campo' => $ml['codigo_campo'],
+                    'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                ];
+            }
         }
 
         $archivoMd = resolverArchivoMarkdownEnsayo($detalle);
@@ -1818,49 +1878,6 @@ class OperacionesControlador extends ControladorBase {
         }
         if (empty($columnas)) {
             $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
-        }
-
-        $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
-        $muestrasSeteadas = [];
-        if (!empty($muestrasLabList)) {
-            foreach ($muestrasLabList as $idx => $ml) {
-                $muestrasSeteadas[] = [
-                    'codigo_lab' => $ml['codigo_muestra'],
-                    'codigo_campo' => $ml['codigo_campo'],
-                    'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
-                ];
-            }
-        } else {
-            // Caso especial: Ensayos in situ / Compactación sin muestras físicas en lab
-            // Requiere OBLIGATORIAMENTE que exista al menos una Hoja RT-FM-13 registrada
-            $modeloOp = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
-            $hojas = $modeloOp->obtenerHojasSolicitudPorOS((int)$detalle['id_os']);
-            $muestrasDeclaradas = [];
-            foreach ($hojas as $h) {
-                $mList = json_decode($h['muestras_json'] ?? '[]', true) ?: [];
-                foreach ($mList as $mItem) {
-                    $muestrasDeclaradas[] = $mItem;
-                }
-            }
-
-            // Si la O/S in situ no tiene registrada ninguna muestra en la Hoja RT-FM-13:
-            // Alerta clara e informativa antes de redirigir a la O/S
-            if (empty($muestrasDeclaradas)) {
-                $_SESSION['error'] = 'Para ensayos in situ de la Orden de Servicio ' . ($detalle['codigo_os'] ?? 'O/S') . ', la Hoja de Solicitud (CYCSA-RT-FM-13) debe incluir las muestras o puntos de muestreo registrados antes de capturar la matriz técnica.';
-                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . (int)$detalle['id_os']);
-                return;
-            }
-
-            $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
-
-            foreach ($muestrasDeclaradas as $idx => $md) {
-                $codLab = !empty($md['nombre_muestra']) ? $md['nombre_muestra'] : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
-                $muestrasSeteadas[] = [
-                    'codigo_lab' => $codLab,
-                    'codigo_campo' => $codLab,
-                    'nombre_muestra' => !empty($md['descripcion']) ? $md['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
-                ];
-            }
         }
 
         $schemaInfo = obtenerEsquemaPlantillaEnsayo($detalle['archivo_markdown'] ?? null, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
@@ -2895,6 +2912,18 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
+        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        if ($hoja) {
+            $detalle['procedencia_punto_muestreo'] = $hoja['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
+            $detalle['nombre_persona_entrega_muestra'] = $hoja['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
+            $detalle['fecha_hora_toma_muestra'] = $hoja['fecha_hora_toma_muestra'] ?? ($detalle['fecha_hora_toma_muestra'] ?? null);
+            $detalle['fecha_hora_llegada_laboratorio'] = $hoja['fecha_hora_llegada_laboratorio'] ?? ($detalle['fecha_hora_llegada_laboratorio'] ?? null);
+            $detalle['naturaleza_muestra'] = $hoja['naturaleza_muestra'] ?? ($detalle['naturaleza_muestra'] ?? '');
+            $detalle['observaciones'] = $hoja['observaciones'] ?? ($detalle['observaciones'] ?? '');
+            $detalle['id_hoja'] = (int)$hoja['id'];
+            $detalle['numero_registro'] = $hoja['numero_registro'] ?? '';
+        }
+
         // Gate Único de Autorización de Pago / Despacho
         $authPago = verificarAutorizacionPagoEnvio($detalle, $db);
         if (!$authPago['autorizado']) {
@@ -2910,50 +2939,87 @@ class OperacionesControlador extends ControladorBase {
             $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
         }
 
+        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        if ($hoja) {
+            $detalle['procedencia_punto_muestreo'] = $hoja['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
+            $detalle['nombre_persona_entrega_muestra'] = $hoja['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
+            $detalle['fecha_hora_toma_muestra'] = $hoja['fecha_hora_toma_muestra'] ?? ($detalle['fecha_hora_toma_muestra'] ?? null);
+            $detalle['fecha_hora_llegada_laboratorio'] = $hoja['fecha_hora_llegada_laboratorio'] ?? ($detalle['fecha_hora_llegada_laboratorio'] ?? null);
+            $detalle['naturaleza_muestra'] = $hoja['naturaleza_muestra'] ?? ($detalle['naturaleza_muestra'] ?? '');
+            $detalle['observaciones'] = $hoja['observaciones'] ?? ($detalle['observaciones'] ?? '');
+            $detalle['id_hoja'] = (int)$hoja['id'];
+            $detalle['numero_registro'] = $hoja['numero_registro'] ?? '';
+        }
+
+        $idHojaResolv = $hoja ? (int)$hoja['id'] : 0;
         $esCompactacion = esItemCompactacion($detalle);
-
-        $stmtMuestrasLab = $db->prepare("
-            SELECT rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote
-            FROM recepcion_muestras rm
-            LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
-            WHERE rm.id_os = :id_os
-            ORDER BY rm.id ASC
-        ");
-        $stmtMuestrasLab->execute(['id_os' => $detalle['id_os']]);
-        $muestrasLabList = $stmtMuestrasLab->fetchAll(PDO::FETCH_ASSOC);
-
+        $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
         $muestrasSeteadas = [];
-        if (!empty($muestrasLabList)) {
-            foreach ($muestrasLabList as $idx => $ml) {
-                $muestrasSeteadas[] = [
-                    'codigo_lab' => $ml['codigo_muestra'],
-                    'codigo_campo' => $ml['codigo_campo'],
-                    'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
-                ];
-            }
-        } else {
-            $modeloOp = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
-            $hojas = $modeloOp->obtenerHojasSolicitudPorOS((int)$detalle['id_os']);
-            $muestrasDeclaradas = [];
-            foreach ($hojas as $h) {
-                $mList = json_decode($h['muestras_json'] ?? '[]', true) ?: [];
-                foreach ($mList as $mItem) {
-                    $muestrasDeclaradas[] = $mItem;
-                }
-            }
 
-            $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
+        if ($esCompactacion && $idHojaResolv > 0) {
+            $stmtHsd = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :id_hoja ORDER BY orden ASC, id ASC");
+            $stmtHsd->execute(['id_hoja' => $idHojaResolv]);
+            $filasHsd = $stmtHsd->fetchAll(PDO::FETCH_ASSOC);
 
-            if (!empty($muestrasDeclaradas)) {
-                foreach ($muestrasDeclaradas as $idx => $md) {
-                    $codLab = !empty($md['nombre_muestra']) ? $md['nombre_muestra'] : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+            if (!empty($filasHsd)) {
+                foreach ($filasHsd as $idx => $fh) {
+                    $codLab = trim($fh['codigo_muestra'] ?? '');
+                    if (empty($codLab)) {
+                        $codLab = sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                    }
                     $muestrasSeteadas[] = [
                         'codigo_lab' => $codLab,
                         'codigo_campo' => $codLab,
-                        'nombre_muestra' => !empty($md['descripcion']) ? $md['descripcion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                        'nombre_muestra' => !empty($fh['descripcion_ubicacion']) ? $fh['descripcion_ubicacion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
                     ];
                 }
             } else {
+                $mList = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
+                foreach ($mList as $idx => $md) {
+                    $codLab = !empty($md['nombre_muestra']) ? trim($md['nombre_muestra']) : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => $codLab,
+                        'codigo_campo' => $codLab,
+                        'nombre_muestra' => !empty($md['descripcion']) ? trim($md['descripcion']) : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                    ];
+                }
+            }
+        } else {
+            $stmtMuestrasLab = $db->prepare("
+                SELECT rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote
+                FROM recepcion_muestras rm
+                LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+                WHERE rm.id_os = :id_os AND (:id_hoja = 0 OR rm.id_hoja = :id_hoja OR (rm.id_hoja IS NULL AND :id_hoja_fb = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = :id_os_fb)))
+                ORDER BY rm.id ASC
+            ");
+            $stmtMuestrasLab->execute([
+                'id_os' => $detalle['id_os'],
+                'id_hoja' => $idHojaResolv,
+                'id_hoja_fb' => $idHojaResolv,
+                'id_os_fb' => $detalle['id_os']
+            ]);
+            $muestrasLabList = $stmtMuestrasLab->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($muestrasLabList)) {
+                foreach ($muestrasLabList as $idx => $ml) {
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => $ml['codigo_muestra'],
+                        'codigo_campo' => $ml['codigo_campo'],
+                        'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                    ];
+                }
+            } elseif ($hoja && !empty($hoja['muestras_json'])) {
+                $mList = json_decode($hoja['muestras_json'], true) ?: [];
+                foreach ($mList as $idx => $md) {
+                    $codLab = !empty($md['nombre_muestra']) ? trim($md['nombre_muestra']) : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => $codLab,
+                        'codigo_campo' => $codLab,
+                        'nombre_muestra' => !empty($md['descripcion']) ? trim($md['descripcion']) : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                    ];
+                }
+            } else {
+                $modeloOp = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
                 $siguienteCorr = $modeloOp->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestraOS);
                 $anioShort = date('y');
                 $cantMuestras = max(1, (int)($detalle['cantidad'] ?? 1));
@@ -3182,6 +3248,18 @@ class OperacionesControlador extends ControladorBase {
             $_SESSION['error'] = 'Producto o ensayo no encontrado.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
+        }
+
+        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        if ($hoja) {
+            $detalle['procedencia_punto_muestreo'] = $hoja['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
+            $detalle['nombre_persona_entrega_muestra'] = $hoja['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
+            $detalle['fecha_hora_toma_muestra'] = $hoja['fecha_hora_toma_muestra'] ?? ($detalle['fecha_hora_toma_muestra'] ?? null);
+            $detalle['fecha_hora_llegada_laboratorio'] = $hoja['fecha_hora_llegada_laboratorio'] ?? ($detalle['fecha_hora_llegada_laboratorio'] ?? null);
+            $detalle['naturaleza_muestra'] = $hoja['naturaleza_muestra'] ?? ($detalle['naturaleza_muestra'] ?? '');
+            $detalle['observaciones'] = $hoja['observaciones'] ?? ($detalle['observaciones'] ?? '');
+            $detalle['id_hoja'] = (int)$hoja['id'];
+            $detalle['numero_registro'] = $hoja['numero_registro'] ?? '';
         }
 
         // Gate Único de Envío Oficial al Cliente / Autorización de Pago

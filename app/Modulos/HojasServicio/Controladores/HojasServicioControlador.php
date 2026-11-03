@@ -868,36 +868,7 @@ class HojasServicioControlador extends ControladorBase {
      * Determina si un detalle/producto corresponde a compactación (ASTM D6938, D1556, D698, D1557 o formato).
      */
     public function esProductoCompactacion(array $item): bool {
-        $texto = mb_strtolower(
-            ($item['descripcion_ensayo'] ?? '') . ' ' . 
-            ($item['nombre_comercial'] ?? '') . ' ' . 
-            ($item['nombre_ensayo'] ?? '') . ' ' . 
-            ($item['norma_astm'] ?? '') . ' ' . 
-            ($item['codigo_servicio'] ?? '') . ' ' .
-            ($item['formato_nombre'] ?? '') . ' ' . 
-            ($item['archivo_markdown'] ?? '') . ' ' .
-            ($item['ensayo_servicio'] ?? ''),
-            'UTF-8'
-        );
-
-        $textoLimpio = preg_replace('/[^a-z0-9]/', '', $texto);
-        if (str_contains($textoLimpio, 'd6938') || str_contains($textoLimpio, 'd1556') || str_contains($textoLimpio, 'd698') || str_contains($textoLimpio, 'd1557') || str_contains($textoLimpio, 'd5030')) {
-            return true;
-        }
-
-        $patrones = ['compactaci', 'densimetro', 'densímetro', 'cono de arena', 'reemplazo de agua', 'proctor'];
-        foreach ($patrones as $p) {
-            if (str_contains($texto, $p)) {
-                return true;
-            }
-        }
-
-        $formatoId = (int)($item['formato_id'] ?? 0);
-        if (in_array($formatoId, [1, 3, 4, 15], true)) {
-            return true;
-        }
-
-        return false;
+        return esItemCompactacion($item);
     }
 
     public function sanitizarCamposReqSegunFlags(array $datos, array $flagsPermitidos): array {

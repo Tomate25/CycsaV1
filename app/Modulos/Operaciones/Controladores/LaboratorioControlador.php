@@ -14,7 +14,7 @@ class LaboratorioControlador extends ControladorBase {
 
     private function verificarSesion(Respuesta $respuesta): void {
         if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+            @session_start();
         }
         if (!isset($_SESSION['usuario_id']) || (int)$_SESSION['usuario_id'] <= 0) {
             $respuesta->redirigir('/Cycsa/publico/login');
@@ -24,7 +24,7 @@ class LaboratorioControlador extends ControladorBase {
 
     private function obtenerUsuarioIdAutenticado(Peticion $peticion, Respuesta $respuesta): ?int {
         if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+            @session_start();
         }
         $usuarioId = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
         if ($usuarioId <= 0) {
@@ -40,7 +40,7 @@ class LaboratorioControlador extends ControladorBase {
 
     private function verificarTokenCsrf(Peticion $peticion, Respuesta $respuesta, array $datos = [], string $redirectUrl = '/Cycsa/publico/laboratorio'): bool {
         if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+            @session_start();
         }
         $tokenSesion = (string)($_SESSION['csrf_token'] ?? '');
         $tokenRecibido = (string)($datos['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
@@ -85,6 +85,7 @@ class LaboratorioControlador extends ControladorBase {
         $sqlSolicitudes = "SELECT os.id AS id_os, os.codigo_os, os.fecha_emision, os.estado AS estado_os,
                                   os.requiere_muestreo, os.tipo_contrato, os.motivo_observacion,
                                   hs.id AS id_hoja, hs.codigo_documento AS hoja_codigo, hs.numero_registro,
+                                  hs.id_detalle_cotizacion, hs.id_producto,
                                   hs.fecha_hora_toma_muestra, hs.muestras_json, hs.naturaleza_muestra,
                                   hs.procedencia_punto_muestreo, hs.observaciones, hs.fecha_creacion AS hoja_fecha_creacion,
                                   cot.id AS id_cotizacion,
@@ -105,9 +106,34 @@ class LaboratorioControlador extends ControladorBase {
 
         foreach ($todasOrdenes as $o) {
             $ensayos = $operacionModelo->filtrarDetallesPermitidos((int)$o['id_os'], $operacionModelo->obtenerDetallesCotizacion((int)$o['id_cotizacion']));
-            // Omitir si la orden contiene exclusivamente ensayos in situ de compactación (no ingresan a laboratorio)
-            if (!empty($ensayos) && esOrdenSoloCompactacion($ensayos)) {
-                continue;
+
+            // Regla Visita CYCSA: Los ensayos in situ de compactación (Densímetro Nuclear, Cono de Arena, Reemplazo de Agua)
+            // NO pasan por Laboratorio (no requieren custodia física); se gestionan directamente en Operaciones LIMS.
+            if (!empty($o['id_detalle_cotizacion'])) {
+                $detHoja = null;
+                foreach ($ensayos as $eItem) {
+                    if ((int)$eItem['id'] === (int)$o['id_detalle_cotizacion']) {
+                        $detHoja = $eItem;
+                        break;
+                    }
+                }
+                if (!$detHoja) {
+                    $stmtD = $db->prepare("SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
+                                           FROM cotizacion_detalles cd
+                                           LEFT JOIN productos p ON cd.id_producto = p.id
+                                           LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                                           WHERE cd.id = :id");
+                    $stmtD->execute(['id' => (int)$o['id_detalle_cotizacion']]);
+                    $detHoja = $stmtD->fetch(PDO::FETCH_ASSOC);
+                }
+                if ($detHoja && esItemCompactacion($detHoja)) {
+                    continue; // Excluir hoja de compactación de la bandeja de Laboratorio
+                }
+            } else {
+                // Fallback para hojas legadas sin id_detalle_cotizacion: omitir si la orden contiene exclusivamente compactación
+                if (!empty($ensayos) && esOrdenSoloCompactacion($ensayos)) {
+                    continue;
+                }
             }
 
             $o['ensayos'] = $ensayos;
@@ -902,6 +928,23 @@ class LaboratorioControlador extends ControladorBase {
 
             // Obtener las muestras declaradas en la Hoja RT-FM-13 correspondiente
             $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS, $idHoja > 0 ? $idHoja : null);
+
+            // Defensa en profundidad: Ensayos de compactación in situ no se recepcionan en laboratorio
+            if ($hoja && !empty($hoja['id_detalle_cotizacion'])) {
+                $stmtDet = $db->prepare("SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
+                                         FROM cotizacion_detalles cd
+                                         LEFT JOIN productos p ON cd.id_producto = p.id
+                                         LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                                         WHERE cd.id = :id");
+                $stmtDet->execute(['id' => (int)$hoja['id_detalle_cotizacion']]);
+                $detHoja = $stmtDet->fetch(PDO::FETCH_ASSOC);
+                if ($detHoja && esItemCompactacion($detHoja)) {
+                    $_SESSION['error'] = 'Los ensayos de compactación in situ no requieren recepción ni custodia física en laboratorio. Su captura técnica se realiza directamente en Operaciones LIMS.';
+                    $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                    return;
+                }
+            }
+
             $muestrasDeclaradasRT = [];
             if ($hoja && !empty($hoja['muestras_json'])) {
                 $muestrasDeclaradasRT = json_decode($hoja['muestras_json'], true) ?: [];

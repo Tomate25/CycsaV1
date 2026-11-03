@@ -307,6 +307,10 @@ class SprintH1ReqWhitelistTest extends TestCase {
         if (session_status() !== PHP_SESSION_ACTIVE) {
             @session_start();
         }
+        if (!isset($_SESSION)) {
+            $_SESSION = [];
+        }
+        unset($_SESSION['error'], $_SESSION['exito']);
         $_SERVER['REQUEST_METHOD'] = 'POST';
         $_SESSION['usuario_id'] = 1;
         $_SESSION['usuario_rol'] = 1;

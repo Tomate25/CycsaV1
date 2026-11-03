@@ -4220,6 +4220,37 @@ function esOrdenSoloCompactacion(array $items): bool {
 }
 
 /**
+ * Resuelve la Hoja de Solicitud (CYCSA-RT-FM-13) correspondiente a un ítem/detalle de cotización en una O/S.
+ * Prioriza la hoja vinculada formalmente a id_detalle_cotizacion (Migración 029+).
+ * Si es una O/S con hojas legadas donde id_detalle_cotizacion es NULL, realiza fallback a MIN(id) de esa O/S.
+ */
+function resolverHojaPorDetalle(PDO $db, int $idOs, int $idDetalle): ?array {
+    if ($idOs <= 0) return null;
+
+    if ($idDetalle > 0) {
+        $stmt = $db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os AND id_detalle_cotizacion = :id_det LIMIT 1");
+        $stmt->execute(['id_os' => $idOs, 'id_det' => $idDetalle]);
+        $hoja = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($hoja) {
+            return $hoja;
+        }
+    }
+
+    // Fallback retrocompatible para hojas anteriores a la migración 029
+    $stmtFallback = $db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os AND id_detalle_cotizacion IS NULL ORDER BY id ASC LIMIT 1");
+    $stmtFallback->execute(['id_os' => $idOs]);
+    $hojaLegacy = $stmtFallback->fetch(PDO::FETCH_ASSOC);
+    if ($hojaLegacy) {
+        return $hojaLegacy;
+    }
+
+    // Si aún no encuentra y sólo hay una única hoja en toda la O/S, retornar esa única hoja
+    $stmtUnica = $db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os ORDER BY id ASC LIMIT 1");
+    $stmtUnica->execute(['id_os' => $idOs]);
+    return $stmtUnica->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+/**
  * Codifica un ID numérico de forma reversible (Hashids).
  */
 function codificarId($id): string {
