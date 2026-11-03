@@ -332,6 +332,27 @@ class MigradorServicio {
                     $resultados['029_os_multimes_rtfm13'] = '[029 WARN] ' . $e029->getMessage();
                 }
             }
+
+            // =========================================================================
+            // FASE 21: Migración 030 - Blindaje Anti-Duplicados UNIQUE en RT-FM-13
+            // =========================================================================
+            $ruta030 = dirname(__DIR__, 4) . '/database/migrations/030_rtfm13_anti_duplicados_unique.php';
+            if (file_exists($ruta030)) {
+                ob_start();
+                try {
+                    require_once $ruta030;
+                    if (function_exists('ejecutarMigracion030')) {
+                        ejecutarMigracion030($db);
+                    }
+                    $resultados['030_rtfm13_anti_duplicados'] = ob_get_clean();
+                } catch (Throwable $e030) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 030: ' . $e030->getMessage());
+                    $resultados['030_rtfm13_anti_duplicados'] = '[030 WARN] ' . $e030->getMessage();
+                }
+            }
         } catch (Throwable $e) {
             error_log("Error en MigradorServicio: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             $resultados['error'] = $e->getMessage();

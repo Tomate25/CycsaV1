@@ -646,7 +646,7 @@ class HojasServicioControlador extends ControladorBase {
                     return;
                 }
             } else {
-                $_SESSION['error'] = 'Error al registrar la Hoja de Solicitud.';
+                $_SESSION['error'] = $modelo->obtenerUltimoError() ?: 'Error al registrar la Hoja de Solicitud.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }

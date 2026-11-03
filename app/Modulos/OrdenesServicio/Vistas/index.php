@@ -1479,10 +1479,10 @@
                 <button type="button" class="rtfm13-btn-action rtfm13-btn-cancel" onclick="cerrarModalHojaSolicitud()">
                     <i class="fa-solid fa-xmark"></i> Cancelar
                 </button>
-                <button type="button" class="rtfm13-btn-action rtfm13-btn-draft" onclick="guardarBorradorHoja()">
+                <button type="button" id="hs_btn_guardar_borrador" class="rtfm13-btn-action rtfm13-btn-draft" onclick="guardarBorradorHoja()">
                     <i class="fa-solid fa-floppy-disk"></i> Guardar Borrador
                 </button>
-                <button type="submit" form="form-hoja-solicitud" class="rtfm13-btn-action rtfm13-btn-submit" onclick="return validarYEnviarHojaOficial(event)">
+                <button type="submit" id="hs_btn_emitir_oficial" form="form-hoja-solicitud" class="rtfm13-btn-action rtfm13-btn-submit" onclick="return validarYEnviarHojaOficial(event)">
                     <i class="fa-solid fa-circle-check"></i> Emitir Hoja Oficial (RT-FM-13)
                 </button>
             </div>
@@ -1958,6 +1958,7 @@
     let codigoOSModalActual = '';
 
     function abrirModalHojaSolicitud(idOS, code, idHoja = 0, esNueva = false, prefijo = '', idDetalle = 0) {
+        rehabilitarBotonesEnvioHoja();
         idOSModalActual = idOS;
         codigoOSModalActual = code;
         document.getElementById('hs_codigo_os_label').innerText = code;
@@ -2055,7 +2056,49 @@
         if (elFoot) elFoot.innerText = cnt;
     }
 
+    let guardandoHojaEnProceso = false;
+
+    function deshabilitarBotonesEnvioHoja(texto) {
+        guardandoHojaEnProceso = true;
+        const btnEmitir = document.getElementById('hs_btn_emitir_oficial');
+        const btnDraft = document.getElementById('hs_btn_guardar_borrador');
+        if (btnEmitir) {
+            btnEmitir.disabled = true;
+            btnEmitir.setAttribute('disabled', 'disabled');
+            btnEmitir.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> ${texto || 'Emitiendo...'}`;
+            btnEmitir.style.opacity = '0.6';
+            btnEmitir.style.cursor = 'not-allowed';
+        }
+        if (btnDraft) {
+            btnDraft.disabled = true;
+            btnDraft.setAttribute('disabled', 'disabled');
+            btnDraft.style.opacity = '0.6';
+            btnDraft.style.cursor = 'not-allowed';
+        }
+    }
+
+    function rehabilitarBotonesEnvioHoja() {
+        guardandoHojaEnProceso = false;
+        const btnEmitir = document.getElementById('hs_btn_emitir_oficial');
+        const btnDraft = document.getElementById('hs_btn_guardar_borrador');
+        if (btnEmitir) {
+            btnEmitir.disabled = false;
+            btnEmitir.removeAttribute('disabled');
+            btnEmitir.innerHTML = `<i class="fa-solid fa-circle-check"></i> Emitir Hoja Oficial (RT-FM-13)`;
+            btnEmitir.style.opacity = '1';
+            btnEmitir.style.cursor = 'pointer';
+        }
+        if (btnDraft) {
+            btnDraft.disabled = false;
+            btnDraft.removeAttribute('disabled');
+            btnDraft.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Borrador`;
+            btnDraft.style.opacity = '1';
+            btnDraft.style.cursor = 'pointer';
+        }
+    }
+
     function guardarBorradorHoja() {
+        if (guardandoHojaEnProceso) return;
         const chkRecepcion = document.getElementById('chk_confirmar_recepcion_lims');
         if (chkRecepcion) {
             chkRecepcion.checked = false;
@@ -2065,12 +2108,17 @@
             if (form.checkValidity && !form.checkValidity()) {
                 form.reportValidity();
             } else {
+                deshabilitarBotonesEnvioHoja('Guardando Borrador...');
                 form.submit();
             }
         }
     }
 
     function validarYEnviarHojaOficial(e) {
+        if (guardandoHojaEnProceso) {
+            if (e && e.preventDefault) e.preventDefault();
+            return false;
+        }
         const form = document.getElementById('form-hoja-solicitud');
         if (!form) return true;
         
@@ -2094,6 +2142,8 @@
             if (e && e.preventDefault) e.preventDefault();
             return false;
         }
+
+        deshabilitarBotonesEnvioHoja('Emitiendo Hoja...');
         return true;
     }
 
@@ -2990,6 +3040,7 @@
                     });
                     if (faltaPlantilla) {
                         e.preventDefault();
+                        rehabilitarBotonesEnvioHoja();
                         alert(`Validación ISO 17025:\n\nLa muestra "${nombreFaltante}" no tiene asignada una plantilla de ensayo aprobada.\nNo se puede admitir la recepción física sin plantilla vinculada.`);
                         return false;
                     }
@@ -3088,6 +3139,7 @@
     }
 
     function cerrarModalHojaSolicitud() {
+        rehabilitarBotonesEnvioHoja();
         modHS.style.display = 'none';
     }
 
@@ -3161,4 +3213,10 @@
         <?php endif; ?>
     });
     <?php endif; ?>
+
+    window.addEventListener('pageshow', function() {
+        if (typeof rehabilitarBotonesEnvioHoja === 'function') {
+            rehabilitarBotonesEnvioHoja();
+        }
+    });
 </script>

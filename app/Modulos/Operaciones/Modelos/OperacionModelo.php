@@ -1176,14 +1176,34 @@ class OperacionModelo extends ModeloBase {
             $this->db->prepare("SELECT GET_LOCK('lock_hojas_solicitud', 10)")->execute();
             $lockAcquired = true;
 
+            // Blindaje de Idempotencia y Anti-duplicados:
+            // Si es un alta ($idHoja <= 0) pero ya existe una hoja registrada para esta O/S y producto ($idDetalleCotizacion > 0),
+            // adoptamos la hoja existente como objetivo de actualización para evitar crear una segunda fila duplicada.
+            if ($idHoja <= 0 && $idDetalleCotizacion > 0) {
+                $stmtCheckDupe = $this->db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os AND id_detalle_cotizacion = :id_det LIMIT 1");
+                $stmtCheckDupe->execute(['id_os' => $idOS, 'id_det' => $idDetalleCotizacion]);
+                $hojaPrevia = $stmtCheckDupe->fetch(\PDO::FETCH_ASSOC);
+                if ($hojaPrevia) {
+                    $existing = $hojaPrevia;
+                    $idHoja = (int)$hojaPrevia['id'];
+                    if (empty($numeroRegistro) && !empty($hojaPrevia['numero_registro'])) {
+                        $numeroRegistro = $hojaPrevia['numero_registro'];
+                    }
+                }
+            }
+
             // Correlativo de número de registro si viene vacío
             if (empty($numeroRegistro)) {
-                $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM hojas_solicitud WHERE id_os = :id_os");
-                $stmtCount->execute(['id_os' => $idOS]);
-                $cantPrevias = (int)$stmtCount->fetchColumn();
-                $numeroRegistro = ($cantPrevias > 0) 
-                    ? sprintf("%05d-%02d", $idOS, $cantPrevias + 1)
-                    : sprintf("%05d", $idOS);
+                if ($existing && !empty($existing['numero_registro'])) {
+                    $numeroRegistro = $existing['numero_registro'];
+                } else {
+                    $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM hojas_solicitud WHERE id_os = :id_os");
+                    $stmtCount->execute(['id_os' => $idOS]);
+                    $cantPrevias = (int)$stmtCount->fetchColumn();
+                    $numeroRegistro = ($cantPrevias > 0) 
+                        ? sprintf("%05d-%02d", $idOS, $cantPrevias + 1)
+                        : sprintf("%05d", $idOS);
+                }
             }
             
             $anioActual = (int)date('Y');
@@ -1369,7 +1389,30 @@ class OperacionModelo extends ModeloBase {
             }
             
             $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
+            try {
+                $stmt->execute($params);
+            } catch (\PDOException $pdoEx) {
+                // Manejo resiliente de colisión por clave UNIQUE uq_hs_os_detalle
+                $msgEx = $pdoEx->getMessage();
+                if ($pdoEx->getCode() == 23000 || str_contains($msgEx, '1062') || str_contains($msgEx, 'uq_hs_os_detalle')) {
+                    if ($idDetalleCotizacion > 0) {
+                        $stmtFind = $this->db->prepare("SELECT id FROM hojas_solicitud WHERE id_os = :id_os AND id_detalle_cotizacion = :id_det LIMIT 1");
+                        $stmtFind->execute(['id_os' => $idOS, 'id_det' => $idDetalleCotizacion]);
+                        $idExistente = (int)$stmtFind->fetchColumn();
+                        if ($idExistente > 0) {
+                            $this->ultimoIdHoja = $idExistente;
+                            if ($idGenerado !== null) {
+                                $idGenerado = $idExistente;
+                            }
+                            if ($lockAcquired) {
+                                try { $this->db->prepare("SELECT RELEASE_LOCK('lock_hojas_solicitud')")->execute(); } catch (\Throwable $th) {}
+                            }
+                            return true;
+                        }
+                    }
+                }
+                throw $pdoEx;
+            }
 
             if (!$existing) {
                 $this->ultimoIdHoja = (int)$this->db->lastInsertId();
