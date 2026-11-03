@@ -75,7 +75,12 @@ $puedeEditarPlan = ($totalEnsayados === 0);
             <?php endif; ?>
         </p>
     </div>
-    <div style="display: flex; gap: 10px;">
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <?php if (!empty($muestra['id_hoja'])): ?>
+            <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$muestra['id_hoja'] ?>" class="btn-accion btn-primary-lab">
+                <i class="fa-solid fa-layer-group"></i> Ver Lote Completo (<?= (int)($muestra['total_muestras_lote'] ?? 1) ?>)
+            </a>
+        <?php endif; ?>
         <a href="/Cycsa/publico/laboratorio" class="btn-accion btn-secondary-lab"><i class="fa-solid fa-arrow-left"></i> Volver a Bandeja</a>
         <?php if ($puedeReidentificar): ?>
             <button type="button" class="btn-accion btn-warning-lab" onclick="abrirModalReidentificar('<?= htmlspecialchars($muestra['codigo_lab']) ?>', <?= (int)$muestra['muestra_id'] ?>)">
@@ -140,6 +145,33 @@ $puedeEditarPlan = ($totalEnsayados === 0);
         <div>
             <span style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Procedimiento de Muestreo:</span><br>
             <span><?= htmlspecialchars($muestra['procedimiento_muestreo'] ?: 'ISO 17025') ?></span>
+        </div>
+    </div>
+    <?php
+        $dmVista = $datosMatriz ?? [];
+        $tempVista = $dmVista['temperatura_c'] ?? ($muestra['temperatura_c'] ?? null);
+        $areaVista = (!empty($dmVista['area']) && (float)$dmVista['area'] > 0) ? (float)$dmVista['area'] : 28.274;
+        $edadMatVista = $dmVista['edad_dias'] ?? null;
+    ?>
+    <div class="grid-4" style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed #cbd5e1; background: #f8fafc; padding: 10px 12px; border-radius: 8px;">
+        <div>
+            <span style="font-size:11px; color:#0369a1; font-weight:700; text-transform:uppercase;"><i class="fa-solid fa-table-cells"></i> Edad en Matriz:</span><br>
+            <strong style="color:#1e293b;"><?= $edadMatVista !== null ? ((int)$edadMatVista . ' días') : 'Según Plan' ?></strong>
+        </div>
+        <div>
+            <span style="font-size:11px; color:#0369a1; font-weight:700; text-transform:uppercase;"><i class="fa-solid fa-temperature-half"></i> Temperatura (Matriz):</span><br>
+            <strong style="color:#1e293b;"><?= $tempVista !== null && $tempVista !== '' ? (htmlspecialchars((string)$tempVista) . ' °C') : '--' ?></strong>
+        </div>
+        <div>
+            <span style="font-size:11px; color:#0369a1; font-weight:700; text-transform:uppercase;"><i class="fa-solid fa-vector-square"></i> Área Transversal (Matriz):</span><br>
+            <strong style="color:#1e293b; font-family:monospace;"><?= number_format($areaVista, 3) ?> in²</strong>
+        </div>
+        <div>
+            <span style="font-size:11px; color:#0369a1; font-weight:700; text-transform:uppercase;"><i class="fa-solid fa-ruler-combined"></i> Diámetros / Masa (Matriz):</span><br>
+            <span style="font-size:12px; color:#334155;">
+                D: <?= !empty($dmVista['diametro_1']) ? htmlspecialchars((string)$dmVista['diametro_1']) : '--' ?> / <?= !empty($dmVista['diametro_2']) ? htmlspecialchars((string)$dmVista['diametro_2']) : '--' ?> cm
+                | M: <?= !empty($dmVista['masa_kg']) ? (htmlspecialchars((string)$dmVista['masa_kg']) . ' kg') : '--' ?>
+            </span>
         </div>
     </div>
 </div>
@@ -576,7 +608,8 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                 </div>
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Ãrea Transversal (inÂ²):</label>
-                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="28.274" oninput="calcularEsfuerzoEnVivo()" required>
+                    <?php $areaPrefillModal = (!empty($datosMatriz['area']) && (float)$datosMatriz['area'] > 0) ? (string)$datosMatriz['area'] : '28.274'; ?>
+                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="<?= htmlspecialchars($areaPrefillModal, ENT_QUOTES, 'UTF-8') ?>" oninput="calcularEsfuerzoEnVivo()" required>
                 </div>
             </div>
 
@@ -776,19 +809,35 @@ function recalcularPlanEspecimenes() {
     }
 }
 
-// Manejo de la Rotura de Probeta
+// Manejo de la Rotura de Probeta (precargado con fuente de verdad de la Matriz)
+const DATOS_MATRIZ_MUESTRA = <?= json_encode($datosMatriz ?? [], JSON_UNESCAPED_UNICODE) ?>;
+
 function abrirModalRegistrarRotura(espId, codigoLab, planEdadId, edadDias, fechaProg, tolHoras) {
     document.getElementById('rot_especimen_id').value = espId;
     document.getElementById('rot_esp_codigo').innerText = codigoLab;
     document.getElementById('rot_plan_edad_id').value = planEdadId;
     document.getElementById('rot_fecha_prog').value = fechaProg;
     document.getElementById('rot_tol_horas').value = tolHoras;
-    document.getElementById('rot_carga').value = '';
+
+    const dm = DATOS_MATRIZ_MUESTRA || {};
+    document.getElementById('rot_carga').value = (dm.carga && dm.carga > 0) ? dm.carga : '';
+    document.getElementById('rot_area').value = (dm.area && dm.area > 0) ? dm.area : '28.274';
+    if (document.getElementById('hc_d1')) document.getElementById('hc_d1').value = (dm.diametro_1 && dm.diametro_1 > 0) ? dm.diametro_1 : '';
+    if (document.getElementById('hc_d2')) document.getElementById('hc_d2').value = (dm.diametro_2 && dm.diametro_2 > 0) ? dm.diametro_2 : '';
+    if (document.getElementById('hc_l1')) document.getElementById('hc_l1').value = (dm.largo_1 && dm.largo_1 > 0) ? dm.largo_1 : '';
+    if (document.getElementById('hc_l2')) document.getElementById('hc_l2').value = (dm.largo_2 && dm.largo_2 > 0) ? dm.largo_2 : '';
+    if (document.getElementById('hc_masa')) document.getElementById('hc_masa').value = (dm.masa_kg && dm.masa_kg > 0) ? dm.masa_kg : '';
+
     document.getElementById('calc_psi').innerText = '--';
     document.getElementById('calc_kgcm2').innerText = '--';
     document.getElementById('box_justificacion_tolerancia').style.display = 'none';
     document.getElementById('rot_justificacion').value = '';
 
+    if (dm.diametro_1 > 0 && dm.diametro_2 > 0) {
+        recalcularDesdeHc61();
+    } else {
+        calcularEsfuerzoEnVivo();
+    }
     verificarToleranciaTiempo();
     document.getElementById('modalRegistrarRotura').style.display = 'block';
 }

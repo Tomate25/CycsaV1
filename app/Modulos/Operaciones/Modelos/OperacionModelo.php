@@ -396,6 +396,7 @@ class OperacionModelo extends ModeloBase {
 
             $anio = (int)date('Y', strtotime($fechaRecepcion));
             $anioShort = date('y', strtotime($fechaRecepcion));
+            $ordenLoteSeq = 1;
 
             foreach ($muestrasData as $m) {
                 $codigoCampo = trim($m['codigo_campo'] ?? '');
@@ -410,11 +411,17 @@ class OperacionModelo extends ModeloBase {
                 $idDetalleCotizacion = (int)$m['id_detalle_cotizacion'];
                 $edadesDias = $m['edades_dias'] ?? [];
                 $edadesIdentificadores = $m['edades_identificadores'] ?? [];
+                $isQaQcMuestra = isset($m['is_qa_qc']) ? (int)$m['is_qa_qc'] : $isQaQc;
+                $esReplicaCR = str_ends_with(strtoupper($codigoCampo), '-CR') || str_ends_with(strtoupper($idCilindro), '-CR') || (($m['replica_codigo'] ?? '') === '-CR');
+                if ($esReplicaCR) {
+                    $isQaQcMuestra = 1;
+                }
+                $codigoBaseMatch = $esReplicaCR ? preg_replace('/-CR$/i', '', $codigoCampo ?: $idCilindro) : $codigoCampo;
 
                 // Detectar si la muestra ya trae un código oficial asignado en RT-FM-13 (ej. MS-0001-26 o MC-0001-26)
                 $codigoPredefinido = '';
                 $tipoMuestraActual = $tipoMuestra;
-                if (preg_match('/^(MC|MS)-(\d+)-(?:' . $anio . '|' . $anioShort . ')$/i', $codigoCampo, $matCod)) {
+                if (preg_match('/^(MC|MS)-(\d+)-(?:' . $anio . '|' . $anioShort . ')$/i', $codigoBaseMatch, $matCod)) {
                     $prefijoMuestraRec = strtoupper($matCod[1]);
                     $tipoMuestraActual = ($prefijoMuestraRec === 'MS') ? 'Laboratorio' : 'Campo';
                     $correlativo = (int)$matCod[2];
@@ -438,7 +445,12 @@ class OperacionModelo extends ModeloBase {
                 $replicaCodigo = null;
                 $codigoMuestra = !empty($codigoPredefinido) ? $codigoPredefinido : sprintf("{$prefijoMuestraRec}-%04d-%02d", $correlativo, $anioShort);
 
-                if ($isQaQc) {
+                if ($esReplicaCR) {
+                    $replicaCodigo = "-CR";
+                    if (!str_ends_with(strtoupper($codigoMuestra), '-CR')) {
+                        $codigoMuestra .= "-CR";
+                    }
+                } elseif ($isQaQcMuestra) {
                     $replicaCodigo = "-1";
                     $codigoMuestra .= $replicaCodigo;
                 }
@@ -448,9 +460,12 @@ class OperacionModelo extends ModeloBase {
                     $codigoCampo = $codigoMuestra;
                 }
 
+                $plantillaIdMuestra = !empty($m['plantilla_id']) ? (int)$m['plantilla_id'] : (!empty($datos['plantilla_id']) ? (int)$datos['plantilla_id'] : null);
+                $ordenEnLote = isset($m['orden_en_lote']) ? (int)$m['orden_en_lote'] : ($ordenLoteSeq++);
+
                 // 1. Insertar Recepción con inmutabilidad y sellado
-                $sqlRec = "INSERT INTO recepcion_muestras (id_os, id_hoja, correlativo_anual, anio, tipo_muestra, codigo_muestra, id_cilindro, codigo_campo, is_qa_qc, replica_codigo, is_sealed, fecha_recepcion, recibido_por, entregado_por, observaciones, estado)
-                           VALUES (:id_os, :id_hoja, :correlativo_anual, :anio, :tipo_muestra, :codigo_muestra, :id_cilindro, :codigo_campo, :is_qa_qc, :replica_codigo, 1, :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, 'Registrado')";
+                $sqlRec = "INSERT INTO recepcion_muestras (id_os, id_hoja, correlativo_anual, anio, tipo_muestra, codigo_muestra, id_cilindro, codigo_campo, is_qa_qc, replica_codigo, is_sealed, orden_en_lote, plantilla_id, fecha_recepcion, recibido_por, entregado_por, observaciones, estado)
+                           VALUES (:id_os, :id_hoja, :correlativo_anual, :anio, :tipo_muestra, :codigo_muestra, :id_cilindro, :codigo_campo, :is_qa_qc, :replica_codigo, 1, :orden_en_lote, :plantilla_id, :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, 'Registrado')";
                 $stmtRec = $this->db->prepare($sqlRec);
                 $stmtRec->execute([
                     'id_os' => $idOS,
@@ -461,8 +476,10 @@ class OperacionModelo extends ModeloBase {
                     'codigo_muestra' => $codigoMuestra,
                     'id_cilindro' => $idCilindro,
                     'codigo_campo' => $codigoCampo,
-                    'is_qa_qc' => $isQaQc,
+                    'is_qa_qc' => $isQaQcMuestra,
                     'replica_codigo' => $replicaCodigo,
+                    'orden_en_lote' => $ordenEnLote,
+                    'plantilla_id' => $plantillaIdMuestra,
                     'fecha_recepcion' => $fechaRecepcion,
                     'recibido_por' => $recibidoPorId,
                     'entregado_por' => $entregadoPor,

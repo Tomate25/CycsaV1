@@ -4450,7 +4450,7 @@ function obtenerEstadoRevisionMatriz(?string $resultadosJson): array {
  * Devuelve la columna que contiene el código oficial de la muestra.
  */
 function obtenerColumnaCodigoMuestra(array $fila): ?string {
-    foreach (['Código laboratorio', 'Codigo laboratorio', 'codigo_lab', 'codigo_muestra'] as $columna) {
+    foreach (['Código laboratorio', 'Codigo laboratorio', 'codigo_lab', 'codigo_muestra', 'Muestra', 'muestra', 'Código Muestra', 'Codigo Muestra'] as $columna) {
         if (array_key_exists($columna, $fila)) {
             return $columna;
         }
@@ -4855,5 +4855,273 @@ function verificarAutorizacionPagoEnvio(array $datosComerciales, \PDO $db): arra
 
     // Si no existe registro de CxC o está 'Pagado' con saldo <= 0.01:
     return ['autorizado' => true];
+}
+
+/**
+ * Extrae los datos técnicos de una muestra desde las filas guardadas en la matriz técnica (resultados_json).
+ * La matriz actúa como fuente de verdad para Edad (días), Temperatura (°C), Área Transversal (in² / cm²),
+ * Diámetros, Longitudes, Masa y Carga.
+ */
+function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestra): array {
+    $codigoBuscado = strtoupper(trim($codigoMuestra));
+    $resultado = [
+        'encontrada' => false,
+        'codigo_muestra' => $codigoMuestra,
+        'edad_dias' => null,
+        'temperatura_c' => null,
+        'area' => null,
+        'unidad_area' => 'in2',
+        'diametro_1' => null,
+        'diametro_2' => null,
+        'largo_1' => null,
+        'largo_2' => null,
+        'masa_kg' => null,
+        'carga' => null,
+        'resistencia_psi' => null,
+        'resistencia_kgcm2' => null,
+        'es_replica' => false,
+        'muestra_origen' => null,
+        'fila_cruda' => []
+    ];
+
+    if ($codigoBuscado === '' || empty($filasMatriz)) {
+        return $resultado;
+    }
+
+    $filaEncontrada = null;
+    foreach ($filasMatriz as $fila) {
+        if (!is_array($fila)) continue;
+        $colCod = obtenerColumnaCodigoMuestra($fila);
+        $codFila = $colCod !== null ? strtoupper(trim((string)($fila[$colCod] ?? ''))) : '';
+        if ($codFila === '' && isset($fila['codigo_muestra'])) {
+            $codFila = strtoupper(trim((string)$fila['codigo_muestra']));
+        }
+        if ($codFila === '' && isset($fila['codigo_lab'])) {
+            $codFila = strtoupper(trim((string)$fila['codigo_lab']));
+        }
+        if ($codFila === $codigoBuscado) {
+            $filaEncontrada = $fila;
+            break;
+        }
+    }
+
+    if (!$filaEncontrada) {
+        return $resultado;
+    }
+
+    $resultado['encontrada'] = true;
+    $resultado['fila_cruda'] = $filaEncontrada;
+    $resultado['es_replica'] = esFilaReplicaMatriz($filaEncontrada);
+    $resultado['muestra_origen'] = $filaEncontrada['_muestra_origen'] ?? null;
+
+    foreach ($filaEncontrada as $k => $v) {
+        if ($v === null || $v === '' || str_starts_with((string)$k, '_')) {
+            continue;
+        }
+        $kNorm = mb_strtolower(trim((string)$k), 'UTF-8');
+        $kClean = preg_replace('/[^a-z0-9]/u', '', strtr($kNorm, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','²'=>'2']));
+        $valStr = str_replace(',', '.', trim((string)$v));
+        $valNum = is_numeric($valStr) ? (float)$valStr : null;
+
+        if ($valNum === null) continue;
+
+        if (in_array($kClean, ['edaddias', 'edad', 'dias', 'diasrotura', 'edadrotura'], true) || str_contains($kNorm, 'edad')) {
+            if ($valNum > 0) $resultado['edad_dias'] = (int)round($valNum);
+        } elseif (in_array($kClean, ['tempc', 'temperaturac', 'temperatura', 'temp'], true) || str_contains($kNorm, 'temp')) {
+            $resultado['temperatura_c'] = $valNum;
+        } elseif (in_array($kClean, ['areain2', 'areacm2', 'areain', 'areacm', 'area', 'areatransversal'], true) || str_contains($kClean, 'area')) {
+            if ($valNum > 0) {
+                $resultado['area'] = $valNum;
+                if (str_contains($kClean, 'cm')) {
+                    $resultado['unidad_area'] = 'cm2';
+                }
+            }
+        } elseif (in_array($kClean, ['diametro1cm', 'diametro1in', 'diametro1', 'd1', 'diametrocm', 'diametro'], true)) {
+            if ($valNum > 0) $resultado['diametro_1'] = $valNum;
+        } elseif (in_array($kClean, ['diametro2cm', 'diametro2in', 'diametro2', 'd2'], true)) {
+            if ($valNum > 0) $resultado['diametro_2'] = $valNum;
+        } elseif (in_array($kClean, ['longitud1cm', 'largo1cm', 'longitud1', 'largo1', 'l1', 'alturacm', 'altura'], true)) {
+            if ($valNum > 0) $resultado['largo_1'] = $valNum;
+        } elseif (in_array($kClean, ['longitud2cm', 'largo2cm', 'longitud2', 'largo2', 'l2'], true)) {
+            if ($valNum > 0) $resultado['largo_2'] = $valNum;
+        } elseif (in_array($kClean, ['masakg', 'pesokg', 'masa', 'masag'], true)) {
+            if ($valNum > 0) $resultado['masa_kg'] = $valNum;
+        } elseif (in_array($kClean, ['cargalb', 'cargakg', 'carga', 'cargamaxima', 'lecturacargalbf'], true) || str_starts_with($kClean, 'carga')) {
+            if ($valNum > 0) $resultado['carga'] = $valNum;
+        } elseif (str_contains($kClean, 'compresion') && (str_contains($kClean, 'lbin') || str_contains($kClean, 'psi'))) {
+            if ($valNum > 0) $resultado['resistencia_psi'] = $valNum;
+        } elseif (str_contains($kClean, 'compresion') && str_contains($kClean, 'kgcm')) {
+            if ($valNum > 0) $resultado['resistencia_kgcm2'] = $valNum;
+        }
+    }
+
+    return $resultado;
+}
+
+/**
+ * Sincroniza el orden de lote y las filas de réplica CR (-CR) de la matriz técnica hacia recepcion_muestras / lotes_muestras en Laboratorio.
+ * Retorna la cantidad de réplicas nuevas insertadas en recepcion_muestras.
+ */
+function sincronizarReplicasMatrizConLab(PDO $db, int $idOs, int $idHoja, int $idDetalle, array $filasMatriz): int {
+    if ($idOs <= 0 || empty($filasMatriz)) {
+        return 0;
+    }
+
+    $filasNormalizadas = normalizarReplicasMatriz($filasMatriz);
+    if (empty($filasNormalizadas)) {
+        return 0;
+    }
+
+    if ($idHoja <= 0 && $idDetalle > 0) {
+        $hojaRes = resolverHojaPorDetalle($db, $idOs, $idDetalle);
+        if ($hojaRes && !empty($hojaRes['id'])) {
+            $idHoja = (int)$hojaRes['id'];
+        }
+    }
+
+    $replicasCreadas = 0;
+    $ordenActual = 1;
+
+    foreach ($filasNormalizadas as $fila) {
+        if (!is_array($fila)) continue;
+        $colCod = obtenerColumnaCodigoMuestra($fila);
+        $codigo = $colCod !== null ? trim((string)($fila[$colCod] ?? '')) : '';
+        if ($codigo === '' && isset($fila['codigo_muestra'])) {
+            $codigo = trim((string)$fila['codigo_muestra']);
+        }
+        if ($codigo === '') continue;
+
+        $esReplica = esFilaReplicaMatriz($fila);
+
+        if (!$esReplica) {
+            if ($idHoja > 0) {
+                $stmtUpdOrd = $db->prepare("UPDATE recepcion_muestras SET orden_en_lote = :ord WHERE id_os = :os AND id_hoja = :hoja AND (codigo_muestra = :cod OR codigo_campo = :cod2)");
+                $stmtUpdOrd->execute(['ord' => $ordenActual, 'os' => $idOs, 'hoja' => $idHoja, 'cod' => $codigo, 'cod2' => $codigo]);
+            } else {
+                $stmtUpdOrd = $db->prepare("UPDATE recepcion_muestras SET orden_en_lote = :ord WHERE id_os = :os AND (codigo_muestra = :cod OR codigo_campo = :cod2)");
+                $stmtUpdOrd->execute(['ord' => $ordenActual, 'os' => $idOs, 'cod' => $codigo, 'cod2' => $codigo]);
+            }
+            $ordenActual++;
+            continue;
+        }
+
+        $codigoOrigen = trim((string)($fila['_muestra_origen'] ?? preg_replace('/-CR$/i', '', $codigo)));
+        $codigoReplica = str_ends_with(strtoupper($codigo), '-CR') ? $codigo : ($codigoOrigen . '-CR');
+
+        $stmtCheckRep = $db->prepare("SELECT id FROM recepcion_muestras WHERE id_os = :os AND (codigo_muestra = :cod OR codigo_campo = :cod2) LIMIT 1");
+        $stmtCheckRep->execute(['os' => $idOs, 'cod' => $codigoReplica, 'cod2' => $codigoReplica]);
+        $idRecReplicaExistente = (int)$stmtCheckRep->fetchColumn();
+
+        if ($idRecReplicaExistente > 0) {
+            $db->prepare("UPDATE recepcion_muestras SET orden_en_lote = :ord, is_qa_qc = 1, replica_codigo = '-CR' WHERE id = :id")
+               ->execute(['ord' => $ordenActual, 'id' => $idRecReplicaExistente]);
+            $ordenActual++;
+            continue;
+        }
+
+        $sqlOrig = "SELECT * FROM recepcion_muestras WHERE id_os = :os AND (codigo_muestra = :orig OR codigo_campo = :orig2)";
+        $paramsOrig = ['os' => $idOs, 'orig' => $codigoOrigen, 'orig2' => $codigoOrigen];
+        if ($idHoja > 0) {
+            $sqlOrig .= " AND (id_hoja = :hoja OR id_hoja IS NULL)";
+            $paramsOrig['hoja'] = $idHoja;
+        }
+        $sqlOrig .= " ORDER BY id ASC LIMIT 1";
+        $stmtOrig = $db->prepare($sqlOrig);
+        $stmtOrig->execute($paramsOrig);
+        $recOrigen = $stmtOrig->fetch(PDO::FETCH_ASSOC);
+
+        if (!$recOrigen) {
+            $ordenActual++;
+            continue;
+        }
+
+        $stmtInsRec = $db->prepare("
+            INSERT INTO recepcion_muestras (
+                id_os, id_hoja, correlativo_anual, anio, tipo_muestra,
+                codigo_muestra, id_cilindro, codigo_campo, is_qa_qc, replica_codigo,
+                is_sealed, orden_en_lote, plantilla_id, plantilla_version_id,
+                fecha_recepcion, recibido_por, entregado_por, observaciones, estado
+            ) VALUES (
+                :id_os, :id_hoja, :correlativo_anual, :anio, :tipo_muestra,
+                :codigo_muestra, :id_cilindro, :codigo_campo, 1, '-CR',
+                1, :orden_en_lote, :plantilla_id, :plantilla_version_id,
+                :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, :estado
+            )
+        ");
+        $stmtInsRec->execute([
+            'id_os' => (int)$recOrigen['id_os'],
+            'id_hoja' => $recOrigen['id_hoja'] ?: ($idHoja > 0 ? $idHoja : null),
+            'correlativo_anual' => (int)$recOrigen['correlativo_anual'],
+            'anio' => (int)$recOrigen['anio'],
+            'tipo_muestra' => $recOrigen['tipo_muestra'],
+            'codigo_muestra' => $codigoReplica,
+            'id_cilindro' => $codigoReplica,
+            'codigo_campo' => $codigoReplica,
+            'orden_en_lote' => $ordenActual,
+            'plantilla_id' => $recOrigen['plantilla_id'] ?? null,
+            'plantilla_version_id' => $recOrigen['plantilla_version_id'] ?? null,
+            'fecha_recepcion' => $recOrigen['fecha_recepcion'],
+            'recibido_por' => (int)$recOrigen['recibido_por'],
+            'entregado_por' => $recOrigen['entregado_por'],
+            'observaciones' => 'Réplica de Control de Calidad (-CR) sincronizada desde Matriz Técnica',
+            'estado' => $recOrigen['estado'] ?: 'Registrado'
+        ]);
+        $idNuevaRecReplica = (int)$db->lastInsertId();
+
+        $stmtLoteOrig = $db->prepare("SELECT * FROM lotes_muestras WHERE id_recepcion = :id_rec LIMIT 1");
+        $stmtLoteOrig->execute(['id_rec' => (int)$recOrigen['id']]);
+        $loteOrigen = $stmtLoteOrig->fetch(PDO::FETCH_ASSOC);
+
+        $datosMuestraMat = obtenerDatosMuestraDesdeMatriz($filasNormalizadas, $codigoReplica);
+        $tempReplica = $datosMuestraMat['temperatura_c'] ?? ($loteOrigen['temperatura_c'] ?? null);
+
+        $stmtInsLote = $db->prepare("
+            INSERT INTO lotes_muestras (
+                id_recepcion, nombre_lote, diseno_resistencia, fecha_moldeo,
+                revenimiento_in, revenimiento_cm, temperatura_c, procedimiento_muestreo
+            ) VALUES (
+                :id_rec, :nom, :dis, :f_moldeo,
+                :rev_in, :rev_cm, :temp_c, :proc
+            )
+        ");
+        $stmtInsLote->execute([
+            'id_rec' => $idNuevaRecReplica,
+            'nom' => ($loteOrigen['nombre_lote'] ?? 'Muestra') . ' (Réplica CR)',
+            'dis' => $loteOrigen['diseno_resistencia'] ?? '',
+            'f_moldeo' => $loteOrigen['fecha_moldeo'] ?? date('Y-m-d'),
+            'rev_in' => $loteOrigen['revenimiento_in'] ?? null,
+            'rev_cm' => $loteOrigen['revenimiento_cm'] ?? null,
+            'temp_c' => $tempReplica,
+            'proc' => $loteOrigen['procedimiento_muestreo'] ?? 'ASTM / ISO 17025'
+        ]);
+        $idNuevoLote = (int)$db->lastInsertId();
+
+        $edadMat = $datosMuestraMat['edad_dias'] ?? 0;
+        $fechaMoldeoStr = $loteOrigen['fecha_moldeo'] ?? date('Y-m-d');
+        $fechaProg = $edadMat > 0 ? date('Y-m-d', strtotime("{$fechaMoldeoStr} + {$edadMat} days")) : $fechaMoldeoStr;
+        $db->prepare("
+            INSERT INTO ensayo_edades (id_lote, id_detalle_cotizacion, identificador_especimen, edad_dias, fecha_programada, estado)
+            VALUES (:lote, :det, 'Réplica CR', :edad, :fprog, 'Programado')
+        ")->execute([
+            'lote' => $idNuevoLote,
+            'det' => $idDetalle > 0 ? $idDetalle : 1,
+            'edad' => $edadMat,
+            'fprog' => $fechaProg
+        ]);
+
+        if (class_exists('\Cycsa\Modulos\Operaciones\Modelos\RoturasModelo')) {
+            $rotModelo = new \Cycsa\Modulos\Operaciones\Modelos\RoturasModelo();
+            if ($edadMat > 0) {
+                $rotModelo->guardarPlanRotura($idNuevaRecReplica, $recOrigen['plantilla_version_id'] ? (int)$recOrigen['plantilla_version_id'] : null, [
+                    ['edad_dias' => $edadMat, 'cantidad' => 1]
+                ], (int)$recOrigen['recibido_por']);
+            }
+        }
+
+        $replicasCreadas++;
+        $ordenActual++;
+    }
+
+    return $replicasCreadas;
 }
 

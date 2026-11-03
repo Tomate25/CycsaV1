@@ -677,10 +677,19 @@ foreach ($solicitudesPorAprobar as $sol) {
                             $claseFila = 'fila-hoy';
                         }
                     ?>
-                    <tr class="<?= $claseFila ?>" onclick="window.location.href='/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$m['muestra_id'] ?>'">
+                    <?php
+                        $urlDestinoFila = !empty($m['id_hoja'])
+                            ? '/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . (int)$m['id_hoja']
+                            : '/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . (int)$m['muestra_id'];
+                        $esReplicaCr = !empty($m['is_qa_qc']) || ($m['replica_codigo'] ?? '') === '-CR' || str_ends_with((string)$m['codigo_lab'], '-CR');
+                    ?>
+                    <tr class="<?= $claseFila ?>" onclick="window.location.href='<?= $urlDestinoFila ?>'">
                         <td style="font-family: monospace; font-weight: 800; font-size: 13.5px; color: #0369a1;">
                             <i class="fa-solid fa-cube" style="color: var(--cycsa-azul); margin-right: 4px;"></i>
                             <?= htmlspecialchars($m['codigo_lab'], ENT_QUOTES, 'UTF-8') ?>
+                            <?php if ($esReplicaCr): ?>
+                                <span style="font-size: 10px; background: #fef3c7; color: #b45309; border: 1px solid #f59e0b; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 4px;">Réplica CR</span>
+                            <?php endif; ?>
                             <?php if (!empty($m['codigo_campo']) && $m['codigo_campo'] !== $m['codigo_lab']): ?>
                                 <span style="display: block; font-size: 11px; color: #64748b; font-weight: 500;">Campo: <?= htmlspecialchars($m['codigo_campo']) ?></span>
                             <?php endif; ?>
@@ -725,7 +734,12 @@ foreach ($solicitudesPorAprobar as $sol) {
                             <?php endif; ?>
                         </td>
                         <td style="text-align: right; white-space: nowrap;" onclick="event.stopPropagation();">
-                            <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$m['muestra_id'] ?>" class="btn-accion btn-detalle" title="Abrir detalle de la muestra y plan de roturas">
+                            <?php if (!empty($m['id_hoja'])): ?>
+                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?>" class="btn-accion btn-os" title="Abrir Lote completo de la Hoja RT-FM-13 en secuencia de matriz">
+                                    <i class="fa-solid fa-layer-group"></i> Ver Lote (<?= (int)($m['total_muestras_lote'] ?? 1) ?>)
+                                </a>
+                            <?php endif; ?>
+                            <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$m['muestra_id'] ?>" class="btn-accion btn-detalle" title="Abrir detalle individual de la muestra">
                                 <i class="fa-solid fa-folder-open"></i> Detalle
                             </a>
                             <?php if ($puedeReidentificar): ?>

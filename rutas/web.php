@@ -243,11 +243,13 @@ $app->enrutador->get('/ventas/imprimir-factura', [VentasControlador::class, 'imp
 $app->enrutador->get('/laboratorio', [LaboratorioControlador::class, 'index'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/muestras-datos-ajax', [LaboratorioControlador::class, 'muestrasAjax'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/detalle-muestra', [LaboratorioControlador::class, 'detalleMuestra'], [AuthMiddleware::class]);
+$app->enrutador->get('/laboratorio/detalle-lote', [LaboratorioControlador::class, 'detalleLote'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/reidentificar', [LaboratorioControlador::class, 'reidentificarMuestra'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/etiqueta-probeta', [LaboratorioControlador::class, 'imprimirEtiqueta'], [AuthMiddleware::class]);
 
 // Programa de Roturas Periódicas y Ejecución
 $app->enrutador->post('/laboratorio/guardar-plan-rotura', [LaboratorioControlador::class, 'guardarPlanRotura'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/guardar-plan-rotura-lote', [LaboratorioControlador::class, 'guardarPlanRoturaLote'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/modificar-plan-rotura', [LaboratorioControlador::class, 'modificarPlanRotura'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/registrar-rotura', [LaboratorioControlador::class, 'registrarRotura'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/guardar-ruptura', [LaboratorioControlador::class, 'guardarRuptura'], [AuthMiddleware::class]);

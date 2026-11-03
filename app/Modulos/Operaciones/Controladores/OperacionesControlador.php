@@ -2082,6 +2082,13 @@ class OperacionesControlador extends ControladorBase {
                 'id' => $idDetalle
             ]);
 
+            $idOsSync = is_array($osActual) ? (int)($osActual['id'] ?? 0) : 0;
+            if ($idOsSync > 0 && !empty($filasDecodificadas)) {
+                $hojaSync = resolverHojaPorDetalle($db, $idOsSync, $idDetalle);
+                $idHojaSync = $hojaSync ? (int)$hojaSync['id'] : 0;
+                sincronizarReplicasMatrizConLab($db, $idOsSync, $idHojaSync, $idDetalle, $filasDecodificadas);
+            }
+
             if (isset($_FILES['logo_acreditacion_file']) && is_uploaded_file($_FILES['logo_acreditacion_file']['tmp_name'])) {
                 $dirDestino = dirname(__DIR__, 4) . '/publico/uploads/acreditaciones';
                 if (!is_dir($dirDestino)) mkdir($dirDestino, 0755, true);

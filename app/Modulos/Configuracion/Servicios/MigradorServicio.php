@@ -353,6 +353,27 @@ class MigradorServicio {
                     $resultados['030_rtfm13_anti_duplicados'] = '[030 WARN] ' . $e030->getMessage();
                 }
             }
+
+            // =========================================================================
+            // FASE 22: Migración 031 - Lotes de Laboratorio por Hoja y Réplicas CR
+            // =========================================================================
+            $ruta031 = dirname(__DIR__, 4) . '/database/migrations/031_lab_lotes_y_replicas_sync.php';
+            if (file_exists($ruta031)) {
+                ob_start();
+                try {
+                    require_once $ruta031;
+                    if (function_exists('ejecutarMigracion031')) {
+                        ejecutarMigracion031($db);
+                    }
+                    $resultados['031_lab_lotes_y_replicas_sync'] = ob_get_clean();
+                } catch (Throwable $e031) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 031: ' . $e031->getMessage());
+                    $resultados['031_lab_lotes_y_replicas_sync'] = '[031 WARN] ' . $e031->getMessage();
+                }
+            }
         } catch (Throwable $e) {
             error_log("Error en MigradorServicio: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             $resultados['error'] = $e->getMessage();
