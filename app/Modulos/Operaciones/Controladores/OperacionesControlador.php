@@ -849,7 +849,7 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-        $stmt = $db->prepare("SELECT ic.*, cot.condicion_pago, cot.codigo AS cot_codigo
+        $stmt = $db->prepare("SELECT ic.*, cot.condicion_pago, cot.condicion_comercial, cot.codigo AS cot_codigo, os.forma_pago
                               FROM informes_control ic
                               JOIN lotes_muestras lm ON ic.id_lote = lm.id
                               JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
@@ -863,18 +863,12 @@ class OperacionesControlador extends ControladorBase {
             die("Informe no encontrado.");
         }
 
-        // Restricción de pago: Si el cliente es de CONTADO y tiene saldo pendiente en cuentas_por_cobrar
-        if ($informe['condicion_pago'] === 'Contado') {
-            $stmtCxC = $db->prepare("SELECT estado FROM cuentas_por_cobrar WHERE factura_numero = :codigo");
-            $stmtCxC->execute(['codigo' => $informe['cot_codigo']]);
-            $cxcEstado = $stmtCxC->fetchColumn();
-            
-            // Si tiene registro de cobro y no está Pagado, bloquear la descarga del PDF
-            if ($cxcEstado && $cxcEstado !== 'Pagado') {
-                $_SESSION['error'] = "Descarga denegada: Este cliente paga de Contado y posee saldo pendiente de pago.";
-                $respuesta->redirigir('/Cycsa/publico/operaciones/detalle-lote?id_lote=' . $informe['id_lote']);
-                return;
-            }
+        // Restricción de pago: Verificar autorización de pago / despacho unificada
+        $authPago = verificarAutorizacionPagoEnvio($informe, $db);
+        if (!$authPago['autorizado']) {
+            $_SESSION['error'] = 'El cliente no ha pagado; no se pueden enviar resultados';
+            $respuesta->redirigir('/Cycsa/publico/operaciones/detalle-lote?id_lote=' . $informe['id_lote']);
+            return;
         }
 
         // Servir el archivo PDF asegurando contención en el directorio almacenamiento/ (anti-path traversal)
@@ -883,12 +877,20 @@ class OperacionesControlador extends ControladorBase {
         $rutaReal = realpath($rutaPdf);
 
         if ($baseAlmacenamiento && $rutaReal && strpos($rutaReal, $baseAlmacenamiento) === 0 && file_exists($rutaReal)) {
-            header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="' . basename($rutaReal) . '"');
+            if (!headers_sent()) {
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: inline; filename="' . basename($rutaReal) . '"');
+            }
             readfile($rutaReal);
-            exit;
+            if (!defined('PHPUNIT_RUNNING')) {
+                exit;
+            }
+            return;
         } else {
-            die("El archivo PDF físico del informe no se encuentra en el servidor o la ruta es inválida.");
+            if (!defined('PHPUNIT_RUNNING')) {
+                die("El archivo PDF físico del informe no se encuentra en el servidor o la ruta es inválida.");
+            }
+            return;
         }
     }
 
@@ -1772,21 +1774,7 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        // Condición comercial de descarga: Contado / Contra-entrega exige factura pagada (saldo = 0)
-        // Crédito: entrega autorizada sin bloquear
-        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
-        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
-            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
-            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
-            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
-            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
-            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
-                $_SESSION['error'] = "Descarga denegada: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega final requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
-                $respuesta->redirigir('/Cycsa/publico/operaciones');
-                return;
-            }
-        }
-
+        // Desbloqueo de captura técnica: Técnicos y laboratoristas capturan resultados libremente sin bloqueo de pago.
         // 1. Verificar que exista la Hoja de Servicio (CYCSA-RT-FM-13) registrada
         $stmtHoja = $db->prepare("SELECT id FROM hojas_solicitud WHERE id_os = :id_os LIMIT 1");
         $stmtHoja->execute(['id_os' => $detalle['id_os']]);
@@ -1831,6 +1819,7 @@ class OperacionesControlador extends ControladorBase {
             $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
         }
 
+        $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
         $muestrasSeteadas = [];
         if (!empty($muestrasLabList)) {
             foreach ($muestrasLabList as $idx => $ml) {
@@ -2905,19 +2894,12 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        // Condición comercial de descarga: Contado / Contra-entrega exige factura pagada (saldo = 0)
-        // Crédito: entrega autorizada sin bloquear
-        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
-        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
-            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
-            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
-            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
-            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
-            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
-                $_SESSION['error'] = "Descarga denegada: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega final requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
-                $respuesta->redirigir('/Cycsa/publico/operaciones');
-                return;
-            }
+        // Gate Único de Autorización de Pago / Despacho
+        $authPago = verificarAutorizacionPagoEnvio($detalle, $db);
+        if (!$authPago['autorizado']) {
+            $_SESSION['error'] = 'El cliente no ha pagado; no se pueden enviar resultados';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
         }
 
         $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
@@ -3095,19 +3077,12 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        // Condición comercial de descarga: Contado / Contra-entrega exige factura pagada (saldo = 0)
-        // Crédito: entrega autorizada sin bloquear
-        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
-        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
-            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
-            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
-            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
-            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
-            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
-                $_SESSION['error'] = "Descarga denegada: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega final requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
-                $respuesta->redirigir('/Cycsa/publico/operaciones');
-                return;
-            }
+        // Gate Único de Autorización de Pago / Despacho
+        $authPago = verificarAutorizacionPagoEnvio($detalle, $db);
+        if (!$authPago['autorizado']) {
+            $_SESSION['error'] = 'El cliente no ha pagado; no se pueden enviar resultados';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
         }
 
         $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
@@ -3175,7 +3150,8 @@ class OperacionesControlador extends ControladorBase {
         $stmt = $db->prepare("
             SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
                    os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
-                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   os.forma_pago, COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
+                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.condicion_pago, cot.condicion_comercial AS cot_condicion_comercial, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
                    cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre, cli.direccion AS cliente_direccion, cli.email AS cliente_email, cli.telefono AS cliente_telefono,
                    p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
                    fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
@@ -3207,19 +3183,12 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        // Condición comercial de descarga: Contado / Contra-entrega exige factura pagada (saldo = 0)
-        // Crédito: entrega autorizada sin bloquear
-        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
-        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
-            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
-            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
-            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
-            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
-            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
-                $_SESSION['error'] = "Descarga denegada: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega final requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
-                $respuesta->redirigir('/Cycsa/publico/operaciones');
-                return;
-            }
+        // Gate Único de Envío Oficial al Cliente / Autorización de Pago
+        $authPago = verificarAutorizacionPagoEnvio($detalle, $db);
+        if (!$authPago['autorizado']) {
+            $_SESSION['error'] = 'El cliente no ha pagado; no se pueden enviar resultados';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
         }
 
         // VALIDACIÓN CRUCIAL: Solo se puede enviar si la matriz TIENE RESULTADOS
@@ -3250,21 +3219,6 @@ class OperacionesControlador extends ControladorBase {
             $_SESSION['error'] = 'No se puede enviar el informe al cliente: ' . $ccInfo['motivo_bloqueo'];
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
-        }
-
-        // VALIDACIÓN COMERCIAL: Contado / Contra-entrega requiere pago de la factura antes del despacho oficial
-        // Clientes con condición Crédito tienen despacho autorizado con la cuenta por cobrar
-        $condicionCom = strtolower(trim($detalle['condicion_comercial'] ?? $detalle['condicion_pago'] ?? $detalle['forma_pago'] ?? 'contado'));
-        if ($condicionCom === 'contado' || $condicionCom === 'contra_entrega') {
-            $factNum = 'FAC-' . ($detalle['cot_codigo'] ?? '');
-            $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero = :f1 OR factura_numero = :f2 LIMIT 1");
-            $stmtCxC->execute(['f1' => $factNum, 'f2' => ($detalle['cot_codigo'] ?? '')]);
-            $cxcInfo = $stmtCxC->fetch(PDO::FETCH_ASSOC);
-            if ($cxcInfo && ($cxcInfo['estado'] !== 'Pagado' || (float)$cxcInfo['saldo'] > 0.01)) {
-                $_SESSION['error'] = "Envío denegado: Este servicio es bajo condición de " . ucfirst($condicionCom) . " y posee saldo pendiente de pago (C$ " . number_format((float)$cxcInfo['saldo'], 2) . "). La entrega requiere pago cancelado. Para clientes a crédito la entrega se encuentra autorizada.";
-                $respuesta->redirigir('/Cycsa/publico/operaciones');
-                return;
-            }
         }
 
         // Destinatario: tomar el especificado en el formulario o el registrado en la base de datos del cliente

@@ -4775,3 +4775,54 @@ function obtenerNombreRol(mixed $idRol): string {
     }
     return !empty($idRol) ? (string)$idRol : 'Sin rol';
 }
+
+/**
+ * Helper Unificado de Autorización de Envío y Despacho según Condición Comercial y Estado de Pago
+ *
+ * @param array $datosComerciales Datos del ensayo, orden, cotización o informe
+ * @param \PDO $db Conexión a base de datos PDO
+ * @return array{autorizado: bool, motivo?: string, mensaje?: string, saldo?: float}
+ */
+function verificarAutorizacionPagoEnvio(array $datosComerciales, \PDO $db): array {
+    // Normalizar condición comercial
+    $cond = mb_strtolower(trim((string)($datosComerciales['condicion_comercial'] ?? $datosComerciales['condicion_pago'] ?? $datosComerciales['forma_pago'] ?? 'contado')), 'UTF-8');
+
+    // Si es Crédito ($cond === 'credito' o contiene 'crédito' o 'credito'):
+    if ($cond === 'credito' || strpos($cond, 'crédito') !== false || strpos($cond, 'credito') !== false) {
+        return [
+            'autorizado' => true,
+            'motivo' => 'Crédito autoriza despacho'
+        ];
+    }
+
+    // Si es de pago inmediato / Contado ('contado', 'contra_entrega', 'pago contra entrega', 'inmediato', etc.):
+    $codigo = trim((string)($datosComerciales['cot_codigo'] ?? $datosComerciales['codigo_cotizacion'] ?? $datosComerciales['codigo'] ?? $datosComerciales['factura_numero'] ?? ''));
+    if ($codigo === '') {
+        return ['autorizado' => true];
+    }
+
+    $codLimpio = preg_replace('/^FAC-/', '', $codigo);
+    $candidatos = array_values(array_unique([
+        'FAC-' . $codigo,
+        $codigo,
+        'FAC-' . $codLimpio,
+        $codLimpio
+    ]));
+
+    $placeholders = implode(',', array_fill(0, count($candidatos), '?'));
+    $stmtCxC = $db->prepare("SELECT estado, saldo FROM cuentas_por_cobrar WHERE factura_numero IN ($placeholders) LIMIT 1");
+    $stmtCxC->execute($candidatos);
+    $cxc = $stmtCxC->fetch(\PDO::FETCH_ASSOC);
+
+    if ($cxc && ($cxc['estado'] !== 'Pagado' || (float)$cxc['saldo'] > 0.01)) {
+        return [
+            'autorizado' => false,
+            'mensaje' => 'El cliente no ha pagado; no se pueden enviar resultados',
+            'saldo' => (float)$cxc['saldo']
+        ];
+    }
+
+    // Si no existe registro de CxC o está 'Pagado' con saldo <= 0.01:
+    return ['autorizado' => true];
+}
+
