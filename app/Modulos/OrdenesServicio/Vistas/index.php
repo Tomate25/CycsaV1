@@ -1482,7 +1482,7 @@
                 <button type="button" id="hs_btn_guardar_borrador" class="rtfm13-btn-action rtfm13-btn-draft" onclick="guardarBorradorHoja()">
                     <i class="fa-solid fa-floppy-disk"></i> Guardar Borrador
                 </button>
-                <button type="submit" id="hs_btn_emitir_oficial" form="form-hoja-solicitud" class="rtfm13-btn-action rtfm13-btn-submit" onclick="return validarYEnviarHojaOficial(event)">
+                <button type="button" id="hs_btn_emitir_oficial" class="rtfm13-btn-action rtfm13-btn-submit" onclick="validarYEnviarHojaOficial(event)">
                     <i class="fa-solid fa-circle-check"></i> Emitir Hoja Oficial (RT-FM-13)
                 </button>
             </div>
@@ -2075,6 +2075,11 @@
             btnDraft.style.opacity = '0.6';
             btnDraft.style.cursor = 'not-allowed';
         }
+        setTimeout(() => {
+            if (guardandoHojaEnProceso) {
+                rehabilitarBotonesEnvioHoja();
+            }
+        }, 15000);
     }
 
     function rehabilitarBotonesEnvioHoja() {
@@ -2115,18 +2120,17 @@
     }
 
     function validarYEnviarHojaOficial(e) {
+        if (e && e.preventDefault) e.preventDefault();
         if (guardandoHojaEnProceso) {
-            if (e && e.preventDefault) e.preventDefault();
             return false;
         }
         const form = document.getElementById('form-hoja-solicitud');
-        if (!form) return true;
+        if (!form) return false;
         
         const tbody = document.getElementById('hs-tbody-muestras');
         const muestrasCount = tbody ? tbody.querySelectorAll('tr:not(#fila-sin-muestras)').length : 0;
         if (muestrasCount === 0) {
             alert('Atención: Debe agregar al menos una muestra antes de emitir la hoja oficial.');
-            if (e && e.preventDefault) e.preventDefault();
             return false;
         }
 
@@ -2139,12 +2143,30 @@
             } else if (form.reportValidity) {
                 form.reportValidity();
             }
-            if (e && e.preventDefault) e.preventDefault();
             return false;
         }
 
+        const isRecepcion = document.getElementById('chk_confirmar_recepcion_lims')?.checked;
+        if (isRecepcion) {
+            let faltaPlantilla = false;
+            let nombreFaltante = '';
+            document.querySelectorAll('#hs-tbody-muestras tr').forEach(tr => {
+                const selPlt = tr.querySelector('select[name="m_plantilla_id[]"]');
+                const inpNom = tr.querySelector('input[name="m_nombre[]"]');
+                if (selPlt && (!selPlt.value || selPlt.value === '0')) {
+                    faltaPlantilla = true;
+                    nombreFaltante = inpNom ? inpNom.value : 'Espécimen';
+                }
+            });
+            if (faltaPlantilla) {
+                alert(`Validación ISO 17025:\n\nLa muestra "${nombreFaltante}" no tiene asignada una plantilla de ensayo aprobada.\nNo se puede admitir la recepción física sin plantilla vinculada.`);
+                return false;
+            }
+        }
+
         deshabilitarBotonesEnvioHoja('Emitiendo Hoja...');
-        return true;
+        form.submit();
+        return false;
     }
 
     function cargarNuevaHojaEnModal() {
