@@ -796,6 +796,7 @@ class LaboratorioControlador extends ControladorBase {
 
             $muestraId = (int)($datos['muestra_id'] ?? 0);
             $planEdadId = (int)($datos['plan_edad_id'] ?? 0);
+            $idHojaRedir = (int)($datos['id_hoja'] ?? 0);
             $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
             if ($usuarioId === null) {
                 return;
@@ -819,6 +820,10 @@ class LaboratorioControlador extends ControladorBase {
                 $_SESSION['error'] = $resultado['mensaje'];
             }
 
+            if ($idHojaRedir > 0) {
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHojaRedir);
+                return;
+            }
             $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
         }
     }
@@ -851,6 +856,7 @@ class LaboratorioControlador extends ControladorBase {
 
             $informeId = (int)($datos['informe_id'] ?? 0);
             $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $idHojaRedir = (int)($datos['id_hoja'] ?? 0);
             $nuevoEstado = trim($datos['nuevo_estado'] ?? '');
             $motivo = trim($datos['motivo_devolucion'] ?? '');
 
@@ -871,6 +877,10 @@ class LaboratorioControlador extends ControladorBase {
                 $_SESSION['error'] = $resultado['mensaje'];
             }
 
+            if ($idHojaRedir > 0) {
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHojaRedir);
+                return;
+            }
             $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
         }
     }
@@ -902,6 +912,7 @@ class LaboratorioControlador extends ControladorBase {
             }
 
             $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $idHojaRedir = (int)($datos['id_hoja'] ?? 0);
 
             $roturasModelo = new RoturasModelo();
             $resultado = $roturasModelo->generarInformeConsolidado($muestraId, $usuarioId, $rolUsuario);
@@ -921,7 +932,91 @@ class LaboratorioControlador extends ControladorBase {
                 $_SESSION['error'] = $resultado['mensaje'];
             }
 
+            if ($idHojaRedir > 0) {
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHojaRedir);
+                return;
+            }
             $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+        }
+    }
+
+    /**
+     * Emite los Informes Consolidados para todas las muestras del lote que ya tengan
+     * todos sus parciales aprobados por Calidad.
+     */
+    public function generarInformeConsolidadoLote(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
+        $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+        if ($usuarioId === null) {
+            return;
+        }
+
+        if ($rolUsuario !== 1 && $rolUsuario !== 3) {
+            $_SESSION['error'] = 'Acceso denegado: Solo Calidad o Administrador puede generar informes consolidados.';
+            $respuesta->redirigir('/Cycsa/publico/laboratorio');
+            return;
+        }
+
+        if ($peticion->esPost()) {
+            $datos = $peticion->obtenerDatos();
+            if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+                $_SESSION['error'] = 'Token CSRF inválido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                return;
+            }
+
+            $idHoja = (int)($datos['id_hoja'] ?? 0);
+            if ($idHoja <= 0) {
+                $_SESSION['error'] = 'Identificador de lote no válido.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio');
+                return;
+            }
+
+            $db = Conexion::obtenerInstancia();
+            $stmtMuestras = $db->prepare("SELECT id, codigo_muestra AS codigo_lab FROM recepcion_muestras WHERE id_hoja = :id_hoja ORDER BY orden_en_lote ASC, id ASC");
+            $stmtMuestras->execute(['id_hoja' => $idHoja]);
+            $muestras = $stmtMuestras->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($muestras)) {
+                $_SESSION['error'] = 'No se encontraron muestras en el lote.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHoja);
+                return;
+            }
+
+            $roturasModelo = new RoturasModelo();
+            $generados = 0;
+            $errores = [];
+
+            foreach ($muestras as $m) {
+                $mId = (int)$m['id'];
+                $stmtCons = $db->prepare("SELECT id FROM informes_rotura WHERE muestra_id = :mid AND tipo = 'consolidado' AND estado = 'aprobado' LIMIT 1");
+                $stmtCons->execute(['mid' => $mId]);
+                if ($stmtCons->fetchColumn()) {
+                    continue; // Ya tiene consolidado aprobado
+                }
+
+                $res = $roturasModelo->generarInformeConsolidado($mId, $usuarioId, $rolUsuario);
+                if ($res['exito']) {
+                    $generados++;
+                } else {
+                    $errores[] = "{$m['codigo_lab']}: {$res['mensaje']}";
+                }
+            }
+
+            if ($generados > 0) {
+                $_SESSION['exito'] = "Se emitieron {$generados} informe(s) consolidado(s) exitosamente para el lote.";
+                if (!empty($errores)) {
+                    $_SESSION['error'] = 'Algunas muestras no pudieron consolidarse: ' . implode(' | ', $errores);
+                }
+            } else {
+                $_SESSION['error'] = !empty($errores)
+                    ? implode(' | ', $errores)
+                    : 'No hubo muestras elegibles para emisión consolidada en este lote (deben estar todas ensayadas y con parciales aprobados).';
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHoja);
         }
     }
 
@@ -953,6 +1048,7 @@ class LaboratorioControlador extends ControladorBase {
 
             $informeId = (int)($datos['informe_id'] ?? 0);
             $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $idHojaRedir = (int)($datos['id_hoja'] ?? 0);
             $motivo = trim($datos['motivo_reemision'] ?? ($datos['motivo'] ?? ''));
 
             $roturasModelo = new RoturasModelo();
@@ -973,6 +1069,11 @@ class LaboratorioControlador extends ControladorBase {
                 $_SESSION['exito'] = $resultado['mensaje'];
             } else {
                 $_SESSION['error'] = $resultado['mensaje'];
+            }
+
+            if ($idHojaRedir > 0) {
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHojaRedir);
+                return;
             }
 
             $redir = ($muestraId > 0)
@@ -1765,6 +1866,18 @@ class LaboratorioControlador extends ControladorBase {
             ];
         }
 
+        // Obtener la lista unificada de todos los informes técnicos emitidos para este lote
+        $stmtInfLote = $db->prepare("
+            SELECT ir.*, u.nombre AS aprobado_por_nombre, rm.codigo_muestra AS codigo_lab
+            FROM informes_rotura ir
+            JOIN recepcion_muestras rm ON ir.muestra_id = rm.id
+            LEFT JOIN usuarios u ON ir.aprobado_por = u.id
+            WHERE rm.id_hoja = :id_hoja
+            ORDER BY ir.id DESC
+        ");
+        $stmtInfLote->execute(['id_hoja' => $idHoja]);
+        $informesLote = $stmtInfLote->fetchAll(PDO::FETCH_ASSOC);
+
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
@@ -1779,6 +1892,7 @@ class LaboratorioControlador extends ControladorBase {
             'hoja' => $hoja,
             'detalleCotizacion' => $detalleCotizacion,
             'muestrasLote' => $muestrasDetalladas,
+            'informesLote' => $informesLote,
             'rolUsuario' => $rolUsuario,
             'puedeReidentificar' => $puedeReidentificar,
             'exito' => $_SESSION['exito'] ?? null,

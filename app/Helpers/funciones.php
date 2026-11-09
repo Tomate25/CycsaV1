@@ -5171,6 +5171,7 @@ function sincronizarEspecimenYPlanFila(PDO $db, int $muestraId, string $codigoLa
                 } else {
                     $db->prepare("INSERT INTO plan_rotura_edades (plan_rotura_id, edad_dias, cantidad, fecha_programada, tolerancia_horas, estado) VALUES (:pid, :edad, 1, :fprog, 24, 'pendiente')")
                        ->execute(['pid' => $planId, 'edad' => $edadDias, 'fprog' => $fechaProg]);
+                    $planEdadId = (int)$db->lastInsertId();
                 }
             }
         } else {
@@ -5183,6 +5184,21 @@ function sincronizarEspecimenYPlanFila(PDO $db, int $muestraId, string $codigoLa
 
             $db->prepare("INSERT INTO plan_rotura_edades (plan_rotura_id, edad_dias, cantidad, fecha_programada, tolerancia_horas, estado) VALUES (:pid, :edad, 1, :fprog, 24, 'pendiente')")
                ->execute(['pid' => $planId, 'edad' => $edadDias, 'fprog' => $fechaProg]);
+            $planEdadId = (int)$db->lastInsertId();
+        }
+
+        // 3. Vincular el espécimen único a la edad programada en plan_rotura_asignaciones
+        if ($espId > 0 && !empty($planEdadId) && $planEdadId > 0) {
+            $stmtChkAsig = $db->prepare("SELECT id FROM plan_rotura_asignaciones WHERE especimen_id = :espid LIMIT 1");
+            $stmtChkAsig->execute(['espid' => $espId]);
+            $asigId = (int)$stmtChkAsig->fetchColumn();
+            if ($asigId > 0) {
+                $db->prepare("UPDATE plan_rotura_asignaciones SET plan_edad_id = :peid WHERE id = :id")
+                   ->execute(['peid' => $planEdadId, 'id' => $asigId]);
+            } else {
+                $db->prepare("INSERT INTO plan_rotura_asignaciones (plan_edad_id, especimen_id) VALUES (:peid, :espid)")
+                   ->execute(['peid' => $planEdadId, 'espid' => $espId]);
+            }
         }
     }
 }

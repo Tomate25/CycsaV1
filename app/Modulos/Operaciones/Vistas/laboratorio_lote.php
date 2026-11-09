@@ -46,6 +46,33 @@ $ensayoTitulo = !empty($detalleCotizacion['descripcion_item'])
 $normaTitulo = !empty($detalleCotizacion['norma_astm'])
     ? $detalleCotizacion['norma_astm']
     : (!empty($muestrasLote[0]['muestra']['norma_referencia']) ? $muestrasLote[0]['muestra']['norma_referencia'] : 'ASTM C39');
+
+// Métricas de rompimientos periódicos y estado de consolidación del lote
+$totalProbetas = 0;
+$totalEnsayadas = 0;
+$totalParcialesAprobados = 0;
+$totalParcialesEmitidos = 0;
+$puedeConsolidarTodoElLote = ($totalMuestrasLote > 0);
+
+foreach (($muestrasLote ?? []) as $itemLote) {
+    $espList = $itemLote['especimenes'] ?? [];
+    $esp0 = !empty($espList[0]) ? $espList[0] : null;
+    $totalProbetas++;
+    if (!empty($esp0['estado']) && $esp0['estado'] === 'ensayado') {
+        $totalEnsayadas++;
+    }
+    if (empty($itemLote['puede_consolidar'])) {
+        $puedeConsolidarTodoElLote = false;
+    }
+    foreach (($itemLote['edades'] ?? []) as $edL) {
+        if (!empty($edL['informe_parcial_id'])) {
+            $totalParcialesEmitidos++;
+            if (($edL['informe_parcial_estado'] ?? '') === 'aprobado') {
+                $totalParcialesAprobados++;
+            }
+        }
+    }
+}
 ?>
 <style>
     :root {
@@ -60,6 +87,9 @@ $normaTitulo = !empty($detalleCotizacion['norma_astm'])
     .tabla-lab tr:hover td { background-color: #f8fafc; }
     .badge-lab { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
     .badge-ensayado { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-aprobado { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-devuelto { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .badge-revision { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
     .badge-programado { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
     .badge-curado { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
     .badge-vencido { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
@@ -68,6 +98,9 @@ $normaTitulo = !empty($detalleCotizacion['norma_astm'])
     .btn-primary-lab { background: #103487; color: white; border: 1px solid #103487; }
     .btn-primary-lab:hover { background: #0c2766; color: white; }
     .btn-success-lab { background: #10b981; color: white; border: 1px solid #059669; }
+    .btn-success-lab:hover { background: #059669; color: white; }
+    .btn-warning-lab { background: #f59e0b; color: white; border: 1px solid #d97706; }
+    .btn-warning-lab:hover { background: #d97706; color: white; }
     .btn-secondary-lab { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
     .btn-secondary-lab:hover { background: #e2e8f0; }
     .btn-accion[disabled] { opacity: 0.6; cursor: not-allowed; }
@@ -147,7 +180,9 @@ $normaTitulo = !empty($detalleCotizacion['norma_astm'])
                 <th>Área (in²)</th>
                 <th>Tamaño</th>
                 <th>Estado</th>
-                <th style="text-align: right; width: 180px;">Acciones</th>
+                <th>Rompimiento (lb / PSI)</th>
+                <th>Informe Parcial</th>
+                <th style="text-align: right; width: 140px;">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -178,6 +213,21 @@ $normaTitulo = !empty($detalleCotizacion['norma_astm'])
                 
                 $tieneProgramacion = ($edadDias !== null && $edadDias > 0) || !empty($fechaProg);
                 $esVencido = (!$ensayado && !empty($fechaProg) && $fechaProg < $hoyStr);
+
+                // Localizar informe parcial de la muestra/edad
+                $infParcial = null;
+                foreach (($item['edades'] ?? []) as $edRow) {
+                    if ($planEdadId > 0 && (int)$edRow['id'] === $planEdadId) {
+                        $infParcial = $edRow;
+                        break;
+                    }
+                }
+                if (!$infParcial && !empty($item['edades'][0])) {
+                    $infParcial = $item['edades'][0];
+                }
+                $infParcialId = !empty($infParcial['informe_parcial_id']) ? (int)$infParcial['informe_parcial_id'] : 0;
+                $infParcialNum = (string)($infParcial['informe_parcial_numero'] ?? '');
+                $infParcialEst = (string)($infParcial['informe_parcial_estado'] ?? '');
             ?>
             <tr style="<?= $esReplica ? 'background-color: #fffdf5;' : '' ?>">
                 <td style="font-weight: 800; color: #64748b; font-size: 11px; white-space: nowrap;">
@@ -233,11 +283,78 @@ $normaTitulo = !empty($detalleCotizacion['norma_astm'])
                         <span class="badge-lab badge-curado" title="Pendiente de definir fecha o edad en Operaciones">Pendiente Operaciones</span>
                     <?php endif; ?>
                 </td>
+                <td style="font-size: 12px; white-space: nowrap;">
+                    <?php if ($ensayado): ?>
+                        <div style="line-height: 1.35;">
+                            <strong style="color: #047857; font-family: monospace; font-size: 13px;">
+                                <?= number_format((float)($esp['esfuerzo_psi'] ?? 0), 0) ?> PSI
+                            </strong>
+                            <span style="font-size: 11px; color: #64748b;">(<?= number_format((float)($esp['esfuerzo_kgcm2'] ?? 0), 1) ?> kg/cm²)</span>
+                            <div style="font-size: 11px; color: #475569;">
+                                Carga: <strong><?= number_format((float)($esp['carga'] ?? 0), 0) ?> lb</strong>
+                                <?php if (!empty($esp['tipo_falla'])): ?>
+                                    &bull; <span style="font-size: 10.5px; color: #64748b;" title="<?= htmlspecialchars((string)$esp['tipo_falla'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(explode('(', (string)$esp['tipo_falla'])[0]) ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <span style="color:#94a3b8; font-size: 11.5px;">--</span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($ensayado): ?>
+                        <?php if (!empty($infParcialId)): ?>
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <span style="font-family: monospace; font-weight: 800; color: #0369a1; font-size: 12px; white-space: nowrap;">
+                                    <i class="fa-solid fa-file-lines" style="color: #64748b; font-size: 10.5px;"></i> <?= htmlspecialchars($infParcialNum, ENT_QUOTES, 'UTF-8') ?>
+                                </span>
+                                <div>
+                                    <?php if ($infParcialEst === 'aprobado'): ?>
+                                        <span class="badge-lab badge-aprobado"><i class="fa-solid fa-check"></i> Aprobado</span>
+                                    <?php elseif ($infParcialEst === 'devuelto'): ?>
+                                        <span class="badge-lab badge-devuelto"><i class="fa-solid fa-xmark"></i> Devuelto</span>
+                                    <?php else: ?>
+                                        <span class="badge-lab badge-revision"><i class="fa-solid fa-clock"></i> En Revisión</span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if ($infParcialEst === 'en_revision' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
+                                    <div style="display: inline-flex; gap: 4px; margin-top: 2px;">
+                                        <form method="POST" action="/Cycsa/publico/laboratorio/procesar-revision-informe" style="display:inline;">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                            <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
+                                            <input type="hidden" name="muestra_id" value="<?= $mId ?>">
+                                            <input type="hidden" name="informe_id" value="<?= $infParcialId ?>">
+                                            <input type="hidden" name="nuevo_estado" value="aprobado">
+                                            <button type="submit" class="btn-accion btn-success-lab" style="padding: 2px 7px; font-size: 10px;" title="Aprobar Informe Parcial">
+                                                <i class="fa-solid fa-check"></i> Aprobar
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn-accion btn-warning-lab" style="padding: 2px 7px; font-size: 10px;" onclick="abrirModalDevolverInforme(<?= $infParcialId ?>, '<?= htmlspecialchars($infParcialNum, ENT_QUOTES) ?>')" title="Devolver con observaciones">
+                                            <i class="fa-solid fa-rotate-left"></i> Devolver
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php else: ?>
+                            <form method="POST" action="/Cycsa/publico/laboratorio/generar-informe-parcial" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
+                                <input type="hidden" name="muestra_id" value="<?= $mId ?>">
+                                <input type="hidden" name="plan_edad_id" value="<?= $planEdadId ?: (!empty($infParcial['id']) ? (int)$infParcial['id'] : 0) ?>">
+                                <button type="submit" class="btn-accion btn-primary-lab" style="padding: 4px 9px; font-size: 11px; white-space: nowrap;" title="Emitir Informe Parcial Ciego según ISO/IEC 17025">
+                                    <i class="fa-solid fa-file-circle-plus"></i> Sacar Parcial
+                                </button>
+                            </form>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <span style="color:#94a3b8; font-style:italic; font-size:11.5px;">Pendiente rotura</span>
+                    <?php endif; ?>
+                </td>
                 <td style="text-align: right; white-space: nowrap;">
                     <div style="display: inline-flex; gap: 5px; align-items: center; justify-content: flex-end;">
                         <?php if ($ensayado): ?>
-                            <span style="font-size: 11px; font-weight: 700; color: #047857; margin-right: 4px;" title="Carga y Esfuerzo">
-                                <?= number_format((float)$esp['esfuerzo_psi'], 0) ?> PSI
+                            <span style="font-size: 11.5px; font-weight: 700; color: #047857;" title="Rompimiento registrado">
+                                <i class="fa-solid fa-circle-check"></i> Ensayado
                             </span>
                         <?php elseif ($tieneProgramacion && $planEdadId > 0 && $espId > 0): ?>
                             <button type="button" class="btn-accion btn-primary-lab" onclick="abrirModalRegistrarRoturaLote(<?= $mId ?>, <?= $espId ?>, '<?= htmlspecialchars($codLab, ENT_QUOTES) ?>', <?= $planEdadId ?>, <?= (int)($edadDias ?: 28) ?>, '<?= htmlspecialchars((string)$fechaProg, ENT_QUOTES) ?>', 24)">
@@ -264,13 +381,144 @@ $normaTitulo = !empty($detalleCotizacion['norma_astm'])
             <?php endforeach; ?>
             <?php if (empty($muestrasLote)): ?>
             <tr>
-                <td colspan="11" style="text-align: center; padding: 25px; color: #64748b;">
+                <td colspan="13" style="text-align: center; padding: 25px; color: #64748b;">
                     No se encontraron muestras registradas para este lote.
                 </td>
             </tr>
             <?php endif; ?>
         </tbody>
     </table>
+</div>
+
+<!-- 4. ROMPIMIENTO CONSOLIDADO E INFORMES OFICIALES DEL LOTE (RT-FM-13) -->
+<div class="lab-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h4 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; color: var(--cycsa-azul); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-file-shield" style="color: #0284c7;"></i>
+                Rompimiento Consolidado e Informes Oficiales del Lote
+            </h4>
+            <span style="font-size: 12.5px; color: #64748b;">
+                Progreso del lote: <strong><?= $totalEnsayadas ?> de <?= $totalProbetas ?> probetas ensayadas</strong> &bull;
+                <strong><?= $totalParcialesAprobados ?> informes parciales aprobados por Calidad</strong>
+            </span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <?php if ($puedeConsolidarTodoElLote && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
+                <form method="POST" action="/Cycsa/publico/laboratorio/generar-informe-consolidado-lote" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
+                    <button type="submit" class="btn-accion btn-success-lab" style="font-size: 13px; padding: 7px 16px;">
+                        <i class="fa-solid fa-award"></i> Emitir Informe Consolidado Final del Lote
+                    </button>
+                </form>
+            <?php else: ?>
+                <button type="button" class="btn-accion btn-secondary-lab" disabled style="opacity: 0.65; cursor: not-allowed; font-size: 12.5px; padding: 7px 14px;" title="Bloqueado: Para emitir el consolidado final, todas las probetas del lote deben estar ensayadas y sus informes parciales deben estar APROBADOS por Calidad (Roles 1 o 3).">
+                    <i class="fa-solid fa-lock"></i> Consolidado Bloqueado (<?= ($totalProbetas - $totalEnsayadas) > 0 ? (($totalProbetas - $totalEnsayadas) . ' rotura(s) pendiente(s)') : (($totalProbetas - $totalParcialesAprobados) . ' parcial(es) pendiente(s) de aprobación') ?>)
+                </button>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Tabla Unificada de Informes del Lote -->
+    <div style="overflow-x: auto;">
+        <table class="tabla-lab">
+            <thead>
+                <tr>
+                    <th>Muestra / Probeta</th>
+                    <th>Número de Informe</th>
+                    <th>Tipo</th>
+                    <th>Versión</th>
+                    <th>Fecha Emisión</th>
+                    <th>Estado Calidad</th>
+                    <th>Aprobado Por</th>
+                    <th>Observaciones / Motivo</th>
+                    <th>Integridad SHA-256</th>
+                    <th style="text-align: right; width: 140px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach (($informesLote ?? []) as $inf): 
+                    $esConsolidado = ($inf['tipo'] === 'consolidado');
+                ?>
+                <tr>
+                    <td style="font-family: monospace; font-weight: 800; color: #0369a1; font-size: 12.5px;">
+                        <?= htmlspecialchars((string)($inf['codigo_lab'] ?? 'LOTE'), ENT_QUOTES, 'UTF-8') ?>
+                    </td>
+                    <td style="font-family: monospace; font-weight: 800; color: #0f172a; font-size: 13px;">
+                        <?= htmlspecialchars((string)$inf['numero'], ENT_QUOTES, 'UTF-8') ?>
+                    </td>
+                    <td>
+                        <?php if ($esConsolidado): ?>
+                            <span class="badge-lab" style="background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;">
+                                <i class="fa-solid fa-award"></i> Consolidado Final
+                            </span>
+                        <?php else: ?>
+                            <span class="badge-lab badge-programado">
+                                <i class="fa-solid fa-file-lines"></i> Parcial Periódico
+                            </span>
+                        <?php endif; ?>
+                    </td>
+                    <td style="font-weight: 700;">v<?= (int)$inf['version'] ?></td>
+                    <td style="font-size: 12px;"><?= htmlspecialchars(date('d/m/Y H:i', strtotime($inf['created_at']))) ?></td>
+                    <td>
+                        <?php if ($inf['estado'] === 'aprobado'): ?>
+                            <span class="badge-lab badge-aprobado"><i class="fa-solid fa-check"></i> Aprobado</span>
+                        <?php elseif ($inf['estado'] === 'devuelto'): ?>
+                            <span class="badge-lab badge-devuelto"><i class="fa-solid fa-xmark"></i> Devuelto</span>
+                        <?php elseif ($inf['estado'] === 'anulado'): ?>
+                            <span class="badge-lab badge-devuelto" style="background:#fee2e2; color:#991b1b;"><i class="fa-solid fa-ban"></i> Anulado (Sustituido)</span>
+                        <?php else: ?>
+                            <span class="badge-lab badge-revision"><i class="fa-solid fa-clock"></i> En Revisión</span>
+                        <?php endif; ?>
+                    </td>
+                    <td style="font-size: 12px;"><?= htmlspecialchars((string)($inf['aprobado_por_nombre'] ?: 'Gerencia de Calidad')) ?></td>
+                    <td style="font-size: 11.5px; color: #64748b; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <?= htmlspecialchars((string)($inf['motivo_reemision'] ? ('Sustituido: ' . $inf['motivo_reemision']) : ($inf['motivo_devolucion'] ?: ($inf['observaciones'] ?: '--')))) ?>
+                    </td>
+                    <td style="font-family: monospace; font-size: 11px; color: #64748b;">
+                        <?php if (!empty($inf['sha256'])): ?>
+                            <span title="<?= htmlspecialchars((string)$inf['sha256'], ENT_QUOTES, 'UTF-8') ?>">
+                                <?= htmlspecialchars(substr((string)$inf['sha256'], 0, 10)) ?>&hellip;
+                            </span>
+                        <?php else: ?>
+                            <span style="color:#94a3b8;">--</span>
+                        <?php endif; ?>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <?php if ($inf['estado'] === 'en_revision' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
+                            <form method="POST" action="/Cycsa/publico/laboratorio/procesar-revision-informe" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
+                                <input type="hidden" name="muestra_id" value="<?= (int)$inf['muestra_id'] ?>">
+                                <input type="hidden" name="informe_id" value="<?= (int)$inf['id'] ?>">
+                                <input type="hidden" name="nuevo_estado" value="aprobado">
+                                <button type="submit" class="btn-accion btn-success-lab" style="padding: 4px 8px; font-size: 11px;" title="Aprobar Informe Oficial">
+                                    <i class="fa-solid fa-thumbs-up"></i> Aprobar
+                                </button>
+                            </form>
+                            <button type="button" class="btn-accion btn-warning-lab" style="padding: 4px 8px; font-size: 11px;" onclick="abrirModalDevolverInforme(<?= (int)$inf['id'] ?>, '<?= htmlspecialchars((string)$inf['numero'], ENT_QUOTES) ?>')" title="Devolver con observaciones técnicas">
+                                <i class="fa-solid fa-rotate-left"></i> Devolver
+                            </button>
+                        <?php elseif ($inf['estado'] === 'aprobado' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
+                            <button type="button" onclick="abrirModalReemitirInforme(<?= (int)$inf['id'] ?>, '<?= htmlspecialchars((string)$inf['numero'], ENT_QUOTES) ?>')" class="btn-accion btn-warning-lab" style="padding: 4px 8px; font-size: 11px;" title="Reemitir informe oficial (N+1) según ISO/IEC 17025">
+                                <i class="fa-solid fa-arrows-rotate"></i> Reemitir
+                            </button>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (empty($informesLote)): ?>
+                <tr>
+                    <td colspan="10" style="text-align: center; padding: 25px; color: #64748b; font-size: 13px;">
+                        <i class="fa-solid fa-file-circle-xmark" style="font-size: 24px; color: #94a3b8; display: block; margin-bottom: 6px;"></i>
+                        No se han emitido informes para este lote aún. Realice los rompimientos periódicos y emita los informes parciales para iniciar el expediente técnico.
+                    </td>
+                </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- Modal Captura de Rotura Individual -->
@@ -591,4 +839,101 @@ function abrirModalOverride(muestraId, planId, codigoLab, edadActual, fechaActua
 function cerrarModalOverride() {
     document.getElementById('modalOverridePlan').style.display = 'none';
 }
+
+function abrirModalDevolverInforme(informeId, numero) {
+    const idElem = document.getElementById('dev_informe_id');
+    const numElem = document.getElementById('dev_informe_numero');
+    if (idElem) idElem.value = informeId;
+    if (numElem) numElem.innerText = numero;
+    const modal = document.getElementById('modalDevolverInforme');
+    if (modal) modal.style.display = 'block';
+}
+
+function cerrarModalDevolverInforme() {
+    const modal = document.getElementById('modalDevolverInforme');
+    if (modal) modal.style.display = 'none';
+}
+
+function abrirModalReemitirInforme(informeId, numero) {
+    const idElem = document.getElementById('reem_informe_id');
+    const numElem = document.getElementById('reem_informe_numero');
+    if (idElem) idElem.value = informeId;
+    if (numElem) numElem.innerText = numero;
+    const modal = document.getElementById('modalReemitirInforme');
+    if (modal) modal.style.display = 'block';
+}
+
+function cerrarModalReemitirInforme() {
+    const modal = document.getElementById('modalReemitirInforme');
+    if (modal) modal.style.display = 'none';
+}
 </script>
+
+<!-- Modal Devolver Informe Parcial (Calidad / Roles 1 y 3) -->
+<div id="modalDevolverInforme" class="modal-lab">
+    <div class="modal-lab-content" style="max-width: 480px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+            <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #991b1b;">
+                <i class="fa-solid fa-rotate-left"></i> Devolver Informe a Laboratorio
+            </h3>
+            <button onclick="cerrarModalDevolverInforme()" style="border: none; background: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+
+        <form method="POST" action="/Cycsa/publico/laboratorio/procesar-revision-informe">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
+            <input type="hidden" id="dev_informe_id" name="informe_id" value="">
+            <input type="hidden" name="nuevo_estado" value="devuelto">
+
+            <div style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px 14px; border-radius: 6px; font-size: 12.5px; margin-bottom: 12px;">
+                <i class="fa-solid fa-circle-exclamation"></i> Devolución del informe <strong id="dev_informe_numero"></strong> para subsanación técnica en laboratorio.
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Motivo de Devolución / Observación Técnica: *</label>
+                <textarea name="motivo_devolucion" rows="3" class="form-control" style="width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; font-size: 12.5px;" placeholder="Especifique el motivo técnico del rechazo o corrección requerida..." required minlength="5"></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn-accion btn-secondary-lab" onclick="cerrarModalDevolverInforme()">Cancelar</button>
+                <button type="submit" class="btn-accion btn-warning-lab">
+                    <i class="fa-solid fa-paper-plane"></i> Registrar Devolución
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Reemitir Informe (Calidad / Roles 1 y 3 / N+1 ISO 17025) -->
+<div id="modalReemitirInforme" class="modal-lab">
+    <div class="modal-lab-content" style="max-width: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #1e293b; font-size: 16px; font-weight: 800;">
+                <i class="fa-solid fa-arrows-rotate" style="color:#d97706;"></i> Reemitir Informe Oficial (ISO/IEC 17025)
+            </h3>
+            <button type="button" onclick="cerrarModalReemitirInforme()" style="border: none; background: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+
+        <form method="POST" action="/Cycsa/publico/laboratorio/reemitir-informe">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
+            <input type="hidden" id="reem_informe_id" name="informe_id" value="">
+
+            <div style="background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:10px 14px; border-radius:6px; font-size:12.5px; margin-bottom:12px;">
+                <i class="fa-solid fa-triangle-exclamation"></i> El informe actual <strong id="reem_informe_numero"></strong> quedará <strong>ANULADO</strong> y se generará una nueva versión que lo sustituye formalmente en el expediente.
+            </div>
+
+            <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 5px;">
+                Motivo obligatorio de la reemisión: *
+            </label>
+            <textarea name="motivo_reemision" rows="3" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 6px;" placeholder="Detalle la justificación técnica o administrativa..." required minlength="5"></textarea>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                <button type="button" class="btn-accion btn-secondary-lab" onclick="cerrarModalReemitirInforme()">Cancelar</button>
+                <button type="submit" class="btn-accion btn-warning-lab">
+                    <i class="fa-solid fa-arrows-rotate"></i> Reemitir y Sustituir
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

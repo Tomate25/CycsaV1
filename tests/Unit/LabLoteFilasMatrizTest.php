@@ -57,6 +57,7 @@ class LabLoteFilasMatrizTest extends TestCase
         $_POST = [];
         $_GET = [];
         foreach ($this->idsCreados['recepcion_muestras'] as $rmId) {
+            $this->db->prepare("DELETE FROM informes_rotura WHERE muestra_id = ?")->execute([$rmId]);
             $this->db->prepare("DELETE FROM roturas WHERE especimen_id IN (SELECT id FROM especimenes WHERE muestra_id = ?)")->execute([$rmId]);
             $this->db->prepare("DELETE FROM plan_rotura_asignaciones WHERE especimen_id IN (SELECT id FROM especimenes WHERE muestra_id = ?)")->execute([$rmId]);
             $this->db->prepare("DELETE FROM plan_rotura_edades WHERE plan_rotura_id IN (SELECT id FROM planes_rotura WHERE muestra_id = ?)")->execute([$rmId]);
@@ -149,6 +150,82 @@ class LabLoteFilasMatrizTest extends TestCase
             'id_usuario' => $idUsuario,
             'muestras_declaradas' => $muestrasDecl
         ];
+    }
+
+    private function sincronizarMatrizConLab(int $idHoja, int $idDetalle, int $cantMuestras, bool $incluyeReplica): void
+    {
+        $stmtHoja = $this->db->prepare("SELECT id_os FROM hojas_solicitud WHERE id = ?");
+        $stmtHoja->execute([$idHoja]);
+        $idOs = (int)$stmtHoja->fetchColumn();
+
+        $idUsuario = (int)($this->db->query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 1);
+        $plantillaId = (int)($this->db->query("SELECT id FROM plantillas WHERE (norma LIKE '%C39%' OR nombre LIKE '%Compresi%') AND id != 21 ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 1);
+
+        $opMod = new OperacionModelo();
+        $muestrasPayload = [];
+        for ($i = 1; $i <= $cantMuestras; $i++) {
+            $muestrasPayload[] = [
+                'id_detalle_cotizacion' => $idDetalle,
+                'plantilla_id' => $plantillaId,
+                'orden_en_lote' => $i,
+                'tipo_muestra' => 'Laboratorio',
+                'id_cilindro' => 'MS-T' . $i,
+                'codigo_campo' => 'MS-T' . $i,
+                'nombre_lote' => 'Cilindro ' . $i,
+                'fecha_moldeo' => '2026-11-01',
+            ];
+        }
+
+        $opMod->registrarRecepcion([
+            'id_os' => $idOs,
+            'id_hoja' => $idHoja,
+            'id_detalle_cotizacion' => $idDetalle,
+            'plantilla_id' => $plantillaId,
+            'tipo_muestra' => 'Laboratorio',
+            'fecha_recepcion' => date('Y-m-d H:i:s'),
+            'recibido_por' => $idUsuario,
+            'entregado_por' => 'Cliente Test',
+            'observaciones' => 'Ingreso Lote Test',
+            'muestras_recibidas_json' => json_encode($muestrasPayload),
+        ]);
+
+        $stmt = $this->db->prepare("SELECT id, codigo_muestra FROM recepcion_muestras WHERE id_hoja = :h ORDER BY orden_en_lote ASC, id ASC");
+        $stmt->execute(['h' => $idHoja]);
+        $muestras = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($muestras as $m) {
+            $this->idsCreados['recepcion_muestras'][] = (int)$m['id'];
+        }
+
+        $filasMatriz = [];
+        foreach ($muestras as $idx => $m) {
+            $cod = $m['codigo_muestra'];
+            $filasMatriz[] = [
+                'Código laboratorio' => $cod,
+                'Edad (Días)' => ($idx === 0 ? '7' : '28'),
+                'Fecha Ensayo' => ($idx === 0 ? '2026-11-08' : '2026-11-29'),
+                'Temp. (°C)' => '22.0',
+                'Área (in²)' => '28.274',
+                'Tamaño de Cilindro' => '6x12 pulg'
+            ];
+            if ($idx === 0 && $incluyeReplica) {
+                $filasMatriz[] = [
+                    'Código laboratorio' => $cod . '-CR',
+                    '_es_replica' => '1',
+                    '_muestra_origen' => $cod,
+                    'Edad (Días)' => '7',
+                    'Fecha Ensayo' => '2026-11-08',
+                    'Temp. (°C)' => '22.0',
+                    'Área (in²)' => '28.274',
+                    'Tamaño de Cilindro' => '6x12 pulg'
+                ];
+            }
+        }
+
+        $this->db->prepare("UPDATE cotizacion_detalles SET resultados_json = :rj WHERE id = :id")
+                 ->execute(['rj' => json_encode(['filas' => $filasMatriz]), 'id' => $idDetalle]);
+
+        sincronizarReplicasMatrizConLab($this->db, $idOs, $idHoja, $idDetalle, $filasMatriz);
     }
 
     /**
@@ -698,5 +775,335 @@ class LabLoteFilasMatrizTest extends TestCase
         $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_hoja = :h");
         $stmtCount->execute(['h' => $fxComp['id_hoja']]);
         $this->assertSame(0, (int)$stmtCount->fetchColumn(), 'No se deben crear registros en recepcion_muestras para ensayos in situ de compactación.');
+    }
+
+    /**
+     * TEST 11: Vista Detalle Lote renderiza columnas de Rompimientos Periódicos, Informe Parcial y Rompimiento Consolidado
+     */
+    public function testVistaDetalleLoteRenderizaRompimientosParcialesYConsolidado(): void
+    {
+        $fx = $this->crearFixture(4);
+        $this->sincronizarMatrizConLab($fx['id_hoja'], $fx['id_detalle'], 4, true);
+
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['ver' => 1, 'crear_editar' => 1]];
+        $_SESSION['csrf_token'] = 'token_test_abc';
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $fx['id_hoja'];
+        $_GET = ['id_hoja' => $fx['id_hoja']];
+
+        $peticion = new Peticion();
+        $ctrl = new LaboratorioControlador();
+        $capturador = new class extends Respuesta {
+            public ?string $urlRedir = null;
+            public function redirigir(string $url): void {
+                $this->urlRedir = $url;
+            }
+        };
+
+        ob_start();
+        $ctrl->detalleLote($peticion, $capturador);
+        $html = (string)ob_get_clean();
+
+        $this->assertNull($capturador->urlRedir);
+        $this->assertStringContainsString('Rompimiento (lb / PSI)', $html);
+        $this->assertStringContainsString('Informe Parcial', $html);
+        $this->assertStringContainsString('Rompimiento Consolidado e Informes Oficiales del Lote', $html);
+        $this->assertStringContainsString('Consolidado Bloqueado', $html);
+    }
+
+    /**
+     * TEST 12: Generar informe parcial con id_hoja preserva redirección al lote
+     */
+    public function testGenerarInformeParcialConIdHojaRedirigeADetalleLote(): void
+    {
+        $fx = $this->crearFixture(2);
+        $this->sincronizarMatrizConLab($fx['id_hoja'], $fx['id_detalle'], 2, false);
+
+        // Obtener la 1ra muestra y su espécimen
+        $stmtM = $this->db->prepare("SELECT id FROM recepcion_muestras WHERE id_hoja = :h ORDER BY id ASC LIMIT 1");
+        $stmtM->execute(['h' => $fx['id_hoja']]);
+        $mId = (int)$stmtM->fetchColumn();
+
+        $stmtEsp = $this->db->prepare("
+            SELECT esp.id AS esp_id, pra.plan_edad_id, pre.edad_dias, pre.fecha_programada
+            FROM especimenes esp
+            JOIN plan_rotura_asignaciones pra ON pra.especimen_id = esp.id
+            JOIN plan_rotura_edades pre ON pra.plan_edad_id = pre.id
+            WHERE esp.muestra_id = :mid LIMIT 1
+        ");
+        $stmtEsp->execute(['mid' => $mId]);
+        $espRow = $stmtEsp->fetch(PDO::FETCH_ASSOC);
+
+        $this->assertNotEmpty($espRow, 'Debe existir espécimen con plan_edad_id');
+
+        // Registrar la rotura para que la edad quede en 'completado'
+        $roturasMod = new RoturasModelo();
+        $resRot = $roturasMod->registrarRotura([
+            'especimen_id' => (int)$espRow['esp_id'],
+            'plan_edad_id' => (int)$espRow['plan_edad_id'],
+            'edad_dias' => (int)$espRow['edad_dias'],
+            'fecha_real' => !empty($espRow['fecha_programada']) ? ($espRow['fecha_programada'] . ' 09:00:00') : date('Y-m-d H:i:s'),
+            'justificacion' => 'Ensayo en fecha programada con autorización de supervisión',
+            'carga' => 65000.0,
+            'area' => 28.274,
+            'tipo_falla' => 'Tipo 1 (Cono bien formado)'
+        ], $fx['id_usuario']);
+        $this->assertTrue($resRot['exito'], 'La rotura debe registrarse exitosamente: ' . ($resRot['mensaje'] ?? ''));
+
+        // Ejecutar POST a generarInformeParcial enviando id_hoja
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['crear_editar' => 1, 'ver' => 1]];
+        $_SESSION['csrf_token'] = 'token_inf_123';
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['REQUEST_URI'] = '/Cycsa/publico/laboratorio/generar-informe-parcial';
+
+        $_POST = [
+            'csrf_token' => 'token_inf_123',
+            'id_hoja' => $fx['id_hoja'],
+            'muestra_id' => $mId,
+            'plan_edad_id' => (int)$espRow['plan_edad_id']
+        ];
+
+        $peticion = new Peticion();
+        $ctrl = new LaboratorioControlador();
+        $capturador = new class extends Respuesta {
+            public ?string $urlRedir = null;
+            public function redirigir(string $url): void {
+                $this->urlRedir = $url;
+            }
+        };
+
+        $ctrl->generarInformeParcial($peticion, $capturador);
+
+        $this->assertSame('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $fx['id_hoja'], $capturador->urlRedir, 'Debe redirigir al detalle del lote cuando id_hoja está presente.');
+
+        // Verificar que el informe parcial se haya registrado
+        $stmtInf = $this->db->prepare("SELECT * FROM informes_rotura WHERE muestra_id = :mid AND tipo = 'parcial' AND estado = 'en_revision'");
+        $stmtInf->execute(['mid' => $mId]);
+        $inf = $stmtInf->fetch(PDO::FETCH_ASSOC);
+
+        $this->assertNotEmpty($inf, 'El informe parcial debe haber sido creado en estado en_revision.');
+        $this->assertStringStartsWith('INF-', (string)$inf['numero']);
+    }
+
+    /**
+     * TEST 13: Procesar revisión de informe con id_hoja redirige al detalle del lote
+     */
+    public function testProcesarRevisionInformeConIdHojaRedirigeADetalleLote(): void
+    {
+        $fx = $this->crearFixture(2);
+        $this->sincronizarMatrizConLab($fx['id_hoja'], $fx['id_detalle'], 2, false);
+
+        $stmtM = $this->db->prepare("SELECT id FROM recepcion_muestras WHERE id_hoja = :h ORDER BY id ASC LIMIT 1");
+        $stmtM->execute(['h' => $fx['id_hoja']]);
+        $mId = (int)$stmtM->fetchColumn();
+
+        $stmtEsp = $this->db->prepare("
+            SELECT esp.id AS esp_id, pra.plan_edad_id, pre.edad_dias, pre.fecha_programada
+            FROM especimenes esp
+            JOIN plan_rotura_asignaciones pra ON pra.especimen_id = esp.id
+            JOIN plan_rotura_edades pre ON pra.plan_edad_id = pre.id
+            WHERE esp.muestra_id = :mid LIMIT 1
+        ");
+        $stmtEsp->execute(['mid' => $mId]);
+        $espRow = $stmtEsp->fetch(PDO::FETCH_ASSOC);
+
+        $roturasMod = new RoturasModelo();
+        $roturasMod->registrarRotura([
+            'especimen_id' => (int)$espRow['esp_id'],
+            'plan_edad_id' => (int)$espRow['plan_edad_id'],
+            'edad_dias' => (int)$espRow['edad_dias'],
+            'fecha_real' => !empty($espRow['fecha_programada']) ? ($espRow['fecha_programada'] . ' 09:00:00') : date('Y-m-d H:i:s'),
+            'justificacion' => 'Ensayo en fecha programada con autorización de supervisión',
+            'carga' => 65000.0,
+            'area' => 28.274,
+            'tipo_falla' => 'Tipo 1 (Cono bien formado)'
+        ], $fx['id_usuario']);
+
+        $resInf = $roturasMod->generarInformeParcial($mId, (int)$espRow['plan_edad_id'], $fx['id_usuario']);
+        $this->assertTrue($resInf['exito']);
+        $informeId = (int)$resInf['informe_id'];
+
+        // Aprobar desde controlador con id_hoja
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1; // Admin
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['crear_editar' => 1, 'ver' => 1]];
+        $_SESSION['csrf_token'] = 'token_rev_123';
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['REQUEST_URI'] = '/Cycsa/publico/laboratorio/procesar-revision-informe';
+
+        $_POST = [
+            'csrf_token' => 'token_rev_123',
+            'id_hoja' => $fx['id_hoja'],
+            'muestra_id' => $mId,
+            'informe_id' => $informeId,
+            'nuevo_estado' => 'aprobado'
+        ];
+
+        $peticion = new Peticion();
+        $ctrl = new LaboratorioControlador();
+        $capturador = new class extends Respuesta {
+            public ?string $urlRedir = null;
+            public function redirigir(string $url): void {
+                $this->urlRedir = $url;
+            }
+        };
+
+        $ctrl->procesarRevisionInforme($peticion, $capturador);
+
+        $this->assertSame('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $fx['id_hoja'], $capturador->urlRedir);
+
+        // Comprobar que quedó aprobado
+        $stmtCheck = $this->db->prepare("SELECT estado FROM informes_rotura WHERE id = :id");
+        $stmtCheck->execute(['id' => $informeId]);
+        $this->assertSame('aprobado', $stmtCheck->fetchColumn());
+    }
+
+    /**
+     * TEST 14: Generar informe consolidado con id_hoja redirige al detalle del lote
+     */
+    public function testGenerarInformeConsolidadoConIdHojaRedirigeADetalleLote(): void
+    {
+        $fx = $this->crearFixture(1);
+        $this->sincronizarMatrizConLab($fx['id_hoja'], $fx['id_detalle'], 1, false);
+
+        $stmtM = $this->db->prepare("SELECT id FROM recepcion_muestras WHERE id_hoja = :h ORDER BY id ASC LIMIT 1");
+        $stmtM->execute(['h' => $fx['id_hoja']]);
+        $mId = (int)$stmtM->fetchColumn();
+
+        $stmtEsp = $this->db->prepare("
+            SELECT esp.id AS esp_id, pra.plan_edad_id, pre.edad_dias, pre.fecha_programada
+            FROM especimenes esp
+            JOIN plan_rotura_asignaciones pra ON pra.especimen_id = esp.id
+            JOIN plan_rotura_edades pre ON pra.plan_edad_id = pre.id
+            WHERE esp.muestra_id = :mid LIMIT 1
+        ");
+        $stmtEsp->execute(['mid' => $mId]);
+        $espRow = $stmtEsp->fetch(PDO::FETCH_ASSOC);
+
+        $roturasMod = new RoturasModelo();
+        $roturasMod->registrarRotura([
+            'especimen_id' => (int)$espRow['esp_id'],
+            'plan_edad_id' => (int)$espRow['plan_edad_id'],
+            'edad_dias' => (int)$espRow['edad_dias'],
+            'fecha_real' => !empty($espRow['fecha_programada']) ? ($espRow['fecha_programada'] . ' 09:00:00') : date('Y-m-d H:i:s'),
+            'justificacion' => 'Ensayo en fecha programada con autorización de supervisión',
+            'carga' => 70000.0,
+            'area' => 28.274,
+            'tipo_falla' => 'Tipo 1 (Cono bien formado)'
+        ], $fx['id_usuario']);
+
+        $resInf = $roturasMod->generarInformeParcial($mId, (int)$espRow['plan_edad_id'], $fx['id_usuario']);
+        $roturasMod->procesarRevisionInforme((int)$resInf['informe_id'], 'aprobado', null, $fx['id_usuario'], 1);
+
+        // Ahora generar consolidado
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['crear_editar' => 1, 'ver' => 1]];
+        $_SESSION['csrf_token'] = 'token_cons_123';
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['REQUEST_URI'] = '/Cycsa/publico/laboratorio/generar-informe-consolidado';
+
+        $_POST = [
+            'csrf_token' => 'token_cons_123',
+            'id_hoja' => $fx['id_hoja'],
+            'muestra_id' => $mId
+        ];
+
+        $peticion = new Peticion();
+        $ctrl = new LaboratorioControlador();
+        $capturador = new class extends Respuesta {
+            public ?string $urlRedir = null;
+            public function redirigir(string $url): void {
+                $this->urlRedir = $url;
+            }
+        };
+
+        $ctrl->generarInformeConsolidado($peticion, $capturador);
+
+        $this->assertSame('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $fx['id_hoja'], $capturador->urlRedir);
+
+        $stmtCons = $this->db->prepare("SELECT * FROM informes_rotura WHERE muestra_id = :mid AND tipo = 'consolidado' AND estado = 'aprobado'");
+        $stmtCons->execute(['mid' => $mId]);
+        $this->assertNotEmpty($stmtCons->fetch(PDO::FETCH_ASSOC), 'El consolidado debe haberse emitido exitosamente.');
+    }
+
+    /**
+     * TEST 15: Generación consolidada del lote completo emite consolidados para muestras con parciales aprobados
+     */
+    public function testGenerarInformeConsolidadoLoteCompleto(): void
+    {
+        $fx = $this->crearFixture(2);
+        $this->sincronizarMatrizConLab($fx['id_hoja'], $fx['id_detalle'], 2, false);
+
+        $stmtM = $this->db->prepare("SELECT id FROM recepcion_muestras WHERE id_hoja = :h ORDER BY id ASC");
+        $stmtM->execute(['h' => $fx['id_hoja']]);
+        $mIds = $stmtM->fetchAll(PDO::FETCH_COLUMN);
+
+        $roturasMod = new RoturasModelo();
+        foreach ($mIds as $mId) {
+            $stmtEsp = $this->db->prepare("
+                SELECT esp.id AS esp_id, pra.plan_edad_id, pre.edad_dias, pre.fecha_programada
+                FROM especimenes esp
+                JOIN plan_rotura_asignaciones pra ON pra.especimen_id = esp.id
+                JOIN plan_rotura_edades pre ON pra.plan_edad_id = pre.id
+                WHERE esp.muestra_id = :mid LIMIT 1
+            ");
+            $stmtEsp->execute(['mid' => (int)$mId]);
+            $espRow = $stmtEsp->fetch(PDO::FETCH_ASSOC);
+
+            $roturasMod->registrarRotura([
+                'especimen_id' => (int)$espRow['esp_id'],
+                'plan_edad_id' => (int)$espRow['plan_edad_id'],
+                'edad_dias' => (int)$espRow['edad_dias'],
+                'fecha_real' => !empty($espRow['fecha_programada']) ? ($espRow['fecha_programada'] . ' 09:00:00') : date('Y-m-d H:i:s'),
+                'justificacion' => 'Ensayo en fecha programada con autorización de supervisión',
+                'carga' => 68000.0,
+                'area' => 28.274,
+                'tipo_falla' => 'Tipo 1 (Cono bien formado)'
+            ], $fx['id_usuario']);
+
+            $resInf = $roturasMod->generarInformeParcial((int)$mId, (int)$espRow['plan_edad_id'], $fx['id_usuario']);
+            $roturasMod->procesarRevisionInforme((int)$resInf['informe_id'], 'aprobado', null, $fx['id_usuario'], 1);
+        }
+
+        // Ejecutar consolidado en lote
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['crear_editar' => 1, 'ver' => 1]];
+        $_SESSION['csrf_token'] = 'token_cons_lote_123';
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['REQUEST_URI'] = '/Cycsa/publico/laboratorio/generar-informe-consolidado-lote';
+
+        $_POST = [
+            'csrf_token' => 'token_cons_lote_123',
+            'id_hoja' => $fx['id_hoja']
+        ];
+
+        $peticion = new Peticion();
+        $ctrl = new LaboratorioControlador();
+        $capturador = new class extends Respuesta {
+            public ?string $urlRedir = null;
+            public function redirigir(string $url): void {
+                $this->urlRedir = $url;
+            }
+        };
+
+        $ctrl->generarInformeConsolidadoLote($peticion, $capturador);
+
+        $this->assertSame('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $fx['id_hoja'], $capturador->urlRedir);
+        $this->assertNotNull($_SESSION['exito']);
+
+        // Verificar que ambas muestras tengan consolidado
+        $stmtCountCons = $this->db->prepare("
+            SELECT COUNT(*) FROM informes_rotura ir
+            JOIN recepcion_muestras rm ON ir.muestra_id = rm.id
+            WHERE rm.id_hoja = :h AND ir.tipo = 'consolidado' AND ir.estado = 'aprobado'
+        ");
+        $stmtCountCons->execute(['h' => $fx['id_hoja']]);
+        $this->assertSame(2, (int)$stmtCountCons->fetchColumn(), 'Ambas muestras del lote deben tener su informe consolidado emitido.');
     }
 }

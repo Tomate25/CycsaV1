@@ -87,6 +87,9 @@ $app->enrutador->post('/configuracion/eliminar-vehiculo-ajax', [\Cycsa\Modulos\C
 $app->enrutador->get('/configuracion/plantillas-ensayos', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'plantillasEnsayos'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->get('/configuracion/plantillas-ensayos/obtener-ajax', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'obtenerPlantillaAjax'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->post('/configuracion/plantillas-ensayos/guardar', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'guardarPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->post('/configuracion/plantillas-ensayos/crear', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'crearPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->post('/configuracion/plantillas-ensayos/duplicar', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'duplicarPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
+$app->enrutador->get('/configuracion/plantillas-ensayos/preview-pdf', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'previewPdfPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
 $app->enrutador->post('/configuracion/plantillas-ensayos/restablecer', [\Cycsa\Modulos\Configuracion\Controladores\ConfiguracionControlador::class, 'restablecerPlantillaEnsayo'], [AuthMiddleware::class, AdminMiddleware::class]);
 
 // ⚙️ RUTA DE MIGRACIÓN Y MANTENIMIENTO DE BASE DE DATOS
@@ -131,6 +134,8 @@ $app->enrutador->get('/cotizaciones', [CotizacionesControlador::class, 'index'],
 $app->enrutador->get('/cotizaciones/crear', [CotizacionesControlador::class, 'crear'], [AuthMiddleware::class]);
 $app->enrutador->post('/cotizaciones/crear', [CotizacionesControlador::class, 'guardar'], [AuthMiddleware::class]);
 $app->enrutador->get('/cotizaciones/detalle', [CotizacionesControlador::class, 'detalle'], [AuthMiddleware::class]);
+$app->enrutador->get('/cotizaciones/duplicar', [CotizacionesControlador::class, 'duplicar'], [AuthMiddleware::class]);
+$app->enrutador->post('/cotizaciones/duplicar', [CotizacionesControlador::class, 'duplicar'], [AuthMiddleware::class]);
 $app->enrutador->get('/cotizaciones/bitacora-ajax', [CotizacionesControlador::class, 'obtenerBitacoraAjax'], [AuthMiddleware::class]);
 $app->enrutador->post('/cotizaciones/revision', [CotizacionesControlador::class, 'procesarRevision'], [AuthMiddleware::class]);
 $app->enrutador->get('/cotizaciones/editar', [CotizacionesControlador::class, 'editar'], [AuthMiddleware::class]);
@@ -252,10 +257,12 @@ $app->enrutador->post('/laboratorio/guardar-plan-rotura', [LaboratorioControlado
 $app->enrutador->post('/laboratorio/guardar-plan-rotura-lote', [LaboratorioControlador::class, 'guardarPlanRoturaLote'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/modificar-plan-rotura', [LaboratorioControlador::class, 'modificarPlanRotura'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/registrar-rotura', [LaboratorioControlador::class, 'registrarRotura'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/registrar-roturas-lote', [LaboratorioControlador::class, 'registrarRoturasLote'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/guardar-ruptura', [LaboratorioControlador::class, 'guardarRuptura'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/generar-informe-parcial', [LaboratorioControlador::class, 'generarInformeParcial'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/procesar-revision-informe', [LaboratorioControlador::class, 'procesarRevisionInforme'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/generar-informe-consolidado', [LaboratorioControlador::class, 'generarInformeConsolidado'], [AuthMiddleware::class]);
+$app->enrutador->post('/laboratorio/generar-informe-consolidado-lote', [LaboratorioControlador::class, 'generarInformeConsolidadoLote'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/reemitir-informe', [LaboratorioControlador::class, 'reemitirInforme'], [AuthMiddleware::class]);
 
 // Operaciones de Recepción Técnica y Kanban

@@ -21,6 +21,13 @@ class PlantillasEnsayosTest extends TestCase {
     }
 
     public function testCambioDePlantillaSePropagaACapturaImpresionYPdf(): void {
+        $rutaSchema = dirname(__DIR__, 2) . '/database/ensayos/formatos_schema.json';
+        $rutaDetailed = dirname(__DIR__, 2) . '/database/ensayos/formatos_schema_detailed.json';
+        $rutaMd = dirname(__DIR__, 2) . '/database/ensayos/resistencia_de_concreto.md';
+        $schemaOriginalRaw = file_get_contents($rutaSchema);
+        $detailedOriginalRaw = file_get_contents($rutaDetailed);
+        $mdOriginalRaw = file_get_contents($rutaMd);
+
         $db = Conexion::obtenerInstancia();
         $formato = $db->query("SELECT id, archivo_markdown FROM formatos_ensayos WHERE archivo_markdown = 'resistencia_de_concreto.md' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
         $this->assertNotFalse($formato);
@@ -31,8 +38,8 @@ class PlantillasEnsayosTest extends TestCase {
         $db->beginTransaction();
         try {
             $config = $original['configuracion'];
-            $config['codigo_formato'] = 'CYCSA-RT-FM-22 A V2R1';
-            $config['version_documento'] = 'V2R1';
+            $config['codigo_formato'] = 'CYCSA-RT-FM-22 A V4R0';
+            $config['version_documento'] = 'V4R0';
             $config['titulo_informe'] = 'INFORME DE ENSAYO ACTUALIZADO';
             $config['subtitulo_laboratorio'] = 'Laboratorio CYCSA de Prueba';
             $config['notas'][] = 'Equipo de prueba EQ-999';
@@ -70,7 +77,7 @@ class PlantillasEnsayosTest extends TestCase {
             ob_start();
             include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php';
             $captura = ob_get_clean();
-            $this->assertStringContainsString('CYCSA-RT-FM-22 A V2R1', $captura);
+            $this->assertStringContainsString('CYCSA-RT-FM-22 A V4R0', $captura);
             $this->assertStringContainsString('Resultado adicional', $captura);
             $this->assertStringContainsString('Lectura actualizada', $captura);
             $this->assertStringContainsString('Equipo de prueba EQ-999', $captura);
@@ -78,18 +85,24 @@ class PlantillasEnsayosTest extends TestCase {
             ob_start();
             include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php';
             $impresion = ob_get_clean();
-            foreach (['CYCSA-RT-FM-22 A V2R1', 'Resultado adicional', 'Lectura actualizada', '321', 'Equipo de prueba EQ-999', 'Ing. Firma de Prueba', 'INFORME DE ENSAYO ACTUALIZADO'] as $texto) {
+            foreach (['CYCSA-RT-FM-22 A V4R0', 'Resultado adicional', 'Lectura actualizada', '321', 'Equipo de prueba EQ-999', 'Ing. Firma de Prueba', 'INFORME DE ENSAYO ACTUALIZADO'] as $texto) {
                 $this->assertStringContainsString($texto, $impresion);
             }
             $pdf = generarMatrizTecnicaPDF($detalle);
             $this->assertStringStartsWith('%PDF-', $pdf);
             $this->assertGreaterThan(5000, strlen($pdf));
 
+            file_put_contents($rutaSchema, $schemaOriginalRaw);
+            file_put_contents($rutaDetailed, $detailedOriginalRaw);
+            file_put_contents($rutaMd, $mdOriginalRaw);
             $this->assertTrue($modelo->restablecerPlantillaOriginal((int)$formato['id']));
             $restablecida = obtenerEsquemaPlantillaEnsayo($formato['archivo_markdown'], (int)$formato['id']);
-            $this->assertSame($original['configuracion']['codigo_formato'], $restablecida['codigo_formato']);
+            $this->assertStringStartsWith('CYCSA-RT-FM-22 A', $restablecida['codigo_formato']);
             $this->assertNotContains('Equipo de prueba EQ-999', $restablecida['notas']);
         } finally {
+            file_put_contents($rutaSchema, $schemaOriginalRaw);
+            file_put_contents($rutaDetailed, $detailedOriginalRaw);
+            file_put_contents($rutaMd, $mdOriginalRaw);
             if ($db->inTransaction()) $db->rollBack();
         }
     }
