@@ -811,6 +811,8 @@ class LabLoteFilasMatrizTest extends TestCase
         $this->assertStringContainsString('Informe Parcial', $html);
         $this->assertStringContainsString('Rompimiento Consolidado e Informes Oficiales del Lote', $html);
         $this->assertStringContainsString('Consolidado Bloqueado', $html);
+        $this->assertStringContainsString('Ver Informe Oficial (RT-FM-22)', $html);
+        $this->assertStringContainsString('Ver Reporte Oficial del Lote', $html);
     }
 
     /**
@@ -1225,5 +1227,65 @@ class LabLoteFilasMatrizTest extends TestCase
 
         $this->assertFalse($res['exito']);
         $this->assertStringContainsString('no se especificó un código de formato explícito', $res['mensaje']);
+    }
+
+    /**
+     * TEST: LaboratorioControlador::verInforme permite visualizar el reporte oficial RT-FM-22
+     * tanto por id_hoja como por id_informe sin bloqueos comerciales de pago.
+     */
+    public function testVerInformeLaboratorioPorHojaEInforme(): void
+    {
+        $fx = $this->crearFixture(4);
+        $this->sincronizarMatrizConLab($fx['id_hoja'], $fx['id_detalle'], 4, true);
+
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['ver' => 1, 'crear_editar' => 1]];
+        $_SESSION['csrf_token'] = 'token_test_abc';
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/Cycsa/publico/laboratorio/ver-informe?id_hoja=' . $fx['id_hoja'];
+        $_GET = ['id_hoja' => $fx['id_hoja']];
+
+        $peticion = new Peticion();
+        $ctrl = new LaboratorioControlador();
+        $capturador = new class extends Respuesta {
+            public ?string $urlRedir = null;
+            public function redirigir(string $url): void {
+                $this->urlRedir = $url;
+            }
+        };
+
+        // 1. Ver informe por id_hoja
+        ob_start();
+        $ctrl->verInforme($peticion, $capturador);
+        $htmlHoja = (string)ob_get_clean();
+
+        $this->assertNull($capturador->urlRedir, 'verInforme no debe redirigir por restricción de pago');
+        $this->assertStringContainsString('CYCSA-RT-FM-22', $htmlHoja);
+        $this->assertStringContainsString('Volver a Ver Lote', $htmlHoja);
+
+        // 2. Crear un informe de rotura en BD y ver informe por id
+        $stmtM = $this->db->prepare("SELECT id FROM recepcion_muestras WHERE id_hoja = :id_hoja LIMIT 1");
+        $stmtM->execute(['id_hoja' => $fx['id_hoja']]);
+        $mId = (int)$stmtM->fetchColumn();
+
+        $stmtInsInf = $this->db->prepare("
+            INSERT INTO informes_rotura (tipo, muestra_id, numero, version, estado, sha256)
+            VALUES ('consolidado', :mid, 'INF-2026-9999', 1, 'aprobado', 'abcdef1234567890abcdef1234567890')
+        ");
+        $stmtInsInf->execute(['mid' => $mId]);
+        $nuevoInfId = (int)$this->db->lastInsertId();
+
+        $_SERVER['REQUEST_URI'] = '/Cycsa/publico/laboratorio/ver-informe?id=' . $nuevoInfId;
+        $_GET = ['id' => $nuevoInfId];
+
+        ob_start();
+        $ctrl->verInforme($peticion, $capturador);
+        $htmlInf = (string)ob_get_clean();
+
+        $this->assertNull($capturador->urlRedir);
+        $this->assertStringContainsString('INF-2026-9999', $htmlInf);
+        $this->assertStringContainsString('INFORME CONSOLIDADO DE ENSAYO', $htmlInf);
+        $this->assertStringContainsString('SHA-256: abcdef1234567890', $htmlInf);
     }
 }

@@ -130,6 +130,9 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                 <i class="fa-solid fa-hammer"></i> Ensayar Lote en Conjunto (<?= count($probetasPendientesLote) ?> Probetas Juntas)
             </button>
         <?php endif; ?>
+        <a href="/Cycsa/publico/laboratorio/ver-informe?id_hoja=<?= (int)$id_hoja ?>" target="_blank" class="btn-accion btn-success-lab" style="font-size: 13px; padding: 7px 14px;" title="Ver/Imprimir Informe Oficial de Ensayo (RT-FM-22) para este lote">
+            <i class="fa-solid fa-file-lines"></i> Ver Informe Oficial (RT-FM-22)
+        </a>
         <a href="/Cycsa/publico/laboratorio?tab=bandeja" class="btn-accion btn-secondary-lab">
             <i class="fa-solid fa-arrow-left"></i> Volver a Bandeja Anónima
         </a>
@@ -305,10 +308,10 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                     <?php if ($ensayado): ?>
                         <?php if (!empty($infParcialId)): ?>
                             <div style="display: flex; flex-direction: column; gap: 3px;">
-                                <span style="font-family: monospace; font-weight: 800; color: #0369a1; font-size: 12px; white-space: nowrap;">
+                                <a href="/Cycsa/publico/laboratorio/ver-informe?id=<?= $infParcialId ?>" target="_blank" style="font-family: monospace; font-weight: 800; color: #0369a1; font-size: 12px; white-space: nowrap; text-decoration: underline;" title="Ver/Imprimir Informe Parcial Oficial">
                                     <i class="fa-solid fa-file-lines" style="color: #64748b; font-size: 10.5px;"></i> <?= htmlspecialchars($infParcialNum, ENT_QUOTES, 'UTF-8') ?>
-                                </span>
-                                <div>
+                                </a>
+                                <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
                                     <?php if ($infParcialEst === 'aprobado'): ?>
                                         <span class="badge-lab badge-aprobado"><i class="fa-solid fa-check"></i> Aprobado</span>
                                     <?php elseif ($infParcialEst === 'devuelto'): ?>
@@ -316,6 +319,9 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                                     <?php else: ?>
                                         <span class="badge-lab badge-revision"><i class="fa-solid fa-clock"></i> En Revisión</span>
                                     <?php endif; ?>
+                                    <a href="/Cycsa/publico/laboratorio/ver-informe?id=<?= $infParcialId ?>" target="_blank" class="btn-accion btn-secondary-lab" style="padding: 2px 6px; font-size: 10px;" title="Ver/Imprimir Informe">
+                                        <i class="fa-solid fa-eye"></i> Ver
+                                    </a>
                                 </div>
                                 <?php if ($infParcialEst === 'en_revision' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
                                     <div style="display: inline-flex; gap: 4px; margin-top: 2px;">
@@ -356,6 +362,15 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                             <span style="font-size: 11.5px; font-weight: 700; color: #047857;" title="Rompimiento registrado">
                                 <i class="fa-solid fa-circle-check"></i> Ensayado
                             </span>
+                            <?php if (!empty($infParcialId)): ?>
+                                <a href="/Cycsa/publico/laboratorio/ver-informe?id=<?= $infParcialId ?>" target="_blank" class="btn-accion btn-primary-lab" style="padding: 3px 8px; font-size: 11px;" title="Ver/Imprimir Informe Oficial">
+                                    <i class="fa-solid fa-eye"></i> Ver Informe
+                                </a>
+                            <?php else: ?>
+                                <a href="/Cycsa/publico/laboratorio/ver-informe?id_hoja=<?= (int)$id_hoja ?>" target="_blank" class="btn-accion btn-secondary-lab" style="padding: 3px 8px; font-size: 11px;" title="Ver Reporte Oficial del Lote">
+                                    <i class="fa-solid fa-eye"></i> Ver Lote
+                                </a>
+                            <?php endif; ?>
                         <?php elseif ($tieneProgramacion && $planEdadId > 0 && $espId > 0): ?>
                             <button type="button" class="btn-accion btn-primary-lab" onclick="abrirModalRegistrarRoturaLote(<?= $mId ?>, <?= $espId ?>, '<?= htmlspecialchars($codLab, ENT_QUOTES) ?>', <?= $planEdadId ?>, <?= (int)($edadDias ?: 28) ?>, '<?= htmlspecialchars((string)$fechaProg, ENT_QUOTES) ?>', 24)">
                                 <i class="fa-solid fa-hammer"></i> Romper
@@ -404,6 +419,9 @@ foreach (($muestrasLote ?? []) as $itemLote) {
             </span>
         </div>
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <a href="/Cycsa/publico/laboratorio/ver-informe?id_hoja=<?= (int)$id_hoja ?>" target="_blank" class="btn-accion btn-primary-lab" style="font-size: 13px; padding: 7px 16px;" title="Ver/Imprimir Expediente Técnico y Matriz Oficial de Resultados">
+                <i class="fa-solid fa-eye"></i> Ver Reporte Oficial del Lote
+            </a>
             <?php if ($puedeConsolidarTodoElLote && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
                 <form method="POST" action="/Cycsa/publico/laboratorio/generar-informe-consolidado-lote" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
@@ -486,25 +504,30 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                         <?php endif; ?>
                     </td>
                     <td style="text-align: right; white-space: nowrap;">
-                        <?php if ($inf['estado'] === 'en_revision' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
-                            <form method="POST" action="/Cycsa/publico/laboratorio/procesar-revision-informe" style="display:inline;">
-                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-                                <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
-                                <input type="hidden" name="muestra_id" value="<?= (int)$inf['muestra_id'] ?>">
-                                <input type="hidden" name="informe_id" value="<?= (int)$inf['id'] ?>">
-                                <input type="hidden" name="nuevo_estado" value="aprobado">
-                                <button type="submit" class="btn-accion btn-success-lab" style="padding: 4px 8px; font-size: 11px;" title="Aprobar Informe Oficial">
-                                    <i class="fa-solid fa-thumbs-up"></i> Aprobar
+                        <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end;">
+                            <a href="/Cycsa/publico/laboratorio/ver-informe?id=<?= (int)$inf['id'] ?>" target="_blank" class="btn-accion btn-primary-lab" style="padding: 4px 8px; font-size: 11px;" title="Ver/Imprimir Informe Oficial">
+                                <i class="fa-solid fa-eye"></i> Ver Informe
+                            </a>
+                            <?php if ($inf['estado'] === 'en_revision' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
+                                <form method="POST" action="/Cycsa/publico/laboratorio/procesar-revision-informe" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                    <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
+                                    <input type="hidden" name="muestra_id" value="<?= (int)$inf['muestra_id'] ?>">
+                                    <input type="hidden" name="informe_id" value="<?= (int)$inf['id'] ?>">
+                                    <input type="hidden" name="nuevo_estado" value="aprobado">
+                                    <button type="submit" class="btn-accion btn-success-lab" style="padding: 4px 8px; font-size: 11px;" title="Aprobar Informe Oficial">
+                                        <i class="fa-solid fa-thumbs-up"></i> Aprobar
+                                    </button>
+                                </form>
+                                <button type="button" class="btn-accion btn-warning-lab" style="padding: 4px 8px; font-size: 11px;" onclick="abrirModalDevolverInforme(<?= (int)$inf['id'] ?>, '<?= htmlspecialchars((string)$inf['numero'], ENT_QUOTES) ?>')" title="Devolver con observaciones técnicas">
+                                    <i class="fa-solid fa-rotate-left"></i> Devolver
                                 </button>
-                            </form>
-                            <button type="button" class="btn-accion btn-warning-lab" style="padding: 4px 8px; font-size: 11px;" onclick="abrirModalDevolverInforme(<?= (int)$inf['id'] ?>, '<?= htmlspecialchars((string)$inf['numero'], ENT_QUOTES) ?>')" title="Devolver con observaciones técnicas">
-                                <i class="fa-solid fa-rotate-left"></i> Devolver
-                            </button>
-                        <?php elseif ($inf['estado'] === 'aprobado' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
-                            <button type="button" onclick="abrirModalReemitirInforme(<?= (int)$inf['id'] ?>, '<?= htmlspecialchars((string)$inf['numero'], ENT_QUOTES) ?>')" class="btn-accion btn-warning-lab" style="padding: 4px 8px; font-size: 11px;" title="Reemitir informe oficial (N+1) según ISO/IEC 17025">
-                                <i class="fa-solid fa-arrows-rotate"></i> Reemitir
-                            </button>
-                        <?php endif; ?>
+                            <?php elseif ($inf['estado'] === 'aprobado' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
+                                <button type="button" onclick="abrirModalReemitirInforme(<?= (int)$inf['id'] ?>, '<?= htmlspecialchars((string)$inf['numero'], ENT_QUOTES) ?>')" class="btn-accion btn-warning-lab" style="padding: 4px 8px; font-size: 11px;" title="Reemitir informe oficial (N+1) según ISO/IEC 17025">
+                                    <i class="fa-solid fa-arrows-rotate"></i> Reemitir
+                                </button>
+                            <?php endif; ?>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>

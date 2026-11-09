@@ -272,6 +272,8 @@ $app->enrutador->get('/laboratorio/imprimir-solicitud', [LaboratorioControlador:
 $app->enrutador->post('/laboratorio/calcular-hc-ajax', [LaboratorioControlador::class, 'calcularHcAjax'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/registrar-hoja-campo-hc', [LaboratorioControlador::class, 'registrarHojaCampoHc'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/imprimir-reporte-hc', [LaboratorioControlador::class, 'imprimirReporteHcNuevo'], [AuthMiddleware::class]);
+$app->enrutador->get('/laboratorio/ver-informe', [LaboratorioControlador::class, 'verInforme'], [AuthMiddleware::class]);
+$app->enrutador->get('/laboratorio/imprimir-informe', [LaboratorioControlador::class, 'verInforme'], [AuthMiddleware::class]);
 
 // ⚖️ MÓDULO DE EQUIPOS, CALIBRACIÓN Y PARÁMETROS NORMATIVOS (ISO/IEC 17025)
 $app->enrutador->get('/equipos-calibracion', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'index'], [AuthMiddleware::class]);

@@ -16,7 +16,7 @@ if (empty($columnas) || count($columnas) <= 6) {
         ];
     }
 }
-$tituloInforme = !empty($schemaInfo['titulo_informe']) ? $schemaInfo['titulo_informe'] : 'INFORME DE ENSAYO';
+$tituloInforme = !empty($tituloInformePersonalizado) ? $tituloInformePersonalizado : (!empty($schemaInfo['titulo_informe']) ? $schemaInfo['titulo_informe'] : 'INFORME DE ENSAYO');
 $subtituloLaboratorio = $schemaInfo['subtitulo_laboratorio'] ?? 'Laboratorio de Ensayos y Control de Calidad';
 $firmanteNombre = $schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira';
 $firmanteCargo = $schemaInfo['firmante_cargo'] ?? 'Gerente General';
@@ -116,6 +116,7 @@ $procedimientoMuestreo = $metadatos['procedimiento_muestreo'];
 $ubicacion = $metadatos['ubicacion'];
 $ensayoRealizado = $metadatos['ensayo_realizado'];
 $metodoMuestreo = $metadatos['metodo_muestreo'];
+$ensayadoPor = $metadatos['ensayado_por'] ?? 'Laboratorio CYCSA';
 
 // Si está vacío, cargar las muestras seteadas
 if (empty($resultados) && !empty($muestrasSeteadas)) {
@@ -137,14 +138,18 @@ $versionActualNum = (int)($dec['version_actual'] ?? 1);
 $sustituyeA = ($versionActualNum > 1) ? ($reemision['sustituye_a'] ?? null) : null;
 $motivoReemision = ($versionActualNum > 1) ? ($reemision['motivo'] ?? null) : null;
 
-$codigoInformeConsecutivo = generarCodigoInformeEnsayo(
-    $datosParaCodigo,
-    $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null),
-    $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''),
-    $detalle['codigo_os'] ?? null
-);
-if ($versionActualNum > 1 && !empty($sustituyeA)) {
-    $codigoInformeConsecutivo .= '-' . ($versionActualNum - 1);
+if (!empty($codigoInformePersonalizado)) {
+    $codigoInformeConsecutivo = $codigoInformePersonalizado;
+} else {
+    $codigoInformeConsecutivo = generarCodigoInformeEnsayo(
+        $datosParaCodigo,
+        $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null),
+        $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''),
+        $detalle['codigo_os'] ?? null
+    );
+    if ($versionActualNum > 1 && !empty($sustituyeA)) {
+        $codigoInformeConsecutivo .= '-' . ($versionActualNum - 1);
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -560,6 +565,11 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                 </div>
             <?php endif; ?>
 
+            <?php if (!empty($detalle['id_hoja'])): ?>
+                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$detalle['id_hoja'] ?>" class="btn-accion-top btn-volver" style="background: #0284c7; color: white;">
+                    <i class="fa-solid fa-layer-group"></i> Volver a Ver Lote
+                </a>
+            <?php endif; ?>
             <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $detalle['id'] ?><?= !empty($infoVersionImpresion['version']) && empty($infoVersionImpresion['es_actual']) ? '&version=' . $infoVersionImpresion['version'] : '' ?>" class="btn-accion-top btn-volver">
                 <i class="fa-solid fa-pen-to-square"></i> Volver a Matriz
             </a>
@@ -569,7 +579,7 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
             <button onclick="window.print()" class="btn-accion-top btn-imprimir">
                 <i class="fa-solid fa-print"></i> Imprimir Matriz
             </button>
-            <?php if (!empty($resultados)): ?>
+            <?php if (!empty($resultados) && empty($esLaboratorio)): ?>
                 <button type="button" onclick="abrirModalEnviarPrint()" class="btn-accion-top" style="background: #059669; color: white; box-shadow: 0 2px 8px rgba(5,150,105,0.4);">
                     <i class="fa-solid fa-paper-plane"></i> Enviar al Cliente
                 </button>
@@ -595,6 +605,16 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                 <div class="codigo-informe-consecutivo" style="font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; font-weight: 800; color: #103487; letter-spacing: 0.8px; margin-top: 2px; margin-bottom: 2px;">
                     <?= htmlspecialchars($codigoInformeConsecutivo) ?>
                 </div>
+                <?php if (!empty($sha256Informe)): ?>
+                    <div style="font-family: 'Consolas', monospace; font-size: 7.5px; color: #475569; margin-top: 1px; margin-bottom: 2px;">
+                        <i class="fa-solid fa-shield-halved" style="color: #103487;"></i> SHA-256: <?= htmlspecialchars($sha256Informe) ?>
+                    </div>
+                <?php endif; ?>
+                <?php if (!empty($estadoInforme) && $estadoInforme !== 'aprobado'): ?>
+                    <div style="font-size: 8px; font-weight: bold; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 1px 6px; margin-top: 1px; margin-bottom: 2px; border-radius: 3px; display: inline-block;">
+                        ESTADO: <?= strtoupper(htmlspecialchars($estadoInforme)) ?>
+                    </div>
+                <?php endif; ?>
                 <?php if (!empty($sustituyeA)): ?>
                     <div style="font-size: 8.5px; font-weight: bold; color: #b91c1c; background: #fee2e2; border: 1px solid #f87171; padding: 2px 6px; margin-top: 2px; margin-bottom: 3px; border-radius: 3px; display: inline-block;">
                         <i class="fa-solid fa-triangle-exclamation"></i> SUSTITUYE AL INFORME: <?= htmlspecialchars($sustituyeA) ?> (Motivo: <?= htmlspecialchars($motivoReemision) ?>)
@@ -622,13 +642,13 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                     </div>
                 <?php endif; ?>
 
-                <!-- METADATOS OFICIALES 2 COLUMNAS (Captura de pantalla 2026-09-17 144015.png) -->
+                <!-- METADATOS OFICIALES 2 COLUMNAS (ISO/IEC 17025) -->
                 <table class="tabla-metadatos-informe">
                     <tr>
-                        <td class="lbl-informe" style="width: 18%;">** Nombre del cliente:</td>
-                        <td class="val-informe" style="width: 32%;"><?= htmlspecialchars($clienteNom) ?></td>
-                        <td class="lbl-informe" style="width: 16%;">** Proyecto:</td>
-                        <td class="val-informe" style="width: 34%;"><?= htmlspecialchars($proyNom) ?></td>
+                        <td class="lbl-informe" style="width: 17%;">** Nombre del cliente:</td>
+                        <td class="val-informe" style="width: 33%;"><?= htmlspecialchars($clienteNom) ?></td>
+                        <td class="lbl-informe" style="width: 17%;">** Proyecto:</td>
+                        <td class="val-informe" style="width: 33%;"><?= htmlspecialchars($proyNom) ?></td>
                     </tr>
                     <tr>
                         <td class="lbl-informe">** Dirección:</td>
@@ -637,7 +657,7 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                         <td class="val-informe"><?= htmlspecialchars($fechaMuestreo) ?></td>
                     </tr>
                     <tr>
-                        <td class="lbl-informe">Fecha de ingreso:</td>
+                        <td class="lbl-informe">Fecha  recepción ítems de ensayo:</td>
                         <td class="val-informe"><?= htmlspecialchars($fechaIngreso) ?></td>
                         <td class="lbl-informe">Fecha de ejecución:</td>
                         <td class="val-informe"><?= htmlspecialchars($fechaEjecucion) ?></td>
@@ -645,7 +665,7 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                     <tr>
                         <td class="lbl-informe">Tipo de muestra:</td>
                         <td class="val-informe"><?= htmlspecialchars($tipoMuestraOficial) ?></td>
-                        <td class="lbl-informe">Fecha de emisión:</td>
+                        <td class="lbl-informe">Fecha de emisión del informe:</td>
                         <td class="val-informe"><?= htmlspecialchars($fechaEmision) ?></td>
                     </tr>
                     <tr>
@@ -655,66 +675,83 @@ if ($versionActualNum > 1 && !empty($sustituyeA)) {
                         <td class="val-informe"><?= htmlspecialchars($muestraTomadaPor) ?></td>
                     </tr>
                     <tr>
-                        <td class="lbl-informe" style="vertical-align: top;">Ensayo realizado:</td>
-                        <td class="val-informe" style="vertical-align: top; line-height: 1.25;"><?= nl2br(htmlspecialchars($ensayoRealizado)) ?></td>
-                        <td class="lbl-informe" style="vertical-align: top;">
-                            <div>** Ubicación:</div>
-                            <div style="margin-top: 10px;">Método de muestreo:</div>
-                        </td>
-                        <td class="val-informe" style="vertical-align: top;">
-                            <div><?= htmlspecialchars($ubicacion) ?></div>
-                            <div style="margin-top: 10px; font-weight: bold; font-family: monospace;"><?= htmlspecialchars($metodoMuestreo) ?></div>
-                        </td>
+                        <td class="lbl-informe" rowspan="3" style="vertical-align: top;">Ensayo realizado:</td>
+                        <td class="val-informe" rowspan="3" style="vertical-align: top; line-height: 1.25;"><?= nl2br(htmlspecialchars($ensayoRealizado)) ?></td>
+                        <td class="lbl-informe">Ensayado por:</td>
+                        <td class="val-informe"><?= htmlspecialchars($ensayadoPor) ?></td>
+                    </tr>
+                    <tr>
+                        <td class="lbl-informe">** Ubicación:</td>
+                        <td class="val-informe"><?= htmlspecialchars($ubicacion) ?></td>
+                    </tr>
+                    <tr>
+                        <td class="lbl-informe">Método de muestreo:</td>
+                        <td class="val-informe" style="font-weight: bold; font-family: monospace;"><?= htmlspecialchars($metodoMuestreo) ?></td>
                     </tr>
                 </table>
 
                 <!-- TABLA DE RESULTADOS DE MATRIZ TÉCNICA (SENCILLA) -->
                 <div class="contenedor-tabla-matriz">
                     <?php
-    $colMethods = [
+    $defaultColMethods = [
         'P.V.S Max (kg/m³)' => 'ASTM D698 / D1557',
         'P.V.S. Máx (kg/m³)' => 'ASTM D698 / D1557',
-        'Humedad Óptima ((% )(P/P))' => 'ASTM D2216',
-        'Humedad Óptima (% P/P)' => 'ASTM D2216',
+        'Humedad Óptima ((% )(P/P))' => 'ASTM D2216-19',
+        'Humedad Óptima (% P/P)' => 'ASTM D2216-19',
         'P.V.S.Sitio (kg/m³)' => 'ASTM D6938 / D1556',
         'P.V.S. Sitio (kg/m³)' => 'ASTM D6938 / D1556',
+        'P.V.S.Sitio (kg/cm²)' => 'ASTM D6938 / D1556',
         'Humedad Sitio ((%) (P/P))' => 'ASTM D6938 / D2216',
         'Humedad Sitio (% P/P)' => 'ASTM D6938 / D2216',
-        'Compactación ((%) (P/P))' => 'Método In Situ',
-        'Compactación (% P/P)' => 'Método In Situ',
+        'Compactación ((%) (P/P))' => 'ASTM D6938-23',
+        'Compactación (% P/P)' => 'ASTM D6938-23',
         'Espesor (cm)' => 'In Situ',
         'Profundidad (cm)' => 'In Situ',
-        'Área (in²)' => 'ASTM C39',
-        'Área (cm²)' => 'ASTM C39',
-        'Reven. (in)' => 'ASTM C143',
-        'Reven. (cm)' => 'ASTM C143',
-        'Temp. (°C)' => 'ASTM C1064',
-        'Carga (lb)' => 'ASTM C39',
-        'Carga (kg)' => 'ASTM C39',
-        'Peso Volumétrico (kg/m³)' => 'ASTM C29',
-        'Diseño de concreto (lb/in²)' => 'ASTM C39',
-        'R. Compresión (lb/in²)' => 'ASTM C39',
-        'R. Compresión (kg/cm²)' => 'ASTM C39',
-        'Módulo de Ruptura (kg/cm²)' => 'ASTM C78',
-        'Módulo de Ruptura (lb/in²)' => 'ASTM C78',
-        'Luz entre apoyos (cm)' => 'ASTM C78',
-        'Ancho promedio (cm)' => 'ASTM C78',
-        'Altura promedio (cm)' => 'ASTM C78'
+        'Área (in²)' => 'ASTM C39/C39M-26',
+        'Área (cm²)' => 'ASTM C39/C39M-26',
+        'Reven. (in)' => 'ASTM C143/C143M-26b',
+        'Reven. (cm)' => 'ASTM C143/C143M-26b',
+        'Temp. (°C)' => 'ASTM C1064/C1064M-23',
+        'Carga (lb)' => 'ASTM C39/C39M-26',
+        'Carga (kg)' => 'ASTM C39/C39M-26',
+        'Peso Volumétrico (kg/m³)' => 'ASTM C29/C29M-23',
+        'Diseño de concreto (lb/in²)' => '',
+        'R. Compresión (lb/in²)' => 'ASTM C39/C39M-26',
+        'R. Compresión (kg/cm²)' => 'ASTM C39/C39M-26',
+        'R. Compresión (kgf/cm²)' => 'ASTM C39/C39M-26',
+        'Módulo de Ruptura (kg/cm²)' => 'ASTM C78/C78M-22',
+        'Módulo de Ruptura (lb/in²)' => 'ASTM C78/C78M-22',
+        'Luz entre apoyos (cm)' => 'ASTM C78/C78M-22',
+        'Ancho promedio (cm)' => 'ASTM C78/C78M-22',
+        'Altura promedio (cm)' => 'ASTM C78/C78M-22'
     ];
+    $schemaMethods = $schemaInfo['column_methods'] ?? [];
+    $colMethods = array_merge($defaultColMethods, is_array($schemaMethods) ? $schemaMethods : []);
+    $hasSampleCols = count($columnas) >= 2 && (stripos($columnas[0], 'código') !== false || stripos($columnas[0], 'codigo') !== false || stripos($columnas[0], 'lab') !== false);
+    $startColIdx = $hasSampleCols ? 2 : 1;
+    $spanMetodo = $hasSampleCols ? 2 : 1;
                     ?>
                     <table class="tabla-matriz-print">
                         <thead>
-                            <tr>
-                                <th style="width: 20px;">#</th>
-                                <?php foreach ($columnas as $col): 
-                                    $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col; // Corrección B.7 PE-25 unidad estricta para peso volumétrico
+                            <tr class="tr-metodos-normativos">
+                                <th rowspan="2" style="width: 22px; text-align: center; vertical-align: middle;">#</th>
+                                <th colspan="<?= $spanMetodo ?>" class="th-metodo-ensayo" style="text-align: center; vertical-align: middle; font-weight: bold; background: #ffffff;">Método de ensayo</th>
+                                <?php for ($ci = $startColIdx; $ci < count($columnas); $ci++): 
+                                    $col = $columnas[$ci];
+                                    $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col;
                                     $metodo = $colMethods[$col] ?? ($colMethods[$colLabel] ?? '');
                                 ?>
-                                    <th>
+                                    <th class="th-metodo-item metodo-sub" style="text-align: center; vertical-align: middle; font-weight: bold; background: #ffffff;">
+                                        <?= htmlspecialchars($metodo) ?>
+                                    </th>
+                                <?php endfor; ?>
+                            </tr>
+                            <tr class="tr-columnas-nombres">
+                                <?php foreach ($columnas as $col): 
+                                    $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col;
+                                ?>
+                                    <th style="text-align: center; vertical-align: middle; font-weight: bold; background: #ffffff;">
                                         <?= htmlspecialchars($colLabel) ?>
-                                        <?php if (!empty($metodo)): ?>
-                                            <span class="metodo-sub"><?= htmlspecialchars($metodo) ?></span>
-                                        <?php endif; ?>
                                     </th>
                                 <?php endforeach; ?>
                             </tr>

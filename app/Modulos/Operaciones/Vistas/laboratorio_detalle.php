@@ -241,14 +241,19 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     </td>
                     <td>
                         <?php if (!empty($ed['informe_parcial_numero'])): ?>
-                            <span style="font-family: monospace; font-weight: 700; color: #0369a1;"><?= htmlspecialchars($ed['informe_parcial_numero']) ?></span>
+                            <a href="/Cycsa/publico/laboratorio/ver-informe?id=<?= (int)$ed['informe_parcial_id'] ?>" target="_blank" style="font-family: monospace; font-weight: 700; color: #0369a1; text-decoration: underline;" title="Ver/Imprimir Informe Parcial">
+                                <?= htmlspecialchars($ed['informe_parcial_numero']) ?>
+                            </a>
                             <?php if ($ed['informe_parcial_estado'] === 'aprobado'): ?>
                                 <span class="badge-lab badge-aprobado">Aprobado</span>
                             <?php elseif ($ed['informe_parcial_estado'] === 'devuelto'): ?>
                                 <span class="badge-lab badge-devuelto">Devuelto</span>
                             <?php else: ?>
-                                <span class="badge-lab badge-revision">En RevisiÃ³n</span>
+                                <span class="badge-lab badge-revision">En Revisión</span>
                             <?php endif; ?>
+                            <a href="/Cycsa/publico/laboratorio/ver-informe?id=<?= (int)$ed['informe_parcial_id'] ?>" target="_blank" class="btn-accion btn-secondary-lab" style="padding: 2px 6px; font-size: 10px;" title="Ver/Imprimir Informe">
+                                <i class="fa-solid fa-eye"></i> Ver
+                            </a>
                         <?php else: ?>
                             <span style="color:#94a3b8; font-style:italic;">Sin informe emitido</span>
                         <?php endif; ?>
@@ -402,7 +407,12 @@ $puedeEditarPlan = ($totalEnsayados === 0);
             </h4>
             <span style="font-size:12px; color:#64748b;">Consolidado habilitado estrictamente al aprobarse todos los parciales</span>
         </div>
-        <div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+            <?php if (!empty($muestra['id_hoja'])): ?>
+                <a href="/Cycsa/publico/laboratorio/ver-informe?id_hoja=<?= (int)$muestra['id_hoja'] ?>" target="_blank" class="btn-accion btn-primary-lab" style="font-size: 12.5px; padding: 6px 14px;" title="Ver Reporte Oficial del Lote">
+                    <i class="fa-solid fa-eye"></i> Ver Reporte Oficial
+                </a>
+            <?php endif; ?>
             <?php if (!empty($puede_consolidar)): ?>
                 <form method="POST" action="/Cycsa/publico/laboratorio/generar-informe-consolidado" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -435,7 +445,11 @@ $puedeEditarPlan = ($totalEnsayados === 0);
         <tbody>
             <?php foreach (($informes ?? []) as $inf): ?>
             <tr>
-                <td style="font-family: monospace; font-weight: 800; color: #0369a1;"><?= htmlspecialchars($inf['numero']) ?></td>
+                <td style="font-family: monospace; font-weight: 800; color: #0369a1;">
+                    <a href="/Cycsa/publico/laboratorio/ver-informe?id=<?= (int)$inf['id'] ?>" target="_blank" style="color: #0369a1; text-decoration: underline;" title="Ver/Imprimir Informe">
+                        <?= htmlspecialchars($inf['numero']) ?>
+                    </a>
+                </td>
                 <td><strong style="text-transform: capitalize;"><?= htmlspecialchars($inf['tipo']) ?></strong></td>
                 <td>v<?= (int)$inf['version'] ?></td>
                 <td><?= htmlspecialchars(date('d/m/Y H:i', strtotime($inf['created_at']))) ?></td>
@@ -454,12 +468,17 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                 <td style="font-size: 12px; color: #64748b;">
                     <?= htmlspecialchars($inf['motivo_reemision'] ? ('Sustituido: ' . $inf['motivo_reemision']) : ($inf['motivo_devolucion'] ?: ($inf['observaciones'] ?: '--'))) ?>
                 </td>
-                <td style="text-align: right;">
-                    <?php if ($inf['estado'] === 'aprobado' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
-                        <button type="button" onclick="abrirModalReemitirInforme(<?= (int)$inf['id'] ?>, '<?= htmlspecialchars($inf['numero']) ?>')" class="btn-accion btn-warning-lab" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Reemitir informe oficial (N+1) según ISO/IEC 17025">
-                            <i class="fa-solid fa-arrows-rotate"></i> Reemitir
-                        </button>
-                    <?php endif; ?>
+                <td style="text-align: right; white-space: nowrap;">
+                    <div style="display: inline-flex; gap: 5px; align-items: center; justify-content: flex-end;">
+                        <a href="/Cycsa/publico/laboratorio/ver-informe?id=<?= (int)$inf['id'] ?>" target="_blank" class="btn-accion btn-primary-lab" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700;" title="Ver/Imprimir informe oficial">
+                            <i class="fa-solid fa-eye"></i> Ver Informe
+                        </a>
+                        <?php if ($inf['estado'] === 'aprobado' && ($rolUsuario === 1 || $rolUsuario === 3)): ?>
+                            <button type="button" onclick="abrirModalReemitirInforme(<?= (int)$inf['id'] ?>, '<?= htmlspecialchars($inf['numero']) ?>')" class="btn-accion btn-warning-lab" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Reemitir informe oficial (N+1) según ISO/IEC 17025">
+                                <i class="fa-solid fa-arrows-rotate"></i> Reemitir
+                            </button>
+                        <?php endif; ?>
+                    </div>
                 </td>
             </tr>
             <?php endforeach; ?>

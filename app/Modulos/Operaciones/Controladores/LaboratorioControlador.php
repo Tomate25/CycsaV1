@@ -2018,4 +2018,261 @@ class LaboratorioControlador extends ControladorBase {
         }
         $respuesta->redirigir($redirectUrl);
     }
+
+    /**
+     * Visualiza e imprime el Informe Oficial de Ensayo (RT-FM-22) para Laboratorio (ISO/IEC 17025).
+     * Permite acceder por ID de informe de rotura (?id=X), por ID de Hoja de Solicitud (?id_hoja=X)
+     * o por ID de partida (?id_detalle=X) sin requerir validación comercial de pagos.
+     */
+    public function verInforme(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'ver');
+
+        $db = Conexion::obtenerInstancia();
+        $informeId = (int)($_GET['id'] ?? 0);
+        $idHoja = (int)($_GET['id_hoja'] ?? 0);
+        $idDetalle = (int)($_GET['id_detalle'] ?? 0);
+        $muestraId = (int)($_GET['muestra_id'] ?? 0);
+
+        $informeData = null;
+        if ($informeId > 0) {
+            $stmtInf = $db->prepare("
+                SELECT ir.*, rm.id_hoja, rm.id_os, rm.codigo_muestra, rm.codigo_campo, hs.id_detalle_cotizacion
+                FROM informes_rotura ir
+                LEFT JOIN recepcion_muestras rm ON ir.muestra_id = rm.id
+                LEFT JOIN hojas_solicitud hs ON rm.id_hoja = hs.id
+                WHERE ir.id = :id
+            ");
+            $stmtInf->execute(['id' => $informeId]);
+            $informeData = $stmtInf->fetch(PDO::FETCH_ASSOC);
+
+            if ($informeData) {
+                if ($idHoja <= 0 && !empty($informeData['id_hoja'])) {
+                    $idHoja = (int)$informeData['id_hoja'];
+                }
+                if ($idDetalle <= 0 && !empty($informeData['id_detalle_cotizacion'])) {
+                    $idDetalle = (int)$informeData['id_detalle_cotizacion'];
+                }
+            }
+        }
+
+        if ($idHoja <= 0 && $muestraId > 0) {
+            $stmtM = $db->prepare("
+                SELECT rm.id_hoja, hs.id_detalle_cotizacion 
+                FROM recepcion_muestras rm
+                LEFT JOIN hojas_solicitud hs ON rm.id_hoja = hs.id
+                WHERE rm.id = :id
+            ");
+            $stmtM->execute(['id' => $muestraId]);
+            $mRow = $stmtM->fetch(PDO::FETCH_ASSOC);
+            if ($mRow) {
+                $idHoja = (int)($mRow['id_hoja'] ?? 0);
+                if ($idDetalle <= 0) {
+                    $idDetalle = (int)($mRow['id_detalle_cotizacion'] ?? 0);
+                }
+            }
+        }
+
+        if ($idHoja > 0 && $idDetalle <= 0) {
+            $stmtH = $db->prepare("SELECT id_detalle_cotizacion, id_os FROM hojas_solicitud WHERE id = :id");
+            $stmtH->execute(['id' => $idHoja]);
+            $hRow = $stmtH->fetch(PDO::FETCH_ASSOC);
+            if ($hRow) {
+                $idDetalle = (int)($hRow['id_detalle_cotizacion'] ?? 0);
+            }
+        }
+
+        if ($idDetalle <= 0) {
+            $_SESSION['error'] = 'No se pudo resolver la partida o ensayo correspondiente al informe solicitado.';
+            $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=bandeja');
+            return;
+        }
+
+        $stmtDet = $db->prepare("
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
+                   os.forma_pago, COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
+                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.condicion_pago, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   COALESCE(cli_inf.id, cli.id) AS id_cliente, 
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_nombre, 
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_informe_nombre,
+                   cli_fact.nombre_razon_social AS cliente_factura_nombre,
+                   COALESCE(cli_inf.direccion, cli.direccion) AS cliente_direccion, 
+                   COALESCE(cli_inf.email, cli.email) AS cliente_email, 
+                   COALESCE(cli_inf.telefono, cli.telefono) AS cliente_telefono,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
+                   hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio, hs.naturaleza_muestra, hs.observaciones,
+                   rm.fecha_recepcion,
+                   pm.fecha_ida AS pm_fecha_ida, pm.lugar_muestreo AS pm_lugar_muestreo
+            FROM cotizacion_detalles cd
+            JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+            JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+            JOIN clientes cli ON cot.id_cliente = cli.id
+            LEFT JOIN clientes cli_inf ON cli_inf.id = COALESCE(os.id_cliente_informe, cot.id_cliente_informe, cot.id_cliente)
+            LEFT JOIN clientes cli_fact ON cli_fact.id = COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente)
+            LEFT JOIN productos p ON cd.id_producto = p.id
+            LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+            LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+            LEFT JOIN (SELECT id_os, MIN(fecha_recepcion) AS fecha_recepcion FROM recepcion_muestras GROUP BY id_os) rm ON rm.id_os = os.id
+            LEFT JOIN (SELECT id_orden_servicio, MIN(fecha_ida) AS fecha_ida, MIN(lugar_muestreo) AS lugar_muestreo FROM programacion_muestreo GROUP BY id_orden_servicio) pm ON pm.id_orden_servicio = os.id
+            WHERE cd.id = :id
+            LIMIT 1
+        ");
+        $stmtDet->execute(['id' => $idDetalle]);
+        $detalle = $stmtDet->fetch(PDO::FETCH_ASSOC);
+
+        if (!$detalle) {
+            $_SESSION['error'] = 'Partida o ensayo no encontrado.';
+            $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=bandeja');
+            return;
+        }
+
+        $detalle['id'] = (int)$idDetalle;
+        $detalle['id_detalle'] = (int)$idDetalle;
+
+        $hoja = null;
+        if ($idHoja > 0) {
+            $stmtHData = $db->prepare("SELECT * FROM hojas_solicitud WHERE id = :id");
+            $stmtHData->execute(['id' => $idHoja]);
+            $hoja = $stmtHData->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+        if (!$hoja) {
+            $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        }
+
+        if ($hoja) {
+            $detalle['procedencia_punto_muestreo'] = $hoja['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
+            $detalle['nombre_persona_entrega_muestra'] = $hoja['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
+            $detalle['fecha_hora_toma_muestra'] = $hoja['fecha_hora_toma_muestra'] ?? ($detalle['fecha_hora_toma_muestra'] ?? null);
+            $detalle['fecha_hora_llegada_laboratorio'] = $hoja['fecha_hora_llegada_laboratorio'] ?? ($detalle['fecha_hora_llegada_laboratorio'] ?? null);
+            $detalle['naturaleza_muestra'] = $hoja['naturaleza_muestra'] ?? ($detalle['naturaleza_muestra'] ?? '');
+            $detalle['observaciones'] = $hoja['observaciones'] ?? ($detalle['observaciones'] ?? '');
+            $detalle['id_hoja'] = (int)$hoja['id'];
+            $detalle['numero_registro'] = $hoja['numero_registro'] ?? '';
+            $idHojaResolv = (int)$hoja['id'];
+        } else {
+            $idHojaResolv = $idHoja;
+        }
+
+        $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
+        $detalle['archivo_markdown'] = $archivoMd;
+        $schemaInfo = obtenerEsquemaPlantillaEnsayo($archivoMd, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
+        $formatosSchemaJson = json_encode([$archivoMd => $schemaInfo], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+        $columnas = !empty($schemaInfo['columns']) ? $schemaInfo['columns'] : [];
+        if (empty($columnas) || count($columnas) <= 6) {
+            $descLower = mb_strtolower(($detalle['descripcion_ensayo'] ?? '') . ' ' . $archivoMd, 'UTF-8');
+            if (strpos($descLower, 'concreto') !== false || strpos($descLower, 'cilindro') !== false || strpos($descLower, 'compresi') !== false) {
+                $columnas = [
+                    "Código laboratorio", "Nombre muestra", "Área (in²)", "Reven. (in)", "Reven. (cm)",
+                    "Temp. (°C)", "Carga (lb)", "Peso Volumétrico (kg/m³)", "Diseño de concreto (lb/in²)",
+                    "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"
+                ];
+            } else {
+                $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
+            }
+        }
+
+        $prefijoMuestraOS = determinarPrefijoMuestraOS($detalle);
+        $muestrasSeteadas = [];
+        $sqlFiltroHoja = ($idHojaResolv > 0)
+            ? " AND (rm.id_hoja = :id_hoja OR (rm.id_hoja IS NULL AND :id_hoja_fb = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = :id_os_fb)))"
+            : "";
+        $paramsMuestras = ['id_os' => $detalle['id_os']];
+        if ($idHojaResolv > 0) {
+            $paramsMuestras['id_hoja'] = $idHojaResolv;
+            $paramsMuestras['id_hoja_fb'] = $idHojaResolv;
+            $paramsMuestras['id_os_fb'] = $detalle['id_os'];
+        }
+        $stmtMuestrasLab = $db->prepare("
+            SELECT rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote
+            FROM recepcion_muestras rm
+            LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+            WHERE rm.id_os = :id_os {$sqlFiltroHoja}
+            ORDER BY rm.id ASC
+        ");
+        $stmtMuestrasLab->execute($paramsMuestras);
+        $muestrasLabList = $stmtMuestrasLab->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($muestrasLabList)) {
+            foreach ($muestrasLabList as $idx => $ml) {
+                $muestrasSeteadas[] = [
+                    'codigo_lab' => $ml['codigo_muestra'],
+                    'codigo_campo' => $ml['codigo_campo'],
+                    'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                ];
+            }
+        } elseif ($hoja && !empty($hoja['muestras_json'])) {
+            $mList = json_decode($hoja['muestras_json'], true) ?: [];
+            foreach ($mList as $idx => $md) {
+                $codLab = !empty($md['nombre_muestra']) ? trim($md['nombre_muestra']) : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                $muestrasSeteadas[] = [
+                    'codigo_lab' => $codLab,
+                    'codigo_campo' => $codLab,
+                    'nombre_muestra' => !empty($md['descripcion']) ? trim($md['descripcion']) : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                ];
+            }
+        }
+
+        $metadatosGuardados = [];
+        $decResultados = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
+        $versionActual = (int)($decResultados['version_actual'] ?? 1);
+        $listaVersiones = isset($decResultados['versiones']) && is_array($decResultados['versiones']) ? $decResultados['versiones'] : [];
+        if (!empty($decResultados['metadatos']) && is_array($decResultados['metadatos'])) {
+            $metadatosGuardados = $decResultados['metadatos'];
+        }
+
+        $infoVersionImpresion = [
+            'version' => $versionActual,
+            'estado' => $decResultados['revision']['estado'] ?? 'pendiente',
+            'es_actual' => true,
+            'motivo_devolucion' => $decResultados['revision']['motivo_devolucion'] ?? null,
+            'usuario_revisor' => $decResultados['revision']['usuario_revisor'] ?? null,
+            'fecha' => $decResultados['revision']['fecha_revision'] ?? null
+        ];
+
+        $codigoInformePersonalizado = null;
+        $tituloInformePersonalizado = null;
+        $sha256Informe = null;
+        $estadoInforme = null;
+        $sustituyeA = null;
+
+        if ($informeData) {
+            $codigoInformePersonalizado = $informeData['numero'] ?? null;
+            $sha256Informe = $informeData['sha256'] ?? null;
+            $estadoInforme = $informeData['estado'] ?? null;
+            $sustituyeA = $informeData['sustituye_a'] ?? null;
+            $versionActual = (int)($informeData['version'] ?? 1);
+            $infoVersionImpresion['version'] = $versionActual;
+            $infoVersionImpresion['estado'] = $estadoInforme;
+            $infoVersionImpresion['motivo_devolucion'] = $informeData['motivo_devolucion'] ?? null;
+            $tituloInformePersonalizado = ($informeData['tipo'] === 'parcial')
+                ? 'INFORME PARCIAL DE ENSAYO'
+                : 'INFORME CONSOLIDADO DE ENSAYO';
+        } else {
+            if ($idHojaResolv > 0) {
+                $stmtCheckConsol = $db->prepare("
+                    SELECT ir.* FROM informes_rotura ir
+                    JOIN recepcion_muestras rm ON ir.muestra_id = rm.id
+                    WHERE rm.id_hoja = :id_hoja AND ir.tipo = 'consolidado' AND ir.estado != 'anulado'
+                    ORDER BY ir.id DESC LIMIT 1
+                ");
+                $stmtCheckConsol->execute(['id_hoja' => $idHojaResolv]);
+                $consolFound = $stmtCheckConsol->fetch(PDO::FETCH_ASSOC);
+                if ($consolFound) {
+                    $codigoInformePersonalizado = $consolFound['numero'];
+                    $sha256Informe = $consolFound['sha256'];
+                    $estadoInforme = $consolFound['estado'];
+                    $sustituyeA = $consolFound['sustituye_a'] ?? null;
+                    $tituloInformePersonalizado = 'INFORME CONSOLIDADO DE ENSAYO';
+                }
+            }
+        }
+
+        $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
+        $esLaboratorio = true;
+
+        require dirname(__DIR__) . '/Vistas/matriz_print.php';
+    }
 }
