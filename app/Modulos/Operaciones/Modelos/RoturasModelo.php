@@ -514,12 +514,25 @@ class RoturasModelo {
             }
         }
 
-        $codigoFormatoHc = $datos['codigo_formato'] ?? ($crudosArr['codigo_formato'] ?? null);
+        // Limpiar campos vacíos para evitar que inputs HTML en blanco se tomen como datos crudos
+        $crudosLimpios = [];
+        if (!empty($crudosArr)) {
+            foreach ($crudosArr as $k => $v) {
+                if ($v !== null && trim((string)$v) !== '') {
+                    $crudosLimpios[$k] = is_string($v) ? trim($v) : $v;
+                }
+            }
+        }
 
-        // Sin deducción implícita: si llegan lecturas crudas sin código explícito, rechazar
-        $tieneLecturasCrudas = isset($crudosArr['lectura_carga_lbf']) || isset($datos['lectura_carga_lbf'])
-            || isset($crudosArr['diametro_1']) || isset($datos['diametro_1'])
-            || isset($crudosArr['largo_1']) || isset($datos['largo_1']);
+        $codigoFormatoHc = $datos['codigo_formato'] ?? ($crudosLimpios['codigo_formato'] ?? null);
+
+        $cargaDirecta = (float)($datos['carga'] ?? 0);
+        $areaDirecta = (float)($datos['area'] ?? 0);
+        $esRoturaDirecta = ($cargaDirecta > 0 && $areaDirecta > 0);
+
+        // Sin deducción implícita: si llegan lecturas crudas de dial/prensa o dimensiones sin carga/área directas y sin código explícito, rechazar
+        $tieneLecturasCrudas = !empty($crudosLimpios['lectura_carga_lbf']) || !empty($datos['lectura_carga_lbf'])
+            || (!$esRoturaDirecta && (!empty($crudosLimpios['diametro_1']) || !empty($datos['diametro_1']) || !empty($crudosLimpios['largo_1']) || !empty($datos['largo_1'])));
 
         if ($tieneLecturasCrudas && empty($codigoFormatoHc)) {
             return [
@@ -537,12 +550,12 @@ class RoturasModelo {
             $especimenId = (int)($datos['especimen_id'] ?? 0);
             $planEdadId = (int)($datos['plan_edad_id'] ?? 0);
             $fechaReal = !empty($datos['fecha_real']) ? $datos['fecha_real'] : date('Y-m-d H:i:s');
-            $carga = (float)($datos['carga'] ?? 0);
-            $area = (float)($datos['area'] ?? 28.2743); // 15x30 cm estándar = ~4.4 in diametro = 28.27 in²
+            $carga = $cargaDirecta;
+            $area = ($areaDirecta > 0) ? $areaDirecta : 28.2743; // 15x30 cm estándar = ~4.4 in diametro = 28.27 in²
             $tipoFalla = trim($datos['tipo_falla'] ?? 'Tipo 1 (Cono)');
             $justificacion = trim($datos['justificacion'] ?? '');
-            $datosCrudos = !empty($datos['datos_crudos'])
-                ? (is_array($datos['datos_crudos']) ? json_encode($datos['datos_crudos'], JSON_UNESCAPED_UNICODE) : $datos['datos_crudos'])
+            $datosCrudos = !empty($crudosLimpios)
+                ? json_encode($crudosLimpios, JSON_UNESCAPED_UNICODE)
                 : null;
 
             if ($especimenId <= 0 || $carga <= 0 || $area <= 0) {

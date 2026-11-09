@@ -544,7 +544,7 @@ foreach (($muestrasLote ?? []) as $itemLote) {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Fecha y Hora Real:</label>
-                    <input type="datetime-local" id="rot_fecha_real" name="fecha_real" class="form-control" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" value="<?= date('Y-m-d\TH:i') ?>" required>
+                    <input type="datetime-local" id="rot_fecha_real" name="fecha_real" class="form-control" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" value="<?= date('Y-m-d\TH:i') ?>" onchange="verificarToleranciaTiempoLote()" required>
                 </div>
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Tipo de Falla (ASTM C39):</label>
@@ -576,11 +576,11 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                 <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569;">Diámetro 1 (cm):</label>
-                        <input type="text" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;">
+                        <input type="text" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" oninput="recalcularAreaLote()">
                     </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569;">Diámetro 2 (cm):</label>
-                        <input type="text" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;">
+                        <input type="text" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" oninput="recalcularAreaLote()">
                     </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569;">Longitud 1 (cm):</label>
@@ -606,6 +606,17 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                     <span style="font-size: 11px; color: #64748b; font-weight: 700;">Esfuerzo Calculado kg/cm²:</span>
                     <div id="calc_kgcm2" style="font-size: 18px; font-weight: 800; font-family: monospace; color: #047857;">--</div>
                 </div>
+            </div>
+
+            <!-- Alerta y Justificación de Tolerancia Temporal (ASTM C39) -->
+            <div id="box_justificacion_tolerancia_lote" style="display: none; background: #fff1f2; border: 1.5px solid #fecaca; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;">
+                <div style="font-size: 11.5px; font-weight: 800; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> ENSAYO FUERA DE TOLERANCIA ASTM C39
+                </div>
+                <div style="font-size: 11.5px; color: #881337; margin-bottom: 6px; line-height: 1.35;">
+                    La fecha/hora seleccionada excede la ventana admisible para esta edad (±<span id="rot_tol_hrs_txt">24</span> hrs). Ingrese una justificación técnica obligatoria.
+                </div>
+                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 6px 8px; font-size: 12px; border: 1px solid #fca5a5; border-radius: 6px;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
@@ -804,12 +815,58 @@ function abrirModalRegistrarRoturaLote(muestraId, espId, codigoLab, planEdadId, 
     document.getElementById('hc_l2').value = (dm.largo_2 && dm.largo_2 > 0) ? dm.largo_2 : '';
     document.getElementById('hc_masa').value = (dm.masa_kg && dm.masa_kg > 0) ? dm.masa_kg : '';
 
+    const justElem = document.getElementById('rot_justificacion');
+    if (justElem) justElem.value = '';
+    const tolTxt = document.getElementById('rot_tol_hrs_txt');
+    if (tolTxt) tolTxt.innerText = tolHoras || 24;
+
     calcularEsfuerzoLote();
+    verificarToleranciaTiempoLote();
     document.getElementById('modalRegistrarRotura').style.display = 'block';
 }
 
 function cerrarModalRegistrarRotura() {
     document.getElementById('modalRegistrarRotura').style.display = 'none';
+}
+
+function recalcularAreaLote() {
+    const d1 = parseFloat(document.getElementById('hc_d1')?.value || 0);
+    const d2 = parseFloat(document.getElementById('hc_d2')?.value || 0);
+    if (d1 > 0 && d2 > 0) {
+        const a1 = Math.PI * d1 * d1 / 4.0;
+        const a2 = Math.PI * d2 * d2 / 4.0;
+        const areaIn2 = ((a1 + a2) / 2.0) / 6.4516;
+        document.getElementById('rot_area').value = areaIn2.toFixed(3);
+    }
+    calcularEsfuerzoLote();
+}
+
+function verificarToleranciaTiempoLote() {
+    const fechaRealStr = document.getElementById('rot_fecha_real')?.value;
+    const fechaProgStr = document.getElementById('rot_fecha_prog')?.value;
+    const tolHoras = parseFloat(document.getElementById('rot_tol_horas')?.value || 24);
+
+    const box = document.getElementById('box_justificacion_tolerancia_lote');
+    const justArea = document.getElementById('rot_justificacion');
+    if (!box || !justArea) return;
+
+    if (!fechaRealStr || !fechaProgStr) {
+        box.style.display = 'none';
+        justArea.required = false;
+        return;
+    }
+
+    const tReal = new Date(fechaRealStr).getTime();
+    const tProg = new Date(fechaProgStr + 'T08:00:00').getTime();
+    const difHoras = Math.abs(tReal - tProg) / (1000 * 3600);
+
+    if (difHoras > tolHoras) {
+        box.style.display = 'block';
+        justArea.required = true;
+    } else {
+        box.style.display = 'none';
+        justArea.required = false;
+    }
 }
 
 function calcularEsfuerzoLote() {

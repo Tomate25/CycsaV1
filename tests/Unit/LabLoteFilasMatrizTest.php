@@ -1106,4 +1106,124 @@ class LabLoteFilasMatrizTest extends TestCase
         $stmtCountCons->execute(['h' => $fx['id_hoja']]);
         $this->assertSame(2, (int)$stmtCountCons->fetchColumn(), 'Ambas muestras del lote deben tener su informe consolidado emitido.');
     }
+
+    /**
+     * TEST: Enviar datos_crudos con campos vacíos desde formulario HTML no debe arrojar error de código de formato.
+     */
+    public function testRegistrarRoturaDirectaConDatosCrudosVaciosNoFallaPorCodigoFormato(): void
+    {
+        $fx = $this->crearFixture(1);
+        $this->sincronizarMatrizConLab($fx['id_hoja'], $fx['id_detalle'], 1, false);
+
+        $stmt = $this->db->prepare("SELECT id FROM recepcion_muestras WHERE id_hoja = :h LIMIT 1");
+        $stmt->execute(['h' => $fx['id_hoja']]);
+        $mId = (int)$stmt->fetchColumn();
+
+        $stmtEsp = $this->db->prepare("
+            SELECT esp.id as esp_id, pre.id as plan_edad_id, pre.edad_dias, pre.fecha_programada
+            FROM especimenes esp
+            JOIN plan_rotura_asignaciones pra ON pra.especimen_id = esp.id
+            JOIN plan_rotura_edades pre ON pra.plan_edad_id = pre.id
+            WHERE esp.muestra_id = :mid LIMIT 1
+        ");
+        $stmtEsp->execute(['mid' => $mId]);
+        $espRow = $stmtEsp->fetch(PDO::FETCH_ASSOC);
+
+        $fechaEnsayo = !empty($espRow['fecha_programada']) ? ($espRow['fecha_programada'] . ' 08:30:00') : date('Y-m-d H:i:s');
+        $roturasMod = new RoturasModelo();
+        // Simular exactamente el POST del navegador con inputs HTML en blanco en datos_crudos
+        $resRot = $roturasMod->registrarRotura([
+            'especimen_id' => (int)$espRow['esp_id'],
+            'plan_edad_id' => (int)$espRow['plan_edad_id'],
+            'edad_dias' => 7,
+            'fecha_real' => $fechaEnsayo,
+            'justificacion' => 'Ensayo en fecha programada',
+            'carga' => 65400.0,
+            'area' => 28.274,
+            'tipo_falla' => 'Tipo 1 (Cono bien formado)',
+            'datos_crudos' => [
+                'diametro_1' => '',
+                'diametro_2' => '',
+                'largo_1' => '',
+                'largo_2' => '',
+                'masa_kg' => ''
+            ]
+        ], $fx['id_usuario']);
+
+        $this->assertTrue($resRot['exito'], 'El registro de rotura directa con campos crudos vacíos debe ser exitoso: ' . ($resRot['mensaje'] ?? ''));
+        $this->assertEqualsWithDelta(2313.08, (float)$resRot['esfuerzo_psi'], 0.1);
+        $this->assertEqualsWithDelta(162.63, (float)$resRot['esfuerzo_kgcm2'], 0.1);
+    }
+
+    /**
+     * TEST: Enviar dimensiones de probeta RT-FM-61 con carga y área directas persiste metadatos sin exigir formato explícito.
+     */
+    public function testRegistrarRoturaDirectaConDimensionesDeCilindroPersisteDatosCrudosSinRequerirCodigoFormato(): void
+    {
+        $fx = $this->crearFixture(1);
+        $this->sincronizarMatrizConLab($fx['id_hoja'], $fx['id_detalle'], 1, false);
+
+        $stmt = $this->db->prepare("SELECT id FROM recepcion_muestras WHERE id_hoja = :h LIMIT 1");
+        $stmt->execute(['h' => $fx['id_hoja']]);
+        $mId = (int)$stmt->fetchColumn();
+
+        $stmtEsp = $this->db->prepare("
+            SELECT esp.id as esp_id, pre.id as plan_edad_id, pre.fecha_programada
+            FROM especimenes esp
+            JOIN plan_rotura_asignaciones pra ON pra.especimen_id = esp.id
+            JOIN plan_rotura_edades pre ON pra.plan_edad_id = pre.id
+            WHERE esp.muestra_id = :mid LIMIT 1
+        ");
+        $stmtEsp->execute(['mid' => $mId]);
+        $espRow = $stmtEsp->fetch(PDO::FETCH_ASSOC);
+
+        $fechaEnsayo = !empty($espRow['fecha_programada']) ? ($espRow['fecha_programada'] . ' 08:30:00') : date('Y-m-d H:i:s');
+        $roturasMod = new RoturasModelo();
+        $resRot = $roturasMod->registrarRotura([
+            'especimen_id' => (int)$espRow['esp_id'],
+            'plan_edad_id' => (int)$espRow['plan_edad_id'],
+            'edad_dias' => 28,
+            'fecha_real' => $fechaEnsayo,
+            'justificacion' => 'Ensayo en fecha programada',
+            'carga' => 70000.0,
+            'area' => 28.274,
+            'tipo_falla' => 'Tipo 1 (Cono bien formado)',
+            'datos_crudos' => [
+                'diametro_1' => '15.20',
+                'diametro_2' => '15.22',
+                'largo_1' => '30.40',
+                'largo_2' => '30.45',
+                'masa_kg' => '12.85'
+            ]
+        ], $fx['id_usuario']);
+
+        $this->assertTrue($resRot['exito']);
+        $this->assertEqualsWithDelta(2475.77, (float)$resRot['esfuerzo_psi'], 0.1);
+
+        // Verificar que los metadatos de dimensiones se guardaron limpios en BD
+        $stmtRotBd = $this->db->prepare("SELECT datos_crudos FROM roturas WHERE especimen_id = :espId");
+        $stmtRotBd->execute(['espId' => (int)$espRow['esp_id']]);
+        $jsonCrudos = $stmtRotBd->fetchColumn();
+        $this->assertNotNull($jsonCrudos);
+        $arrCrudos = json_decode((string)$jsonCrudos, true);
+        $this->assertSame('15.20', $arrCrudos['diametro_1']);
+        $this->assertSame('12.85', $arrCrudos['masa_kg']);
+    }
+
+    /**
+     * TEST: Lectura cruda de dial sin carga directa y sin código de formato debe ser rechazada explícitamente.
+     */
+    public function testRegistrarRoturaConLecturaCrudaSinCargaYSinFormatoRechazaConMensajeClaro(): void
+    {
+        $roturasMod = new RoturasModelo();
+        $res = $roturasMod->registrarRotura([
+            'especimen_id' => 999999,
+            'datos_crudos' => [
+                'lectura_carga_lbf' => 91932
+            ]
+        ], 1);
+
+        $this->assertFalse($res['exito']);
+        $this->assertStringContainsString('no se especificó un código de formato explícito', $res['mensaje']);
+    }
 }
