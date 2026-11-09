@@ -61,6 +61,8 @@ $tablasTransaccionales = [
     'informes_control',
     'documentos_reemisiones',
     'especimenes',
+    'ensayos_parametros',
+    'ensayo_edades',
     'hojas_campo_registros',
     'hojas_solicitud_detalles',
     'hojas_solicitud',
@@ -172,6 +174,30 @@ foreach ($tablasTransaccionales as $tabla) {
 }
 
 echo PHP_EOL . "Total de registros transaccionales procesados: {$totalRegistrosPurgados}" . PHP_EOL . PHP_EOL;
+
+if ($esEjecucion) {
+    $anioActual = (int)date('Y');
+    $db->query("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) 
+                VALUES ({$anioActual}, 'Campo', 0), ({$anioActual}, 'Laboratorio', 0) 
+                ON DUPLICATE KEY UPDATE ultimo_correlativo = 0");
+    echo "  [OK] Secuencias de muestras reiniciadas a 0 para el año {$anioActual} (Próximas: MC-0001-26 y MS-0001-26)." . PHP_EOL;
+
+    // Limpieza de PDFs generados en almacenamiento
+    $directorios = [
+        __DIR__ . '/../almacenamiento/solicitudes/*.pdf',
+        __DIR__ . '/../almacenamiento/informes/*.pdf'
+    ];
+    $totalBorrados = 0;
+    foreach ($directorios as $patron) {
+        foreach (glob($patron) as $archivo) {
+            if (is_file($archivo)) {
+                @unlink($archivo);
+                $totalBorrados++;
+            }
+        }
+    }
+    echo "  [OK] {$totalBorrados} archivo(s) PDF temporal(es) eliminado(s) de almacenamiento." . PHP_EOL . PHP_EOL;
+}
 
 // Verificación de integridad de catálogos protegidos
 echo "--- CATÁLOGOS MAESTROS PRESERVADOS (INTEGRIDAD) ---" . PHP_EOL;
