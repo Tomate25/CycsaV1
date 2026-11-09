@@ -270,15 +270,8 @@ class PlantillaModelo {
             }
         }
 
-        // 3. General por defecto
-        foreach ($disponibles as $d) {
-            if (!empty($d['es_por_defecto'])) {
-                return $d;
-            }
-        }
-
-        // 4. Primera disponible
-        return $disponibles[0];
+        // Si no hay plantilla directamente vinculada a este ensayo/producto, no sugerir ninguna ajena
+        return null;
     }
 
     /**

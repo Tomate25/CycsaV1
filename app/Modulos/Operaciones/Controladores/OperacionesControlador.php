@@ -1854,19 +1854,61 @@ class OperacionesControlador extends ControladorBase {
             ]);
             $muestrasLabList = $stmtMuestrasLab->fetchAll(PDO::FETCH_ASSOC);
 
-            if (empty($muestrasLabList)) {
-                $_SESSION['error'] = 'Las muestras de la Orden de Servicio (' . ($detalle['codigo_os'] ?? 'O/S') . ') para este ensayo aún no han sido aceptadas e ingresadas en el Laboratorio. Primero debe realizar la aceptación técnica en el módulo de Laboratorio para asignar los códigos oficiales (MS-XXXX-26).';
-                $respuesta->redirigir('/Cycsa/publico/operaciones/ver?id_os=' . (int)$detalle['id_os']);
-                return;
-            }
+            if (!empty($muestrasLabList)) {
+                foreach ($muestrasLabList as $idx => $ml) {
+                    $muestrasSeteadas[] = [
+                        'codigo_lab' => $ml['codigo_muestra'],
+                        'codigo_campo' => $ml['codigo_campo'],
+                        'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                    ];
+                }
+            } else {
+                // Flujo Directo RT-FM-13 (Abdia): Operaciones puede llenar y guardar la matriz técnica
+                // con las muestras declaradas en la hoja RT-FM-13 sin requerir aceptación previa en Laboratorio.
+                $stmtHsd = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion, observacion_edad FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :id_hoja ORDER BY orden ASC, id ASC");
+                $stmtHsd->execute(['id_hoja' => $idHojaResolv]);
+                $filasHsd = $stmtHsd->fetchAll(PDO::FETCH_ASSOC);
 
-            foreach ($muestrasLabList as $idx => $ml) {
-                $muestrasSeteadas[] = [
-                    'codigo_lab' => $ml['codigo_muestra'],
-                    'codigo_campo' => $ml['codigo_campo'],
-                    'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
-                ];
+                if (!empty($filasHsd)) {
+                    foreach ($filasHsd as $idx => $fh) {
+                        $codLab = trim((string)($fh['codigo_muestra'] ?? ''));
+                        if (empty($codLab)) {
+                            $codLab = sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                        }
+                        $muestrasSeteadas[] = [
+                            'codigo_lab' => $codLab,
+                            'codigo_campo' => $codLab,
+                            'nombre_muestra' => !empty($fh['descripcion_ubicacion']) ? $fh['descripcion_ubicacion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                        ];
+                    }
+                } elseif ($hoja && !empty($hoja['muestras_json'])) {
+                    $mList = json_decode($hoja['muestras_json'], true) ?: [];
+                    foreach ($mList as $idx => $md) {
+                        $codLab = !empty($md['nombre_muestra']) ? trim((string)$md['nombre_muestra']) : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                        $muestrasSeteadas[] = [
+                            'codigo_lab' => $codLab,
+                            'codigo_campo' => $codLab,
+                            'nombre_muestra' => !empty($md['descripcion']) ? trim((string)$md['descripcion']) : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
+                        ];
+                    }
+                } else {
+                    $cantItems = max(1, (int)($detalle['cantidad'] ?? 1));
+                    for ($idx = 0; $idx < $cantItems; $idx++) {
+                        $codLab = sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
+                        $muestrasSeteadas[] = [
+                            'codigo_lab' => $codLab,
+                            'codigo_campo' => $codLab,
+                            'nombre_muestra' => $detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1)
+                        ];
+                    }
+                }
             }
+        }
+
+        if (empty($muestrasSeteadas)) {
+            $_SESSION['error'] = 'No se encontraron muestras declaradas en la Hoja RT-FM-13 ni en recepción de laboratorio.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones/ver?id_os=' . (int)$detalle['id_os']);
+            return;
         }
 
         $archivoMd = resolverArchivoMarkdownEnsayo($detalle);
@@ -2992,19 +3034,23 @@ class OperacionesControlador extends ControladorBase {
                 }
             }
         } else {
+            $sqlFiltroHoja = ($idHojaResolv > 0)
+                ? " AND (rm.id_hoja = :id_hoja OR (rm.id_hoja IS NULL AND :id_hoja_fb = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = :id_os_fb)))"
+                : "";
+            $paramsMuestras = ['id_os' => $detalle['id_os']];
+            if ($idHojaResolv > 0) {
+                $paramsMuestras['id_hoja'] = $idHojaResolv;
+                $paramsMuestras['id_hoja_fb'] = $idHojaResolv;
+                $paramsMuestras['id_os_fb'] = $detalle['id_os'];
+            }
             $stmtMuestrasLab = $db->prepare("
                 SELECT rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote
                 FROM recepcion_muestras rm
                 LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
-                WHERE rm.id_os = :id_os AND (:id_hoja = 0 OR rm.id_hoja = :id_hoja OR (rm.id_hoja IS NULL AND :id_hoja_fb = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = :id_os_fb)))
+                WHERE rm.id_os = :id_os {$sqlFiltroHoja}
                 ORDER BY rm.id ASC
             ");
-            $stmtMuestrasLab->execute([
-                'id_os' => $detalle['id_os'],
-                'id_hoja' => $idHojaResolv,
-                'id_hoja_fb' => $idHojaResolv,
-                'id_os_fb' => $detalle['id_os']
-            ]);
+            $stmtMuestrasLab->execute($paramsMuestras);
             $muestrasLabList = $stmtMuestrasLab->fetchAll(PDO::FETCH_ASSOC);
 
             if (!empty($muestrasLabList)) {

@@ -554,10 +554,15 @@ foreach ($solicitudesPorAprobar as $sol) {
                         </td>
                         <td><?= htmlspecialchars($rec['naturaleza_muestra'] ?: 'Material General') ?></td>
                         <td><?= htmlspecialchars($rec['ensayos'][0]['descripcion_ensayo'] ?? 'Ensayo Estándar') ?></td>
-                        <td><span class="badge-lab badge-curado"><i class="fa-solid fa-flask"></i> <?= (int)$rec['total_recibidas_lab'] ?> lote(s) en custodia</span></td>
+                        <td><span class="badge-lab badge-curado"><i class="fa-solid fa-flask"></i> <?= (int)$rec['total_recibidas_lab'] ?> muestra(s) en custodia</span></td>
                         <td><span class="badge-lab badge-activo">Aceptada en Lab</span></td>
                         <td style="text-align: right; white-space: nowrap;">
-                            <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_os=<?= (int)$rec['id_os'] ?><?= !empty($rec['id_hoja']) ? '&id_hoja=' . (int)$rec['id_hoja'] : '' ?>" target="_blank" class="btn-accion btn-os" title="Ver formato oficial RT-FM-60">
+                            <?php if (!empty($rec['id_hoja'])): ?>
+                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$rec['id_hoja'] ?>" class="btn-accion btn-os" title="Ver lote completo y programar/ensayar probetas juntas">
+                                    <i class="fa-solid fa-layer-group"></i> Ver Lote
+                                </a>
+                            <?php endif; ?>
+                            <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_os=<?= (int)$rec['id_os'] ?><?= !empty($rec['id_hoja']) ? '&id_hoja=' . (int)$rec['id_hoja'] : '' ?>" target="_blank" class="btn-accion btn-os" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;" title="Ver formato oficial RT-FM-60">
                                 <i class="fa-solid fa-file-pdf"></i> Hoja RT-FM-60
                             </a>
                             <a href="?tab=bandeja" class="btn-accion btn-detalle" title="Ir a la Bandeja Anónima">
@@ -701,9 +706,17 @@ foreach ($solicitudesPorAprobar as $sol) {
                             <?php endif; ?>
                         </td>
                         <td>
-                            <span style="font-weight: 600; color: #334155;"><?= htmlspecialchars($m['plantilla_nombre'] ?: 'Ensayo General') ?></span>
-                            <?php if (!empty($m['norma_referencia'])): ?>
-                                <span style="display: block; font-size: 11px; color: #64748b; font-family: monospace;"><?= htmlspecialchars($m['norma_referencia']) ?></span>
+                            <?php 
+                                $labelEnsayo = !empty($m['plantilla_nombre']) 
+                                    ? $m['plantilla_nombre'] 
+                                    : (!empty($m['producto_nombre']) ? $m['producto_nombre'] : 'Sin Plantilla');
+                                $labelNorma = !empty($m['norma_referencia']) 
+                                    ? $m['norma_referencia'] 
+                                    : (!empty($m['producto_norma']) ? $m['producto_norma'] : '');
+                            ?>
+                            <span style="font-weight: 600; color: #334155;"><?= htmlspecialchars($labelEnsayo, ENT_QUOTES, 'UTF-8') ?></span>
+                            <?php if (!empty($labelNorma)): ?>
+                                <span style="display: block; font-size: 11px; color: #64748b; font-family: monospace;"><?= htmlspecialchars($labelNorma, ENT_QUOTES, 'UTF-8') ?></span>
                             <?php endif; ?>
                         </td>
                         <td>
@@ -802,15 +815,27 @@ foreach ($solicitudesPorAprobar as $sol) {
                                 <span class="badge-lab badge-hoy">Hoy</span>
                             <?php endif; ?>
                         </td>
-                        <td style="font-family: monospace; font-weight: 800; color: #0369a1;"><?= htmlspecialchars($r['codigo_lab'], ENT_QUOTES, 'UTF-8') ?></td>
+                        <td style="font-family: monospace; font-weight: 800; color: #0369a1;">
+                            <?= htmlspecialchars($r['codigo_lab'], ENT_QUOTES, 'UTF-8') ?>
+                            <?php if (!empty($r['id_hoja'])): ?>
+                                <span style="font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 1px 5px; border-radius: 4px; font-weight: 700; display: inline-block; margin-left: 4px;" title="Pertenece a lote con <?= (int)($r['total_muestras_lote'] ?? 1) ?> muestra(s)">
+                                    <i class="fa-solid fa-layer-group"></i> Lote #<?= (int)$r['id_hoja'] ?>
+                                </span>
+                            <?php endif; ?>
+                        </td>
                         <td><?= htmlspecialchars($r['material_descripcion'], ENT_QUOTES, 'UTF-8') ?></td>
                         <td><?= htmlspecialchars($r['dimensiones'] ?: '15 x 30 cm', ENT_QUOTES, 'UTF-8') ?></td>
                         <td><strong style="color: #7c3aed;"><?= (int)$r['edad_dias'] ?> días</strong></td>
                         <td>&plusmn; <?= (int)$r['tolerancia_horas'] ?> hrs</td>
                         <td><?= htmlspecialchars($r['diseno_resistencia'] ?: 'N/A') ?></td>
-                        <td style="text-align: right;">
-                            <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$r['muestra_id'] ?>" class="btn-accion btn-detalle">
-                                <i class="fa-solid fa-hammer"></i> Ensayar
+                        <td style="text-align: right; white-space: nowrap;">
+                            <?php if (!empty($r['id_hoja'])): ?>
+                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$r['id_hoja'] ?>" class="btn-accion btn-os" title="Ensayar lote completo con todas las probetas juntas">
+                                    <i class="fa-solid fa-layer-group"></i> Ensayar Lote
+                                </a>
+                            <?php endif; ?>
+                            <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$r['muestra_id'] ?>" class="btn-accion btn-detalle" title="Ensayar probeta individual">
+                                <i class="fa-solid fa-hammer"></i> Individual
                             </a>
                         </td>
                     </tr>

@@ -480,6 +480,7 @@ class LabLotesYReplicasSyncTest extends TestCase
         ];
         $this->db->prepare("UPDATE cotizacion_detalles SET resultados_json = :rj WHERE id = :id")
                  ->execute(['rj' => json_encode($resultadosJson), 'id' => $fx['id_detalle']]);
+        sincronizarReplicasMatrizConLab($this->db, $fx['id_os'], $fx['id_hoja'], $fx['id_detalle'], $resultadosJson['filas']);
 
         $_SESSION['usuario_id'] = $fx['id_usuario'];
         $_SESSION['usuario_rol'] = 1;

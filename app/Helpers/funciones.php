@@ -2382,6 +2382,19 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
     $muestraTomadaPor = !empty($metadatosGuardados['muestra_tomada_por']) ? $metadatosGuardados['muestra_tomada_por'] : (!empty($detalle['muestra_tomada_por']) ? $detalle['muestra_tomada_por'] : (!empty($detalle['requiere_muestreo']) ? 'Laboratorio - Consultoría y Construcción S.A. CYCSA.' : 'El Cliente y entrega en Laboratorio'));
     $procedimientoMuestreo = !empty($metadatosGuardados['procedimiento_muestreo']) ? $metadatosGuardados['procedimiento_muestreo'] : (!empty($detalle['procedimiento_muestreo']) ? $detalle['procedimiento_muestreo'] : (!empty($detalle['procedimiento']) ? $detalle['procedimiento'] : (!empty($detalle['prod_procedimiento']) ? $detalle['prod_procedimiento'] : (!empty($detalle['formato_procedimiento']) ? $detalle['formato_procedimiento'] : 'Aleatorio Procedimiento A (TD)'))));
     $ubicacion = !empty($metadatosGuardados['ubicacion']) ? $metadatosGuardados['ubicacion'] : (!empty($detalle['ubicacion']) ? $detalle['ubicacion'] : (!empty($detalle['procedencia_punto_muestreo']) ? $detalle['procedencia_punto_muestreo'] : (!empty($detalle['direccion_proyecto']) ? $detalle['direccion_proyecto'] : (!empty($detalle['pm_lugar_muestreo']) ? $detalle['pm_lugar_muestreo'] : 'Sitio de Proyecto'))));
+    $ensayadoPor = !empty($metadatosGuardados['ensayado_por']) 
+        ? $metadatosGuardados['ensayado_por'] 
+        : (!empty($detalle['ensayado_por']) 
+            ? $detalle['ensayado_por'] 
+            : (!empty($detalle['tecnico_ensayo']) 
+                ? $detalle['tecnico_ensayo'] 
+                : (!empty($detalle['tecnico_laboratorio']) 
+                    ? $detalle['tecnico_laboratorio'] 
+                    : (!empty($detalle['usuario_ensayo']) 
+                        ? $detalle['usuario_ensayo'] 
+                        : (!empty($detalle['usuario_creador']) 
+                            ? $detalle['usuario_creador'] 
+                            : 'Laboratorio CYCSA')))));
     $ensayoRealizado = !empty($schemaInfo['ensayo_titulo']) ? $schemaInfo['ensayo_titulo'] : (!empty($metadatosGuardados['ensayo_realizado']) ? $metadatosGuardados['ensayo_realizado'] : (!empty($detalle['ensayo_realizado']) ? $detalle['ensayo_realizado'] : ($detalle['descripcion_ensayo'] ?? 'Ensayo de Laboratorio')));
     $metodoMuestreo = !empty($schemaInfo['metodo_muestreo']) ? $schemaInfo['metodo_muestreo'] : (!empty($metadatosGuardados['metodo_muestreo']) ? $metadatosGuardados['metodo_muestreo'] : (!empty($detalle['metodo_muestreo']) ? $detalle['metodo_muestreo'] : (!empty($detalle['norma_astm']) ? $detalle['norma_astm'] : (!empty($detalle['prod_norma_astm']) ? $detalle['prod_norma_astm'] : 'DE-ASTM D6938-23'))));
     $codigoFormato = !empty($schemaInfo['codigo_formato']) ? $schemaInfo['codigo_formato'] : (!empty($detalle['codigo_formato']) ? $detalle['codigo_formato'] : (!empty($detalle['codigo_documento']) ? $detalle['codigo_documento'] : 'CYCSA-RT-FM-22'));
@@ -2452,6 +2465,7 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
         'muestra_tomada_por' => $muestraTomadaPor,
         'procedimiento_muestreo' => $procedimientoMuestreo,
         'ubicacion' => $ubicacion,
+        'ensayado_por' => $ensayadoPor,
         'ensayo_realizado' => $ensayoRealizado,
         'metodo_muestreo' => $metodoMuestreo,
         'norma_tecnica' => $normaTecnica,
@@ -2759,6 +2773,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $metodoMuestreo = htmlspecialchars($metaOficial['metodo_muestreo'], ENT_QUOTES, 'UTF-8');
     $codigoOS = htmlspecialchars($detalle['codigo_os'] ?? 'OS-S/N', ENT_QUOTES, 'UTF-8');
     $tecnicoNom = htmlspecialchars(!empty($detalle['tecnico_muestreo']) ? $detalle['tecnico_muestreo'] : 'Personal Técnico Autorizado', ENT_QUOTES, 'UTF-8');
+    $ensayadoPor = htmlspecialchars($metaOficial['ensayado_por'] ?? 'Laboratorio CYCSA', ENT_QUOTES, 'UTF-8');
     $obs = !empty($detalle['observaciones']) ? htmlspecialchars($detalle['observaciones'], ENT_QUOTES, 'UTF-8') : 'Ensayos ejecutados bajo condiciones ambientales y parámetros establecidos en la norma técnica correspondiente. Equipos con calibración trazable vigente.';
 
     $datosParaCodigo = !empty($resultados) ? $resultados : (!empty($muestrasSeteadas) ? $muestrasSeteadas : ($detalle['resultados_json'] ?? []));
@@ -2795,44 +2810,72 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         }
     }
 
-        $colMethods = [
+        $defaultColMethods = [
         'P.V.S Max (kg/m³)' => 'ASTM D698 / D1557',
         'P.V.S. Máx (kg/m³)' => 'ASTM D698 / D1557',
-        'Humedad Óptima ((% )(P/P))' => 'ASTM D2216',
-        'Humedad Óptima (% P/P)' => 'ASTM D2216',
+        'Humedad Óptima ((% )(P/P))' => 'ASTM D2216-19',
+        'Humedad Óptima (% P/P)' => 'ASTM D2216-19',
         'P.V.S.Sitio (kg/m³)' => 'ASTM D6938 / D1556',
         'P.V.S. Sitio (kg/m³)' => 'ASTM D6938 / D1556',
+        'P.V.S.Sitio (kg/cm²)' => 'ASTM D6938 / D1556',
         'Humedad Sitio ((%) (P/P))' => 'ASTM D6938 / D2216',
         'Humedad Sitio (% P/P)' => 'ASTM D6938 / D2216',
-        'Compactación ((%) (P/P))' => 'Método In Situ',
-        'Compactación (% P/P)' => 'Método In Situ',
+        'Compactación ((%) (P/P))' => 'ASTM D6938-23',
+        'Compactación (% P/P)' => 'ASTM D6938-23',
         'Espesor (cm)' => 'In Situ',
         'Profundidad (cm)' => 'In Situ',
-        'Área (in²)' => 'ASTM C39',
-        'Área (cm²)' => 'ASTM C39',
-        'Reven. (in)' => 'ASTM C143',
-        'Reven. (cm)' => 'ASTM C143',
-        'Temp. (°C)' => 'ASTM C1064',
-        'Carga (lb)' => 'ASTM C39',
-        'Carga (kg)' => 'ASTM C39',
-        'Peso Volumétrico (kg/m³)' => 'ASTM C29',
-        'Diseño de concreto (lb/in²)' => 'ASTM C39',
-        'R. Compresión (lb/in²)' => 'ASTM C39',
-        'R. Compresión (kg/cm²)' => 'ASTM C39',
-        'Módulo de Ruptura (kg/cm²)' => 'ASTM C78',
-        'Módulo de Ruptura (lb/in²)' => 'ASTM C78',
-        'Luz entre apoyos (cm)' => 'ASTM C78',
-        'Ancho promedio (cm)' => 'ASTM C78',
-        'Altura promedio (cm)' => 'ASTM C78'
+        'Área (in²)' => 'ASTM C39/C39M-26',
+        'Área (cm²)' => 'ASTM C39/C39M-26',
+        'Reven. (in)' => 'ASTM C143/C143M-26b',
+        'Reven. (cm)' => 'ASTM C143/C143M-26b',
+        'Temp. (°C)' => 'ASTM C1064/C1064M-23',
+        'Carga (lb)' => 'ASTM C39/C39M-26',
+        'Carga (kg)' => 'ASTM C39/C39M-26',
+        'Peso Volumétrico (kg/m³)' => 'ASTM C29/C29M-23',
+        'Diseño de concreto (lb/in²)' => '',
+        'R. Compresión (lb/in²)' => 'ASTM C39/C39M-26',
+        'R. Compresión (kg/cm²)' => 'ASTM C39/C39M-26',
+        'R. Compresión (kgf/cm²)' => 'ASTM C39/C39M-26',
+        'Módulo de Ruptura (kg/cm²)' => 'ASTM C78/C78M-22',
+        'Módulo de Ruptura (lb/in²)' => 'ASTM C78/C78M-22',
+        'Luz entre apoyos (cm)' => 'ASTM C78/C78M-22',
+        'Ancho promedio (cm)' => 'ASTM C78/C78M-22',
+        'Altura promedio (cm)' => 'ASTM C78/C78M-22'
     ];
+    $schemaMethods = $schemaInfo['column_methods'] ?? [];
+    $colMethods = array_merge($defaultColMethods, is_array($schemaMethods) ? $schemaMethods : []);
 
-    $theadThs = '<th style="width: 18px; border: 1px solid #000; background: #f3f4f6; padding: 3px 2px; text-align: center;">#</th>';
-    foreach ($columnas as $col) {
-        $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col; // Corrección B.7 PE-25 unidad estricta para peso volumétrico
-        $metodo = $colMethods[$col] ?? ($colMethods[$colLabel] ?? '');
-        $fontSizeTh = (count($columnas) >= 12) ? '6.5px' : '7.5px';
-        $theadThs .= '<th style="border: 1px solid #000; background: #f3f4f6; padding: 3px 2px; text-align: center; font-size: ' . $fontSizeTh . ';">' . htmlspecialchars($colLabel, ENT_QUOTES, 'UTF-8') . (!empty($metodo) ? '<br><span style="font-size: 6px; font-weight: normal; color: #555;">' . htmlspecialchars($metodo, ENT_QUOTES, 'UTF-8') . '</span>' : '') . '</th>';
+    $fontSizeTh = (count($columnas) >= 11) ? '6.0px' : '7.2px';
+    $fontSizeMetodo = (count($columnas) >= 11) ? '5.2px' : '6.5px';
+
+    // Fila 1: Encabezado superior con Métodos de Ensayo oficiales (ASTM)
+    $trMetodos = '<tr class="tr-metodos">';
+    $trMetodos .= '<th rowspan="2" style="width: 18px; border: 1px solid #000; background: #ffffff; padding: 2px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . ';">#</th>';
+
+    $hasSampleCols = count($columnas) >= 2 && (stripos($columnas[0], 'código') !== false || stripos($columnas[0], 'codigo') !== false || stripos($columnas[0], 'lab') !== false);
+    $startColIdx = $hasSampleCols ? 2 : 1;
+    $spanMetodo = $hasSampleCols ? 2 : 1;
+
+    $trMetodos .= '<th colspan="' . $spanMetodo . '" style="border: 1px solid #000; background: #ffffff; padding: 3px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . '; white-space: nowrap;">Método de ensayo</th>';
+
+    for ($ci = $startColIdx; $ci < count($columnas); $ci++) {
+        $cCol = $columnas[$ci];
+        $cColLabel = (stripos($cCol, 'P.V.S') !== false || stripos($cCol, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $cCol) : $cCol;
+        $cMetodo = $colMethods[$cCol] ?? ($colMethods[$cColLabel] ?? '');
+        $trMetodos .= '<th style="border: 1px solid #000; background: #ffffff; padding: 2px 1px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeMetodo . '; white-space: nowrap; line-height: 1.0;">' . htmlspecialchars($cMetodo, ENT_QUOTES, 'UTF-8') . '</th>';
     }
+    $trMetodos .= '</tr>';
+
+    // Fila 2: Nombres oficiales de las Columnas de resultados
+    $trColumnas = '<tr class="tr-columnas">';
+    foreach ($columnas as $col) {
+        $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col;
+        $trColumnas .= '<th style="border: 1px solid #000; background: #ffffff; padding: 3px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . '; line-height: 1.1;">' . htmlspecialchars($colLabel, ENT_QUOTES, 'UTF-8') . '</th>';
+    }
+    $trColumnas .= '</tr>';
+
+    $theadHtml = $trMetodos . $trColumnas;
+    $theadThs = $theadHtml;
 
     $tbodyTrs = '';
     if (!empty($resultados)) {
@@ -3087,10 +3130,10 @@ FIRMAS;
 <div class="zona-cuerpo">
     <table class="meta-informe-tbl">
         <tr>
-            <td class="lbl-col" style="width: 18%;">** Nombre del cliente:</td>
-            <td class="val-col" style="width: 32%;">{$clienteNom}</td>
-            <td class="lbl-col" style="width: 16%;">** Proyecto:</td>
-            <td class="val-col" style="width: 34%;">{$proyNom}</td>
+            <td class="lbl-col" style="width: 17%;">** Nombre del cliente:</td>
+            <td class="val-col" style="width: 33%;">{$clienteNom}</td>
+            <td class="lbl-col" style="width: 17%;">** Proyecto:</td>
+            <td class="val-col" style="width: 33%;">{$proyNom}</td>
         </tr>
         <tr>
             <td class="lbl-col">** Dirección:</td>
@@ -3099,7 +3142,7 @@ FIRMAS;
             <td class="val-col">{$fechaMuestreo}</td>
         </tr>
         <tr>
-            <td class="lbl-col">Fecha de ingreso:</td>
+            <td class="lbl-col">Fecha  recepción ítems de ensayo:</td>
             <td class="val-col">{$fechaIngreso}</td>
             <td class="lbl-col">Fecha de ejecución:</td>
             <td class="val-col">{$fechaEjecucion}</td>
@@ -3107,7 +3150,7 @@ FIRMAS;
         <tr>
             <td class="lbl-col">Tipo de muestra:</td>
             <td class="val-col">{$tipoMuestraOficial}</td>
-            <td class="lbl-col">Fecha de emisión:</td>
+            <td class="lbl-col">Fecha de emisión del informe:</td>
             <td class="val-col">{$fechaEmision}</td>
         </tr>
         <tr>
@@ -3117,21 +3160,23 @@ FIRMAS;
             <td class="val-col">{$muestraTomadaPor}</td>
         </tr>
         <tr>
-            <td class="lbl-col" style="vertical-align: top;">Ensayo realizado:</td>
-            <td class="val-col" style="vertical-align: top; line-height: 1.25;">{$ensayoRealizado}</td>
-            <td class="lbl-col" style="vertical-align: top;">
-                <div>** Ubicación:</div>
-                <div style="margin-top: 10px;">Método de muestreo:</div>
-            </td>
-            <td class="val-col" style="vertical-align: top;">
-                <div>{$ubicacion}</div>
-                <div style="margin-top: 10px; font-weight: bold; font-family: monospace;">{$metodoMuestreo}</div>
-            </td>
+            <td class="lbl-col" rowspan="3" style="vertical-align: top;">Ensayo realizado:</td>
+            <td class="val-col" rowspan="3" style="vertical-align: top; line-height: 1.25;">{$ensayoRealizado}</td>
+            <td class="lbl-col">Ensayado por:</td>
+            <td class="val-col">{$ensayadoPor}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">** Ubicación:</td>
+            <td class="val-col">{$ubicacion}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">Método de muestreo:</td>
+            <td class="val-col" style="font-weight: bold; font-family: monospace;">{$metodoMuestreo}</td>
         </tr>
     </table>
 
     <table class="matriz-tbl">
-        <thead><tr>{$theadThs}</tr></thead>
+        <thead>{$theadHtml}</thead>
         <tbody>{$tbodyTrs}</tbody>
     </table>
 
@@ -4859,8 +4904,8 @@ function verificarAutorizacionPagoEnvio(array $datosComerciales, \PDO $db): arra
 
 /**
  * Extrae los datos técnicos de una muestra desde las filas guardadas en la matriz técnica (resultados_json).
- * La matriz actúa como fuente de verdad para Edad (días), Temperatura (°C), Área Transversal (in² / cm²),
- * Diámetros, Longitudes, Masa y Carga.
+ * La matriz actúa como fuente de verdad para Edad (días), Fecha de Ensayo, Fecha de Fabricación,
+ * Temperatura (°C), Área Transversal (in² / cm²), Tamaño de Cilindro, Diámetros, Longitudes, Masa y Carga.
  */
 function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestra): array {
     $codigoBuscado = strtoupper(trim($codigoMuestra));
@@ -4868,6 +4913,10 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
         'encontrada' => false,
         'codigo_muestra' => $codigoMuestra,
         'edad_dias' => null,
+        'fecha_fabricacion' => null,
+        'fecha_ensayo' => null,
+        'fecha_rotura_programada' => null,
+        'tamano_cilindro' => null,
         'temperatura_c' => null,
         'area' => null,
         'unidad_area' => 'in2',
@@ -4914,12 +4963,23 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
     $resultado['es_replica'] = esFilaReplicaMatriz($filaEncontrada);
     $resultado['muestra_origen'] = $filaEncontrada['_muestra_origen'] ?? null;
 
+    $fechaFabricacionStr = null;
+    $fechaRupturaStr = null;
+
     foreach ($filaEncontrada as $k => $v) {
         if ($v === null || $v === '' || str_starts_with((string)$k, '_')) {
             continue;
         }
         $kNorm = mb_strtolower(trim((string)$k), 'UTF-8');
         $kClean = preg_replace('/[^a-z0-9]/u', '', strtr($kNorm, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','²'=>'2']));
+
+        // Capturar fechas textuales de fabricación y ruptura si existen
+        if (in_array($kClean, ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechamuestreo', 'fmoldeo', 'ffabricacion'], true) || (str_contains($kClean, 'fecha') && (str_contains($kClean, 'moldeo') || str_contains($kClean, 'fabricacion')))) {
+            $fechaFabricacionStr = trim((string)$v);
+        } elseif (in_array($kClean, ['fechaderuptura', 'fecharuptura', 'fechadeensayo', 'fechaensayo', 'fecharotura', 'fechaderotura', 'frotura', 'fensayo'], true) || (str_contains($kClean, 'fecha') && (str_contains($kClean, 'ruptura') || str_contains($kClean, 'ensayo') || str_contains($kClean, 'rotura')))) {
+            $fechaRupturaStr = trim((string)$v);
+        }
+
         $valStr = str_replace(',', '.', trim((string)$v));
         $valNum = is_numeric($valStr) ? (float)$valStr : null;
 
@@ -4955,7 +5015,176 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
         }
     }
 
+    if ($fechaFabricacionStr) {
+        $tFab = strtotime($fechaFabricacionStr);
+        if ($tFab !== false) {
+            $resultado['fecha_fabricacion'] = date('Y-m-d', $tFab);
+        } else {
+            $resultado['fecha_fabricacion'] = $fechaFabricacionStr;
+        }
+    }
+    if ($fechaRupturaStr) {
+        $tRup = strtotime($fechaRupturaStr);
+        if ($tRup !== false) {
+            $resultado['fecha_ensayo'] = date('Y-m-d', $tRup);
+        } else {
+            $resultado['fecha_ensayo'] = $fechaRupturaStr;
+        }
+    }
+
+    // Si no hubo edad explícita numérica pero hay fecha de fabricación y ruptura, calcular días
+    if ($resultado['edad_dias'] === null && !empty($resultado['fecha_fabricacion']) && !empty($resultado['fecha_ensayo'])) {
+        $tFab = strtotime($resultado['fecha_fabricacion']);
+        $tRup = strtotime($resultado['fecha_ensayo']);
+        if ($tFab !== false && $tRup !== false && $tRup >= $tFab) {
+            $diffDias = (int)round(($tRup - $tFab) / 86400);
+            if ($diffDias > 0) {
+                $resultado['edad_dias'] = $diffDias;
+            }
+        }
+    }
+
+    // Determinar la fecha programada de rotura
+    if (!empty($resultado['fecha_ensayo'])) {
+        $resultado['fecha_rotura_programada'] = $resultado['fecha_ensayo'];
+    } elseif (!empty($resultado['fecha_fabricacion']) && $resultado['edad_dias'] !== null && $resultado['edad_dias'] > 0) {
+        $tFab = strtotime($resultado['fecha_fabricacion']);
+        if ($tFab !== false) {
+            $resultado['fecha_rotura_programada'] = date('Y-m-d', strtotime("+{$resultado['edad_dias']} days", $tFab));
+        }
+    }
+
+    // Detección de tamaño de probeta / cilindro
+    $diam = $resultado['diametro_1'] ?? ($resultado['diametro_2'] ?? null);
+    $filaStr = json_encode($filaEncontrada);
+    if (preg_match('/4\s*[xX*]\s*8|10\s*[xX*]\s*20/', $filaStr) || ($diam !== null && (($diam >= 9.0 && $diam <= 11.5) || ($diam >= 3.5 && $diam <= 4.5)))) {
+        $resultado['tamano_cilindro'] = '4x8 in (10x20 cm)';
+        if ($resultado['area'] === null) {
+            $resultado['area'] = 12.566;
+            $resultado['unidad_area'] = 'in2';
+        }
+    } elseif (preg_match('/6\s*[xX*]\s*12|15\s*[xX*]\s*30/', $filaStr) || ($diam !== null && (($diam >= 14.0 && $diam <= 16.5) || ($diam >= 5.5 && $diam <= 6.5)))) {
+        $resultado['tamano_cilindro'] = '6x12 in (15x30 cm)';
+        if ($resultado['area'] === null) {
+            $resultado['area'] = 28.274;
+            $resultado['unidad_area'] = 'in2';
+        }
+    }
+
     return $resultado;
+}
+
+/**
+ * Crea o actualiza exactamente 1 espécimen para la muestra/réplica y su plan de roturas
+ * según los datos individuales de la fila de matriz técnica.
+ * Cero sufijos -C1..Cn. Código de probeta = código de muestra.
+ */
+function sincronizarEspecimenYPlanFila(PDO $db, int $muestraId, string $codigoLab, array $datosMat): void {
+    if ($muestraId <= 0 || empty($codigoLab)) {
+        return;
+    }
+
+    $codigoLimpio = trim($codigoLab);
+    $edadDias = $datosMat['edad_dias'] ?? null;
+    $fechaProg = $datosMat['fecha_rotura_programada'] ?? null;
+    $fechaMoldeo = $datosMat['fecha_fabricacion'] ?? null;
+    $dimensiones = $datosMat['tamano_cilindro'] ?? '15 x 30 cm';
+
+    if (!$fechaMoldeo) {
+        $stmtLm = $db->prepare("SELECT fecha_moldeo FROM lotes_muestras WHERE id_recepcion = :id LIMIT 1");
+        $stmtLm->execute(['id' => $muestraId]);
+        $fechaMoldeo = $stmtLm->fetchColumn() ?: date('Y-m-d');
+    }
+
+    // 1. Buscar si ya existe espécimen para esta muestra
+    $stmtEsp = $db->prepare("SELECT id, codigo_lab, estado FROM especimenes WHERE muestra_id = :mid ORDER BY id ASC LIMIT 1");
+    $stmtEsp->execute(['mid' => $muestraId]);
+    $espExistente = $stmtEsp->fetch(PDO::FETCH_ASSOC);
+
+    $nuevoEstadoEsp = ($edadDias !== null && $edadDias > 0) ? 'programado' : 'en_curado';
+
+    if ($espExistente) {
+        $espId = (int)$espExistente['id'];
+        $estadoActual = $espExistente['estado'];
+        if ($estadoActual !== 'ensayado') {
+            $stmtUpdEsp = $db->prepare("
+                UPDATE especimenes 
+                SET codigo_lab = :cod, dimensiones = :dim, fecha_moldeo = :fm, estado = :est 
+                WHERE id = :id
+            ");
+            $stmtUpdEsp->execute([
+                'cod' => $codigoLimpio,
+                'dim' => $dimensiones,
+                'fm' => $fechaMoldeo,
+                'est' => $nuevoEstadoEsp,
+                'id' => $espId
+            ]);
+        }
+    } else {
+        $stmtCodChk = $db->prepare("SELECT id FROM especimenes WHERE codigo_lab = :cod LIMIT 1");
+        $stmtCodChk->execute(['cod' => $codigoLimpio]);
+        $idCodExistente = (int)$stmtCodChk->fetchColumn();
+
+        if ($idCodExistente > 0) {
+            $espId = $idCodExistente;
+            $db->prepare("UPDATE especimenes SET muestra_id = :mid WHERE id = :id")->execute(['mid' => $muestraId, 'id' => $espId]);
+        } else {
+            $stmtInsEsp = $db->prepare("
+                INSERT INTO especimenes (muestra_id, codigo_lab, tipo, dimensiones, fecha_moldeo, estado)
+                VALUES (:mid, :cod, 'cilindro_concreto', :dim, :fm, :est)
+            ");
+            $stmtInsEsp->execute([
+                'mid' => $muestraId,
+                'cod' => $codigoLimpio,
+                'dim' => $dimensiones,
+                'fm' => $fechaMoldeo,
+                'est' => $nuevoEstadoEsp
+            ]);
+            $espId = (int)$db->lastInsertId();
+        }
+    }
+
+    // 2. Sincronizar plan de roturas si la fila de matriz tiene edad o fecha programada
+    if ($edadDias !== null && $edadDias > 0 && !empty($fechaProg)) {
+        $stmtPlan = $db->prepare("SELECT id, estado FROM planes_rotura WHERE muestra_id = :mid ORDER BY id DESC LIMIT 1");
+        $stmtPlan->execute(['mid' => $muestraId]);
+        $plan = $stmtPlan->fetch(PDO::FETCH_ASSOC);
+
+        if ($plan) {
+            $planId = (int)$plan['id'];
+            $stmtRot = $db->prepare("
+                SELECT COUNT(*) FROM roturas rot 
+                JOIN plan_rotura_edades pre ON rot.plan_edad_id = pre.id 
+                WHERE pre.plan_rotura_id = :pid
+            ");
+            $stmtRot->execute(['pid' => $planId]);
+            $hayRoturas = ((int)$stmtRot->fetchColumn() > 0);
+
+            if (!$hayRoturas) {
+                $stmtEd = $db->prepare("SELECT id FROM plan_rotura_edades WHERE plan_rotura_id = :pid LIMIT 1");
+                $stmtEd->execute(['pid' => $planId]);
+                $planEdadId = (int)$stmtEd->fetchColumn();
+
+                if ($planEdadId > 0) {
+                    $db->prepare("UPDATE plan_rotura_edades SET edad_dias = :edad, fecha_programada = :fprog, cantidad = 1, estado = 'pendiente' WHERE id = :id")
+                       ->execute(['edad' => $edadDias, 'fprog' => $fechaProg, 'id' => $planEdadId]);
+                } else {
+                    $db->prepare("INSERT INTO plan_rotura_edades (plan_rotura_id, edad_dias, cantidad, fecha_programada, tolerancia_horas, estado) VALUES (:pid, :edad, 1, :fprog, 24, 'pendiente')")
+                       ->execute(['pid' => $planId, 'edad' => $edadDias, 'fprog' => $fechaProg]);
+                }
+            }
+        } else {
+            $stmtInsPlan = $db->prepare("
+                INSERT INTO planes_rotura (muestra_id, estado, creado_por)
+                VALUES (:mid, 'activo', 1)
+            ");
+            $stmtInsPlan->execute(['mid' => $muestraId]);
+            $planId = (int)$db->lastInsertId();
+
+            $db->prepare("INSERT INTO plan_rotura_edades (plan_rotura_id, edad_dias, cantidad, fecha_programada, tolerancia_horas, estado) VALUES (:pid, :edad, 1, :fprog, 24, 'pendiente')")
+               ->execute(['pid' => $planId, 'edad' => $edadDias, 'fprog' => $fechaProg]);
+        }
+    }
 }
 
 /**
@@ -4992,33 +5221,58 @@ function sincronizarReplicasMatrizConLab(PDO $db, int $idOs, int $idHoja, int $i
         if ($codigo === '') continue;
 
         $esReplica = esFilaReplicaMatriz($fila);
+        $datosMat = obtenerDatosMuestraDesdeMatriz($filasNormalizadas, $codigo);
+        $tempMat = $datosMat['temperatura_c'] ?? null;
+        $fechaMoldeoMat = $datosMat['fecha_fabricacion'] ?? null;
 
         if (!$esReplica) {
-            if ($idHoja > 0) {
-                $stmtUpdOrd = $db->prepare("UPDATE recepcion_muestras SET orden_en_lote = :ord WHERE id_os = :os AND id_hoja = :hoja AND (codigo_muestra = :cod OR codigo_campo = :cod2)");
-                $stmtUpdOrd->execute(['ord' => $ordenActual, 'os' => $idOs, 'hoja' => $idHoja, 'cod' => $codigo, 'cod2' => $codigo]);
-            } else {
-                $stmtUpdOrd = $db->prepare("UPDATE recepcion_muestras SET orden_en_lote = :ord WHERE id_os = :os AND (codigo_muestra = :cod OR codigo_campo = :cod2)");
-                $stmtUpdOrd->execute(['ord' => $ordenActual, 'os' => $idOs, 'cod' => $codigo, 'cod2' => $codigo]);
+            $stmtCheck = $db->prepare("SELECT id FROM recepcion_muestras WHERE id_os = :os AND (codigo_muestra = :cod OR codigo_campo = :cod2) " . ($idHoja > 0 ? "AND (id_hoja = :hoja OR id_hoja IS NULL)" : "") . " ORDER BY id ASC LIMIT 1");
+            $paramsCheck = ['os' => $idOs, 'cod' => $codigo, 'cod2' => $codigo];
+            if ($idHoja > 0) $paramsCheck['hoja'] = $idHoja;
+            $stmtCheck->execute($paramsCheck);
+            $recId = (int)$stmtCheck->fetchColumn();
+
+            if ($recId > 0) {
+                $db->prepare("UPDATE recepcion_muestras SET orden_en_lote = :ord " . ($idHoja > 0 ? ", id_hoja = :hoja" : "") . " WHERE id = :id")
+                   ->execute(array_merge(['ord' => $ordenActual, 'id' => $recId], $idHoja > 0 ? ['hoja' => $idHoja] : []));
+
+                if ($tempMat !== null) {
+                    $db->prepare("UPDATE lotes_muestras SET temperatura_c = :temp WHERE id_recepcion = :id")
+                       ->execute(['temp' => (float)$tempMat, 'id' => $recId]);
+                }
+                if ($fechaMoldeoMat !== null) {
+                    $db->prepare("UPDATE lotes_muestras SET fecha_moldeo = :fm WHERE id_recepcion = :id AND (fecha_moldeo IS NULL OR fecha_moldeo = '0000-00-00')")
+                       ->execute(['fm' => $fechaMoldeoMat, 'id' => $recId]);
+                }
+
+                sincronizarEspecimenYPlanFila($db, $recId, $codigo, $datosMat);
             }
             $ordenActual++;
             continue;
         }
 
+        // Caso Réplica (-CR)
         $codigoOrigen = trim((string)($fila['_muestra_origen'] ?? preg_replace('/-CR$/i', '', $codigo)));
         $codigoReplica = str_ends_with(strtoupper($codigo), '-CR') ? $codigo : ($codigoOrigen . '-CR');
 
         $stmtCheckRep = $db->prepare("SELECT id FROM recepcion_muestras WHERE id_os = :os AND (codigo_muestra = :cod OR codigo_campo = :cod2) LIMIT 1");
         $stmtCheckRep->execute(['os' => $idOs, 'cod' => $codigoReplica, 'cod2' => $codigoReplica]);
-        $idRecReplicaExistente = (int)$stmtCheckRep->fetchColumn();
+        $idRecReplica = (int)$stmtCheckRep->fetchColumn();
 
-        if ($idRecReplicaExistente > 0) {
-            $db->prepare("UPDATE recepcion_muestras SET orden_en_lote = :ord, is_qa_qc = 1, replica_codigo = '-CR' WHERE id = :id")
-               ->execute(['ord' => $ordenActual, 'id' => $idRecReplicaExistente]);
+        if ($idRecReplica > 0) {
+            $db->prepare("UPDATE recepcion_muestras SET orden_en_lote = :ord, is_qa_qc = 1, replica_codigo = '-CR' " . ($idHoja > 0 ? ", id_hoja = :hoja" : "") . " WHERE id = :id")
+               ->execute(array_merge(['ord' => $ordenActual, 'id' => $idRecReplica], $idHoja > 0 ? ['hoja' => $idHoja] : []));
+
+            if ($tempMat !== null) {
+                $db->prepare("UPDATE lotes_muestras SET temperatura_c = :temp WHERE id_recepcion = :id")
+                   ->execute(['temp' => (float)$tempMat, 'id' => $idRecReplica]);
+            }
+            sincronizarEspecimenYPlanFila($db, $idRecReplica, $codigoReplica, $datosMat);
             $ordenActual++;
             continue;
         }
 
+        // Si no existe, heredar de la muestra origen
         $sqlOrig = "SELECT * FROM recepcion_muestras WHERE id_os = :os AND (codigo_muestra = :orig OR codigo_campo = :orig2)";
         $paramsOrig = ['os' => $idOs, 'orig' => $codigoOrigen, 'orig2' => $codigoOrigen];
         if ($idHoja > 0) {
@@ -5072,8 +5326,8 @@ function sincronizarReplicasMatrizConLab(PDO $db, int $idOs, int $idHoja, int $i
         $stmtLoteOrig->execute(['id_rec' => (int)$recOrigen['id']]);
         $loteOrigen = $stmtLoteOrig->fetch(PDO::FETCH_ASSOC);
 
-        $datosMuestraMat = obtenerDatosMuestraDesdeMatriz($filasNormalizadas, $codigoReplica);
-        $tempReplica = $datosMuestraMat['temperatura_c'] ?? ($loteOrigen['temperatura_c'] ?? null);
+        $tempReplica = $tempMat !== null ? (float)$tempMat : ($loteOrigen['temperatura_c'] ?? null);
+        $fechaMoldeoRep = $fechaMoldeoMat ?: ($loteOrigen['fecha_moldeo'] ?? date('Y-m-d'));
 
         $stmtInsLote = $db->prepare("
             INSERT INTO lotes_muestras (
@@ -5088,35 +5342,14 @@ function sincronizarReplicasMatrizConLab(PDO $db, int $idOs, int $idHoja, int $i
             'id_rec' => $idNuevaRecReplica,
             'nom' => ($loteOrigen['nombre_lote'] ?? 'Muestra') . ' (Réplica CR)',
             'dis' => $loteOrigen['diseno_resistencia'] ?? '',
-            'f_moldeo' => $loteOrigen['fecha_moldeo'] ?? date('Y-m-d'),
+            'f_moldeo' => $fechaMoldeoRep,
             'rev_in' => $loteOrigen['revenimiento_in'] ?? null,
             'rev_cm' => $loteOrigen['revenimiento_cm'] ?? null,
             'temp_c' => $tempReplica,
             'proc' => $loteOrigen['procedimiento_muestreo'] ?? 'ASTM / ISO 17025'
         ]);
-        $idNuevoLote = (int)$db->lastInsertId();
 
-        $edadMat = $datosMuestraMat['edad_dias'] ?? 0;
-        $fechaMoldeoStr = $loteOrigen['fecha_moldeo'] ?? date('Y-m-d');
-        $fechaProg = $edadMat > 0 ? date('Y-m-d', strtotime("{$fechaMoldeoStr} + {$edadMat} days")) : $fechaMoldeoStr;
-        $db->prepare("
-            INSERT INTO ensayo_edades (id_lote, id_detalle_cotizacion, identificador_especimen, edad_dias, fecha_programada, estado)
-            VALUES (:lote, :det, 'Réplica CR', :edad, :fprog, 'Programado')
-        ")->execute([
-            'lote' => $idNuevoLote,
-            'det' => $idDetalle > 0 ? $idDetalle : 1,
-            'edad' => $edadMat,
-            'fprog' => $fechaProg
-        ]);
-
-        if (class_exists('\Cycsa\Modulos\Operaciones\Modelos\RoturasModelo')) {
-            $rotModelo = new \Cycsa\Modulos\Operaciones\Modelos\RoturasModelo();
-            if ($edadMat > 0) {
-                $rotModelo->guardarPlanRotura($idNuevaRecReplica, $recOrigen['plantilla_version_id'] ? (int)$recOrigen['plantilla_version_id'] : null, [
-                    ['edad_dias' => $edadMat, 'cantidad' => 1]
-                ], (int)$recOrigen['recibido_por']);
-            }
-        }
+        sincronizarEspecimenYPlanFila($db, $idNuevaRecReplica, $codigoReplica, $datosMat);
 
         $replicasCreadas++;
         $ordenActual++;
@@ -5124,4 +5357,99 @@ function sincronizarReplicasMatrizConLab(PDO $db, int $idOs, int $idHoja, int $i
 
     return $replicasCreadas;
 }
+
+/**
+ * Sincroniza los resultados de rotura (carga, esfuerzos, fecha y edad) desde Laboratorio
+ * hacia la matriz técnica (cotizacion_detalles.resultados_json).
+ */
+function sincronizarRoturasConMatriz(PDO $db, int $idHoja, int $idDetalle, array $roturasEjecutadas): int {
+    if ($idDetalle <= 0 && $idHoja > 0) {
+        $stmtHoja = $db->prepare("SELECT id_detalle_cotizacion FROM hojas_solicitud WHERE id = :id");
+        $stmtHoja->execute(['id' => $idHoja]);
+        $idDetalle = (int)$stmtHoja->fetchColumn();
+    }
+    if ($idDetalle <= 0 && !empty($roturasEjecutadas[0]['muestra_id'])) {
+        $stmtRm = $db->prepare("SELECT id_detalle_cotizacion, id_hoja FROM recepcion_muestras WHERE id = :id");
+        $stmtRm->execute(['id' => (int)$roturasEjecutadas[0]['muestra_id']]);
+        $rmR = $stmtRm->fetch(PDO::FETCH_ASSOC);
+        if ($rmR) {
+            $idDetalle = (int)($rmR['id_detalle_cotizacion'] ?? 0);
+            if ($idHoja <= 0) $idHoja = (int)($rmR['id_hoja'] ?? 0);
+        }
+    }
+    if ($idDetalle <= 0) {
+        return 0;
+    }
+
+    $stmtCd = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
+    $stmtCd->execute(['id' => $idDetalle]);
+    $rawJson = $stmtCd->fetchColumn();
+    if (empty($rawJson)) {
+        return 0;
+    }
+    $matrizData = json_decode((string)$rawJson, true);
+    if (!is_array($matrizData) || empty($matrizData['filas']) || !is_array($matrizData['filas'])) {
+        return 0;
+    }
+
+    $filas = $matrizData['filas'];
+    $actualizadas = 0;
+
+    foreach ($roturasEjecutadas as $rot) {
+        $codLab = strtoupper(trim((string)($rot['codigo_lab'] ?? '')));
+        $codBase = preg_replace('/-\d+$/', '', $codLab);
+        $carga = isset($rot['carga']) ? (float)$rot['carga'] : null;
+        $area = isset($rot['area']) ? (float)$rot['area'] : null;
+        $psi = isset($rot['esfuerzo_psi']) ? (float)$rot['esfuerzo_psi'] : null;
+        $kgcm2 = isset($rot['esfuerzo_kgcm2']) ? (float)$rot['esfuerzo_kgcm2'] : null;
+        $fechaReal = !empty($rot['fecha_real']) ? date('Y-m-d', strtotime((string)$rot['fecha_real'])) : date('Y-m-d');
+        $edad = isset($rot['edad_dias']) ? (int)$rot['edad_dias'] : null;
+
+        foreach ($filas as &$f) {
+            if (!is_array($f)) continue;
+            $colCod = obtenerColumnaCodigoMuestra($f);
+            $codFila = $colCod !== null ? strtoupper(trim((string)($f[$colCod] ?? ''))) : '';
+            if ($codFila === '' && isset($f['codigo_muestra'])) {
+                $codFila = strtoupper(trim((string)$f['codigo_muestra']));
+            }
+            if ($codFila === '' && isset($f['codigo_lab'])) {
+                $codFila = strtoupper(trim((string)$f['codigo_lab']));
+            }
+
+            if ($codFila !== '' && ($codFila === $codLab || $codFila === $codBase)) {
+                foreach ($f as $kCol => $vCol) {
+                    if (str_starts_with((string)$kCol, '_')) continue;
+                    $kNorm = mb_strtolower(trim((string)$kCol), 'UTF-8');
+                    $kClean = preg_replace('/[^a-z0-9]/u', '', strtr($kNorm, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','²'=>'2']));
+
+                    if ($carga !== null && in_array($kClean, ['cargalb', 'cargakg', 'carga', 'cargamaxima', 'lecturacargalbf'], true)) {
+                        $f[$kCol] = round($carga, 1);
+                    } elseif ($area !== null && in_array($kClean, ['areain2', 'areacm2', 'areain', 'areacm', 'area', 'areatransversal'], true)) {
+                        $f[$kCol] = round($area, 3);
+                    } elseif ($psi !== null && str_contains($kClean, 'compresion') && (str_contains($kClean, 'lbin') || str_contains($kClean, 'psi'))) {
+                        $f[$kCol] = round($psi, 1);
+                    } elseif ($kgcm2 !== null && str_contains($kClean, 'compresion') && str_contains($kClean, 'kgcm')) {
+                        $f[$kCol] = round($kgcm2, 1);
+                    } elseif (in_array($kClean, ['fechaderuptura', 'fecharuptura', 'fechadeensayo', 'fechaensayo', 'fecharotura', 'fechaderotura'], true) || (str_contains($kClean, 'fecha') && (str_contains($kClean, 'ruptura') || str_contains($kClean, 'ensayo') || str_contains($kClean, 'rotura')))) {
+                        $f[$kCol] = $fechaReal;
+                    } elseif ($edad !== null && in_array($kClean, ['edaddias', 'edad', 'dias', 'diasrotura', 'edadrotura'], true)) {
+                        $f[$kCol] = $edad;
+                    }
+                }
+                $actualizadas++;
+                break;
+            }
+        }
+        unset($f);
+    }
+
+    if ($actualizadas > 0) {
+        $matrizData['filas'] = $filas;
+        $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
+           ->execute(['json' => json_encode($matrizData, JSON_UNESCAPED_UNICODE), 'id' => $idDetalle]);
+    }
+
+    return $actualizadas;
+}
+
 

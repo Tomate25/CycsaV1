@@ -187,33 +187,7 @@ class LaboratorioControlador extends ControladorBase {
             'fecha_hasta' => trim($_GET['fecha_hasta'] ?? '')
         ];
 
-        // Sincronizar orden y réplicas (-CR) desde la matriz de captura hacia Laboratorio
-        try {
-            $stmtSyncLotes = $db->query("
-                SELECT DISTINCT rm.id_os, rm.id_hoja, COALESCE(hs.id_detalle_cotizacion, rm.id_detalle_cotizacion) AS id_det, cd.resultados_json
-                FROM recepcion_muestras rm
-                LEFT JOIN hojas_solicitud hs ON rm.id_hoja = hs.id
-                LEFT JOIN cotizacion_detalles cd ON cd.id = COALESCE(hs.id_detalle_cotizacion, rm.id_detalle_cotizacion)
-                WHERE rm.id_hoja IS NOT NULL AND rm.id_hoja > 0
-                  AND cd.resultados_json IS NOT NULL AND cd.resultados_json != ''
-            ");
-            foreach ($stmtSyncLotes->fetchAll(PDO::FETCH_ASSOC) as $sRow) {
-                $resSync = json_decode((string)$sRow['resultados_json'], true);
-                if (is_array($resSync) && !empty($resSync['filas']) && is_array($resSync['filas'])) {
-                    sincronizarReplicasMatrizConLab(
-                        $db,
-                        (int)$sRow['id_os'],
-                        (int)$sRow['id_hoja'],
-                        (int)$sRow['id_det'],
-                        $resSync['filas']
-                    );
-                }
-            }
-        } catch (\Throwable $e) {
-            // No bloquear renderizado de bandeja ante errores de sincronización
-        }
-
-        // Obtener listado de la vista SQL anónima v_lab_muestras
+        // Obtener listado de la vista SQL anónima v_lab_muestras (GET 100% libre de escrituras)
         $muestras = $roturasModelo->obtenerBandejaAnonima($filtros);
 
         // Métricas rápidas para KPIs superiores de la bandeja anónima
@@ -244,7 +218,8 @@ class LaboratorioControlador extends ControladorBase {
         // Rupturas programadas en los próximos 7 días (consulta técnica ciega)
         $sqlProx = "SELECT esp.id AS especimen_id, esp.codigo_lab, esp.dimensiones, esp.estado AS especimen_estado,
                            pre.id AS plan_edad_id, pre.edad_dias, pre.fecha_programada, pre.tolerancia_horas,
-                           vm.muestra_id, vm.material_descripcion, vm.diseno_resistencia, vm.plantilla_nombre
+                           vm.muestra_id, vm.material_descripcion, vm.diseno_resistencia, vm.plantilla_nombre,
+                           vm.id_hoja, vm.total_muestras_lote, vm.codigo_campo
                     FROM plan_rotura_edades pre
                     JOIN plan_rotura_asignaciones pra ON pra.plan_edad_id = pre.id
                     JOIN especimenes esp ON pra.especimen_id = esp.id
@@ -252,7 +227,7 @@ class LaboratorioControlador extends ControladorBase {
                     JOIN v_lab_muestras vm ON pr.muestra_id = vm.muestra_id
                     WHERE esp.estado IN ('programado', 'en_curado')
                       AND pre.fecha_programada BETWEEN CURRENT_DATE - INTERVAL 2 DAY AND CURRENT_DATE + INTERVAL 7 DAY
-                    ORDER BY pre.fecha_programada ASC, esp.codigo_lab ASC";
+                    ORDER BY pre.fecha_programada ASC, vm.id_hoja ASC, esp.codigo_lab ASC";
         $stmtProx = $db->query($sqlProx);
         $rupturasProgramadas = $stmtProx->fetchAll(PDO::FETCH_ASSOC);
 
@@ -495,10 +470,39 @@ class LaboratorioControlador extends ControladorBase {
 
             $planId = (int)($datos['plan_id'] ?? 0);
             $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $idHojaRedir = (int)($datos['id_hoja'] ?? 0);
             $motivo = trim($datos['motivo_modificacion'] ?? '');
 
+            $nuevaEdad = (int)($datos['edad_dias'] ?? 0);
+            $nuevaFecha = trim((string)($datos['fecha_programada'] ?? ''));
+            $nuevasEdades = [];
+            if ($nuevaEdad > 0) {
+                $nuevasEdades['edad_dias'] = $nuevaEdad;
+                if (!empty($nuevaFecha)) {
+                    $nuevasEdades['fecha_programada'] = $nuevaFecha;
+                }
+            }
+
+            if ($idHojaRedir <= 0 && $muestraId > 0) {
+                $dbTmp = Conexion::obtenerInstancia();
+                $stmtHRedir = $dbTmp->prepare("SELECT id_hoja FROM recepcion_muestras WHERE id = :id");
+                $stmtHRedir->execute(['id' => $muestraId]);
+                $idHojaRedir = (int)$stmtHRedir->fetchColumn();
+            }
+
+            // Auto-resolución de plan_edad_id si viene omitido pero existe asignación al espécimen
+            if (empty($datos['plan_edad_id']) && !empty($datos['especimen_id'])) {
+                $dbTmp = Conexion::obtenerInstancia();
+                $stmtPE = $dbTmp->prepare("SELECT plan_edad_id FROM plan_rotura_asignaciones WHERE especimen_id = :id LIMIT 1");
+                $stmtPE->execute(['id' => (int)$datos['especimen_id']]);
+                $peFound = (int)$stmtPE->fetchColumn();
+                if ($peFound > 0) {
+                    $datos['plan_edad_id'] = $peFound;
+                }
+            }
+
             $roturasModelo = new RoturasModelo();
-            $resultado = $roturasModelo->modificarPlanRoturaConAutorizacion($planId, [], $usuarioId, $rolUsuario, $motivo);
+            $resultado = $roturasModelo->modificarPlanRoturaConAutorizacion($planId, $nuevasEdades, $usuarioId, $rolUsuario, $motivo);
 
             if ($esAjax) {
                 $respuesta->enviarJson([
@@ -514,7 +518,11 @@ class LaboratorioControlador extends ControladorBase {
                 $_SESSION['error'] = $resultado['mensaje'];
             }
 
-            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+            if ($idHojaRedir > 0) {
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHojaRedir);
+            } else {
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+            }
         }
     }
 
@@ -544,9 +552,51 @@ class LaboratorioControlador extends ControladorBase {
                 return;
             }
             $muestraId = (int)($datos['muestra_id'] ?? 0);
+            $idHojaRedir = (int)($datos['id_hoja'] ?? 0);
+
+            if ($idHojaRedir <= 0 && $muestraId > 0) {
+                $dbTmp = Conexion::obtenerInstancia();
+                $stmtHRedir = $dbTmp->prepare("SELECT id_hoja FROM recepcion_muestras WHERE id = :id");
+                $stmtHRedir->execute(['id' => $muestraId]);
+                $idHojaRedir = (int)$stmtHRedir->fetchColumn();
+            }
+
+            // Auto-resolución de plan_edad_id si viene omitido pero existe asignación al espécimen
+            if (empty($datos['plan_edad_id']) && !empty($datos['especimen_id'])) {
+                $dbTmp = Conexion::obtenerInstancia();
+                $stmtPE = $dbTmp->prepare("SELECT plan_edad_id FROM plan_rotura_asignaciones WHERE especimen_id = :id LIMIT 1");
+                $stmtPE->execute(['id' => (int)$datos['especimen_id']]);
+                $peFound = (int)$stmtPE->fetchColumn();
+                if ($peFound > 0) {
+                    $datos['plan_edad_id'] = $peFound;
+                }
+            }
 
             $roturasModelo = new RoturasModelo();
             $resultado = $roturasModelo->registrarRotura($datos, $usuarioId);
+
+            if (!empty($resultado['exito'])) {
+                try {
+                    $db = Conexion::obtenerInstancia();
+                    $stmtEspM = $db->prepare("SELECT esp.codigo_lab, esp.muestra_id FROM especimenes esp WHERE esp.id = :id");
+                    $stmtEspM->execute(['id' => (int)($datos['especimen_id'] ?? 0)]);
+                    $espInfo = $stmtEspM->fetch(PDO::FETCH_ASSOC);
+                    if ($espInfo) {
+                        sincronizarRoturasConMatriz($db, $idHojaRedir, 0, [[
+                            'codigo_lab' => $espInfo['codigo_lab'],
+                            'muestra_id' => (int)$espInfo['muestra_id'],
+                            'carga' => (float)($datos['carga'] ?? 0),
+                            'area' => (float)($datos['area'] ?? 28.274),
+                            'esfuerzo_psi' => (float)($resultado['esfuerzo_psi'] ?? 0),
+                            'esfuerzo_kgcm2' => (float)($resultado['esfuerzo_kgcm2'] ?? 0),
+                            'fecha_real' => $datos['fecha_real'] ?? date('Y-m-d'),
+                            'edad_dias' => (int)($datos['edad_dias'] ?? 0)
+                        ]]);
+                    }
+                } catch (\Throwable $e) {
+                    error_log('Error sincronizando rotura individual con matriz: ' . $e->getMessage());
+                }
+            }
 
             if ($esAjax) {
                 $respuesta->enviarJson([
@@ -564,8 +614,126 @@ class LaboratorioControlador extends ControladorBase {
                 $_SESSION['error'] = $resultado['mensaje'];
             }
 
-            $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+            if ($idHojaRedir > 0) {
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHojaRedir);
+            } else {
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . $muestraId);
+            }
         }
+    }
+
+    /**
+     * Registra los rompimientos periódicos de múltiples probetas del lote juntas en una sola operación (Batch).
+     */
+    public function registrarRoturasLote(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        if (!$peticion->esPost()) {
+            $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=bandeja');
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+        $esAjax = $peticion->esAjax();
+        $idHoja = (int)($datos['id_hoja'] ?? 0);
+        $redirectUrl = $idHoja > 0
+            ? '/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHoja
+            : '/Cycsa/publico/laboratorio?tab=bandeja';
+
+        if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido.'], 403);
+                return;
+            }
+            $_SESSION['error'] = 'Token CSRF inválido.';
+            $respuesta->redirigir($redirectUrl);
+            return;
+        }
+
+        $usuarioId = $this->obtenerUsuarioIdAutenticado($peticion, $respuesta);
+        if ($usuarioId === null) {
+            return;
+        }
+
+        $roturasPayload = $datos['roturas'] ?? [];
+        if (!is_array($roturasPayload) || empty($roturasPayload)) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'No se recibieron datos de rompimientos para procesar.'], 422);
+                return;
+            }
+            $_SESSION['error'] = 'No se enviaron probetas para registrar rompimientos.';
+            $respuesta->redirigir($redirectUrl);
+            return;
+        }
+
+        $db = Conexion::obtenerInstancia();
+        $roturasModelo = new RoturasModelo();
+        $exitosas = 0;
+        $errores = [];
+        $roturasSincronizar = [];
+
+        foreach ($roturasPayload as $rItem) {
+            $especimenId = (int)($rItem['especimen_id'] ?? 0);
+            $planEdadId = (int)($rItem['plan_edad_id'] ?? 0);
+            $carga = (float)($rItem['carga'] ?? 0);
+            if ($especimenId <= 0 || $planEdadId <= 0 || $carga <= 0) {
+                continue; // Omitir probetas sin carga ingresada
+            }
+
+            $res = $roturasModelo->registrarRotura($rItem, $usuarioId);
+            if (!empty($res['exito'])) {
+                $exitosas++;
+                $stmtCod = $db->prepare("SELECT codigo_lab, muestra_id FROM especimenes WHERE id = :id");
+                $stmtCod->execute(['id' => $especimenId]);
+                $espRow = $stmtCod->fetch(PDO::FETCH_ASSOC);
+
+                $roturasSincronizar[] = [
+                    'codigo_lab' => $espRow['codigo_lab'] ?? '',
+                    'muestra_id' => (int)($espRow['muestra_id'] ?? 0),
+                    'carga' => $carga,
+                    'area' => (float)($rItem['area'] ?? 28.274),
+                    'esfuerzo_psi' => (float)($res['esfuerzo_psi'] ?? 0),
+                    'esfuerzo_kgcm2' => (float)($res['esfuerzo_kgcm2'] ?? 0),
+                    'fecha_real' => $rItem['fecha_real'] ?? date('Y-m-d H:i:s'),
+                    'edad_dias' => (int)($rItem['edad_dias'] ?? 0)
+                ];
+            } else {
+                $errores[] = "Probeta #{$especimenId}: " . ($res['mensaje'] ?? 'Error desconocido');
+            }
+        }
+
+        // Sincronizar todos los rompimientos registrados con la matriz técnica
+        if (!empty($roturasSincronizar)) {
+            try {
+                sincronizarRoturasConMatriz($db, $idHoja, 0, $roturasSincronizar);
+            } catch (\Throwable $e) {
+                error_log('Error en sincronizarRoturasConMatriz en registrarRoturasLote: ' . $e->getMessage());
+            }
+        }
+
+        $mensajeFinal = "Se registraron con éxito los rompimientos de {$exitosas} probeta(s) del lote y se sincronizaron con la Matriz Técnica.";
+        if (!empty($errores)) {
+            $mensajeFinal .= " (" . count($errores) . " probeta(s) con observaciones).";
+        }
+
+        if ($esAjax) {
+            $respuesta->enviarJson([
+                'status' => $exitosas > 0 ? 'success' : 'error',
+                'message' => $exitosas > 0 ? $mensajeFinal : implode('; ', $errores),
+                'exitosas' => $exitosas,
+                'errores' => $errores
+            ]);
+            return;
+        }
+
+        if ($exitosas > 0) {
+            $_SESSION['exito'] = $mensajeFinal;
+        } else {
+            $_SESSION['error'] = !empty($errores) ? implode('; ', $errores) : 'No se pudo registrar ninguna rotura. Verifique que la carga ingresada sea mayor a 0.';
+        }
+
+        $respuesta->redirigir($redirectUrl);
     }
 
     /**
@@ -1065,7 +1233,8 @@ class LaboratorioControlador extends ControladorBase {
             ];
 
             if ($modelo->registrarRecepcion($payloadRecepcion)) {
-                // Si la matriz ya cuenta con réplicas CR o filas capturadas, sincronizar orden y réplicas hacia Lab
+                // 1. Si la matriz ya cuenta con réplicas CR o filas capturadas, sincronizar orden y réplicas hacia Lab
+                $filasMatriz = [];
                 if (!empty($actualHojaId) && $idDetalleCotizacion > 0) {
                     $stmtMatSync = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
                     $stmtMatSync->execute(['id' => $idDetalleCotizacion]);
@@ -1073,10 +1242,32 @@ class LaboratorioControlador extends ControladorBase {
                     if (!empty($resJsonRaw)) {
                         $resMatArr = json_decode((string)$resJsonRaw, true);
                         if (is_array($resMatArr) && !empty($resMatArr['filas'])) {
+                            $filasMatriz = $resMatArr['filas'];
                             sincronizarReplicasMatrizConLab($db, $idOS, (int)$actualHojaId, $idDetalleCotizacion, $resMatArr['filas']);
                         }
                     }
                 }
+
+                // 2. Si la matriz aún no ha sido capturada en Operaciones, garantizar 1 espécimen base
+                // en_curado por cada muestra física aceptada (código de probeta = código de muestra, sin -C1..Cn ni fallback 7/14/28)
+                if (empty($filasMatriz)) {
+                    $stmtMuestrasLote = $db->prepare("
+                        SELECT rm.id AS muestra_id, rm.codigo_muestra, lm.fecha_moldeo
+                        FROM recepcion_muestras rm
+                        LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+                        WHERE rm.id_os = :id_os " . ($actualHojaId > 0 ? "AND rm.id_hoja = :id_hoja" : "") . "
+                        ORDER BY rm.orden_en_lote ASC, rm.id ASC
+                    ");
+                    $paramsML = ['id_os' => $idOS];
+                    if ($actualHojaId > 0) {
+                        $paramsML['id_hoja'] = $actualHojaId;
+                    }
+                    $stmtMuestrasLote->execute($paramsML);
+                    foreach ($stmtMuestrasLote->fetchAll(PDO::FETCH_ASSOC) as $mItem) {
+                        sincronizarEspecimenYPlanFila($db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], []);
+                    }
+                }
+
                 $prefijoAsignado = ($tipoMuestraCalculado === 'Campo') ? 'MC' : 'MS';
                 $numHojaTexto = !empty($hoja['numero_registro']) ? " [Reg: {$hoja['numero_registro']}]" : "";
                 $_SESSION['exito'] = "Muestras de la Hoja RT-FM-13{$numHojaTexto} aceptadas e ingresadas exitosamente a la Bandeja Anónima de Laboratorio ({$prefijoAsignado}-XXXX-" . date('y') . ").";
@@ -1540,11 +1731,7 @@ class LaboratorioControlador extends ControladorBase {
             }
         }
 
-        // Sincronizar orden y réplicas CR desde la matriz antes de listar el lote
-        if (!empty($filasMatriz) && $idOs > 0 && $idHoja > 0) {
-            sincronizarReplicasMatrizConLab($db, $idOs, $idHoja, $idDetalle, $filasMatriz);
-        }
-
+        // 3. En GET: lectura limpia sin escrituras a BD
         $stmtLote = $db->prepare("
             SELECT * FROM v_lab_muestras
             WHERE id_hoja = :id_hoja
@@ -1561,21 +1748,11 @@ class LaboratorioControlador extends ControladorBase {
 
         $roturasModelo = new RoturasModelo();
         $muestrasDetalladas = [];
-        $edadesSugeridasLote = [];
 
         foreach ($muestrasBase as $mRow) {
             $mId = (int)$mRow['muestra_id'];
             $detAnon = $roturasModelo->obtenerDetalleMuestraAnonima($mId);
             $datosMat = obtenerDatosMuestraDesdeMatriz($filasMatriz, (string)$mRow['codigo_lab']);
-
-            if (empty($edadesSugeridasLote) && !empty($detAnon['edades'])) {
-                foreach ($detAnon['edades'] as $edRow) {
-                    $edadesSugeridasLote[] = [
-                        'edad_dias' => (int)$edRow['edad_dias'],
-                        'cantidad' => max(1, (int)($edRow['especimenes_asignados'] ?? 1))
-                    ];
-                }
-            }
 
             $muestrasDetalladas[] = [
                 'muestra' => $detAnon['muestra'] ?? $mRow,
@@ -1586,29 +1763,6 @@ class LaboratorioControlador extends ControladorBase {
                 'puede_consolidar' => $detAnon['puede_consolidar'] ?? false,
                 'datos_matriz' => $datosMat
             ];
-        }
-
-        // Si ningún plan tenía edades pero la matriz tiene edad_dias, usar la edad de la matriz como base
-        if (empty($edadesSugeridasLote)) {
-            $edadesDeMatriz = [];
-            foreach ($muestrasDetalladas as $mItem) {
-                $edMat = $mItem['datos_matriz']['edad_dias'] ?? null;
-                if ($edMat !== null && $edMat > 0) {
-                    $edadesDeMatriz[$edMat] = ($edadesDeMatriz[$edMat] ?? 0) + 1;
-                }
-            }
-            if (!empty($edadesDeMatriz)) {
-                ksort($edadesDeMatriz);
-                foreach ($edadesDeMatriz as $dEdad => $cnt) {
-                    $edadesSugeridasLote[] = ['edad_dias' => (int)$dEdad, 'cantidad' => 1];
-                }
-            } else {
-                $edadesSugeridasLote = [
-                    ['edad_dias' => 7, 'cantidad' => 1],
-                    ['edad_dias' => 14, 'cantidad' => 1],
-                    ['edad_dias' => 28, 'cantidad' => 1]
-                ];
-            }
         }
 
         if (empty($_SESSION['csrf_token'])) {
@@ -1625,7 +1779,6 @@ class LaboratorioControlador extends ControladorBase {
             'hoja' => $hoja,
             'detalleCotizacion' => $detalleCotizacion,
             'muestrasLote' => $muestrasDetalladas,
-            'edadesSugeridasLote' => $edadesSugeridasLote,
             'rolUsuario' => $rolUsuario,
             'puedeReidentificar' => $puedeReidentificar,
             'exito' => $_SESSION['exito'] ?? null,

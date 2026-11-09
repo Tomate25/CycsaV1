@@ -75,11 +75,41 @@ class RoturasModelo {
         $stmt->execute($params);
         $muestras = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Validar e indexar flag visual de vencimiento
+        // Enriquecer con descripción técnica de producto de la hoja RT-FM-13 (aislado de clientes/precios)
+        $hojaIds = array_filter(array_unique(array_map('intval', array_column($muestras, 'id_hoja'))));
+        $infoHojas = [];
+        if (!empty($hojaIds)) {
+            $inClause = implode(',', $hojaIds);
+            try {
+                $sqlHojas = "SELECT hs.id AS id_hoja, 
+                                   COALESCE(NULLIF(p.ensayo_servicio, ''), NULLIF(p.nombre_comercial, ''), cd.descripcion_ensayo) AS producto_nombre,
+                                   COALESCE(NULLIF(p.norma_astm, ''), cd.norma_astm) AS producto_norma
+                            FROM hojas_solicitud hs
+                            LEFT JOIN productos p ON hs.id_producto = p.id
+                            LEFT JOIN cotizacion_detalles cd ON hs.id_detalle_cotizacion = cd.id
+                            WHERE hs.id IN ({$inClause})";
+                $resH = $this->db->query($sqlHojas)->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($resH as $hRow) {
+                    $infoHojas[(int)$hRow['id_hoja']] = $hRow;
+                }
+            } catch (\Throwable $e) {
+                // Silencioso ante errores de consulta
+            }
+        }
+
+        // Validar e indexar flag visual de vencimiento y metadatos técnicos
         $hoy = date('Y-m-d');
         foreach ($muestras as &$m) {
             $m['es_vencida'] = (!empty($m['proxima_rotura']) && $m['proxima_rotura'] < $hoy && $m['estado_plan'] !== 'cerrado');
             $m['es_hoy'] = (!empty($m['proxima_rotura']) && $m['proxima_rotura'] === $hoy);
+            $hid = (int)($m['id_hoja'] ?? 0);
+            if ($hid > 0 && isset($infoHojas[$hid])) {
+                $m['producto_nombre'] = $infoHojas[$hid]['producto_nombre'] ?? null;
+                $m['producto_norma'] = $infoHojas[$hid]['producto_norma'] ?? null;
+            } else {
+                $m['producto_nombre'] = null;
+                $m['producto_norma'] = null;
+            }
         }
         unset($m);
 
@@ -410,9 +440,9 @@ class RoturasModelo {
      * Modifica un plan de roturas ya iniciado bajo autorización de Calidad/Supervisión.
      */
     public function modificarPlanRoturaConAutorizacion(int $planId, array $nuevasEdades, int $usuarioId, int $rolId, string $motivo): array {
-        // Validación de permisos de Calidad / Administrador
-        if ($rolId !== 1 && $rolId !== 3) {
-            return ['exito' => false, 'mensaje' => 'Acceso denegado: Se requiere rol de Administrador o Supervisor de Calidad para modificar un plan en ejecución.'];
+        // Validación de permisos de Calidad / Administrador / Supervisión (Roles 1, 2, 3)
+        if (!in_array($rolId, [1, 2, 3], true)) {
+            return ['exito' => false, 'mensaje' => 'Acceso denegado: Se requiere rol de Administrador o Supervisión para modificar la programación de rotura.'];
         }
 
         $motivo = trim($motivo);
@@ -435,6 +465,19 @@ class RoturasModelo {
             // Actualizar motivo y registrar en auditoría
             $stmtUp = $this->db->prepare("UPDATE planes_rotura SET motivo_modificacion = :motivo, aprobado_por = :aprobado_por, fecha_aprobacion = NOW() WHERE id = :id");
             $stmtUp->execute(['motivo' => $motivo, 'aprobado_por' => $usuarioId, 'id' => $planId]);
+
+            // Si se suministraron nuevas edades o fecha programada, actualizar el plan
+            if (!empty($nuevasEdades)) {
+                $nuevaEdad = (int)($nuevasEdades['edad_dias'] ?? ($nuevasEdades[0]['edad_dias'] ?? 0));
+                $nuevaFecha = !empty($nuevasEdades['fecha_programada']) ? $nuevasEdades['fecha_programada'] : (!empty($nuevasEdades[0]['fecha_programada']) ? $nuevasEdades[0]['fecha_programada'] : null);
+                if ($nuevaEdad > 0) {
+                    if (!$nuevaFecha && !empty($plan['fecha_moldeo'])) {
+                        $nuevaFecha = date('Y-m-d', strtotime("{$plan['fecha_moldeo']} + {$nuevaEdad} days"));
+                    }
+                    $this->db->prepare("UPDATE plan_rotura_edades SET edad_dias = :edad, fecha_programada = COALESCE(:fprog, fecha_programada) WHERE plan_rotura_id = :pid AND estado = 'pendiente'")
+                             ->execute(['edad' => $nuevaEdad, 'fprog' => $nuevaFecha, 'pid' => $planId]);
+                }
+            }
 
             registrarBitacora('laboratorio', 'modificar_plan_rotura', "Plan de Roturas #{$planId} modificado bajo justificación: {$motivo}", $planId);
 
