@@ -387,19 +387,44 @@
                         $esFinalizadaOArchivo = in_array($os['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true);
                     ?>
                         <?php
+                        // Detectar si alguna muestra de las hojas registradas tiene prefijo MC o MS
+                        $tieneHojasOS = !empty($os['id_hoja']) || !empty($os['hojas_servicio']);
+                        $tieneMuestrasMC = false;
+                        $tieneMuestrasMS = false;
+                        if (!empty($os['muestras_json'])) {
+                            $mArr = json_decode($os['muestras_json'], true) ?: [];
+                            foreach ($mArr as $m) {
+                                $c = strtoupper(trim($m['nombre_muestra'] ?? ($m['codigo_muestra'] ?? '')));
+                                if (str_starts_with($c, 'MC-')) $tieneMuestrasMC = true;
+                                if (str_starts_with($c, 'MS-')) $tieneMuestrasMS = true;
+                            }
+                        }
+                        if (!empty($os['hojas_servicio'])) {
+                            foreach ($os['hojas_servicio'] as $hServ) {
+                                $mArr = json_decode($hServ['muestras_json'] ?? '[]', true) ?: [];
+                                foreach ($mArr as $m) {
+                                    $c = strtoupper(trim($m['nombre_muestra'] ?? ($m['codigo_muestra'] ?? '')));
+                                    if (str_starts_with($c, 'MC-')) $tieneMuestrasMC = true;
+                                    if (str_starts_with($c, 'MS-')) $tieneMuestrasMS = true;
+                                }
+                            }
+                        }
+
                         // Determinar estado de muestreo para Casos A, B y C
                         $estadoMuestreo = 'sin_decidir';
                         if (!empty($os['id_pm'])) {
                             if (in_array($os['estado_muestreo'], ['Programado', 'En Proceso', 'En Campo'])) {
                                 $estadoMuestreo = 'en_proceso';
                             } else {
-                                $estadoMuestreo = 'finalizado';
+                                $estadoMuestreo = 'muestreo_campo_finalizado';
                             }
-                        } elseif (!empty($os['id_hoja'])) {
-                            $estadoMuestreo = 'finalizado';
-                        } elseif ($os['requiere_muestreo'] === 1 || $os['requiere_muestreo'] === '1') {
-                            $estadoMuestreo = 'pendiente_programar';
-                        } elseif ($os['requiere_muestreo'] === 0 || $os['requiere_muestreo'] === '0') {
+                        } elseif ($tieneMuestrasMC || $os['requiere_muestreo'] === 1 || $os['requiere_muestreo'] === '1') {
+                            if ($tieneHojasOS) {
+                                $estadoMuestreo = 'muestreo_campo_finalizado';
+                            } else {
+                                $estadoMuestreo = 'pendiente_programar';
+                            }
+                        } elseif ($tieneMuestrasMS || $os['requiere_muestreo'] === 0 || $os['requiere_muestreo'] === '0') {
                             $estadoMuestreo = 'no_aplica';
                         }
 
@@ -485,16 +510,21 @@
                                             <?php if (!empty($os['tecnico_nombre'])): ?>
                                                 <span style="color: #475569; font-size: 11.5px; font-weight: 500; margin-left: 4px;">(<?= htmlspecialchars($os['tecnico_nombre']) ?>)</span>
                                             <?php endif; ?>
-                                        <?php elseif ($estadoMuestreo === 'finalizado' && !empty($os['id_pm'])): ?>
-                                            <span class="badge-premium badge-muestreo-fin" title="Muestreo finalizado y recibido en laboratorio">
-                                                <i class="fa-solid fa-circle-check"></i> Muestreo Finalizado
+                                        <?php elseif ($estadoMuestreo === 'muestreo_campo_finalizado' || $estadoMuestreo === 'finalizado'): ?>
+                                            <span class="badge-premium badge-muestreo-fin" title="Muestreo en obra registrado y recibido en laboratorio">
+                                                <i class="fa-solid fa-circle-check"></i> <?= !empty($os['id_pm']) ? 'Muestreo Finalizado' : 'Muestreo en Campo (MC)' ?>
                                             </span>
+                                            <?php 
+                                            $tecBadge = !empty($os['tecnico_nombre']) ? $os['tecnico_nombre'] : (!empty($os['nombre_persona_toma_muestra']) ? $os['nombre_persona_toma_muestra'] : '');
+                                            if (!empty($tecBadge)): ?>
+                                                <span style="color: #475569; font-size: 11.5px; font-weight: 500; margin-left: 4px;">(<?= htmlspecialchars($tecBadge) ?>)</span>
+                                            <?php endif; ?>
                                         <?php elseif ($estadoMuestreo === 'pendiente_programar'): ?>
                                             <span class="badge-premium badge-hoja-borrador" title="Requiere asignación de salida a campo">
                                                 <i class="fa-solid fa-calendar-plus"></i> Requiere Muestreo
                                             </span>
                                         <?php elseif ($estadoMuestreo === 'no_aplica'): ?>
-                                            <span class="badge-premium badge-muestreo-no" title="Entrega de muestras directamente en ventanilla">
+                                            <span class="badge-premium badge-muestreo-no" title="Entrega de muestras directamente en ventanilla (MS)">
                                                 <i class="fa-solid fa-flask"></i> Ingreso Directo
                                             </span>
                                         <?php else: ?>
@@ -747,6 +777,20 @@
                                                             <i class="fa-solid fa-pen-to-square"></i> Ver / Editar Datos de Muestreo
                                                         </a>
                                                     </div>
+                                                <?php elseif ($tieneMuestrasMC || (($os['requiere_muestreo'] === 1 || $os['requiere_muestreo'] === '1') && $tieneHojasOS)): ?>
+                                                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 14px; border-radius: 8px; color: #1e40af; font-size: 13px;">
+                                                        <i class="fa-solid fa-truck-pickup me-1"></i> <strong>Muestreo en Obra (Prefijo MC):</strong> Muestras recolectadas en campo y registradas en Hoja CYCSA-RT-FM-13.
+                                                        <?php if (!empty($os['nombre_persona_toma_muestra'])): ?>
+                                                            <div style="margin-top: 6px; font-size: 12px; color: #1e3a8a;">
+                                                                <strong>Muestreador:</strong> <?= htmlspecialchars($os['nombre_persona_toma_muestra']) ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <div style="margin-top: 10px;">
+                                                            <a href="/Cycsa/publico/ordenes-servicio/programar-muestreo?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary" style="min-height:32px; padding: 4px 12px; font-size: 12px;">
+                                                                <i class="fa-solid fa-truck-pickup"></i> Asignar Logística / Vehículo FM-40 B
+                                                            </a>
+                                                        </div>
+                                                    </div>
                                                 <?php elseif ($os['requiere_muestreo'] === 1 || $os['requiere_muestreo'] === '1'): ?>
                                                     <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 14px; border-radius: 8px; color: #1e40af; font-size: 13px;">
                                                         <i class="fa-solid fa-calendar-plus me-1"></i> <strong>Requiere salida a campo:</strong> Pendiente de asignar técnico, vehículo y fechas.
@@ -756,9 +800,9 @@
                                                             </a>
                                                         </div>
                                                     </div>
-                                                <?php elseif ($os['requiere_muestreo'] === 0 || $os['requiere_muestreo'] === '0'): ?>
+                                                <?php elseif ($tieneMuestrasMS || $os['requiere_muestreo'] === 0 || $os['requiere_muestreo'] === '0'): ?>
                                                     <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px; border-radius: 8px; color: #166534; font-size: 13px;">
-                                                        <i class="fa-solid fa-flask me-1"></i> <strong>Ingreso Directo:</strong> Los especímenes son entregados por el cliente en ventanilla del laboratorio central.
+                                                        <i class="fa-solid fa-flask me-1"></i> <strong>Ingreso Directo (Prefijo MS):</strong> Los especímenes son entregados por el cliente en ventanilla del laboratorio central.
                                                     </div>
                                                 <?php else: ?>
                                                     <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 14px; border-radius: 8px; color: #92400e; font-size: 13px;">
@@ -1786,15 +1830,25 @@
         const esSegunda = esSegundaHojaDecision;
         cerrarModalDecisionMuestreo();
 
+        const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
+
         if (tipo === 'logistica') {
-            window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + encodeURIComponent(idOS);
+            fetch('/Cycsa/publico/ordenes-servicio/marcar-requiere-muestreo', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-TOKEN': csrfVal
+                },
+                body: 'id_os=' + encodeURIComponent(idOS) + '&csrf_token=' + encodeURIComponent(csrfVal)
+            }).finally(() => {
+                window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + encodeURIComponent(idOS);
+            });
             return;
         }
 
         const prefijo = (tipo === 'campo') ? 'MC' : 'MS';
 
-        if (!esSegunda && tipo === 'directo') {
-            const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
+        if (tipo === 'directo') {
             fetch('/Cycsa/publico/ordenes-servicio/marcar-ingreso-directo', {
                 method: 'POST',
                 headers: { 
@@ -1807,6 +1861,19 @@
             // Actualizar botones en el DOM
             const btns = document.querySelectorAll(`button[data-id-os="${idOS}"]`);
             btns.forEach(b => b.setAttribute('data-estado-muestreo', 'no_aplica'));
+        } else if (tipo === 'campo') {
+            fetch('/Cycsa/publico/ordenes-servicio/marcar-requiere-muestreo', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-TOKEN': csrfVal
+                },
+                body: 'id_os=' + encodeURIComponent(idOS) + '&csrf_token=' + encodeURIComponent(csrfVal)
+            }).catch(console.error);
+
+            // Actualizar botones en el DOM
+            const btns = document.querySelectorAll(`button[data-id-os="${idOS}"]`);
+            btns.forEach(b => b.setAttribute('data-estado-muestreo', 'pendiente_programar'));
         }
 
         // Abrir siempre la Hoja RT-FM-13 con el prefijo seleccionado

@@ -811,7 +811,15 @@ class OrdenServicioModelo {
      * Marcar la orden como que requiere muestreo en campo
      */
     public function marcarRequiereMuestreo(int $idOS): bool {
-        $stmt = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = 'Estado 3A: Programacion Muestreo' WHERE id = :id");
+        $stmt = $this->db->prepare("
+            UPDATE ordenes_servicio 
+            SET requiere_muestreo = 1, 
+                estado = CASE 
+                    WHEN estado IN ('Aprobada', 'Estado 3: Aprobada', 'Estado 3: Ingreso Directo') THEN 'Estado 3A: Programacion Muestreo' 
+                    ELSE estado 
+                END 
+            WHERE id = :id
+        ");
         return $stmt->execute(['id' => $idOS]);
     }
 
@@ -819,7 +827,15 @@ class OrdenServicioModelo {
      * Marcar la orden como ingreso directo (sin muestreo en campo)
      */
     public function establecerIngresoDirecto(int $idOS): bool {
-        $stmt = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 0, estado = 'Estado 3: Ingreso Directo' WHERE id = :id");
+        $stmt = $this->db->prepare("
+            UPDATE ordenes_servicio 
+            SET requiere_muestreo = 0, 
+                estado = CASE 
+                    WHEN estado IN ('Aprobada', 'Estado 3: Aprobada', 'Estado 3A: Programacion Muestreo') THEN 'Estado 3: Ingreso Directo' 
+                    ELSE estado 
+                END 
+            WHERE id = :id
+        ");
         return $stmt->execute(['id' => $idOS]);
     }
 

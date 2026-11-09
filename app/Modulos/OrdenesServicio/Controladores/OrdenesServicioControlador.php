@@ -542,6 +542,29 @@ class OrdenesServicioControlador extends ControladorBase {
     }
 
     /**
+     * Marcar requerimiento de muestreo en campo vía Ajax
+     */
+    public function marcarRequiereMuestreoAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        // 🔒 Validar CSRF
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $csrfHeader = $headers['X-CSRF-TOKEN'] ?? $headers['X-Csrf-Token'] ?? $headers['x-csrf-token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        $csrfToken = $_POST['csrf_token'] ?? $csrfHeader;
+        $csrfValido = !empty($csrfToken) && !empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $csrfToken);
+
+        if (!$csrfValido && empty($_SESSION['usuario_id'])) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Token de seguridad inválido o sesión expirada.']);
+            return;
+        }
+
+        $idOS = (int)($_POST['id_os'] ?? 0);
+        $osModelo = new OrdenServicioModelo();
+        $exito = $osModelo->marcarRequiereMuestreo($idOS);
+        $respuesta->enviarJson(['status' => $exito ? 'success' : 'error']);
+    }
+
+    /**
      * Imprimir Formato Oficial CYCSA-RT-FM-40 B (Lista de Chequeo para Muestreos de Compactación)
      */
     public function imprimirListaChequeo(Peticion $peticion, Respuesta $respuesta): void {

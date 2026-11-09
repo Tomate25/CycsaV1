@@ -161,6 +161,7 @@ $app->enrutador->post('/ordenes-servicio/guardar-muestreo', [OrdenesServicioCont
 $app->enrutador->get('/ordenes-servicio/imprimir-checklist', [OrdenesServicioControlador::class, 'imprimirListaChequeo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/finalizar-muestreo', [OrdenesServicioControlador::class, 'finalizarMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/marcar-ingreso-directo', [OrdenesServicioControlador::class, 'marcarIngresoDirectoAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/marcar-requiere-muestreo', [OrdenesServicioControlador::class, 'marcarRequiereMuestreoAjax'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/aprobar', [OrdenesServicioControlador::class, 'aprobarOS'], [AuthMiddleware::class]);
 
 // 🔒 RUTAS DEL MÓDULO CONTABLE (REQUERIDO: SESIÓN Y PERMISO DE CONTABILIDAD)

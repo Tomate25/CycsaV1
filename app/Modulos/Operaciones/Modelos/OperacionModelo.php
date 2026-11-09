@@ -1438,47 +1438,6 @@ class OperacionModelo extends ModeloBase {
                 $idGenerado = $this->ultimoIdHoja;
             }
 
-            // Sincronizar fecha, hora y técnico de muestreo en ordenes_servicio
-            if (!empty($fechaHoraToma)) {
-                $ts = strtotime($fechaHoraToma);
-                if ($ts) {
-                    $fechaM = date('Y-m-d', $ts);
-                    $horaM = date('H:i:s', $ts);
-
-                    $esTecnicoCycsa = false;
-                    if (!empty($personaToma)) {
-                        $pTomaLower = mb_strtolower(trim($personaToma));
-                        if (!str_contains($pTomaLower, 'cliente') && !str_contains($pTomaLower, 'entregada')) {
-                            $stmtChk = $this->db->prepare("SELECT COUNT(*) FROM tecnicos WHERE LOWER(nombre) = LOWER(:nom)");
-                            $stmtChk->execute(['nom' => trim($personaToma)]);
-                            if ((int)$stmtChk->fetchColumn() > 0) {
-                                $esTecnicoCycsa = true;
-                            }
-                        }
-                    }
-                    
-                    $sqlSync = "UPDATE ordenes_servicio SET 
-                                    fecha_muestreo = :fm,
-                                    hora_muestreo = :hm";
-                    $paramsSync = [
-                        'fm' => $fechaM,
-                        'hm' => $horaM,
-                        'id_os' => $idOS
-                    ];
-                    
-                    if ($esTecnicoCycsa) {
-                        $sqlSync .= ", tecnico_muestreo = :tm, requiere_muestreo = 1";
-                        $paramsSync['tm'] = $personaToma;
-                    } else {
-                        $sqlSync .= ", tecnico_muestreo = NULL, requiere_muestreo = 0";
-                    }
-                    
-                    $sqlSync .= " WHERE id = :id_os";
-                    $stmtSync = $this->db->prepare($sqlSync);
-                    $stmtSync->execute($paramsSync);
-                }
-            }
-
             // Sincronizar el correlativo más alto asignado en secuencias_muestras para blindaje global
             $muestrasFinales = json_decode($muestrasJson, true) ?: [];
             $maxMC = 0;
@@ -1504,6 +1463,38 @@ class OperacionModelo extends ModeloBase {
                 $stmtSecUpsert = $this->db->prepare("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) VALUES (:anio, 'Laboratorio', :corr) ON DUPLICATE KEY UPDATE ultimo_correlativo = GREATEST(ultimo_correlativo, :corr2)");
                 $stmtSecUpsert->execute(['anio' => $anioActualSeq, 'corr' => $maxMS, 'corr2' => $maxMS]);
             }
+
+            // Sincronizar requiere_muestreo, fecha, hora y técnico de muestreo en ordenes_servicio
+            $esMuestreoCampo = ($prefijoParaAsignar === 'MC' || $maxMC > 0);
+            $reqMuestreoFinal = $esMuestreoCampo ? 1 : 0;
+            
+            $sqlSync = "UPDATE ordenes_servicio SET requiere_muestreo = :req";
+            $paramsSync = ['req' => $reqMuestreoFinal, 'id_os' => $idOS];
+
+            if (!empty($fechaHoraToma)) {
+                $ts = strtotime($fechaHoraToma);
+                if ($ts) {
+                    $sqlSync .= ", fecha_muestreo = :fm, hora_muestreo = :hm";
+                    $paramsSync['fm'] = date('Y-m-d', $ts);
+                    $paramsSync['hm'] = date('H:i:s', $ts);
+                }
+            }
+
+            if ($esMuestreoCampo) {
+                if (!empty($personaToma)) {
+                    $pTomaLower = mb_strtolower(trim($personaToma));
+                    if (!str_contains($pTomaLower, 'cliente') && !str_contains($pTomaLower, 'entregada')) {
+                        $sqlSync .= ", tecnico_muestreo = :tm";
+                        $paramsSync['tm'] = $personaToma;
+                    }
+                }
+            } else {
+                $sqlSync .= ", tecnico_muestreo = NULL";
+            }
+
+            $sqlSync .= " WHERE id = :id_os";
+            $stmtSync = $this->db->prepare($sqlSync);
+            $stmtSync->execute($paramsSync);
 
             if ($lockAcquired) {
                 $this->db->prepare("SELECT RELEASE_LOCK('lock_hojas_solicitud')")->execute();

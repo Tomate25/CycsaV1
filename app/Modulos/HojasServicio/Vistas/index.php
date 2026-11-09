@@ -251,19 +251,28 @@
                     <?php foreach ($nuevas as $n): ?>
                         <?php
                         // Determinar estado de muestreo para Casos A, B y C
-                        $estadoMuestreo = 'sin_decidir'; // Por defecto: Sin decidir (Preguntar siempre al usuario)
+                        $tieneHojasN = !empty($n['id_hoja']);
+                        $tieneMuestrasMCN = false;
+                        $tieneMuestrasMSN = false;
+                        if (!empty($n['muestras_json'])) {
+                            $mArrN = json_decode($n['muestras_json'], true) ?: [];
+                            foreach ($mArrN as $m) {
+                                $c = strtoupper(trim($m['nombre_muestra'] ?? ($m['codigo_muestra'] ?? '')));
+                                if (str_starts_with($c, 'MC-')) $tieneMuestrasMCN = true;
+                                if (str_starts_with($c, 'MS-')) $tieneMuestrasMSN = true;
+                            }
+                        }
+                        $estadoMuestreo = 'sin_decidir';
                         
                         if (!empty($n['id_pm'])) {
                             if (in_array($n['estado_muestreo'], ['Programado', 'En Proceso', 'En Campo'])) {
                                 $estadoMuestreo = 'en_proceso'; // Caso B: Técnico asignado en campo
                             } else {
-                                $estadoMuestreo = 'finalizado'; // Caso C: Muestreo completado
+                                $estadoMuestreo = 'muestreo_campo_finalizado'; // Caso C: Muestreo completado
                             }
-                        } elseif (!empty($n['id_hoja'])) {
-                            $estadoMuestreo = 'finalizado'; // Ya cuenta con hoja registrada
-                        } elseif ($n['requiere_muestreo'] === 1 || $n['requiere_muestreo'] === '1') {
-                            $estadoMuestreo = 'pendiente_programar';
-                        } elseif ($n['requiere_muestreo'] === 0 || $n['requiere_muestreo'] === '0') {
+                        } elseif ($tieneMuestrasMCN || $n['requiere_muestreo'] === 1 || $n['requiere_muestreo'] === '1') {
+                            $estadoMuestreo = $tieneHojasN ? 'muestreo_campo_finalizado' : 'pendiente_programar';
+                        } elseif ($tieneMuestrasMSN || $n['requiere_muestreo'] === 0 || $n['requiere_muestreo'] === '0') {
                             $estadoMuestreo = 'no_aplica';
                         }
                         ?>
@@ -282,7 +291,7 @@
                                         <?php if (!empty($n['tecnico_muestreo_nombre'])): ?>
                                             <div style="font-size:11px; color:#64748b; margin-top:2px;">Téc: <?= htmlspecialchars($n['tecnico_muestreo_nombre']) ?></div>
                                         <?php endif; ?>
-                                    <?php elseif ($estadoMuestreo === 'finalizado'): ?>
+                                    <?php elseif ($estadoMuestreo === 'muestreo_campo_finalizado' || $estadoMuestreo === 'finalizado'): ?>
                                         <span class="badge-hs" style="background:#dcfce7; color:#15803d; border:1px solid #86efac;">
                                             <i class="fa-solid fa-check-circle"></i> Muestreo Finalizado
                                         </span>
@@ -1083,15 +1092,25 @@
         const esSegunda = esSegundaHojaDecision;
         cerrarModalDecisionMuestreo();
 
+        const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
+
         if (tipo === 'logistica') {
-            window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + encodeURIComponent(idOS);
+            fetch('/Cycsa/publico/ordenes-servicio/marcar-requiere-muestreo', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-TOKEN': csrfVal
+                },
+                body: 'id_os=' + encodeURIComponent(idOS) + '&csrf_token=' + encodeURIComponent(csrfVal)
+            }).finally(() => {
+                window.location.href = '/Cycsa/publico/ordenes-servicio/programar-muestreo?id=' + encodeURIComponent(idOS);
+            });
             return;
         }
 
         const prefijo = (tipo === 'campo') ? 'MC' : 'MS';
 
-        if (!esSegunda && tipo === 'directo') {
-            const csrfVal = document.querySelector('input[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
+        if (tipo === 'directo') {
             fetch('/Cycsa/publico/ordenes-servicio/marcar-ingreso-directo', {
                 method: 'POST',
                 headers: { 
@@ -1100,6 +1119,21 @@
                 },
                 body: 'id_os=' + encodeURIComponent(idOS) + '&csrf_token=' + encodeURIComponent(csrfVal)
             }).catch(console.error);
+
+            const btns = document.querySelectorAll(`button[data-id-os="${idOS}"]`);
+            btns.forEach(b => b.setAttribute('data-estado-muestreo', 'no_aplica'));
+        } else if (tipo === 'campo') {
+            fetch('/Cycsa/publico/ordenes-servicio/marcar-requiere-muestreo', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-TOKEN': csrfVal
+                },
+                body: 'id_os=' + encodeURIComponent(idOS) + '&csrf_token=' + encodeURIComponent(csrfVal)
+            }).catch(console.error);
+
+            const btns = document.querySelectorAll(`button[data-id-os="${idOS}"]`);
+            btns.forEach(b => b.setAttribute('data-estado-muestreo', 'pendiente_programar'));
         }
 
         // Abrir siempre la Hoja RT-FM-13 con el prefijo seleccionado
