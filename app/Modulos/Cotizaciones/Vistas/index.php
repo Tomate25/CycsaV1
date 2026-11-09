@@ -54,6 +54,22 @@ $hayFiltrosAvanzados = !empty($filtros['fecha_desde'])
 
 <div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
     
+    <?php if (isset($_SESSION['exito'])): ?>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <i class="fa-solid fa-circle-check" style="color: #16a34a; font-size: 18px;"></i>
+            <span><?= htmlspecialchars($_SESSION['exito'], ENT_QUOTES, 'UTF-8') ?></span>
+        </div>
+        <?php unset($_SESSION['exito']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['error'])): ?>
+        <div style="background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <i class="fa-solid fa-triangle-exclamation" style="color: #dc2626; font-size: 18px;"></i>
+            <span><?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?></span>
+        </div>
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
+
     <div class="header-flex">
         <div>
             <h2 style="margin: 0; color: #333; font-size: 20px;">Gestión de Cotizaciones</h2>
@@ -180,6 +196,15 @@ $hayFiltrosAvanzados = !empty($filtros['fecha_desde'])
                     <td style="color: #6c757d; font-size: 13px;"><?= date('d/m/Y', strtotime($cot['fecha_creacion'])) ?></td>
                     <td style="text-align: right;">
                         <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cot['id']) ?>" class="btn-accion btn-ver" title="Ver Detalle"><i class="fa-solid fa-eye"></i></a>
+                        <?php if (tienePermiso('cotizaciones', 'crear_editar')): ?>
+                            <a href="/Cycsa/publico/cotizaciones/duplicar?id=<?= codificarId($cot['id']) ?>" 
+                               class="btn-accion btn-ver" 
+                               style="color: #0d9488;" 
+                               title="Duplicar Cotización (Genera nueva con número correlativo copiando todos los datos)"
+                               onclick="return confirm('¿Desea duplicar la cotización <?= htmlspecialchars($cot['codigo'], ENT_QUOTES, 'UTF-8') ?>?\n\nSe creará una nueva cotización con el siguiente número consecutivo conservando cliente, proyecto, notas, opciones e ítems cotizados.');">
+                                <i class="fa-solid fa-copy"></i>
+                            </a>
+                        <?php endif; ?>
                         <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cot['id']) ?>&t=<?= time() ?>" target="_blank" class="btn-accion btn-ver" style="color: #e31837;" title="Imprimir PDF"><i class="fa-solid fa-file-pdf"></i></a>
                     </td>
                 </tr>

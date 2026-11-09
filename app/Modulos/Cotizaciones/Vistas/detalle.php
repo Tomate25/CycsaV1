@@ -53,12 +53,36 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
+    <?php if (isset($_SESSION['exito'])): ?>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-circle-check" style="color: #16a34a; font-size: 18px;"></i> 
+                <span><?= htmlspecialchars($_SESSION['exito'], ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <?php if (($cotizacion['estado'] ?? '') === 'Borrador' && tienePermiso('cotizaciones', 'crear_editar')): ?>
+                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" style="background: #0d9488; color: white; padding: 7px 15px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; font-family: 'Inter', sans-serif;">
+                    <i class="fa-solid fa-pen-to-square"></i> Modificar Datos Ahora
+                </a>
+            <?php endif; ?>
+        </div>
+        <?php unset($_SESSION['exito']); ?>
+    <?php endif; ?>
+
     <div class="doc-header">
         <div>
             <h2 style="margin: 0; color: var(--cycsa-azul); font-size: 24px;">Cotización <?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?></h2>
             <p style="margin: 5px 0 0 0; color: #6c757d;">Cód. Doc CYCSA-RG-FM-31 V2R1 &bull; Versión <?= max(1, (int)($cotizacion['version'] ?? 1)) ?> | Generada el <?= date('d/m/Y', strtotime($cotizacion['fecha_creacion'])) ?></p>
         </div>
         <div style="text-align: right; display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
+            <?php if (tienePermiso('cotizaciones', 'crear_editar')): ?>
+                <a href="/Cycsa/publico/cotizaciones/duplicar?id=<?= codificarId($cotizacion['id']) ?>" 
+                   style="background-color: #0d9488; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2); transition: background 0.2s;"
+                   onmouseover="this.style.backgroundColor='#0f766e'" onmouseout="this.style.backgroundColor='#0d9488'"
+                   title="Duplicar esta cotización con un nuevo número consecutivo conservando todos los datos"
+                   onclick="return confirm('¿Desea duplicar la cotización <?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?>?\n\nSe generará una nueva cotización con el siguiente número consecutivo conservando toda la información, ítems cotizados, notas y opciones seleccionadas.');">
+                    <i class="fa-solid fa-copy"></i> Duplicar Cotización
+                </a>
+            <?php endif; ?>
             <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&t=<?= time() ?>" target="_blank" style="background-color: #e31837; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(227, 24, 55, 0.2);">
                 <i class="fa-solid fa-file-pdf"></i> Imprimir PDF
             </a>

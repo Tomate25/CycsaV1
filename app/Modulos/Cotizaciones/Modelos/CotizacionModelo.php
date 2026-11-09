@@ -123,10 +123,12 @@ class CotizacionModelo extends ModeloBase {
 
     public function generarCodigoUnico(): string {
         $año = date('Y');
-        $sql = "SELECT COUNT(*) FROM cotizaciones WHERE codigo LIKE :anio";
+        // Obtener el correlativo máximo del año actual para garantizar secuencia estricta sin colisiones
+        $sql = "SELECT MAX(CAST(SUBSTRING_INDEX(codigo, '-', -1) AS UNSIGNED)) FROM cotizaciones WHERE codigo LIKE :anio";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['anio' => "COT-{$año}-%"]);
-        return "COT-{$año}-" . str_pad((string)((int)$stmt->fetchColumn() + 1), 4, '0', STR_PAD_LEFT);
+        $max = (int)$stmt->fetchColumn();
+        return sprintf("COT-%s-%04d", $año, $max + 1);
     }
 
     public function actualizarEstado(int $id, string $estado, int $id_revisor, string $motivo = null, string $token = null): bool {
@@ -576,5 +578,139 @@ class CotizacionModelo extends ModeloBase {
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $id_detalle]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Duplica íntegramente una cotización existente, copiando todos sus datos comerciales,
+     * proyecto, notas, configuraciones, anexos y líneas de ensayo, asignándole el siguiente
+     * código consecutivo disponible en estado Borrador.
+     *
+     * @param int $idOrigen ID de la cotización a duplicar
+     * @param int $idUsuarioCreador ID del usuario que realiza la duplicación
+     * @return int ID de la nueva cotización creada, o 0 en caso de fallo
+     */
+    public function duplicarCotizacion(int $idOrigen, int $idUsuarioCreador = 0): int {
+        $origen = $this->obtenerPorId($idOrigen);
+        if (!$origen) {
+            return 0;
+        }
+
+        $detalles = $this->obtenerDetalles($idOrigen);
+        if (!is_array($detalles)) {
+            $detalles = [];
+        }
+
+        $db = $this->db;
+        $yaEnTransaccion = $db->inTransaction();
+
+        try {
+            if (!$yaEnTransaccion) {
+                $db->beginTransaction();
+            }
+
+            $nuevoCodigo = $this->generarCodigoUnico();
+            $creadorId = ($idUsuarioCreador > 0) ? $idUsuarioCreador : (int)($origen['id_usuario_creador'] ?? 1);
+
+            $idClienteFactura = !empty($origen['id_cliente_factura']) ? (int)$origen['id_cliente_factura'] : (int)$origen['id_cliente'];
+            $idClienteInforme = !empty($origen['id_cliente_informe']) ? (int)$origen['id_cliente_informe'] : (int)$origen['id_cliente'];
+            $condComercial = !empty($origen['condicion_comercial']) 
+                ? trim($origen['condicion_comercial']) 
+                : (str_contains(strtolower($origen['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado');
+
+            $sqlCabecera = "INSERT INTO cotizaciones (
+                codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial,
+                tipo_moneda, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto,
+                prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta,
+                configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto,
+                subtotal, descuento, exonerado, exoneracion_no, impuesto, total,
+                estado, version, fecha_entrega, fecha_seguimiento, dias_credito
+            ) VALUES (
+                :codigo, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial,
+                :tipo_moneda, :id_usuario_creador, :atencion_a, :nombre_proyecto, :direccion_proyecto,
+                :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta,
+                :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto,
+                :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total,
+                'Borrador', 0, NULL, NULL, :dias_credito
+            )";
+
+            $stmtCab = $db->prepare($sqlCabecera);
+            $stmtCab->execute([
+                'codigo' => $nuevoCodigo,
+                'id_cliente' => (int)$origen['id_cliente'],
+                'id_cliente_factura' => $idClienteFactura,
+                'id_cliente_informe' => $idClienteInforme,
+                'condicion_comercial' => $condComercial,
+                'tipo_moneda' => (int)($origen['tipo_moneda'] ?? 1),
+                'id_usuario_creador' => $creadorId,
+                'atencion_a' => $origen['atencion_a'] ?? '',
+                'nombre_proyecto' => $origen['nombre_proyecto'] ?? '',
+                'direccion_proyecto' => $origen['direccion_proyecto'] ?? '',
+                'prioridad' => !empty($origen['prioridad']) ? $origen['prioridad'] : 'Normal',
+                'fecha_limite' => null,
+                'condicion_pago' => $origen['condicion_pago'] ?? '',
+                'tiempo_entrega' => $origen['tiempo_entrega'] ?? '',
+                'vigencia_oferta' => $origen['vigencia_oferta'] ?? '',
+                'configuracion_notas' => $origen['configuracion_notas'] ?? null,
+                'contactos' => $origen['contactos'] ?? null,
+                'incluir_anexo_tecnico' => (int)($origen['incluir_anexo_tecnico'] ?? 0),
+                'anexo_tecnico' => $origen['anexo_tecnico'] ?? null,
+                'archivo_adjunto' => $origen['archivo_adjunto'] ?? null,
+                'subtotal' => (float)($origen['subtotal'] ?? 0),
+                'descuento' => (float)($origen['descuento'] ?? 0),
+                'exonerado' => (int)($origen['exonerado'] ?? 0),
+                'exoneracion_no' => $origen['exoneracion_no'] ?? null,
+                'impuesto' => (float)($origen['impuesto'] ?? 0),
+                'total' => (float)($origen['total'] ?? 0),
+                'dias_credito' => (int)($origen['dias_credito'] ?? 30)
+            ]);
+
+            $nuevoId = (int)$db->lastInsertId();
+
+            if (!empty($detalles)) {
+                $sqlDetalle = "INSERT INTO cotizacion_detalles (
+                    id_cotizacion, id_producto, descripcion_ensayo, condiciones_muestra,
+                    procedimiento, unidad_medida, codigo_servicio, norma_astm,
+                    formato_reporte, observaciones, descripcion_adicional, cantidad,
+                    precio_unitario, subtotal
+                ) VALUES (
+                    :id_cotizacion, :id_producto, :descripcion_ensayo, :condiciones_muestra,
+                    :procedimiento, :unidad_medida, :codigo_servicio, :norma_astm,
+                    :formato_reporte, :observaciones, :descripcion_adicional, :cantidad,
+                    :precio_unitario, :subtotal
+                )";
+
+                $stmtDet = $db->prepare($sqlDetalle);
+                foreach ($detalles as $det) {
+                    $stmtDet->execute([
+                        'id_cotizacion' => $nuevoId,
+                        'id_producto' => (int)($det['id_producto'] ?? 0),
+                        'descripcion_ensayo' => $det['descripcion_ensayo'] ?? ($det['nombre_comercial'] ?? ''),
+                        'condiciones_muestra' => $det['condiciones_muestra'] ?? null,
+                        'procedimiento' => $det['procedimiento'] ?? null,
+                        'unidad_medida' => $det['unidad_medida'] ?? 'Unidad',
+                        'codigo_servicio' => $det['codigo_servicio'] ?? null,
+                        'norma_astm' => $det['norma_astm'] ?? null,
+                        'formato_reporte' => $det['formato_reporte'] ?? null,
+                        'observaciones' => $det['observaciones'] ?? null,
+                        'descripcion_adicional' => $det['descripcion_adicional'] ?? null,
+                        'cantidad' => (float)($det['cantidad'] ?? 1),
+                        'precio_unitario' => (float)($det['precio_unitario'] ?? 0),
+                        'subtotal' => (float)($det['subtotal'] ?? 0)
+                    ]);
+                }
+            }
+
+            if (!$yaEnTransaccion && $db->inTransaction()) {
+                $db->commit();
+            }
+
+            return $nuevoId;
+        } catch (\Throwable $e) {
+            if (!$yaEnTransaccion && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log("Error al duplicar cotizacion {$idOrigen}: " . $e->getMessage());
+            return 0;
+        }
     }
 }

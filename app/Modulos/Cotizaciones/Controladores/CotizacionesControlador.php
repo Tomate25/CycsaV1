@@ -195,6 +195,69 @@ class CotizacionesControlador extends ControladorBase {
         }
     }
 
+    public function duplicar(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('cotizaciones', 'crear_editar')) {
+            $_SESSION['error'] = 'No tiene permisos para crear o duplicar cotizaciones.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            if (!defined('PHPUNIT_RUNNING')) { exit; }
+            return;
+        }
+
+        $idParam = $_POST['id'] ?? ($_GET['id'] ?? '');
+        $id = decodificarId($idParam) ?? (int)$idParam;
+
+        if ($id <= 0) {
+            $_SESSION['error'] = 'Identificador de cotización no válido.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            if (!defined('PHPUNIT_RUNNING')) { exit; }
+            return;
+        }
+
+        $modelo = new CotizacionModelo();
+        $cotOrigen = $modelo->obtenerPorId($id);
+        if (!$cotOrigen) {
+            $_SESSION['error'] = 'La cotización que intenta duplicar no existe.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            if (!defined('PHPUNIT_RUNNING')) { exit; }
+            return;
+        }
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+        $nuevoId = $modelo->duplicarCotizacion($id, $usuarioId);
+
+        if ($nuevoId > 0) {
+            $nuevaCot = $modelo->obtenerPorId($nuevoId);
+            $nuevoCodigo = $nuevaCot['codigo'] ?? "ID #{$nuevoId}";
+            $codigoOrigen = $cotOrigen['codigo'] ?? "ID #{$id}";
+
+            registrarBitacora('cotizaciones', 'duplicar', "Cotización {$codigoOrigen} duplicada exitosamente como {$nuevoCodigo}", $nuevoId);
+
+            $_SESSION['exito'] = "¡Cotización {$nuevoCodigo} creada con éxito al duplicar {$codigoOrigen}! Toda la información, ítems cotizados, notas y opciones seleccionadas fueron copiadas. Puede revisarla y modificarla a continuación.";
+
+            if (!empty($_POST['ajax']) || !empty($_GET['ajax'])) {
+                $respuesta->enviarJson([
+                    'success' => true,
+                    'message' => "Cotización {$nuevoCodigo} creada con éxito a partir de {$codigoOrigen}.",
+                    'nuevo_id' => $nuevoId,
+                    'nuevo_codigo' => $nuevoCodigo,
+                    'redirect' => '/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($nuevoId)
+                ]);
+                return;
+            }
+
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($nuevoId));
+        } else {
+            $_SESSION['error'] = 'Ocurrió un error al intentar duplicar la cotización.';
+            if (!empty($_POST['ajax']) || !empty($_GET['ajax'])) {
+                $respuesta->enviarJson(['success' => false, 'error' => 'No se pudo duplicar la cotización.'], 500);
+                return;
+            }
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+        }
+        if (!defined('PHPUNIT_RUNNING')) { exit; }
+    }
+
     public function detalle(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('cotizaciones', 'ver')) {
