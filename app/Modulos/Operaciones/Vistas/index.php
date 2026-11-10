@@ -438,28 +438,28 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
                             ];
                         } elseif ($matricesLlenadas === 0 && $idObjetivoMatriz) {
                             $btnPrimario = [
-                                'tipo' => 'link',
-                                'href' => "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$idObjetivoMatriz}",
+                                'tipo' => 'button',
+                                'onclick' => "abrirMatricesOS({$o['id']})",
                                 'icono' => 'fa-solid fa-table-cells',
-                                'texto' => 'Rellenar Matriz',
+                                'texto' => 'Ver Matrices (' . $totalItemsOS . ')',
                                 'clase' => 'btn-primary',
-                                'titulo' => 'Iniciar captura de resultados técnicos en la matriz oficial'
+                                'titulo' => 'Ver listado de las ' . $totalItemsOS . ' matrices técnicas de la orden sin abrir ninguna directamente'
                             ];
                         } elseif (!$matrizCompleta && $idObjetivoMatriz) {
                             $btnPrimario = [
-                                'tipo' => 'link',
-                                'href' => "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$idObjetivoMatriz}",
+                                'tipo' => 'button',
+                                'onclick' => "abrirMatricesOS({$o['id']})",
                                 'icono' => 'fa-solid fa-pen-to-square',
-                                'texto' => 'Continuar Matriz',
+                                'texto' => 'Ver Matrices (' . $matricesLlenadas . '/' . $totalItemsOS . ')',
                                 'clase' => 'btn-primary',
-                                'titulo' => 'Continuar captura de ensayos pendientes (' . $matricesLlenadas . '/' . $totalItemsOS . ')'
+                                'titulo' => 'Ver avance de matrices: ' . $matricesLlenadas . ' de ' . $totalItemsOS . ' completadas'
                             ];
                         } elseif ($o['ensayos_con_resultados'] > 0 && !$o['tecnico_100'] && $primerItemId) {
                             $btnPrimario = [
-                                'tipo' => 'link',
-                                'href' => "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$primerItemId}",
+                                'tipo' => 'button',
+                                'onclick' => "abrirMatricesOS({$o['id']})",
                                 'icono' => 'fa-solid fa-clipboard-check',
-                                'texto' => $esSupervisor ? 'Revisar / Aprobar' : 'Ver Matriz',
+                                'texto' => $esSupervisor ? 'Revisar Matrices (' . $totalItemsOS . ')' : 'Ver Matrices (' . $totalItemsOS . ')',
                                 'clase' => $esSupervisor ? 'btn-info text-white' : 'btn-primary',
                                 'titulo' => 'Revisar matrices técnicas para visto bueno o corrección'
                             ];
@@ -622,7 +622,8 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 13px; z-index: 1060;">
-                                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirDetalleOS(<?= $o['id'] ?>)"><i class="fa-solid fa-folder-open me-2 text-primary"></i> Ver Detalle</a></li>
+                                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirDetalleOS(<?= $o['id'] ?>)"><i class="fa-solid fa-folder-open me-2 text-primary"></i> Ver Detalle (Resumen)</a></li>
+                                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirMatricesOS(<?= $o['id'] ?>)"><i class="fa-solid fa-table-cells me-2 text-primary"></i> Ver Matrices (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)</a></li>
                                         <li><a class="dropdown-item py-2" href="/Cycsa/publico/operaciones/ver?id_os=<?= $o['id'] ?>"><i class="fa-solid fa-arrow-up-right-from-square me-2 text-primary"></i> Ver en Página Completa</a></li>
                                         <?php if ($tieneHojaServicio): ?>
                                             <li><a class="dropdown-item py-2" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $o['id'] ?>" target="_blank"><i class="fa-solid fa-file-pdf me-2 text-info"></i> Descargar RT-FM-13 (PDF)</a></li>
@@ -763,7 +764,19 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
                                                 Productos Cotizados - Matriz Técnica de Ensayos
                                             </h4>
                                             <span class="badge bg-light text-dark border" style="font-size: 11.5px; font-weight: 600;">
-                                                <?= $totalItemsOS ?> ensayos registrados
+                                                <?= $totalItemsOS ?> <?= $totalItemsOS === 1 ? 'matriz registrada' : 'matrices registradas' ?>
+                                            </span>
+                                        </div>
+
+                                        <!-- Resumen de matrices pendientes de captura -->
+                                        <div class="alert alert-light border d-flex justify-content-between align-items-center py-2 px-3 mb-3" style="background:#f8fafc; border-radius:8px; font-size:13px;">
+                                            <div>
+                                                <i class="fa-solid fa-list-check text-primary me-2"></i>
+                                                <strong><?= $totalItemsOS ?> <?= $totalItemsOS === 1 ? 'matriz técnica' : 'matrices técnicas' ?> en esta orden:</strong>
+                                                <span class="text-muted ms-1">(<?= $matricesLlenadas ?> completada<?= $matricesLlenadas === 1 ? '' : 's' ?>, <?= ($totalItemsOS - $matricesLlenadas) ?> pendiente<?= ($totalItemsOS - $matricesLlenadas) === 1 ? '' : 's' ?> de captura)</span>
+                                            </div>
+                                            <span class="badge <?= $matrizCompleta ? 'bg-success' : 'bg-primary' ?>" style="font-size:12px; font-weight:700;">
+                                                <?= $matricesLlenadas ?> / <?= $totalItemsOS ?>
                                             </span>
                                         </div>
                                         <div class="lims-ensayos-cards-list d-flex flex-column gap-3">
@@ -1157,8 +1170,8 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
             abrirModalMuestreo(idOS, codigoOS);
             return;
         }
-        alert('Debe rellenar primero la matriz técnica de los productos cotizados para habilitar la Hoja de Laboratorio.');
-        abrirModalMatrizEnsayosOS(idOS, codigoOS);
+        alert('Debe capturar primero la matriz técnica de los productos cotizados para habilitar la Hoja de Laboratorio.');
+        abrirMatricesOS(idOS);
     }
 
     function intentarRellenarMatrizProducto(tieneHoja, tieneAceptacionLab, idOS, codigoOS, idDetalle) {
@@ -1229,10 +1242,25 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
         abrirLimsDrawer(idOS);
     }
 
-    function abrirLimsDrawer(idOS) {
+    function abrirMatricesOS(idOS) {
+        abrirLimsDrawer(idOS, 'tab-ensayos-' + idOS);
+    }
+
+    function abrirLimsDrawer(idOS, tabInicial = null) {
         // Si ya hay un drawer abierto para otra O/S, restaurar el anterior
         if (currentDrawerOSId !== null && currentDrawerOSId !== idOS) {
             cerrarLimsDrawer();
+        }
+
+        // Si ya está abierto para esta misma O/S, conmutar pestaña solicitada
+        if (currentDrawerOSId === idOS && currentDetailCardNode) {
+            const tabBtns = currentDetailCardNode.querySelectorAll('.btn-drawer-tab');
+            if (tabInicial && tabInicial.startsWith('tab-ensayos-')) {
+                if (tabBtns[1]) switchDrawerCardTab(tabBtns[1], tabInicial);
+            } else {
+                if (tabBtns[0]) switchDrawerCardTab(tabBtns[0], 'tab-resumen-' + idOS);
+            }
+            return;
         }
 
         const row = document.getElementById('os-row-' + idOS);
@@ -1269,10 +1297,16 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
         drawerBody.innerHTML = '';
         drawerBody.appendChild(card);
 
-        // Resetear tab a Resumen al abrir
-        const firstTabBtn = card.querySelector('.btn-drawer-tab');
-        if (firstTabBtn) {
-            switchDrawerCardTab(firstTabBtn, 'tab-resumen-' + idOS);
+        // Seleccionar pestaña inicial: Si se solicita tab-ensayos, activar la 2da pestaña; sino la 1ra (Resumen)
+        const tabBtns = card.querySelectorAll('.btn-drawer-tab');
+        if (tabInicial && tabInicial.startsWith('tab-ensayos-')) {
+            if (tabBtns[1]) {
+                switchDrawerCardTab(tabBtns[1], tabInicial);
+            }
+        } else {
+            if (tabBtns[0]) {
+                switchDrawerCardTab(tabBtns[0], 'tab-resumen-' + idOS);
+            }
         }
 
         const overlay = document.getElementById('lims-drawer-overlay');

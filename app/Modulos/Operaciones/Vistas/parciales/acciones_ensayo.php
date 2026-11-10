@@ -92,7 +92,7 @@ $descEnsayoEsc = htmlspecialchars(addslashes($it['descripcion_ensayo'] ?? ''), E
         <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" 
            class="btn btn-primary btn-sm" 
            style="height: 36px; padding: 0 16px; font-size: 13px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background-color: var(--cycsa-azul, #103487); border-color: var(--cycsa-azul, #103487); color: white;">
-            <i class="fa-solid fa-pen-to-square"></i> <?= $tieneRes ? 'Editar Matriz' : 'Rellenar Matriz' ?>
+            <i class="fa-solid fa-pen-to-square"></i> <?= $tieneRes ? 'Editar Matriz' : 'Capturar Matriz' ?>
         </a>
         <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $it['id'] ?>" 
            target="_blank" 
@@ -138,7 +138,7 @@ $descEnsayoEsc = htmlspecialchars(addslashes($it['descripcion_ensayo'] ?? ''), E
         <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $it['id'] ?>" 
            class="btn btn-primary btn-sm" 
            style="height: 36px; padding: 0 16px; font-size: 13px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background-color: var(--cycsa-azul, #103487); border-color: var(--cycsa-azul, #103487); color: white;">
-            <i class="fa-solid fa-pen-to-square"></i> <?= $tieneRes ? 'Editar Matriz' : 'Rellenar Matriz' ?>
+            <i class="fa-solid fa-pen-to-square"></i> <?= $tieneRes ? 'Editar Matriz' : 'Capturar Matriz' ?>
         </a>
         <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $it['id'] ?>" 
            target="_blank" 
