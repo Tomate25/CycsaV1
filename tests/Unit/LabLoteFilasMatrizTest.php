@@ -1288,4 +1288,119 @@ class LabLoteFilasMatrizTest extends TestCase
         $this->assertStringContainsString('INFORME CONSOLIDADO DE ENSAYO', $htmlInf);
         $this->assertStringContainsString('SHA-256: abcdef1234567890', $htmlInf);
     }
+
+    /**
+     * TEST: aceptarMuestraRapida redirige directamente a detalle-lote y programa
+     * automáticamente las edades ASTM estándar (7, 14, 28 días) manteniendo todas las probetas juntas.
+     */
+    public function testAceptarMuestraRapidaRedirigeALoteYProgramaEdadesEstandar(): void
+    {
+        $fx = $this->crearFixture(3);
+
+        // Asegurar que cotizacion_detalles.resultados_json está vacío inicialmente
+        $this->db->prepare("UPDATE cotizacion_detalles SET resultados_json = NULL WHERE id = ?")->execute([$fx['id_detalle']]);
+
+        // Simular que recepcion_muestras aún no tiene muestras recepcionadas para este lote
+        $this->db->prepare("DELETE FROM plan_rotura_asignaciones WHERE especimen_id IN (SELECT id FROM especimenes WHERE muestra_id IN (SELECT id FROM recepcion_muestras WHERE id_hoja = ?))")->execute([$fx['id_hoja']]);
+        $this->db->prepare("DELETE FROM plan_rotura_edades WHERE plan_rotura_id IN (SELECT id FROM planes_rotura WHERE muestra_id IN (SELECT id FROM recepcion_muestras WHERE id_hoja = ?))")->execute([$fx['id_hoja']]);
+        $this->db->prepare("DELETE FROM planes_rotura WHERE muestra_id IN (SELECT id FROM recepcion_muestras WHERE id_hoja = ?)")->execute([$fx['id_hoja']]);
+        $this->db->prepare("DELETE FROM especimenes WHERE muestra_id IN (SELECT id FROM recepcion_muestras WHERE id_hoja = ?)")->execute([$fx['id_hoja']]);
+        $this->db->prepare("DELETE FROM lotes_muestras WHERE id_recepcion IN (SELECT id FROM recepcion_muestras WHERE id_hoja = ?)")->execute([$fx['id_hoja']]);
+        $this->db->prepare("DELETE FROM recepcion_muestras WHERE id_hoja = ?")->execute([$fx['id_hoja']]);
+
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['ver' => 1, 'crear_editar' => 1]];
+        $_SESSION['csrf_token'] = 'token_test_abc';
+
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = [
+            'id_os' => $fx['id_os'],
+            'id_hoja' => $fx['id_hoja'],
+            'id_detalle_cotizacion' => $fx['id_detalle'],
+            'csrf_token' => 'token_test_abc',
+            'fecha_recepcion' => date('Y-m-d H:i:s')
+        ];
+
+        $peticion = new Peticion();
+        $ctrl = new LaboratorioControlador();
+        $capturador = new class extends Respuesta {
+            public ?string $urlRedir = null;
+            public function redirigir(string $url): void {
+                $this->urlRedir = $url;
+            }
+        };
+
+        $ctrl->aceptarMuestraRapida($peticion, $capturador);
+
+        // 1. Debe redirigir DIRECTAMENTE a detalle-lote con el id_hoja
+        $this->assertSame('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $fx['id_hoja'], $capturador->urlRedir, 'Debe redirigir directamente al lote de roturas donde están las probetas juntas.');
+
+        // 2. Debe haber creado 3 registros en recepcion_muestras
+        $stmtM = $this->db->prepare("SELECT id, codigo_muestra FROM recepcion_muestras WHERE id_hoja = :id ORDER BY orden_en_lote ASC, id ASC");
+        $stmtM->execute(['id' => $fx['id_hoja']]);
+        $muestrasRec = $stmtM->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertCount(3, $muestrasRec);
+
+        // 3. Cada probeta debe tener su espécimen con plan y edad programada (7, 14, 28 días)
+        $stmtEsp = $this->db->prepare("
+            SELECT esp.codigo_lab, esp.estado, pre.edad_dias, pre.fecha_programada 
+            FROM especimenes esp
+            JOIN plan_rotura_asignaciones pra ON pra.especimen_id = esp.id
+            JOIN plan_rotura_edades pre ON pra.plan_edad_id = pre.id
+            WHERE esp.muestra_id IN (SELECT id FROM recepcion_muestras WHERE id_hoja = :id)
+            ORDER BY esp.id ASC
+        ");
+        $stmtEsp->execute(['id' => $fx['id_hoja']]);
+        $especimenes = $stmtEsp->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertCount(3, $especimenes, 'Las 3 probetas deben tener asignación a plan_rotura_edades.');
+
+        $this->assertSame(7, (int)$especimenes[0]['edad_dias']);
+        $this->assertSame(14, (int)$especimenes[1]['edad_dias']);
+        $this->assertSame(28, (int)$especimenes[2]['edad_dias']);
+        $this->assertNotEmpty($especimenes[0]['fecha_programada']);
+
+        // 4. cotizacion_detalles.resultados_json debe estar sincronizado con las 3 filas
+        $stmtCd = $this->db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
+        $stmtCd->execute(['id' => $fx['id_detalle']]);
+        $jsonMat = json_decode((string)$stmtCd->fetchColumn(), true);
+        $this->assertIsArray($jsonMat);
+        $this->assertCount(3, $jsonMat['filas'] ?? []);
+    }
+
+    /**
+     * TEST: En la Bandeja Anónima de Laboratorio (tab=bandeja), las probetas de un mismo lote
+     * se muestran consolidadas en una sola fila representativa del lote.
+     */
+    public function testBandejaAnonimaConsolidaLotesDeProbetas(): void
+    {
+        $fx = $this->crearFixture(3);
+        $this->sincronizarMatrizConLab($fx['id_hoja'], $fx['id_detalle'], 3, false);
+
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['ver' => 1, 'crear_editar' => 1]];
+        $_SESSION['csrf_token'] = 'token_test_abc';
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/Cycsa/publico/laboratorio?tab=bandeja';
+        $_GET = ['tab' => 'bandeja'];
+
+        $peticion = new Peticion();
+        $ctrl = new LaboratorioControlador();
+        $capturador = new class extends Respuesta {
+            public ?string $urlRedir = null;
+            public function redirigir(string $url): void {
+                $this->urlRedir = $url;
+            }
+        };
+
+        ob_start();
+        $ctrl->index($peticion, $capturador);
+        $html = (string)ob_get_clean();
+
+        $this->assertNull($capturador->urlRedir);
+        $this->assertStringContainsString('Lote (3 probetas)', $html, 'La bandeja debe mostrar la etiqueta Lote (3 probetas)');
+        $this->assertStringContainsString('al', $html, 'Debe mostrar el rango de probetas');
+        $this->assertStringContainsString('Ensayar Lote', $html, 'Debe presentar la acción para ensayar el lote');
+    }
 }

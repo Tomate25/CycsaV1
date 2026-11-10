@@ -687,16 +687,30 @@ foreach ($solicitudesPorAprobar as $sol) {
                             ? '/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . (int)$m['id_hoja']
                             : '/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=' . (int)$m['muestra_id'];
                         $esReplicaCr = !empty($m['is_qa_qc']) || ($m['replica_codigo'] ?? '') === '-CR' || str_ends_with((string)$m['codigo_lab'], '-CR');
+                        $esLoteConsolidado = !empty($m['es_lote']) && count($m['muestras_items'] ?? []) > 1;
                     ?>
                     <tr class="<?= $claseFila ?>" onclick="window.location.href='<?= $urlDestinoFila ?>'">
                         <td style="font-family: monospace; font-weight: 800; font-size: 13.5px; color: #0369a1;">
-                            <i class="fa-solid fa-cube" style="color: var(--cycsa-azul); margin-right: 4px;"></i>
-                            <?= htmlspecialchars($m['codigo_lab'], ENT_QUOTES, 'UTF-8') ?>
-                            <?php if ($esReplicaCr): ?>
-                                <span style="font-size: 10px; background: #fef3c7; color: #b45309; border: 1px solid #f59e0b; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 4px;">Réplica CR</span>
-                            <?php endif; ?>
-                            <?php if (!empty($m['codigo_campo']) && $m['codigo_campo'] !== $m['codigo_lab']): ?>
-                                <span style="display: block; font-size: 11px; color: #64748b; font-weight: 500;">Campo: <?= htmlspecialchars($m['codigo_campo']) ?></span>
+                            <?php if ($esLoteConsolidado): ?>
+                                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <i class="fa-solid fa-layer-group" style="color: var(--cycsa-azul);"></i>
+                                    <span><?= htmlspecialchars($m['codigo_rango'] ?? $m['codigo_lab'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="badge-lab" style="font-size: 10px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">
+                                        <i class="fa-solid fa-cubes"></i> Lote (<?= count($m['muestras_items']) ?> probetas)
+                                    </span>
+                                </div>
+                                <div style="font-size: 11px; color: #64748b; font-weight: 500; font-family: monospace; margin-top: 3px;">
+                                    <?= htmlspecialchars(implode(', ', $m['codigos_lote'] ?? [$m['codigo_lab']])) ?>
+                                </div>
+                            <?php else: ?>
+                                <i class="fa-solid fa-cube" style="color: var(--cycsa-azul); margin-right: 4px;"></i>
+                                <?= htmlspecialchars($m['codigo_lab'], ENT_QUOTES, 'UTF-8') ?>
+                                <?php if ($esReplicaCr): ?>
+                                    <span style="font-size: 10px; background: #fef3c7; color: #b45309; border: 1px solid #f59e0b; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 4px;">Réplica CR</span>
+                                <?php endif; ?>
+                                <?php if (!empty($m['codigo_campo']) && $m['codigo_campo'] !== $m['codigo_lab']): ?>
+                                    <span style="display: block; font-size: 11px; color: #64748b; font-weight: 500;">Campo: <?= htmlspecialchars($m['codigo_campo']) ?></span>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                         <td>
@@ -748,14 +762,18 @@ foreach ($solicitudesPorAprobar as $sol) {
                         </td>
                         <td style="text-align: right; white-space: nowrap;" onclick="event.stopPropagation();">
                             <?php if (!empty($m['id_hoja'])): ?>
-                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?>" class="btn-accion btn-os" title="Abrir Lote completo de la Hoja RT-FM-13 en secuencia de matriz">
-                                    <i class="fa-solid fa-layer-group"></i> Ver Lote (<?= (int)($m['total_muestras_lote'] ?? 1) ?>)
+                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?>" class="btn-accion btn-os" style="font-weight:700;" title="Abrir Lote completo con todas las probetas juntas">
+                                    <i class="fa-solid fa-layer-group"></i> Ver Lote (<?= (int)($m['total_muestras_lote'] ?? count($m['muestras_items'] ?? [1])) ?>)
+                                </a>
+                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?>" class="btn-accion btn-primary-lab" title="Romper probetas del lote juntas o individualmente">
+                                    <i class="fa-solid fa-hammer"></i> Ensayar Lote
+                                </a>
+                            <?php else: ?>
+                                <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$m['muestra_id'] ?>" class="btn-accion btn-detalle" title="Abrir detalle individual de la muestra">
+                                    <i class="fa-solid fa-folder-open"></i> Detalle
                                 </a>
                             <?php endif; ?>
-                            <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$m['muestra_id'] ?>" class="btn-accion btn-detalle" title="Abrir detalle individual de la muestra">
-                                <i class="fa-solid fa-folder-open"></i> Detalle
-                            </a>
-                            <?php if ($puedeReidentificar): ?>
+                            <?php if ($puedeReidentificar && !$esLoteConsolidado): ?>
                                 <button type="button" class="btn-accion btn-reidentificar" onclick="abrirModalReidentificar('<?= htmlspecialchars($m['codigo_lab'], ENT_QUOTES, 'UTF-8') ?>', <?= (int)$m['muestra_id'] ?>)" title="Reidentificación auditada bajo ISO 17025">
                                     <i class="fa-solid fa-shield-halved"></i> Reidentificar
                                 </button>

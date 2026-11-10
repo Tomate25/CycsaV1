@@ -188,7 +188,65 @@ class LaboratorioControlador extends ControladorBase {
         ];
 
         // Obtener listado de la vista SQL anónima v_lab_muestras (GET 100% libre de escrituras)
-        $muestras = $roturasModelo->obtenerBandejaAnonima($filtros);
+        $muestrasRaw = $roturasModelo->obtenerBandejaAnonima($filtros);
+
+        // Agrupar muestras por Lote (id_hoja) para visualización consolidada ISO 17025 (las probetas van juntas)
+        $muestras = [];
+        $mapaLotes = [];
+        foreach ($muestrasRaw as $m) {
+            $idHojaM = (int)($m['id_hoja'] ?? 0);
+            if ($idHojaM > 0) {
+                if (!isset($mapaLotes[$idHojaM])) {
+                    $idxLote = count($muestras);
+                    $mapaLotes[$idHojaM] = $idxLote;
+                    $mConsolidada = $m;
+                    $mConsolidada['es_lote'] = true;
+                    $mConsolidada['muestras_items'] = [$m];
+                    $mConsolidada['codigos_lote'] = [$m['codigo_lab']];
+                    $mConsolidada['total_especimenes_lote'] = (int)$m['total_especimenes'];
+                    $mConsolidada['especimenes_ensayados_lote'] = (int)$m['especimenes_ensayados'];
+                    $mConsolidada['proxima_rotura_lote'] = $m['proxima_rotura'];
+                    $muestras[$idxLote] = $mConsolidada;
+                } else {
+                    $idxLote = $mapaLotes[$idHojaM];
+                    $muestras[$idxLote]['muestras_items'][] = $m;
+                    $muestras[$idxLote]['codigos_lote'][] = $m['codigo_lab'];
+                    $muestras[$idxLote]['total_especimenes_lote'] += (int)$m['total_especimenes'];
+                    $muestras[$idxLote]['especimenes_ensayados_lote'] += (int)$m['especimenes_ensayados'];
+                    if (!empty($m['proxima_rotura'])) {
+                        if (empty($muestras[$idxLote]['proxima_rotura_lote']) || $m['proxima_rotura'] < $muestras[$idxLote]['proxima_rotura_lote']) {
+                            $muestras[$idxLote]['proxima_rotura_lote'] = $m['proxima_rotura'];
+                        }
+                    }
+                }
+            } else {
+                $m['es_lote'] = false;
+                $m['muestras_items'] = [$m];
+                $m['codigos_lote'] = [$m['codigo_lab']];
+                $m['total_especimenes_lote'] = (int)$m['total_especimenes'];
+                $m['especimenes_ensayados_lote'] = (int)$m['especimenes_ensayados'];
+                $m['proxima_rotura_lote'] = $m['proxima_rotura'];
+                $muestras[] = $m;
+            }
+        }
+
+        $hoy = date('Y-m-d');
+        foreach ($muestras as &$itemG) {
+            if (!empty($itemG['es_lote'])) {
+                sort($itemG['codigos_lote'], SORT_NATURAL);
+                $cantCods = count($itemG['codigos_lote']);
+                $itemG['codigo_rango'] = ($cantCods > 1) 
+                    ? ($itemG['codigos_lote'][0] . ' al ' . $itemG['codigos_lote'][$cantCods - 1])
+                    : $itemG['codigos_lote'][0];
+                $itemG['proxima_rotura'] = $itemG['proxima_rotura_lote'];
+                $itemG['total_especimenes'] = $itemG['total_especimenes_lote'];
+                $itemG['especimenes_ensayados'] = $itemG['especimenes_ensayados_lote'];
+                $itemG['total_muestras_lote'] = $cantCods;
+                $itemG['es_vencida'] = (!empty($itemG['proxima_rotura']) && $itemG['proxima_rotura'] < $hoy && $itemG['estado_plan'] !== 'cerrado');
+                $itemG['es_hoy'] = (!empty($itemG['proxima_rotura']) && $itemG['proxima_rotura'] === $hoy);
+            }
+        }
+        unset($itemG);
 
         // Métricas rápidas para KPIs superiores de la bandeja anónima
         $todas = $roturasModelo->obtenerBandejaAnonima([]);
@@ -1349,29 +1407,118 @@ class LaboratorioControlador extends ControladorBase {
                     }
                 }
 
-                // 2. Si la matriz aún no ha sido capturada en Operaciones, garantizar 1 espécimen base
-                // en_curado por cada muestra física aceptada (código de probeta = código de muestra, sin -C1..Cn ni fallback 7/14/28)
+                // 2. Garantizar programación de roturas ASTM C39 / ISO 17025 para que todas las probetas del lote
+                // vayan juntas en el proceso de rotura con sus edades y listas para ensayar
+                $stmtMuestrasLote = $db->prepare("
+                    SELECT rm.id AS muestra_id, rm.codigo_muestra, lm.fecha_moldeo, rm.orden_en_lote
+                    FROM recepcion_muestras rm
+                    LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+                    WHERE rm.id_os = :id_os " . ($actualHojaId > 0 ? "AND rm.id_hoja = :id_hoja" : "") . "
+                    ORDER BY rm.orden_en_lote ASC, rm.id ASC
+                ");
+                $paramsML = ['id_os' => $idOS];
+                if ($actualHojaId > 0) {
+                    $paramsML['id_hoja'] = $actualHojaId;
+                }
+                $stmtMuestrasLote->execute($paramsML);
+                $muestrasObtenidas = $stmtMuestrasLote->fetchAll(PDO::FETCH_ASSOC);
+
                 if (empty($filasMatriz)) {
-                    $stmtMuestrasLote = $db->prepare("
-                        SELECT rm.id AS muestra_id, rm.codigo_muestra, lm.fecha_moldeo
-                        FROM recepcion_muestras rm
-                        LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
-                        WHERE rm.id_os = :id_os " . ($actualHojaId > 0 ? "AND rm.id_hoja = :id_hoja" : "") . "
-                        ORDER BY rm.orden_en_lote ASC, rm.id ASC
-                    ");
-                    $paramsML = ['id_os' => $idOS];
-                    if ($actualHojaId > 0) {
-                        $paramsML['id_hoja'] = $actualHojaId;
+                    $cantMuestras = count($muestrasObtenidas);
+                    // Secuencia ASTM estándar de rotura según el número de probetas
+                    $edadesEstandar = match($cantMuestras) {
+                        1 => [28],
+                        2 => [7, 28],
+                        3 => [7, 14, 28],
+                        4 => [7, 14, 28, 28],
+                        5 => [7, 7, 14, 28, 28],
+                        default => (function($c) {
+                            $base = [3, 7, 7, 14, 28, 28];
+                            while (count($base) < $c) { $base[] = 28; }
+                            return array_slice($base, 0, $c);
+                        })($cantMuestras)
+                    };
+
+                    $filasInicialesMatriz = [];
+                    foreach ($muestrasObtenidas as $idx => $mItem) {
+                        $edadDef = (int)($edadesEstandar[$idx] ?? 28);
+                        $fMoldeo = !empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d');
+                        $fProg = date('Y-m-d', strtotime($fMoldeo . " + {$edadDef} days"));
+                        $datosMat = [
+                            'edad_dias' => $edadDef,
+                            'fecha_rotura_programada' => $fProg,
+                            'fecha_fabricacion' => $fMoldeo,
+                            'tamano_cilindro' => '15 x 30 cm',
+                            'area' => 14.137
+                        ];
+                        sincronizarEspecimenYPlanFila($db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
+
+                        // Precarga de fila para la matriz técnica en Operaciones
+                        $filasInicialesMatriz[] = [
+                            'Código laboratorio' => (string)$mItem['codigo_muestra'],
+                            'Nombre muestra' => 'Probeta ' . ($idx + 1),
+                            'Área (in²)' => '14.137',
+                            'Reven. (in)' => '',
+                            'Reven. (cm)' => '',
+                            'Temp. (°C)' => '',
+                            'Carga (lb)' => '',
+                            'Peso Volumétrico (kg/m³)' => '',
+                            'Diseño de concreto (lb/in²)' => '',
+                            'R. Compresión (lb/in²)' => '',
+                            'R. Compresión (kg/cm²)' => '',
+                            'Fecha de Fabricación' => $fMoldeo,
+                            'Fecha de Ensayo' => $fProg,
+                            'Edad (Días)' => (string)$edadDef
+                        ];
                     }
-                    $stmtMuestrasLote->execute($paramsML);
-                    foreach ($stmtMuestrasLote->fetchAll(PDO::FETCH_ASSOC) as $mItem) {
-                        sincronizarEspecimenYPlanFila($db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], []);
+
+                    // Si cotizacion_detalles.resultados_json está vacío, precargar para sincronía 100% con Operaciones
+                    if ($idDetalleCotizacion > 0 && !empty($filasInicialesMatriz)) {
+                        $stmtCheckDet = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
+                        $stmtCheckDet->execute(['id' => $idDetalleCotizacion]);
+                        $detCurrJson = $stmtCheckDet->fetchColumn();
+                        if (empty($detCurrJson) || $detCurrJson === '[]') {
+                            $payloadMat = [
+                                'version_actual' => 1,
+                                'filas' => $filasInicialesMatriz,
+                                'metadatos' => [],
+                                'revision' => [
+                                    'estado' => 'en_revision',
+                                    'fecha_envio' => date('Y-m-d H:i:s'),
+                                    'usuario_envio' => $_SESSION['usuario_nombre'] ?? 'Laboratorio',
+                                    'historial' => []
+                                ]
+                            ];
+                            $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
+                               ->execute(['json' => json_encode($payloadMat, JSON_UNESCAPED_UNICODE), 'id' => $idDetalleCotizacion]);
+                        }
+                    }
+                } else {
+                    // Si ya había matriz técnica, asegurar que todas las probetas tengan su plan sincronizado
+                    foreach ($muestrasObtenidas as $idx => $mItem) {
+                        $stmtChkPlan = $db->prepare("SELECT id FROM planes_rotura WHERE muestra_id = :mid LIMIT 1");
+                        $stmtChkPlan->execute(['mid' => (int)$mItem['muestra_id']]);
+                        if (!$stmtChkPlan->fetchColumn()) {
+                            $datosMat = obtenerDatosMuestraDesdeMatriz($filasMatriz, (string)$mItem['codigo_muestra']);
+                            if (empty($datosMat['edad_dias'])) {
+                                $datosMat['edad_dias'] = 28;
+                                $fMoldeo = !empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d');
+                                $datosMat['fecha_rotura_programada'] = date('Y-m-d', strtotime($fMoldeo . " + 28 days"));
+                            }
+                            sincronizarEspecimenYPlanFila($db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
+                        }
                     }
                 }
 
                 $prefijoAsignado = ($tipoMuestraCalculado === 'Campo') ? 'MC' : 'MS';
                 $numHojaTexto = !empty($hoja['numero_registro']) ? " [Reg: {$hoja['numero_registro']}]" : "";
-                $_SESSION['exito'] = "Muestras de la Hoja RT-FM-13{$numHojaTexto} aceptadas e ingresadas exitosamente a la Bandeja Anónima de Laboratorio ({$prefijoAsignado}-XXXX-" . date('y') . ").";
+                $_SESSION['exito'] = "Muestras de la Hoja RT-FM-13{$numHojaTexto} aceptadas e ingresadas exitosamente a Laboratorio con sus probetas agrupadas y programadas para ensayo.";
+
+                // Redirigir directamente a la Hoja de Trabajo por Lote para ensayar las probetas juntas
+                if ($actualHojaId > 0) {
+                    $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . (int)$actualHojaId);
+                    return;
+                }
             } else {
                 $detalleRecepcion = $modelo->obtenerUltimoErrorRecepcion() ?? '';
                 $_SESSION['error'] = str_contains($detalleRecepcion, 'no está habilitado')
