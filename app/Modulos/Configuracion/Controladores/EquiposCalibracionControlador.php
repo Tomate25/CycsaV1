@@ -25,8 +25,8 @@ use PDO;
 class EquiposCalibracionControlador extends ControladorBase {
 
     private function asegurarSesionIniciada(): void {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            @session_start();
         }
     }
 
@@ -100,7 +100,7 @@ class EquiposCalibracionControlador extends ControladorBase {
                 exit;
             }
             $_SESSION['error'] = 'Token de seguridad CSRF inválido o expirado. Recargue la página e intente nuevamente.';
-            $respuesta->redirigir('/Cycsa/publico/equipos-calibracion');
+            $respuesta->redirigir('/Cycsa/publico/control-calidad/calibracion');
             exit;
         }
     }
@@ -128,6 +128,7 @@ class EquiposCalibracionControlador extends ControladorBase {
 
         $this->renderizar('configuracion/vistas/equipos_calibracion_index', [
             'titulo' => 'Equipos, Certificados de Calibración y Constantes (ISO/IEC 17025)',
+            'subnavQcActiva' => 'calibracion',
             'equipos' => $equipos,
             'picnometros' => $picnometros,
             'correcciones' => $correcciones,
@@ -144,7 +145,7 @@ class EquiposCalibracionControlador extends ControladorBase {
         $usuarioId = $this->verificarPermisoCalidad($respuesta, $esAjax);
 
         if (!$peticion->esPost()) {
-            $respuesta->redirigir('/Cycsa/publico/equipos-calibracion');
+            $respuesta->redirigir('/Cycsa/publico/control-calidad/calibracion');
             return;
         }
 
@@ -166,7 +167,7 @@ class EquiposCalibracionControlador extends ControladorBase {
                 return;
             }
             $_SESSION['error'] = 'Equipo o clave de constante no válidos.';
-            $respuesta->redirigir('/Cycsa/publico/equipos-calibracion');
+            $respuesta->redirigir('/Cycsa/publico/control-calidad/calibracion');
             return;
         }
 
@@ -186,7 +187,7 @@ class EquiposCalibracionControlador extends ControladorBase {
         }
 
         $_SESSION[$ok ? 'exito' : 'error'] = $ok ? 'Constante de calibración actualizada correctamente.' : 'Error al actualizar constante.';
-        $respuesta->redirigir('/Cycsa/publico/equipos-calibracion');
+        $respuesta->redirigir('/Cycsa/publico/control-calidad/calibracion');
     }
 
     public function guardarPicnometro(Peticion $peticion, Respuesta $respuesta): void {
@@ -194,7 +195,7 @@ class EquiposCalibracionControlador extends ControladorBase {
         $usuarioId = $this->verificarPermisoCalidad($respuesta, $esAjax);
 
         if (!$peticion->esPost()) {
-            $respuesta->redirigir('/Cycsa/publico/equipos-calibracion');
+            $respuesta->redirigir('/Cycsa/publico/control-calidad/calibracion');
             return;
         }
 
@@ -231,7 +232,7 @@ class EquiposCalibracionControlador extends ControladorBase {
         }
 
         $_SESSION['exito'] = 'Calibración de picnómetro (RT-FM-56) guardada correctamente.';
-        $respuesta->redirigir('/Cycsa/publico/equipos-calibracion');
+        $respuesta->redirigir('/Cycsa/publico/control-calidad/calibracion');
     }
 
     public function actualizarCorreccion(Peticion $peticion, Respuesta $respuesta): void {
@@ -239,7 +240,7 @@ class EquiposCalibracionControlador extends ControladorBase {
         $usuarioId = $this->verificarPermisoCalidad($respuesta, $esAjax);
 
         if (!$peticion->esPost()) {
-            $respuesta->redirigir('/Cycsa/publico/equipos-calibracion');
+            $respuesta->redirigir('/Cycsa/publico/control-calidad/calibracion');
             return;
         }
 
@@ -257,7 +258,7 @@ class EquiposCalibracionControlador extends ControladorBase {
                 return;
             }
             $_SESSION['error'] = 'Formato o identificador de corrección inválido.';
-            $respuesta->redirigir('/Cycsa/publico/equipos-calibracion');
+            $respuesta->redirigir('/Cycsa/publico/control-calidad/calibracion');
             return;
         }
 
@@ -278,6 +279,6 @@ class EquiposCalibracionControlador extends ControladorBase {
         }
 
         $_SESSION[$ok ? 'exito' : 'error'] = $ok ? 'Parámetro de corrección actualizado.' : 'Error al actualizar parámetro.';
-        $respuesta->redirigir('/Cycsa/publico/equipos-calibracion');
+        $respuesta->redirigir('/Cycsa/publico/control-calidad/calibracion');
     }
 }

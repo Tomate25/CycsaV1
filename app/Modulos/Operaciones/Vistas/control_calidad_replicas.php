@@ -223,18 +223,25 @@ foreach ($informes as $inf) {
 </style>
 
 <div class="qc-page">
+    <?php
+    $subnavQcActiva = 'replicas';
+    require __DIR__ . '/parciales/subnav_control_calidad.php';
+    ?>
     <!-- Encabezado de la Página -->
     <div class="qc-head">
         <div>
             <h1 class="qc-title">
-                <i class="fa-solid fa-microscope" style="color:#0f766e;"></i>
-                Control de Calidad de Réplicas (ISO/IEC 17025)
+                <i class="fa-solid fa-code-compare" style="color:#0f766e;"></i>
+                Control de Calidad: Réplicas de Ensayos (ISO/IEC 17025)
             </h1>
             <p class="qc-subtitle">
                 Cartera y supervisión de controles de ensayo analíticos: toque cualquier control para inspeccionar su matriz técnica y dictamen en pantalla completa.
             </p>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
+            <a href="/Cycsa/publico/control-calidad/calibracion" class="btn-qc-action" style="background:#0f766e; color:white; border-color:#0f766e;">
+                <i class="fa-solid fa-balance-scale"></i> Calibración de Equipos
+            </a>
             <a href="/Cycsa/publico/operaciones" class="btn-qc-action">
                 <i class="fa-solid fa-arrow-left"></i> Volver a Operaciones
             </a>

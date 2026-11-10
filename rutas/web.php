@@ -208,6 +208,10 @@ $app->enrutador->post('/operaciones/programar-muestreo', [OperacionesControlador
 $app->enrutador->get('/operaciones/obtener-matriz-os', [OperacionesControlador::class, 'obtenerMatrizOSAjax'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/captura-matriz', [OperacionesControlador::class, 'capturaMatrizProducto'], [AuthMiddleware::class]);
 $app->enrutador->get('/control-calidad', [OperacionesControlador::class, 'controlCalidadReplicas'], [AuthMiddleware::class]);
+$app->enrutador->get('/control-calidad/calibracion', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->post('/control-calidad/calibracion/guardar-constante', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'guardarConstante'], [AuthMiddleware::class]);
+$app->enrutador->post('/control-calidad/calibracion/guardar-picnometro', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'guardarPicnometro'], [AuthMiddleware::class]);
+$app->enrutador->post('/control-calidad/calibracion/actualizar-correccion', [\Cycsa\Modulos\Configuracion\Controladores\EquiposCalibracionControlador::class, 'actualizarCorreccion'], [AuthMiddleware::class]);
 $app->enrutador->get('/control-calidad/ver', [OperacionesControlador::class, 'controlCalidadDetalle'], [AuthMiddleware::class]);
 $app->enrutador->get('/control-calidad/detalle', [OperacionesControlador::class, 'controlCalidadDetalle'], [AuthMiddleware::class]);
 $app->enrutador->post('/control-calidad/evaluar-replica', [OperacionesControlador::class, 'evaluarReplicaControlCalidad'], [AuthMiddleware::class]);

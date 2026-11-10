@@ -521,7 +521,7 @@
             <?php endif; ?>
             <?php if (tienePermiso('operaciones', 'ver') || tienePermiso('laboratorio', 'ver')): ?>
             <li>
-                <a href="/Cycsa/publico/control-calidad" class="<?= strpos($rutaActual, '/control-calidad') !== false ? 'activo' : '' ?>">
+                <a href="/Cycsa/publico/control-calidad" class="<?= (strpos($rutaActual, '/control-calidad') !== false || strpos($rutaActual, '/equipos-calibracion') !== false) ? 'activo' : '' ?>">
                     <i class="fa-solid fa-code-compare"></i>
                     <span class="menu-texto">Control de Calidad</span>
                 </a>
@@ -539,7 +539,7 @@
             <li>
                 <a href="/Cycsa/publico/equipos-bodegas" class="<?= strpos($rutaActual, '/equipos-bodegas') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-warehouse"></i>
-                    <span class="menu-texto">Bodegas de Equipos</span>
+                    <span class="menu-texto">Bodegas y Traslados</span>
                 </a>
             </li>
             <?php endif; ?>
@@ -628,7 +628,13 @@
             <?php if (isset($_SESSION['usuario_id'])): ?>
             <li class="menu-categoria">Plantillas & Calidad</li>
             <li>
-                <a href="/Cycsa/publico/plantillas" class="<?= strpos($rutaActual, '/plantillas') !== false ? 'activo' : '' ?>">
+                <a href="/Cycsa/publico/configuracion/plantillas-ensayos" class="<?= strpos($rutaActual, '/configuracion/plantillas-ensayos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span class="menu-texto">Formatos e Informes PDF</span>
+                </a>
+            </li>
+            <li>
+                <a href="/Cycsa/publico/plantillas" class="<?= (strpos($rutaActual, '/plantillas') !== false && strpos($rutaActual, '/configuracion/plantillas-ensayos') === false) ? 'activo' : '' ?>">
                     <i class="fa-solid fa-shapes"></i>
                     <span class="menu-texto">Plantillas ISO 17025</span>
                 </a>
@@ -661,11 +667,6 @@
                         <i class="fa-solid fa-cubes"></i> Módulos
                     </span>
                 </a>
-                <?php if (isset($_SESSION['usuario_id'])): ?>
-                <a href="/Cycsa/publico/plantillas" style="color: #0369a1; font-size: 12px; padding: 5px 12px; border-radius: 20px; background: #e0f2fe; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bae6fd; transition: all 0.2s;" onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'" title="Configurador Dinámico de Plantillas ISO 17025">
-                    <i class="fa-solid fa-shapes text-primary"></i> Plantillas ISO 17025
-                </a>
-                <?php endif; ?>
             </div>
             <?php endif; ?>
             

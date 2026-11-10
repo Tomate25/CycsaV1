@@ -29,8 +29,6 @@ $puedeTrasladar = ($ubicacion['estado'] ?? '') !== 'de_baja';
         </a>
     </div>
 
-    <?php require __DIR__ . '/parciales/subnav_equipos_bodegas.php'; ?>
-
     <?php if (!empty($_SESSION['flash_exito'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <?= htmlspecialchars($_SESSION['flash_exito']) ?>

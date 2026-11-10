@@ -8,7 +8,6 @@ $filtros = $filtros ?? [];
 <div class="container-fluid px-0">
     <?php
     $migas = [
-        ['label' => 'Equipos', 'url' => '/Cycsa/publico/equipos-calibracion'],
         ['label' => 'Bodegas y traslados'],
     ];
     require dirname(__DIR__, 3) . '/Views/parciales/breadcrumb.php';
@@ -17,16 +16,11 @@ $filtros = $filtros ?? [];
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h3 mb-1 text-gray-800 fw-bold">
-                <i class="fa-solid fa-warehouse text-primary me-2"></i>Bodegas de equipos
+                <i class="fa-solid fa-warehouse text-primary me-2"></i>Bodegas y traslados de equipos
             </h1>
             <p class="text-muted mb-0 small">Laboratorio central, obras y talleres. Cada traslado queda con responsable, fecha, origen y destino.</p>
         </div>
-        <a href="/Cycsa/publico/equipos-calibracion" class="btn btn-outline-secondary btn-sm px-3">
-            <i class="fa-solid fa-balance-scale me-1"></i>Calibración
-        </a>
     </div>
-
-    <?php require __DIR__ . '/parciales/subnav_equipos_bodegas.php'; ?>
 
     <?php if (!empty($_SESSION['flash_exito'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">

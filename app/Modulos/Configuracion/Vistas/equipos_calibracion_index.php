@@ -4,6 +4,10 @@
  */
 ?>
 <div class="container-fluid py-4">
+    <?php
+    $subnavQcActiva = 'calibracion';
+    require dirname(__DIR__, 2) . '/Operaciones/Vistas/parciales/subnav_control_calidad.php';
+    ?>
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold mb-1">
@@ -16,8 +20,8 @@
             </p>
         </div>
         <div class="d-flex gap-2">
-            <a href="/Cycsa/publico/equipos-bodegas" class="btn btn-outline-primary btn-sm">
-                <i class="fas fa-warehouse me-1"></i> Bodegas y traslados
+            <a href="/Cycsa/publico/control-calidad" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-code-compare me-1"></i> Réplicas de Control (-CR)
             </a>
             <a href="/Cycsa/publico/plantillas" class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-layer-group me-1"></i> Ir a Plantillas Dinámicas
@@ -155,7 +159,7 @@
                                                         <td><?= htmlspecialchars($c['unidad'] ?? '-') ?></td>
                                                         <td>
                                                             <?php if (!empty($puedeEditarCalidad)): ?>
-                                                                <form method="POST" action="/Cycsa/publico/equipos-calibracion/guardar-constante" class="d-flex gap-1">
+                                                                <form method="POST" action="/Cycsa/publico/control-calidad/calibracion/guardar-constante" class="d-flex gap-1">
                                                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
                                                                     <input type="hidden" name="equipo_id" value="<?= (int)$eq['id'] ?>">
                                                                     <input type="hidden" name="clave" value="<?= htmlspecialchars($c['clave']) ?>">
@@ -262,7 +266,7 @@
                                         </td>
                                         <td>
                                             <?php if (!empty($corr['es_dudosa']) && !empty($puedeEditarCalidad)): ?>
-                                                <form method="POST" action="/Cycsa/publico/equipos-calibracion/actualizar-correccion" class="d-inline">
+                                                <form method="POST" action="/Cycsa/publico/control-calidad/calibracion/actualizar-correccion" class="d-inline">
                                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
                                                     <input type="hidden" name="codigo_formato" value="<?= htmlspecialchars($corr['codigo_formato']) ?>">
                                                     <input type="hidden" name="correccion_id" value="<?= htmlspecialchars($corr['correccion_id']) ?>">

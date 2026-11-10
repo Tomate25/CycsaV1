@@ -13,11 +13,6 @@ $items = [
         'url' => '/Cycsa/publico/equipos-bodegas',
         'icon' => 'fa-warehouse',
     ],
-    'calibracion' => [
-        'label' => 'Calibración de equipos',
-        'url' => '/Cycsa/publico/equipos-calibracion',
-        'icon' => 'fa-balance-scale',
-    ],
 ];
 ?>
 <ul class="nav nav-pills p-1 bg-light rounded-3 mb-4 gap-1 border">

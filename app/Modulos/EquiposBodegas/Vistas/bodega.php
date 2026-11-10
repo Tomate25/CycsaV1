@@ -34,11 +34,9 @@ $tipos = \Cycsa\Modulos\EquiposBodegas\Modelos\EquiposBodegasModelo::etiquetasTi
             </p>
         </div>
         <a href="/Cycsa/publico/equipos-bodegas" class="btn btn-outline-secondary btn-sm px-3">
-            <i class="fa-solid fa-arrow-left me-1"></i>Bodegas
+            <i class="fa-solid fa-arrow-left me-1"></i>Volver a Bodegas
         </a>
     </div>
-
-    <?php require __DIR__ . '/parciales/subnav_equipos_bodegas.php'; ?>
 
     <?php if (!empty($_SESSION['flash_exito'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
