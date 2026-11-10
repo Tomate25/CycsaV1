@@ -90,14 +90,6 @@ $puedeEditarPlan = ($totalEnsayados === 0);
     </div>
 </div>
 
-<!-- Alerta de Imparcialidad ISO 17025 -->
-<div style="background-color: #fefce8; border: 1px solid #fef08a; color: #854d0e; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500;">
-    <i class="fa-solid fa-eye-slash" style="font-size: 18px; color: #ca8a04;"></i>
-    <div>
-        <strong>RESGUARDO DE IMPARCIALIDAD (ISO 17025 ClÃ¡usulas 4.1 y 4.2):</strong> En cumplimiento con la norma tÃ©cnica, los datos comerciales, de clientes, obras y montos se encuentran aislados de esta vista.
-    </div>
-</div>
-
 <!-- Notificaciones Flash -->
 <?php if (!empty($exito)): ?>
     <div style="background-color: #f0fdf4; color: #166534; padding: 12px 16px; border-radius: 8px; border: 1px solid #bbf7d0; margin-bottom: 15px; font-size: 13.5px; display: flex; align-items: center; gap: 8px;">
