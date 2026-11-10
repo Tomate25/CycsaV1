@@ -697,7 +697,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 </div>
 
                 <div class="meta-row">
-                    <label class="meta-label-oficial">Fecha de ingreso:</label>
+                    <label class="meta-label-oficial">Fecha  recepción ítems de ensayo:</label>
                     <div class="meta-field-wrap">
                         <input type="date" name="metadatos[fecha_ingreso]" id="meta_fecha_ingreso" class="meta-input-web" value="<?= htmlspecialchars($metadatos['fecha_ingreso'], ENT_QUOTES, 'UTF-8') ?>">
                     </div>
@@ -754,7 +754,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 </div>
 
                 <div class="meta-row">
-                    <label class="meta-label-oficial">Fecha de emisión:</label>
+                    <label class="meta-label-oficial">Fecha de emisión del informe:</label>
                     <div class="meta-field-wrap">
                         <input type="date" name="metadatos[fecha_emision]" id="meta_fecha_emision" class="meta-input-web" value="<?= htmlspecialchars($metadatos['fecha_emision'], ENT_QUOTES, 'UTF-8') ?>">
                     </div>
@@ -764,6 +764,13 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                     <label class="meta-label-oficial">Muestra tomada por:</label>
                     <div class="meta-field-wrap">
                         <input type="text" name="metadatos[muestra_tomada_por]" id="meta_muestra_tomada_por" class="meta-input-web" value="<?= htmlspecialchars($metadatos['muestra_tomada_por'], ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+                </div>
+
+                <div class="meta-row">
+                    <label class="meta-label-oficial">Ensayado por:</label>
+                    <div class="meta-field-wrap">
+                        <input type="text" name="metadatos[ensayado_por]" id="meta_ensayado_por" class="meta-input-web" value="<?= htmlspecialchars($metadatos['ensayado_por'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </div>
                 </div>
 

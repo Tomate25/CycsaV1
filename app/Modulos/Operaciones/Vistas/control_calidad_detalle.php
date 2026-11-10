@@ -131,7 +131,7 @@ $idDet = (int)($detalle['id'] ?? 0);
     }
     .sheet-meta-item {
         display: grid;
-        grid-template-columns: 190px 1fr;
+        grid-template-columns: minmax(190px, 240px) 1fr;
         align-items: baseline;
         gap: 12px;
         padding: 3px 0;
@@ -415,46 +415,62 @@ $idDet = (int)($detalle['id'] ?? 0);
             </div>
         </div>
 
-        <!-- 2. Metadatos Oficiales de la Hoja de Servicio / Cliente -->
+        <!-- 2. Metadatos Oficiales de la Hoja de Servicio / Cliente (14 Campos Oficiales ISO 17025) -->
         <div class="sheet-meta-grid">
             <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Cliente:</span>
+                <span class="sheet-meta-label">** Nombre del cliente:</span>
                 <span class="sheet-meta-val"><?= htmlspecialchars($meta['cliente_nombre'] ?? 'Sin especificar') ?></span>
             </div>
             <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Proyecto:</span>
+                <span class="sheet-meta-label">** Proyecto:</span>
                 <span class="sheet-meta-val"><?= htmlspecialchars($meta['proyecto'] ?? 'Sin especificar') ?></span>
             </div>
             <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Dirección / Sitio:</span>
+                <span class="sheet-meta-label">** Dirección:</span>
                 <span class="sheet-meta-val"><?= htmlspecialchars($meta['cliente_direccion'] ?? '—') ?></span>
             </div>
             <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Ubicación Muestreo:</span>
-                <span class="sheet-meta-val"><?= htmlspecialchars($meta['ubicacion'] ?? '—') ?></span>
-            </div>
-            <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Fecha de Muestreo:</span>
+                <span class="sheet-meta-label">** Fecha muestreo:</span>
                 <span class="sheet-meta-val"><?= htmlspecialchars($meta['fecha_muestreo'] ?? '—') ?></span>
             </div>
             <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Fecha de Ingreso:</span>
+                <span class="sheet-meta-label">Fecha  recepción ítems de ensayo:</span>
                 <span class="sheet-meta-val"><?= htmlspecialchars($meta['fecha_ingreso'] ?? '—') ?></span>
             </div>
             <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Fecha de Ejecución:</span>
+                <span class="sheet-meta-label">Fecha de ejecución:</span>
                 <span class="sheet-meta-val"><?= htmlspecialchars($meta['fecha_ejecucion'] ?? '—') ?></span>
             </div>
             <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Fecha de Emisión:</span>
-                <span class="sheet-meta-val"><?= htmlspecialchars($meta['fecha_emision'] ?? '—') ?></span>
-            </div>
-            <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Tipo de Muestra:</span>
+                <span class="sheet-meta-label">Tipo de muestra:</span>
                 <span class="sheet-meta-val"><?= htmlspecialchars($meta['tipo_muestra'] ?? '—') ?></span>
             </div>
             <div class="sheet-meta-item">
-                <span class="sheet-meta-label">Norma / Método:</span>
+                <span class="sheet-meta-label">Fecha de emisión del informe:</span>
+                <span class="sheet-meta-val"><?= htmlspecialchars($meta['fecha_emision'] ?? '—') ?></span>
+            </div>
+            <div class="sheet-meta-item">
+                <span class="sheet-meta-label">** Procedimiento de muestreo:</span>
+                <span class="sheet-meta-val"><?= htmlspecialchars($meta['procedimiento_muestreo'] ?? '—') ?></span>
+            </div>
+            <div class="sheet-meta-item">
+                <span class="sheet-meta-label">Muestra tomada por:</span>
+                <span class="sheet-meta-val"><?= htmlspecialchars($meta['muestra_tomada_por'] ?? '—') ?></span>
+            </div>
+            <div class="sheet-meta-item">
+                <span class="sheet-meta-label">Ensayo realizado:</span>
+                <span class="sheet-meta-val"><?= htmlspecialchars($meta['ensayo_realizado'] ?? ($detalle['descripcion_ensayo'] ?? '—')) ?></span>
+            </div>
+            <div class="sheet-meta-item">
+                <span class="sheet-meta-label">Ensayado por:</span>
+                <span class="sheet-meta-val"><?= htmlspecialchars($meta['ensayado_por'] ?? ($detalle['tecnico_ensayo'] ?? '—')) ?></span>
+            </div>
+            <div class="sheet-meta-item">
+                <span class="sheet-meta-label">** Ubicación:</span>
+                <span class="sheet-meta-val"><?= htmlspecialchars($meta['ubicacion'] ?? '—') ?></span>
+            </div>
+            <div class="sheet-meta-item">
+                <span class="sheet-meta-label">Método de muestreo:</span>
                 <span class="sheet-meta-val"><?= htmlspecialchars($meta['metodo_muestreo'] ?? ($detalle['norma_astm'] ?? '—')) ?></span>
             </div>
         </div>

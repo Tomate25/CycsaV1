@@ -1,7 +1,7 @@
 {
     "compactación_densimetro_nuclear.md": {
         "docx_source": "Compactación Densimetro Nuclear.docx",
-        "codigo_formato": "CYCSA-RT-FM-22 B V1",
+        "codigo_formato": "CYCSA-RT-FM-22 B V1-R2",
         "ensayo_titulo": "CYCSA-PE-25 Método estándar para la determinación de densidad insitu y contenido de agua ( Densímetro nuclear). CYCSA-PE-13 Determinación del Contenido de Humedad en muestras de Suelo. CYCSA-PE-18 Determinación de las características de Compactación del Suelo por el Método de Proctor Estándar",
         "metodo_muestreo": "DE-ASTM D6938-23",
         "tipo_muestra": "Suelo ( Material del sitio Colector ZZZ)",
@@ -11,12 +11,12 @@
             "Capa (N°)",
             "Espesor (cm)",
             "Profundidad (cm)",
-            "P.V.S Max (kg/m³)",
-            "Humedad Óptima ((% )(P/P))",
-            "P.V.S.Sitio (kg/cm²)",
-            "Humedad Sitio ((%) (P/P))",
-            "Humedad Sitio (kg/m³)",
-            "Compactación ((%) (P/P))",
+            "P.V.S Max (kg\/m³)",
+            "Humedad Óptima ((% )(P\/P))",
+            "P.V.S.Sitio (kg\/cm²)",
+            "Humedad Sitio ((%) (P\/P))",
+            "Humedad Sitio (kg\/m³)",
+            "Compactación ((%) (P\/P))",
             "Fecha de muestreo"
         ],
         "column_methods": {
@@ -24,20 +24,21 @@
             "Nombre muestra": "",
             "Capa (N°)": "",
             "Espesor (cm)": "",
-            "Profundidad (cm)": "CYCSA-PE-18",
-            "P.V.S Max (kg/m³)": "CYCSA-PE-13",
-            "Humedad Óptima ((% )(P/P))": "CYCSA-PE-25",
-            "P.V.S.Sitio (kg/cm²)": "CYCSA PE-25",
-            "Humedad Sitio ((%) (P/P))": "CYCSA PE-25",
-            "Humedad Sitio (kg/m³)": "CYCSA-PE-25",
-            "Compactación ((%) (P/P))": "",
-            "Fecha de muestreo": ""
+            "Profundidad (cm)": "",
+            "P.V.S Max (kg\/m³)": "ASTM D698 \/ D1557",
+            "Humedad Óptima ((% )(P\/P))": "ASTM D2216-19",
+            "P.V.S.Sitio (kg\/cm²)": "ASTM D6938 \/ D1556",
+            "Humedad Sitio ((%) (P\/P))": "ASTM D6938 \/ D2216",
+            "Humedad Sitio (kg\/m³)": "ASTM D6938-23",
+            "Compactación ((%) (P\/P))": "ASTM D6938-23",
+            "Fecha de muestreo": "",
+            "P.V.S.Sitio (kg\/m³)": "ASTM D6938 \/ D1556"
         },
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
         "notas": [
             "Notas: Ensayos realizados in Situ: CYCSA-PE-25.\" CYCSA-PE-13\",\"CYCSA-PE-18\"",
-            "Nota 1: Muestra tomada con equipo TROXLER, Modelo: 3440, N/S : 62677 Eq-6555"
+            "Nota 1: Muestra tomada con equipo TROXLER, Modelo: 3440, N\/S : 62677 Eq-6555"
         ]
     },
     "ensayos_varios.md": {
@@ -50,27 +51,29 @@
             "Código laboratorio",
             "Nombre muestra",
             "Color",
-            "PVSS (kg/m³)",
-            "PVSC (kg/m³)",
-            "Módulo de finura ((%) (P/P))",
-            "Humedad Natural ((%) (P/P))",
-            "Absorción ((%)(P/P))",
+            "PVSS (kg\/m³)",
+            "PVSC (kg\/m³)",
+            "Módulo de finura ((%) (P\/P))",
+            "Humedad Natural ((%) (P\/P))",
+            "Absorción ((%)(P\/P))",
             "Gravedad Específica.",
             "Gravedad Específica (SSS)",
             "Gravedad Específica Aparente"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-05",
-            "Color": "CYCSA-PE-03",
-            "PVSS (kg/m³)": "CYCSA-PE-03",
-            "PVSC (kg/m³)": "CYCSA-PE-06",
-            "Módulo de finura ((%) (P/P))": "CYCSA-PE-01",
-            "Humedad Natural ((%) (P/P))": "CYCSA-PE-02",
-            "Absorción ((%)(P/P))": "CYCSA-PE-02",
-            "Gravedad Específica.": "CYCSA-PE-02",
-            "Gravedad Específica (SSS)": "CYCSA-PE-02",
-            "Gravedad Específica Aparente": ""
+            "Nombre muestra": "",
+            "Color": "ASTM C40\/C40M-26",
+            "PVSS (kg\/m³)": "ASTM C29\/C29M-23",
+            "PVSC (kg\/m³)": "ASTM C29\/C29M-23",
+            "Módulo de finura ((%) (P\/P))": "ASTM C136\/C136M-25",
+            "Humedad Natural ((%) (P\/P))": "ASTM C566-25",
+            "Absorción ((%)(P\/P))": "ASTM C128-25",
+            "Gravedad Específica.": "ASTM C127-25",
+            "Gravedad Específica (SSS)": "ASTM C127-25",
+            "Gravedad Específica Aparente": "ASTM C127-25",
+            "Humedad en agregados ((%)(P\/P))": "ASTM C566-25",
+            "Absorción de agregado fino ((%)(P\/P))": "ASTM C128-25"
         },
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
@@ -82,7 +85,7 @@
         "docx_source": "Formato de Compactación por Cono de Arena.docx",
         "codigo_formato": "CYCSA-RT-FM-22 B V1R2",
         "ensayo_titulo": "CYCSA-PE-20 Procedimiento para la determinación de la densidad del suelo en el Campo (Control de Compactación de campo) “Método del cono Arena” CYCSA-PE-13 Determinación del Contenido de Humedad en muestras de Suelo. CYCSA-PE-18 Determinación de las características de Compactación del Suelo por el Método de Proctor Estándar",
-        "metodo_muestreo": "ASTM D1556 / D1556 M24",
+        "metodo_muestreo": "ASTM D1556 \/ D1556 M24",
         "tipo_muestra": "Suelo",
         "columns": [
             "Código laboratorio",
@@ -90,12 +93,12 @@
             "Capa (N°)",
             "Espesor (cm)",
             "Profundidad (cm)",
-            "P.V.S Max (kg/m³)",
-            "Humedad Óptima ((% )(P/P))",
-            "P.V.S.Sitio (kg/m³)",
-            "Humedad sitio ((%) (P/P))",
-            "Humedad Sitio (kg/m³)",
-            "Compactación ((%) (P/P))",
+            "P.V.S Max (kg\/m³)",
+            "Humedad Óptima ((% )(P\/P))",
+            "P.V.S.Sitio (kg\/m³)",
+            "Humedad sitio ((%) (P\/P))",
+            "Humedad Sitio (kg\/m³)",
+            "Compactación ((%) (P\/P))",
             "Fecha de muestreo"
         ],
         "column_methods": {
@@ -103,13 +106,13 @@
             "Nombre muestra": "",
             "Capa (N°)": "",
             "Espesor (cm)": "",
-            "Profundidad (cm)": "CYCSA-PE-18",
-            "P.V.S Max (kg/m³)": "CYCSA-PE-13",
-            "Humedad Óptima ((% )(P/P))": "CYCSA-PE-20",
-            "P.V.S.Sitio (kg/m³)": "CYCSA-PE-20",
-            "Humedad sitio ((%) (P/P))": "CYCSA-PE-20",
-            "Humedad Sitio (kg/m³)": "CYCSA-PE-20",
-            "Compactación ((%) (P/P))": "",
+            "Profundidad (cm)": "",
+            "P.V.S Max (kg\/m³)": "ASTM D698 \/ D1557",
+            "Humedad Óptima ((% )(P\/P))": "ASTM D2216-19",
+            "P.V.S.Sitio (kg\/m³)": "ASTM D1556 \/ D1556M-15",
+            "Humedad sitio ((%) (P\/P))": "ASTM D2216-19",
+            "Humedad Sitio (kg\/m³)": "ASTM D1556 \/ D1556M-15",
+            "Compactación ((%) (P\/P))": "ASTM D1556 \/ D1556M-15",
             "Fecha de muestreo": ""
         },
         "fixed_rows": [],
@@ -122,7 +125,7 @@
         "docx_source": "Formato de Compactación por reemplazo de agua no acreditado.docx",
         "codigo_formato": "CYCSA-RT-FM-22 B V1R2",
         "ensayo_titulo": "CYCSA-PE-46 Métodos de prueba estándar para la densidad del suelo y los materiales rocosos in situ mediante el método de reemplazo de agua en un pozo de prueba Compactación por reemplazo de agua",
-        "metodo_muestreo": "DE-ASTM D4220/4220M-14",
+        "metodo_muestreo": "DE-ASTM D4220\/4220M-14",
         "tipo_muestra": "Suelo",
         "columns": [
             "Código laboratorio",
@@ -130,12 +133,12 @@
             "Capa (N°)",
             "Espesor (cm)",
             "Profundidad (cm)",
-            "**P.V.S Max (kg/m³)",
-            "**Humedad Óptima (( %)(P/P))",
-            "P.V.S.Sitio (kg/m³)",
-            "Humedad sitio ((%) (P/P))",
-            "Humedad Sitio (kg/m³)",
-            "Compactación ((%) (P/P))",
+            "**P.V.S Max (kg\/m³)",
+            "**Humedad Óptima (( %)(P\/P))",
+            "P.V.S.Sitio (kg\/m³)",
+            "Humedad sitio ((%) (P\/P))",
+            "Humedad Sitio (kg\/m³)",
+            "Compactación ((%) (P\/P))",
             "Fecha de muestreo"
         ],
         "column_methods": {
@@ -143,13 +146,13 @@
             "Nombre muestra": "",
             "Capa (N°)": "",
             "Espesor (cm)": "",
-            "Profundidad (cm)": "No Aplica",
-            "**P.V.S Max (kg/m³)": "No Aplica",
-            "**Humedad Óptima (( %)(P/P))": "CYCSA-PE-46",
-            "P.V.S.Sitio (kg/m³)": "CYCSA-PE-46",
-            "Humedad sitio ((%) (P/P))": "CYCSA-PE-46",
-            "Humedad Sitio (kg/m³)": "CYCSA-PE-46",
-            "Compactación ((%) (P/P))": "",
+            "Profundidad (cm)": "",
+            "**P.V.S Max (kg\/m³)": "ASTM D698-12 (Reapproved 2021)",
+            "**Humedad Óptima (( %)(P\/P))": "ASTM D2216-19",
+            "P.V.S.Sitio (kg\/m³)": "ASTM D5030\/D5030M-21",
+            "Humedad sitio ((%) (P\/P))": "ASTM D5030\/D5030M-21",
+            "Humedad Sitio (kg\/m³)": "ASTM D5030\/D5030M-21",
+            "Compactación ((%) (P\/P))": "ASTM D5030\/D5030M-21",
             "Fecha de muestreo": ""
         },
         "fixed_rows": [],
@@ -160,19 +163,19 @@
     },
     "formato_de_equivalente_de_arena.md": {
         "docx_source": "Formato de Equivalente de Arena.docx",
-        "codigo_formato": "CYCSA-RT-FM-22 A V1",
+        "codigo_formato": "CYCSA-RT-FM-22 A V1-R2",
         "ensayo_titulo": "CYCSA-PE-50 Método de prueba estándar para el valor equivalente de arena de suelos y agregados finos (Equivalente de arena).",
         "metodo_muestreo": "DE-ASTM D75M-19",
         "tipo_muestra": "Arena",
         "columns": [
             "Código laboratorio",
             "Nombre muestra",
-            "Equivalente de arena. ((%)(P/P))"
+            "Equivalente de arena. ((%)(P\/P))"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "ASTM D-2419.",
-            "Equivalente de arena. ((%)(P/P))": ""
+            "Nombre muestra": "",
+            "Equivalente de arena. ((%)(P\/P))": "ASTM D2419"
         },
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente",
@@ -182,9 +185,9 @@
     },
     "formato_de_granulometria_de_suelo.md": {
         "docx_source": "Formato de Granulometria de Suelo.docx",
-        "codigo_formato": "CYCSA-RT-FM-22 F V1",
+        "codigo_formato": "CYCSA-RT-FM-22 F V1-R2",
         "ensayo_titulo": "CYCSA-PE-16 Determinación de análisis Granulométrico de",
-        "metodo_muestreo": "DE-ASTM4220/4220M-14",
+        "metodo_muestreo": "DE-ASTM4220\/4220M-14",
         "tipo_muestra": "Suelo",
         "columns": [
             "Descripción",
@@ -196,109 +199,109 @@
         "fixed_rows": [
             {
                 "Descripción": "Tamiz 3\"",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 2\"",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
-                "Descripción": "Tamiz 1 1/2\"",
-                "Unidad": "(%)(P/P)",
+                "Descripción": "Tamiz 1 1\/2\"",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 1\"",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
-                "Descripción": "Tamiz 3/4\"",
-                "Unidad": "(%)(P/P)",
+                "Descripción": "Tamiz 3\/4\"",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
-                "Descripción": "Tamiz 3/8\"",
-                "Unidad": "(%)(P/P)",
+                "Descripción": "Tamiz 3\/8\"",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 4",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 10",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 20",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 40",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 60",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 100",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 140",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Tamiz 200",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-16",
                 "Resultado": ""
             },
             {
                 "Descripción": "Límite Liquido.",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-17",
                 "Resultado": ""
             },
             {
                 "Descripción": "I.P",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-17",
                 "Resultado": ""
             },
             {
                 "Descripción": "Límite plástico.",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-17",
                 "Resultado": ""
             },
             {
                 "Descripción": "Humedad",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Método de ensayo": "CYCSA-PE-13",
                 "Resultado": ""
             },
@@ -317,7 +320,7 @@
     },
     "formato_de_lodo_concreto.md": {
         "docx_source": "Formato de Lodo Concreto.docx",
-        "codigo_formato": "CYCSA-RT-FM-22 A V1",
+        "codigo_formato": "CYCSA-RT-FM-22 A V1-R2",
         "ensayo_titulo": "CYCSA-PE-58 Metodo de prueba estándar para la resistencia a la compresión de cilindros de suelo-cemento moldeados",
         "metodo_muestreo": "DE-ASTM D1633-17",
         "tipo_muestra": "Lodo concreto",
@@ -326,21 +329,21 @@
             "Nombre muestra",
             "Área (cm²)",
             "Carga (kg)",
-            "Peso Volumétrico (kg/m³)",
-            "Diseño (kg/cm²)",
-            "R. compresión. (kg/cm²)",
+            "Peso Volumétrico (kg\/m³)",
+            "Diseño (kg\/cm²)",
+            "R. compresión. (kg\/cm²)",
             "Fecha de Fabricación",
             "Fecha de Ensayo",
             "Edad (Días)"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-58",
-            "Área (cm²)": "CYCSA-PE-58",
-            "Carga (kg)": "CYCSA-PE-58",
-            "Peso Volumétrico (kg/m³)": "",
-            "Diseño (kg/cm²)": "CYCSA-PE-58",
-            "R. compresión. (kg/cm²)": "",
+            "Nombre muestra": "",
+            "Área (cm²)": "ASTM D1633-17",
+            "Carga (kg)": "ASTM D1633-17",
+            "Peso Volumétrico (kg\/m³)": "ASTM D1633-17",
+            "Diseño (kg\/cm²)": "",
+            "R. compresión. (kg\/cm²)": "ASTM D1633-17",
             "Fecha de Fabricación": "",
             "Fecha de Ensayo": "",
             "Edad (Días)": ""
@@ -360,12 +363,12 @@
         "columns": [
             "Código laboratorio",
             "Nombre muestra",
-            "Terrones de arcilla. ((%)(P/P))"
+            "Terrones de arcilla. ((%)(P\/P))"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-41",
-            "Terrones de arcilla. ((%)(P/P))": ""
+            "Nombre muestra": "",
+            "Terrones de arcilla. ((%)(P\/P))": "ASTM C142\/C142M"
         },
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
@@ -389,26 +392,26 @@
             "Reven. (cm)",
             "Temp. (°C)",
             "Carga (lb)",
-            "Peso volumétrico (kg/m³)",
-            "Diseño MR (kg/cm²)",
-            "Resistencia a la flexión. (kg/cm²)",
+            "Peso volumétrico (kg\/m³)",
+            "Diseño MR (kg\/cm²)",
+            "Resistencia a la flexión. (kg\/cm²)",
             "Fecha de Fabricación",
             "Fecha de Ensayo",
             "Edad (Días)"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-30",
-            "Ancho Promedio (in)": "CYCSA-PE-30",
-            "Espesor Promedio (in)": "CYCSA-PE-30",
-            "Longitud de Apoyo (in)": "CYCSA-PE-09",
-            "Reven. (in)": "CYCSA-PE-09",
-            "Reven. (cm)": "CYCSA-PE-27",
-            "Temp. (°C)": "CYCSA-PE-30",
-            "Carga (lb)": "CYCSA-PE-30",
-            "Peso volumétrico (kg/m³)": "",
-            "Diseño MR (kg/cm²)": "CYCSA-PE-30",
-            "Resistencia a la flexión. (kg/cm²)": "",
+            "Nombre muestra": "",
+            "Ancho Promedio (in)": "ASTM C78\/C78M-22",
+            "Espesor Promedio (in)": "ASTM C78\/C78M-22",
+            "Longitud de Apoyo (in)": "ASTM C78\/C78M-22",
+            "Reven. (in)": "ASTM C78\/C78M-22",
+            "Reven. (cm)": "ASTM C143\/C143M-26b",
+            "Temp. (°C)": "ASTM C78\/C78M-22",
+            "Carga (lb)": "ASTM C78\/C78M-22",
+            "Peso volumétrico (kg\/m³)": "ASTM C78\/C78M-22",
+            "Diseño MR (kg\/cm²)": "",
+            "Resistencia a la flexión. (kg\/cm²)": "ASTM C78\/C78M-22",
             "Fecha de Fabricación": "",
             "Fecha de Ensayo": "",
             "Edad (Días)": ""
@@ -432,8 +435,8 @@
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "ASTM C40",
-            "Color": ""
+            "Nombre muestra": "",
+            "Color": "ASTM C40"
         },
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
@@ -524,7 +527,7 @@
             {
                 "Descripción": "Peso volumétrico",
                 "Método de ensayo": "CYCSA-PE-32",
-                "Unidad": "kg/m³",
+                "Unidad": "kg\/m³",
                 "Resultado": "",
                 "Min": "-",
                 "Max": "-"
@@ -532,7 +535,7 @@
             {
                 "Descripción": "R. Compresión",
                 "Método de ensayo": "CYCSA-PE-32",
-                "Unidad": "lb/in²",
+                "Unidad": "lb\/in²",
                 "Resultado": "",
                 "Min": "1714",
                 "Max": "-"
@@ -540,7 +543,7 @@
             {
                 "Descripción": "R. Compresión.",
                 "Método de ensayo": "CYCSA-PE-32",
-                "Unidad": "kg/cm²",
+                "Unidad": "kg\/cm²",
                 "Resultado": "",
                 "Min": "120",
                 "Max": "-"
@@ -548,7 +551,7 @@
             {
                 "Descripción": "Absorción",
                 "Método de ensayo": "CYCSA-PE-32",
-                "Unidad": "(%)(P/P)",
+                "Unidad": "(%)(P\/P)",
                 "Resultado": "",
                 "Min": "-",
                 "Max": "10"
@@ -596,17 +599,17 @@
             "Reven. (in)",
             "Reven. (cm)",
             "Temp. (°C)",
-            "Diseño de concreto (lb/in²)",
+            "Diseño de concreto (lb\/in²)",
             "Fecha de Fabricación",
             "Fecha de Finalización"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-09",
-            "Reven. (in)": "CYCSA-PE-09",
-            "Reven. (cm)": "CYCSA-PE-27",
-            "Temp. (°C)": "",
-            "Diseño de concreto (lb/in²)": "",
+            "Nombre muestra": "",
+            "Reven. (in)": "ASTM C143\/C143M-26b",
+            "Reven. (cm)": "ASTM C143\/C143M-26b",
+            "Temp. (°C)": "ASTM C1064\/C1064M-23",
+            "Diseño de concreto (lb\/in²)": "",
             "Fecha de Fabricación": "",
             "Fecha de Finalización": ""
         },
@@ -621,7 +624,7 @@
         "codigo_formato": "CYCSA-RT-FM-22 F V1R2",
         "ensayo_titulo": "CYCSA-PE-06 Determinación del Análisis Granulométrico de los Agregados Gruesos.",
         "metodo_muestreo": "Muestra tomada por:El Cliente y entrega en LaboratorioNo Aplica",
-        "tipo_muestra": "Agregados 3/4\"",
+        "tipo_muestra": "Agregados 3\/4\"",
         "columns": [],
         "column_methods": [],
         "fixed_rows": [],
@@ -635,15 +638,16 @@
         "docx_source": "Pesos Volumetricos.docx",
         "codigo_formato": "CYCSA-RT-FM-22 A V1R2",
         "ensayo_titulo": "CYCSA-PE-03- Determinación de los pesos unitarios seco sueltos y seco compacto de los suelos (PVSS Y PVSC)",
-        "metodo_muestreo": "DE-ASTM C29 / C29M-23",
+        "metodo_muestreo": "DE-ASTM C29 \/ C29M-23",
         "tipo_muestra": "Suelo",
         "columns": [
             "Código laboratorio",
             "Nombre muestra"
         ],
         "column_methods": {
-            "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-03"
+            "PVSS (kg\/m³)": "ASTM C29\/C29M-23",
+            "PVSC (kg\/m³)": "ASTM C29\/C29M-23",
+            "Humedad Natural ((%)(P\/P))": "ASTM C566-25"
         },
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente",
@@ -658,7 +662,10 @@
         "metodo_muestreo": "No Aplica",
         "tipo_muestra": "Suelo",
         "columns": [],
-        "column_methods": [],
+        "column_methods": {
+            "P.Vol.Seco Máximo (kg\/m³)": "ASTM D698-12 (Reapproved 2021)",
+            "Cont. Humedad Óptima ((%)(P\/P))": "ASTM D2216-19"
+        },
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente",
         "notas": [
@@ -671,32 +678,32 @@
         "docx_source": "Resistencia de Adoquines.docx",
         "codigo_formato": "CYCSA-RT-FM-22 A V1R2",
         "ensayo_titulo": "CYCSA-PE-32 Procedimiento para la determinación de la resistencia del bloque y Adoquin.",
-        "metodo_muestreo": "NTON 12008 16/ASTM C-140",
+        "metodo_muestreo": "NTON 12008 16\/ASTM C-140",
         "tipo_muestra": "Adoquines",
         "columns": [
             "Código laboratorio",
             "Nombre muestra",
             "Área (in²)",
             "Carga (lb)",
-            "Peso Volumétrico (kg/m³)",
-            "Diseño (lb/in²)",
-            "R. Compresión (lb/in²)",
-            "R. Compresión. (kg/cm²)",
-            "Absorción ((%)(P/P))",
+            "Peso Volumétrico (kg\/m³)",
+            "Diseño (lb\/in²)",
+            "R. Compresión (lb\/in²)",
+            "R. Compresión. (kg\/cm²)",
+            "Absorción ((%)(P\/P))",
             "Fecha de Fabricación",
             "Fecha de Ensayo",
             "Edad (Días)"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-32",
-            "Área (in²)": "CYCSA-PE-32",
-            "Carga (lb)": "CYCSA-PE-32",
-            "Peso Volumétrico (kg/m³)": "",
-            "Diseño (lb/in²)": "CYCSA-PE-32",
-            "R. Compresión (lb/in²)": "CYCSA-PE-32",
-            "R. Compresión. (kg/cm²)": "CYCSA-PE-32",
-            "Absorción ((%)(P/P))": "",
+            "Nombre muestra": "",
+            "Área (in²)": "ASTM C140\/C140M-26a",
+            "Carga (lb)": "ASTM C140\/C140M-26a",
+            "Peso Volumétrico (kg\/m³)": "ASTM C140\/C140M-26a",
+            "Diseño (lb\/in²)": "",
+            "R. Compresión (lb\/in²)": "ASTM C140\/C140M-26a",
+            "R. Compresión. (kg\/cm²)": "ASTM C140\/C140M-26a",
+            "Absorción ((%)(P\/P))": "ASTM C140\/C140M-26a",
             "Fecha de Fabricación": "",
             "Fecha de Ensayo": "",
             "Edad (Días)": ""
@@ -709,10 +716,11 @@
     },
     "resistencia_de_concreto.md": {
         "docx_source": "Resistencia de Concreto.docx",
-        "codigo_formato": "CYCSA-RT-FM-22 A V1R2",
+        "codigo_formato": "CYCSA-RT-FM-22 A V3R0",
         "ensayo_titulo": "CYCSA-PE-07 Determinación de la Resistencia del Concreto, CYCSA-PE-09 Determinación del Revenimiento del concreto. CYCSA-PE-27 Procedimiento para la Determinación de Temperatura en el concreto fresco.",
-        "metodo_muestreo": "DE-ASTM C31/ASTM C172M-17",
+        "metodo_muestreo": "DE-ASTM C31\/ASTM C172M-17",
         "tipo_muestra": "Cilindros de Concreto",
+        "norma": "DE-ASTM C31\/ASTM C172M-17",
         "columns": [
             "Código laboratorio",
             "Nombre muestra",
@@ -721,26 +729,26 @@
             "Reven. (cm)",
             "Temp. (°C)",
             "Carga (lb)",
-            "Peso Volumétrico (kg/m³)",
-            "Diseño de concreto (lb/in²)",
-            "R. Compresión (lb/in²)",
-            "R. Compresión (kg/cm²)",
+            "Peso Volumétrico (kg\/m³)",
+            "Diseño de concreto (lb\/in²)",
+            "R. Compresión (lb\/in²)",
+            "R. Compresión (kg\/cm²)",
             "Fecha de Fabricación",
             "Fecha de Ensayo",
             "Edad (Días)"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-07",
-            "Área (in²)": "CYCSA-PE-09",
-            "Reven. (in)": "CYCSA-PE-09",
-            "Reven. (cm)": "CYCSA-PE-27",
-            "Temp. (°C)": "CYCSA-PE-07",
-            "Carga (lb)": "CYCSA-PE-07",
-            "Peso Volumétrico (kg/m³)": "",
-            "Diseño de concreto (lb/in²)": "CYCSA-PE-07",
-            "R. Compresión (lb/in²)": "CYCSA-PE-07",
-            "R. Compresión (kg/cm²)": "",
+            "Nombre muestra": "",
+            "Área (in²)": "ASTM C39\/C39M-26",
+            "Reven. (in)": "ASTM C143\/C143M-26b",
+            "Reven. (cm)": "ASTM C143\/C143M-26b",
+            "Temp. (°C)": "ASTM C1064\/C1064M-23",
+            "Carga (lb)": "ASTM C39\/C39M-26",
+            "Peso Volumétrico (kg\/m³)": "ASTM C39\/C39M-26",
+            "Diseño de concreto (lb\/in²)": "",
+            "R. Compresión (lb\/in²)": "ASTM C39\/C39M-26",
+            "R. Compresión (kg\/cm²)": "ASTM C39\/C39M-26",
             "Fecha de Fabricación": "",
             "Fecha de Ensayo": "",
             "Edad (Días)": ""
@@ -749,7 +757,12 @@
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente",
         "notas": [
             "Nota: Ensayo realizado en las instalaciones fijas de Consultoría y Construcción SA. CYCSA: \"CYCSA-PE-07\", \"CYCSA-PE-09\" \"CYCSA-PE-27\"."
-        ]
+        ],
+        "version_documento": "V1R2",
+        "titulo_informe": "INFORME DE ENSAYO",
+        "subtitulo_laboratorio": "Laboratorio de Ensayos y Control de Calidad",
+        "firmante_nombre": "Ing. Noel Quintana Lira",
+        "firmante_cargo": "Gerente General"
     },
     "resistencia_de_ladrillo.md": {
         "docx_source": "Resistencia de Ladrillo.docx",
@@ -762,19 +775,19 @@
             "Nombre muestra",
             "Área (cm²)",
             "Carga (kg)",
-            "Peso Volumétrico (kg/m³)",
-            "R. a la compresión (kg/cm²)",
+            "Peso Volumétrico (kg\/m³)",
+            "R. a la compresión (kg\/cm²)",
             "Fecha de Fabricación",
             "Fecha de Ensayo",
             "Edad (Días)"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-32",
-            "Área (cm²)": "",
-            "Carga (kg)": "CYCSA-PE-32",
-            "Peso Volumétrico (kg/m³)": "",
-            "R. a la compresión (kg/cm²)": "",
+            "Nombre muestra": "",
+            "Área (cm²)": "ASTM C140\/C140M-26a",
+            "Carga (kg)": "ASTM C140\/C140M-26a",
+            "Peso Volumétrico (kg\/m³)": "ASTM C140\/C140M-26a",
+            "R. a la compresión (kg\/cm²)": "ASTM C140\/C140M-26a",
             "Fecha de Fabricación": "",
             "Fecha de Ensayo": "",
             "Edad (Días)": ""
@@ -782,36 +795,37 @@
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
         "notas": [
-            "Nota: Ensayo realizado en las instalaciones fijas de Consultoría y Construcción SA. CYCSA: \"CYCSA-PE-32\". N/A= No Aplica"
+            "Nota: Ensayo realizado en las instalaciones fijas de Consultoría y Construcción SA. CYCSA: \"CYCSA-PE-32\". N\/A= No Aplica"
         ]
     },
     "resistencia_de_martillo_suizo.md": {
         "docx_source": "Resistencia de Martillo Suizo.docx",
         "codigo_formato": "CYCSA-RT-FM-22 D V1R2",
         "ensayo_titulo": "CYCSA-PE-12 Método de prueba estándar del número de rebote para concreto endurecido (Martillo Suizo).",
-        "metodo_muestreo": "DE-ASTM C805/C805M-25",
+        "metodo_muestreo": "DE-ASTM C805\/C805M-25",
         "tipo_muestra": "Concreto",
         "columns": [
             "Código laboratorio",
             "Nombre muestra",
-            "Diseño de Concreto (lb/in²)",
+            "Diseño de Concreto (lb\/in²)",
             "Forma de Prueba",
             "Promedio de Rebotes (N°)",
-            "Estimación R. compresión (lb/in²)",
-            "Estimación R. compresión (kg/cm²)",
+            "Estimación R. compresión (lb\/in²)",
+            "Estimación R. compresión (kg\/cm²)",
             "Fecha de Fabricación",
             "Edad (Días)"
         ],
         "column_methods": {
             "Código laboratorio": "",
             "Nombre muestra": "",
-            "Diseño de Concreto (lb/in²)": "CYCSA-PE-12",
-            "Forma de Prueba": "CYCSA-PE-12",
-            "Promedio de Rebotes (N°)": "CYCSA-PE-12",
-            "Estimación R. compresión (lb/in²)": "CYCSA-PE-12",
-            "Estimación R. compresión (kg/cm²)": "",
+            "Diseño de Concreto (lb\/in²)": "",
+            "Forma de Prueba": "ASTM C805\/C805M-25",
+            "Promedio de Rebotes (N°)": "ASTM C805\/C805M-25",
+            "Estimación R. compresión (lb\/in²)": "ASTM C805\/C805M-25",
+            "Estimación R. compresión (kg\/cm²)": "ASTM C805\/C805M-25",
             "Fecha de Fabricación": "",
-            "Edad (Días)": ""
+            "Edad (Días)": "",
+            "Estimación R. compresión (kg\/m²)": "ASTM C805\/C805M-25"
         },
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
@@ -830,23 +844,23 @@
             "Nombre muestra",
             "Área (in²)",
             "Carga (lb)",
-            "Peso Volumétrico (kg/m³)",
-            "Diseño de Mortero (lb/in²)",
-            "R. Compresión (lb/in²)",
-            "R. Compresión. (kg/cm²)",
+            "Peso Volumétrico (kg\/m³)",
+            "Diseño de Mortero (lb\/in²)",
+            "R. Compresión (lb\/in²)",
+            "R. Compresión. (kg\/cm²)",
             "Fecha de Fabricación",
             "Fecha de Ensayo",
             "Edad (Días)"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-57",
-            "Área (in²)": "CYCSA-PE-57",
-            "Carga (lb)": "CYCSA-PE-57",
-            "Peso Volumétrico (kg/m³)": "",
-            "Diseño de Mortero (lb/in²)": "CYCSA-PE-57",
-            "R. Compresión (lb/in²)": "CYCSA-PE-57",
-            "R. Compresión. (kg/cm²)": "",
+            "Nombre muestra": "",
+            "Área (in²)": "ASTM C109\/C109M-24",
+            "Carga (lb)": "ASTM C109\/C109M-24",
+            "Peso Volumétrico (kg\/m³)": "ASTM C109\/C109M-24",
+            "Diseño de Mortero (lb\/in²)": "",
+            "R. Compresión (lb\/in²)": "ASTM C109\/C109M-24",
+            "R. Compresión. (kg\/cm²)": "ASTM C109\/C109M-24",
             "Fecha de Fabricación": "",
             "Fecha de Ensayo": "",
             "Edad (Días)": ""
@@ -868,23 +882,23 @@
             "Nombre muestra",
             "Área (in²)",
             "Carga (lb)",
-            "Peso Volumétrico (kg/m³)",
-            "Diseño de concreto (lb/in²)",
-            "R. Compresión (lb/in²)",
-            "R. Compresión (kg/cm²)",
+            "Peso Volumétrico (kg\/m³)",
+            "Diseño de concreto (lb\/in²)",
+            "R. Compresión (lb\/in²)",
+            "R. Compresión (kg\/cm²)",
             "Fecha de Fabricación",
             "Fecha de Ruptura",
             "Edad (Días)"
         ],
         "column_methods": {
             "Código laboratorio": "",
-            "Nombre muestra": "CYCSA-PE-07",
-            "Área (in²)": "CYCSA-PE-07",
-            "Carga (lb)": "CYCSA-PE-07",
-            "Peso Volumétrico (kg/m³)": "",
-            "Diseño de concreto (lb/in²)": "CYCSA-PE-07",
-            "R. Compresión (lb/in²)": "CYCSA-PE-07",
-            "R. Compresión (kg/cm²)": "",
+            "Nombre muestra": "",
+            "Área (in²)": "ASTM C39\/C39M-26",
+            "Carga (lb)": "ASTM C39\/C39M-26",
+            "Peso Volumétrico (kg\/m³)": "ASTM C39\/C39M-26",
+            "Diseño de concreto (lb\/in²)": "",
+            "R. Compresión (lb\/in²)": "ASTM C39\/C39M-26",
+            "R. Compresión (kg\/cm²)": "ASTM C39\/C39M-26",
             "Fecha de Fabricación": "",
             "Fecha de Ruptura": "",
             "Edad (Días)": ""

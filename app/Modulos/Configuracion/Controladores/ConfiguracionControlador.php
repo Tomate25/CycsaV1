@@ -10,8 +10,15 @@ use Cycsa\Modulos\Configuracion\Modelos\ConfiguracionModelo;
 class ConfiguracionControlador extends ControladorBase {
 
     private function verificarAccesoPlantillas(Respuesta $respuesta): void {
-        if (!isset($_SESSION['usuario_id']) || !in_array((int)($_SESSION['usuario_rol'] ?? 0), [1, 2], true)) {
+        if (!isset($_SESSION['usuario_id'])) {
+            $respuesta->enviarJson(['error' => 'Sesión requerida'], 401);
+            exit;
+        }
+        $rol = (int)($_SESSION['usuario_rol'] ?? 0);
+        $permitido = in_array($rol, [1, 2, 3, 6], true) || tienePermiso('plantillas', 'ver') || tienePermiso('configuracion', 'ver');
+        if (!$permitido) {
             $respuesta->enviarJson(['error' => 'No autorizado'], 403);
+            exit;
         }
     }
 
@@ -19,9 +26,13 @@ class ConfiguracionControlador extends ControladorBase {
         $this->verificarAccesoPlantillas($respuesta);
         if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         $modelo = new ConfiguracionModelo();
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $productos = $db->query("SELECT id, no_item, nombre_comercial, ensayo_servicio, formato_id FROM productos WHERE activo = 1 ORDER BY ensayo_servicio ASC")->fetchAll(\PDO::FETCH_ASSOC);
+
         $this->renderizar('configuracion/vistas/plantillas_ensayos', [
-            'titulo' => 'Plantillas de Ensayos - CYCSA',
+            'titulo' => 'Formatos de Ensayos e Informes Técnicos - CYCSA',
             'plantillas' => $modelo->obtenerPlantillasEnsayos(),
+            'productos' => $productos,
         ]);
     }
 
@@ -40,6 +51,7 @@ class ConfiguracionControlador extends ControladorBase {
         if (!isset($_SESSION['csrf_token'], $datos['csrf_token']) ||
             !hash_equals($_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
             $respuesta->enviarJson(['error' => 'Token CSRF inválido'], 400);
+            exit;
         }
     }
 
@@ -66,6 +78,10 @@ class ConfiguracionControlador extends ControladorBase {
         if (!preg_match('/^[A-Za-z0-9._-]+$/', $config['version_documento'])) {
             throw new \InvalidArgumentException('Versión documental inválida.');
         }
+
+        $orientacion = strtolower(trim((string)($entrada['orientacion'] ?? ($actual['orientacion'] ?? 'horizontal'))));
+        $config['orientacion'] = in_array($orientacion, ['vertical', 'horizontal'], true) ? $orientacion : 'horizontal';
+
         $columnas = $entrada['columns'] ?? null;
         if (!is_array($columnas) || !array_is_list($columnas) || count($columnas) < 1 || count($columnas) > 60) {
             throw new \InvalidArgumentException('La matriz debe tener entre 1 y 60 columnas.');
@@ -123,14 +139,18 @@ class ConfiguracionControlador extends ControladorBase {
             $entrada = json_decode($datos['configuracion_json'] ?? '', true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($entrada)) throw new \InvalidArgumentException('JSON de plantilla inválido.');
             $config = $this->normalizarPlantilla($entrada, $plantilla['configuracion']);
+            
+            $nombre = isset($datos['nombre']) && is_string($datos['nombre']) ? trim($datos['nombre']) : null;
+            $productosIds = isset($datos['productos_ids']) && is_array($datos['productos_ids']) ? $datos['productos_ids'] : null;
+
             $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
             $db->beginTransaction();
-            if (!$modelo->guardarPlantillaEnsayo($id, $config) ||
-                !registrarBitacora('configuracion', 'editar_plantilla_ensayo', "Plantilla {$plantilla['nombre']} actualizada a {$config['version_documento']}", $id)) {
+            if (!$modelo->guardarPlantillaEnsayo($id, $config, $nombre, $productosIds) ||
+                !registrarBitacora('configuracion', 'editar_plantilla_ensayo', "Plantilla " . ($nombre ?: $plantilla['nombre']) . " actualizada a {$config['version_documento']}", $id)) {
                 throw new \RuntimeException('No se pudo guardar o auditar la plantilla.');
             }
             $db->commit();
-            $respuesta->enviarJson(['success' => true, 'message' => 'Plantilla actualizada.']);
+            $respuesta->enviarJson(['success' => true, 'message' => 'Plantilla actualizada exitosamente.']);
         } catch (\InvalidArgumentException|\JsonException $e) {
             $respuesta->enviarJson(['error' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
@@ -138,6 +158,149 @@ class ConfiguracionControlador extends ControladorBase {
             error_log('Error al guardar plantilla: ' . $e->getMessage());
             $respuesta->enviarJson(['error' => 'No se pudo guardar la plantilla.'], 500);
         }
+    }
+
+    public function crearPlantillaEnsayo(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarAccesoPlantillas($respuesta);
+        $datos = $peticion->obtenerDatos();
+        $this->validarTokenPlantilla($datos, $respuesta);
+
+        $nombre = trim((string)($datos['nombre'] ?? ''));
+        if ($nombre === '') {
+            $respuesta->enviarJson(['error' => 'El nombre del formato de ensayo es obligatorio.'], 422);
+            return;
+        }
+
+        try {
+            $entrada = json_decode($datos['configuracion_json'] ?? '', true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($entrada)) throw new \InvalidArgumentException('JSON de configuración inválido.');
+
+            $plantillaBase = [
+                'docx_source' => '',
+                'codigo_formato' => 'CYCSA-RT-FM-22 A V1R1',
+                'version_documento' => 'V1R1',
+                'titulo_informe' => 'INFORME DE ENSAYO',
+                'subtitulo_laboratorio' => 'Laboratorio de Ensayos y Control de Calidad',
+                'ensayo_titulo' => $nombre,
+                'metodo_muestreo' => 'DE-ASTM',
+                'tipo_muestra' => 'Muestra Estándar',
+                'norma' => 'ASTM',
+                'orientacion' => 'horizontal',
+                'columns' => ['Código laboratorio', 'Nombre muestra', 'Resultado', 'Observaciones'],
+                'column_methods' => [],
+                'fixed_rows' => [],
+                'disclaimer' => 'Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.  ** Información Proporcionada por el cliente.',
+                'notas' => ['Nota: Ensayo realizado en las instalaciones fijas de Consultoría y Construcción SA. CYCSA.'],
+                'firmante_nombre' => 'Ing. Noel Quintana Lira',
+                'firmante_cargo' => 'Gerente General'
+            ];
+
+            $config = $this->normalizarPlantilla($entrada, $plantillaBase);
+            $productosIds = isset($datos['productos_ids']) && is_array($datos['productos_ids']) ? $datos['productos_ids'] : [];
+
+            $modelo = new ConfiguracionModelo();
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $db->beginTransaction();
+
+            $nuevoId = $modelo->crearPlantillaEnsayo($nombre, $config, $productosIds);
+            if ($nuevoId <= 0 || !registrarBitacora('configuracion', 'crear_plantilla_ensayo', "Nuevo formato creado: {$nombre} (ID {$nuevoId})", $nuevoId)) {
+                throw new \RuntimeException('No se pudo crear o auditar el nuevo formato.');
+            }
+
+            $db->commit();
+            $respuesta->enviarJson(['success' => true, 'message' => 'Nuevo formato de ensayo creado exitosamente.', 'id' => $nuevoId]);
+        } catch (\InvalidArgumentException|\JsonException $e) {
+            $respuesta->enviarJson(['error' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            if (isset($db) && $db->inTransaction()) $db->rollBack();
+            error_log('Error al crear plantilla de ensayo: ' . $e->getMessage());
+            $respuesta->enviarJson(['error' => 'No se pudo crear la plantilla: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function duplicarPlantillaEnsayo(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarAccesoPlantillas($respuesta);
+        $datos = $peticion->obtenerDatos();
+        $this->validarTokenPlantilla($datos, $respuesta);
+
+        $id = (int)($datos['id'] ?? 0);
+        if ($id <= 0) {
+            $respuesta->enviarJson(['error' => 'ID de formato inválido.'], 400);
+            return;
+        }
+
+        $modelo = new ConfiguracionModelo();
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        try {
+            $db->beginTransaction();
+            $nuevoId = $modelo->duplicarPlantillaEnsayo($id);
+            if ($nuevoId <= 0 || !registrarBitacora('configuracion', 'duplicar_plantilla_ensayo', "Formato duplicado desde ID {$id} a nuevo ID {$nuevoId}", $nuevoId)) {
+                throw new \RuntimeException('No se pudo duplicar el formato.');
+            }
+            $db->commit();
+            $respuesta->enviarJson(['success' => true, 'message' => 'Formato duplicado exitosamente.', 'id' => $nuevoId]);
+        } catch (\Throwable $e) {
+            if (isset($db) && $db->inTransaction()) $db->rollBack();
+            error_log('Error al duplicar plantilla: ' . $e->getMessage());
+            $respuesta->enviarJson(['error' => 'No se pudo duplicar la plantilla: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function previewPdfPlantillaEnsayo(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarAccesoPlantillas($respuesta);
+        $id = (int)($_GET['id'] ?? 0);
+        $modelo = new ConfiguracionModelo();
+        $plantilla = $id > 0 ? $modelo->obtenerPlantillaPorId($id) : null;
+        if (!$plantilla) {
+            echo "Error: Formato de ensayo no encontrado.";
+            return;
+        }
+
+        $config = $plantilla['configuracion'];
+        $cols = !empty($config['columns']) ? $config['columns'] : ['Código laboratorio', 'Nombre muestra', 'Resultado'];
+
+        $sampleRows = [
+            array_fill_keys($cols, '—'),
+            array_fill_keys($cols, '—')
+        ];
+        if (!empty($cols[0])) $sampleRows[0][$cols[0]] = 'MS-VISTA-01';
+        if (!empty($cols[0])) $sampleRows[1][$cols[0]] = 'MS-VISTA-02';
+        if (isset($cols[1])) $sampleRows[0][$cols[1]] = 'Espécimen de Ensayo A';
+        if (isset($cols[1])) $sampleRows[1][$cols[1]] = 'Espécimen de Ensayo B';
+
+        $detalle = [
+            'formato_id' => $id,
+            'archivo_markdown' => $plantilla['archivo_markdown'],
+            'codigo_os' => 'OS-2026-DEMO',
+            'descripcion_ensayo' => $config['ensayo_titulo'] ?? $plantilla['nombre'],
+            'nombre_comercial' => $plantilla['nombre'],
+            'norma_astm' => $config['norma'] ?? '',
+            'orientacion' => $config['orientacion'] ?? 'horizontal',
+            'metadatos' => json_encode([
+                'cliente_nombre' => 'CLIENTE EJEMPLO S.A.',
+                'proyecto' => 'PROYECTO DE DEMOSTRACIÓN TÉCNICA',
+                'cliente_direccion' => 'Managua, Nicaragua',
+                'ubicacion' => 'Punto de Muestreo #1 (Pista Juan Pablo II)',
+                'fecha_muestreo' => date('Y-m-d'),
+                'fecha_ingreso' => date('Y-m-d'),
+                'fecha_ejecucion' => date('Y-m-d'),
+                'fecha_emision' => date('Y-m-d'),
+                'tipo_muestra' => $config['tipo_muestra'] ?? 'Muestra Estándar',
+                'procedimiento_muestreo' => 'DE-ASTM',
+                'ensayo_realizado' => $config['ensayo_titulo'] ?? $plantilla['nombre'],
+                'muestra_tomada_por' => 'Técnico de Laboratorio',
+                'ensayado_por' => 'Analista de Control de Calidad',
+                'metodo_muestreo' => $config['metodo_muestreo'] ?? '',
+                'ensayo_servicio' => $config['ensayo_titulo'] ?? $plantilla['nombre'],
+            ])
+        ];
+
+        require_once dirname(__DIR__, 3) . '/Helpers/funciones.php';
+        $pdf = generarMatrizTecnicaPDF($detalle, $sampleRows, $cols);
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="vista_previa_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $plantilla['codigo_formato']) . '.pdf"');
+        echo $pdf;
+        exit;
     }
 
     public function restablecerPlantillaEnsayo(Peticion $peticion, Respuesta $respuesta): void {

@@ -311,7 +311,7 @@ class EquiposBodegasTrasladosTest extends TestCase {
 
         $this->modelo->trasladar($equipoId, $taller, [
             'motivo' => 'Primera salida',
-            'fecha_traslado' => '2026-11-05 08:00:00',
+            'fecha_traslado' => '2026-11-20 08:00:00',
             'usuario_id' => 1,
         ]);
         $this->modelo->trasladar($equipoId, $obra, [
@@ -326,7 +326,7 @@ class EquiposBodegasTrasladosTest extends TestCase {
         $ordenadas = $fechas;
         sort($ordenadas);
         $this->assertSame($ordenadas, $fechas);
-        $this->assertSame('2026-11-05 08:00:00', $historial[count($historial) - 2]['fecha_traslado']);
+        $this->assertSame('2026-11-20 08:00:00', $historial[count($historial) - 2]['fecha_traslado']);
         $this->assertSame('2026-12-01 16:45:00', $historial[count($historial) - 1]['fecha_traslado']);
         $this->assertSame($taller, (int)$historial[count($historial) - 2]['bodega_destino_id']);
         $this->assertSame($obra, (int)$historial[count($historial) - 1]['bodega_destino_id']);

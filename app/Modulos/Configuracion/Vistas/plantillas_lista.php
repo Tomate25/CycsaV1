@@ -407,6 +407,9 @@ if (!empty($plantillas)) {
             <p>Formatos técnicos de laboratorio, control de versiones inmutables y variantes personalizadas por cliente.</p>
         </div>
         <div class="head-actions">
+            <a href="/Cycsa/publico/configuracion/plantillas-ensayos" class="btn-cycsa" style="background:#0284c7; color:#fff; border-color:#0284c7;">
+                <i class="fa-solid fa-file-pdf"></i> Formatos e Informes PDF (RT-FM-22)
+            </a>
             <a href="/Cycsa/publico/configuracion" class="btn-cycsa btn-cycsa-secondary">
                 <i class="fa-solid fa-sliders"></i> Configuración
             </a>

@@ -9,14 +9,13 @@
 ## INFORME DE ENSAYO
 
 ** Nombre del cliente:		** Proyecto:
-** Dirección:		** Fecha muestreo:	2026-05-05
-Identificación de muestra:		Fecha de ingreso:
-** Procedimiento de muestreo:  Aleatorio	Fecha de ejecución:	2026-05-05
-Tipo de muestra:	Bloques	Fechade emisión:	2026-05-09
-Ref. de laboratorio:		** Ubicación:
-Ensayo realizado:	CYCSA-PE-32 Procedimiento para la determinación de la
-resistencia del bloque y Adoquin.
-Método de muestreo:  No Aplica
+** Dirección:		** Fecha muestreo:
+Fecha  recepción ítems de ensayo:		Fecha de ejecución:
+Tipo de muestra:	Bloques	Fecha de emisión del informe:
+** Procedimiento de muestreo:	Aleatorio	Muestra tomada por:	El Cliente y entrega en Laboratorio
+Ensayo realizado:	CYCSA-PE-32 Procedimiento para la determinación de la	Ensayado por:
+** Ubicación:
+Método de muestreo:	No Aplica
 Muestra tomada por:  El Cliente y entrega en Laboratorio
 
 | Descripción | Método de ensayo | Unidad | Resultado | Min | Max |
@@ -37,7 +36,7 @@ Muestra tomada por:  El Cliente y entrega en Laboratorio
 | Fecha de Ensayo |  | - |  |  |  |
 | Edad |  | Días |  | - |  |
 
-Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente
+Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.  ** Información Proporcionada por el cliente.
 Nota: Estos resultados son responsabilidad del laboratorio, pero, sin embargo, no es responsabilidad de la interpretación de resultados que realice el cliente. Ensayos realizados en las instalaciones fijas de Consultoría y Construcción SA. "CYCSA-PE-32"
 Nota 1: Los códigos de laboratorio terminados en -1, significan que este informe de ensayo sustituye al emitido anteriormente. Se corrige error de digitación .
 

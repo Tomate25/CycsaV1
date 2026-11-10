@@ -9,12 +9,13 @@
 ## INFORME DE ENSAYO
 
 ** Nombre del cliente:		** Proyecto:
-** Dirección:		** Fecha muestreo:	2026-03-25
-Identificación de muestra:	Agregado 3/4	Fecha de ingreso:
-** Procedimiento de muestreo: Aleatorio	Fecha de ejecución:	2026-03-31
-Tipo de muestra:	Agregados 3/4"	Fecha de emisión:	2026-04-01
-Ref. de laboratorio:		** Ubicación:
-Muestra tomada por:	El Cliente y entrega en Laboratorio	Método de muestreo:	No Aplica
+** Dirección:		** Fecha muestreo:
+Fecha  recepción ítems de ensayo:		Fecha de ejecución:
+Tipo de muestra:	Agregados 3/4"	Fecha de emisión del informe:
+** Procedimiento de muestreo:	Aleatorio	Muestra tomada por:	El Cliente y entrega en Laboratorio	Método de muestreo:	No Aplica
+Ensayo realizado:	CYCSA-PE-06 Determinación del Análisis Granulométrico de los Agregados Gruesos.	Ensayado por:
+** Ubicación:
+Método de muestreo:	No Aplica
 
 ## Ensayo realizado:	CYCSA-PE-06 Determinación del Análisis Granulométrico de los Agregados Gruesos.
 
@@ -41,7 +42,7 @@ Max
 
 ## Tamices
 
-Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente
+Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.  ** Información Proporcionada por el cliente.
 Nota : Estos resultados son responsabilidad del laboratorio, pero, sin embargo, no es responsabilidad de la interpretación de resultados que realice el cliente.Ensayo realizado en instalaciones fijas de Consultoría y Construcción SA. CYCSA: "CYCSA-PE-06"
 Nota1: La gráfica de comparación incluida no constituye una declaración de conformidad. El laboratorio no aplica regla de decisión ni emite declaraciones de conformidad en este informe.”
 

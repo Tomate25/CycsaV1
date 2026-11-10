@@ -9,13 +9,12 @@
 ## INFORME DE ENSAYO
 
 ** Nombre del cliente:		** Proyecto:
-** Dirección:		** Fecha muestreo:	2026-03-09
-Identificación muestra:	SPT #1 Estrato 0.1.37	Fecha de ingreso:	2026-03-16
-** Procedimiento muestreo:  Aleatorio( Método A/ tamiz # 4)	Fecha de ejecución:	2028-03-16
-Tipo de muestra:	Suelo	Fecha de emisión	2026-03-24
-Ref. de laboratorio:		** Ubicación:
-Ensayo realizado:	CYCSA-PE-16 Determinación de análisis Granulométrico de
-suelos. CYCSA-PE-17 Determinación de los Limites de Consistencia o de Atterberg de los suelos. CYCSA-PE-13 Determinación del Contenido de Humedad en muestras de Suelo. CYCSA-PE-23 Práctica estándar para la clasificación de suelos con fines de ingeniería (Sistema Unificado de Clasificación de Suelos) (SUCS)
+** Dirección:		** Fecha muestreo:
+Fecha  recepción ítems de ensayo:		Fecha de ejecución:
+Tipo de muestra:	Suelo	Fecha de emisión del informe:
+** Procedimiento de muestreo:	Aleatorio	Muestra tomada por:	Laboratorio - Consultoría y Construcción S.A. CYCSA.
+Ensayo realizado:	CYCSA-PE-16 Determinación de análisis Granulométrico de	Ensayado por:
+** Ubicación:
 Método de muestreo:	DE-ASTM4220/4220M-14
 Muestra tomada por:	Laboratorio - Consultoría y Construcción S.A. CYCSA.
 
@@ -41,7 +40,7 @@ Muestra tomada por:	Laboratorio - Consultoría y Construcción S.A. CYCSA.
 | Humedad | (%)(P/P) | CYCSA-PE-13 |  |
 | Clasificación S.U.C.S |  | CYCSA-PE-23 |  |
 
-Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente
+Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.  ** Información Proporcionada por el cliente.
 Nota: Estos resultados son responsabilidad del laboratorio, pero, sin embargo, no es responsabilidad de la interpretación de resultados que realice el cliente. Ensayos realizados en las instalaciones fijas de Consultoría y Construcción SA. CYCSA: CYCSA-PE-16; CYCSA-PE-17,CYCSA-PE-23
 Nota 1: 120 litro al tubo se le agrego de agua .
 Ing. Noel Quintana Lira	----------Última Línea--------

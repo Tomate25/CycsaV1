@@ -1,23 +1,19 @@
 # Formato de Ensayo: Resistencia de Concreto
 
-**Origen:** `Resistencia de Concreto.docx`
-
-
-## CYCSA-RT-FM-22 A V1R2
-
+## CYCSA-RT-FM-22 A V3R0
 
 ## INFORME DE ENSAYO
 
 ** Nombre del cliente:		** Proyecto:
-** Dirección:		** Fecha muestreo:	2026-05-06
-Fecha de ingreso:		Fecha de ejecución:	2026-05-09
-Tipo de muestra:	Cilindros de Concreto	Fecha de emisión:	2026-05-11
+** Dirección:		** Fecha muestreo:
+Fecha  recepción ítems de ensayo:		Fecha de ejecución:
+Tipo de muestra:	Cilindros de Concreto	Fecha de emisión del informe:
 ** Procedimiento de muestreo:	Aleatorio	Muestra tomada por:	Laboratorio - Consultoría y Construcción S.A. CYCSA.
-Ensayo realizado:	CYCSA-PE-07 Determinación de la Resistencia del Concreto, CYCSA-PE-09 Determinación del Revenimiento del concreto. CYCSA-PE-27 Procedimiento para la Determinación de Temperatura en el concreto fresco.
+Ensayo realizado:	CYCSA-PE-07 Determinación de la Resistencia del Concreto, CYCSA-PE-09 Determinación del Revenimiento del concreto. CYCSA-PE-27 Procedimiento para la Determinación de Temperatura en el concreto fresco.	Ensayado por:
 ** Ubicación:
 Método de muestreo:	DE-ASTM C31/ASTM C172M-17
 
-| Método de ensayo | CYCSA-PE-07 | CYCSA-PE-09 | CYCSA-PE-27 | CYCSA-PE-07 |  | CYCSA-PE-07 |  |  |  |  |  |  |  |
+|   |   | ASTM C39/C39M-26 | ASTM C143/C143M-26b | ASTM C143/C143M-26b | ASTM C1064/C1064M-23 | ASTM C39/C39M-26 | ASTM C39/C39M-26 |   | ASTM C39/C39M-26 | ASTM C39/C39M-26 |   |   |   |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Código laboratorio | Nombre muestra | Área (in²) | Reven. (in) | Reven. (cm) | Temp. (°C) | Carga (lb) | Peso Volumétrico (kg/m³) | Diseño de concreto (lb/in²) | R. Compresión (lb/in²) | R. Compresión (kg/cm²) | Fecha de Fabricación | Fecha de Ensayo | Edad (Días) |
 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
