@@ -975,17 +975,13 @@ class HojaSolicitudPorProductoTest extends TestCase {
 
 
 
-        // Redirección explícita a Operaciones LIMS
+        // Redirección hacia el módulo de Órdenes de Servicio
+        $this->assertStringContainsString('/ordenes-servicio', $respuesta->urlRedirigida);
 
-        $this->assertStringContainsString('/operaciones/ver?id_os=' . $this->idOS, $respuesta->urlRedirigida);
-
-
-
-        // Mensaje de éxito indicando que el seguimiento se realiza en Operaciones LIMS
-
+        // Mensaje de éxito estándar sin forzar texto de Operaciones LIMS
         $this->assertNotEmpty($_SESSION['exito'] ?? null);
-
-        $this->assertStringContainsString('Operaciones LIMS', $_SESSION['exito']);
+        $this->assertStringNotContainsString('Operaciones LIMS', $_SESSION['exito']);
+        $this->assertStringContainsString('Ver PDF Oficial', $_SESSION['exito']);
 
     }
 

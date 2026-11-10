@@ -644,17 +644,10 @@ class HojasServicioControlador extends ControladorBase {
                 ]);
                 
                 // Nota: Si la O/S estaba "Observada", se mantiene su estado para que el usuario pueda enviarla a revisión formal con el botón correspondiente.
-
-                $esCompactacion = $this->esProductoCompactacion($detalle);
-                if ($esCompactacion) {
-                    $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado. <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=' . $idOS . '&id_hoja=' . $idHojaGuardada . '" target="_blank" class="alert-link text-decoration-underline ms-2"><i class="fa-solid fa-file-pdf"></i> Ver PDF Oficial</a>. El seguimiento del ensayo de compactación se realiza en Operaciones LIMS.';
-                    $respuesta->redirigir('/Cycsa/publico/operaciones/ver?id_os=' . $idOS);
-                    return;
-                } else {
-                    $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado. <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=' . $idOS . '&id_hoja=' . $idHojaGuardada . '" target="_blank" class="alert-link text-decoration-underline ms-2"><i class="fa-solid fa-file-pdf"></i> Ver PDF Oficial</a>.';
-                    $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
-                    return;
-                }
+                $redirectDestino = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/ordenes-servicio';
+                $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado. <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=' . $idOS . '&id_hoja=' . $idHojaGuardada . '" target="_blank" class="alert-link text-decoration-underline ms-2"><i class="fa-solid fa-file-pdf"></i> Ver PDF Oficial</a>.';
+                $respuesta->redirigir($redirectDestino);
+                return;
             } else {
                 $_SESSION['error'] = $modelo->obtenerUltimoError() ?: 'Error al registrar la Hoja de Solicitud.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');

@@ -360,4 +360,19 @@ class DecisionMuestreoOrdenServicioTest extends TestCase {
         $this->assertStringContainsString('id="hs_badge_prefijo_ms"', $hsViewContent);
         $this->assertStringContainsString('fa-lock', $hsViewContent);
     }
+
+    public function testAceptarHojaSolicitudPermaneceEnModuloOrdenesServicio(): void {
+        $ctrlPath = dirname(__DIR__, 2) . '/app/Modulos/HojasServicio/Controladores/HojasServicioControlador.php';
+        $this->assertFileExists($ctrlPath);
+        $ctrlContent = file_get_contents($ctrlPath);
+
+        // Verificar que no se redirige a operaciones/ver?id_os= al guardar la hoja
+        $this->assertStringNotContainsString("redirigir('/Cycsa/publico/operaciones/ver?id_os='", $ctrlContent);
+
+        // Verificar que no se concatena el texto 'El seguimiento del ensayo de compactación se realiza en Operaciones LIMS.'
+        $this->assertStringNotContainsString('El seguimiento del ensayo de compactación se realiza en Operaciones LIMS', $ctrlContent);
+
+        // Verificar que redirige a ordenes-servicio
+        $this->assertStringContainsString("'/Cycsa/publico/ordenes-servicio'", $ctrlContent);
+    }
 }
