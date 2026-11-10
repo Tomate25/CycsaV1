@@ -662,11 +662,22 @@
             </div>
 
             <!-- 4. IDENTIFICACIONES PROPIAS (TABLA DINÁMICA) -->
-            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Outfit'; font-size:14px; font-weight:700; color:var(--cycsa-azul); border-bottom:1.5px solid #e2e8f0; padding-bottom:6px; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
                 <span><i class="fa-solid fa-list-ol"></i> 2. Identificaciones Propias de la Muestra</span>
-                <button type="button" class="btn-accion-hs btn-registrar" style="padding:6px 14px; font-size:12.5px; cursor:pointer;" onclick="agregarFilaMuestraModal()">
-                    <i class="fa-solid fa-plus"></i> Agregar Muestra
-                </button>
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div style="background:#f8fafc; border:1.5px solid #cbd5e1; padding:3px 8px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; font-size:12px;">
+                        <span style="font-size:11px; font-weight:700; color:#64748b;"><i class="fa-solid fa-tag me-1"></i>Prefijo Asignado:</span>
+                        <span id="hs_badge_prefijo_mc" style="cursor:default; background:#ffffff; color:#0369a1; border:1px solid #bae6fd; font-weight:700; padding:2px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(3,105,161,0.08);">
+                            <i class="fa-solid fa-truck-pickup text-primary"></i> MC (Campo) <i class="fa-solid fa-lock text-muted" style="font-size:10px; opacity:0.8;" title="Prefijo fijado por la modalidad de muestreo seleccionada"></i>
+                        </span>
+                        <span id="hs_badge_prefijo_ms" style="cursor:default; background:#ffffff; color:#065f46; border:1px solid #a7f3d0; font-weight:700; padding:2px 8px; border-radius:6px; display:none; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(6,95,70,0.08);">
+                            <i class="fa-solid fa-flask text-success"></i> MS (Sede/Lab) <i class="fa-solid fa-lock text-muted" style="font-size:10px; opacity:0.8;" title="Prefijo fijado por la modalidad de muestreo seleccionada"></i>
+                        </span>
+                    </div>
+                    <button type="button" class="btn-accion-hs btn-registrar" style="padding:6px 14px; font-size:12.5px; cursor:pointer;" onclick="agregarFilaMuestraModal()">
+                        <i class="fa-solid fa-plus"></i> Agregar Muestra
+                    </button>
+                </div>
             </div>
 
             <!-- BARRA DE ASIGNACIÓN GENERAL DE PLANTILLA (SELECTOR INTERACTIVO AJAX AMPLIADO) -->
@@ -1510,6 +1521,18 @@
                 prefijoMuestraActual = data.prefijo_muestra || 'MC';
                 siguienteConsecutivoMuestra = parseInt(data.siguiente_consecutivo_muestra || 1, 10) || 1;
                 siguienteConsecutivoMuestraInicial = siguienteConsecutivoMuestra;
+
+                const hsBadgeMC = document.getElementById('hs_badge_prefijo_mc');
+                const hsBadgeMS = document.getElementById('hs_badge_prefijo_ms');
+                if (hsBadgeMC && hsBadgeMS) {
+                    if (prefijoMuestraActual === 'MS') {
+                        hsBadgeMS.style.display = 'inline-flex';
+                        hsBadgeMC.style.display = 'none';
+                    } else {
+                        hsBadgeMC.style.display = 'inline-flex';
+                        hsBadgeMS.style.display = 'none';
+                    }
+                }
 
                 // Limpiar filas anteriores
                 const tbody = document.getElementById('hs-tbody-muestras');

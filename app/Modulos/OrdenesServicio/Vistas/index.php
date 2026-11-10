@@ -1304,14 +1304,14 @@
                     <div class="rtfm13-section-header">
                         <h4 class="rtfm13-section-title"><i class="fa-solid fa-list-ol"></i> 2. Identificaciones Propias de la Muestra</h4>
                         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                            <div class="rtfm13-prefix-segmented">
-                                <span class="label"><i class="fa-solid fa-tag me-1"></i>Prefijo:</span>
-                                <button type="button" id="btn_prefijo_mc" class="rtfm13-prefix-btn active" onclick="cambiarPrefijoOficial('MC')">
-                                    <i class="fa-solid fa-truck-pickup"></i> MC (Campo)
-                                </button>
-                                <button type="button" id="btn_prefijo_ms" class="rtfm13-prefix-btn" onclick="cambiarPrefijoOficial('MS')">
-                                    <i class="fa-solid fa-building"></i> MS (Sede/Lab)
-                                </button>
+                            <div class="rtfm13-prefix-segmented" style="background:#f8fafc; border:1.5px solid #cbd5e1; padding:3px 6px; border-radius:8px;">
+                                <span class="label" style="font-size:11px; font-weight:700; color:#64748b; padding:0 6px;"><i class="fa-solid fa-tag me-1"></i>Prefijo Asignado:</span>
+                                <span id="btn_prefijo_mc" class="rtfm13-prefix-btn active" style="cursor:default; pointer-events:none; background:#ffffff; color:#0369a1; border:1px solid #bae6fd; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(3,105,161,0.08);">
+                                    <i class="fa-solid fa-truck-pickup text-primary"></i> MC (Campo) <i class="fa-solid fa-lock text-muted" style="font-size:10px; opacity:0.8;" title="Prefijo fijado por la modalidad de muestreo seleccionada"></i>
+                                </span>
+                                <span id="btn_prefijo_ms" class="rtfm13-prefix-btn active" style="cursor:default; pointer-events:none; background:#ffffff; color:#065f46; border:1px solid #a7f3d0; font-weight:700; display:none; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(6,95,70,0.08);">
+                                    <i class="fa-solid fa-flask text-success"></i> MS (Sede/Lab) <i class="fa-solid fa-lock text-muted" style="font-size:10px; opacity:0.8;" title="Prefijo fijado por la modalidad de muestreo seleccionada"></i>
+                                </span>
                             </div>
                             <button type="button" class="btn-cycsa btn-cycsa-primary" style="padding:6px 16px; font-size:12.5px;" onclick="agregarFilaMuestraModal()">
                                 <i class="fa-solid fa-plus"></i> Agregar Muestra
@@ -2124,10 +2124,14 @@
         const btnMS = document.getElementById('btn_prefijo_ms');
         if (btnMC && btnMS) {
             if (prefix === 'MC') {
+                btnMC.style.display = 'inline-flex';
                 btnMC.classList.add('active');
+                btnMS.style.display = 'none';
                 btnMS.classList.remove('active');
             } else {
+                btnMS.style.display = 'inline-flex';
                 btnMS.classList.add('active');
+                btnMC.style.display = 'none';
                 btnMC.classList.remove('active');
             }
         }

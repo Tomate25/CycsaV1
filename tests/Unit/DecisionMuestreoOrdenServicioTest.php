@@ -336,4 +336,28 @@ class DecisionMuestreoOrdenServicioTest extends TestCase {
 
         $this->assertEquals('muestreo_campo_finalizado', $estadoMuestreo, 'Para una hoja con MC el estado debe ser muestreo_campo_finalizado, nunca sin_decidir ni Por Definir');
     }
+
+    public function testPrefijoInmutableBloqueadoEnRTFM13(): void {
+        $osViewPath = dirname(__DIR__, 2) . '/app/Modulos/OrdenesServicio/Vistas/index.php';
+        $this->assertFileExists($osViewPath);
+        $osViewContent = file_get_contents($osViewPath);
+
+        // Verificar que no existen botones clickeables que permitan al usuario alternar entre MC y MS
+        $this->assertStringNotContainsString('onclick="cambiarPrefijoOficial(\'MC\')"', $osViewContent, 'No debe haber botón interactivo para cambiar prefijo a MC');
+        $this->assertStringNotContainsString('onclick="cambiarPrefijoOficial(\'MS\')"', $osViewContent, 'No debe haber botón interactivo para cambiar prefijo a MS');
+
+        // Verificar que existen los badges fijos/bloqueados con candado
+        $this->assertStringContainsString('id="btn_prefijo_mc"', $osViewContent);
+        $this->assertStringContainsString('id="btn_prefijo_ms"', $osViewContent);
+        $this->assertStringContainsString('pointer-events:none', $osViewContent);
+        $this->assertStringContainsString('fa-lock', $osViewContent);
+
+        // Verificar vista HojasServicio
+        $hsViewPath = dirname(__DIR__, 2) . '/app/Modulos/HojasServicio/Vistas/index.php';
+        $this->assertFileExists($hsViewPath);
+        $hsViewContent = file_get_contents($hsViewPath);
+        $this->assertStringContainsString('id="hs_badge_prefijo_mc"', $hsViewContent);
+        $this->assertStringContainsString('id="hs_badge_prefijo_ms"', $hsViewContent);
+        $this->assertStringContainsString('fa-lock', $hsViewContent);
+    }
 }
