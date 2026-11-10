@@ -1060,7 +1060,7 @@
         const tbody = document.getElementById('hs-tbody-muestras');
         if (!tbody) return siguienteConsecutivoMuestraInicial;
         let max = 0;
-        const regex = new RegExp(`^[A-Za-z]+-(\\d+)-(\\d{2}|\\d{4})$`, 'i');
+        const regex = new RegExp(`^${prefix}-(\\d+)-(\\d{2}|\\d{4})$`, 'i');
         tbody.querySelectorAll('input[name="m_nombre[]"]').forEach(input => {
             const val = (input.value || '').trim();
             const m = val.match(regex);

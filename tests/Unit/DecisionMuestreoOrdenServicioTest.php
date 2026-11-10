@@ -375,4 +375,59 @@ class DecisionMuestreoOrdenServicioTest extends TestCase {
         // Verificar que redirige a ordenes-servicio
         $this->assertStringContainsString("'/Cycsa/publico/ordenes-servicio'", $ctrlContent);
     }
+
+    public function testContinuacionConsecutivoMuestrasMultiplesHojasMSyMC(): void {
+        require_once dirname(__DIR__, 2) . '/app/Helpers/funciones.php';
+        $anio = (int)date('Y');
+        $anio2Dig = substr((string)$anio, -2);
+
+        // 1. Verificar determinarPrefijoMuestraOS con requiere_muestreo = 0 y ensayo densimetro
+        $osIngresoDirectoDensimetro = [
+            'id' => 999,
+            'requiere_muestreo' => 0,
+            'ensayos' => [
+                ['codigo_servicio' => 'DS-01', 'nombre_ensayo' => 'Densímetro Nuclear in situ']
+            ]
+        ];
+        $prefijoDet = determinarPrefijoMuestraOS($osIngresoDirectoDensimetro);
+        $this->assertEquals('MS', $prefijoDet, 'Si requiere_muestreo es 0 (ingreso directo), el prefijo debe ser MS aunque el ensayo mencione densimetro o in situ');
+
+        // 2. Consecutivo inicial de MS antes de guardar
+        $baseMS = $this->opModelo->obtenerSiguienteConsecutivoMuestra($anio, 'MS');
+        $cod1 = sprintf("MS-%04d-%s", $baseMS, $anio2Dig);
+        $cod2 = sprintf("MS-%04d-%s", $baseMS + 1, $anio2Dig);
+        $cod3 = sprintf("MS-%04d-%s", $baseMS + 2, $anio2Dig);
+
+        // 3. Guardar primera hoja con 3 muestras MS
+        $datosH1 = [
+            'id_os' => $this->idOSPrueba,
+            'id_hoja' => 0,
+            'id_detalle_cotizacion' => $this->idDetalleCotizacionPrueba,
+            'numero_registro' => 'REG-DEC-H1-' . uniqid(),
+            'nombre_empresa_o_cliente' => 'Cliente Test',
+            'm_nombre' => [$cod1, $cod2, $cod3],
+            'm_desc' => ['M1', 'M2', 'M3'],
+            'identificacion_muestras_json' => json_encode([
+                ['nombre_muestra' => $cod1, 'descripcion' => 'M1'],
+                ['nombre_muestra' => $cod2, 'descripcion' => 'M2'],
+                ['nombre_muestra' => $cod3, 'descripcion' => 'M3']
+            ])
+        ];
+        $idH1 = 0;
+        $this->opModelo->guardarHojaSolicitud($datosH1, $idH1);
+        $this->hojasCreadas[] = $idH1;
+
+        // 4. El siguiente consecutivo para MS debe haber avanzado exactamente 3 números
+        $nextMS = $this->opModelo->obtenerSiguienteConsecutivoMuestra($anio, 'MS');
+        $this->assertEquals($baseMS + 3, $nextMS, 'El siguiente consecutivo MS debe continuar a base + 3 y nunca reiniciar a 1');
+
+        // 5. En un año sin muestras previas, tanto MC como MS deben comenzar exactamente en 1
+        $this->assertEquals(1, $this->opModelo->obtenerSiguienteConsecutivoMuestra(2029, 'MC'), 'MC debe comenzar en 1 en un año limpio');
+        $this->assertEquals(1, $this->opModelo->obtenerSiguienteConsecutivoMuestra(2029, 'MS'), 'MS debe comenzar en 1 en un año limpio');
+
+        // 6. Verificar que en la vista no se sobreescribe el prefijo a MC por ser compactación
+        $osViewPath = dirname(__DIR__, 2) . '/app/Modulos/OrdenesServicio/Vistas/index.php';
+        $osViewContent = file_get_contents($osViewPath);
+        $this->assertStringNotContainsString("prefijo = esCompactacion ? 'MC'", $osViewContent, 'No debe forzar MC si el usuario seleccionó MS en la hoja');
+    }
 }

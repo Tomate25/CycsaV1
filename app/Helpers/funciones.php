@@ -4656,6 +4656,19 @@ function determinarPrefijoMuestraOS($os): string {
     $progTec = trim($os['programacion_muestreo']['tecnico_nombre'] ?? '');
     $tieneProg = !empty($os['programacion_muestreo']) || !empty($os['id_pm']);
 
+    // Si tiene técnico de campo asignado o programación formal, siempre es MC
+    if (!empty($tec) || !empty($progTec) || $tieneProg) {
+        return 'MC';
+    }
+
+    // Si el usuario ya definió explícitamente requiere_muestreo
+    if ($req === 1 || $req === '1' || $req === true) {
+        return 'MC';
+    }
+    if ($req === 0 || $req === '0' || $req === false) {
+        return 'MS';
+    }
+
     // Comprobar si los ensayos contratados son de campo (MC) o in situ
     $esEnsayoCampo = false;
     if (!empty($os['ensayos']) && is_array($os['ensayos'])) {
@@ -4669,8 +4682,7 @@ function determinarPrefijoMuestraOS($os): string {
         }
     }
 
-    $esCampo = ($req === 1 || $req === '1' || $req === true || !empty($tec) || !empty($progTec) || $tieneProg || $esEnsayoCampo);
-    return $esCampo ? 'MC' : 'MS';
+    return $esEnsayoCampo ? 'MC' : 'MS';
 }
 
 /**
