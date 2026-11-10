@@ -17,6 +17,32 @@ class ProyectosControlador extends ControladorBase {
         $this->modelo = $modelo ?? new ProyectosModelo();
     }
 
+    private function verificarSesion(Respuesta $respuesta): void {
+        if (!isset($_SESSION['usuario_id'])) {
+            $respuesta->redirigir('/Cycsa/publico/login');
+            if (!defined('PHPUNIT_RUNNING')) {
+                exit;
+            }
+        }
+    }
+
+    private function verificarPermiso(Respuesta $respuesta, string $accion = 'ver'): bool {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('proyectos', $accion)) {
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                $respuesta->enviarJson(['exito' => false, 'error' => 'No tiene permisos suficientes para acceder a Proyectos y Obras.'], 403);
+                return false;
+            }
+            $_SESSION['flash_error'] = 'No tiene permisos suficientes para acceder a este módulo.';
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            if (!defined('PHPUNIT_RUNNING')) {
+                exit;
+            }
+            return false;
+        }
+        return true;
+    }
+
     private function asegurarTokenCsrf(): string {
         if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
             @session_start();
@@ -37,6 +63,10 @@ class ProyectosControlador extends ControladorBase {
      * Listado principal de proyectos y órdenes de obra.
      */
     public function index(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'ver')) {
+            return;
+        }
+
         $filtros = [
             'busqueda'   => $peticion->obtenerParametro('busqueda', ''),
             'estado'     => $peticion->obtenerParametro('estado', ''),
@@ -61,6 +91,10 @@ class ProyectosControlador extends ControladorBase {
      * Formulario para crear un nuevo proyecto.
      */
     public function crear(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'crear_editar')) {
+            return;
+        }
+
         $csrfToken = $this->asegurarTokenCsrf();
         $sugerenciaCodigo = $this->modelo->generarSiguienteCodigo();
         $clientes = $this->modelo->listarClientesCatalogo();
@@ -83,11 +117,15 @@ class ProyectosControlador extends ControladorBase {
      * Procesa la creación de un nuevo proyecto (POST).
      */
     public function guardar(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'crear_editar')) {
+            return;
+        }
+
         $datos = $peticion->obtenerDatos();
 
         if (!$this->verificarCsrf($datos)) {
             if ($peticion->esAjax()) {
-                $respuesta->json(['exito' => false, 'error' => 'Token de seguridad inválido o expirado.'], 403);
+                $respuesta->enviarJson(['exito' => false, 'error' => 'Token de seguridad inválido o expirado.'], 403);
                 return;
             }
             $_SESSION['flash_error'] = 'Token de seguridad inválido o expirado.';
@@ -109,7 +147,7 @@ class ProyectosControlador extends ControladorBase {
             ]);
 
             if ($peticion->esAjax()) {
-                $respuesta->json([
+                $respuesta->enviarJson([
                     'exito'       => true,
                     'mensaje'     => 'Proyecto creado exitosamente.',
                     'proyecto_id' => $proyectoId,
@@ -121,7 +159,7 @@ class ProyectosControlador extends ControladorBase {
             $respuesta->redirigir("/Cycsa/publico/proyectos/detalle?id={$proyectoId}");
         } catch (InvalidArgumentException $ie) {
             if ($peticion->esAjax()) {
-                $respuesta->json(['exito' => false, 'error' => $ie->getMessage()], 422);
+                $respuesta->enviarJson(['exito' => false, 'error' => $ie->getMessage()], 422);
                 return;
             }
             $_SESSION['flash_error'] = $ie->getMessage();
@@ -129,7 +167,7 @@ class ProyectosControlador extends ControladorBase {
         } catch (Throwable $e) {
             error_log("Error al crear proyecto: " . $e->getMessage());
             if ($peticion->esAjax()) {
-                $respuesta->json(['exito' => false, 'error' => 'Error interno al registrar el proyecto.'], 500);
+                $respuesta->enviarJson(['exito' => false, 'error' => 'Error interno al registrar el proyecto.'], 500);
                 return;
             }
             $_SESSION['flash_error'] = "Error al registrar el proyecto: " . $e->getMessage();
@@ -141,6 +179,10 @@ class ProyectosControlador extends ControladorBase {
      * Vista de detalle del proyecto con las tarjetas de los 4 cuadrantes de costos.
      */
     public function detalle(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'ver')) {
+            return;
+        }
+
         $id = (int)$peticion->obtenerParametro('id', 0);
         if ($id <= 0) {
             $_SESSION['flash_error'] = 'Identificador de proyecto no válido.';
@@ -182,6 +224,10 @@ class ProyectosControlador extends ControladorBase {
      * Formulario de edición de un proyecto.
      */
     public function editar(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'crear_editar')) {
+            return;
+        }
+
         $id = (int)$peticion->obtenerParametro('id', 0);
         $proyecto = $this->modelo->obtenerPorId($id, false);
 
@@ -211,6 +257,10 @@ class ProyectosControlador extends ControladorBase {
      * Procesa la actualización de un proyecto (POST).
      */
     public function actualizar(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'crear_editar')) {
+            return;
+        }
+
         $datos = $peticion->obtenerDatos();
         $id = (int)($datos['id'] ?? 0);
 
@@ -244,13 +294,17 @@ class ProyectosControlador extends ControladorBase {
      * Cambia el estado de un proyecto vía POST.
      */
     public function cambiarEstado(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'crear_editar')) {
+            return;
+        }
+
         $datos = $peticion->obtenerDatos();
         $id = (int)($datos['id'] ?? 0);
         $nuevoEstado = trim($datos['estado'] ?? '');
 
         if ($id <= 0 || empty($nuevoEstado)) {
             if ($peticion->esAjax()) {
-                $respuesta->json(['exito' => false, 'error' => 'Datos incompletos.'], 400);
+                $respuesta->enviarJson(['exito' => false, 'error' => 'Datos incompletos.'], 400);
                 return;
             }
             $respuesta->redirigir('/Cycsa/publico/proyectos');
@@ -260,14 +314,14 @@ class ProyectosControlador extends ControladorBase {
         try {
             $this->modelo->cambiarEstado($id, $nuevoEstado);
             if ($peticion->esAjax()) {
-                $respuesta->json(['exito' => true, 'mensaje' => 'Estado actualizado.']);
+                $respuesta->enviarJson(['exito' => true, 'mensaje' => 'Estado actualizado.']);
                 return;
             }
             $_SESSION['flash_exito'] = "Estado de proyecto actualizado a '{$nuevoEstado}'.";
             $respuesta->redirigir("/Cycsa/publico/proyectos/detalle?id={$id}");
         } catch (Throwable $t) {
             if ($peticion->esAjax()) {
-                $respuesta->json(['exito' => false, 'error' => $t->getMessage()], 422);
+                $respuesta->enviarJson(['exito' => false, 'error' => $t->getMessage()], 422);
                 return;
             }
             $_SESSION['flash_error'] = $t->getMessage();
@@ -279,13 +333,17 @@ class ProyectosControlador extends ControladorBase {
      * Endpoint API para consultar costos consolidados en formato JSON.
      */
     public function apiCostos(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'ver')) {
+            return;
+        }
+
         $id = (int)$peticion->obtenerParametro('id', 0);
         if ($id <= 0) {
-            $respuesta->json(['exito' => false, 'error' => 'ID de proyecto no provisto.'], 400);
+            $respuesta->enviarJson(['exito' => false, 'error' => 'ID de proyecto no provisto.'], 400);
             return;
         }
 
         $costos = $this->modelo->obtenerCostosConsolidados($id, true);
-        $respuesta->json(['exito' => true, 'costos' => $costos]);
+        $respuesta->enviarJson(['exito' => true, 'costos' => $costos]);
     }
 }

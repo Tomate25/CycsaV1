@@ -3484,7 +3484,7 @@ class OperacionesControlador extends ControladorBase {
      */
     public function controlCalidadReplicas(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
-        if (!tienePermiso('operaciones', 'ver') && !tienePermiso('laboratorio', 'ver')) {
+        if (!tienePermiso('control_calidad', 'ver')) {
             $respuesta->redirigir('/Cycsa/publico/panel');
             return;
         }
@@ -3570,7 +3570,7 @@ class OperacionesControlador extends ControladorBase {
      */
     public function controlCalidadDetalle(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
-        if (!tienePermiso('operaciones', 'ver') && !tienePermiso('laboratorio', 'ver')) {
+        if (!tienePermiso('control_calidad', 'ver')) {
             $respuesta->redirigir('/Cycsa/publico/panel');
             return;
         }
@@ -3672,7 +3672,7 @@ class OperacionesControlador extends ControladorBase {
         // A5: Permisos específicos para dictamen de Control de Calidad (roles 1-3 o permiso explícito)
         $rolSesion = (int)($_SESSION['usuario_rol'] ?? 0);
         $usuarioIdSesion = (int)($_SESSION['usuario_id'] ?? 0);
-        if (!in_array($rolSesion, [1, 2, 3]) && !tienePermiso('control_calidad', 'evaluar')) {
+        if (!in_array($rolSesion, [1, 2, 3]) && !tienePermiso('control_calidad', 'crear_editar') && !tienePermiso('control_calidad', 'evaluar')) {
             $_SESSION['error'] = 'No tiene permisos autorizados de Control de Calidad para emitir dictámenes.';
             $respuesta->redirigir('/Cycsa/publico/control-calidad');
             return;

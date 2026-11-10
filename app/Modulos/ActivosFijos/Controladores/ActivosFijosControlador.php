@@ -32,7 +32,7 @@ class ActivosFijosControlador extends ControladorBase {
             return true; // Administrador siempre tiene acceso total
         }
 
-        if (!tienePermiso('activos_fijos', $accion) && !tienePermiso('contabilidad', $accion)) {
+        if (!tienePermiso('activos_fijos', $accion)) {
             if ($this->esPeticionAjax()) {
                 $respuesta->enviarJson([
                     'ok' => false,

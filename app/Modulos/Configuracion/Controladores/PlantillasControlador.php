@@ -28,12 +28,12 @@ class PlantillasControlador extends ControladorBase {
     private function verificarPermisoCalidad(Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         $rolId = (int)($_SESSION['usuario_rol'] ?? ($_SESSION['usuario_rol_id'] ?? ($_SESSION['rol_id'] ?? 0)));
-        // Administrador (1) o Gerente de Calidad (3) o permisos
+        // Administrador (1) o Gerente de Calidad (3) o permisos específicos de plantillas
         $esAdmin = ($rolId === 1);
-        $esCalidad = ($rolId === 3) || tienePermiso('configuracion', 'crear_editar') || tienePermiso('operaciones', 'crear_editar') || tienePermiso('laboratorio', 'crear_editar');
+        $esCalidad = ($rolId === 3) || tienePermiso('plantillas', 'crear_editar');
 
         if (!$esAdmin && !$esCalidad) {
-            $_SESSION['error'] = 'Acceso denegado: Se requiere permiso de Calidad o Administrador para gestionar plantillas.';
+            $_SESSION['error'] = 'Acceso denegado: Se requiere permiso para gestionar plantillas.';
             $respuesta->redirigir('/Cycsa/publico/panel');
             exit;
         }
@@ -44,6 +44,10 @@ class PlantillasControlador extends ControladorBase {
      */
     public function index(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('plantillas', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            exit;
+        }
 
         $filtros = [
             'estado' => $peticion->obtenerParametro('estado'),

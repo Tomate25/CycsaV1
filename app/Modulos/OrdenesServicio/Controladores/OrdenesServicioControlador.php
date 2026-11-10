@@ -26,6 +26,10 @@ class OrdenesServicioControlador extends ControladorBase {
      */
     public function index(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('ordenes_servicio', 'ver')) {
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            return;
+        }
         
         $modelo = new OrdenServicioModelo();
         $busqueda = trim($_GET['q'] ?? '');
@@ -79,6 +83,11 @@ class OrdenesServicioControlador extends ControladorBase {
      */
     public function crear(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('ordenes_servicio', 'crear_editar')) {
+            $_SESSION['error'] = 'No cuenta con permisos para crear órdenes de servicio.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
         
         $idCotizacion = (int)($_GET['id_cotizacion'] ?? 0);
         if ($idCotizacion <= 0) {
@@ -114,6 +123,11 @@ class OrdenesServicioControlador extends ControladorBase {
      */
     public function guardar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (!tienePermiso('ordenes_servicio', 'crear_editar')) {
+            $_SESSION['error'] = 'No cuenta con permisos para registrar órdenes de servicio.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
 
         if (!$peticion->esPost()) {
             $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');

@@ -25,7 +25,7 @@ class PrestamosControlador extends ControladorBase {
     }
 
     private function verificarPermiso(Respuesta $respuesta, string $accion = 'ver'): void {
-        if (!tienePermiso('prestamos', $accion) && !tienePermiso('contabilidad', $accion)) {
+        if (!tienePermiso('prestamos', $accion)) {
             if ($this->esPeticionAjax()) {
                 $respuesta->enviarJson([
                     'ok' => false,

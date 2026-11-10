@@ -467,7 +467,7 @@
 <body>
 
     <?php 
-    $rutaActual = $_SERVER['REQUEST_URI']; 
+    $rutaActual = $_SERVER['REQUEST_URI'] ?? ''; 
     $esVistaGeneral = true; // Desactivar la barra lateral (sidebar) de forma global en todo el sistema
     ?>
 
@@ -519,7 +519,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('operaciones', 'ver') || tienePermiso('laboratorio', 'ver')): ?>
+            <?php if (tienePermiso('control_calidad', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/control-calidad" class="<?= (strpos($rutaActual, '/control-calidad') !== false || strpos($rutaActual, '/equipos-calibracion') !== false) ? 'activo' : '' ?>">
                     <i class="fa-solid fa-code-compare"></i>
@@ -535,7 +535,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('laboratorio', 'ver') || tienePermiso('operaciones', 'ver') || (($_SESSION['usuario_rol'] ?? 0) == 1)): ?>
+            <?php if (tienePermiso('equipos_bodegas', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/equipos-bodegas" class="<?= strpos($rutaActual, '/equipos-bodegas') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-warehouse"></i>
@@ -543,7 +543,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('compras', 'ver') || tienePermiso('contabilidad', 'ver') || (($_SESSION['usuario_rol'] ?? 0) == 1)): ?>
+            <?php if (tienePermiso('compras', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/compras/proveedores" class="<?= strpos($rutaActual, '/compras') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-cart-shopping"></i>
@@ -551,7 +551,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('inventario', 'ver') || tienePermiso('laboratorio', 'ver') || tienePermiso('operaciones', 'ver') || (($_SESSION['usuario_rol'] ?? 0) == 1)): ?>
+            <?php if (tienePermiso('inventario', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/inventario" class="<?= strpos($rutaActual, '/inventario') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-boxes-stacked"></i>
@@ -567,7 +567,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('nomina', 'ver') || tienePermiso('contabilidad', 'ver') || tienePermiso('rrhh', 'ver')): ?>
+            <?php if (tienePermiso('nomina', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/nomina" class="<?= strpos($rutaActual, '/nomina') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
@@ -575,7 +575,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('prestamos', 'ver') || tienePermiso('contabilidad', 'ver')): ?>
+            <?php if (tienePermiso('prestamos', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/prestamos" class="<?= strpos($rutaActual, '/prestamos') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-building-columns"></i>
@@ -583,7 +583,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('activos_fijos', 'ver') || tienePermiso('contabilidad', 'ver')): ?>
+            <?php if (tienePermiso('activos_fijos', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/activos-fijos" class="<?= strpos($rutaActual, '/activos-fijos') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-boxes-stacked"></i>
@@ -591,7 +591,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('proyectos', 'ver') || tienePermiso('operaciones', 'ver') || tienePermiso('contabilidad', 'ver')): ?>
+            <?php if (tienePermiso('proyectos', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/proyectos" class="<?= strpos($rutaActual, '/proyectos') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-helmet-safety"></i>
@@ -615,7 +615,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('usuarios', 'ver')): ?>
+            <?php if (($_SESSION['usuario_rol'] ?? 0) == 1): ?>
             <li>
                 <a href="/Cycsa/publico/usuarios" class="<?= strpos($rutaActual, '/usuarios') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-users"></i>
@@ -625,7 +625,7 @@
             <?php endif; ?>
             
 
-            <?php if (isset($_SESSION['usuario_id'])): ?>
+            <?php if (tienePermiso('plantillas', 'ver')): ?>
             <li class="menu-categoria">Plantillas & Calidad</li>
             <li>
                 <a href="/Cycsa/publico/configuracion/plantillas-ensayos" class="<?= strpos($rutaActual, '/configuracion/plantillas-ensayos') !== false ? 'activo' : '' ?>">

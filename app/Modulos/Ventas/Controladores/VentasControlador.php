@@ -23,23 +23,15 @@ use PDO;
 class VentasControlador extends ControladorBase {
 
     private function autorizar(Respuesta $respuesta, string $accion = 'ver'): void {
-
         if (!isset($_SESSION['usuario_id'])) {
-
             $respuesta->redirigir('/Cycsa/publico/login');
-
             exit;
-
         }
 
-        if (!tienePermiso('cotizaciones', $accion)) {
-
+        if (!tienePermiso('ventas', $accion)) {
             $respuesta->redirigir('/Cycsa/publico/panel');
-
             exit;
-
         }
-
     }
 
 

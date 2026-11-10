@@ -20,7 +20,33 @@ class EquiposBodegasControlador extends ControladorBase {
         $this->modelo = $modelo ?? new EquiposBodegasModelo();
     }
 
+    private function verificarSesion(Respuesta $respuesta): void {
+        if (!isset($_SESSION['usuario_id'])) {
+            $respuesta->redirigir('/Cycsa/publico/login');
+            if (!defined('PHPUNIT_RUNNING')) {
+                exit;
+            }
+        }
+    }
+
+    private function verificarPermiso(Respuesta $respuesta, string $accion = 'ver'): bool {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('equipos_bodegas', $accion)) {
+            $_SESSION['flash_error'] = 'No tiene permisos suficientes para acceder a Bodegas y Traslados.';
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            if (!defined('PHPUNIT_RUNNING')) {
+                exit;
+            }
+            return false;
+        }
+        return true;
+    }
+
     public function index(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'ver')) {
+            return;
+        }
+
         $filtros = [
             'busqueda' => trim((string)$peticion->obtenerParametro('busqueda', '')),
             'tipo' => (string)$peticion->obtenerParametro('tipo', ''),
@@ -38,6 +64,10 @@ class EquiposBodegasControlador extends ControladorBase {
     }
 
     public function bodega(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'ver')) {
+            return;
+        }
+
         $id = (int)$peticion->obtenerParametro('id', 0);
         $bodega = $this->modelo->obtenerBodega($id);
         if (!$bodega) {
@@ -57,6 +87,10 @@ class EquiposBodegasControlador extends ControladorBase {
     }
 
     public function equipo(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'ver')) {
+            return;
+        }
+
         $id = (int)$peticion->obtenerParametro('id', 0);
         $ubicacion = $this->modelo->ubicacionActual($id);
         if (!$ubicacion) {
@@ -77,6 +111,10 @@ class EquiposBodegasControlador extends ControladorBase {
     }
 
     public function guardarBodega(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'crear_editar')) {
+            return;
+        }
+
         $datos = $peticion->obtenerDatos();
         $volver = $this->rutaInterna($datos['volver'] ?? '');
 
@@ -125,6 +163,10 @@ class EquiposBodegasControlador extends ControladorBase {
     }
 
     public function trasladar(Peticion $peticion, Respuesta $respuesta): void {
+        if (!$this->verificarPermiso($respuesta, 'crear_editar')) {
+            return;
+        }
+
         $datos = $peticion->obtenerDatos();
         $equipoId = (int)($datos['equipo_id'] ?? 0);
         $volverEquipo = '/Cycsa/publico/equipos-bodegas/equipo?id=' . $equipoId;

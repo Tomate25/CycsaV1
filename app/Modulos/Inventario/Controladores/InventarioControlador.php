@@ -24,7 +24,7 @@ class InventarioControlador extends ControladorBase {
     }
 
     private function verificarPermiso(Respuesta $respuesta, string $accion = 'ver'): void {
-        if (!tienePermiso('inventario', $accion) && !tienePermiso('operaciones', $accion) && !tienePermiso('laboratorio', $accion)) {
+        if (!tienePermiso('inventario', $accion)) {
             if ($this->esPeticionAjax()) {
                 $respuesta->enviarJson([
                     'ok' => false,

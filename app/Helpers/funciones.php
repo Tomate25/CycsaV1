@@ -1228,12 +1228,12 @@ function tienePermiso(string $modulo, string $accion = 'ver'): bool {
         return false;
     }
     
-    // Administrador (Rol 1) siempre tiene acceso total
-    if ($_SESSION['usuario_rol'] == 1) {
+    // Administrador (Rol 1) siempre tiene acceso total a todos los módulos y acciones
+    if ((int)$_SESSION['usuario_rol'] === 1) {
         return true;
     }
     
-    // Gestión de usuarios es estrictamente para Administradores
+    // Gestión de usuarios del sistema es estrictamente para Administradores
     if ($modulo === 'usuarios') {
         return false;
     }
@@ -1251,24 +1251,54 @@ function tienePermiso(string $modulo, string $accion = 'ver'): bool {
         return true;
     }
 
-    // 2. Mapeo de alias y sub-módulos para retrocompatibilidad y coherencia operativa
+    // 2. Si la acción consultada es 'ver', cualquier privilegio activo en dicho módulo concede visibilidad del mismo
+    if ($accion === 'ver' && isset($permisos[$modulo]) && is_array($permisos[$modulo])) {
+        foreach ($permisos[$modulo] as $val) {
+            if ($val == 1 || $val === true) {
+                return true;
+            }
+        }
+    }
+
+    // 3. Equivalencias operativas para acciones de captura, registro y modificación
+    if (in_array($accion, ['crear', 'editar', 'actualizar', 'guardar'], true)) {
+        if (!empty($permisos[$modulo]['crear_editar'])) {
+            return true;
+        }
+    }
+    if ($accion === 'crear_editar') {
+        if (!empty($permisos[$modulo]['crear']) || !empty($permisos[$modulo]['editar'])) {
+            return true;
+        }
+    }
+
+    // 4. Equivalencias para dictámenes y aprobaciones técnicas
+    if (in_array($accion, ['evaluar', 'aprobar'], true)) {
+        if (!empty($permisos[$modulo]['aprobar']) || !empty($permisos[$modulo]['crear_editar'])) {
+            return true;
+        }
+    }
+
+    // 5. Mapeo controlado de alias y sub-módulos para retrocompatibilidad comercial y operativa
     $aliasModulo = [
-        'ordenes_servicio' => ['cotizaciones', 'operaciones'],
+        'ordenes_servicio' => ['cotizaciones'],
         'ventas'           => ['cotizaciones'],
-        'control_calidad'  => ['laboratorio', 'operaciones'],
-        'equipos_bodegas'  => ['laboratorio', 'operaciones', 'inventario'],
-        'plantillas'       => ['laboratorio', 'operaciones'],
-        'rrhh'             => ['nomina', 'contabilidad'],
-        'nomina'           => ['contabilidad'],
-        'prestamos'        => ['contabilidad'],
-        'activos_fijos'    => ['contabilidad'],
-        'proyectos'        => ['operaciones', 'contabilidad'],
+        'control_calidad'  => ['laboratorio'],
+        'equipos_bodegas'  => ['laboratorio'],
+        'rrhh'             => ['nomina'],
     ];
 
     if (isset($aliasModulo[$modulo])) {
         foreach ($aliasModulo[$modulo] as $fallbackMod) {
             if (isset($permisos[$fallbackMod][$accion]) && ($permisos[$fallbackMod][$accion] == 1 || $permisos[$fallbackMod][$accion] === true)) {
                 return true;
+            }
+            if ($accion === 'ver' && isset($permisos[$fallbackMod]) && is_array($permisos[$fallbackMod])) {
+                foreach ($permisos[$fallbackMod] as $val) {
+                    if ($val == 1 || $val === true) {
+                        return true;
+                    }
+                }
             }
         }
     }

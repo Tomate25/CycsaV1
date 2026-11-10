@@ -68,12 +68,12 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #0284c7, #0369a1)', // Celeste
             ];
         }
-        if (tienePermiso('operaciones', 'ver') || tienePermiso('laboratorio', 'ver')) {
+        if (tienePermiso('control_calidad', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Control de Calidad',
                 'link' => '/Cycsa/publico/control-calidad',
                 'icon' => 'fa-solid fa-code-compare',
-                'desc' => 'Comparación y dictamen de muestras originales contra sus réplicas -CR.',
+                'desc' => 'Comparación y dictamen de muestras originales contra sus réplicas -CR y metrología.',
                 'color' => 'linear-gradient(135deg, #0f766e, #115e59)',
             ];
         }
@@ -87,9 +87,9 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #7c3aed, #5b21b6)', // Morado
             ];
         }
-        if (tienePermiso('laboratorio', 'ver') || tienePermiso('operaciones', 'ver') || $esAdmin) {
+        if (tienePermiso('equipos_bodegas', 'ver')) {
             $cajon_aplicaciones[] = [
-                'nombre' => 'Bodegas de Equipos',
+                'nombre' => 'Bodegas y Traslados',
                 'link' => '/Cycsa/publico/equipos-bodegas',
                 'icon' => 'fa-solid fa-warehouse',
                 'desc' => 'Ubicación de equipos de laboratorio y traslados entre obra y central.',
@@ -97,8 +97,8 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
-        // 4.1 Compras y Proveedores (TAREA-045, TAREA-047)
-        if (tienePermiso('compras', 'ver') || tienePermiso('contabilidad', 'ver') || $esAdmin) {
+        // 4.1 Compras y Proveedores
+        if (tienePermiso('compras', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Compras y Proveedores',
                 'link' => '/Cycsa/publico/compras/proveedores',
@@ -108,8 +108,8 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
-        // 4.2 Inventario y Kárdex (TAREA-048)
-        if (tienePermiso('inventario', 'ver') || tienePermiso('laboratorio', 'ver') || tienePermiso('operaciones', 'ver') || $esAdmin) {
+        // 4.2 Inventario y Kárdex
+        if (tienePermiso('inventario', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Inventario y Kárdex',
                 'link' => '/Cycsa/publico/inventario',
@@ -128,8 +128,8 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #db2777, #be185d)', // Rosado
             ];
         }
-        // 5.1 Nómina & RRHH (TAREA-050)
-        if (tienePermiso('nomina', 'ver') || tienePermiso('contabilidad', 'ver') || tienePermiso('rrhh', 'ver')) {
+        // 5.1 Nómina & RRHH
+        if (tienePermiso('nomina', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Nómina & RRHH',
                 'link' => '/Cycsa/publico/nomina',
@@ -139,8 +139,8 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
-        // 5.2 Activos Fijos (TAREA-051)
-        if (tienePermiso('activos_fijos', 'ver') || tienePermiso('contabilidad', 'ver')) {
+        // 5.2 Activos Fijos
+        if (tienePermiso('activos_fijos', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Activos Fijos',
                 'link' => '/Cycsa/publico/activos-fijos',
@@ -150,8 +150,8 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
-        // 5.3 Préstamos Bancarios (TAREA-052)
-        if (tienePermiso('prestamos', 'ver') || tienePermiso('contabilidad', 'ver') || $esAdmin) {
+        // 5.3 Préstamos Bancarios
+        if (tienePermiso('prestamos', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Préstamos Bancarios',
                 'link' => '/Cycsa/publico/prestamos',
@@ -161,8 +161,8 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
-        // 5.4 Proyectos y Obras (TAREA-053)
-        if (tienePermiso('proyectos', 'ver') || tienePermiso('operaciones', 'ver') || tienePermiso('contabilidad', 'ver') || $esAdmin) {
+        // 5.4 Proyectos y Obras
+        if (tienePermiso('proyectos', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Proyectos y Obras',
                 'link' => '/Cycsa/publico/proyectos',
@@ -192,8 +192,8 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #2563eb, #1d4ed8)', // Azul
             ];
         }
-        // 8. Usuarios
-        if (tienePermiso('usuarios', 'ver')) {
+        // 8. Usuarios (solo para administradores)
+        if ($esAdmin) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Gestión de Usuarios',
                 'link' => '/Cycsa/publico/usuarios',
@@ -221,13 +221,21 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
-        if (isset($_SESSION['usuario_id'])) {
+        // 10. Plantillas y Formatos ISO 17025
+        if (tienePermiso('plantillas', 'ver')) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Plantillas de Ensayos',
                 'link' => '/Cycsa/publico/plantillas',
                 'icon' => 'fa-solid fa-shapes',
                 'desc' => 'Configurador dinámico ISO 17025, lienzo visual, fórmulas y versiones.',
                 'color' => 'linear-gradient(135deg, #103487, #2563eb)',
+            ];
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Formatos e Informes PDF',
+                'link' => '/Cycsa/publico/configuracion/plantillas-ensayos',
+                'icon' => 'fa-solid fa-file-pdf',
+                'desc' => 'Live Studio RT-FM-22, orientación, reordenamiento y métodos ASTM.',
+                'color' => 'linear-gradient(135deg, #b91c1c, #991b1b)',
             ];
         }
 

@@ -44,42 +44,75 @@ class Aplicacion {
         // 2b. Decodificar automáticamente los parámetros de IDs ofuscados (AES-128)
         $this->decodificarPeticionIds();
 
-        // 3. Validar sesión única (si hay un usuario logueado en la sesión)
+        // 3. Validar sesión única y sincronizar permisos en tiempo real (si hay un usuario logueado en la sesión)
         if (isset($_SESSION['usuario_id'])) {
             try {
                 $db = Conexion::obtenerInstancia();
-                $stmt = $db->prepare("SELECT session_id FROM usuarios WHERE id = :id");
+                $stmt = $db->prepare("SELECT u.session_id, u.id_rol, u.permisos as user_permisos, r.permisos as rol_permisos 
+                                      FROM usuarios u 
+                                      LEFT JOIN roles r ON u.id_rol = r.id 
+                                      WHERE u.id = :id");
                 $stmt->execute(['id' => $_SESSION['usuario_id']]);
-                $dbSessionId = $stmt->fetchColumn();
+                $userData = $stmt->fetch(\PDO::FETCH_ASSOC);
                 
-                $currentSessionId = session_id();
-                if ($dbSessionId && $dbSessionId !== $currentSessionId) {
-                    // La sesión fue invalidada por un inicio de sesión más nuevo en otro dispositivo
-                    $usuarioNombre = $_SESSION['usuario_nombre'] ?? 'Usuario';
-                    registrarBitacora('autenticacion', 'session_kicked', 'Sesión cerrada por inicio de sesión en otro dispositivo para: ' . $usuarioNombre);
-                    
-                    // Limpiar y desloguear (guardamos solo el mensaje de error para mostrar en el login)
-                    $_SESSION = [
-                        'login_error' => 'Tu sesión ha sido cerrada porque se inició sesión en otro dispositivo.'
-                    ];
-                    
-                    // Si la petición es del validador de sesión AJAX, devolvemos JSON en vez de redireccionar en el servidor
-                    $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-                    if (strpos($requestUri, 'verificar-sesion-activa') !== false) {
-                        header('Content-Type: application/json');
-                        echo json_encode(['status' => 'kicked']);
+                if ($userData) {
+                    $dbSessionId = $userData['session_id'];
+                    $currentSessionId = session_id();
+                    if ($dbSessionId && $dbSessionId !== $currentSessionId) {
+                        // La sesión fue invalidada por un inicio de sesión más nuevo en otro dispositivo
+                        $usuarioNombre = $_SESSION['usuario_nombre'] ?? 'Usuario';
+                        registrarBitacora('autenticacion', 'session_kicked', 'Sesión cerrada por inicio de sesión en otro dispositivo para: ' . $usuarioNombre);
+                        
+                        // Limpiar y desloguear (guardamos solo el mensaje de error para mostrar en el login)
+                        $_SESSION = [
+                            'login_error' => 'Tu sesión ha sido cerrada porque se inició sesión en otro dispositivo.'
+                        ];
+                        
+                        // Si la petición es del validador de sesión AJAX, devolvemos JSON en vez de redireccionar en el servidor
+                        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+                        if (strpos($requestUri, 'verificar-sesion-activa') !== false) {
+                            header('Content-Type: application/json');
+                            echo json_encode(['status' => 'kicked']);
+                            exit;
+                        }
+                        
+                        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+                        $basePath = dirname($scriptName);
+                        $basePath = str_replace('\\', '/', $basePath);
+                        $basePath = rtrim($basePath, '/');
+                        if ($basePath === '/') {
+                            $basePath = '';
+                        }
+                        header('Location: ' . $basePath . '/login');
                         exit;
                     }
-                    
-                    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-                    $basePath = dirname($scriptName);
-                    $basePath = str_replace('\\', '/', $basePath);
-                    $basePath = rtrim($basePath, '/');
-                    if ($basePath === '/') {
-                        $basePath = '';
+
+                    // 🔄 Sincronización dinámica de rol y permisos sin requerir deslogueo
+                    $_SESSION['usuario_rol'] = (int)$userData['id_rol'];
+
+                    $permisos = [];
+                    if (!empty($userData['rol_permisos'])) {
+                        $rolP = json_decode($userData['rol_permisos'], true);
+                        if (is_array($rolP)) {
+                            $permisos = $rolP;
+                        }
                     }
-                    header('Location: ' . $basePath . '/login');
-                    exit;
+                    if (!empty($userData['user_permisos'])) {
+                        $userP = json_decode($userData['user_permisos'], true);
+                        if (is_array($userP)) {
+                            foreach ($userP as $m => $accs) {
+                                if (!is_array($accs)) continue;
+                                foreach ($accs as $a => $v) {
+                                    if (!empty($v)) {
+                                        $permisos[$m][$a] = 1;
+                                    } else {
+                                        unset($permisos[$m][$a]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    $_SESSION['usuario_permisos'] = $permisos;
                 }
             } catch (\Exception $e) {
                 error_log("Error al validar sesión única en Aplicacion: " . $e->getMessage());

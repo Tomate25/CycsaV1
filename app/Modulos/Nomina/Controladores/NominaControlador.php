@@ -25,7 +25,7 @@ class NominaControlador extends ControladorBase {
     }
 
     private function verificarPermiso(Respuesta $respuesta, string $accion = 'ver'): void {
-        if (!tienePermiso('nomina', $accion) && !tienePermiso('contabilidad', $accion) && !tienePermiso('rrhh', $accion)) {
+        if (!tienePermiso('nomina', $accion)) {
             if ($this->esPeticionAjax()) {
                 $respuesta->enviarJson([
                     'ok' => false,
