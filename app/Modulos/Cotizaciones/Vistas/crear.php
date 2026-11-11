@@ -444,30 +444,56 @@
         </label>
 
         <!-- Política de Descuento (Inciso 6.7 e) -->
-        <label class="leyenda-item" id="item-nota-politica-descuento" style="border: 1.5px solid #bfdbfe; background: #f8fafc; border-radius: 6px; padding: 10px 12px; margin-top: 8px;">
-            <input type="hidden" name="notas[politica_descuento]" value="0">
-            <input type="checkbox" name="notas[politica_descuento]" id="chk-politica-descuento" value="1">
-            <span class="leyenda-texto" style="width: 100%;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;">
-                    <span class="leyenda-titulo" style="margin-bottom: 0; color: #103487; display: flex; align-items: center; gap: 6px;">
-                        <i class="fa-solid fa-stamp" style="color: #0284c7;"></i> Política de Descuento (Inciso 6.7 e)
-                    </span>
-                    <div style="display: inline-flex; align-items: center; gap: 6px;" onclick="event.stopPropagation();">
-                        <label for="select-descuento-autorizado" style="font-size: 11.5px; font-weight: 600; color: #475569; margin: 0;">Autorizado por:</label>
-                        <select name="notas[descuento_autorizado_por]" id="select-descuento-autorizado" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; font-weight: 600; color: #1e3a8a; background: #ffffff; cursor: pointer;">
-                            <option value="Gerencia Administrativa">Gerencia Administrativa (5% - 10%)</option>
-                            <option value="Gerencia General">Gerencia General (> 10%)</option>
-                            <option value="Política Comercial (Automático)">Política Comercial (Automático 3% - 5%)</option>
-                            <option value="Dirección Técnica">Dirección Técnica</option>
-                            <option value="Presidencia Ejecutiva">Presidencia Ejecutiva</option>
-                            <option value="Otro">Otro (Especificar)</option>
-                        </select>
-                        <input type="text" name="notas[descuento_autorizado_otro]" id="input-descuento-autorizado-otro" placeholder="Especificar área/cargo..." style="display: none; width: 150px; padding: 3px 6px; font-size: 11.5px; border: 1px solid #cbd5e1; border-radius: 4px;">
+        <div id="item-nota-politica-descuento" style="display: block; padding: 12px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #f8fafc; margin-top: 8px; transition: all 0.2s ease;">
+            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; margin-bottom: 0;">
+                <input type="hidden" name="notas[politica_descuento]" value="0">
+                <input type="checkbox" name="notas[politica_descuento]" id="chk-politica-descuento" value="1" style="margin-top: 4px; accent-color: var(--cycsa-azul); cursor: pointer; transform: scale(1.15);">
+                <span class="leyenda-texto" style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;">
+                        <span class="leyenda-titulo" style="margin-bottom: 0; color: #103487; display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px;">
+                            <i class="fa-solid fa-stamp" style="color: #0284c7;"></i> Política de Descuento (Inciso 6.7 e)
+                        </span>
+                        <div style="display: inline-flex; align-items: center; gap: 6px;" onclick="event.stopPropagation();">
+                            <label for="select-descuento-autorizado" style="font-size: 11.5px; font-weight: 600; color: #475569; margin: 0;">Autorizado por:</label>
+                            <select name="notas[descuento_autorizado_por]" id="select-descuento-autorizado" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; font-weight: 600; color: #1e3a8a; background: #ffffff; cursor: pointer;">
+                                <option value="Gerencia Administrativa">Gerencia Administrativa (5% - 10%)</option>
+                                <option value="Gerencia General">Gerencia General (> 10%)</option>
+                                <option value="Política Comercial (Automático)">Política Comercial (Automático 3% - 5%)</option>
+                                <option value="Dirección Técnica">Dirección Técnica</option>
+                                <option value="Presidencia Ejecutiva">Presidencia Ejecutiva</option>
+                                <option value="Otro">Otro (Especificar)</option>
+                            </select>
+                            <input type="text" name="notas[descuento_autorizado_otro]" id="input-descuento-autorizado-otro" placeholder="Especificar área/cargo..." style="display: none; width: 160px; padding: 4px 8px; font-size: 11.5px; border: 1px solid #cbd5e1; border-radius: 4px; background: white;">
+                        </div>
                     </div>
+                    <span style="font-size: 12px; color: #64748b; display: block; line-height: 1.4;">
+                        En toda cotización deberá expresarse claramente el descuento autorizado, indicando el área responsable de su aprobación (Inciso e, Sección 6.7).
+                    </span>
+                </span>
+            </label>
+
+            <!-- Previsualización en Vivo de la Nota Oficial que va a la Cotización y PDF -->
+            <div id="contenedor-preview-politica-descuento" style="margin-top: 10px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 6px; padding: 12px 14px; font-size: 12px; color: #166534; display: none;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                    <span style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px; color: #15803d; font-size: 12.5px;">
+                        <i class="fa-solid fa-file-contract"></i> Texto oficial que se imprimirá en las Notas de la Cotización (PDF y Sistema):
+                    </span>
+                    <span id="badge-escala-politica" style="background: #dcfce7; border: 1px solid #bbf7d0; color: #166534; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px;">
+                        <i class="fa-solid fa-shield-halved"></i> Escala Política 6.7
+                    </span>
                 </div>
-                En toda cotización deberá expresarse claramente el descuento autorizado, indicando el área responsable de su aprobación (Inciso e, Sección 6.7).
-            </span>
-        </label>
+                
+                <div style="background: #ffffff; border: 1px dashed #86efac; border-radius: 6px; padding: 10px 14px; font-family: 'Inter', system-ui, sans-serif; font-size: 13px; color: #1f2937; line-height: 1.5; box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);">
+                    <i class="fa-solid fa-quote-left" style="color: #10b981; margin-right: 6px;"></i>
+                    <strong style="color: #065f46;">Política de Descuento (Inciso 6.7 e):</strong> El descuento aplicado en la presente cotización cuenta con la debida aprobación y ha sido formalmente autorizado por: <strong id="preview-autorizador-texto" style="color: #103487; text-decoration: underline;">Gerencia Administrativa</strong>.
+                </div>
+
+                <div id="detalle-escala-politica-info" style="margin-top: 8px; font-size: 11.5px; color: #166534; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; border-top: 1px solid #dcfce7; padding-top: 8px;">
+                    <span><i class="fa-solid fa-percent"></i> Descuento aplicado: <strong id="preview-descuento-monto">C$ 0.00 (0.0%)</strong></span>
+                    <span><i class="fa-solid fa-scale-balanced"></i> Condición normativa: <span id="preview-regla-texto">Aprobación según porcentaje</span></span>
+                </div>
+            </div>
+        </div>
 
         <!-- Datos Bancarios Oficiales -->
         <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px 18px; margin-top: 15px; font-size: 13px; color: #1e3a8a;">
@@ -689,6 +715,7 @@
                     this.dataset.manualUncheck = '1';
                     delete this.dataset.manualCheck;
                 }
+                actualizarPreviewPoliticaDescuento();
             });
         }
 
@@ -706,6 +733,7 @@
                 if (txtAutorizador) {
                     txtAutorizador.textContent = (this.value === 'Otro' && inputOtro && inputOtro.value) ? inputOtro.value : this.value;
                 }
+                actualizarPreviewPoliticaDescuento();
             });
         }
 
@@ -714,8 +742,12 @@
                 if (txtAutorizador && selectAutorizado && selectAutorizado.value === 'Otro') {
                     txtAutorizador.textContent = this.value || 'Otro';
                 }
+                actualizarPreviewPoliticaDescuento();
             });
         }
+
+        // Inicializar previsualización en vivo de la política de descuentos
+        actualizarPreviewPoliticaDescuento();
     });
 
     // Formateador de moneda nicaragüense (C$) e Internacional ($)
@@ -1031,6 +1063,107 @@
                 chkPolitica.checked = false;
             }
             if (indicador) indicador.style.display = 'none';
+        }
+
+        // Actualizar la previsualización en vivo del texto oficial y la escala
+        actualizarPreviewPoliticaDescuento();
+    }
+
+    function actualizarPreviewPoliticaDescuento() {
+        const chkPolitica = document.getElementById('chk-politica-descuento');
+        const contenedor = document.getElementById('contenedor-preview-politica-descuento');
+        const selectAutorizado = document.getElementById('select-descuento-autorizado');
+        const inputOtro = document.getElementById('input-descuento-autorizado-otro');
+        const previewAutorizador = document.getElementById('preview-autorizador-texto');
+        const previewDescuento = document.getElementById('preview-descuento-monto');
+        const previewRegla = document.getElementById('preview-regla-texto');
+        const badgeEscala = document.getElementById('badge-escala-politica');
+        const txtAutorizador = document.getElementById('txt-autorizador-descuento');
+        const itemContenedor = document.getElementById('item-nota-politica-descuento');
+
+        if (!chkPolitica || !contenedor) return;
+
+        // Mostrar u ocultar la previsualización según esté seleccionada la política
+        if (chkPolitica.checked) {
+            contenedor.style.display = 'block';
+            if (itemContenedor) {
+                itemContenedor.style.borderColor = '#38bdf8';
+                itemContenedor.style.background = '#f0f9ff';
+            }
+        } else {
+            contenedor.style.display = 'none';
+            if (itemContenedor) {
+                itemContenedor.style.borderColor = '#cbd5e1';
+                itemContenedor.style.background = '#f8fafc';
+            }
+            return;
+        }
+
+        // Resolver autorizador actual
+        let autorizador = selectAutorizado ? selectAutorizado.value : 'Gerencia Administrativa';
+        if (autorizador === 'Otro') {
+            const otroVal = inputOtro ? inputOtro.value.trim() : '';
+            autorizador = otroVal !== '' ? otroVal : 'Otro (Sin especificar)';
+        }
+
+        if (previewAutorizador) {
+            previewAutorizador.textContent = autorizador;
+        }
+        if (txtAutorizador) {
+            txtAutorizador.textContent = autorizador;
+        }
+
+        // Calcular porcentaje y escala normativa
+        const subtotal = parseFloat(document.getElementById('input-subtotal')?.value || 0);
+        const descuento = parseFloat(document.getElementById('input-descuento-final')?.value || 0);
+        const tipoMoneda = parseInt(document.getElementById('input-tipo-moneda')?.value || 1);
+        const simbolo = (tipoMoneda === 2) ? '$' : 'C$';
+        const pct = (subtotal > 0) ? (descuento / subtotal) * 100 : 0;
+
+        if (previewDescuento) {
+            previewDescuento.textContent = `${simbolo} ${descuento.toLocaleString('es-NI', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${pct.toFixed(1)}%)`;
+        }
+
+        if (pct > 10.01) {
+            if (previewRegla) {
+                previewRegla.innerHTML = `<strong style="color: #b91c1c;">Requiere Gerencia General</strong> (Descuento > 10%)`;
+            }
+            if (badgeEscala) {
+                badgeEscala.style.background = '#fee2e2';
+                badgeEscala.style.borderColor = '#fca5a5';
+                badgeEscala.style.color = '#991b1b';
+                badgeEscala.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Escala > 10% (Gerencia General)';
+            }
+        } else if (pct > 5.01) {
+            if (previewRegla) {
+                previewRegla.innerHTML = `<strong style="color: #0369a1;">Aprobado por Gerencia Administrativa</strong> (5% a 10%)`;
+            }
+            if (badgeEscala) {
+                badgeEscala.style.background = '#e0f2fe';
+                badgeEscala.style.borderColor = '#bae6fd';
+                badgeEscala.style.color = '#0369a1';
+                badgeEscala.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Escala 5% – 10% (Gerencia Adm.)';
+            }
+        } else if (pct > 0) {
+            if (previewRegla) {
+                previewRegla.innerHTML = `<strong style="color: #15803d;">Política Comercial Estándar</strong> (≤ 5% por compras > C$ 4,500)`;
+            }
+            if (badgeEscala) {
+                badgeEscala.style.background = '#dcfce7';
+                badgeEscala.style.borderColor = '#bbf7d0';
+                badgeEscala.style.color = '#166534';
+                badgeEscala.innerHTML = '<i class="fa-solid fa-check-circle"></i> Escala ≤ 5% (Comercial Automático)';
+            }
+        } else {
+            if (previewRegla) {
+                previewRegla.textContent = 'Sin descuento registrado en totales (0%)';
+            }
+            if (badgeEscala) {
+                badgeEscala.style.background = '#f1f5f9';
+                badgeEscala.style.borderColor = '#cbd5e1';
+                badgeEscala.style.color = '#475569';
+                badgeEscala.innerHTML = '<i class="fa-solid fa-circle-info"></i> Nota Informativa';
+            }
         }
     }
 
