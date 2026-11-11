@@ -149,6 +149,28 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     $monedaSimbolo = ((int)($cotizacion['tipo_moneda'] ?? 1) === 2) ? '$' : 'C$';
     $descuentoVal = (float)($cotizacion['descuento'] ?? 0);
     $subtotalNeto = (float)$cotizacion['subtotal'] - $descuentoVal;
+    $configNotas = json_decode($cotizacion['configuracion_notas'] ?? '', true) ?: [];
+
+    // Resolver autorizador del descuento para la Política de Descuentos (Inciso 6.7 e)
+    $autorizadorDesc = !empty($configNotas['descuento_autorizado_por']) 
+        ? trim((string)$configNotas['descuento_autorizado_por']) 
+        : '';
+    if (empty($autorizadorDesc)) {
+        $montoDescVal = (float)($cotizacion['descuento'] ?? 0);
+        $subtotalVal = (float)($cotizacion['subtotal'] ?? 0);
+        $pctVal = ($subtotalVal > 0) ? ($montoDescVal / $subtotalVal) * 100 : 0;
+        if ($pctVal > 10) {
+            $autorizadorDesc = 'Gerencia General';
+        } elseif ($pctVal > 5) {
+            $autorizadorDesc = 'Gerencia Administrativa';
+        } else {
+            $autorizadorDesc = 'Política Comercial (Automático)';
+        }
+    }
+    if ($autorizadorDesc === 'Otro' && !empty($configNotas['descuento_autorizado_otro'])) {
+        $autorizadorDesc = trim((string)$configNotas['descuento_autorizado_otro']);
+    }
+    $autorizadorHtml = htmlspecialchars($autorizadorDesc, ENT_QUOTES, 'UTF-8');
     ?>
 
     <!-- BANNER: DETALLE DE SERVICIOS COTIZADOS (#1F4E79) -->
@@ -229,7 +251,10 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
             </tr>
             <?php if ($descuentoVal > 0): ?>
                 <tr style="border-bottom: 1px solid #e2e8f0; color: #dc2626;">
-                    <td style="padding: 8px 14px; font-weight: 600; text-align: right;">Descuento:</td>
+                    <td style="padding: 8px 14px; font-weight: 600; text-align: right;">
+                        Descuento:
+                        <div style="font-size: 11px; color: #0369a1; font-weight: 500; margin-top: 2px;"><i class="fa-solid fa-stamp"></i> Autorizado: <?= $autorizadorHtml ?></div>
+                    </td>
                     <td style="padding: 8px 14px; font-weight: 700; text-align: right;">-<?= $monedaSimbolo ?> <?= number_format($descuentoVal, 2, '.', ',') ?></td>
                 </tr>
                 <tr style="border-bottom: 1px solid #e2e8f0;">
@@ -254,23 +279,25 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     </div>
 
     <?php
-    $configNotas = json_decode($cotizacion['configuracion_notas'] ?? '', true) ?: [];
     $notasDisponibles = [
         'digital_pdf' => '<strong>Informes Digitales en PDF:</strong> Los informes de ensayo se entregan únicamente en formato digital (.PDF). Serán enviados al correo del contacto designado por el cliente.',
         'no_movilizacion' => '<strong>Sin Movilización:</strong> No incluye movilización por traslado de muestras.',
         'entrega_laboratorio' => '<strong>Lugar de Entrega:</strong> Cliente toma las muestras y las entrega en Laboratorio CYCSA ubicado Km 83.5 Carretera León Managua.',
+        'politica_descuento' => '<strong>Política de Descuento (Inciso 6.7 e):</strong> El descuento aplicado cuenta con la debida aprobación y ha sido formalmente autorizado por: <strong>' . $autorizadorHtml . '</strong>.',
         'concreto' => '<strong>Muestreo de Concreto (Cilindros):</strong> El cliente deberá entregar los cilindros de concreto debidamente identificados (Nombre, Ubicación, Resistencia, Revenimiento) y de dimensiones estándar CYCSA-PE-07 (4"x8" o 6"x12").',
         'laboratorio_lleno' => '<strong>Condición de Tiempos:</strong> Los tiempos de entrega aplican a partir del ingreso de las muestras. La disponibilidad deberá ser consultada al momento de la entrega debido a variaciones en la carga del laboratorio.',
         'trae_muestra' => '<strong>Entrega de Muestras:</strong> El cliente traerá las muestras a las instalaciones del Laboratorio CYCSA Km 83.5 Carretera León-Managua.',
         'minimo_muestreo' => '<strong>Programación de Muestreo:</strong> Se requiere un cargo mínimo de C$ 4,400.00 más movilización para programar muestreos. Programación con un mínimo de 2 días hábiles de anticipación.'
     ];
 
-    if (empty($configNotas)) {
-        $configNotas = [
-            'digital_pdf' => 1,
-            'no_movilizacion' => 1,
-            'entrega_laboratorio' => 1
-        ];
+    if (!empty($configNotas['politica_descuento']) || ((float)($cotizacion['descuento'] ?? 0) > 0 && (!isset($configNotas['politica_descuento']) || (string)$configNotas['politica_descuento'] === '1'))) {
+        $configNotas['politica_descuento'] = 1;
+    }
+
+    if (empty($configNotas) || (count($configNotas) === 1 && isset($configNotas['politica_descuento']))) {
+        $configNotas['digital_pdf'] = 1;
+        $configNotas['no_movilizacion'] = 1;
+        $configNotas['entrega_laboratorio'] = 1;
     }
 
     $incluirAnexo = !empty($cotizacion['incluir_anexo_tecnico']) && !empty(trim($cotizacion['anexo_tecnico'] ?? ''));

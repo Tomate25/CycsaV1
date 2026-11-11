@@ -361,6 +361,15 @@
                     <span id="txt-descuento-calculado" style="font-weight: 600;">-C$ 0.00</span>
                 </div>
 
+                <!-- Indicador de Política de Descuento (Inciso 6.7 e) -->
+                <div id="indicador-politica-descuento" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 6px 10px; margin-bottom: 12px; font-size: 12px; color: #1e40af; justify-content: space-between; align-items: center; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <i class="fa-solid fa-stamp" style="color: #0284c7;"></i>
+                        <span><strong>Política 6.7 e:</strong> Aprobado por <strong id="txt-autorizador-descuento">Gerencia Administrativa</strong></span>
+                    </div>
+                    <a href="#item-nota-politica-descuento" style="color: #2563eb; font-weight: 600; text-decoration: underline; font-size: 11.5px; white-space: nowrap;">Ver en Notas</a>
+                </div>
+
                 <!-- Precio con Descuento -->
                 <div class="fila-total" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14.5px; color: #334155; background-color: #f8fafc; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
                     <span style="font-weight: 600;">Precio con Descuento:</span>
@@ -404,6 +413,24 @@
     $notaLab = isset($configNotas['entrega_laboratorio']) ? (bool)$configNotas['entrega_laboratorio'] : true;
     $notaConcreto = !empty($configNotas['concreto']);
     $notaLleno = !empty($configNotas['laboratorio_lleno']);
+    $notaDescuento = !empty($configNotas['politica_descuento']) || ((float)($cotizacion['descuento'] ?? 0) > 0 && (!isset($configNotas['politica_descuento']) || (string)$configNotas['politica_descuento'] === '1'));
+
+    $autorizadorVal = !empty($configNotas['descuento_autorizado_por']) 
+        ? (string)$configNotas['descuento_autorizado_por'] 
+        : '';
+    if (empty($autorizadorVal)) {
+        $montoDescVal = (float)($cotizacion['descuento'] ?? 0);
+        $subtotalVal = (float)($cotizacion['subtotal'] ?? 0);
+        $pctVal = ($subtotalVal > 0) ? ($montoDescVal / $subtotalVal) * 100 : 0;
+        if ($pctVal > 10) {
+            $autorizadorVal = 'Gerencia General';
+        } elseif ($pctVal > 5) {
+            $autorizadorVal = 'Gerencia Administrativa';
+        } else {
+            $autorizadorVal = 'Política Comercial (Automático)';
+        }
+    }
+    $autorizadorOtroVal = $configNotas['descuento_autorizado_otro'] ?? '';
 
     $incluirAnexo = !isset($cotizacion['incluir_anexo_tecnico']) || (int)$cotizacion['incluir_anexo_tecnico'] === 1 || !empty($cotizacion['anexo_tecnico']);
     $archivoAdjunto = $cotizacion['archivo_adjunto'] ?? '';
@@ -449,6 +476,32 @@
             <span class="leyenda-texto">
                 <span class="leyenda-titulo">Condicionante de Tiempo (Laboratorio lleno)</span>
                 Añade: "Los tiempos aplican a partir del ingreso... La disponibilidad deberá ser consultada al momento de la entrega."
+            </span>
+        </label>
+
+        <!-- Política de Descuento (Inciso 6.7 e) -->
+        <label class="leyenda-item" id="item-nota-politica-descuento" style="border: 1.5px solid #bfdbfe; background: #f8fafc; border-radius: 6px; padding: 10px 12px; margin-top: 8px;">
+            <input type="hidden" name="notas[politica_descuento]" value="0">
+            <input type="checkbox" name="notas[politica_descuento]" id="chk-politica-descuento" value="1" <?= $notaDescuento ? 'checked' : '' ?>>
+            <span class="leyenda-texto" style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;">
+                    <span class="leyenda-titulo" style="margin-bottom: 0; color: #103487; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-stamp" style="color: #0284c7;"></i> Política de Descuento (Inciso 6.7 e)
+                    </span>
+                    <div style="display: inline-flex; align-items: center; gap: 6px;" onclick="event.stopPropagation();">
+                        <label for="select-descuento-autorizado" style="font-size: 11.5px; font-weight: 600; color: #475569; margin: 0;">Autorizado por:</label>
+                        <select name="notas[descuento_autorizado_por]" id="select-descuento-autorizado" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; font-weight: 600; color: #1e3a8a; background: #ffffff; cursor: pointer;">
+                            <option value="Gerencia Administrativa" <?= $autorizadorVal === 'Gerencia Administrativa' ? 'selected' : '' ?>>Gerencia Administrativa (5% - 10%)</option>
+                            <option value="Gerencia General" <?= $autorizadorVal === 'Gerencia General' ? 'selected' : '' ?>>Gerencia General (> 10%)</option>
+                            <option value="Política Comercial (Automático)" <?= $autorizadorVal === 'Política Comercial (Automático)' ? 'selected' : '' ?>>Política Comercial (Automático 3% - 5%)</option>
+                            <option value="Dirección Técnica" <?= $autorizadorVal === 'Dirección Técnica' ? 'selected' : '' ?>>Dirección Técnica</option>
+                            <option value="Presidencia Ejecutiva" <?= $autorizadorVal === 'Presidencia Ejecutiva' ? 'selected' : '' ?>>Presidencia Ejecutiva</option>
+                            <option value="Otro" <?= $autorizadorVal === 'Otro' ? 'selected' : '' ?>>Otro (Especificar)</option>
+                        </select>
+                        <input type="text" name="notas[descuento_autorizado_otro]" id="input-descuento-autorizado-otro" value="<?= htmlspecialchars($autorizadorOtroVal, ENT_QUOTES, 'UTF-8') ?>" placeholder="Especificar área/cargo..." style="display: <?= $autorizadorVal === 'Otro' ? 'inline-block' : 'none' ?>; width: 150px; padding: 3px 6px; font-size: 11.5px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                    </div>
+                </div>
+                En toda cotización deberá expresarse claramente el descuento autorizado, indicando el área responsable de su aprobación (Inciso e, Sección 6.7).
             </span>
         </label>
 
@@ -684,6 +737,49 @@
         if (chkExonerado) {
             chkExonerado.addEventListener('change', function() {
                 calcularTotalesGenerales();
+            });
+        }
+
+        // Event listeners para Política de Descuentos (Inciso 6.7 e)
+        const chkPolitica = document.getElementById('chk-politica-descuento');
+        const selectAutorizado = document.getElementById('select-descuento-autorizado');
+        const inputOtro = document.getElementById('input-descuento-autorizado-otro');
+        const txtAutorizador = document.getElementById('txt-autorizador-descuento');
+
+        if (chkPolitica) {
+            chkPolitica.addEventListener('change', function() {
+                if (this.checked) {
+                    this.dataset.manualCheck = '1';
+                    delete this.dataset.manualUncheck;
+                } else {
+                    this.dataset.manualUncheck = '1';
+                    delete this.dataset.manualCheck;
+                }
+            });
+        }
+
+        if (selectAutorizado) {
+            selectAutorizado.addEventListener('change', function() {
+                this.dataset.manualChoice = '1';
+                if (this.value === 'Otro') {
+                    if (inputOtro) {
+                        inputOtro.style.display = 'inline-block';
+                        inputOtro.focus();
+                    }
+                } else {
+                    if (inputOtro) inputOtro.style.display = 'none';
+                }
+                if (txtAutorizador) {
+                    txtAutorizador.textContent = (this.value === 'Otro' && inputOtro && inputOtro.value) ? inputOtro.value : this.value;
+                }
+            });
+        }
+
+        if (inputOtro) {
+            inputOtro.addEventListener('input', function() {
+                if (txtAutorizador && selectAutorizado && selectAutorizado.value === 'Otro') {
+                    txtAutorizador.textContent = this.value || 'Otro';
+                }
             });
         }
     });
@@ -937,6 +1033,49 @@
         document.getElementById('input-descuento-final').value = descuentoCalculado.toFixed(2);
         document.getElementById('input-iva').value = iva.toFixed(2);
         document.getElementById('input-total').value = totalFinal.toFixed(2);
+
+        // Sincronizar Política de Descuentos (Inciso 6.7 e)
+        sincronizarPoliticaDescuento(subtotalGeneral, descuentoCalculado);
+    }
+
+    function sincronizarPoliticaDescuento(subtotalGeneral, descuentoCalculado) {
+        const chkPolitica = document.getElementById('chk-politica-descuento');
+        const selectAutorizado = document.getElementById('select-descuento-autorizado');
+        const inputOtro = document.getElementById('input-descuento-autorizado-otro');
+        const indicador = document.getElementById('indicador-politica-descuento');
+        const txtAutorizador = document.getElementById('txt-autorizador-descuento');
+
+        if (!chkPolitica || !selectAutorizado) return;
+
+        if (descuentoCalculado > 0) {
+            if (!chkPolitica.dataset.manualUncheck) {
+                chkPolitica.checked = true;
+            }
+
+            if (!selectAutorizado.dataset.manualChoice) {
+                const pct = (subtotalGeneral > 0) ? (descuentoCalculado / subtotalGeneral) * 100 : 0;
+                if (pct > 10.01) {
+                    selectAutorizado.value = 'Gerencia General';
+                } else if (pct > 5.01) {
+                    selectAutorizado.value = 'Gerencia Administrativa';
+                } else {
+                    selectAutorizado.value = 'Política Comercial (Automático)';
+                }
+            }
+
+            if (indicador) indicador.style.display = 'flex';
+            if (txtAutorizador) {
+                const autorizadorFinal = (selectAutorizado.value === 'Otro' && inputOtro && inputOtro.value)
+                    ? inputOtro.value
+                    : selectAutorizado.value;
+                txtAutorizador.textContent = autorizadorFinal;
+            }
+        } else {
+            if (!chkPolitica.dataset.manualCheck) {
+                chkPolitica.checked = false;
+            }
+            if (indicador) indicador.style.display = 'none';
+        }
     }
 
     function normalizarTexto(txt) {

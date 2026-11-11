@@ -838,23 +838,49 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     }
 
     $configNotas = json_decode($cotizacion['configuracion_notas'] ?? '', true) ?: [];
+
+    // Resolver autorizador del descuento para la Política de Descuentos (Inciso 6.7 e)
+    $autorizadorDesc = !empty($configNotas['descuento_autorizado_por']) 
+        ? trim((string)$configNotas['descuento_autorizado_por']) 
+        : '';
+    if (empty($autorizadorDesc)) {
+        $montoDescVal = (float)($cotizacion['descuento'] ?? 0);
+        $subtotalVal = (float)($cotizacion['subtotal'] ?? 0);
+        $pctVal = ($subtotalVal > 0) ? ($montoDescVal / $subtotalVal) * 100 : 0;
+        if ($pctVal > 10) {
+            $autorizadorDesc = 'Gerencia General';
+        } elseif ($pctVal > 5) {
+            $autorizadorDesc = 'Gerencia Administrativa';
+        } else {
+            $autorizadorDesc = 'Política Comercial (Automático)';
+        }
+    }
+    if ($autorizadorDesc === 'Otro' && !empty($configNotas['descuento_autorizado_otro'])) {
+        $autorizadorDesc = trim((string)$configNotas['descuento_autorizado_otro']);
+    }
+    $autorizadorHtml = htmlspecialchars($autorizadorDesc, ENT_QUOTES, 'UTF-8');
+
     $notasDisponibles = [
         'digital_pdf' => '<strong>Entrega Digital:</strong> Los informes de ensayo se entregan únicamente en formato digital (.PDF). Serán enviados al correo del contacto designado por el cliente.',
         'no_movilizacion' => '<strong>Movilización:</strong> No incluye movilización por traslado de muestras.',
         'entrega_laboratorio' => '<strong>Lugar de Entrega:</strong> Cliente toma las muestras y las entrega en Laboratorio CYCSA ubicado Km 83.5 Carretera León Managua.',
+        'politica_descuento' => "<strong>Política de Descuento (Inciso 6.7 e):</strong> El descuento aplicado en la presente cotización cuenta con la debida aprobación y ha sido formalmente autorizado por: <strong>{$autorizadorHtml}</strong>.",
         'concreto' => '<strong>Muestreo de Concreto (Cilindros):</strong> El cliente deberá entregar los cilindros de concreto debidamente identificados (Nombre, Ubicación, Resistencia, Revenimiento) y de dimensiones estándar CYCSA-PE-07 (4"x8" o 6"x12").',
         'laboratorio_lleno' => '<strong>Condición de Tiempos:</strong> Los tiempos de entrega aplican a partir del ingreso de las muestras. La disponibilidad deberá ser consultada al momento de la entrega debido a variaciones en la carga del laboratorio.',
         'trae_muestra' => '<strong>Entrega de Muestras:</strong> El cliente traerá las muestras a las instalaciones del Laboratorio CYCSA Km 83.5 Carretera León-Managua.',
         'minimo_muestreo' => '<strong>Programación de Muestreo:</strong> Se requiere un cargo mínimo de C$ 4,400.00 más movilización para programar muestreos. Programación con un mínimo de 2 días hábiles de anticipación.'
     ];
 
+    // Si se aplicó descuento y la nota de política no fue expresamente desactivada, activarla
+    if (!empty($configNotas['politica_descuento']) || ((float)($cotizacion['descuento'] ?? 0) > 0 && (!isset($configNotas['politica_descuento']) || (string)$configNotas['politica_descuento'] === '1'))) {
+        $configNotas['politica_descuento'] = 1;
+    }
+
     // Si no hay configuración de notas guardada, activar las 3 notas estándar por defecto
-    if (empty($configNotas)) {
-        $configNotas = [
-            'digital_pdf' => 1,
-            'no_movilizacion' => 1,
-            'entrega_laboratorio' => 1
-        ];
+    if (empty($configNotas) || (count($configNotas) === 1 && isset($configNotas['politica_descuento']))) {
+        $configNotas['digital_pdf'] = 1;
+        $configNotas['no_movilizacion'] = 1;
+        $configNotas['entrega_laboratorio'] = 1;
     }
 
     $htmlNotas = '';
@@ -3324,12 +3350,42 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
     }
 
     $configNotas = json_decode($cotizacion['configuracion_notes'] ?? $cotizacion['configuracion_notas'] ?? '', true) ?: [];
+
+    // Resolver autorizador del descuento para la Política de Descuentos (Inciso 6.7 e)
+    $autorizadorDesc = !empty($configNotas['descuento_autorizado_por']) 
+        ? trim((string)$configNotas['descuento_autorizado_por']) 
+        : '';
+    if (empty($autorizadorDesc)) {
+        $montoDescVal = (float)($cotizacion['descuento'] ?? 0);
+        $subtotalVal = (float)($cotizacion['subtotal'] ?? 0);
+        $pctVal = ($subtotalVal > 0) ? ($montoDescVal / $subtotalVal) * 100 : 0;
+        if ($pctVal > 10) {
+            $autorizadorDesc = 'Gerencia General';
+        } elseif ($pctVal > 5) {
+            $autorizadorDesc = 'Gerencia Administrativa';
+        } else {
+            $autorizadorDesc = 'Política Comercial (Automático)';
+        }
+    }
+    if ($autorizadorDesc === 'Otro' && !empty($configNotas['descuento_autorizado_otro'])) {
+        $autorizadorDesc = trim((string)$configNotas['descuento_autorizado_otro']);
+    }
+    $autorizadorHtml = htmlspecialchars($autorizadorDesc, ENT_QUOTES, 'UTF-8');
+
     $notasDisponibles = [
+        'digital_pdf' => '<strong>Entrega Digital:</strong> Los informes de ensayo se entregan únicamente en formato digital (.PDF). Serán enviados al correo del contacto designado por el cliente.',
+        'no_movilizacion' => '<strong>Movilización:</strong> No incluye movilización por traslado de muestras.',
+        'entrega_laboratorio' => '<strong>Lugar de Entrega:</strong> Cliente toma las muestras y las entrega en Laboratorio CYCSA ubicado Km 83.5 Carretera León Managua.',
+        'politica_descuento' => "<strong>Política de Descuento (Inciso 6.7 e):</strong> El descuento aplicado en la presente cotización cuenta con la debida aprobación y ha sido formalmente autorizado por: <strong>{$autorizadorHtml}</strong>.",
         'concreto' => '<strong>Muestreo de Concreto (Cilindros):</strong> El cliente deberá entregar los cilindros de concreto debidamente identificados (Nombre, Ubicación, Resistencia, Revenimiento) y de dimensiones estándar CYCSA-PE-07 (4"x8" o 6"x12").',
         'trae_muestra' => '<strong>Entrega de Muestras:</strong> El cliente traerá las muestras a las instalaciones del Laboratorio CYCSA Km 83.5 Carretera León-Managua.',
         'laboratorio_lleno' => '<strong>Condición de Tiempos:</strong> Los tiempos de entrega aplican a partir del ingreso de las muestras. La disponibilidad deberá ser consultada al momento de la entrega debido a variaciones en la carga del laboratorio.',
         'minimo_muestreo' => '<strong>Programación de Muestreo:</strong> Se requiere un cargo mínimo de C$ 4,400.00 más movilización para programar muestreos. Programación con un mínimo de 2 días hábiles de anticipación.'
     ];
+
+    if (!empty($configNotas['politica_descuento']) || ((float)($cotizacion['descuento'] ?? 0) > 0 && (!isset($configNotas['politica_descuento']) || (string)$configNotas['politica_descuento'] === '1'))) {
+        $configNotas['politica_descuento'] = 1;
+    }
 
     $htmlNotas = '';
     foreach ($configNotas as $clave => $seleccionada) {
