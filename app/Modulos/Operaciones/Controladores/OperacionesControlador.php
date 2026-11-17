@@ -1490,7 +1490,7 @@ class OperacionesControlador extends ControladorBase {
         if (!$hoja) {
             $numCorrelativo = $modelo->obtenerSiguienteNumeroHojaSolicitud((int)$os['id_cotizacion']);
             $codigoDoc = "CYCSA-RT-FM-" . sprintf("%02d", $numCorrelativo);
-            $nuevoNumReg = sprintf("%05d-%02d", $idOS, $totalHojas + 1);
+            $nuevoNumReg = $modelo->obtenerSiguienteNumeroRegistroGlobal();
             
             $hoja = [
                 'id' => 0,
@@ -1966,11 +1966,29 @@ class OperacionesControlador extends ControladorBase {
 
         $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
 
+        $mapaDatosRecepcion = construirMapaDatosRecepcionPorHoja($db, $idHojaResolv);
+        $muestrasRecepcionCompletas = 0;
+        foreach ($muestrasSeteadas as &$mSet) {
+            $codKey = strtoupper(trim((string)($mSet['codigo_lab'] ?? ($mSet['codigo_campo'] ?? ''))));
+            $dRec = ($codKey !== '' && !empty($mapaDatosRecepcion[$codKey])) ? $mapaDatosRecepcion[$codKey] : [];
+            $mSet['datos_recepcion'] = $dRec;
+            if (!empty($dRec)) {
+                $muestrasRecepcionCompletas++;
+            }
+        }
+        unset($mSet);
+
+        $clasificacionColumnas = clasificarColumnasMatrizPorRol($columnas);
+        $tieneCamposRecepcion = in_array('recepcion', $clasificacionColumnas, true);
+
         $this->renderizar('operaciones/vistas/captura_matriz', [
             'titulo' => 'Captura de Matriz Técnica - ' . $detalle['descripcion_ensayo'],
             'detalle' => $detalle,
             'idDetalle' => $idDetalle,
             'columnas' => $columnas,
+            'clasificacionColumnas' => $clasificacionColumnas,
+            'tieneCamposRecepcion' => $tieneCamposRecepcion,
+            'muestrasRecepcionCompletas' => $muestrasRecepcionCompletas,
             'muestrasSeteadas' => $muestrasSeteadas,
             'formatosSchemaJson' => $formatosSchemaJson,
             'metadatos' => $metadatos,
@@ -2026,6 +2044,27 @@ class OperacionesControlador extends ControladorBase {
             $rawJsonParsed = json_decode($resultadosJson, true) ?: [];
             $filasDecodificadas = isset($rawJsonParsed['filas']) ? $rawJsonParsed['filas'] : $rawJsonParsed;
             $filasDecodificadas = normalizarReplicasMatriz(is_array($filasDecodificadas) ? $filasDecodificadas : []);
+
+            // Respaldo automático de datos de Recepción desde RT-FM-13 si alguna celda de recepción vino vacía
+            if ($osActual) {
+                $hojaAssoc = resolverHojaPorDetalle($db, (int)$osActual['id'], $idDetalle);
+                if ($hojaAssoc && !empty($hojaAssoc['id'])) {
+                    $mapaRec = construirMapaDatosRecepcionPorHoja($db, (int)$hojaAssoc['id']);
+                    if (!empty($mapaRec)) {
+                        foreach ($filasDecodificadas as $idxF => $filaItem) {
+                            if (!is_array($filaItem)) continue;
+                            $codF = strtoupper(trim((string)($filaItem['Código laboratorio'] ?? ($filaItem['Codigo laboratorio'] ?? ($filaItem['codigo_lab'] ?? '')))));
+                            $codOrigen = !empty($filaItem['_muestra_origen']) ? strtoupper(trim((string)$filaItem['_muestra_origen'])) : '';
+                            $recMatch = ($codF !== '' && isset($mapaRec[$codF]))
+                                ? $mapaRec[$codF]
+                                : (($codOrigen !== '' && isset($mapaRec[$codOrigen])) ? $mapaRec[$codOrigen] : null);
+                            if ($recMatch) {
+                                $filasDecodificadas[$idxF] = fusionarDatosRecepcionEnFilaMatriz($filaItem, $recMatch, [], false);
+                            }
+                        }
+                    }
+                }
+            }
 
             $decExistente = json_decode($detalleActual['resultados_json'] ?? '', true) ?: [];
             $metadatos = !empty($datos['metadatos']) && is_array($datos['metadatos'])

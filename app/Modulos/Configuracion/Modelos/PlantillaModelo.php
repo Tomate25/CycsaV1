@@ -708,16 +708,27 @@ class PlantillaModelo {
         try {
             $muestrasJsonArray = [];
 
+            // Conservar datos_recepcion_json previos por código de muestra si existían antes de reconstruir
+            $recepcionPreviaPorCodigo = [];
+            $stmtPrevRec = $this->db->prepare("SELECT codigo_muestra, datos_recepcion_json FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid");
+            $stmtPrevRec->execute(['hid' => $idHoja]);
+            foreach ($stmtPrevRec->fetchAll(PDO::FETCH_ASSOC) as $prRow) {
+                $codKey = strtoupper(trim((string)($prRow['codigo_muestra'] ?? '')));
+                if ($codKey !== '' && !empty($prRow['datos_recepcion_json'])) {
+                    $recepcionPreviaPorCodigo[$codKey] = (string)$prRow['datos_recepcion_json'];
+                }
+            }
+
             // Si no está bloqueada, podemos reconstruir los detalles
             if (!$estaBloqueada) {
                 $this->db->prepare("DELETE FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid")->execute(['hid' => $idHoja]);
 
                 $stmtIns = $this->db->prepare("
                     INSERT INTO hojas_solicitud_detalles (
-                        id_hoja_solicitud, orden, codigo_muestra, descripcion_ubicacion, observacion_edad,
+                        id_hoja_solicitud, orden, codigo_muestra, descripcion_ubicacion, observacion_edad, datos_recepcion_json,
                         ensayo_id, plantilla_id, plantilla_version_id, seleccion_manual, motivo_cambio, bloqueado_recepcion
                     ) VALUES (
-                        :hid, :ord, :cod, :desc, :obs,
+                        :hid, :ord, :cod, :desc, :obs, :drec,
                         :eid, :pid, :vid, :man, :motivo, 0
                     )
                 ");
@@ -725,8 +736,12 @@ class PlantillaModelo {
                 $orden = 1;
                 foreach ($filas as $f) {
                     $cod = trim($f['codigo_muestra'] ?? ("M-" . $orden));
+                    $codKey = strtoupper($cod);
                     $desc = trim($f['descripcion_ubicacion'] ?? '');
                     $obs = trim($f['observacion_edad'] ?? '');
+                    $dRecJson = !empty($f['datos_recepcion']) && is_array($f['datos_recepcion'])
+                        ? json_encode($f['datos_recepcion'], JSON_UNESCAPED_UNICODE)
+                        : ($recepcionPreviaPorCodigo[$codKey] ?? null);
                     $eid = (int)($f['ensayo_id'] ?? 1);
                     $pid = (int)($f['plantilla_id'] ?? 0);
                     $man = !empty($f['seleccion_manual']) ? 1 : 0;
@@ -741,10 +756,11 @@ class PlantillaModelo {
                     }
 
                     // Resolver la versión actual aprobada
+                    $pidDb = ($pid > 0) ? $pid : null;
                     $vid = null;
-                    if ($pid > 0) {
+                    if ($pidDb !== null) {
                         $stV = $this->db->prepare("SELECT pv.id FROM plantillas p JOIN plantilla_versiones pv ON (p.id = pv.plantilla_id AND p.version_actual = pv.version) WHERE p.id = :pid LIMIT 1");
-                        $stV->execute(['pid' => $pid]);
+                        $stV->execute(['pid' => $pidDb]);
                         $vid = $stV->fetchColumn() ?: null;
                     }
 
@@ -754,28 +770,36 @@ class PlantillaModelo {
                         'cod' => $cod,
                         'desc' => $desc,
                         'obs' => $obs,
+                        'drec' => $dRecJson,
                         'eid' => $eid,
-                        'pid' => $pid,
+                        'pid' => $pidDb,
                         'vid' => $vid,
                         'man' => $man,
                         'motivo' => $motivo
                     ]);
 
-                    $muestrasJsonArray[] = [
+                    $itemJson = [
                         'nombre_muestra' => $cod,
                         'descripcion' => $desc,
                         'info_importante' => $obs,
                         'ensayo_id' => $eid,
-                        'plantilla_id' => $pid,
+                        'plantilla_id' => $pidDb,
                         'plantilla_version_id' => $vid
                     ];
+                    if ($dRecJson) {
+                        $dRecArr = json_decode($dRecJson, true);
+                        if (is_array($dRecArr) && !empty($dRecArr)) {
+                            $itemJson['datos_recepcion'] = $dRecArr;
+                        }
+                    }
+                    $muestrasJsonArray[] = $itemJson;
                     $orden++;
                 }
             } else {
                 // Solo reconstruir el JSON desde la tabla relacional sin destruirla
                 $existentes = $this->obtenerDetallesPorHoja($idHoja);
                 foreach ($existentes as $ex) {
-                    $muestrasJsonArray[] = [
+                    $itemJson = [
                         'nombre_muestra' => $ex['codigo_muestra'],
                         'descripcion' => $ex['descripcion_ubicacion'],
                         'info_importante' => $ex['observacion_edad'],
@@ -783,6 +807,13 @@ class PlantillaModelo {
                         'plantilla_id' => $ex['plantilla_id'],
                         'plantilla_version_id' => $ex['plantilla_version_id']
                     ];
+                    if (!empty($ex['datos_recepcion_json'])) {
+                        $dRecArr = json_decode((string)$ex['datos_recepcion_json'], true);
+                        if (is_array($dRecArr) && !empty($dRecArr)) {
+                            $itemJson['datos_recepcion'] = $dRecArr;
+                        }
+                    }
+                    $muestrasJsonArray[] = $itemJson;
                 }
             }
 

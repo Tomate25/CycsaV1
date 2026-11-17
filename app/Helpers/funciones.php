@@ -3835,7 +3835,7 @@ function generarHojaSolicitudPDF(array $hoja, array $os): string {
         </tr>';
     }
 
-    $numRegistro = !empty($hoja['numero_registro']) ? $hoja['numero_registro'] : sprintf('%05d', $hoja['id_os'] ?? $os['id'] ?? 1);
+    $numRegistro = !empty($hoja['numero_registro']) ? $hoja['numero_registro'] : str_pad((string)($hoja['id'] ?? $hoja['id_os'] ?? 1), 2, '0', STR_PAD_LEFT);
 
     $html = '
     <!DOCTYPE html>
@@ -5565,5 +5565,620 @@ function sincronizarRoturasConMatriz(PDO $db, int $idHoja, int $idDetalle, array
 
     return $actualizadas;
 }
+
+if (!function_exists('estadosOrdenServicioAprobados')) {
+    /**
+     * Lista canónica de estados operativos en los que una Orden de Servicio ya cuenta
+     * con aprobación vigente y no debe volver a solicitar aprobación en O/S.
+     *
+     * @return string[]
+     */
+    function estadosOrdenServicioAprobados(): array {
+        return [
+            'Aprobada',
+            'Estado 3: Aprobada',
+            'Estado 3: Ingreso Directo',
+            'Estado 3A: Programacion Muestreo',
+            'Estado 3B: Ejecucion Muestreo',
+            'Estado 3C: Espera Muestreo',
+            'Estado 4: Ingreso Laboratorio',
+            'En Proceso',
+            'Estado 5: Solicitud Tecnicos',
+            'Estado 6: Ejecucion Ensayos',
+            'Estado 7: Revision Resultados',
+        ];
+    }
+}
+
+if (!function_exists('esOrdenServicioAprobada')) {
+    /**
+     * Indica si el estado de una Orden de Servicio corresponde a una orden ya aprobada.
+     */
+    function esOrdenServicioAprobada(?string $estado): bool {
+        if ($estado === null || $estado === '') {
+            return false;
+        }
+        return in_array($estado, estadosOrdenServicioAprobados(), true);
+    }
+}
+
+if (!function_exists('clasificarColumnaRecepcionOTecnico')) {
+    /**
+     * Clasifica una columna de matriz técnica según el responsable de captura:
+     * - 'identidad': código y nombre de muestra definidos en RT-FM-13
+     * - 'recepcion': datos capturados en Recepción / Órdenes de Servicio por RT-FM-13
+     * - 'tecnico': mediciones y cálculos ejecutados por el técnico en Operaciones
+     */
+    function clasificarColumnaRecepcionOTecnico(string $nombreColumna): string {
+        $norm = normalizarTextoClavePHP($nombreColumna);
+        if ($norm === '') {
+            return 'tecnico';
+        }
+
+        if (in_array($norm, ['codigolaboratorio', 'codigolab', 'codigomuestra', 'nombremuestra', 'nombredelamuestra'], true)) {
+            return 'identidad';
+        }
+
+        $clavesRecepcion = [
+            'revenin', 'revenimientoin', 'revencm', 'revenimientocm', 'revenimiento',
+            'tempc', 'temperaturac', 'temperatura', 'temp',
+            'fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado',
+            'fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion',
+            'edaddias', 'edad',
+        ];
+        if (in_array($norm, $clavesRecepcion, true) || str_starts_with($norm, 'diseno')) {
+            return 'recepcion';
+        }
+
+        return 'tecnico';
+    }
+}
+
+if (!function_exists('construirDescriptorCampoRecepcion')) {
+    /**
+     * Genera metadatos de UI para una columna de Recepción o Técnico.
+     */
+    function construirDescriptorCampoRecepcion(string $nombreColumna): array {
+        $norm = normalizarTextoClavePHP($nombreColumna);
+        $tipo = 'text';
+        $step = 'any';
+
+        if (in_array($norm, ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado', 'fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion'], true)) {
+            $tipo = 'date';
+            $step = '';
+        } elseif (in_array($norm, ['edaddias', 'edad'], true)) {
+            $tipo = 'number';
+            $step = '1';
+        } elseif (in_array($norm, ['revenin', 'revenimientoin', 'revencm', 'revenimientocm', 'revenimiento', 'tempc', 'temperaturac', 'temperatura', 'temp'], true) || str_starts_with($norm, 'diseno')) {
+            $tipo = 'number';
+            $step = '0.01';
+        }
+
+        return [
+            'nombre' => $nombreColumna,
+            'clave' => $norm,
+            'tipo' => $tipo,
+            'step' => $step,
+            'rol' => clasificarColumnaRecepcionOTecnico($nombreColumna),
+        ];
+    }
+}
+
+if (!function_exists('clasificarColumnasMatrizPorRol')) {
+    /**
+     * Retorna un mapa [nombreColumna => 'identidad'|'recepcion'|'tecnico'] para todas las columnas.
+     *
+     * @param string[] $columnas
+     * @return array<string, string>
+     */
+    function clasificarColumnasMatrizPorRol(array $columnas): array {
+        $mapa = [];
+        foreach ($columnas as $col) {
+            $colStr = (string)$col;
+            if ($colStr === '') {
+                continue;
+            }
+            $mapa[$colStr] = clasificarColumnaRecepcionOTecnico($colStr);
+        }
+        return $mapa;
+    }
+}
+
+if (!function_exists('obtenerCamposRecepcionParaDetalle')) {
+    /**
+     * Resuelve el formato de ensayo de un detalle/producto de O/S y separa sus columnas
+     * entre campos de Recepción (Órdenes de Servicio) y campos del Técnico (Operaciones).
+     */
+    function obtenerCamposRecepcionParaDetalle(PDO $db, ?int $idDetalleCotizacion = null, ?int $idProducto = null): array {
+        $detalle = [];
+        if ($idDetalleCotizacion !== null && $idDetalleCotizacion > 0) {
+            $stmt = $db->prepare("
+                SELECT cd.id, cd.id_producto, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm,
+                       p.formato_id, p.nombre_comercial, p.ensayo_servicio,
+                       fe.id AS fe_id, fe.nombre AS formato_nombre, fe.codigo_formato, fe.archivo_markdown
+                FROM cotizacion_detalles cd
+                LEFT JOIN productos p ON cd.id_producto = p.id
+                LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                WHERE cd.id = :id
+                LIMIT 1
+            ");
+            $stmt->execute(['id' => $idDetalleCotizacion]);
+            $detalle = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        }
+
+        if (empty($detalle) && $idProducto !== null && $idProducto > 0) {
+            $stmtP = $db->prepare("
+                SELECT p.id AS id_producto, p.ensayo_servicio AS descripcion_ensayo, p.codigo_servicio, p.norma_astm,
+                       p.formato_id, p.nombre_comercial, p.ensayo_servicio,
+                       fe.id AS fe_id, fe.nombre AS formato_nombre, fe.codigo_formato, fe.archivo_markdown
+                FROM productos p
+                LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                WHERE p.id = :pid
+                LIMIT 1
+            ");
+            $stmtP->execute(['pid' => $idProducto]);
+            $detalle = $stmtP->fetch(PDO::FETCH_ASSOC) ?: [];
+        }
+
+        $archivoMd = resolverArchivoMarkdownEnsayo($detalle);
+        $formatoId = !empty($detalle['formato_id']) ? (int)$detalle['formato_id'] : null;
+        $schema = obtenerEsquemaPlantillaEnsayo($archivoMd, $formatoId);
+
+        $columnas = !empty($schema['columns']) && is_array($schema['columns'])
+            ? $schema['columns']
+            : ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
+
+        $camposRecepcion = [];
+        $camposTecnico = [];
+        foreach ($columnas as $col) {
+            $colStr = (string)$col;
+            $rol = clasificarColumnaRecepcionOTecnico($colStr);
+            if ($rol === 'recepcion') {
+                $camposRecepcion[] = construirDescriptorCampoRecepcion($colStr);
+            } elseif ($rol === 'tecnico') {
+                $camposTecnico[] = $colStr;
+            }
+        }
+
+        // Soporte para formatos basados en fixed_rows (ej. Bloques: Fecha de Fabricación, Fecha de Ensayo, Edad)
+        if (empty($camposRecepcion) && !empty($schema['fixed_rows']) && is_array($schema['fixed_rows'])) {
+            foreach ($schema['fixed_rows'] as $fr) {
+                $desc = trim((string)($fr['Descripción'] ?? ''));
+                if ($desc !== '' && clasificarColumnaRecepcionOTecnico($desc) === 'recepcion') {
+                    $unidad = trim((string)($fr['Unidad'] ?? ''));
+                    $nombreCampo = ($unidad !== '' && stripos($desc, $unidad) === false)
+                        ? "{$desc} ({$unidad})"
+                        : $desc;
+                    $camposRecepcion[] = construirDescriptorCampoRecepcion($nombreCampo);
+                }
+            }
+        }
+
+        return [
+            'formato_id' => $formatoId,
+            'formato_nombre' => $detalle['formato_nombre'] ?? ($schema['ensayo_titulo'] ?? ''),
+            'codigo_formato' => $schema['codigo_formato'] ?? ($detalle['codigo_formato'] ?? ''),
+            'archivo_markdown' => $archivoMd,
+            'columnas' => $columnas,
+            'campos_recepcion' => $camposRecepcion,
+            'campos_tecnico' => $camposTecnico,
+        ];
+    }
+}
+
+if (!function_exists('normalizarYCompletarDatosRecepcionMuestra')) {
+    /**
+     * Normaliza y completa derivaciones determinísticas de Recepción por espécimen:
+     * - Reven. (in) <-> Reven. (cm)
+     * - Fecha de Fabricación + Fecha de Ensayo -> Edad (Días)
+     * - Fecha de Fabricación + Edad (Días) -> Fecha de Ensayo / Ruptura
+     *
+     * @param array<string, mixed> $entrada
+     * @param array<int, array<string, mixed>> $camposRecepcion
+     * @return array<string, string>
+     */
+    function normalizarYCompletarDatosRecepcionMuestra(array $entrada, array $camposRecepcion): array {
+        $limpio = [];
+        $nombresPermitidos = [];
+        foreach ($camposRecepcion as $c) {
+            $nombre = (string)($c['nombre'] ?? '');
+            if ($nombre !== '') {
+                $nombresPermitidos[] = $nombre;
+            }
+        }
+
+        foreach ($nombresPermitidos as $nombre) {
+            $val = $entrada[$nombre] ?? '';
+            if (is_array($val)) {
+                $val = '';
+            }
+            $limpio[$nombre] = trim((string)$val);
+        }
+
+        // Conservar claves adicionales ya existentes si coinciden por nombre normalizado
+        foreach ($entrada as $k => $v) {
+            $kStr = (string)$k;
+            if (!array_key_exists($kStr, $limpio) && clasificarColumnaRecepcionOTecnico($kStr) === 'recepcion') {
+                $kNorm = normalizarTextoClavePHP($kStr);
+                foreach ($nombresPermitidos as $nombre) {
+                    if ($limpio[$nombre] === '' && normalizarTextoClavePHP($nombre) === $kNorm) {
+                        $limpio[$nombre] = trim((string)$v);
+                    }
+                }
+            }
+        }
+
+        // Conversión automática Reven. (in) <-> Reven. (cm)
+        $colIn = null;
+        $colCm = null;
+        $colFab = null;
+        $colEns = null;
+        $colEdad = null;
+
+        foreach ($nombresPermitidos as $nombre) {
+            $n = normalizarTextoClavePHP($nombre);
+            if ($colIn === null && in_array($n, ['revenin', 'revenimientoin'], true)) $colIn = $nombre;
+            if ($colCm === null && in_array($n, ['revencm', 'revenimientocm'], true)) $colCm = $nombre;
+            if ($colFab === null && in_array($n, ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado'], true)) $colFab = $nombre;
+            if ($colEns === null && in_array($n, ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion'], true)) $colEns = $nombre;
+            if ($colEdad === null && in_array($n, ['edaddias', 'edad'], true)) $colEdad = $nombre;
+        }
+
+        if ($colIn !== null && $colCm !== null) {
+            $vIn = $limpio[$colIn] ?? '';
+            $vCm = $limpio[$colCm] ?? '';
+            if ($vIn !== '' && is_numeric($vIn) && $vCm === '') {
+                $limpio[$colCm] = (string)round((float)$vIn * 2.54, 1);
+            } elseif ($vCm !== '' && is_numeric($vCm) && $vIn === '') {
+                $limpio[$colIn] = (string)round((float)$vCm / 2.54, 2);
+            }
+        }
+
+        // Relación Fecha Fabricación / Fecha Ensayo / Edad (Días)
+        if ($colFab !== null && $colEns !== null && $colEdad !== null) {
+            $fFab = $limpio[$colFab] ?? '';
+            $fEns = $limpio[$colEns] ?? '';
+            $edad = $limpio[$colEdad] ?? '';
+            $tsFab = $fFab !== '' ? strtotime($fFab) : false;
+            $tsEns = $fEns !== '' ? strtotime($fEns) : false;
+
+            if ($tsFab !== false && $tsEns !== false && $edad === '') {
+                $dias = (int)round(($tsEns - $tsFab) / 86400);
+                if ($dias >= 0) {
+                    $limpio[$colEdad] = (string)$dias;
+                }
+            } elseif ($tsFab !== false && $fEns === '' && $edad !== '' && is_numeric($edad) && (int)$edad >= 0) {
+                $limpio[$colEns] = date('Y-m-d', strtotime($fFab . ' + ' . (int)$edad . ' days'));
+            }
+        }
+
+        return array_filter($limpio, static fn($v) => $v !== '');
+    }
+}
+
+if (!function_exists('construirMapaDatosRecepcionPorHoja')) {
+    /**
+     * Obtiene un mapa indexado por código de muestra en mayúsculas con los datos
+     * de recepción guardados para una Hoja RT-FM-13.
+     *
+     * @return array<string, array<string, string>>
+     */
+    function construirMapaDatosRecepcionPorHoja(PDO $db, int $idHoja): array {
+        if ($idHoja <= 0) {
+            return [];
+        }
+
+        $mapa = [];
+        try {
+            $cols = $db->query("SHOW COLUMNS FROM hojas_solicitud_detalles LIKE 'datos_recepcion_json'")->fetchAll();
+            if (!empty($cols)) {
+                $stmt = $db->prepare("SELECT codigo_muestra, datos_recepcion_json FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid ORDER BY orden ASC, id ASC");
+                $stmt->execute(['hid' => $idHoja]);
+                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $cod = strtoupper(trim((string)($row['codigo_muestra'] ?? '')));
+                    $dec = !empty($row['datos_recepcion_json']) ? json_decode((string)$row['datos_recepcion_json'], true) : null;
+                    if ($cod !== '' && is_array($dec) && !empty($dec)) {
+                        $mapa[$cod] = $dec;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Retrocompatibilidad si aún no existe columna
+        }
+
+        // Complementar con muestras_json si alguna muestra lo trae allí
+        $stmtHs = $db->prepare("SELECT muestras_json FROM hojas_solicitud WHERE id = :hid LIMIT 1");
+        $stmtHs->execute(['hid' => $idHoja]);
+        $mJson = $stmtHs->fetchColumn();
+        $mArr = is_string($mJson) ? (json_decode($mJson, true) ?: []) : [];
+        foreach ($mArr as $m) {
+            $cod = strtoupper(trim((string)($m['nombre_muestra'] ?? ($m['codigo_muestra'] ?? ''))));
+            if ($cod !== '' && !empty($m['datos_recepcion']) && is_array($m['datos_recepcion'])) {
+                $mapa[$cod] = array_merge($m['datos_recepcion'], $mapa[$cod] ?? []);
+            }
+        }
+
+        return $mapa;
+    }
+}
+
+if (!function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
+    /**
+     * Inserta o actualiza las columnas de Recepción dentro de una fila de matriz técnica,
+     * manteniendo intactos los campos técnicos capturados en Operaciones.
+     *
+     * @param array<string, mixed> $fila
+     * @param array<string, string> $datosRecepcion
+     * @param string[] $columnasFormato
+     * @return array<string, mixed>
+     */
+    function fusionarDatosRecepcionEnFilaMatriz(array $fila, array $datosRecepcion, array $columnasFormato = [], bool $sobrescribirRecepcion = false): array {
+        if (empty($datosRecepcion)) {
+            return $fila;
+        }
+
+        $destinos = !empty($columnasFormato) ? $columnasFormato : array_keys($datosRecepcion);
+        foreach ($destinos as $colDest) {
+            $colStr = (string)$colDest;
+            if (clasificarColumnaRecepcionOTecnico($colStr) !== 'recepcion') {
+                continue;
+            }
+            $valRec = buscarValorEnFilaPHP($datosRecepcion, $colStr);
+            if ($valRec !== '') {
+                $actual = isset($fila[$colStr]) ? trim((string)$fila[$colStr]) : '';
+                if ($sobrescribirRecepcion || $actual === '') {
+                    $fila[$colStr] = $valRec;
+                }
+            }
+        }
+
+        foreach ($datosRecepcion as $kRec => $vRec) {
+            $kStr = (string)$kRec;
+            if ($vRec !== '' && clasificarColumnaRecepcionOTecnico($kStr) === 'recepcion') {
+                if (!empty($columnasFormato)) {
+                    $encontrada = false;
+                    $kNorm = normalizarTextoClavePHP($kStr);
+                    foreach ($columnasFormato as $colFmt) {
+                        if (normalizarTextoClavePHP((string)$colFmt) === $kNorm) {
+                            $encontrada = true;
+                            break;
+                        }
+                    }
+                    if (!$encontrada) {
+                        continue;
+                    }
+                }
+                $actual = isset($fila[$kStr]) ? trim((string)$fila[$kStr]) : '';
+                if ($sobrescribirRecepcion || $actual === '') {
+                    $fila[$kStr] = (string)$vRec;
+                }
+            }
+        }
+
+        return $fila;
+    }
+}
+
+if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
+    /**
+     * Sincroniza los datos de recepción capturados en Órdenes de Servicio para una RT-FM-13
+     * hacia filas existentes de cotizacion_detalles.resultados_json (si el técnico ya creó la matriz)
+     * y hacia lotes_muestras / especimenes en Laboratorio si ya ingresaron.
+     *
+     * @param array<string, array<string, string>> $datosPorCodigo
+     */
+    function sincronizarDatosRecepcionEnMatriz(PDO $db, int $idHoja, array $datosPorCodigo): void {
+        if ($idHoja <= 0 || empty($datosPorCodigo)) {
+            return;
+        }
+
+        $stmtHoja = $db->prepare("SELECT id_detalle_cotizacion, id_producto FROM hojas_solicitud WHERE id = :hid LIMIT 1");
+        $stmtHoja->execute(['hid' => $idHoja]);
+        $hoja = $stmtHoja->fetch(PDO::FETCH_ASSOC);
+        if (!$hoja) {
+            return;
+        }
+
+        $idDetalle = (int)($hoja['id_detalle_cotizacion'] ?? 0);
+        if ($idDetalle > 0) {
+            $infoCampos = obtenerCamposRecepcionParaDetalle($db, $idDetalle, !empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null);
+            $columnasFormato = $infoCampos['columnas'] ?? [];
+
+            $stmtDet = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+            $stmtDet->execute(['id' => $idDetalle]);
+            $resJson = $stmtDet->fetchColumn();
+            $dec = is_string($resJson) ? (json_decode($resJson, true) ?: []) : [];
+            $filas = isset($dec['filas']) && is_array($dec['filas']) ? $dec['filas'] : (isset($dec[0]) && is_array($dec[0]) ? $dec : []);
+
+            if (!empty($filas)) {
+                $huboCambios = false;
+                foreach ($filas as $idx => $fila) {
+                    if (!is_array($fila)) continue;
+                    $codFila = strtoupper(trim((string)($fila['Código laboratorio'] ?? ($fila['Codigo laboratorio'] ?? ($fila['codigo_lab'] ?? '')))));
+                    $recMuestra = $codFila !== '' && isset($datosPorCodigo[$codFila]) ? $datosPorCodigo[$codFila] : null;
+                    if ($recMuestra !== null) {
+                        $filas[$idx] = fusionarDatosRecepcionEnFilaMatriz($fila, $recMuestra, $columnasFormato, true);
+                        $huboCambios = true;
+                    }
+                }
+                if ($huboCambios) {
+                    if (isset($dec['filas'])) {
+                        $dec['filas'] = $filas;
+                    } else {
+                        $dec = ['version_actual' => 1, 'filas' => $filas];
+                    }
+                    $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
+                       ->execute(['json' => json_encode($dec, JSON_UNESCAPED_UNICODE), 'id' => $idDetalle]);
+                }
+            }
+        }
+
+        // Sincronizar con lotes_muestras / especimenes si ya fueron recibidos en Laboratorio
+        try {
+            $stmtRm = $db->prepare("SELECT id, codigo_muestra FROM recepcion_muestras WHERE id_hoja = :hid");
+            $stmtRm->execute(['hid' => $idHoja]);
+            $recepciones = $stmtRm->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($recepciones as $rm) {
+                $cod = strtoupper(trim((string)($rm['codigo_muestra'] ?? '')));
+                if ($cod === '' || empty($datosPorCodigo[$cod])) {
+                    continue;
+                }
+                $dr = $datosPorCodigo[$cod];
+                $revIn = null;
+                $tempC = null;
+                $diseno = null;
+                $fMoldeo = null;
+                $edadDias = null;
+
+                foreach ($dr as $k => $v) {
+                    $kn = normalizarTextoClavePHP((string)$k);
+                    if ($revIn === null && in_array($kn, ['revenin', 'revenimientoin'], true) && is_numeric($v)) $revIn = (float)$v;
+                    if ($tempC === null && in_array($kn, ['tempc', 'temperaturac', 'temperatura', 'temp'], true) && is_numeric($v)) $tempC = (float)$v;
+                    if ($diseno === null && str_starts_with($kn, 'diseno') && $v !== '') $diseno = (string)$v;
+                    if ($fMoldeo === null && in_array($kn, ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado'], true) && strtotime((string)$v) !== false) {
+                        $fMoldeo = date('Y-m-d', strtotime((string)$v));
+                    }
+                    if ($edadDias === null && in_array($kn, ['edaddias', 'edad'], true) && is_numeric($v)) $edadDias = (int)$v;
+                }
+
+                if ($revIn !== null || $tempC !== null || $diseno !== null || $fMoldeo !== null) {
+                    $sets = [];
+                    $paramsLm = ['id_rec' => (int)$rm['id']];
+                    if ($revIn !== null) { $sets[] = "revenimiento_in = :rev"; $paramsLm['rev'] = $revIn; }
+                    if ($tempC !== null) { $sets[] = "temperatura_c = :temp"; $paramsLm['temp'] = $tempC; }
+                    if ($diseno !== null) { $sets[] = "diseno_resistencia = :dis"; $paramsLm['dis'] = $diseno; }
+                    if ($fMoldeo !== null) { $sets[] = "fecha_moldeo = :fmol"; $paramsLm['fmol'] = $fMoldeo; }
+                    if (!empty($sets)) {
+                        $db->prepare("UPDATE lotes_muestras SET " . implode(', ', $sets) . " WHERE id_recepcion = :id_rec")
+                           ->execute($paramsLm);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // No bloquear flujo principal si la estructura de lotes aún no aplica
+        }
+    }
+}
+
+if (!function_exists('calcularFechaFinPorMesesOS')) {
+    /**
+     * Calcula la fecha de finalización sumando N meses exactos a la fecha de inicio.
+     */
+    function calcularFechaFinPorMesesOS(string $fechaInicio, int $meses): string {
+        $mesesValidos = max(1, min(120, $meses));
+        try {
+            $dt = new \DateTimeImmutable($fechaInicio);
+            return $dt->modify("+{$mesesValidos} months")->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return date('Y-m-d', strtotime("+{$mesesValidos} months"));
+        }
+    }
+}
+
+if (!function_exists('calcularVigenciaContratoOS')) {
+    /**
+     * Calcula duración en meses, días restantes y estado de vigencia para un contrato de O/S.
+     *
+     * @param array<string, mixed> $os
+     * @return array<string, mixed>
+     */
+    function calcularVigenciaContratoOS(array $os, ?string $fechaReferencia = null): array {
+        $tipoContrato = (string)($os['tipo_contrato'] ?? 'Puntual');
+        $esMultimes = !empty($os['es_multimes']) || in_array($tipoContrato, ['Marco', 'Contrato Activo', 'Contrato Largo', 'Abierto'], true);
+
+        $fechaInicio = !empty($os['fecha_inicio']) ? date('Y-m-d', strtotime((string)$os['fecha_inicio'])) : null;
+        $fechaFin = !empty($os['fecha_fin']) ? date('Y-m-d', strtotime((string)$os['fecha_fin'])) : null;
+        $periodicidad = !empty($os['periodicidad']) ? trim((string)$os['periodicidad']) : 'Mensual';
+        $duracionMeses = !empty($os['duracion_meses']) ? (int)$os['duracion_meses'] : 0;
+
+        if ($esMultimes && $fechaInicio !== null && $fechaFin === null && $duracionMeses > 0) {
+            $fechaFin = calcularFechaFinPorMesesOS($fechaInicio, $duracionMeses);
+        }
+
+        if ($duracionMeses <= 0 && $fechaInicio !== null && $fechaFin !== null) {
+            try {
+                $d1 = new \DateTimeImmutable($fechaInicio);
+                $d2 = new \DateTimeImmutable($fechaFin);
+                if ($d2 >= $d1) {
+                    $diff = $d1->diff($d2);
+                    $duracionMeses = max(1, ($diff->y * 12) + $diff->m + ($diff->d >= 15 ? 1 : 0));
+                }
+            } catch (\Throwable $e) {
+                $duracionMeses = 1;
+            }
+        }
+
+        if (!$esMultimes) {
+            return [
+                'es_contrato_largo' => false,
+                'tipo_contrato' => $tipoContrato ?: 'Puntual',
+                'duracion_meses' => null,
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
+                'periodicidad' => $periodicidad,
+                'dias_restantes' => null,
+                'dias_totales' => null,
+                'progreso_porcentaje' => 0,
+                'estado_vigencia' => 'no_aplica',
+                'etiqueta_corta' => 'Puntual',
+            ];
+        }
+
+        $hoyStr = $fechaReferencia ?: date('Y-m-d');
+        $diasRestantes = null;
+        $diasTotales = null;
+        $progreso = 0;
+        $estadoVigencia = 'vigente';
+
+        if ($fechaFin !== null) {
+            try {
+                $hoyDt = new \DateTimeImmutable($hoyStr);
+                $finDt = new \DateTimeImmutable($fechaFin);
+                $diasRestantes = (int)$hoyDt->diff($finDt)->format('%r%a');
+
+                if ($fechaInicio !== null) {
+                    $iniDt = new \DateTimeImmutable($fechaInicio);
+                    $diasTotales = max(1, (int)$iniDt->diff($finDt)->days);
+                    $diasTranscurridos = max(0, (int)$iniDt->diff($hoyDt)->format('%r%a'));
+                    $progreso = min(100, max(0, (int)round(($diasTranscurridos / $diasTotales) * 100)));
+                }
+
+                if ($diasRestantes < 0) {
+                    $estadoVigencia = 'vencido';
+                } elseif ($diasRestantes <= 15) {
+                    $estadoVigencia = 'por_vencer';
+                } else {
+                    $estadoVigencia = 'vigente';
+                }
+            } catch (\Throwable $e) {
+                $diasRestantes = null;
+            }
+        }
+
+        $partes = ['Contrato Largo'];
+        if ($duracionMeses > 0) {
+            $partes[] = $duracionMeses . ($duracionMeses === 1 ? ' mes' : ' meses');
+        }
+        if ($fechaFin !== null) {
+            $partes[] = 'Fin ' . date('d/m/Y', strtotime($fechaFin));
+        }
+
+        return [
+            'es_contrato_largo' => true,
+            'tipo_contrato' => $tipoContrato ?: 'Marco',
+            'duracion_meses' => $duracionMeses > 0 ? $duracionMeses : null,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin,
+            'periodicidad' => $periodicidad,
+            'dias_restantes' => $diasRestantes,
+            'dias_totales' => $diasTotales,
+            'progreso_porcentaje' => $progreso,
+            'estado_vigencia' => $estadoVigencia,
+            'etiqueta_corta' => implode(' · ', $partes),
+        ];
+    }
+}
+
+
 
 

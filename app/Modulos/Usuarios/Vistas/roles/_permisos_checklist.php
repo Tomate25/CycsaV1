@@ -184,6 +184,14 @@ $gruposModulos = [
                     'ver' => ['Ver Proyectos y Presupuestos', 'Consultar rentabilidad y costos asignados por obra.'],
                     'crear_editar' => ['Gestionar Proyectos y Costos', 'Crear proyectos, fijar presupuestos y vincular consumos.']
                 ]
+            ],
+            'reportes' => [
+                'nombre' => 'Centro de Reportes & Excel',
+                'icono' => 'fa-chart-pie',
+                'desc' => 'Cajón centralizado de reportes por módulo, KPIs, PDFs oficiales y exportación a Excel (.xlsx).',
+                'acciones' => [
+                    'ver' => ['Ver y Exportar Reportes', 'Acceder al Centro de Reportes para los módulos autorizados del usuario.']
+                ]
             ]
         ]
     ]

@@ -380,6 +380,18 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         font-weight: 700;
         border-color: #cbd5e1;
     }
+    .matriz-input-recepcion {
+        background: #fff7ed;
+        color: #9a3412;
+        font-weight: 700;
+        border-color: #fdba74;
+    }
+    .matriz-input-recepcion[readonly] {
+        background: #ffedd5;
+        color: #7c2d12;
+        border-color: #fb923c;
+        cursor: not-allowed;
+    }
 </style>
 
 <!-- TOP BAR STICKY (OPERACIONES LIMS - REDISEÑO PROFESIONAL) -->
@@ -911,6 +923,24 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             </span>
         </div>
         <!-- CONTENEDOR DE LA TABLA DINÁMICA -->
+            <?php if (!empty($tieneCamposRecepcion)): ?>
+            <div id="recepcion-vs-tecnico-bar" style="margin: 0 0 14px; padding: 12px 15px; border: 1px solid #fed7aa; background: linear-gradient(90deg, #fff7ed 0%, #eff6ff 100%); border-radius: 9px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12.5px;">
+                    <span style="display:inline-flex; align-items:center; gap:6px; background:#ffedd5; color:#9a3412; border:1px solid #fdba74; padding:4px 10px; border-radius:999px; font-weight:800;">
+                        <i class="fa-solid fa-inbox"></i> LLENA RECEPCIÓN (O/S RT-FM-13)
+                    </span>
+                    <span style="color:#475569;">Pre-cargado desde Órdenes de Servicio (<strong><?= (int)($muestrasRecepcionCompletas ?? 0) ?>/<?= count($muestrasSeteadas ?? []) ?></strong> muestras con datos).</span>
+                    <span style="display:inline-flex; align-items:center; gap:6px; background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; padding:4px 10px; border-radius:999px; font-weight:800;">
+                        <i class="fa-solid fa-microscope"></i> RELLENA TÉCNICO (Operaciones)
+                    </span>
+                </div>
+                <?php if (!$esModoHistorico): ?>
+                <button type="button" id="btn-toggle-recepcion-lock" class="btn-matriz-secondary" onclick="toggleEdicionRecepcionMatriz()" style="background:#fff; color:#9a3412; border-color:#fdba74; font-weight:700; font-size:12px;">
+                    <i class="fa-solid fa-lock"></i> Desbloquear casillas de Recepción
+                </button>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
             <div id="replicas-control-bar" style="display:none; margin: 0 0 14px; padding: 13px 15px; border: 1px solid #99f6e4; background: #f0fdfa; border-radius: 9px; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
                 <div style="font-size: 12.5px; color: #115e59; line-height: 1.45;">
                     <strong><i class="fa-solid fa-code-compare"></i> Réplicas de Control de Calidad</strong><br>
@@ -969,6 +999,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     const MUESTRAS_SETEADAS = <?= json_encode($muestrasSeteadas ?? [], JSON_UNESCAPED_UNICODE) ?>;
     const ES_MODO_HISTORICO = <?= $esModoHistorico ? 'true' : 'false' ?>;
     const PREFIJO_OFICIAL = <?= json_encode($prefijoMuestraOS ?? determinarPrefijoMuestraOS($detalle)) ?>;
+    const CLASIFICACION_COLUMNAS = <?= json_encode($clasificacionColumnas ?? [], JSON_UNESCAPED_UNICODE) ?>;
+    const TIENE_CAMPOS_RECEPCION = <?= !empty($tieneCamposRecepcion) ? 'true' : 'false' ?>;
+    let permitirEdicionRecepcionMatriz = false;
     let replicasHabilitadas = false;
     let columnaCodigoReplica = null;
     let columnaNombreReplica = null;
@@ -1297,6 +1330,49 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         const thead = document.getElementById('tabla-header');
         thead.innerHTML = '';
 
+        // Fila 0: Indicador visual de origen (MUESTRA / LLENA RECEPCIÓN / RELLENA TÉCNICO)
+        if (TIENE_CAMPOS_RECEPCION) {
+            const trRoles = document.createElement('tr');
+            trRoles.style.borderBottom = '1px solid #cbd5e1';
+
+            const thNumRole = document.createElement('th');
+            thNumRole.style.background = '#f1f5f9';
+            thNumRole.innerText = '';
+            trRoles.appendChild(thNumRole);
+
+            if (replicasHabilitadas) {
+                const thRepRole = document.createElement('th');
+                thRepRole.style.background = '#f1f5f9';
+                thRepRole.innerText = '';
+                trRoles.appendChild(thRepRole);
+            }
+
+            columnasActuales.forEach(col => {
+                const thR = document.createElement('th');
+                thR.style.textAlign = 'center';
+                thR.style.padding = '5px 6px';
+                thR.style.fontSize = '10.5px';
+                thR.style.fontWeight = '800';
+                thR.style.letterSpacing = '0.03em';
+                const rol = CLASIFICACION_COLUMNAS[col] || 'tecnico';
+                if (rol === 'recepcion') {
+                    thR.style.background = '#ffedd5';
+                    thR.style.color = '#9a3412';
+                    thR.innerHTML = '<i class="fa-solid fa-inbox"></i> LLENA RECEPCIÓN';
+                } else if (rol === 'identificacion') {
+                    thR.style.background = '#f1f5f9';
+                    thR.style.color = '#334155';
+                    thR.innerHTML = '<i class="fa-solid fa-tag"></i> MUESTRA';
+                } else {
+                    thR.style.background = '#dbeafe';
+                    thR.style.color = '#1e40af';
+                    thR.innerHTML = '<i class="fa-solid fa-microscope"></i> RELLENA TÉCNICO';
+                }
+                trRoles.appendChild(thR);
+            });
+            thead.appendChild(trRoles);
+        }
+
         // Fila 1: Métodos de Ensayo (si existen definidos en el formato oficial)
         const hasMethods = schema.column_methods && Object.values(schema.column_methods).some(m => m && m.trim() !== '');
         if (hasMethods) {
@@ -1363,6 +1439,42 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         let filas = [];
         const codigoCol = columnasActuales.find(col => (aliases[col] || col) === 'Código laboratorio') || 'Código laboratorio';
         const nombreCol = columnasActuales.find(col => (aliases[col] || col) === 'Nombre muestra') || 'Nombre muestra';
+
+        function aplicarDatosRecepcionEnFila(row, idx) {
+            if (!Array.isArray(MUESTRAS_SETEADAS) || MUESTRAS_SETEADAS.length === 0) return row;
+            const codRow = String(row[codigoCol] || row['Código laboratorio'] || row['_muestra_origen'] || '').trim().toUpperCase();
+            let muestraRef = null;
+            if (codRow) {
+                muestraRef = MUESTRAS_SETEADAS.find(m => {
+                    const mCod = String(m.codigo_lab || m.codigo_campo || '').trim().toUpperCase();
+                    return mCod && (mCod === codRow || codRow === mCod + '-CR');
+                }) || null;
+            }
+            if (!muestraRef && MUESTRAS_SETEADAS[idx]) {
+                muestraRef = MUESTRAS_SETEADAS[idx];
+            }
+            if (!muestraRef || !muestraRef.datos_recepcion || typeof muestraRef.datos_recepcion !== 'object') {
+                return row;
+            }
+            const bloqueadas = [];
+            columnasActuales.forEach(col => {
+                if ((CLASIFICACION_COLUMNAS[col] || 'tecnico') !== 'recepcion') return;
+                const calcCol = aliases[col] || col;
+                const valRec = buscarValorEnFila(muestraRef.datos_recepcion, col, calcCol);
+                if (valRec !== '') {
+                    bloqueadas.push(col);
+                    const valActual = buscarValorEnFila(row, col, calcCol);
+                    if (valActual === '') {
+                        row[col] = valRec;
+                    }
+                }
+            });
+            if (bloqueadas.length > 0) {
+                row._recepcion_bloqueadas = bloqueadas;
+            }
+            return row;
+        }
+
         if (Array.isArray(DATOS_INICIALES) && DATOS_INICIALES.length > 0) {
             filas = DATOS_INICIALES.map((row, idx) => {
                 if (row['Código laboratorio'] && row['Código laboratorio'].startsWith('OS-')) {
@@ -1372,7 +1484,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         row['Código laboratorio'] = PREFIJO_OFICIAL + '-' + String(idx + 1).padStart(4, '0') + '-26';
                     }
                 }
-                return row;
+                return aplicarDatosRecepcionEnFila(row, idx);
             });
         } else if (DEFAULT_ROWS_BY_FORMAT[ARCHIVO_MARKDOWN]) {
             filas = JSON.parse(JSON.stringify(DEFAULT_ROWS_BY_FORMAT[ARCHIVO_MARKDOWN]));
@@ -1382,7 +1494,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 columnasActuales.forEach(col => { row[col] = ''; });
                 if (row.hasOwnProperty(codigoCol)) row[codigoCol] = m.codigo_lab || '';
                 if (row.hasOwnProperty(nombreCol)) row[nombreCol] = m.nombre_muestra || m.codigo_campo || '';
-                return row;
+                return aplicarDatosRecepcionEnFila(row, i);
             });
         } else {
             // 3 filas genéricas
@@ -1403,6 +1515,20 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             recalculateCodigoInforme();
         } else {
             recalculateAll();
+        }
+    }
+
+    function toggleEdicionRecepcionMatriz() {
+        if (ES_MODO_HISTORICO) return;
+        permitirEdicionRecepcionMatriz = !permitirEdicionRecepcionMatriz;
+        document.querySelectorAll('#tabla-body input[data-recepcion-prellena="1"]').forEach(inp => {
+            inp.readOnly = !permitirEdicionRecepcionMatriz;
+        });
+        const btn = document.getElementById('btn-toggle-recepcion-lock');
+        if (btn) {
+            btn.innerHTML = permitirEdicionRecepcionMatriz
+                ? '<i class="fa-solid fa-lock-open"></i> Bloquear casillas de Recepción'
+                : '<i class="fa-solid fa-lock"></i> Desbloquear casillas de Recepción';
         }
     }
 
@@ -1542,6 +1668,17 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                     }
                     if (['Código laboratorio', 'Codigo laboratorio', 'codigo_lab'].includes(calcCol) || col === 'Código laboratorio') {
                         input.addEventListener('input', recalculateCodigoInforme);
+                    }
+                }
+
+                if (TIENE_CAMPOS_RECEPCION && (CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
+                    input.classList.add('matriz-input-recepcion');
+                    input.dataset.rolRecepcion = '1';
+                    const recBloqueadas = Array.isArray(rowData._recepcion_bloqueadas) ? rowData._recepcion_bloqueadas : [];
+                    if (recBloqueadas.includes(col) && input.value.trim() !== '') {
+                        input.dataset.recepcionPrellena = '1';
+                        input.readOnly = !permitirEdicionRecepcionMatriz;
+                        input.title = (input.title ? input.title + ' — ' : '') + 'Dato capturado en Recepción (O/S RT-FM-13)';
                     }
                 }
 

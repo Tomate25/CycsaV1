@@ -21,6 +21,7 @@ use Cycsa\Modulos\Prestamos\Controladores\PrestamosControlador;
 use Cycsa\Modulos\Proyectos\Controladores\ProyectosControlador;
 use Cycsa\Modulos\ActivosFijos\Controladores\ActivosFijosControlador;
 use Cycsa\Modulos\EquiposBodegas\Controladores\EquiposBodegasControlador;
+use Cycsa\Modulos\Reportes\Controladores\ReportesControlador;
 
 // Importar Middlewares
 use Cycsa\App\Middleware\AuthMiddleware;
@@ -159,10 +160,14 @@ $app->enrutador->get('/ordenes-servicio/descargar-pdf', [OrdenesServicioControla
 $app->enrutador->get('/ordenes-servicio/programar-muestreo', [OrdenesServicioControlador::class, 'programarMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/guardar-muestreo', [OrdenesServicioControlador::class, 'guardarProgramacionMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/imprimir-checklist', [OrdenesServicioControlador::class, 'imprimirListaChequeo'], [AuthMiddleware::class]);
+$app->enrutador->get('/ordenes-servicio/fm40b-datos', [OrdenesServicioControlador::class, 'fm40bDatosAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/guardar-fm40b', [OrdenesServicioControlador::class, 'guardarFm40bAjax'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/finalizar-muestreo', [OrdenesServicioControlador::class, 'finalizarMuestreo'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/marcar-ingreso-directo', [OrdenesServicioControlador::class, 'marcarIngresoDirectoAjax'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/marcar-requiere-muestreo', [OrdenesServicioControlador::class, 'marcarRequiereMuestreoAjax'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/aprobar', [OrdenesServicioControlador::class, 'aprobarOS'], [AuthMiddleware::class]);
+$app->enrutador->get('/ordenes-servicio/periodo-contrato-datos', [OrdenesServicioControlador::class, 'periodoContratoDatosAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/guardar-periodo-contrato', [OrdenesServicioControlador::class, 'guardarPeriodoContratoAjax'], [AuthMiddleware::class]);
 
 // 🔒 RUTAS DEL MÓDULO CONTABLE (REQUERIDO: SESIÓN Y PERMISO DE CONTABILIDAD)
 $app->enrutador->get('/contabilidad', function($peticion, $respuesta) {
@@ -238,6 +243,8 @@ $app->enrutador->get('/ventas/imprimir-factura', [VentasControlador::class, 'imp
     $app->enrutador->get('/hojas-servicio/datos', [HojasServicioControlador::class, 'hojaSolicitudDatosAjax'], [AuthMiddleware::class]);
     $app->enrutador->get('/hojas-servicio/datos-ajax', [HojasServicioControlador::class, 'hojaSolicitudDatosAjax'], [AuthMiddleware::class]);
     $app->enrutador->post('/hojas-servicio/guardar', [HojasServicioControlador::class, 'guardarHojaSolicitud'], [AuthMiddleware::class]);
+    $app->enrutador->get('/hojas-servicio/datos-recepcion', [HojasServicioControlador::class, 'datosRecepcionAjax'], [AuthMiddleware::class]);
+    $app->enrutador->post('/hojas-servicio/guardar-datos-recepcion', [HojasServicioControlador::class, 'guardarDatosRecepcion'], [AuthMiddleware::class]);
     $app->enrutador->post('/hojas-servicio/enviar-revision', [HojasServicioControlador::class, 'enviarRevision'], [AuthMiddleware::class]);
     $app->enrutador->post('/hojas-servicio/procesar-revision', [HojasServicioControlador::class, 'procesarRevision'], [AuthMiddleware::class]);
     $app->enrutador->get('/hojas-servicio/descargar', [HojasServicioControlador::class, 'descargarSolicitudPDF'], [AuthMiddleware::class]);
@@ -368,6 +375,11 @@ $app->enrutador->get('/activos-fijos/detalle', [ActivosFijosControlador::class, 
 $app->enrutador->get('/activos-fijos/depreciacion', [ActivosFijosControlador::class, 'depreciacion'], [AuthMiddleware::class]);
 $app->enrutador->post('/activos-fijos/depreciacion/simular-ajax', [ActivosFijosControlador::class, 'simularDepreciacionAjax'], [AuthMiddleware::class]);
 $app->enrutador->post('/activos-fijos/depreciacion/ejecutar', [ActivosFijosControlador::class, 'ejecutarDepreciacion'], [AuthMiddleware::class]);
+
+// 📊 MÓDULO CENTRAL DE REPORTES Y EXPORTACIÓN EXCEL (TAREA-093)
+$app->enrutador->get('/reportes', [ReportesControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/reportes/ver', [ReportesControlador::class, 'ver'], [AuthMiddleware::class]);
+$app->enrutador->get('/reportes/exportar-excel', [ReportesControlador::class, 'exportarExcel'], [AuthMiddleware::class]);
 
 
 

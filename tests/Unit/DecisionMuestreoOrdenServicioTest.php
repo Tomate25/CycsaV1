@@ -337,22 +337,19 @@ class DecisionMuestreoOrdenServicioTest extends TestCase {
         $this->assertEquals('muestreo_campo_finalizado', $estadoMuestreo, 'Para una hoja con MC el estado debe ser muestreo_campo_finalizado, nunca sin_decidir ni Por Definir');
     }
 
-    public function testPrefijoInmutableBloqueadoEnRTFM13(): void {
+    public function testSelectorPrefijoMCMSInteractivoEnRTFM13(): void {
         $osViewPath = dirname(__DIR__, 2) . '/app/Modulos/OrdenesServicio/Vistas/index.php';
         $this->assertFileExists($osViewPath);
         $osViewContent = file_get_contents($osViewPath);
 
-        // Verificar que no existen botones clickeables que permitan al usuario alternar entre MC y MS
-        $this->assertStringNotContainsString('onclick="cambiarPrefijoOficial(\'MC\')"', $osViewContent, 'No debe haber botón interactivo para cambiar prefijo a MC');
-        $this->assertStringNotContainsString('onclick="cambiarPrefijoOficial(\'MS\')"', $osViewContent, 'No debe haber botón interactivo para cambiar prefijo a MS');
-
-        // Verificar que existen los badges fijos/bloqueados con candado
+        // Verificar que existen los botones interactivos para elegir entre MC y MS al lado de + Agregar Muestra
+        $this->assertStringContainsString('onclick="seleccionarPrefijoMuestraModal(\'MC\')"', $osViewContent, 'Debe haber botón interactivo para elegir prefijo MC');
+        $this->assertStringContainsString('onclick="seleccionarPrefijoMuestraModal(\'MS\')"', $osViewContent, 'Debe haber botón interactivo para elegir prefijo MS');
         $this->assertStringContainsString('id="btn_prefijo_mc"', $osViewContent);
         $this->assertStringContainsString('id="btn_prefijo_ms"', $osViewContent);
-        $this->assertStringContainsString('pointer-events:none', $osViewContent);
-        $this->assertStringContainsString('fa-lock', $osViewContent);
+        $this->assertStringContainsString('id="hs_prefijo_seleccionado"', $osViewContent);
 
-        // Verificar vista HojasServicio
+        // Verificar vista HojasServicio (los badges informativos siguen presentes)
         $hsViewPath = dirname(__DIR__, 2) . '/app/Modulos/HojasServicio/Vistas/index.php';
         $this->assertFileExists($hsViewPath);
         $hsViewContent = file_get_contents($hsViewPath);

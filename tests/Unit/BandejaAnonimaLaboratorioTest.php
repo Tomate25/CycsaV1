@@ -213,20 +213,24 @@ class BandejaAnonimaLaboratorioTest extends TestCase {
     }
 
     /**
-     * Comprueba que el Dashboard de Laboratorio priorice el apartado de aprobación
-     * y no contenga el tablero kanban de 4 columnas, manteniendo el formato de hoja RT-FM-60.
+     * Comprueba que el Dashboard de Laboratorio muestre directamente las muestras nuevas y su hoja relacionada
+     * (RT-FM-13 / RT-FM-60) sin el diálogo manual de aceptar/observar ni tablero kanban.
      */
-    public function testDashboardLaboratorioTieneApartadoAprobacionPrimeroYSinTableroKanban(): void {
+    public function testDashboardLaboratorioMuestraMuestrasNuevasConHojaSinAprobarNiObservar(): void {
         $vistaRuta = dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/laboratorio_dashboard.php';
         $this->assertFileExists($vistaRuta);
 
         $contenidoVista = file_get_contents($vistaRuta);
 
-        // Debe tener la pestaña de aprobación como primera opción y por defecto
-        $this->assertStringContainsString('tab=aprobacion', $contenidoVista);
-        $this->assertStringContainsString('1. Solicitudes por Aprobar', $contenidoVista);
-        $this->assertStringContainsString('modalAprobarMuestra', $contenidoVista);
-        $this->assertStringContainsString('modalObservarSolicitud', $contenidoVista);
+        // Debe abrir directamente en la bandeja de muestras nuevas con su columna Hoja Relacionada
+        $this->assertStringContainsString('tab=bandeja', $contenidoVista);
+        $this->assertStringContainsString('Muestras Nuevas y Hoja Relacionada', $contenidoVista);
+        $this->assertStringContainsString('Hoja Relacionada', $contenidoVista);
+
+        // NO debe contener el flujo eliminado de aceptar/observar solicitudes en Laboratorio
+        $this->assertStringNotContainsString('1. Solicitudes por Aprobar', $contenidoVista);
+        $this->assertStringNotContainsString('modalAprobarMuestra', $contenidoVista);
+        $this->assertStringNotContainsString('modalObservarSolicitud', $contenidoVista);
 
         // NO debe contener el grid del tablero kanban
         $this->assertStringNotContainsString('kanban-board', $contenidoVista);

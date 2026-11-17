@@ -1,33 +1,15 @@
 <?php
 // Laboratorio Dashboard - Portal de Gestión Técnica e Imparcialidad ISO/IEC 17025
-$tabActiva = $_GET['tab'] ?? 'aprobacion';
-if (!in_array($tabActiva, ['aprobacion', 'bandeja', 'programadas'])) {
-    $tabActiva = 'aprobacion';
+$tabActiva = $_GET['tab'] ?? 'bandeja';
+if (!in_array($tabActiva, ['bandeja', 'programadas'], true)) {
+    $tabActiva = 'bandeja';
 }
 
-$solicitudesPorAprobar = $solicitudesPorAprobar ?? [];
-$solicitudesAprobadasRecientes = $solicitudesAprobadasRecientes ?? [];
 $muestras = $muestras ?? [];
 $rupturas = $rupturas ?? [];
 $kpis = $kpis ?? ['total' => 0, 'rotura_hoy' => 0, 'vencidas' => 0, 'activas' => 0, 'cerradas' => 0];
 $filtros = $filtros ?? [];
 $puedeReidentificar = $puedeReidentificar ?? false;
-
-// Conteo de solicitudes por estado para KPIs de Aprobación
-$conteoPendientes = count($solicitudesPorAprobar);
-$conteoRecienLlegadas = 0;
-$conteoEnRevision = 0;
-$conteoObservadas = 0;
-
-foreach ($solicitudesPorAprobar as $sol) {
-    if (($sol['estado_os'] ?? '') === 'Estado 2: Revision') {
-        $conteoEnRevision++;
-    } elseif (($sol['estado_os'] ?? '') === 'Estado 2: Observada') {
-        $conteoObservadas++;
-    } else {
-        $conteoRecienLlegadas++;
-    }
-}
 ?>
 <style>
     :root {
@@ -291,23 +273,16 @@ foreach ($solicitudesPorAprobar as $sol) {
 
 <!-- PESTAÑAS PRINCIPALES DEL MÓDULO -->
 <div class="lab-tabs-nav">
-    <a href="?tab=aprobacion" class="lab-tab-link <?= $tabActiva === 'aprobacion' ? 'active' : '' ?>">
-        <i class="fa-solid fa-clipboard-check"></i> 
-        <span>1. Solicitudes por Aprobar</span>
-        <span class="tab-badge <?= $tabActiva === 'aprobacion' ? 'tab-badge-active' : 'tab-badge-inactive' ?>">
-            <?= count($solicitudesPorAprobar) ?>
-        </span>
-    </a>
     <a href="?tab=bandeja" class="lab-tab-link <?= $tabActiva === 'bandeja' ? 'active' : '' ?>">
         <i class="fa-solid fa-table-list"></i> 
-        <span>2. Bandeja Anónima de Laboratorio</span>
+        <span>1. Muestras Nuevas y Hoja Relacionada</span>
         <span class="tab-badge <?= $tabActiva === 'bandeja' ? 'tab-badge-active' : 'tab-badge-inactive' ?>">
             <?= count($muestras) ?>
         </span>
     </a>
     <a href="?tab=programadas" class="lab-tab-link <?= $tabActiva === 'programadas' ? 'active' : '' ?>">
         <i class="fa-solid fa-calendar-check"></i> 
-        <span>3. Próximas Roturas (7 días)</span>
+        <span>2. Próximas Roturas (7 días)</span>
         <span class="tab-badge <?= $tabActiva === 'programadas' ? 'tab-badge-active' : 'tab-badge-inactive' ?>">
             <?= count($rupturas) ?>
         </span>
@@ -315,272 +290,9 @@ foreach ($solicitudesPorAprobar as $sol) {
 </div>
 
 <!-- =========================================================================
-     PESTAÑA 1 (PRIMERA): APARTADO PARA APROBAR SOLICITUDES DE LABORATORIO
+     PESTAÑA 1: MUESTRAS NUEVAS Y HOJA RELACIONADA (BANDEJA ANÓNIMA DE LABORATORIO)
      ========================================================================= -->
-<?php if ($tabActiva === 'aprobacion'): ?>
-
-    <!-- Tarjetas KPI de Solicitudes Entrantes -->
-    <div class="kpi-grid">
-        <div class="kpi-card" style="border-left: 4px solid var(--cycsa-azul);">
-            <div>
-                <div class="kpi-label">Pendientes de Aprobación</div>
-                <div class="kpi-num" style="color: var(--cycsa-azul);"><?= $conteoPendientes ?></div>
-            </div>
-            <i class="fa-solid fa-inbox" style="font-size: 24px; color: #94a3b8;"></i>
-        </div>
-        <div class="kpi-card" style="border-left: 4px solid #f59e0b;">
-            <div>
-                <div class="kpi-label">Recién Llegadas</div>
-                <div class="kpi-num" style="color: #d97706;"><?= $conteoRecienLlegadas ?></div>
-            </div>
-            <i class="fa-solid fa-clock" style="font-size: 24px; color: #f59e0b;"></i>
-        </div>
-        <div class="kpi-card" style="border-left: 4px solid #3b82f6;">
-            <div>
-                <div class="kpi-label">En Revisión Técnica</div>
-                <div class="kpi-num" style="color: #2563eb;"><?= $conteoEnRevision ?></div>
-            </div>
-            <i class="fa-solid fa-magnifying-glass" style="font-size: 24px; color: #3b82f6;"></i>
-        </div>
-        <div class="kpi-card" style="border-left: 4px solid #ef4444;">
-            <div>
-                <div class="kpi-label">Devueltas / Observadas</div>
-                <div class="kpi-num" style="color: #dc2626;"><?= $conteoObservadas ?></div>
-            </div>
-            <i class="fa-solid fa-triangle-exclamation" style="font-size: 24px; color: #ef4444;"></i>
-        </div>
-    </div>
-
-    <!-- Barra de Filtros para Solicitudes por Aprobar -->
-    <form method="GET" action="/Cycsa/publico/laboratorio" class="filtros-bar">
-        <input type="hidden" name="tab" value="aprobacion">
-
-        <div class="filtro-item" style="flex: 2; min-width: 200px;">
-            <label><i class="fa-solid fa-magnifying-glass"></i> Búsqueda por Solicitud / Ensayo / Matriz</label>
-            <input type="text" name="buscar_solicitud" class="filtro-input" placeholder="Ej. CYCSA-RT-FM-60, OS-2026, Compresión..." value="<?= htmlspecialchars($filtroAprobacion ?? '') ?>">
-        </div>
-
-        <div class="filtro-item" style="flex: 1; min-width: 170px;">
-            <label>Estado de Solicitud</label>
-            <select name="estado_aprobacion" class="filtro-input">
-                <option value="">-- Todos los Estados --</option>
-                <option value="recibidas" <?= ($estadoAprobacion ?? '') === 'recibidas' ? 'selected' : '' ?>>Recién Llegadas (Estado 1)</option>
-                <option value="revision" <?= ($estadoAprobacion ?? '') === 'revision' ? 'selected' : '' ?>>En Revisión Técnica (Estado 2)</option>
-                <option value="observadas" <?= ($estadoAprobacion ?? '') === 'observadas' ? 'selected' : '' ?>>Devueltas / Observadas</option>
-            </select>
-        </div>
-
-        <div style="display: flex; gap: 8px;">
-            <button type="submit" class="btn-filtro activo"><i class="fa-solid fa-filter"></i> Filtrar</button>
-            <a href="?tab=aprobacion&estado_aprobacion=recibidas" class="btn-filtro <?= ($estadoAprobacion ?? '') === 'recibidas' ? 'activo' : '' ?>"><i class="fa-solid fa-clock"></i> Recién Llegadas</a>
-            <a href="?tab=aprobacion&estado_aprobacion=observadas" class="btn-filtro <?= ($estadoAprobacion ?? '') === 'observadas' ? 'activo' : '' ?>" style="color:#b91c1c;"><i class="fa-solid fa-triangle-exclamation"></i> Observadas</a>
-            <a href="/Cycsa/publico/laboratorio?tab=aprobacion" class="btn-filtro" title="Limpiar"><i class="fa-solid fa-eraser"></i></a>
-        </div>
-    </form>
-
-    <!-- Tabla Principal de Solicitudes Pendientes de Aprobación -->
-    <div class="lab-box" style="padding: 0; overflow: hidden; margin-bottom: 25px;">
-        <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #fafafa;">
-            <div>
-                <h3 class="section-title" style="margin: 0; font-size: 15px;">
-                    <i class="fa-solid fa-inbox" style="margin-right: 6px; color: var(--cycsa-azul);"></i> Solicitudes Pendientes de Aprobación e Ingreso Físico
-                </h3>
-                <span style="font-size: 12px; color: #64748b;">Muestras declaradas en la Hoja RT-FM-13 a la espera de verificación física en laboratorio.</span>
-            </div>
-            <span class="badge-lab badge-activo"><?= count($solicitudesPorAprobar) ?> Solicitudes</span>
-        </div>
-
-        <div style="overflow-x: auto;">
-            <table class="tabla-lab">
-                <thead>
-                    <tr>
-                        <th>Solicitud / Hoja</th>
-                        <th>Material / Matriz</th>
-                        <th>Ensayos Solicitados</th>
-                        <th>Muestras Declaradas</th>
-                        <th>Fecha Toma / Moldeo</th>
-                        <th>Estado Actual</th>
-                        <th style="text-align: right; min-width: 290px;">Acciones Técnicas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($solicitudesPorAprobar as $sol): 
-                        $esDevuelta = ($sol['estado_os'] === 'Estado 2: Observada') || !empty($sol['motivo_observacion']);
-                        $enRevision = ($sol['estado_os'] === 'Estado 2: Revision');
-                        $codigoVisible = !empty($sol['hoja_codigo']) ? $sol['hoja_codigo'] : $sol['codigo_os'];
-                    ?>
-                    <tr style="<?= $esDevuelta ? 'background-color: #fff8f8;' : ($enRevision ? 'background-color: #f8fafc;' : '') ?>">
-                        <td>
-                            <strong style="color: #103487; font-family: monospace; font-size: 13.5px; display: block;">
-                                <i class="fa-solid fa-file-waveform" style="color: var(--cycsa-azul); margin-right: 4px;"></i>
-                                <?= htmlspecialchars($codigoVisible, ENT_QUOTES, 'UTF-8') ?>
-                                <?php if (!empty($sol['numero_registro'])): ?>
-                                    <span style="font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 4px;">Reg: <?= htmlspecialchars($sol['numero_registro']) ?></span>
-                                <?php endif; ?>
-                            </strong>
-                            <span style="font-size: 11px; color: #64748b;">
-                                <?php if (!empty($sol['requiere_muestreo'])): ?>
-                                    <span style="color: #0369a1; font-weight: 600;"><i class="fa-solid fa-truck-pickup"></i> Muestreo Campo</span>
-                                <?php else: ?>
-                                    <span style="color: #047857; font-weight: 600;"><i class="fa-solid fa-flask"></i> Muestra Lab</span>
-                                <?php endif; ?>
-                                &bull; O/S: <?= htmlspecialchars($sol['codigo_os'] ?? '') ?>
-                            </span>
-                        </td>
-                        <td>
-                            <strong style="color: #1e293b;"><?= htmlspecialchars($sol['naturaleza_muestra'] ?: 'Material General', ENT_QUOTES, 'UTF-8') ?></strong>
-                            <?php if (!empty($sol['procedencia_punto_muestreo'])): ?>
-                                <span style="display: block; font-size: 11px; color: #64748b;">Punto: <?= htmlspecialchars($sol['procedencia_punto_muestreo']) ?></span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <span style="font-weight: 600; color: #334155;">
-                                <?= htmlspecialchars($sol['ensayos'][0]['descripcion_ensayo'] ?? 'Ensayo Estándar', ENT_QUOTES, 'UTF-8') ?>
-                            </span>
-                            <?php if (count($sol['ensayos']) > 1): ?>
-                                <span style="font-size: 11px; color: #64748b; display: block;">+<?= count($sol['ensayos']) - 1 ?> ensayo(s) adicional(es)</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <strong style="color: #1e293b; font-size: 13px;"><?= (int)$sol['total_muestras_declaradas'] ?> probeta(s)</strong>
-                            <div>
-                                <?php if (!empty($sol['muestras_declaradas'])): ?>
-                                    <?php foreach (array_slice($sol['muestras_declaradas'], 0, 4) as $md): ?>
-                                        <span class="tag-especimen-pill"><?= htmlspecialchars($md['nombre_muestra'] ?? 'M') ?></span>
-                                    <?php endforeach; ?>
-                                    <?php if (count($sol['muestras_declaradas']) > 4): ?>
-                                        <span style="font-size: 10.5px; color: #64748b;">+<?= count($sol['muestras_declaradas']) - 4 ?> más</span>
-                                    <?php endif; ?>
-                                <?php else: ?>
-                                    <span style="font-size: 11.5px; color: #94a3b8; font-style: italic;">Sin detalle</span>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                        <td>
-                            <?php if (!empty($sol['fecha_hora_toma_muestra'])): ?>
-                                <strong><?= htmlspecialchars(date('d/m/Y', strtotime($sol['fecha_hora_toma_muestra'])), ENT_QUOTES, 'UTF-8') ?></strong>
-                                <span style="display: block; font-size: 11px; color: #64748b;"><?= htmlspecialchars(date('H:i', strtotime($sol['fecha_hora_toma_muestra']))) ?> hrs</span>
-                            <?php else: ?>
-                                <span><?= htmlspecialchars(date('d/m/Y', strtotime($sol['fecha_emision'])), ENT_QUOTES, 'UTF-8') ?></span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if ($esDevuelta): ?>
-                                <span class="badge-lab badge-observada"><i class="fa-solid fa-triangle-exclamation"></i> Observada</span>
-                                <?php if (!empty($sol['motivo_observacion'])): ?>
-                                    <div style="font-size: 11px; color: #b91c1c; margin-top: 3px; max-width: 220px; line-height: 1.2;">
-                                        <strong>Motivo:</strong> <?= htmlspecialchars($sol['motivo_observacion']) ?>
-                                    </div>
-                                <?php endif; ?>
-                            <?php elseif ($enRevision): ?>
-                                <span class="badge-lab badge-activo"><i class="fa-solid fa-magnifying-glass"></i> En Revisión</span>
-                            <?php else: ?>
-                                <span class="badge-lab badge-hoy"><i class="fa-solid fa-clock"></i> Recién Llegada</span>
-                            <?php endif; ?>
-                        </td>
-                        <td style="text-align: right; white-space: nowrap;">
-                            <!-- Formato de Hoja RT-FM-60 (PRESERVADO Y PROMINENTE) -->
-                            <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_os=<?= (int)$sol['id_os'] ?><?= !empty($sol['id_hoja']) ? '&id_hoja=' . (int)$sol['id_hoja'] : '' ?>" target="_blank" class="btn-accion btn-os" title="Ver e imprimir formato oficial de Solicitud de Laboratorio CYCSA-RT-FM-60">
-                                <i class="fa-solid fa-file-pdf"></i> Hoja RT-FM-60
-                            </a>
-
-                            <!-- Botón Aprobar e Ingresar a Lab -->
-                            <button type="button" class="btn-accion btn-aprobar" onclick="abrirModalAprobar(<?= (int)$sol['id_os'] ?>, '<?= htmlspecialchars($codigoVisible, ENT_QUOTES) ?>', <?= (int)$sol['total_muestras_declaradas'] ?>, <?= (int)($sol['ensayos'][0]['id'] ?? 0) ?>, <?= (int)($sol['id_hoja'] ?? 0) ?>)" title="Aprobar e ingresar físicamente al laboratorio (Asigna códigos oficiales MS/MC)">
-                                <i class="fa-solid fa-circle-check"></i> Aprobar Muestra
-                            </button>
-
-                            <!-- Botón Enviar a Revisión (si está en Estado 1) -->
-                            <?php if (!$enRevision && !$esDevuelta): ?>
-                                <form method="POST" action="/Cycsa/publico/laboratorio/cambiar-estado" style="display:inline;" onsubmit="return confirm('¿Pasar la solicitud a Revisión Técnica?');">
-                                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                                    <input type="hidden" name="id_os" value="<?= (int)$sol['id_os'] ?>">
-                                    <input type="hidden" name="nuevo_estado" value="Estado 2: Revision">
-                                    <button type="submit" class="btn-accion btn-revision" title="Marcar como En Revisión Técnica">
-                                        <i class="fa-solid fa-eye"></i> Revisar
-                                    </button>
-                                </form>
-                            <?php endif; ?>
-
-                            <!-- Botón Observar / Devolver -->
-                            <button type="button" class="btn-accion btn-observar" onclick="abrirModalObservar(<?= (int)$sol['id_os'] ?>, '<?= htmlspecialchars($codigoVisible, ENT_QUOTES) ?>')" title="Observar o devolver solicitud con motivo justificado">
-                                <i class="fa-solid fa-triangle-exclamation"></i> Observar
-                            </button>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                    <?php if (empty($solicitudesPorAprobar)): ?>
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
-                            <i class="fa-solid fa-circle-check" style="font-size: 36px; color: #10b981; display: block; margin-bottom: 10px;"></i>
-                            <strong>No hay solicitudes pendientes de aprobación en este momento.</strong>
-                            <p style="margin-top: 4px; font-size: 12.5px;">Todas las solicitudes entrantes han sido aprobadas o están en custodia en la Bandeja Anónima.</p>
-                        </td>
-                    </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Sección Complementaria: Solicitudes Aprobadas Recientemente -->
-    <?php if (!empty($solicitudesAprobadasRecientes)): ?>
-    <div class="lab-box" style="padding: 0; overflow: hidden;">
-        <div style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
-            <h4 style="margin: 0; font-size: 13.5px; font-weight: 700; color: #475569;">
-                <i class="fa-solid fa-clock-rotate-left" style="margin-right: 6px;"></i> Solicitudes Aprobadas Recientemente (Últimas <?= count($solicitudesAprobadasRecientes) ?>)
-            </h4>
-            <a href="?tab=bandeja" style="font-size: 12px; font-weight: 700; color: var(--cycsa-azul); text-decoration: none;">Ver Bandeja Anónima &rarr;</a>
-        </div>
-        <div style="overflow-x: auto;">
-            <table class="tabla-lab" style="font-size: 12.5px;">
-                <thead>
-                    <tr>
-                        <th>Solicitud</th>
-                        <th>Material</th>
-                        <th>Ensayos</th>
-                        <th>Muestras en Lab</th>
-                        <th>Estado</th>
-                        <th style="text-align: right;">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($solicitudesAprobadasRecientes as $rec): ?>
-                    <tr>
-                        <td style="font-family: monospace; font-weight: 700; color: #103487;">
-                            <?= htmlspecialchars(!empty($rec['hoja_codigo']) ? $rec['hoja_codigo'] : $rec['codigo_os']) ?>
-                            <?php if (!empty($rec['numero_registro'])): ?>
-                                <span style="font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 1px 5px; border-radius: 4px; font-weight: 700;">Reg: <?= htmlspecialchars($rec['numero_registro']) ?></span>
-                            <?php endif; ?>
-                        </td>
-                        <td><?= htmlspecialchars($rec['naturaleza_muestra'] ?: 'Material General') ?></td>
-                        <td><?= htmlspecialchars($rec['ensayos'][0]['descripcion_ensayo'] ?? 'Ensayo Estándar') ?></td>
-                        <td><span class="badge-lab badge-curado"><i class="fa-solid fa-flask"></i> <?= (int)$rec['total_recibidas_lab'] ?> muestra(s) en custodia</span></td>
-                        <td><span class="badge-lab badge-activo">Aceptada en Lab</span></td>
-                        <td style="text-align: right; white-space: nowrap;">
-                            <?php if (!empty($rec['id_hoja'])): ?>
-                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$rec['id_hoja'] ?>" class="btn-accion btn-os" title="Ver lote completo y programar/ensayar probetas juntas">
-                                    <i class="fa-solid fa-layer-group"></i> Ver Lote
-                                </a>
-                            <?php endif; ?>
-                            <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_os=<?= (int)$rec['id_os'] ?><?= !empty($rec['id_hoja']) ? '&id_hoja=' . (int)$rec['id_hoja'] : '' ?>" target="_blank" class="btn-accion btn-os" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;" title="Ver formato oficial RT-FM-60">
-                                <i class="fa-solid fa-file-pdf"></i> Hoja RT-FM-60
-                            </a>
-                            <a href="?tab=bandeja" class="btn-accion btn-detalle" title="Ir a la Bandeja Anónima">
-                                <i class="fa-solid fa-table-list"></i> Bandeja
-                            </a>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <?php endif; ?>
-
-<!-- =========================================================================
-     PESTAÑA 2: BANDEJA ANÓNIMA DE LABORATORIO
-     ========================================================================= -->
-<?php elseif ($tabActiva === 'bandeja'): ?>
+<?php if ($tabActiva === 'bandeja'): ?>
 
     <!-- Tarjetas KPI de Laboratorio Operativo -->
     <div class="kpi-grid">
@@ -648,10 +360,11 @@ foreach ($solicitudesPorAprobar as $sol) {
             <input type="date" name="fecha_hasta" class="filtro-input" value="<?= htmlspecialchars($filtros['fecha_hasta'] ?? '') ?>">
         </div>
 
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button type="submit" class="btn-filtro activo"><i class="fa-solid fa-filter"></i> Filtrar</button>
             <a href="?tab=bandeja&rotura_hoy=1" class="btn-filtro <?= !empty($filtros['rotura_hoy']) ? 'activo' : '' ?>"><i class="fa-solid fa-calendar-day"></i> Rotura Hoy</a>
             <a href="?tab=bandeja&vencidas=1" class="btn-filtro btn-filtro-vencida <?= !empty($filtros['vencidas']) ? 'activo' : '' ?>" style="color:#b91c1c; border-color:#fca5a5;"><i class="fa-solid fa-clock-rotate-left"></i> Vencidas</a>
+            <a href="?tab=bandeja&incluir_cerradas=<?= empty($filtros['incluir_cerradas']) ? '1' : '0' ?>" class="btn-filtro <?= !empty($filtros['incluir_cerradas']) ? 'activo' : '' ?>" title="Mostrar también muestras ya concluidas"><i class="fa-solid fa-box-archive"></i> Incluir Cerradas</a>
             <a href="/Cycsa/publico/laboratorio?tab=bandeja" class="btn-filtro" title="Limpiar"><i class="fa-solid fa-eraser"></i></a>
         </div>
     </form>
@@ -665,6 +378,7 @@ foreach ($solicitudesPorAprobar as $sol) {
                         <th>Código Lab</th>
                         <th>Tipo Material / Lote</th>
                         <th>Ensayo / Plantilla</th>
+                        <th>Hoja Relacionada</th>
                         <th>Especímenes</th>
                         <th>Fecha Moldeo</th>
                         <th>Fecha Ingreso</th>
@@ -733,6 +447,24 @@ foreach ($solicitudesPorAprobar as $sol) {
                                 <span style="display: block; font-size: 11px; color: #64748b; font-family: monospace;"><?= htmlspecialchars($labelNorma, ENT_QUOTES, 'UTF-8') ?></span>
                             <?php endif; ?>
                         </td>
+                        <td onclick="event.stopPropagation();" style="white-space: nowrap;">
+                            <?php if (!empty($m['id_hoja'])): ?>
+                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?>" style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:3px 8px; border-radius:6px; font-size:11.5px; font-weight:700; text-decoration:none; font-family:monospace;">
+                                    <i class="fa-solid fa-file-lines"></i>
+                                    RT-FM-13 <?= !empty($m['hoja_numero_registro']) ? ('Reg. ' . htmlspecialchars($m['hoja_numero_registro'], ENT_QUOTES, 'UTF-8')) : ('#' . (int)$m['id_hoja']) ?>
+                                </a>
+                            <?php else: ?>
+                                <span style="font-size:11.5px; color:#94a3b8;">Ingreso directo</span>
+                            <?php endif; ?>
+                            <div style="margin-top:4px; display:flex; align-items:center; gap:6px;">
+                                <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?muestra_id=<?= (int)$m['muestra_id'] ?><?= !empty($m['id_hoja']) ? '&id_hoja=' . (int)$m['id_hoja'] : '' ?>" target="_blank" style="font-size:11px; font-weight:700; color:#0369a1; text-decoration:none;" title="Imprimir formato oficial de Laboratorio RT-FM-60">
+                                    <i class="fa-solid fa-file-pdf text-danger"></i> Hoja RT-FM-60
+                                </a>
+                                <?php if (!empty($m['es_nueva'])): ?>
+                                    <span style="font-size:10px; background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:1px 6px; border-radius:999px; font-weight:700;">Nueva</span>
+                                <?php endif; ?>
+                            </div>
+                        </td>
                         <td>
                             <strong style="font-size: 13px; color: #1e293b;"><?= (int)$m['total_especimenes'] ?></strong>
                             <span style="font-size: 11.5px; color: #64748b;">(<?= (int)$m['especimenes_ensayados'] ?> ensayados)</span>
@@ -783,7 +515,7 @@ foreach ($solicitudesPorAprobar as $sol) {
                     <?php endforeach; ?>
                     <?php if (empty($muestras)): ?>
                     <tr>
-                        <td colspan="9" style="text-align: center; padding: 40px; color: #64748b;">
+                        <td colspan="10" style="text-align: center; padding: 40px; color: #64748b;">
                             <i class="fa-solid fa-inbox" style="font-size: 32px; color: #cbd5e1; display: block; margin-bottom: 10px;"></i>
                             No se encontraron muestras en la bandeja con los filtros seleccionados.
                         </td>
@@ -871,107 +603,6 @@ foreach ($solicitudesPorAprobar as $sol) {
 <?php endif; ?>
 
 <!-- =========================================================================
-     MODAL DE APROBACIÓN E INGRESO FÍSICO A LABORATORIO (ISO 17025)
-     ========================================================================= -->
-<div id="modalAprobarMuestra" class="modal-lab">
-    <div class="modal-lab-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-            <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #047857; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-circle-check"></i> Aprobación e Ingreso Físico a Laboratorio
-            </h3>
-            <button onclick="cerrarModalAprobar()" style="border: none; background: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-        </div>
-
-        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px; font-size: 12.5px; color: #065f46; margin-bottom: 15px;">
-            <i class="fa-solid fa-circle-info"></i> <strong>Custodia y Trazabilidad (ISO 17025):</strong> Al aprobar la solicitud, las muestras físicas ingresan a custodia de laboratorio. Se les asignará correlativo oficial ciego (<strong>MS-XXXX-26</strong> o <strong>MC-XXXX-26</strong>) y se crearán automáticamente los especímenes para el programa de roturas periódicas.
-        </div>
-
-        <form method="POST" action="/Cycsa/publico/laboratorio/aceptar-muestra">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <input type="hidden" id="aprob_id_os" name="id_os" value="">
-            <input type="hidden" id="aprob_id_hoja" name="id_hoja" value="">
-            <input type="hidden" id="aprob_id_detalle_cotizacion" name="id_detalle_cotizacion" value="">
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-                <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Código de Solicitud / Hoja:</label>
-                    <div id="aprob_codigo_display" style="font-family: monospace; font-size: 14px; font-weight: 800; color: #0369a1; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;"></div>
-                </div>
-                <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Probetas Declaradas:</label>
-                    <div id="aprob_cant_display" style="font-size: 14px; font-weight: 800; color: #1e293b; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;"></div>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-                <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Fecha y Hora de Recepción:</label>
-                    <input type="datetime-local" name="fecha_recepcion" class="filtro-input" style="width: 100%; box-sizing: border-box;" value="<?= date('Y-m-d\TH:i') ?>" required>
-                </div>
-                <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Recibido en Laboratorio Por:</label>
-                    <input type="text" name="recibido_por" class="filtro-input" style="width: 100%; box-sizing: border-box;" value="<?= htmlspecialchars($_SESSION['usuario_nombre'] ?? 'Laboratorista') ?>" required>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 14px;">
-                <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Entregado Por (Transporte / Muestreador):</label>
-                <input type="text" name="entregado_por" class="filtro-input" style="width: 100%; box-sizing: border-box;" value="Transporte / Técnico de Muestreo" required>
-            </div>
-
-            <div style="margin-bottom: 16px;">
-                <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Observaciones Físicas de Recepción:</label>
-                <textarea name="observaciones" rows="2" class="filtro-input" style="width: 100%; box-sizing: border-box;" placeholder="Ej. Especímenes cilíndricos recibidos en buen estado físico, sin fisuras aparentes.">Muestras aceptadas bajo estricta conformidad técnica con la Hoja CYCSA-RT-FM-13 (ISO 17025)</textarea>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn-filtro" onclick="cerrarModalAprobar()">Cancelar</button>
-                <button type="submit" class="btn-accion btn-aprobar" style="font-size: 13px; padding: 8px 18px;">
-                    <i class="fa-solid fa-check-double"></i> Confirmar Aprobación e Ingreso a Lab
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- =========================================================================
-     MODAL PARA OBSERVAR / DEVOLVER SOLICITUD
-     ========================================================================= -->
-<div id="modalObservarSolicitud" class="modal-lab">
-    <div class="modal-lab-content" style="max-width: 520px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-            <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #b91c1c; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-triangle-exclamation"></i> Observar / Devolver Solicitud
-            </h3>
-            <button onclick="cerrarModalObservar()" style="border: none; background: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-        </div>
-
-        <form method="POST" action="/Cycsa/publico/laboratorio/cambiar-estado">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <input type="hidden" id="obs_id_os" name="id_os" value="">
-            <input type="hidden" name="nuevo_estado" value="Estado 2: Observada">
-
-            <div style="margin-bottom: 14px;">
-                <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Solicitud a Devolver:</label>
-                <div id="obs_codigo_display" style="font-family: monospace; font-size: 14px; font-weight: 800; color: #b91c1c; padding: 8px 12px; background: #fff5f5; border: 1px solid #fecaca; border-radius: 6px;"></div>
-            </div>
-
-            <div style="margin-bottom: 16px;">
-                <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Motivo Justificado de Observación (Obligatorio):</label>
-                <textarea name="motivo_observacion" rows="3" class="filtro-input" style="width: 100%; box-sizing: border-box;" placeholder="Ej. Probetas incompletas, falta firma de muestreo, probeta dañada en traslado..." required></textarea>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn-filtro" onclick="cerrarModalObservar()">Cancelar</button>
-                <button type="submit" class="btn-accion btn-observar" style="font-size: 13px; padding: 8px 18px;">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Registrar Observación y Devolver
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- =========================================================================
      MODAL DE REIDENTIFICACIÓN AUDITADA (ISO 17025 Cláusula 4.1 y 4.2)
      ========================================================================= -->
 <?php if ($puedeReidentificar): ?>
@@ -1019,29 +650,6 @@ foreach ($solicitudesPorAprobar as $sol) {
 <?php endif; ?>
 
 <script>
-function abrirModalAprobar(idOS, codigoDoc, cantMuestras, idDetalleCot, idHoja) {
-    document.getElementById('aprob_id_os').value = idOS;
-    document.getElementById('aprob_id_hoja').value = idHoja || '';
-    document.getElementById('aprob_codigo_display').innerText = codigoDoc;
-    document.getElementById('aprob_cant_display').innerText = cantMuestras + ' probeta(s) declarada(s)';
-    document.getElementById('aprob_id_detalle_cotizacion').value = idDetalleCot || '';
-    document.getElementById('modalAprobarMuestra').style.display = 'block';
-}
-
-function cerrarModalAprobar() {
-    document.getElementById('modalAprobarMuestra').style.display = 'none';
-}
-
-function abrirModalObservar(idOS, codigoDoc) {
-    document.getElementById('obs_id_os').value = idOS;
-    document.getElementById('obs_codigo_display').innerText = codigoDoc;
-    document.getElementById('modalObservarSolicitud').style.display = 'block';
-}
-
-function cerrarModalObservar() {
-    document.getElementById('modalObservarSolicitud').style.display = 'none';
-}
-
 function abrirModalReidentificar(codigoLab, muestraId) {
     const modal = document.getElementById('modalReidentificar');
     if (!modal) return;
@@ -1124,11 +732,7 @@ function ejecutarReidentificacion(e) {
 
 // Cerrar modales al hacer clic fuera del contenido
 window.onclick = function(event) {
-    const modalA = document.getElementById('modalAprobarMuestra');
-    const modalO = document.getElementById('modalObservarSolicitud');
     const modalR = document.getElementById('modalReidentificar');
-    if (event.target === modalA) modalA.style.display = 'none';
-    if (event.target === modalO) modalO.style.display = 'none';
-    if (event.target === modalR) modalR.style.display = 'none';
+    if (modalR && event.target === modalR) modalR.style.display = 'none';
 }
 </script>

@@ -20,6 +20,18 @@ class OrdenServicioModelo {
     }
 
     /**
+     * Verifica si la tabla ordenes_servicio ya cuenta con la columna duracion_meses.
+     */
+    private function tieneColumnaDuracionMeses(): bool {
+        try {
+            $cols = $this->db->query("SHOW COLUMNS FROM ordenes_servicio LIKE 'duracion_meses'")->fetchAll();
+            return !empty($cols);
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
      * Genera un código correlativo único para la Orden de Servicio
      * Formato: YYYYXXX-ORDEN DE SERVICIO (Ej: 2026001-ORDEN DE SERVICIO)
      */
@@ -152,14 +164,66 @@ class OrdenServicioModelo {
             ");
             $stmtHojas->execute(['id_os' => $osItem['id']]);
             $hojasList = $stmtHojas->fetchAll(PDO::FETCH_ASSOC);
+
+            // Cargar documentos 40 B (programacion_muestreo) por hoja o generales de esta O/S
+            $pmPorHoja = [];
+            try {
+                $stmtPmAll = $this->db->prepare("
+                    SELECT pm.*, t.nombre AS tecnico_nombre,
+                           CONCAT(COALESCE(v.marca, ''), ' ', COALESCE(v.modelo, ''), CASE WHEN v.placa IS NOT NULL AND v.placa <> '' THEN CONCAT(' (', v.placa, ')') ELSE '' END) AS vehiculo_info
+                    FROM programacion_muestreo pm
+                    LEFT JOIN tecnicos t ON pm.id_tecnico = t.id
+                    LEFT JOIN vehiculos v ON pm.id_vehiculo = v.id
+                    WHERE pm.id_orden_servicio = :id_os
+                    ORDER BY pm.id ASC
+                ");
+                $stmtPmAll->execute(['id_os' => $osItem['id']]);
+                foreach ($stmtPmAll->fetchAll(PDO::FETCH_ASSOC) as $pmRow) {
+                    $hid = (int)($pmRow['id_hoja_solicitud'] ?? 0);
+                    $pmPorHoja[$hid] = $pmRow;
+                }
+            } catch (\Throwable $e) {
+                $pmPorHoja = [];
+            }
+
             foreach ($hojasList as &$hItem) {
                 $mArr = json_decode($hItem['muestras_json'] ?? '[]', true) ?: [];
                 $hItem['total_muestras'] = count($mArr);
+                $idH = (int)$hItem['id'];
+                $hItem['fm40b'] = $pmPorHoja[$idH] ?? null;
+
+                $infoRec = function_exists('obtenerCamposRecepcionParaDetalle')
+                    ? obtenerCamposRecepcionParaDetalle(
+                        $this->db,
+                        !empty($hItem['id_detalle_cotizacion']) ? (int)$hItem['id_detalle_cotizacion'] : null,
+                        !empty($hItem['id_producto']) ? (int)$hItem['id_producto'] : null
+                    )
+                    : ['campos_recepcion' => []];
+                $requiereRec = !empty($infoRec['campos_recepcion']);
+                $hItem['requiere_datos_recepcion'] = $requiereRec;
+
+                $completas = 0;
+                if ($requiereRec && function_exists('construirMapaDatosRecepcionPorHoja')) {
+                    $mapaRec = construirMapaDatosRecepcionPorHoja($this->db, (int)$hItem['id']);
+                    foreach ($mArr as $mRow) {
+                        $codM = strtoupper(trim((string)($mRow['nombre_muestra'] ?? ($mRow['codigo_muestra'] ?? ''))));
+                        if ($codM !== '' && !empty($mapaRec[$codM])) {
+                            $completas++;
+                        }
+                    }
+                    if ($hItem['total_muestras'] === 0 && !empty($mapaRec)) {
+                        $completas = count($mapaRec);
+                    }
+                }
+                $hItem['recepcion_muestras_completas'] = $completas;
             }
             unset($hItem);
 
             $osItem['hojas_servicio'] = $hojasList;
             $osItem['total_hojas'] = count($hojasList);
+            $osItem['vigencia_contrato'] = function_exists('calcularVigenciaContratoOS')
+                ? calcularVigenciaContratoOS($osItem)
+                : [];
         }
         return $ordenes;
     }
@@ -167,7 +231,7 @@ class OrdenServicioModelo {
     /**
      * Obtiene una Orden de Servicio por su ID
      */
-    public function obtenerPorId(int $id): ?array {
+    public function obtenerPorId(int $id, int $idHoja = 0): ?array {
         $sql = "SELECT os.*, 
                        cot.codigo AS cotizacion_codigo, 
                        cot.version AS cotizacion_version,
@@ -199,16 +263,46 @@ class OrdenServicioModelo {
             return null;
         }
 
-        // Obtener programación de muestreo si existe
-        $sqlPm = "SELECT pm.*, t.nombre AS tecnico_nombre,
-                         v.marca, v.modelo, v.placa
-                  FROM programacion_muestreo pm
-                  LEFT JOIN tecnicos t ON pm.id_tecnico = t.id
-                  LEFT JOIN vehiculos v ON pm.id_vehiculo = v.id
-                  WHERE pm.id_orden_servicio = :id_os";
-        $stmtPm = $this->db->prepare($sqlPm);
-        $stmtPm->execute(['id_os' => $id]);
-        $os['programacion_muestreo'] = $stmtPm->fetch(PDO::FETCH_ASSOC) ?: null;
+        // Obtener programación de muestreo (priorizando la asociada a $idHoja si se especifica)
+        $pmData = null;
+        if ($idHoja > 0) {
+            try {
+                $stmtPmH = $this->db->prepare("
+                    SELECT pm.*, t.nombre AS tecnico_nombre, v.marca, v.modelo, v.placa,
+                           hs.numero_registro AS hoja_numero_registro, hs.codigo_documento AS hoja_codigo_documento,
+                           COALESCE(cd.descripcion_ensayo, p.nombre_comercial, '') AS hoja_ensayo_nombre
+                    FROM programacion_muestreo pm
+                    LEFT JOIN tecnicos t ON pm.id_tecnico = t.id
+                    LEFT JOIN vehiculos v ON pm.id_vehiculo = v.id
+                    LEFT JOIN hojas_solicitud hs ON pm.id_hoja_solicitud = hs.id
+                    LEFT JOIN cotizacion_detalles cd ON hs.id_detalle_cotizacion = cd.id
+                    LEFT JOIN productos p ON hs.id_producto = p.id
+                    WHERE pm.id_orden_servicio = :id_os AND pm.id_hoja_solicitud = :id_hoja
+                    ORDER BY pm.id DESC LIMIT 1
+                ");
+                $stmtPmH->execute(['id_os' => $id, 'id_hoja' => $idHoja]);
+                $pmData = $stmtPmH->fetch(PDO::FETCH_ASSOC) ?: null;
+            } catch (\Throwable $e) {
+                $pmData = null;
+            }
+        }
+        if (!$pmData) {
+            $sqlPm = "SELECT pm.*, t.nombre AS tecnico_nombre,
+                             v.marca, v.modelo, v.placa
+                      FROM programacion_muestreo pm
+                      LEFT JOIN tecnicos t ON pm.id_tecnico = t.id
+                      LEFT JOIN vehiculos v ON pm.id_vehiculo = v.id
+                      WHERE pm.id_orden_servicio = :id_os
+                      ORDER BY (pm.id_hoja_solicitud IS NULL) DESC, pm.id DESC
+                      LIMIT 1";
+            $stmtPm = $this->db->prepare($sqlPm);
+            $stmtPm->execute(['id_os' => $id]);
+            $pmData = $stmtPm->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+        $os['programacion_muestreo'] = $pmData;
+        $os['vigencia_contrato'] = function_exists('calcularVigenciaContratoOS')
+            ? calcularVigenciaContratoOS($os)
+            : [];
 
         // Obtener detalles de ensayos heredados de la cotización
         $sqlDet = "SELECT cd.*, 
@@ -597,23 +691,29 @@ class OrdenServicioModelo {
             ? trim($datos['condicion_comercial']) 
             : determinarCondicionComercial($formaPago);
 
-        $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === 1 || $datos['es_multimes'] === '1' || $datos['es_multimes'] === 'on') ? 1 : 0;
-        $fechaInicio = !empty($datos['fecha_inicio']) ? $datos['fecha_inicio'] : null;
-        $fechaFin = !empty($datos['fecha_fin']) ? $datos['fecha_fin'] : null;
+        $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === 1 || $datos['es_multimes'] === '1' || $datos['es_multimes'] === 'on' || $datos['es_multimes'] === true) ? 1 : 0;
+        $duracionMeses = !empty($datos['duracion_meses']) ? max(1, (int)$datos['duracion_meses']) : null;
+        $fechaInicio = !empty($datos['fecha_inicio']) ? trim((string)$datos['fecha_inicio']) : ($esMultimes ? date('Y-m-d') : null);
+        $fechaFin = !empty($datos['fecha_fin']) ? trim((string)$datos['fecha_fin']) : null;
+        if ($esMultimes && $fechaFin === null && $fechaInicio !== null && $duracionMeses !== null && function_exists('calcularFechaFinPorMesesOS')) {
+            $fechaFin = calcularFechaFinPorMesesOS($fechaInicio, $duracionMeses);
+        } elseif ($esMultimes && $duracionMeses === null && $fechaInicio !== null && $fechaFin !== null) {
+            $vigTemp = function_exists('calcularVigenciaContratoOS') ? calcularVigenciaContratoOS(['es_multimes' => 1, 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) : [];
+            $duracionMeses = $vigTemp['duracion_meses'] ?? null;
+        }
         $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
 
-        $sql = "INSERT INTO ordenes_servicio (
-                    codigo_os, id_cotizacion, cotizacion_version, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, elaborado_por, fecha_emision,
+        $tieneDuracion = $this->tieneColumnaDuracionMeses();
+        $colsInsert = "codigo_os, id_cotizacion, cotizacion_version, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, elaborado_por, fecha_emision,
                     atencion_a, nombre_proyecto, forma_pago, notas_condiciones,
-                    contactos_json, requiere_muestreo, tipo_contrato, es_multimes, fecha_inicio, fecha_fin, periodicidad, estado
-                ) VALUES (
-                    :codigo_os, :id_cotizacion, :cotizacion_version, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :elaborado_por, :fecha_emision,
+                    contactos_json, requiere_muestreo, tipo_contrato, es_multimes, " . ($tieneDuracion ? "duracion_meses, " : "") . "fecha_inicio, fecha_fin, periodicidad, estado";
+        $valsInsert = ":codigo_os, :id_cotizacion, :cotizacion_version, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :elaborado_por, :fecha_emision,
                     :atencion_a, :nombre_proyecto, :forma_pago, :notas_condiciones,
-                    :contactos_json, :requiere_muestreo, :tipo_contrato, :es_multimes, :fecha_inicio, :fecha_fin, :periodicidad, :estado
-                )";
+                    :contactos_json, :requiere_muestreo, :tipo_contrato, :es_multimes, " . ($tieneDuracion ? ":duracion_meses, " : "") . ":fecha_inicio, :fecha_fin, :periodicidad, :estado";
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
+        $sql = "INSERT INTO ordenes_servicio ({$colsInsert}) VALUES ({$valsInsert})";
+
+        $paramsInsert = [
             'codigo_os' => $datos['codigo_os'],
             'id_cotizacion' => $datos['id_cotizacion'],
             'cotizacion_version' => !empty($datos['cotizacion_version']) ? (int)$datos['cotizacion_version'] : 1,
@@ -635,7 +735,13 @@ class OrdenServicioModelo {
             'fecha_fin' => $fechaFin,
             'periodicidad' => $periodicidad,
             'estado' => $datos['estado'] ?? 'Borrador'
-        ]);
+        ];
+        if ($tieneDuracion) {
+            $paramsInsert['duracion_meses'] = $esMultimes ? $duracionMeses : null;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($paramsInsert);
 
         $idInsertado = (int)$this->db->lastInsertId();
         if ($idInsertado <= 0 && !empty($datos['codigo_os'])) {
@@ -678,28 +784,28 @@ class OrdenServicioModelo {
             ? trim($datos['condicion_comercial'])
             : (function_exists('determinarCondicionComercial') ? determinarCondicionComercial($formaPago) : 'contado');
 
-        $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === 1 || $datos['es_multimes'] === '1' || $datos['es_multimes'] === 'on') ? 1 : 0;
-        $fechaInicio = !empty($datos['fecha_inicio']) ? $datos['fecha_inicio'] : null;
-        $fechaFin = !empty($datos['fecha_fin']) ? $datos['fecha_fin'] : null;
+        $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === 1 || $datos['es_multimes'] === '1' || $datos['es_multimes'] === 'on' || $datos['es_multimes'] === true) ? 1 : 0;
+        $duracionMeses = !empty($datos['duracion_meses']) ? max(1, (int)$datos['duracion_meses']) : null;
+        $fechaInicio = !empty($datos['fecha_inicio']) ? trim((string)$datos['fecha_inicio']) : ($esMultimes ? date('Y-m-d') : null);
+        $fechaFin = !empty($datos['fecha_fin']) ? trim((string)$datos['fecha_fin']) : null;
+        if ($esMultimes && $fechaFin === null && $fechaInicio !== null && $duracionMeses !== null && function_exists('calcularFechaFinPorMesesOS')) {
+            $fechaFin = calcularFechaFinPorMesesOS($fechaInicio, $duracionMeses);
+        } elseif ($esMultimes && $duracionMeses === null && $fechaInicio !== null && $fechaFin !== null) {
+            $vigTemp = function_exists('calcularVigenciaContratoOS') ? calcularVigenciaContratoOS(['es_multimes' => 1, 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) : [];
+            $duracionMeses = $vigTemp['duracion_meses'] ?? null;
+        }
         $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
 
         // Regla de consistencia: Si el estado actual es 'Aprobada' y se actualiza la O/S, transicionar a 'Estado 2: Revision'
         $nuevoEstado = $estadoActual;
-        $estadosAprobados = [
-            'Aprobada',
-            'Estado 3: Aprobada',
-            'Estado 3: Ingreso Directo',
-            'Estado 3A: Programacion Muestreo',
-            'Estado 3B: Ejecucion Muestreo',
-            'Estado 4: Ingreso Laboratorio',
-            'Estado 5: Solicitud Tecnicos',
-            'Estado 6: Ejecucion Ensayos'
-        ];
         if (isset($datos['estado'])) {
             $nuevoEstado = trim($datos['estado']);
-        } elseif (in_array($estadoActual, $estadosAprobados, true)) {
+        } elseif (esOrdenServicioAprobada($estadoActual)) {
             $nuevoEstado = 'Estado 2: Revision';
         }
+
+        $tieneDuracion = $this->tieneColumnaDuracionMeses();
+        $duracionSet = $tieneDuracion ? "duracion_meses = :duracion_meses," : "";
 
         $sql = "UPDATE ordenes_servicio SET 
                     atencion_a = :atencion_a,
@@ -712,14 +818,14 @@ class OrdenServicioModelo {
                     contactos_json = :contactos_json,
                     tipo_contrato = :tipo_contrato,
                     es_multimes = :es_multimes,
+                    {$duracionSet}
                     fecha_inicio = :fecha_inicio,
                     fecha_fin = :fecha_fin,
                     periodicidad = :periodicidad,
                     estado = :estado
                 WHERE id = :id";
 
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
+        $paramsUpd = [
             'id' => $idOS,
             'atencion_a' => $datos['atencion_a'] ?? '',
             'nombre_proyecto' => $datos['nombre_proyecto'] ?? '',
@@ -735,7 +841,83 @@ class OrdenServicioModelo {
             'fecha_fin' => $fechaFin,
             'periodicidad' => $periodicidad,
             'estado' => $nuevoEstado
-        ]);
+        ];
+        if ($tieneDuracion) {
+            $paramsUpd['duracion_meses'] = $esMultimes ? $duracionMeses : null;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($paramsUpd);
+    }
+
+    /**
+     * Configura o actualiza el período mensual / duración de contrato largo de una O/S
+     * SIN alterar su estado operativo ni exigir re-aprobación si ya está aceptada.
+     */
+    public function actualizarPeriodoContrato(int $idOS, array $datos): bool {
+        $osActual = $this->obtenerPorId($idOS);
+        if (!$osActual) {
+            $this->ultimoError = 'Orden de Servicio no encontrada.';
+            return false;
+        }
+        $estadoActual = (string)($osActual['estado'] ?? '');
+        if (in_array($estadoActual, ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+            $this->ultimoError = 'La Orden de Servicio está cerrada o archivada y no admite cambios.';
+            return false;
+        }
+
+        $esMultimes = !empty($datos['es_multimes']) && ($datos['es_multimes'] === 1 || $datos['es_multimes'] === '1' || $datos['es_multimes'] === 'on' || $datos['es_multimes'] === true) ? 1 : 0;
+        $tipoContrato = !empty($datos['tipo_contrato'])
+            ? trim((string)$datos['tipo_contrato'])
+            : ($esMultimes ? 'Marco' : 'Puntual');
+        if ($esMultimes && !in_array($tipoContrato, ['Marco', 'Contrato Activo', 'Contrato Largo', 'Abierto'], true)) {
+            $tipoContrato = 'Marco';
+        } elseif (!$esMultimes) {
+            $tipoContrato = 'Puntual';
+        }
+
+        $duracionMeses = !empty($datos['duracion_meses']) ? max(1, (int)$datos['duracion_meses']) : null;
+        $fechaInicio = !empty($datos['fecha_inicio']) ? trim((string)$datos['fecha_inicio']) : ($esMultimes ? date('Y-m-d') : null);
+        $fechaFin = !empty($datos['fecha_fin']) ? trim((string)$datos['fecha_fin']) : null;
+        $periodicidad = !empty($datos['periodicidad']) ? trim((string)$datos['periodicidad']) : 'Mensual';
+
+        if ($esMultimes) {
+            if ($fechaFin === null && $fechaInicio !== null && $duracionMeses !== null && function_exists('calcularFechaFinPorMesesOS')) {
+                $fechaFin = calcularFechaFinPorMesesOS($fechaInicio, $duracionMeses);
+            }
+            if ($duracionMeses === null && $fechaInicio !== null && $fechaFin !== null && function_exists('calcularVigenciaContratoOS')) {
+                $vig = calcularVigenciaContratoOS([
+                    'es_multimes' => 1,
+                    'tipo_contrato' => $tipoContrato,
+                    'fecha_inicio' => $fechaInicio,
+                    'fecha_fin' => $fechaFin,
+                ]);
+                $duracionMeses = $vig['duracion_meses'] ?? null;
+            }
+        } else {
+            $duracionMeses = null;
+            $fechaInicio = null;
+            $fechaFin = null;
+        }
+
+        $tieneDuracion = $this->tieneColumnaDuracionMeses();
+        $sql = $tieneDuracion
+            ? "UPDATE ordenes_servicio SET tipo_contrato = :tipo, es_multimes = :multimes, duracion_meses = :duracion, fecha_inicio = :fini, fecha_fin = :ffin, periodicidad = :per WHERE id = :id"
+            : "UPDATE ordenes_servicio SET tipo_contrato = :tipo, es_multimes = :multimes, fecha_inicio = :fini, fecha_fin = :ffin, periodicidad = :per WHERE id = :id";
+
+        $params = [
+            'id' => $idOS,
+            'tipo' => $tipoContrato,
+            'multimes' => $esMultimes,
+            'fini' => $fechaInicio,
+            'ffin' => $fechaFin,
+            'per' => $periodicidad,
+        ];
+        if ($tieneDuracion) {
+            $params['duracion'] = $duracionMeses;
+        }
+
+        return $this->db->prepare($sql)->execute($params);
     }
 
 
@@ -743,10 +925,29 @@ class OrdenServicioModelo {
      * Registrar o actualizar la programación de muestreo
      */
     public function guardarProgramacionMuestreo(int $idOS, array $datos): bool {
-        $sqlCheck = "SELECT id FROM programacion_muestreo WHERE id_orden_servicio = :id_os";
-        $stmtCheck = $this->db->prepare($sqlCheck);
-        $stmtCheck->execute(['id_os' => $idOS]);
-        $existente = $stmtCheck->fetchColumn();
+        $tieneColHoja = false;
+        try {
+            $colsPm = $this->db->query("SHOW COLUMNS FROM programacion_muestreo LIKE 'id_hoja_solicitud'")->fetchAll();
+            $tieneColHoja = !empty($colsPm);
+        } catch (\Throwable $e) {
+            $tieneColHoja = false;
+        }
+
+        $idHojaSolicitud = ($tieneColHoja && !empty($datos['id_hoja_solicitud'])) ? (int)$datos['id_hoja_solicitud'] : null;
+
+        $existente = false;
+        if ($tieneColHoja && $idHojaSolicitud > 0) {
+            $stmtCheck = $this->db->prepare("SELECT id FROM programacion_muestreo WHERE id_orden_servicio = :id_os AND id_hoja_solicitud = :id_hoja LIMIT 1");
+            $stmtCheck->execute(['id_os' => $idOS, 'id_hoja' => $idHojaSolicitud]);
+            $existente = $stmtCheck->fetchColumn();
+        } else {
+            $sqlCheck = $tieneColHoja
+                ? "SELECT id FROM programacion_muestreo WHERE id_orden_servicio = :id_os ORDER BY (id_hoja_solicitud IS NULL) DESC, id ASC LIMIT 1"
+                : "SELECT id FROM programacion_muestreo WHERE id_orden_servicio = :id_os LIMIT 1";
+            $stmtCheck = $this->db->prepare($sqlCheck);
+            $stmtCheck->execute(['id_os' => $idOS]);
+            $existente = $stmtCheck->fetchColumn();
+        }
 
         $estadoMuestreo = $datos['estado_muestreo'] ?? 'En Campo';
         if (!in_array($estadoMuestreo, ['Programado', 'En Campo', 'Finalizado'])) {
@@ -755,7 +956,9 @@ class OrdenServicioModelo {
         $esFinalizado = ($estadoMuestreo === 'Finalizado');
 
         if ($existente) {
+            $setHojaSql = $tieneColHoja ? "id_hoja_solicitud = COALESCE(:id_hoja, id_hoja_solicitud)," : "";
             $sql = "UPDATE programacion_muestreo SET
+                        {$setHojaSql}
                         fecha_ida = :fecha_ida,
                         fecha_llegada = :fecha_llegada,
                         id_tecnico = :id_tecnico,
@@ -767,26 +970,39 @@ class OrdenServicioModelo {
                         cantidad_muestras_est = :cantidad_muestras_est,
                         num_muestreadores = :num_muestreadores,
                         checklist_json = :checklist_json
-                    WHERE id_orden_servicio = :id_os";
+                    WHERE id = :pm_id";
         } else {
-            $sql = "INSERT INTO programacion_muestreo (
-                        id_orden_servicio, fecha_ida, fecha_llegada, id_tecnico, id_vehiculo, 
-                        observaciones_campo, estado_muestreo, fecha_finalizacion, lugar_muestreo, cantidad_muestras_est, 
-                        num_muestreadores, checklist_json
-                    ) VALUES (
-                        :id_os, :fecha_ida, :fecha_llegada, :id_tecnico, :id_vehiculo, 
-                        :observaciones_campo, :estado_muestreo, IF(:es_finalizado = 1, NOW(), NULL), :lugar_muestreo, :cantidad_muestras_est, 
-                        :num_muestreadores, :checklist_json
-                    )";
+            if ($tieneColHoja) {
+                $sql = "INSERT INTO programacion_muestreo (
+                            id_orden_servicio, id_hoja_solicitud, fecha_ida, fecha_llegada, id_tecnico, id_vehiculo, 
+                            observaciones_campo, estado_muestreo, fecha_finalizacion, lugar_muestreo, cantidad_muestras_est, 
+                            num_muestreadores, checklist_json
+                        ) VALUES (
+                            :id_os, :id_hoja, :fecha_ida, :fecha_llegada, :id_tecnico, :id_vehiculo, 
+                            :observaciones_campo, :estado_muestreo, IF(:es_finalizado = 1, NOW(), NULL), :lugar_muestreo, :cantidad_muestras_est, 
+                            :num_muestreadores, :checklist_json
+                        )";
+            } else {
+                $sql = "INSERT INTO programacion_muestreo (
+                            id_orden_servicio, fecha_ida, fecha_llegada, id_tecnico, id_vehiculo, 
+                            observaciones_campo, estado_muestreo, fecha_finalizacion, lugar_muestreo, cantidad_muestras_est, 
+                            num_muestreadores, checklist_json
+                        ) VALUES (
+                            :id_os, :fecha_ida, :fecha_llegada, :id_tecnico, :id_vehiculo, 
+                            :observaciones_campo, :estado_muestreo, IF(:es_finalizado = 1, NOW(), NULL), :lugar_muestreo, :cantidad_muestras_est, 
+                            :num_muestreadores, :checklist_json
+                        )";
+            }
         }
 
-        $stmt = $this->db->prepare($sql);
-        $res = $stmt->execute([
-            'id_os' => $idOS,
+        $idTecnicoVal = (!empty($datos['id_tecnico']) && (int)$datos['id_tecnico'] > 0) ? (int)$datos['id_tecnico'] : null;
+        $idVehiculoVal = (!empty($datos['id_vehiculo']) && (int)$datos['id_vehiculo'] > 0) ? (int)$datos['id_vehiculo'] : null;
+
+        $paramsExec = [
             'fecha_ida' => $datos['fecha_ida'],
             'fecha_llegada' => $datos['fecha_llegada'],
-            'id_tecnico' => $datos['id_tecnico'],
-            'id_vehiculo' => $datos['id_vehiculo'],
+            'id_tecnico' => $idTecnicoVal,
+            'id_vehiculo' => $idVehiculoVal,
             'observaciones_campo' => $datos['observaciones_campo'] ?? null,
             'estado_muestreo' => $estadoMuestreo,
             'es_finalizado' => $esFinalizado ? 1 : 0,
@@ -794,11 +1010,33 @@ class OrdenServicioModelo {
             'cantidad_muestras_est' => $datos['cantidad_muestras_est'] ?? null,
             'num_muestreadores' => (int)($datos['num_muestreadores'] ?? 1),
             'checklist_json' => $datos['checklist_json'] ?? null
-        ]);
+        ];
+        if ($existente) {
+            $paramsExec['pm_id'] = (int)$existente;
+            if ($tieneColHoja) {
+                $paramsExec['id_hoja'] = $idHojaSolicitud;
+            }
+        } else {
+            $paramsExec['id_os'] = $idOS;
+            if ($tieneColHoja) {
+                $paramsExec['id_hoja'] = $idHojaSolicitud;
+            }
+        }
 
-        // Actualizar estado de la Orden de Servicio (manteniendo la aprobación y avanzando en el ciclo)
+        $stmt = $this->db->prepare($sql);
+        $res = $stmt->execute($paramsExec);
+
+        // Actualizar estado de la Orden de Servicio sin retroceder estados operativos avanzados o cerrados
         $estadoOS = $esFinalizado ? 'Estado 3B: Ejecucion Muestreo' : 'Estado 3A: Programacion Muestreo';
-        $stmtState = $this->db->prepare("UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = :estado WHERE id = :id");
+        $stmtState = $this->db->prepare("
+            UPDATE ordenes_servicio
+            SET requiere_muestreo = 1,
+                estado = CASE
+                    WHEN estado IN ('Estado 3C: Espera Muestreo', 'Estado 4: Ingreso Laboratorio', 'En Proceso', 'Estado 5: Solicitud Tecnicos', 'Estado 6: Ejecucion Ensayos', 'Estado 7: Revision Resultados', 'Finalizado', 'Archivado', 'Cerrado') THEN estado
+                    ELSE :estado
+                END
+            WHERE id = :id
+        ");
         $stmtState->execute([
             'estado' => $estadoOS,
             'id' => $idOS
@@ -877,8 +1115,14 @@ class OrdenServicioModelo {
             ]);
         }
 
-        // 2. Cambiar el estado de la Orden de Servicio a 'Estado 3B: Ejecucion Muestreo' (para registrar Hoja RT-FM-13)
-        $sqlOs = "UPDATE ordenes_servicio SET requiere_muestreo = 1, estado = 'Estado 3B: Ejecucion Muestreo' WHERE id = :id_os";
+        // 2. Cambiar el estado de la Orden de Servicio a 'Estado 3B: Ejecucion Muestreo' sin retroceder estados más avanzados
+        $sqlOs = "UPDATE ordenes_servicio
+                  SET requiere_muestreo = 1,
+                      estado = CASE
+                          WHEN estado IN ('Estado 3C: Espera Muestreo', 'Estado 4: Ingreso Laboratorio', 'En Proceso', 'Estado 5: Solicitud Tecnicos', 'Estado 6: Ejecucion Ensayos', 'Estado 7: Revision Resultados', 'Finalizado', 'Archivado', 'Cerrado') THEN estado
+                          ELSE 'Estado 3B: Ejecucion Muestreo'
+                      END
+                  WHERE id = :id_os";
         $stmtOs = $this->db->prepare($sqlOs);
         return $stmtOs->execute(['id_os' => $idOS]);
     }

@@ -172,6 +172,17 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
+        // 6. Centro de Reportes CYCSA
+        if (tienePermiso('reportes', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Centro de Reportes',
+                'link' => '/Cycsa/publico/reportes',
+                'icon' => 'fa-solid fa-chart-pie',
+                'desc' => 'Mini-módulos de seguimiento con KPIs, PDFs oficiales (RT-FM-13, 40 B, 60) y Excel (.xlsx).',
+                'color' => 'linear-gradient(135deg, #0f172a, #103487)',
+            ];
+        }
+
         // 6. Productos / Ensayos
         if (tienePermiso('productos', 'ver')) {
             $cajon_aplicaciones[] = [

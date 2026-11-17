@@ -14,6 +14,7 @@ class MultiplesHojasServicioTest extends TestCase {
     private OperacionModelo $opModelo;
     private OrdenServicioModelo $osModelo;
     private array $secuenciasBackup = [];
+    private array $osEstadosBackup = [];
 
     protected function setUp(): void {
         parent::setUp();
@@ -21,6 +22,7 @@ class MultiplesHojasServicioTest extends TestCase {
         $this->opModelo = new OperacionModelo();
         $this->osModelo = new OrdenServicioModelo();
         $this->secuenciasBackup = $this->db->query("SELECT anio, tipo_muestra, ultimo_correlativo FROM secuencias_muestras")->fetchAll(PDO::FETCH_ASSOC);
+        $this->osEstadosBackup = $this->db->query("SELECT id, estado FROM ordenes_servicio ORDER BY id ASC LIMIT 3")->fetchAll(PDO::FETCH_ASSOC);
     }
 
     protected function tearDown(): void {
@@ -29,6 +31,12 @@ class MultiplesHojasServicioTest extends TestCase {
             $stmtInsert = $this->db->prepare("INSERT INTO secuencias_muestras (anio, tipo_muestra, ultimo_correlativo) VALUES (:anio, :tipo, :corr)");
             foreach ($this->secuenciasBackup as $row) {
                 $stmtInsert->execute(['anio' => $row['anio'], 'tipo' => $row['tipo_muestra'], 'corr' => $row['ultimo_correlativo']]);
+            }
+        }
+        if (!empty($this->osEstadosBackup)) {
+            $stmtEst = $this->db->prepare("UPDATE ordenes_servicio SET estado = :est WHERE id = :id");
+            foreach ($this->osEstadosBackup as $osRow) {
+                $stmtEst->execute(['est' => $osRow['estado'], 'id' => (int)$osRow['id']]);
             }
         }
         parent::tearDown();

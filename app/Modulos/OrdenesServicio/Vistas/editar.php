@@ -1,7 +1,6 @@
 <?php
 // Vista para editar Orden de Servicio CYCSA-RG-FM-39 V1 (CYCSA ERP Premium Style)
-$estadosAprobados = ['Aprobada', 'Estado 3: Aprobada', 'Estado 3: Ingreso Directo', 'Estado 3A: Programacion Muestreo', 'Estado 3B: Ejecucion Muestreo', 'Estado 4: Ingreso Laboratorio', 'Estado 5: Solicitud Tecnicos', 'Estado 6: Ejecucion Ensayos'];
-$esAprobada = in_array($os['estado'] ?? '', $estadosAprobados, true);
+$esAprobada = esOrdenServicioAprobada($os['estado'] ?? null);
 $esMultimes = !empty($os['es_multimes']);
 $idClienteFacturaActual = (int)($os['id_cliente_factura'] ?? $os['id_cliente'] ?? 0);
 $idClienteInformeActual = (int)($os['id_cliente_informe'] ?? $os['id_cliente'] ?? 0);
@@ -175,10 +174,14 @@ $listaClientes = $clientes ?? [];
                         <i class="fa-solid fa-check"></i> Activo
                     </span>
                 </div>
-                <div id="seccion_multimes_campos" style="display: <?= $esMultimes ? 'grid' : 'none' ?>; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                <div id="seccion_multimes_campos" style="display: <?= $esMultimes ? 'grid' : 'none' ?>; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                    <div class="form-group-cycsa" style="margin-bottom: 0;">
+                        <label>Duración (Meses):</label>
+                        <input type="number" name="duracion_meses" id="duracion_meses" min="1" max="120" value="<?= (int)($os['vigencia_contrato']['duracion_meses'] ?? $os['duracion_meses'] ?? 3) ?>" onchange="recalcularFechaFinDesdeMeses()" class="form-control-cycsa">
+                    </div>
                     <div class="form-group-cycsa" style="margin-bottom: 0;">
                         <label>Fecha de Inicio del Contrato:</label>
-                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control-cycsa" value="<?= !empty($os['fecha_inicio']) ? htmlspecialchars($os['fecha_inicio']) : date('Y-m-d') ?>">
+                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control-cycsa" onchange="recalcularFechaFinDesdeMeses()" value="<?= !empty($os['fecha_inicio']) ? htmlspecialchars($os['fecha_inicio']) : date('Y-m-d') ?>">
                     </div>
                     <div class="form-group-cycsa" style="margin-bottom: 0;">
                         <label>Fecha de Finalización:</label>
@@ -189,7 +192,9 @@ $listaClientes = $clientes ?? [];
                         <select name="periodicidad" id="periodicidad" class="form-control-cycsa" style="font-weight: 600;">
                             <option value="Mensual" <?= (($os['periodicidad'] ?? 'Mensual') === 'Mensual') ? 'selected' : '' ?>>Mensual</option>
                             <option value="Quincenal" <?= (($os['periodicidad'] ?? '') === 'Quincenal') ? 'selected' : '' ?>>Quincenal</option>
+                            <option value="Bimestral" <?= (($os['periodicidad'] ?? '') === 'Bimestral') ? 'selected' : '' ?>>Bimestral</option>
                             <option value="Trimestral" <?= (($os['periodicidad'] ?? '') === 'Trimestral') ? 'selected' : '' ?>>Trimestral</option>
+                            <option value="Semestral" <?= (($os['periodicidad'] ?? '') === 'Semestral') ? 'selected' : '' ?>>Semestral</option>
                         </select>
                     </div>
                 </div>
@@ -252,6 +257,19 @@ $listaClientes = $clientes ?? [];
 </div>
 
 <script>
+    function recalcularFechaFinDesdeMeses() {
+        const fi = document.getElementById('fecha_inicio')?.value;
+        const m = parseInt(document.getElementById('duracion_meses')?.value || '3', 10) || 3;
+        const ffEl = document.getElementById('fecha_fin');
+        if (fi && ffEl) {
+            const d = new Date(fi + 'T00:00:00');
+            if (!isNaN(d.getTime())) {
+                d.setMonth(d.getMonth() + m);
+                ffEl.value = d.toISOString().slice(0, 10);
+            }
+        }
+    }
+
     function toggleMultiMes(activo) {
         const contenedor = document.getElementById('seccion_multimes_campos');
         const badge = document.getElementById('multimes_badge');

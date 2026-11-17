@@ -56,9 +56,10 @@ class OrdenesServicioControlador extends ControladorBase {
         $ordenes = $modelo->obtenerTodas($busqueda, $tabSolicitada, $filtros);
         $conteosTabs = $modelo->obtenerConteosTabsOSLista();
 
-        // Cargar técnicos activos para el autocompletado en la Hoja RT-FM-13
+        // Cargar técnicos y vehículos activos para RT-FM-13 y documento FM-40 B en línea
         $opModelo = new \Cycsa\Modulos\Operaciones\Modelos\OperacionModelo();
         $tecnicos = $opModelo->obtenerTecnicosActivos();
+        $vehiculos = $modelo->obtenerVehiculos();
 
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -70,6 +71,7 @@ class OrdenesServicioControlador extends ControladorBase {
             'titulo' => 'Órdenes de Servicio & Hojas de Recepción - CYCSA',
             'ordenes' => $ordenes,
             'tecnicos' => $tecnicos,
+            'vehiculos' => $vehiculos,
             'busqueda' => $busqueda,
             'tabActiva' => $tabSolicitada,
             'conteosTabs' => $conteosTabs,
@@ -164,6 +166,7 @@ class OrdenesServicioControlador extends ControladorBase {
         $estadoInicial = $requiereMuestreo ? 'Pendiente de Muestreo' : 'Estado 1: Recepcion';
 
         $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === '1' || $datos['es_multimes'] === 1 || $datos['es_multimes'] === 'on') ? 1 : 0;
+        $duracionMeses = !empty($datos['duracion_meses']) ? max(1, (int)$datos['duracion_meses']) : null;
         $fechaInicio = !empty($datos['fecha_inicio']) ? trim($datos['fecha_inicio']) : null;
         $fechaFin = !empty($datos['fecha_fin']) ? trim($datos['fecha_fin']) : null;
         $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
@@ -184,8 +187,9 @@ class OrdenesServicioControlador extends ControladorBase {
             'notas_condiciones' => trim($datos['notas_condiciones'] ?? ''),
             'contactos_json' => $datos['contactos'] ?? [],
             'requiere_muestreo' => $requiereMuestreo ? 1 : 0,
-            'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : 'Puntual',
+            'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : ($esMultimes ? 'Marco' : 'Puntual'),
             'es_multimes' => $esMultimes,
+            'duracion_meses' => $duracionMeses,
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin,
             'periodicidad' => $periodicidad,
@@ -308,48 +312,53 @@ class OrdenesServicioControlador extends ControladorBase {
             : (function_exists('determinarCondicionComercial') ? determinarCondicionComercial($formaPago) : 'contado');
 
         $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === '1' || $datos['es_multimes'] === 1 || $datos['es_multimes'] === 'on') ? 1 : 0;
+        $duracionMeses = !empty($datos['duracion_meses']) ? max(1, (int)$datos['duracion_meses']) : null;
         $fechaInicio = !empty($datos['fecha_inicio']) ? trim($datos['fecha_inicio']) : null;
         $fechaFin = !empty($datos['fecha_fin']) ? trim($datos['fecha_fin']) : null;
         $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
 
-        // Regla de consistencia: Si el estado actual es 'Aprobada' y se actualiza la O/S, transicionar a 'Estado 2: Revision'
+        $nuevoAtencionA = trim($datos['atencion_a'] ?? ($os['atencion_a'] ?? ''));
+        $nuevoProyecto = trim($datos['nombre_proyecto'] ?? ($os['nombre_proyecto'] ?? ''));
+        $nuevoCliFac = !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)($os['id_cliente_factura'] ?? $os['id_cliente']);
+        $nuevoCliInf = !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)($os['id_cliente_informe'] ?? $os['id_cliente']);
+        $nuevasNotas = trim($datos['notas_condiciones'] ?? ($os['notas_condiciones'] ?? ''));
+
+        $cambioComercialCore = (
+            $nuevoAtencionA !== trim((string)($os['atencion_a'] ?? '')) ||
+            $nuevoProyecto !== trim((string)($os['nombre_proyecto'] ?? '')) ||
+            $formaPago !== trim((string)($os['forma_pago'] ?? '')) ||
+            $condicionComercial !== trim((string)($os['condicion_comercial'] ?? '')) ||
+            $nuevoCliFac !== (int)($os['id_cliente_factura'] ?? $os['id_cliente']) ||
+            $nuevoCliInf !== (int)($os['id_cliente_informe'] ?? $os['id_cliente']) ||
+            $nuevasNotas !== trim((string)($os['notas_condiciones'] ?? ''))
+        );
+
+        // Regla de consistencia: Si ya estaba aprobada pero solo se ajusta el período mensual/contrato largo, conservar estado sin pedir re-aprobación
         $estadoActual = $os['estado'] ?? '';
         $requiereReaprobacion = false;
         $nuevoEstado = $estadoActual;
-        $estadosAprobados = [
-            'Aprobada',
-            'Estado 3: Aprobada',
-            'Estado 3: Ingreso Directo',
-            'Estado 3A: Programacion Muestreo',
-            'Estado 3B: Ejecucion Muestreo',
-            'Estado 4: Ingreso Laboratorio',
-            'Estado 5: Solicitud Tecnicos',
-            'Estado 6: Ejecucion Ensayos'
-        ];
-        if (in_array($estadoActual, $estadosAprobados, true)) {
+        if (esOrdenServicioAprobada($estadoActual) && $cambioComercialCore) {
             $nuevoEstado = 'Estado 2: Revision';
             $requiereReaprobacion = true;
         }
 
         $datosActualizar = [
-            'atencion_a' => trim($datos['atencion_a'] ?? ($os['atencion_a'] ?? '')),
-            'nombre_proyecto' => trim($datos['nombre_proyecto'] ?? ($os['nombre_proyecto'] ?? '')),
+            'atencion_a' => $nuevoAtencionA,
+            'nombre_proyecto' => $nuevoProyecto,
             'forma_pago' => $formaPago,
             'condicion_comercial' => $condicionComercial,
-            'id_cliente_factura' => !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)($os['id_cliente_factura'] ?? $os['id_cliente']),
-            'id_cliente_informe' => !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)($os['id_cliente_informe'] ?? $os['id_cliente']),
-            'notas_condiciones' => trim($datos['notas_condiciones'] ?? ($os['notas_condiciones'] ?? '')),
+            'id_cliente_factura' => $nuevoCliFac,
+            'id_cliente_informe' => $nuevoCliInf,
+            'notas_condiciones' => $nuevasNotas,
             'contactos_json' => $datos['contactos'] ?? ($datos['contactos_json'] ?? ($os['contactos_json'] ?? [])),
-            'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : ($os['tipo_contrato'] ?? 'Puntual'),
+            'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : ($esMultimes ? 'Marco' : ($os['tipo_contrato'] ?? 'Puntual')),
             'es_multimes' => $esMultimes,
+            'duracion_meses' => $duracionMeses,
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin,
-            'periodicidad' => $periodicidad
+            'periodicidad' => $periodicidad,
+            'estado' => $nuevoEstado,
         ];
-
-        if ($requiereReaprobacion) {
-            $datosActualizar['estado'] = $nuevoEstado;
-        }
 
         $actualizado = $osModelo->actualizar($idOS, $datosActualizar);
 
@@ -585,8 +594,9 @@ class OrdenesServicioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
 
         $idOS = (int)($_GET['id'] ?? 0);
+        $idHoja = (int)($_GET['id_hoja'] ?? 0);
         $osModelo = new OrdenServicioModelo();
-        $os = $osModelo->obtenerPorId($idOS);
+        $os = $osModelo->obtenerPorId($idOS, $idHoja);
 
         if (!$os) {
             $_SESSION['error'] = 'Orden de Servicio no encontrada.';
@@ -596,6 +606,342 @@ class OrdenesServicioControlador extends ControladorBase {
 
         require __DIR__ . '/../Vistas/imprimir_checklist.php';
         exit;
+    }
+
+    /**
+     * Carga vía AJAX el documento CYCSA-RT-FM-40 B para crearlo/editarlo/cerrarlo
+     * directamente en Órdenes de Servicio y asociarlo a su RT-FM-13.
+     */
+    public function fm40bDatosAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $idOS = (int)($_GET['id_os'] ?? 0);
+        $idHoja = (int)($_GET['id_hoja'] ?? 0);
+        if ($idOS <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio inválida.'], 400);
+            return;
+        }
+
+        $osModelo = new OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS, $idHoja);
+        if (!$os) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio no encontrada.'], 404);
+            return;
+        }
+
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmtH = $db->prepare("
+            SELECT hs.id, hs.numero_registro, hs.codigo_documento,
+                   COALESCE(cd.descripcion_ensayo, p.nombre_comercial, 'Ensayo') AS descripcion_ensayo
+            FROM hojas_solicitud hs
+            LEFT JOIN cotizacion_detalles cd ON hs.id_detalle_cotizacion = cd.id
+            LEFT JOIN productos p ON COALESCE(hs.id_producto, cd.id_producto) = p.id
+            WHERE hs.id_os = :id_os
+            ORDER BY hs.id ASC
+        ");
+        $stmtH->execute(['id_os' => $idOS]);
+        $hojas = $stmtH->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Mapear estado 40 B existente por hoja
+        $pmPorHoja = [];
+        try {
+            $stmtPms = $db->prepare("SELECT * FROM programacion_muestreo WHERE id_orden_servicio = :id_os ORDER BY id ASC");
+            $stmtPms->execute(['id_os' => $idOS]);
+            foreach ($stmtPms->fetchAll(\PDO::FETCH_ASSOC) as $pmRow) {
+                $hid = (int)($pmRow['id_hoja_solicitud'] ?? 0);
+                $pmPorHoja[$hid] = $pmRow;
+            }
+        } catch (\Throwable $e) {
+            $pmPorHoja = [];
+        }
+
+        foreach ($hojas as &$h) {
+            $hid = (int)$h['id'];
+            $h['fm40b_id'] = !empty($pmPorHoja[$hid]['id']) ? (int)$pmPorHoja[$hid]['id'] : 0;
+            $h['fm40b_estado'] = $pmPorHoja[$hid]['estado_muestreo'] ?? '';
+        }
+        unset($h);
+
+        $pmSeleccionado = ($idHoja > 0 && isset($pmPorHoja[$idHoja]))
+            ? $pmPorHoja[$idHoja]
+            : ($idHoja === 0 && isset($pmPorHoja[0]) ? $pmPorHoja[0] : null);
+
+        $chk = [];
+        if ($pmSeleccionado && !empty($pmSeleccionado['checklist_json'])) {
+            $dec = json_decode((string)$pmSeleccionado['checklist_json'], true);
+            if (is_array($dec)) {
+                $chk = $dec;
+            }
+        }
+
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'os' => [
+                'id' => (int)$os['id'],
+                'codigo_os' => $os['codigo_os'],
+                'cliente_nombre' => $os['cliente_nombre'] ?? '',
+                'nombre_proyecto' => $os['nombre_proyecto'] ?? '',
+                'solo_lectura' => in_array((string)($os['estado'] ?? ''), ['Finalizado', 'Archivado', 'Cerrado'], true),
+            ],
+            'id_hoja_seleccionada' => $idHoja,
+            'hojas' => $hojas,
+            'fm40b' => $pmSeleccionado ? [
+                'id' => (int)$pmSeleccionado['id'],
+                'id_hoja_solicitud' => (int)($pmSeleccionado['id_hoja_solicitud'] ?? 0),
+                'fecha_ida' => !empty($pmSeleccionado['fecha_ida']) ? date('Y-m-d\TH:i', strtotime($pmSeleccionado['fecha_ida'])) : date('Y-m-d\TH:00'),
+                'fecha_llegada' => !empty($pmSeleccionado['fecha_llegada']) ? date('Y-m-d\TH:i', strtotime($pmSeleccionado['fecha_llegada'])) : date('Y-m-d\TH:00', strtotime('+4 hours')),
+                'id_tecnico' => (int)($pmSeleccionado['id_tecnico'] ?? 0),
+                'id_vehiculo' => (int)($pmSeleccionado['id_vehiculo'] ?? 0),
+                'lugar_muestreo' => $pmSeleccionado['lugar_muestreo'] ?? ($os['nombre_proyecto'] ?? ''),
+                'cantidad_muestras_est' => $pmSeleccionado['cantidad_muestras_est'] ?? '',
+                'num_muestreadores' => (int)($pmSeleccionado['num_muestreadores'] ?? 1),
+                'observaciones_campo' => $pmSeleccionado['observaciones_campo'] ?? '',
+                'estado_muestreo' => $pmSeleccionado['estado_muestreo'] ?? 'Programado',
+                'checklist' => $chk,
+            ] : [
+                'id' => 0,
+                'id_hoja_solicitud' => $idHoja,
+                'fecha_ida' => date('Y-m-d\TH:00'),
+                'fecha_llegada' => date('Y-m-d\TH:00', strtotime('+4 hours')),
+                'id_tecnico' => 0,
+                'id_vehiculo' => 0,
+                'lugar_muestreo' => $os['nombre_proyecto'] ?? '',
+                'cantidad_muestras_est' => '',
+                'num_muestreadores' => 1,
+                'observaciones_campo' => '',
+                'estado_muestreo' => 'Programado',
+                'checklist' => [],
+            ],
+            'tecnicos' => $osModelo->obtenerTecnicos(),
+            'vehiculos' => $osModelo->obtenerVehiculos(),
+        ]);
+    }
+
+    /**
+     * Guarda o cierra ("Finalizado") un documento CYCSA-RT-FM-40 B desde Órdenes de Servicio
+     * asociado a su Hoja RT-FM-13 correspondiente.
+     */
+    public function guardarFm40bAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('ordenes_servicio', 'crear_editar')) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'No tiene permisos para gestionar documentos FM-40 B.'], 403);
+            return;
+        }
+        if (!$peticion->esPost()) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Método no permitido.'], 405);
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+        $csrfToken = (string)($datos['csrf_token'] ?? '');
+        if ($csrfToken === '' || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], $csrfToken)) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido o sesión expirada.'], 403);
+            return;
+        }
+
+        $idOS = (int)($datos['id_os'] ?? 0);
+        $idHojaSolicitud = (int)($datos['id_hoja_solicitud'] ?? 0);
+        $idTecnico = (int)($datos['id_tecnico'] ?? 0);
+        $idVehiculo = (int)($datos['id_vehiculo'] ?? 0);
+        if ($idOS <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio inválida.'], 400);
+            return;
+        }
+        if ($idTecnico <= 0 || $idVehiculo <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Debe seleccionar el técnico responsable y el vehículo asignado para el documento 40 B.'], 422);
+            return;
+        }
+
+        $osModelo = new OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS);
+        if (!$os) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio no encontrada.'], 404);
+            return;
+        }
+
+        $accionMuestreo = trim((string)($datos['accion_muestreo'] ?? 'guardar'));
+        $estadoMuestreo = ($accionMuestreo === 'finalizar') ? 'Finalizado' : (($accionMuestreo === 'programar') ? 'Programado' : 'En Campo');
+
+        $chkRaw = $datos['chk'] ?? [];
+        if (is_string($chkRaw)) {
+            $decChk = json_decode($chkRaw, true);
+            $chkRaw = is_array($decChk) ? $decChk : [];
+        }
+        $checklistJson = !empty($chkRaw) && is_array($chkRaw) ? json_encode($chkRaw, JSON_UNESCAPED_UNICODE) : null;
+
+        $exito = $osModelo->guardarProgramacionMuestreo($idOS, [
+            'id_hoja_solicitud' => $idHojaSolicitud > 0 ? $idHojaSolicitud : null,
+            'fecha_ida' => $datos['fecha_ida'] ?? date('Y-m-d H:i:s'),
+            'fecha_llegada' => $datos['fecha_llegada'] ?? date('Y-m-d H:i:s', strtotime('+4 hours')),
+            'id_tecnico' => $idTecnico,
+            'id_vehiculo' => $idVehiculo,
+            'lugar_muestreo' => trim((string)($datos['lugar_muestreo'] ?? '')),
+            'cantidad_muestras_est' => trim((string)($datos['cantidad_muestras_est'] ?? '')),
+            'num_muestreadores' => max(1, (int)($datos['num_muestreadores'] ?? 1)),
+            'observaciones_campo' => trim((string)($datos['observaciones_campo'] ?? '')),
+            'checklist_json' => $checklistJson,
+            'estado_muestreo' => $estadoMuestreo,
+        ]);
+
+        if (!$exito) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'No fue posible guardar el documento CYCSA-RT-FM-40 B.'], 500);
+            return;
+        }
+
+        $sufijoHoja = $idHojaSolicitud > 0 ? " asociado a Hoja RT-FM-13 #{$idHojaSolicitud}" : "";
+        registrarEventoOS(
+            'ordenes_servicio',
+            $estadoMuestreo === 'Finalizado' ? 'cerrar_fm40b' : 'guardar_fm40b',
+            "Documento CYCSA-RT-FM-40 B ({$estadoMuestreo}){$sufijoHoja} guardado en O/S #{$idOS}",
+            $idOS,
+            ['entidad_tipo' => 'fm40b', 'entidad_id' => $idHojaSolicitud ?: $idOS]
+        );
+
+        $imprimirUrl = '/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=' . $idOS . ($idHojaSolicitud > 0 ? '&id_hoja=' . $idHojaSolicitud : '');
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'message' => ($estadoMuestreo === 'Finalizado')
+                ? 'Documento CYCSA-RT-FM-40 B cerrado y finalizado correctamente.'
+                : 'Documento CYCSA-RT-FM-40 B guardado correctamente.',
+            'estado_muestreo' => $estadoMuestreo,
+            'id_os' => $idOS,
+            'id_hoja_solicitud' => $idHojaSolicitud,
+            'imprimir_url' => $imprimirUrl,
+        ]);
+    }
+
+    /**
+     * Devuelve los datos actuales de período mensual / contrato largo de una O/S.
+     */
+    public function periodoContratoDatosAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('ordenes_servicio', 'ver')) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'No tiene permisos para ver esta Orden de Servicio.'], 403);
+            return;
+        }
+
+        $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
+        if ($idOS <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'ID de Orden de Servicio inválido.'], 400);
+            return;
+        }
+
+        $osModelo = new OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS);
+        if (!$os) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio no encontrada.'], 404);
+            return;
+        }
+
+        require_once dirname(__DIR__, 3) . '/Helpers/funciones.php';
+        $vigencia = function_exists('calcularVigenciaContratoOS') ? calcularVigenciaContratoOS($os) : [];
+        $esAprobada = function_exists('esOrdenServicioAprobada') ? esOrdenServicioAprobada((string)($os['estado'] ?? '')) : false;
+
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'os' => [
+                'id' => (int)$os['id'],
+                'codigo_os' => $os['codigo_os'],
+                'cliente_nombre' => $os['cliente_nombre'] ?? '',
+                'nombre_proyecto' => $os['nombre_proyecto'] ?? '',
+                'estado' => $os['estado'] ?? '',
+                'es_aprobada' => $esAprobada,
+                'solo_lectura' => in_array((string)($os['estado'] ?? ''), ['Finalizado', 'Archivado', 'Cerrado'], true),
+                'tipo_contrato' => $os['tipo_contrato'] ?? 'Puntual',
+                'es_multimes' => !empty($os['es_multimes']) ? 1 : 0,
+                'duracion_meses' => $vigencia['duracion_meses'] ?? (!empty($os['duracion_meses']) ? (int)$os['duracion_meses'] : 3),
+                'fecha_inicio' => $os['fecha_inicio'] ?: ($os['fecha_emision'] ?: date('Y-m-d')),
+                'fecha_fin' => $vigencia['fecha_fin'] ?? ($os['fecha_fin'] ?: date('Y-m-d', strtotime('+3 months'))),
+                'periodicidad' => $os['periodicidad'] ?: 'Mensual',
+            ],
+            'vigencia' => $vigencia,
+        ]);
+    }
+
+    /**
+     * Configura o actualiza el período mensual / contrato largo de una O/S
+     * (permite hacerlo incluso cuando ya está aceptada, sin exigir re-aprobación).
+     */
+    public function guardarPeriodoContratoAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('ordenes_servicio', 'crear_editar')) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'No tiene permisos para configurar el período de Órdenes de Servicio.'], 403);
+            return;
+        }
+        if (!$peticion->esPost()) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Método no permitido.'], 405);
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+        $csrfToken = (string)($datos['csrf_token'] ?? '');
+        if ($csrfToken === '' || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], $csrfToken)) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido o sesión expirada.'], 403);
+            return;
+        }
+
+        $idOS = (int)($datos['id_os'] ?? 0);
+        if ($idOS <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio inválida.'], 400);
+            return;
+        }
+
+        $osModelo = new OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS);
+        if (!$os) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio no encontrada.'], 404);
+            return;
+        }
+        if (in_array((string)($os['estado'] ?? ''), ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'La Orden de Servicio está cerrada o archivada y no admite cambios.'], 422);
+            return;
+        }
+
+        $esMultimes = !empty($datos['es_multimes']) && ($datos['es_multimes'] === '1' || $datos['es_multimes'] === 1 || $datos['es_multimes'] === 'on' || $datos['es_multimes'] === true);
+        $fechaInicio = !empty($datos['fecha_inicio']) ? trim((string)$datos['fecha_inicio']) : date('Y-m-d');
+        $fechaFin = !empty($datos['fecha_fin']) ? trim((string)$datos['fecha_fin']) : null;
+        $duracionMeses = !empty($datos['duracion_meses']) ? max(1, (int)$datos['duracion_meses']) : null;
+
+        if ($esMultimes && $fechaFin !== null && $fechaInicio !== '' && strtotime($fechaFin) < strtotime($fechaInicio)) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'La fecha de finalización no puede ser anterior a la fecha de inicio.'], 422);
+            return;
+        }
+
+        $ok = $osModelo->actualizarPeriodoContrato($idOS, [
+            'es_multimes' => $esMultimes ? 1 : 0,
+            'tipo_contrato' => $esMultimes ? 'Marco' : 'Puntual',
+            'duracion_meses' => $duracionMeses,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin,
+            'periodicidad' => trim((string)($datos['periodicidad'] ?? 'Mensual')) ?: 'Mensual',
+        ]);
+
+        if (!$ok) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => $osModelo->obtenerUltimoError() ?: 'No se pudo actualizar el período del contrato.'], 500);
+            return;
+        }
+
+        $osActualizada = $osModelo->obtenerPorId($idOS);
+        $vigencia = $osActualizada['vigencia_contrato'] ?? [];
+
+        registrarEventoOS(
+            'ordenes_servicio',
+            'periodo_contrato',
+            $esMultimes
+                ? "Período de contrato largo configurado: {$vigencia['etiqueta_corta']} (estado conservado: {$os['estado']})"
+                : "Modalidad cambiada a Puntual (estado conservado: {$os['estado']})",
+            $idOS,
+            ['datos' => $vigencia]
+        );
+
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'message' => $esMultimes
+                ? 'Período mensual de contrato largo guardado correctamente sin alterar la aprobación de la O/S.'
+                : 'Orden de Servicio configurada como Puntual sin alterar su aprobación.',
+            'estado_conservado' => $osActualizada['estado'] ?? $os['estado'],
+            'vigencia' => $vigencia,
+        ]);
     }
 
     /**
@@ -696,6 +1042,12 @@ class OrdenesServicioControlador extends ControladorBase {
             $os = $opModelo->obtenerOSPorId($idOS);
             if (!$os) {
                 $_SESSION['error'] = 'Orden de Servicio no encontrada.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                return;
+            }
+
+            if (in_array($os['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+                $_SESSION['error'] = 'La Orden de Servicio está cerrada o archivada y no admite modificaciones.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
             }

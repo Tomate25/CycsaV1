@@ -130,6 +130,9 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                 <i class="fa-solid fa-hammer"></i> Ensayar Lote en Conjunto (<?= count($probetasPendientesLote) ?> Probetas Juntas)
             </button>
         <?php endif; ?>
+        <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$id_hoja ?>" target="_blank" class="btn-accion btn-secondary-lab" style="font-size: 13px; padding: 7px 14px;" title="Ver e imprimir Hoja de Solicitud de Laboratorio CYCSA-RT-FM-60">
+            <i class="fa-solid fa-print text-primary"></i> Hoja RT-FM-60
+        </a>
         <a href="/Cycsa/publico/laboratorio/ver-informe?id_hoja=<?= (int)$id_hoja ?>" target="_blank" class="btn-accion btn-success-lab" style="font-size: 13px; padding: 7px 14px;" title="Ver/Imprimir Informe Oficial de Ensayo (RT-FM-22) para este lote">
             <i class="fa-solid fa-file-lines"></i> Ver Informe Oficial (RT-FM-22)
         </a>

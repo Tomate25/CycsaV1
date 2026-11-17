@@ -560,10 +560,22 @@ class OperacionModelo extends ModeloBase {
                 }
             }
 
-            // Actualizar estado operativo de la O/S
-            $nuevoEstadoOS = $todosRecibidos ? 'Estado 5: Solicitud Tecnicos' : 'En Proceso';
-            $this->db->prepare("UPDATE ordenes_servicio SET estado = :nuevo_estado WHERE id = :id_os")
-                     ->execute(['nuevo_estado' => $nuevoEstadoOS, 'id_os' => $idOS]);
+            // Actualizar estado operativo de la O/S sin retroceder estados más avanzados o cerrados
+            $stmtEstActual = $this->db->prepare("SELECT estado FROM ordenes_servicio WHERE id = :id_os");
+            $stmtEstActual->execute(['id_os' => $idOS]);
+            $estadoActualOS = (string)($stmtEstActual->fetchColumn() ?: '');
+            $estadosNoRetroceder = [
+                'Estado 6: Ejecucion Ensayos',
+                'Estado 7: Revision Resultados',
+                'Finalizado',
+                'Archivado',
+                'Cerrado',
+            ];
+            if (!in_array($estadoActualOS, $estadosNoRetroceder, true)) {
+                $nuevoEstadoOS = $todosRecibidos ? 'Estado 5: Solicitud Tecnicos' : 'En Proceso';
+                $this->db->prepare("UPDATE ordenes_servicio SET estado = :nuevo_estado WHERE id = :id_os")
+                         ->execute(['nuevo_estado' => $nuevoEstadoOS, 'id_os' => $idOS]);
+            }
 
             $this->db->commit();
             try {
@@ -1090,18 +1102,7 @@ class OperacionModelo extends ModeloBase {
                 return false;
             }
 
-            $estadosAprobados = [
-                'Aprobada',
-                'Estado 3: Aprobada',
-                'Estado 3: Ingreso Directo',
-                'Estado 3A: Programacion Muestreo',
-                'Estado 3B: Ejecucion Muestreo',
-                'Estado 4: Ingreso Laboratorio',
-                'Estado 5: Solicitud Tecnicos',
-                'Estado 6: Ejecucion Ensayos'
-            ];
-
-            if (!in_array($estadoOS, $estadosAprobados, true)) {
+            if (!esOrdenServicioAprobada((string)$estadoOS)) {
                 $this->ultimoError = 'La Orden de Servicio debe estar en estado Aprobada para registrar o modificar Hojas de Solicitud (CYCSA-RT-FM-13).';
                 error_log("Error en guardarHojaSolicitud: " . $this->ultimoError);
                 return false;
@@ -1209,17 +1210,24 @@ class OperacionModelo extends ModeloBase {
                 }
             }
 
-            // Correlativo de número de registro si viene vacío
-            if (empty($numeroRegistro)) {
-                if ($existing && !empty($existing['numero_registro'])) {
+            // Correlativo global único de número de registro RT-FM-13 (01, 02, 03, ... infinito)
+            if ($existing) {
+                if (empty($numeroRegistro) && !empty($existing['numero_registro'])) {
                     $numeroRegistro = $existing['numero_registro'];
-                } else {
-                    $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM hojas_solicitud WHERE id_os = :id_os");
-                    $stmtCount->execute(['id_os' => $idOS]);
-                    $cantPrevias = (int)$stmtCount->fetchColumn();
-                    $numeroRegistro = ($cantPrevias > 0) 
-                        ? sprintf("%05d-%02d", $idOS, $cantPrevias + 1)
-                        : sprintf("%05d", $idOS);
+                }
+            } else {
+                $esFormatoHeredado = ($numeroRegistro !== '' && (
+                    preg_match('/^\d+-\d+$/', $numeroRegistro) ||
+                    preg_match('/^0{2,}\d{3,}$/', $numeroRegistro)
+                ));
+                $colisiona = false;
+                if ($numeroRegistro !== '' && !$esFormatoHeredado) {
+                    $stmtCol = $this->db->prepare("SELECT id FROM hojas_solicitud WHERE numero_registro = :num LIMIT 1");
+                    $stmtCol->execute(['num' => $numeroRegistro]);
+                    $colisiona = (bool)$stmtCol->fetchColumn();
+                }
+                if (empty($numeroRegistro) || $esFormatoHeredado || $colisiona) {
+                    $numeroRegistro = $this->obtenerSiguienteNumeroRegistroGlobal();
                 }
             }
             
@@ -1234,8 +1242,9 @@ class OperacionModelo extends ModeloBase {
 
             $muestras = json_decode($muestrasJson, true) ?: [];
 
-            // Detectar si las muestras entrantes traen un prefijo formal (MC o MS)
-            $prefijoParaAsignar = $prefijoMuestraOficial;
+            // Detectar si el formulario o las muestras entrantes traen un prefijo formal (MC o MS)
+            $prefijoExplicit = strtoupper(trim((string)($datos['prefijo_seleccionado'] ?? '')));
+            $prefijoParaAsignar = in_array($prefijoExplicit, ['MC', 'MS'], true) ? $prefijoExplicit : $prefijoMuestraOficial;
             foreach ($muestras as $m) {
                 $nom = trim($m['nombre_muestra'] ?? ($m['codigo_muestra'] ?? ''));
                 if (preg_match('/^(MC|MS)-/i', $nom, $pMat)) {
@@ -1514,6 +1523,40 @@ class OperacionModelo extends ModeloBase {
     /**
      * Obtiene el siguiente número correlativo para la hoja de solicitud CYCSA-RT-FM-13 de una cotización.
      */
+    /**
+     * Calcula el siguiente consecutivo global único para hojas RT-FM-13 en formato 01, 02, 03... hasta infinito.
+     */
+    public function obtenerSiguienteNumeroRegistroGlobal(): string {
+        $rows = $this->db->query("SELECT numero_registro FROM hojas_solicitud WHERE numero_registro IS NOT NULL AND numero_registro <> ''")
+                         ->fetchAll(PDO::FETCH_COLUMN);
+
+        $maxVal = 0;
+        $usados = [];
+        foreach ($rows as $raw) {
+            $val = trim((string)$raw);
+            if ($val === '') {
+                continue;
+            }
+            $usados[$val] = true;
+            if (preg_match('/^\d+$/', $val)) {
+                $intVal = (int)$val;
+                // Evitar que números manuales largos de prueba (ej. 99887) disparen el consecutivo real si hay pocos registros
+                if ($intVal <= 50000 && $intVal > $maxVal) {
+                    $maxVal = $intVal;
+                }
+            }
+        }
+
+        $siguiente = max(1, $maxVal + 1);
+        $candidato = str_pad((string)$siguiente, 2, '0', STR_PAD_LEFT);
+        while (isset($usados[$candidato])) {
+            $siguiente++;
+            $candidato = str_pad((string)$siguiente, 2, '0', STR_PAD_LEFT);
+        }
+
+        return $candidato;
+    }
+
     public function obtenerSiguienteNumeroHojaSolicitud(int $idCotizacion): int {
         $sql = "SELECT COUNT(*) FROM hojas_solicitud hs
                 JOIN ordenes_servicio os ON hs.id_os = os.id
@@ -1777,5 +1820,319 @@ class OperacionModelo extends ModeloBase {
         }
 
         return array_keys($usados);
+    }
+
+    /**
+     * Ingresa automáticamente las muestras de una Hoja RT-FM-13 a Laboratorio
+     * (recepcion_muestras + lotes_muestras + especimenes + planes_rotura) de forma idempotente,
+     * excluyendo ensayos de compactación in situ y evitando aprobaciones manuales intermedias.
+     *
+     * @return array<string, mixed>
+     */
+    public function ingresarMuestrasHojaALaboratorio(
+        int $idOS,
+        int $idHoja = 0,
+        int $usuarioId = 0,
+        bool $sincronizarMatrizEnRevision = false,
+        array $opciones = []
+    ): array {
+        $os = $this->obtenerOSPorId($idOS);
+        if (!$os) {
+            return ['ok' => false, 'mensaje' => 'Orden de Servicio no encontrada.'];
+        }
+
+        $hoja = $this->obtenerHojaSolicitudPorOS($idOS, $idHoja > 0 ? $idHoja : null);
+        $actualHojaId = $idHoja > 0 ? $idHoja : (int)($hoja['id'] ?? 0);
+
+        // Defensa en profundidad: Ensayos de compactación in situ no pasan por Laboratorio
+        if ($hoja && !empty($hoja['id_detalle_cotizacion'])) {
+            $stmtDet = $this->db->prepare("SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre
+                                           FROM cotizacion_detalles cd
+                                           LEFT JOIN productos p ON cd.id_producto = p.id
+                                           LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                                           WHERE cd.id = :id");
+            $stmtDet->execute(['id' => (int)$hoja['id_detalle_cotizacion']]);
+            $detHoja = $stmtDet->fetch(PDO::FETCH_ASSOC);
+            if ($detHoja && function_exists('esItemCompactacion') && esItemCompactacion($detHoja)) {
+                return [
+                    'ok' => false,
+                    'compactacion' => true,
+                    'mensaje' => 'Los ensayos de compactación in situ no requieren recepción ni custodia física en laboratorio. Su captura técnica se realiza directamente en Operaciones LIMS.',
+                ];
+            }
+        }
+
+        // Idempotencia: si esta hoja ya tiene muestras registradas en recepcion_muestras, no duplicar
+        if ($actualHojaId > 0) {
+            $stmtExist = $this->db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_os = :id_os AND id_hoja = :id_hoja");
+            $stmtExist->execute(['id_os' => $idOS, 'id_hoja' => $actualHojaId]);
+            if ((int)$stmtExist->fetchColumn() > 0) {
+                return [
+                    'ok' => true,
+                    'ya_existia' => true,
+                    'id_hoja' => $actualHojaId,
+                    'hoja' => $hoja,
+                    'tipo_muestra' => !empty($os['requiere_muestreo']) ? 'Campo' : 'Laboratorio',
+                ];
+            }
+        }
+
+        $muestrasDeclaradasRT = [];
+        if ($hoja && !empty($hoja['muestras_json'])) {
+            $muestrasDeclaradasRT = json_decode((string)$hoja['muestras_json'], true) ?: [];
+        }
+
+        $servicios = $this->filtrarDetallesPermitidos($idOS, $this->obtenerDetallesCotizacion((int)$os['id_cotizacion']));
+        $idDetalleCotizacion = (int)($opciones['id_detalle_cotizacion'] ?? ($hoja['id_detalle_cotizacion'] ?? ($servicios[0]['id'] ?? 0)));
+        if (empty($hoja['id_detalle_cotizacion']) && !empty($servicios) && function_exists('esOrdenSoloCompactacion') && esOrdenSoloCompactacion($servicios)) {
+            return [
+                'ok' => false,
+                'compactacion' => true,
+                'mensaje' => 'Los ensayos de compactación in situ no requieren recepción ni custodia física en laboratorio.',
+            ];
+        }
+
+        $tipoMuestraCalculado = !empty($os['requiere_muestreo']) ? 'Campo' : 'Laboratorio';
+        if (!empty($muestrasDeclaradasRT[0]['nombre_muestra'])) {
+            $primCod = strtoupper(trim((string)$muestrasDeclaradasRT[0]['nombre_muestra']));
+            if (str_starts_with($primCod, 'MS-')) {
+                $tipoMuestraCalculado = 'Laboratorio';
+            } elseif (str_starts_with($primCod, 'MC-')) {
+                $tipoMuestraCalculado = 'Campo';
+            }
+        }
+
+        $plantillaIdHoja = null;
+        if ($actualHojaId > 0) {
+            $stmtPlHoja = $this->db->prepare("SELECT plantilla_id FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid AND plantilla_id IS NOT NULL AND plantilla_id > 0 ORDER BY orden ASC, id ASC LIMIT 1");
+            $stmtPlHoja->execute(['hid' => $actualHojaId]);
+            $plVal = (int)$stmtPlHoja->fetchColumn();
+            if ($plVal > 0) {
+                $plantillaIdHoja = $plVal;
+            }
+        }
+        if ($plantillaIdHoja === null && $idDetalleCotizacion > 0) {
+            $stmtProd = $this->db->prepare("SELECT id_producto FROM cotizacion_detalles WHERE id = :id");
+            $stmtProd->execute(['id' => $idDetalleCotizacion]);
+            $idProdCot = (int)$stmtProd->fetchColumn();
+            if ($idProdCot > 0) {
+                $plMod = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
+                $sugPl = $plMod->obtenerPlantillaSugerida($idProdCot);
+                if (!empty($sugPl['id'])) {
+                    $plantillaIdHoja = (int)$sugPl['id'];
+                }
+            }
+        }
+
+        $muestrasPayload = [];
+        if (!empty($muestrasDeclaradasRT)) {
+            foreach ($muestrasDeclaradasRT as $idx => $mDecl) {
+                $nombreCampo = trim((string)($mDecl['nombre_muestra'] ?? ('M-' . ($idx + 1))));
+                $descLote = trim((string)($mDecl['descripcion'] ?? $nombreCampo));
+                $plMuestra = !empty($mDecl['plantilla_id']) ? (int)$mDecl['plantilla_id'] : $plantillaIdHoja;
+
+                $muestrasPayload[] = [
+                    'id_detalle_cotizacion' => $idDetalleCotizacion,
+                    'plantilla_id' => $plMuestra,
+                    'orden_en_lote' => $idx + 1,
+                    'tipo_muestra' => $tipoMuestraCalculado,
+                    'id_cilindro' => $nombreCampo,
+                    'codigo_campo' => $nombreCampo,
+                    'is_qa_qc' => 0,
+                    'nombre_lote' => $descLote,
+                    'fecha_moldeo' => !empty($hoja['fecha_hora_toma_muestra']) ? date('Y-m-d', strtotime((string)$hoja['fecha_hora_toma_muestra'])) : date('Y-m-d'),
+                    'diseno_resistencia' => '',
+                    'procedimiento_muestreo' => trim((string)($opciones['procedimiento_muestreo'] ?? 'ASTM / ISO 17025')),
+                    'edades_dias' => [],
+                    'edades_identificadores' => [],
+                ];
+            }
+        } else {
+            $muestrasPayload[] = [
+                'id_detalle_cotizacion' => $idDetalleCotizacion,
+                'plantilla_id' => $plantillaIdHoja,
+                'orden_en_lote' => 1,
+                'tipo_muestra' => $tipoMuestraCalculado,
+                'id_cilindro' => 'M-01',
+                'codigo_campo' => 'M-01',
+                'is_qa_qc' => 0,
+                'nombre_lote' => 'Muestra General',
+                'fecha_moldeo' => date('Y-m-d'),
+                'procedimiento_muestreo' => 'ISO 17025',
+            ];
+        }
+
+        $recibidoPorFinal = $usuarioId > 0 ? $usuarioId : (int)($_SESSION['usuario_id'] ?? 1);
+        $payloadRecepcion = [
+            'id_os' => $idOS,
+            'id_hoja' => $actualHojaId > 0 ? $actualHojaId : null,
+            'plantilla_id' => $plantillaIdHoja,
+            'limpiar_previas' => false,
+            'id_detalle_cotizacion' => $idDetalleCotizacion,
+            'tipo_muestra' => $tipoMuestraCalculado,
+            'fecha_recepcion' => !empty($opciones['fecha_recepcion']) ? $opciones['fecha_recepcion'] : date('Y-m-d H:i:s'),
+            'recibido_por' => $recibidoPorFinal,
+            'entregado_por' => trim((string)($opciones['entregado_por'] ?? ($hoja['nombre_persona_entrega_muestra'] ?? 'Recepción / Cliente'))),
+            'observaciones' => trim((string)($opciones['observaciones'] ?? 'Ingreso automático directo desde Hoja CYCSA-RT-FM-13 (ISO 17025)')),
+            'muestras_recibidas_json' => json_encode($muestrasPayload),
+        ];
+
+        if (!$this->registrarRecepcion($payloadRecepcion)) {
+            $detalleErr = $this->obtenerUltimoErrorRecepcion() ?? '';
+            return [
+                'ok' => false,
+                'mensaje' => str_contains($detalleErr, 'no está habilitado')
+                    ? $detalleErr
+                    : 'Ocurrió un error al registrar el ingreso de muestras al laboratorio.',
+            ];
+        }
+
+        $filasMatriz = [];
+        if ($actualHojaId > 0 && $idDetalleCotizacion > 0) {
+            $stmtMatSync = $this->db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
+            $stmtMatSync->execute(['id' => $idDetalleCotizacion]);
+            $resJsonRaw = $stmtMatSync->fetchColumn();
+            if (!empty($resJsonRaw)) {
+                $resMatArr = json_decode((string)$resJsonRaw, true);
+                if (is_array($resMatArr) && !empty($resMatArr['filas'])) {
+                    $filasMatriz = $resMatArr['filas'];
+                    if (function_exists('sincronizarReplicasMatrizConLab')) {
+                        sincronizarReplicasMatrizConLab($this->db, $idOS, $actualHojaId, $idDetalleCotizacion, $resMatArr['filas']);
+                    }
+                }
+            }
+        }
+
+        $stmtMuestrasLote = $this->db->prepare("
+            SELECT rm.id AS muestra_id, rm.codigo_muestra, lm.fecha_moldeo, rm.orden_en_lote
+            FROM recepcion_muestras rm
+            LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+            WHERE rm.id_os = :id_os " . ($actualHojaId > 0 ? "AND rm.id_hoja = :id_hoja" : "") . "
+            ORDER BY rm.orden_en_lote ASC, rm.id ASC
+        ");
+        $paramsML = ['id_os' => $idOS];
+        if ($actualHojaId > 0) {
+            $paramsML['id_hoja'] = $actualHojaId;
+        }
+        $stmtMuestrasLote->execute($paramsML);
+        $muestrasObtenidas = $stmtMuestrasLote->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($filasMatriz)) {
+            $cantMuestras = count($muestrasObtenidas);
+            $edadesEstandar = match ($cantMuestras) {
+                1 => [28],
+                2 => [7, 28],
+                3 => [7, 14, 28],
+                4 => [7, 14, 28, 28],
+                5 => [7, 7, 14, 28, 28],
+                default => (function ($c) {
+                    $base = [3, 7, 7, 14, 28, 28];
+                    while (count($base) < $c) {
+                        $base[] = 28;
+                    }
+                    return array_slice($base, 0, $c);
+                })($cantMuestras),
+            };
+
+            $mapaDatosRecHoja = ($actualHojaId > 0 && function_exists('construirMapaDatosRecepcionPorHoja'))
+                ? construirMapaDatosRecepcionPorHoja($this->db, $actualHojaId)
+                : [];
+
+            $filasInicialesMatriz = [];
+            foreach ($muestrasObtenidas as $idx => $mItem) {
+                $codMKey = strtoupper(trim((string)($mItem['codigo_muestra'] ?? '')));
+                $recM = ($codMKey !== '' && isset($mapaDatosRecHoja[$codMKey])) ? $mapaDatosRecHoja[$codMKey] : [];
+
+                $edadDef = (!empty($recM) && function_exists('buscarValorEnFilaPHP') && buscarValorEnFilaPHP($recM, 'Edad (Días)') !== '')
+                    ? (int)buscarValorEnFilaPHP($recM, 'Edad (Días)')
+                    : (int)($edadesEstandar[$idx] ?? 28);
+                $fMolRec = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Fecha de Fabricación') : '';
+                $fMoldeo = ($fMolRec !== '' && strtotime($fMolRec) !== false)
+                    ? date('Y-m-d', strtotime($fMolRec))
+                    : (!empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d'));
+                $fProgRec = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Fecha de Ensayo') : '';
+                $fProg = ($fProgRec !== '' && strtotime($fProgRec) !== false)
+                    ? date('Y-m-d', strtotime($fProgRec))
+                    : date('Y-m-d', strtotime($fMoldeo . " + {$edadDef} days"));
+
+                $datosMat = [
+                    'edad_dias' => $edadDef,
+                    'fecha_rotura_programada' => $fProg,
+                    'fecha_fabricacion' => $fMoldeo,
+                    'tamano_cilindro' => '15 x 30 cm',
+                    'area' => 14.137,
+                ];
+                if (function_exists('sincronizarEspecimenYPlanFila')) {
+                    sincronizarEspecimenYPlanFila($this->db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
+                }
+
+                if ($sincronizarMatrizEnRevision) {
+                    $filaInit = [
+                        'Código laboratorio' => (string)$mItem['codigo_muestra'],
+                        'Nombre muestra' => 'Probeta ' . ($idx + 1),
+                        'Área (in²)' => '14.137',
+                        'Reven. (in)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (in)') : '',
+                        'Reven. (cm)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (cm)') : '',
+                        'Temp. (°C)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Temp. (°C)') : '',
+                        'Carga (lb)' => '',
+                        'Peso Volumétrico (kg/m³)' => '',
+                        'Diseño de concreto (lb/in²)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Diseño de concreto (lb/in²)') : '',
+                        'R. Compresión (lb/in²)' => '',
+                        'R. Compresión (kg/cm²)' => '',
+                        'Fecha de Fabricación' => $fMoldeo,
+                        'Fecha de Ensayo' => $fProg,
+                        'Edad (Días)' => (string)$edadDef,
+                    ];
+                    if (!empty($recM) && function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
+                        $filaInit = fusionarDatosRecepcionEnFilaMatriz($filaInit, $recM, [], true);
+                    }
+                    $filasInicialesMatriz[] = $filaInit;
+                }
+            }
+
+            if ($sincronizarMatrizEnRevision && $idDetalleCotizacion > 0 && !empty($filasInicialesMatriz)) {
+                $stmtCheckDet = $this->db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
+                $stmtCheckDet->execute(['id' => $idDetalleCotizacion]);
+                $detCurrJson = $stmtCheckDet->fetchColumn();
+                if (empty($detCurrJson) || $detCurrJson === '[]') {
+                    $payloadMat = [
+                        'version_actual' => 1,
+                        'filas' => $filasInicialesMatriz,
+                        'metadatos' => [],
+                        'revision' => [
+                            'estado' => 'en_revision',
+                            'fecha_envio' => date('Y-m-d H:i:s'),
+                            'usuario_envio' => $_SESSION['usuario_nombre'] ?? 'Laboratorio',
+                            'historial' => [],
+                        ],
+                    ];
+                    $this->db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
+                        ->execute(['json' => json_encode($payloadMat, JSON_UNESCAPED_UNICODE), 'id' => $idDetalleCotizacion]);
+                }
+            }
+        } else {
+            foreach ($muestrasObtenidas as $mItem) {
+                $stmtChkPlan = $this->db->prepare("SELECT id FROM planes_rotura WHERE muestra_id = :mid LIMIT 1");
+                $stmtChkPlan->execute(['mid' => (int)$mItem['muestra_id']]);
+                if (!$stmtChkPlan->fetchColumn() && function_exists('obtenerDatosMuestraDesdeMatriz') && function_exists('sincronizarEspecimenYPlanFila')) {
+                    $datosMat = obtenerDatosMuestraDesdeMatriz($filasMatriz, (string)$mItem['codigo_muestra']);
+                    if (empty($datosMat['edad_dias'])) {
+                        $datosMat['edad_dias'] = 28;
+                        $fMoldeo = !empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d');
+                        $datosMat['fecha_rotura_programada'] = date('Y-m-d', strtotime($fMoldeo . ' + 28 days'));
+                    }
+                    sincronizarEspecimenYPlanFila($this->db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
+                }
+            }
+        }
+
+        return [
+            'ok' => true,
+            'ya_existia' => false,
+            'id_hoja' => $actualHojaId,
+            'hoja' => $hoja,
+            'tipo_muestra' => $tipoMuestraCalculado,
+            'total_ingresadas' => count($muestrasObtenidas),
+        ];
     }
 }

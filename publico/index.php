@@ -38,7 +38,29 @@ try {
     $app->correr();
 } catch (\Throwable $e) {
     error_log("FATAL: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine() . "\n" . $e->getTraceAsString());
-    
+
+    $esPeticionJson = (
+        strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest' ||
+        strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false
+    );
+
+    if ($esPeticionJson) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        $mostrarDetalleJson = (
+            ($_ENV['APP_ENV'] ?? 'produccion') === 'local' ||
+            ($_ENV['APP_DEBUG'] ?? '0') === '1' ||
+            (!empty($_SESSION['usuario_rol']) && (int)$_SESSION['usuario_rol'] === 1)
+        );
+        echo json_encode([
+            'status' => 'error',
+            'message' => $mostrarDetalleJson ? $e->getMessage() : 'Error interno del servidor al procesar la solicitud.',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     $mostrarDetalle = (
         ($_ENV['APP_ENV'] ?? 'produccion') === 'local' ||
         ($_ENV['APP_DEBUG'] ?? '0') === '1' ||

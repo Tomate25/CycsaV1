@@ -194,9 +194,7 @@ class HojasServicioControlador extends ControladorBase {
             $fechaLlegadaLab = date('Y-m-d H:i', strtotime($osCompleta['programacion_muestreo']['fecha_llegada']));
         }
 
-        $proximoNumeroRegistro = ($totalHojas > 0)
-            ? sprintf("%05d-%02d", $idOS, $totalHojas + 1)
-            : sprintf("%05d", $idOS);
+        $proximoNumeroRegistro = $modelo->obtenerSiguienteNumeroRegistroGlobal();
 
         if (!$hoja || $esNueva) {
             $hoja = array_merge([
@@ -229,7 +227,7 @@ class HojasServicioControlador extends ControladorBase {
             ], $detectado['flags']);
         } else {
             if (empty($hoja['codigo_documento'])) $hoja['codigo_documento'] = 'CYCSA-RT-FM-13';
-            if (empty($hoja['numero_registro'])) $hoja['numero_registro'] = sprintf("%05d", $idOS);
+            if (empty($hoja['numero_registro'])) $hoja['numero_registro'] = str_pad((string)($hoja['id'] ?? $idOS), 2, '0', STR_PAD_LEFT);
             if (empty($hoja['nombre_empresa_o_cliente'])) $hoja['nombre_empresa_o_cliente'] = $nombreCliente;
             if (empty($hoja['razon_social'])) $hoja['razon_social'] = $nombreCliente;
             if (empty($hoja['direccion_proyecto'])) $hoja['direccion_proyecto'] = $direccionProyecto;
@@ -286,7 +284,9 @@ class HojasServicioControlador extends ControladorBase {
             $cantSugerida = count($muestrasActuales);
         }
 
-        $siguienteConsecutivoMuestra = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), $prefijoMuestra, $idOS);
+        $siguienteConsecutivoMC = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), 'MC', $idOS);
+        $siguienteConsecutivoMS = $modelo->obtenerSiguienteConsecutivoMuestra((int)date('Y'), 'MS', $idOS);
+        $siguienteConsecutivoMuestra = ($prefijoMuestra === 'MC') ? $siguienteConsecutivoMC : $siguienteConsecutivoMS;
 
         if ($esNueva) {
             if ($esCampo) {
@@ -385,6 +385,8 @@ class HojasServicioControlador extends ControladorBase {
             ],
             'prefijo_muestra' => $prefijoMuestra,
             'siguiente_consecutivo_muestra' => $siguienteConsecutivoMuestra,
+            'siguiente_consecutivo_mc' => $siguienteConsecutivoMC,
+            'siguiente_consecutivo_ms' => $siguienteConsecutivoMS,
             'tipo_origen' => $tipoOrigen,
             'cantidad_muestras_sugerida' => $cantSugerida,
             'total_contratado' => $totalContratado,
@@ -438,17 +440,7 @@ class HojasServicioControlador extends ControladorBase {
             }
 
             // Gate duro RT-FM-13: Validar que la O/S esté en estado de aprobación válido
-            $estadosAprobados = [
-                'Aprobada',
-                'Estado 3: Aprobada',
-                'Estado 3: Ingreso Directo',
-                'Estado 3A: Programacion Muestreo',
-                'Estado 3B: Ejecucion Muestreo',
-                'Estado 4: Ingreso Laboratorio',
-                'Estado 5: Solicitud Tecnicos',
-                'Estado 6: Ejecucion Ensayos'
-            ];
-            if (!in_array($os['estado'], $estadosAprobados, true)) {
+            if (!esOrdenServicioAprobada($os['estado'] ?? null)) {
                 $_SESSION['error'] = 'La Orden de Servicio debe estar en estado Aprobada para registrar o modificar Hojas de Solicitud (CYCSA-RT-FM-13).';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
                 return;
@@ -642,9 +634,32 @@ class HojasServicioControlador extends ControladorBase {
                     'entidad_id' => (int)($hoja['id'] ?? $idHojaGuardada),
                     'datos' => ['id_hoja' => (int)($hoja['id'] ?? $idHojaGuardada)],
                 ]);
+
+                // Ingreso automático e idempotente de las muestras nuevas a Laboratorio (sin paso manual de Aceptar/Observar)
+                if (
+                    $idHojaGuardada > 0 &&
+                    !empty($muestrasSaneadas) &&
+                    function_exists('esOrdenServicioAprobada') &&
+                    esOrdenServicioAprobada((string)($os['estado'] ?? ''))
+                ) {
+                    $modelo->ingresarMuestrasHojaALaboratorio($idOS, (int)$idHojaGuardada, $usuarioId, false);
+                }
                 
                 // Nota: Si la O/S estaba "Observada", se mantiene su estado para que el usuario pueda enviarla a revisión formal con el botón correspondiente.
-                $redirectDestino = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/ordenes-servicio';
+                if (!empty($datos['redirect_to'])) {
+                    $redirectDestino = $datos['redirect_to'];
+                } else {
+                    $dbRec = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                    $infoRec = obtenerCamposRecepcionParaDetalle(
+                        $dbRec,
+                        !empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : null,
+                        !empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null
+                    );
+                    $tieneCamposRecepcion = !empty($infoRec['campos_recepcion']);
+                    $redirectDestino = $tieneCamposRecepcion
+                        ? '/Cycsa/publico/ordenes-servicio?id_os=' . $idOS . '&recepcion_hoja=' . (int)$idHojaGuardada
+                        : '/Cycsa/publico/ordenes-servicio?id_os=' . $idOS;
+                }
                 $_SESSION['exito'] = 'Hoja de Solicitud de Servicio CYCSA-RT-FM-13 (Reg: ' . $numReg . ') guardada exitosamente y PDF generado. <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=' . $idOS . '&id_hoja=' . $idHojaGuardada . '" target="_blank" class="alert-link text-decoration-underline ms-2"><i class="fa-solid fa-file-pdf"></i> Ver PDF Oficial</a>.';
                 $respuesta->redirigir($redirectDestino);
                 return;
@@ -1017,5 +1032,331 @@ class HojasServicioControlador extends ControladorBase {
             'naturaleza_muestra_str' => implode(', ', array_keys($nats)),
             'flags' => $flags
         ];
+    }
+
+    /**
+     * AJAX: Retorna los campos de Recepción (Órdenes de Servicio) para una Hoja RT-FM-13
+     * específica y todas las N muestras declaradas en ella, junto al listado de todas las
+     * RT-FM-13 de la O/S para navegar entre hojas sin cerrar el flujo.
+     */
+    public function datosRecepcionAjax(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $idHoja = (int)($_GET['id_hoja'] ?? 0);
+        $idOS = (int)($_GET['id_os'] ?? 0);
+
+        $modelo = new OperacionModelo();
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+
+        $hoja = null;
+        if ($idHoja > 0) {
+            $hoja = $modelo->obtenerHojaSolicitudPorId($idHoja);
+            if ($hoja) {
+                $idOS = (int)$hoja['id_os'];
+            }
+        } elseif ($idOS > 0) {
+            $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS);
+            if ($hoja) {
+                $idHoja = (int)$hoja['id'];
+            }
+        }
+
+        if (!$hoja || $idOS <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Hoja RT-FM-13 no encontrada.'], 404);
+            return;
+        }
+
+        $os = $modelo->obtenerOSPorId($idOS);
+        if (!$os) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio no encontrada.'], 404);
+            return;
+        }
+
+        $todasHojas = $modelo->obtenerHojasSolicitudPorOS($idOS);
+        $pltModelo = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
+
+        $resumenHojas = [];
+        foreach ($todasHojas as $th) {
+            $thId = (int)$th['id'];
+            $infoTh = obtenerCamposRecepcionParaDetalle(
+                $db,
+                !empty($th['id_detalle_cotizacion']) ? (int)$th['id_detalle_cotizacion'] : null,
+                !empty($th['id_producto']) ? (int)$th['id_producto'] : null
+            );
+            $camposRecTh = $infoTh['campos_recepcion'];
+            $mapaRecTh = construirMapaDatosRecepcionPorHoja($db, $thId);
+            $mListTh = $pltModelo->obtenerDetallesPorHoja($thId);
+            if (empty($mListTh)) {
+                $mListTh = json_decode($th['muestras_json'] ?? '[]', true) ?: [];
+            }
+            $totalM = count($mListTh);
+            $completas = 0;
+            if (!empty($camposRecTh)) {
+                foreach ($mListTh as $mRow) {
+                    $codM = strtoupper(trim((string)($mRow['codigo_muestra'] ?? ($mRow['nombre_muestra'] ?? ''))));
+                    if ($codM !== '' && !empty($mapaRecTh[$codM])) {
+                        $completas++;
+                    }
+                }
+            }
+            $resumenHojas[] = [
+                'id' => $thId,
+                'numero_registro' => $th['numero_registro'] ?? ('#' . $thId),
+                'descripcion_ensayo' => $th['descripcion_ensayo'] ?? ($infoTh['formato_nombre'] ?: 'Ensayo'),
+                'formato_nombre' => $infoTh['formato_nombre'] ?? '',
+                'codigo_formato' => $infoTh['codigo_formato'] ?? '',
+                'requiere_datos_recepcion' => !empty($camposRecTh),
+                'total_muestras' => $totalM,
+                'muestras_con_datos' => $completas,
+            ];
+        }
+
+        $infoFormato = obtenerCamposRecepcionParaDetalle(
+            $db,
+            !empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : null,
+            !empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null
+        );
+        $camposRecepcion = $infoFormato['campos_recepcion'];
+        $camposTecnico = $infoFormato['campos_tecnico'];
+
+        // Precargar mapa de recepción existente + fallback desde cotizacion_detalles si ya tenía valores
+        $mapaRecepcion = construirMapaDatosRecepcionPorHoja($db, $idHoja);
+        $mapaDesdeMatriz = [];
+        if (!empty($hoja['id_detalle_cotizacion'])) {
+            $stmtMat = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+            $stmtMat->execute(['id' => (int)$hoja['id_detalle_cotizacion']]);
+            $resJson = $stmtMat->fetchColumn();
+            $decMat = is_string($resJson) ? (json_decode($resJson, true) ?: []) : [];
+            $filasMat = isset($decMat['filas']) && is_array($decMat['filas']) ? $decMat['filas'] : (isset($decMat[0]) && is_array($decMat[0]) ? $decMat : []);
+            foreach ($filasMat as $fm) {
+                if (!is_array($fm)) continue;
+                $codF = strtoupper(trim((string)($fm['Código laboratorio'] ?? ($fm['Codigo laboratorio'] ?? ($fm['codigo_lab'] ?? '')))));
+                if ($codF !== '') {
+                    $mapaDesdeMatriz[$codF] = $fm;
+                }
+            }
+        }
+
+        $detalles = $pltModelo->obtenerDetallesPorHoja($idHoja);
+        $muestrasSalida = [];
+        if (!empty($detalles)) {
+            foreach ($detalles as $d) {
+                $cod = trim((string)($d['codigo_muestra'] ?? ''));
+                $codKey = strtoupper($cod);
+                $datosGuardados = $mapaRecepcion[$codKey] ?? [];
+                if (empty($datosGuardados) && isset($mapaDesdeMatriz[$codKey])) {
+                    foreach ($camposRecepcion as $cr) {
+                        $valMat = buscarValorEnFilaPHP($mapaDesdeMatriz[$codKey], (string)$cr['nombre']);
+                        if ($valMat !== '') {
+                            $datosGuardados[$cr['nombre']] = $valMat;
+                        }
+                    }
+                }
+                $muestrasSalida[] = [
+                    'codigo_muestra' => $cod,
+                    'descripcion_ubicacion' => (string)($d['descripcion_ubicacion'] ?? ''),
+                    'observacion_edad' => (string)($d['observacion_edad'] ?? ''),
+                    'datos_recepcion' => $datosGuardados,
+                ];
+            }
+        } else {
+            $mArr = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
+            foreach ($mArr as $m) {
+                $cod = trim((string)($m['nombre_muestra'] ?? ($m['codigo_muestra'] ?? '')));
+                if ($cod === '') continue;
+                $codKey = strtoupper($cod);
+                $datosGuardados = $mapaRecepcion[$codKey] ?? [];
+                if (empty($datosGuardados) && isset($mapaDesdeMatriz[$codKey])) {
+                    foreach ($camposRecepcion as $cr) {
+                        $valMat = buscarValorEnFilaPHP($mapaDesdeMatriz[$codKey], (string)$cr['nombre']);
+                        if ($valMat !== '') {
+                            $datosGuardados[$cr['nombre']] = $valMat;
+                        }
+                    }
+                }
+                $muestrasSalida[] = [
+                    'codigo_muestra' => $cod,
+                    'descripcion_ubicacion' => (string)($m['descripcion'] ?? ''),
+                    'observacion_edad' => (string)($m['info_importante'] ?? ''),
+                    'datos_recepcion' => $datosGuardados,
+                ];
+            }
+        }
+
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'os' => [
+                'id' => (int)$os['id'],
+                'codigo_os' => $os['codigo_os'],
+                'estado' => $os['estado'] ?? '',
+                'solo_lectura' => in_array((string)($os['estado'] ?? ''), ['Finalizado', 'Archivado', 'Cerrado'], true),
+            ],
+            'hoja' => [
+                'id' => $idHoja,
+                'numero_registro' => $hoja['numero_registro'] ?? ('#' . $idHoja),
+                'descripcion_ensayo' => $hoja['descripcion_ensayo'] ?? ($infoFormato['formato_nombre'] ?: 'Ensayo'),
+                'formato_nombre' => $infoFormato['formato_nombre'] ?? '',
+                'codigo_formato' => $infoFormato['codigo_formato'] ?? '',
+            ],
+            'campos_recepcion' => $camposRecepcion,
+            'campos_tecnico' => $camposTecnico,
+            'muestras' => $muestrasSalida,
+            'todas_las_hojas' => $resumenHojas,
+        ]);
+    }
+
+    /**
+     * Guarda los datos de Recepción capturados en Órdenes de Servicio por cada RT-FM-13
+     * y para cada una de sus N muestras, sincronizando hacia la matriz técnica en Operaciones.
+     */
+    public function guardarDatosRecepcion(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $this->verificarPermiso($respuesta, 'crear_editar');
+
+        $esAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+            || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false);
+
+        $responderError = static function (string $mensaje, int $codigo = 400) use ($respuesta, $esAjax): void {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => $mensaje], $codigo);
+                return;
+            }
+            $_SESSION['error'] = $mensaje;
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+        };
+
+        if (!$peticion->esPost()) {
+            $responderError('Método no permitido.', 405);
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+        if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+            $responderError('Token CSRF inválido o sesión expirada.', 403);
+            return;
+        }
+
+        $idHoja = (int)($datos['id_hoja'] ?? 0);
+        if ($idHoja <= 0) {
+            $responderError('Hoja RT-FM-13 inválida.');
+            return;
+        }
+
+        $modelo = new OperacionModelo();
+        $hoja = $modelo->obtenerHojaSolicitudPorId($idHoja);
+        if (!$hoja) {
+            $responderError('Hoja RT-FM-13 no encontrada.', 404);
+            return;
+        }
+
+        $idOS = (int)$hoja['id_os'];
+        $os = $modelo->obtenerOSPorId($idOS);
+        $estadoOS = (string)($os['estado'] ?? '');
+        if (!$os || in_array($estadoOS, ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+            $responderError('La Orden de Servicio está cerrada o archivada y no admite modificaciones.', 409);
+            return;
+        }
+        if (!esOrdenServicioAprobada($estadoOS)) {
+            $responderError('La Orden de Servicio debe estar aprobada para registrar datos de recepción.', 409);
+            return;
+        }
+
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        \Cycsa\Modulos\Configuracion\Servicios\MigradorServicio::asegurarTablas($db);
+
+        $infoFormato = obtenerCamposRecepcionParaDetalle(
+            $db,
+            !empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : null,
+            !empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null
+        );
+        $camposRecepcion = $infoFormato['campos_recepcion'];
+
+        $entradaMuestras = [];
+        if (!empty($datos['muestras_recepcion_json']) && is_string($datos['muestras_recepcion_json'])) {
+            $decIn = json_decode($datos['muestras_recepcion_json'], true);
+            if (is_array($decIn)) {
+                $entradaMuestras = $decIn;
+            }
+        } elseif (!empty($datos['recepcion']) && is_array($datos['recepcion'])) {
+            $entradaMuestras = $datos['recepcion'];
+        }
+
+        $datosPorCodigo = [];
+        foreach ($entradaMuestras as $codMuestra => $valoresMuestra) {
+            if (!is_array($valoresMuestra)) continue;
+            $codKey = strtoupper(trim((string)$codMuestra));
+            if ($codKey === '') continue;
+            $datosPorCodigo[$codKey] = normalizarYCompletarDatosRecepcionMuestra($valoresMuestra, $camposRecepcion);
+        }
+
+        $transaccionPropia = !$db->inTransaction();
+        if ($transaccionPropia) {
+            $db->beginTransaction();
+        }
+        try {
+            // 1. Actualizar hojas_solicitud_detalles por código de muestra
+            $stmtUpdDet = $db->prepare("
+                UPDATE hojas_solicitud_detalles
+                SET datos_recepcion_json = :drec
+                WHERE id_hoja_solicitud = :hid AND UPPER(TRIM(codigo_muestra)) = :cod
+            ");
+            foreach ($datosPorCodigo as $codKey => $datosNorm) {
+                $stmtUpdDet->execute([
+                    'drec' => !empty($datosNorm) ? json_encode($datosNorm, JSON_UNESCAPED_UNICODE) : null,
+                    'hid' => $idHoja,
+                    'cod' => $codKey,
+                ]);
+            }
+
+            // 2. Actualizar muestras_json de la hoja conservando resto de metadatos
+            $muestrasArr = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
+            foreach ($muestrasArr as $idx => $mItem) {
+                $codKey = strtoupper(trim((string)($mItem['nombre_muestra'] ?? ($mItem['codigo_muestra'] ?? ''))));
+                if ($codKey !== '' && array_key_exists($codKey, $datosPorCodigo)) {
+                    if (!empty($datosPorCodigo[$codKey])) {
+                        $muestrasArr[$idx]['datos_recepcion'] = $datosPorCodigo[$codKey];
+                    } else {
+                        unset($muestrasArr[$idx]['datos_recepcion']);
+                    }
+                }
+            }
+            $db->prepare("UPDATE hojas_solicitud SET muestras_json = :mjson WHERE id = :hid")
+               ->execute(['mjson' => json_encode($muestrasArr, JSON_UNESCAPED_UNICODE), 'hid' => $idHoja]);
+
+            // 3. Sincronizar con matriz técnica en Operaciones / Laboratorio si ya existe
+            sincronizarDatosRecepcionEnMatriz($db, $idHoja, $datosPorCodigo);
+
+            if ($transaccionPropia && $db->inTransaction()) {
+                $db->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($transaccionPropia && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log('Error al guardar datos de recepción RT-FM-13 #' . $idHoja . ': ' . $e->getMessage());
+            $responderError('No se pudieron guardar los datos de recepción: ' . $e->getMessage(), 500);
+            return;
+        }
+
+        $muestrasCompletas = count(array_filter($datosPorCodigo, static fn($d) => !empty($d)));
+        registrarEventoOS('hojas_servicio', 'datos_recepcion', "Datos de recepción actualizados en Hoja RT-FM-13 #{$idHoja} ({$muestrasCompletas} muestra(s))", $idOS, [
+            'entidad_tipo' => 'rtfm13',
+            'entidad_id' => $idHoja,
+            'id_referencia' => $idHoja,
+        ]);
+
+        if ($esAjax) {
+            $respuesta->enviarJson([
+                'status' => 'success',
+                'message' => 'Datos de recepción guardados y sincronizados con Operaciones correctamente.',
+                'id_hoja' => $idHoja,
+                'muestras_con_datos' => $muestrasCompletas,
+                'datos_por_codigo' => $datosPorCodigo,
+            ]);
+            return;
+        }
+
+        $_SESSION['exito'] = 'Datos de recepción guardados y sincronizados con Operaciones para la Hoja RT-FM-13.';
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
     }
 }

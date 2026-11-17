@@ -76,107 +76,13 @@ class LaboratorioControlador extends ControladorBase {
         $operacionModelo = new OperacionModelo();
         $db = Conexion::obtenerInstancia();
 
-        $tabActiva = $_GET['tab'] ?? 'aprobacion';
-        if (!in_array($tabActiva, ['aprobacion', 'bandeja', 'programadas'])) {
-            $tabActiva = 'aprobacion';
+        $tabActiva = $_GET['tab'] ?? 'bandeja';
+        if (!in_array($tabActiva, ['bandeja', 'programadas'], true)) {
+            $tabActiva = 'bandeja';
         }
 
-        // 1. Obtener solicitudes de servicio y hojas RT-FM-13 para el apartado de Aprobación/Recepción (ISO 17025)
-        $sqlSolicitudes = "SELECT os.id AS id_os, os.codigo_os, os.fecha_emision, os.estado AS estado_os,
-                                  os.requiere_muestreo, os.tipo_contrato, os.motivo_observacion,
-                                  hs.id AS id_hoja, hs.codigo_documento AS hoja_codigo, hs.numero_registro,
-                                  hs.id_detalle_cotizacion, hs.id_producto,
-                                  hs.fecha_hora_toma_muestra, hs.muestras_json, hs.naturaleza_muestra,
-                                  hs.procedencia_punto_muestreo, hs.observaciones, hs.fecha_creacion AS hoja_fecha_creacion,
-                                  cot.id AS id_cotizacion,
-                                  (CASE 
-                                      WHEN hs.id IS NOT NULL THEN (SELECT COUNT(*) FROM recepcion_muestras rm WHERE rm.id_os = os.id AND (rm.id_hoja = hs.id OR (rm.id_hoja IS NULL AND hs.id = (SELECT MIN(hs_sub.id) FROM hojas_solicitud hs_sub WHERE hs_sub.id_os = os.id))))
-                                      ELSE (SELECT COUNT(*) FROM recepcion_muestras rm WHERE rm.id_os = os.id)
-                                   END) AS total_recibidas_lab
-                           FROM ordenes_servicio os
-                           LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
-                           LEFT JOIN cotizaciones cot ON os.id_cotizacion = cot.id
-                           WHERE os.estado NOT IN ('Cancelada')
-                           ORDER BY os.id DESC, hs.id DESC";
-        $stmtSol = $db->query($sqlSolicitudes);
-        $todasOrdenes = $stmtSol->fetchAll(PDO::FETCH_ASSOC);
-
-        $solicitudesPorAprobar = [];
-        $solicitudesAprobadasRecientes = [];
-
-        foreach ($todasOrdenes as $o) {
-            $ensayos = $operacionModelo->filtrarDetallesPermitidos((int)$o['id_os'], $operacionModelo->obtenerDetallesCotizacion((int)$o['id_cotizacion']));
-
-            // Regla Visita CYCSA: Los ensayos in situ de compactación (Densímetro Nuclear, Cono de Arena, Reemplazo de Agua)
-            // NO pasan por Laboratorio (no requieren custodia física); se gestionan directamente en Operaciones LIMS.
-            if (!empty($o['id_detalle_cotizacion'])) {
-                $detHoja = null;
-                foreach ($ensayos as $eItem) {
-                    if ((int)$eItem['id'] === (int)$o['id_detalle_cotizacion']) {
-                        $detHoja = $eItem;
-                        break;
-                    }
-                }
-                if (!$detHoja) {
-                    $stmtD = $db->prepare("SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
-                                           FROM cotizacion_detalles cd
-                                           LEFT JOIN productos p ON cd.id_producto = p.id
-                                           LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
-                                           WHERE cd.id = :id");
-                    $stmtD->execute(['id' => (int)$o['id_detalle_cotizacion']]);
-                    $detHoja = $stmtD->fetch(PDO::FETCH_ASSOC);
-                }
-                if ($detHoja && esItemCompactacion($detHoja)) {
-                    continue; // Excluir hoja de compactación de la bandeja de Laboratorio
-                }
-            } else {
-                // Fallback para hojas legadas sin id_detalle_cotizacion: omitir si la orden contiene exclusivamente compactación
-                if (!empty($ensayos) && esOrdenSoloCompactacion($ensayos)) {
-                    continue;
-                }
-            }
-
-            if (!empty($o['id_detalle_cotizacion']) && !empty($detHoja)) {
-                $o['ensayos'] = [$detHoja];
-            } else {
-                $o['ensayos'] = $ensayos;
-            }
-            $o['muestras_declaradas'] = !empty($o['muestras_json']) ? (json_decode($o['muestras_json'], true) ?: []) : [];
-            $o['total_muestras_declaradas'] = count($o['muestras_declaradas']);
-
-            $recibidas = (int)$o['total_recibidas_lab'];
-            $estado = $o['estado_os'];
-
-            if ($recibidas === 0 && !in_array($estado, ['Finalizado', 'Cancelada'], true)) {
-                $solicitudesPorAprobar[] = $o;
-            } elseif ($recibidas > 0) {
-                if (count($solicitudesAprobadasRecientes) < 15) {
-                    $solicitudesAprobadasRecientes[] = $o;
-                }
-            }
-        }
-
-        // Filtro de búsqueda en la pestaña de aprobación
-        $filtroAprobacion = trim($_GET['buscar_solicitud'] ?? '');
-        $estadoAprobacion = trim($_GET['estado_aprobacion'] ?? '');
-        if ($filtroAprobacion !== '' || $estadoAprobacion !== '') {
-            $solicitudesPorAprobar = array_values(array_filter($solicitudesPorAprobar, function($item) use ($filtroAprobacion, $estadoAprobacion) {
-                if ($estadoAprobacion !== '') {
-                    if ($estadoAprobacion === 'recibidas' && $item['estado_os'] !== 'Estado 1: Recepcion') return false;
-                    if ($estadoAprobacion === 'revision' && $item['estado_os'] !== 'Estado 2: Revision') return false;
-                    if ($estadoAprobacion === 'observadas' && $item['estado_os'] !== 'Estado 2: Observada') return false;
-                }
-                if ($filtroAprobacion !== '') {
-                    $haystack = mb_strtolower(($item['hoja_codigo'] ?? '') . ' ' . ($item['codigo_os'] ?? '') . ' ' . ($item['naturaleza_muestra'] ?? '') . ' ' . ($item['ensayos'][0]['descripcion_ensayo'] ?? ''));
-                    if (!str_contains($haystack, mb_strtolower($filtroAprobacion))) {
-                        return false;
-                    }
-                }
-                return true;
-            }));
-        }
-
-        // Filtros capturados por GET para la bandeja anónima
+        // Filtros capturados por GET para la bandeja anónima de muestras nuevas
+        $incluirCerradas = !empty($_GET['incluir_cerradas']) || (($estadoFiltro = trim($_GET['estado'] ?? '')) === 'cerrado');
         $filtros = [
             'busqueda' => trim($_GET['busqueda'] ?? ''),
             'estado' => trim($_GET['estado'] ?? ''),
@@ -184,11 +90,17 @@ class LaboratorioControlador extends ControladorBase {
             'rotura_hoy' => !empty($_GET['rotura_hoy']),
             'vencidas' => !empty($_GET['vencidas']),
             'fecha_desde' => trim($_GET['fecha_desde'] ?? ''),
-            'fecha_hasta' => trim($_GET['fecha_hasta'] ?? '')
+            'fecha_hasta' => trim($_GET['fecha_hasta'] ?? ''),
+            'incluir_cerradas' => $incluirCerradas,
         ];
 
         // Obtener listado de la vista SQL anónima v_lab_muestras (GET 100% libre de escrituras)
         $muestrasRaw = $roturasModelo->obtenerBandejaAnonima($filtros);
+        if (!$incluirCerradas) {
+            $muestrasRaw = array_values(array_filter($muestrasRaw, static function (array $item): bool {
+                return ($item['estado_plan'] ?? '') !== 'cerrado';
+            }));
+        }
 
         // Agrupar muestras por Lote (id_hoja) para visualización consolidada ISO 17025 (las probetas van juntas)
         $muestras = [];
@@ -235,7 +147,7 @@ class LaboratorioControlador extends ControladorBase {
             if (!empty($itemG['es_lote'])) {
                 sort($itemG['codigos_lote'], SORT_NATURAL);
                 $cantCods = count($itemG['codigos_lote']);
-                $itemG['codigo_rango'] = ($cantCods > 1) 
+                $itemG['codigo_rango'] = ($cantCods > 1)
                     ? ($itemG['codigos_lote'][0] . ' al ' . $itemG['codigos_lote'][$cantCods - 1])
                     : $itemG['codigos_lote'][0];
                 $itemG['proxima_rotura'] = $itemG['proxima_rotura_lote'];
@@ -245,8 +157,15 @@ class LaboratorioControlador extends ControladorBase {
                 $itemG['es_vencida'] = (!empty($itemG['proxima_rotura']) && $itemG['proxima_rotura'] < $hoy && $itemG['estado_plan'] !== 'cerrado');
                 $itemG['es_hoy'] = (!empty($itemG['proxima_rotura']) && $itemG['proxima_rotura'] === $hoy);
             }
+            $itemG['es_nueva'] = (((int)($itemG['especimenes_ensayados'] ?? 0) === 0) && ($itemG['estado_plan'] ?? '') !== 'cerrado');
         }
         unset($itemG);
+
+        if (empty($filtros['rotura_hoy']) && empty($filtros['vencidas'])) {
+            usort($muestras, static function (array $a, array $b): int {
+                return ((int)($b['muestra_id'] ?? 0)) <=> ((int)($a['muestra_id'] ?? 0));
+            });
+        }
 
         // Métricas rápidas para KPIs superiores de la bandeja anónima
         $todas = $roturasModelo->obtenerBandejaAnonima([]);
@@ -299,10 +218,6 @@ class LaboratorioControlador extends ControladorBase {
         $this->renderizar('operaciones/vistas/laboratorio_dashboard', [
             'titulo' => 'Portal de Laboratorio LIMS (ISO 17025)',
             'tabActiva' => $tabActiva,
-            'solicitudesPorAprobar' => $solicitudesPorAprobar,
-            'solicitudesAprobadasRecientes' => $solicitudesAprobadasRecientes,
-            'filtroAprobacion' => $filtroAprobacion,
-            'estadoAprobacion' => $estadoAprobacion,
             'muestras' => $muestras,
             'kpis' => $kpis,
             'filtros' => $filtros,
@@ -1278,252 +1193,26 @@ class LaboratorioControlador extends ControladorBase {
             }
 
             $modelo = new OperacionModelo();
-            $os = $modelo->obtenerOSPorId($idOS);
-            if (!$os) {
-                $_SESSION['error'] = 'Orden de Servicio no encontrada.';
-                $respuesta->redirigir('/Cycsa/publico/laboratorio');
-                return;
-            }
+            $resultadoIngreso = $modelo->ingresarMuestrasHojaALaboratorio(
+                $idOS,
+                $idHoja,
+                (int)($_SESSION['usuario_id'] ?? 1),
+                true,
+                $datos
+            );
 
-            $db = Conexion::obtenerInstancia();
-
-            // Obtener las muestras declaradas en la Hoja RT-FM-13 correspondiente
-            $hoja = $modelo->obtenerHojaSolicitudPorOS($idOS, $idHoja > 0 ? $idHoja : null);
-
-            // Defensa en profundidad: Ensayos de compactación in situ no se recepcionan en laboratorio
-            if ($hoja && !empty($hoja['id_detalle_cotizacion'])) {
-                $stmtDet = $db->prepare("SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
-                                         FROM cotizacion_detalles cd
-                                         LEFT JOIN productos p ON cd.id_producto = p.id
-                                         LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
-                                         WHERE cd.id = :id");
-                $stmtDet->execute(['id' => (int)$hoja['id_detalle_cotizacion']]);
-                $detHoja = $stmtDet->fetch(PDO::FETCH_ASSOC);
-                if ($detHoja && esItemCompactacion($detHoja)) {
-                    $_SESSION['error'] = 'Los ensayos de compactación in situ no requieren recepción ni custodia física en laboratorio. Su captura técnica se realiza directamente en Operaciones LIMS.';
-                    $respuesta->redirigir('/Cycsa/publico/laboratorio');
-                    return;
-                }
-            }
-
-            $muestrasDeclaradasRT = [];
-            if ($hoja && !empty($hoja['muestras_json'])) {
-                $muestrasDeclaradasRT = json_decode($hoja['muestras_json'], true) ?: [];
-            }
-
-            $servicios = $modelo->filtrarDetallesPermitidos($idOS, $modelo->obtenerDetallesCotizacion((int)$os['id_cotizacion']));
-            $idDetalleCotizacion = (int)($datos['id_detalle_cotizacion'] ?? ($hoja['id_detalle_cotizacion'] ?? ($servicios[0]['id'] ?? 0)));
-            $tipoMuestraCalculado = !empty($os['requiere_muestreo']) ? 'Campo' : 'Laboratorio';
-            $actualHojaId = $idHoja > 0 ? $idHoja : ($hoja['id'] ?? null);
-
-            // Resolver plantilla_id asociada a la hoja o producto para evitar NULL ("Ensayo General")
-            $plantillaIdHoja = null;
-            if (!empty($actualHojaId)) {
-                $stmtPlHoja = $db->prepare("SELECT plantilla_id FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid AND plantilla_id IS NOT NULL AND plantilla_id > 0 ORDER BY orden ASC, id ASC LIMIT 1");
-                $stmtPlHoja->execute(['hid' => (int)$actualHojaId]);
-                $plVal = (int)$stmtPlHoja->fetchColumn();
-                if ($plVal > 0) {
-                    $plantillaIdHoja = $plVal;
-                }
-            }
-            if ($plantillaIdHoja === null && $idDetalleCotizacion > 0) {
-                $stmtProd = $db->prepare("SELECT id_producto FROM cotizacion_detalles WHERE id = :id");
-                $stmtProd->execute(['id' => $idDetalleCotizacion]);
-                $idProdCot = (int)$stmtProd->fetchColumn();
-                if ($idProdCot > 0) {
-                    $plMod = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
-                    $sugPl = $plMod->obtenerPlantillaSugerida($idProdCot);
-                    if (!empty($sugPl['id'])) {
-                        $plantillaIdHoja = (int)$sugPl['id'];
-                    }
-                }
-            }
-
-            $muestrasPayload = [];
-            if (!empty($muestrasDeclaradasRT)) {
-                foreach ($muestrasDeclaradasRT as $idx => $mDecl) {
-                    $nombreCampo = trim($mDecl['nombre_muestra'] ?? ('M-' . ($idx + 1)));
-                    $descLote = trim($mDecl['descripcion'] ?? $nombreCampo);
-                    $plMuestra = !empty($mDecl['plantilla_id']) ? (int)$mDecl['plantilla_id'] : $plantillaIdHoja;
-                    
-                    $muestrasPayload[] = [
-                        'id_detalle_cotizacion' => $idDetalleCotizacion,
-                        'plantilla_id' => $plMuestra,
-                        'orden_en_lote' => $idx + 1,
-                        'tipo_muestra' => $tipoMuestraCalculado,
-                        'id_cilindro' => $nombreCampo,
-                        'codigo_campo' => $nombreCampo,
-                        'is_qa_qc' => 0,
-                        'nombre_lote' => $descLote,
-                        'fecha_moldeo' => !empty($hoja['fecha_hora_toma_muestra']) ? date('Y-m-d', strtotime($hoja['fecha_hora_toma_muestra'])) : date('Y-m-d'),
-                        'diseno_resistencia' => '',
-                        'procedimiento_muestreo' => trim($datos['procedimiento_muestreo'] ?? 'ASTM / ISO 17025'),
-                        'edades_dias' => [],
-                        'edades_identificadores' => []
-                    ];
-                }
-            } else {
-                $muestrasPayload[] = [
-                    'id_detalle_cotizacion' => $idDetalleCotizacion,
-                    'plantilla_id' => $plantillaIdHoja,
-                    'orden_en_lote' => 1,
-                    'tipo_muestra' => $tipoMuestraCalculado,
-                    'id_cilindro' => 'M-01',
-                    'codigo_campo' => 'M-01',
-                    'is_qa_qc' => 0,
-                    'nombre_lote' => 'Muestra General',
-                    'fecha_moldeo' => date('Y-m-d'),
-                    'procedimiento_muestreo' => 'ISO 17025'
-                ];
-            }
-
-            $payloadRecepcion = [
-                'id_os' => $idOS,
-                'id_hoja' => $actualHojaId,
-                'plantilla_id' => $plantillaIdHoja,
-                'limpiar_previas' => false,
-                'id_detalle_cotizacion' => $idDetalleCotizacion,
-                'tipo_muestra' => $tipoMuestraCalculado,
-                'fecha_recepcion' => !empty($datos['fecha_recepcion']) ? $datos['fecha_recepcion'] : date('Y-m-d H:i:s'),
-                'recibido_por' => (int)($_SESSION['usuario_id'] ?? 0),
-                'entregado_por' => trim($datos['entregado_por'] ?? 'Cliente'),
-                'observaciones' => trim($datos['observaciones'] ?? 'Muestras aceptadas bajo estricta conformidad técnica con la Hoja CYCSA-RT-FM-13 (ISO 17025)'),
-                'muestras_recibidas_json' => json_encode($muestrasPayload)
-            ];
-
-            if ($modelo->registrarRecepcion($payloadRecepcion)) {
-                // 1. Si la matriz ya cuenta con réplicas CR o filas capturadas, sincronizar orden y réplicas hacia Lab
-                $filasMatriz = [];
-                if (!empty($actualHojaId) && $idDetalleCotizacion > 0) {
-                    $stmtMatSync = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
-                    $stmtMatSync->execute(['id' => $idDetalleCotizacion]);
-                    $resJsonRaw = $stmtMatSync->fetchColumn();
-                    if (!empty($resJsonRaw)) {
-                        $resMatArr = json_decode((string)$resJsonRaw, true);
-                        if (is_array($resMatArr) && !empty($resMatArr['filas'])) {
-                            $filasMatriz = $resMatArr['filas'];
-                            sincronizarReplicasMatrizConLab($db, $idOS, (int)$actualHojaId, $idDetalleCotizacion, $resMatArr['filas']);
-                        }
-                    }
-                }
-
-                // 2. Garantizar programación de roturas ASTM C39 / ISO 17025 para que todas las probetas del lote
-                // vayan juntas en el proceso de rotura con sus edades y listas para ensayar
-                $stmtMuestrasLote = $db->prepare("
-                    SELECT rm.id AS muestra_id, rm.codigo_muestra, lm.fecha_moldeo, rm.orden_en_lote
-                    FROM recepcion_muestras rm
-                    LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
-                    WHERE rm.id_os = :id_os " . ($actualHojaId > 0 ? "AND rm.id_hoja = :id_hoja" : "") . "
-                    ORDER BY rm.orden_en_lote ASC, rm.id ASC
-                ");
-                $paramsML = ['id_os' => $idOS];
-                if ($actualHojaId > 0) {
-                    $paramsML['id_hoja'] = $actualHojaId;
-                }
-                $stmtMuestrasLote->execute($paramsML);
-                $muestrasObtenidas = $stmtMuestrasLote->fetchAll(PDO::FETCH_ASSOC);
-
-                if (empty($filasMatriz)) {
-                    $cantMuestras = count($muestrasObtenidas);
-                    // Secuencia ASTM estándar de rotura según el número de probetas
-                    $edadesEstandar = match($cantMuestras) {
-                        1 => [28],
-                        2 => [7, 28],
-                        3 => [7, 14, 28],
-                        4 => [7, 14, 28, 28],
-                        5 => [7, 7, 14, 28, 28],
-                        default => (function($c) {
-                            $base = [3, 7, 7, 14, 28, 28];
-                            while (count($base) < $c) { $base[] = 28; }
-                            return array_slice($base, 0, $c);
-                        })($cantMuestras)
-                    };
-
-                    $filasInicialesMatriz = [];
-                    foreach ($muestrasObtenidas as $idx => $mItem) {
-                        $edadDef = (int)($edadesEstandar[$idx] ?? 28);
-                        $fMoldeo = !empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d');
-                        $fProg = date('Y-m-d', strtotime($fMoldeo . " + {$edadDef} days"));
-                        $datosMat = [
-                            'edad_dias' => $edadDef,
-                            'fecha_rotura_programada' => $fProg,
-                            'fecha_fabricacion' => $fMoldeo,
-                            'tamano_cilindro' => '15 x 30 cm',
-                            'area' => 14.137
-                        ];
-                        sincronizarEspecimenYPlanFila($db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
-
-                        // Precarga de fila para la matriz técnica en Operaciones
-                        $filasInicialesMatriz[] = [
-                            'Código laboratorio' => (string)$mItem['codigo_muestra'],
-                            'Nombre muestra' => 'Probeta ' . ($idx + 1),
-                            'Área (in²)' => '14.137',
-                            'Reven. (in)' => '',
-                            'Reven. (cm)' => '',
-                            'Temp. (°C)' => '',
-                            'Carga (lb)' => '',
-                            'Peso Volumétrico (kg/m³)' => '',
-                            'Diseño de concreto (lb/in²)' => '',
-                            'R. Compresión (lb/in²)' => '',
-                            'R. Compresión (kg/cm²)' => '',
-                            'Fecha de Fabricación' => $fMoldeo,
-                            'Fecha de Ensayo' => $fProg,
-                            'Edad (Días)' => (string)$edadDef
-                        ];
-                    }
-
-                    // Si cotizacion_detalles.resultados_json está vacío, precargar para sincronía 100% con Operaciones
-                    if ($idDetalleCotizacion > 0 && !empty($filasInicialesMatriz)) {
-                        $stmtCheckDet = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
-                        $stmtCheckDet->execute(['id' => $idDetalleCotizacion]);
-                        $detCurrJson = $stmtCheckDet->fetchColumn();
-                        if (empty($detCurrJson) || $detCurrJson === '[]') {
-                            $payloadMat = [
-                                'version_actual' => 1,
-                                'filas' => $filasInicialesMatriz,
-                                'metadatos' => [],
-                                'revision' => [
-                                    'estado' => 'en_revision',
-                                    'fecha_envio' => date('Y-m-d H:i:s'),
-                                    'usuario_envio' => $_SESSION['usuario_nombre'] ?? 'Laboratorio',
-                                    'historial' => []
-                                ]
-                            ];
-                            $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
-                               ->execute(['json' => json_encode($payloadMat, JSON_UNESCAPED_UNICODE), 'id' => $idDetalleCotizacion]);
-                        }
-                    }
-                } else {
-                    // Si ya había matriz técnica, asegurar que todas las probetas tengan su plan sincronizado
-                    foreach ($muestrasObtenidas as $idx => $mItem) {
-                        $stmtChkPlan = $db->prepare("SELECT id FROM planes_rotura WHERE muestra_id = :mid LIMIT 1");
-                        $stmtChkPlan->execute(['mid' => (int)$mItem['muestra_id']]);
-                        if (!$stmtChkPlan->fetchColumn()) {
-                            $datosMat = obtenerDatosMuestraDesdeMatriz($filasMatriz, (string)$mItem['codigo_muestra']);
-                            if (empty($datosMat['edad_dias'])) {
-                                $datosMat['edad_dias'] = 28;
-                                $fMoldeo = !empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d');
-                                $datosMat['fecha_rotura_programada'] = date('Y-m-d', strtotime($fMoldeo . " + 28 days"));
-                            }
-                            sincronizarEspecimenYPlanFila($db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
-                        }
-                    }
-                }
-
-                $prefijoAsignado = ($tipoMuestraCalculado === 'Campo') ? 'MC' : 'MS';
+            if (!empty($resultadoIngreso['ok'])) {
+                $hoja = $resultadoIngreso['hoja'] ?? null;
                 $numHojaTexto = !empty($hoja['numero_registro']) ? " [Reg: {$hoja['numero_registro']}]" : "";
-                $_SESSION['exito'] = "Muestras de la Hoja RT-FM-13{$numHojaTexto} aceptadas e ingresadas exitosamente a Laboratorio con sus probetas agrupadas y programadas para ensayo.";
+                $_SESSION['exito'] = "Muestras de la Hoja RT-FM-13{$numHojaTexto} ingresadas a Laboratorio con sus probetas agrupadas y programadas para ensayo.";
 
-                // Redirigir directamente a la Hoja de Trabajo por Lote para ensayar las probetas juntas
+                $actualHojaId = (int)($resultadoIngreso['id_hoja'] ?? $idHoja);
                 if ($actualHojaId > 0) {
-                    $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . (int)$actualHojaId);
+                    $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $actualHojaId);
                     return;
                 }
             } else {
-                $detalleRecepcion = $modelo->obtenerUltimoErrorRecepcion() ?? '';
-                $_SESSION['error'] = str_contains($detalleRecepcion, 'no está habilitado')
-                    ? $detalleRecepcion
-                    : 'Ocurrió un error al registrar el ingreso de muestras al laboratorio.';
+                $_SESSION['error'] = $resultadoIngreso['mensaje'] ?? 'Ocurrió un error al registrar el ingreso de muestras al laboratorio.';
             }
 
             $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=bandeja');
@@ -1607,15 +1296,37 @@ class LaboratorioControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         $this->verificarPermiso($respuesta, 'ver');
 
+        $db = Conexion::obtenerInstancia();
         $idOS = (int)($_GET['id_os'] ?? 0);
         $idHoja = (int)($_GET['id_hoja'] ?? 0);
+        $muestraId = (int)($_GET['muestra_id'] ?? 0);
+
+        if ($muestraId > 0 && ($idOS <= 0 || $idHoja <= 0)) {
+            $stmtRM = $db->prepare("SELECT id_os, id_hoja FROM recepcion_muestras WHERE id = :mid LIMIT 1");
+            $stmtRM->execute(['mid' => $muestraId]);
+            $rowRM = $stmtRM->fetch(PDO::FETCH_ASSOC);
+            if ($rowRM) {
+                if ($idOS <= 0 && !empty($rowRM['id_os'])) {
+                    $idOS = (int)$rowRM['id_os'];
+                }
+                if ($idHoja <= 0 && !empty($rowRM['id_hoja'])) {
+                    $idHoja = (int)$rowRM['id_hoja'];
+                }
+            }
+        }
+
+        if ($idHoja > 0 && $idOS <= 0) {
+            $stmtHs = $db->prepare("SELECT id_os FROM hojas_solicitud WHERE id = :hid LIMIT 1");
+            $stmtHs->execute(['hid' => $idHoja]);
+            $idOS = (int)$stmtHs->fetchColumn();
+        }
+
         if ($idOS <= 0) {
-            $_SESSION['error'] = 'Orden de Servicio inválida.';
+            $_SESSION['error'] = 'No se encontró la hoja o muestra para visualizar CYCSA-RT-FM-60.';
             $respuesta->redirigir('/Cycsa/publico/laboratorio');
             return;
         }
 
-        $db = Conexion::obtenerInstancia();
         $modelo = new OperacionModelo();
 
         $os = $modelo->obtenerOSPorId($idOS);

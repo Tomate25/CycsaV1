@@ -145,10 +145,14 @@
                         <i class="fa-solid fa-check"></i> Activo
                     </span>
                 </div>
-                <div id="seccion_multimes_campos" style="display: none; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                <div id="seccion_multimes_campos" style="display: none; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                    <div class="form-group-cycsa" style="margin-bottom: 0;">
+                        <label>Duración (Meses):</label>
+                        <input type="number" name="duracion_meses" id="duracion_meses" min="1" max="120" value="3" onchange="recalcularFechaFinDesdeMeses()" class="form-control-cycsa">
+                    </div>
                     <div class="form-group-cycsa" style="margin-bottom: 0;">
                         <label>Fecha de Inicio del Contrato:</label>
-                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control-cycsa" value="<?= date('Y-m-d') ?>">
+                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control-cycsa" onchange="recalcularFechaFinDesdeMeses()" value="<?= date('Y-m-d') ?>">
                     </div>
                     <div class="form-group-cycsa" style="margin-bottom: 0;">
                         <label>Fecha de Finalización:</label>
@@ -159,7 +163,9 @@
                         <select name="periodicidad" id="periodicidad" class="form-control-cycsa" style="font-weight: 600;">
                             <option value="Mensual" selected>Mensual</option>
                             <option value="Quincenal">Quincenal</option>
+                            <option value="Bimestral">Bimestral</option>
                             <option value="Trimestral">Trimestral</option>
+                            <option value="Semestral">Semestral</option>
                         </select>
                     </div>
                 </div>
@@ -255,7 +261,20 @@
 </div>
 
 <script>
-        function toggleMultiMes(activo) {
+    function recalcularFechaFinDesdeMeses() {
+        const fi = document.getElementById('fecha_inicio')?.value;
+        const m = parseInt(document.getElementById('duracion_meses')?.value || '3', 10) || 3;
+        const ffEl = document.getElementById('fecha_fin');
+        if (fi && ffEl) {
+            const d = new Date(fi + 'T00:00:00');
+            if (!isNaN(d.getTime())) {
+                d.setMonth(d.getMonth() + m);
+                ffEl.value = d.toISOString().slice(0, 10);
+            }
+        }
+    }
+
+    function toggleMultiMes(activo) {
         const contenedor = document.getElementById('seccion_multimes_campos');
         const badge = document.getElementById('multimes_badge');
         if (activo) {

@@ -207,6 +207,9 @@ if (file_exists($logoPath)) {
                     <strong>Edición:</strong> 1<br>
                     <strong>Revisión:</strong> 2<br>
                     <strong>O/S:</strong> <?= htmlspecialchars($os['codigo_os'] ?? '') ?>
+                    <?php if (!empty($pm['hoja_numero_registro'])): ?>
+                    <br><strong>RT-FM-13:</strong> Reg. <?= htmlspecialchars($pm['hoja_numero_registro']) ?>
+                    <?php endif; ?>
                 </div>
             </td>
         </tr>

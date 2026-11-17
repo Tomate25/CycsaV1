@@ -202,12 +202,12 @@ if (!empty($os['contactos_json'])) {
                 <span class="os-meta-label">Teléfono:</span>
                 <span class="os-meta-value"><?= htmlspecialchars($os['cliente_telefono'] ?: '(505) 8209-6275') ?></span>
             </div>
-                    <?php if (!empty($os['es_multimes'])): ?>
+                    <?php if (!empty($os['es_multimes']) || !empty($os['vigencia_contrato']['es_contrato_largo'])): ?>
             <div class="os-meta-row">
                 <span class="os-meta-label">Modalidad:</span>
                 <span class="os-meta-value">
                     <span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11.5px; border: 1px solid #c7d2fe;">
-                        <i class="fa-solid fa-repeat"></i> Multi-mes (<?= htmlspecialchars($os['periodicidad'] ?? 'Mensual') ?>)
+                        <i class="fa-solid fa-repeat"></i> Contrato Largo (<?= htmlspecialchars($os['periodicidad'] ?? 'Mensual') ?><?= !empty($os['vigencia_contrato']['duracion_meses']) ? ' · ' . (int)$os['vigencia_contrato']['duracion_meses'] . ' meses' : '' ?>)
                     </span>
                     <?php if (!empty($os['fecha_inicio']) && !empty($os['fecha_fin'])): ?>
                         <span style="font-size: 11.5px; color: #64748b; margin-left: 6px;">

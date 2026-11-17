@@ -81,7 +81,10 @@ class RoturasModelo {
         if (!empty($hojaIds)) {
             $inClause = implode(',', $hojaIds);
             try {
-                $sqlHojas = "SELECT hs.id AS id_hoja, 
+                $sqlHojas = "SELECT hs.id AS id_hoja,
+                                   hs.numero_registro AS hoja_numero_registro,
+                                   hs.codigo_documento AS hoja_codigo_documento,
+                                   hs.fecha_creacion AS hoja_fecha_creacion,
                                    COALESCE(NULLIF(p.ensayo_servicio, ''), NULLIF(p.nombre_comercial, ''), cd.descripcion_ensayo) AS producto_nombre,
                                    COALESCE(NULLIF(p.norma_astm, ''), cd.norma_astm) AS producto_norma
                             FROM hojas_solicitud hs
@@ -97,7 +100,7 @@ class RoturasModelo {
             }
         }
 
-        // Validar e indexar flag visual de vencimiento y metadatos técnicos
+        // Validar e indexar flag visual de vencimiento y metadatos técnicos (100% ciego ISO 17025)
         $hoy = date('Y-m-d');
         foreach ($muestras as &$m) {
             $m['es_vencida'] = (!empty($m['proxima_rotura']) && $m['proxima_rotura'] < $hoy && $m['estado_plan'] !== 'cerrado');
@@ -106,9 +109,15 @@ class RoturasModelo {
             if ($hid > 0 && isset($infoHojas[$hid])) {
                 $m['producto_nombre'] = $infoHojas[$hid]['producto_nombre'] ?? null;
                 $m['producto_norma'] = $infoHojas[$hid]['producto_norma'] ?? null;
+                $m['hoja_numero_registro'] = $infoHojas[$hid]['hoja_numero_registro'] ?? null;
+                $m['hoja_codigo_documento'] = $infoHojas[$hid]['hoja_codigo_documento'] ?? 'CYCSA-RT-FM-13';
+                $m['hoja_fecha_creacion'] = $infoHojas[$hid]['hoja_fecha_creacion'] ?? null;
             } else {
                 $m['producto_nombre'] = null;
                 $m['producto_norma'] = null;
+                $m['hoja_numero_registro'] = null;
+                $m['hoja_codigo_documento'] = null;
+                $m['hoja_fecha_creacion'] = null;
             }
         }
         unset($m);

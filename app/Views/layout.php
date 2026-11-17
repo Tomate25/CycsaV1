@@ -599,6 +599,14 @@
                 </a>
             </li>
             <?php endif; ?>
+            <?php if (tienePermiso('reportes', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/reportes" class="<?= strpos($rutaActual, '/reportes') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span class="menu-texto">Centro de Reportes</span>
+                </a>
+            </li>
+            <?php endif; ?>
             <?php if (tienePermiso('productos', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/productos" class="<?= strpos($rutaActual, '/productos') !== false ? 'activo' : '' ?>">

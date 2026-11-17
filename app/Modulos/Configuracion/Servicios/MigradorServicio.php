@@ -9,11 +9,17 @@ use Cycsa\Modulos\Operaciones\Servicios\SembradorPlantillasHcServicio;
 
 class MigradorServicio {
 
+    private static bool $ejecutando = false;
+
     /**
      * Verifica y ejecuta de forma idempotente las migraciones pendientes en la base de datos
      * (Especialmente útil en hosting compartido como Bluehost cPanel donde no se dispone de terminal CLI).
      */
     public static function asegurarTablas(PDO $db): array {
+        if (self::$ejecutando) {
+            return [];
+        }
+        self::$ejecutando = true;
         $resultados = [];
 
         try {
@@ -374,9 +380,139 @@ class MigradorServicio {
                     $resultados['031_lab_lotes_y_replicas_sync'] = '[031 WARN] ' . $e031->getMessage();
                 }
             }
+
+            // =========================================================================
+            // FASE 23: Migración 032 - Datos de Recepción por Muestra en RT-FM-13
+            // =========================================================================
+            $ruta032 = dirname(__DIR__, 4) . '/database/migrations/032_datos_recepcion_rtfm13.php';
+            if (file_exists($ruta032)) {
+                ob_start();
+                try {
+                    require_once $ruta032;
+                    if (function_exists('ejecutarMigracion032')) {
+                        ejecutarMigracion032($db);
+                    }
+                    $resultados['032_datos_recepcion_rtfm13'] = ob_get_clean();
+                } catch (Throwable $e032) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 032: ' . $e032->getMessage());
+                    $resultados['032_datos_recepcion_rtfm13'] = '[032 WARN] ' . $e032->getMessage();
+                }
+            }
+
+            // =========================================================================
+            // FASE 24: Migración 033 - Consecutivo Único Global RT-FM-13 (01, 02, 03...)
+            // =========================================================================
+            $ruta033 = dirname(__DIR__, 4) . '/database/migrations/033_consecutivo_unico_rtfm13.php';
+            if (file_exists($ruta033)) {
+                ob_start();
+                try {
+                    require_once $ruta033;
+                    if (function_exists('ejecutarMigracion033')) {
+                        ejecutarMigracion033($db);
+                    }
+                    $resultados['033_consecutivo_unico_rtfm13'] = ob_get_clean();
+                } catch (Throwable $e033) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 033: ' . $e033->getMessage());
+                    $resultados['033_consecutivo_unico_rtfm13'] = '[033 WARN] ' . $e033->getMessage();
+                }
+            }
+
+            // =========================================================================
+            // FASE 25: Migración 034 - Permiso RBAC Módulo Central de Reportes
+            // =========================================================================
+            $ruta034 = dirname(__DIR__, 4) . '/database/migrations/034_modulo_reportes_permiso.php';
+            if (file_exists($ruta034)) {
+                ob_start();
+                try {
+                    require_once $ruta034;
+                    if (function_exists('ejecutarMigracion034')) {
+                        ejecutarMigracion034($db);
+                    }
+                    $resultados['034_modulo_reportes_permiso'] = ob_get_clean();
+                } catch (Throwable $e034) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 034: ' . $e034->getMessage());
+                    $resultados['034_modulo_reportes_permiso'] = '[034 WARN] ' . $e034->getMessage();
+                }
+            }
+
+            // =========================================================================
+            // FASE 26: Migración 035 - Asociación FM-40 B <-> Hoja RT-FM-13
+            // =========================================================================
+            $ruta035 = dirname(__DIR__, 4) . '/database/migrations/035_fm40b_asociado_rtfm13.php';
+            if (file_exists($ruta035)) {
+                ob_start();
+                try {
+                    require_once $ruta035;
+                    if (function_exists('ejecutarMigracion035')) {
+                        ejecutarMigracion035($db);
+                    }
+                    $resultados['035_fm40b_asociado_rtfm13'] = ob_get_clean();
+                } catch (Throwable $e035) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 035: ' . $e035->getMessage());
+                    $resultados['035_fm40b_asociado_rtfm13'] = '[035 WARN] ' . $e035->getMessage();
+                }
+            }
+
+            // =========================================================================
+            // FASE 27: Migración 036 - Duración en meses y vigencia de contratos O/S
+            // =========================================================================
+            $ruta036 = dirname(__DIR__, 4) . '/database/migrations/036_duracion_meses_contrato_os.php';
+            if (file_exists($ruta036)) {
+                ob_start();
+                try {
+                    require_once $ruta036;
+                    if (function_exists('ejecutarMigracion036')) {
+                        ejecutarMigracion036($db);
+                    }
+                    $resultados['036_duracion_meses_contrato_os'] = ob_get_clean();
+                } catch (Throwable $e036) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 036: ' . $e036->getMessage());
+                    $resultados['036_duracion_meses_contrato_os'] = '[036 WARN] ' . $e036->getMessage();
+                }
+            }
+
+            // =========================================================================
+            // FASE 28: Migración 037 - Auto-ingreso a Laboratorio de RT-FM-13 pendientes
+            // =========================================================================
+            if (!defined('PHPUNIT_RUNNING')) {
+                $ruta037 = dirname(__DIR__, 4) . '/database/migrations/037_auto_ingreso_lab_sin_aprobacion.php';
+                if (file_exists($ruta037)) {
+                    ob_start();
+                    try {
+                        require_once $ruta037;
+                        if (function_exists('ejecutarMigracion037')) {
+                            ejecutarMigracion037($db);
+                        }
+                        $resultados['037_auto_ingreso_lab_sin_aprobacion'] = ob_get_clean();
+                    } catch (Throwable $e037) {
+                        if (ob_get_level() > 0) {
+                            ob_end_clean();
+                        }
+                        error_log('Migracion 037: ' . $e037->getMessage());
+                        $resultados['037_auto_ingreso_lab_sin_aprobacion'] = '[037 WARN] ' . $e037->getMessage();
+                    }
+                }
+            }
         } catch (Throwable $e) {
             error_log("Error en MigradorServicio: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             $resultados['error'] = $e->getMessage();
+        } finally {
+            self::$ejecutando = false;
         }
 
         return $resultados;
