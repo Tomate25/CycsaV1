@@ -252,4 +252,121 @@ class CargaMasivaProductosTest extends TestCase {
 
         $this->assertSame('crear', $resultado['filas'][2]['accion']);
     }
+
+    public function testParsearArchivoXlsxNativoReconoceCodigoAgnYEstatusNA(): void {
+        if (!class_exists(\ZipArchive::class)) {
+            $this->markTestSkipped('ZipArchive no está disponible para probar lectura .xlsx.');
+        }
+
+        $tmpXlsx = tempnam(sys_get_temp_dir(), 'test_cycsa_') . '.xlsx';
+        $zip = new \ZipArchive();
+        $this->assertTrue($zip->open($tmpXlsx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true);
+
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?>
+            <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+                <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+                <Default Extension="xml" ContentType="application/xml"/>
+                <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+                <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+            </Types>');
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?>
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+            </Relationships>');
+        $zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8"?>
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+            </Relationships>');
+        $zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8"?>
+            <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                <sheets><sheet name="LISTA DE PRECIOS 4.2 " sheetId="1" r:id="rId1"/></sheets>
+            </workbook>');
+        $zip->addFromString('xl/worksheets/sheet1.xml', '<?xml version="1.0" encoding="UTF-8"?>
+            <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+                <sheetData>
+                    <row r="6">
+                        <c r="A6" t="inlineStr"><is><t>No</t></is></c>
+                        <c r="B6" t="inlineStr"><is><t>CODIGO AGN</t></is></c>
+                        <c r="C6" t="inlineStr"><is><t>Nombre comercial con Norma</t></is></c>
+                        <c r="D6" t="inlineStr"><is><t>Ensayo y/o servicio a realizar</t></is></c>
+                        <c r="E6" t="inlineStr"><is><t>Estatus</t></is></c>
+                        <c r="F6" t="inlineStr"><is><t>Precio</t></is></c>
+                    </row>
+                    <row r="7">
+                        <c r="A7"><v>9998</v></c>
+                        <c r="B7" t="inlineStr"><is><t>CYCSA-PQT-TEST</t></is></c>
+                        <c r="C7" t="inlineStr"><is><t>Paquete Prueba XLSX</t></is></c>
+                        <c r="D7" t="inlineStr"><is><t>Ensayo Paquete XLSX</t></is></c>
+                        <c r="E7" t="inlineStr"><is><t>N/A</t></is></c>
+                        <c r="F7"><v>4250.5</v></c>
+                    </row>
+                    <row r="9">
+                        <c r="A9" t="inlineStr"><is><t>Elaborado por:</t></is></c>
+                    </row>
+                    <row r="10">
+                        <c r="A10" t="inlineStr"><is><t>Firma Usuario</t></is></c>
+                    </row>
+                </sheetData>
+            </worksheet>');
+        $zip->close();
+
+        $bin = (string)file_get_contents($tmpXlsx);
+        @unlink($tmpXlsx);
+
+        $res = ImportadorProductosCsv::parsearArchivoYValidar($bin, 'xlsx', $this->modelo);
+        $this->assertTrue($res['exito']);
+        $this->assertSame('LISTA DE PRECIOS 4.2', $res['hoja_origen']);
+        $this->assertSame(1, $res['total_filas']);
+        $this->assertSame(0, $res['errores']);
+        $this->assertSame('crear', $res['filas'][0]['accion']);
+        $this->assertSame('CYCSA-PQT-TEST', $res['filas'][0]['datos']['codigo_agn']);
+        $this->assertSame('N/A', $res['filas'][0]['datos']['estatus']);
+        $this->assertSame(4250.5, $res['filas'][0]['datos']['precio']);
+    }
+
+    public function testModalYBitacoraBotonesCargaMasivaEstanCorrectos(): void {
+        $base = dirname(__DIR__, 2);
+        $modal = (string)file_get_contents($base . '/app/Modulos/Productos/Vistas/modal_carga_masiva.php');
+        $index = (string)file_get_contents($base . '/app/Modulos/Productos/Vistas/index.php');
+        $bitacora = (string)file_get_contents($base . '/app/Views/parciales/bitacora_modulo.php');
+
+        // Evita bug de modal invisible con Bootstrap .modal.fade sin .show
+        $this->assertStringNotContainsString('class="modal fade" id="modalCargaMasivaProductos"', $modal);
+        $this->assertStringContainsString('opacity: 1 !important', $modal);
+        $this->assertStringContainsString('.csv,.xlsx', $modal);
+        $this->assertStringContainsString('abrirModalCargaMasiva()', $index);
+        $this->assertStringContainsString('irAHistorialCargas()', $index);
+        $this->assertStringContainsString('codigo_agn', $index);
+
+        $this->assertStringContainsString("'importacion_masiva'", $bitacora);
+        $this->assertStringContainsString('toggleDetalleCargaMasiva', $bitacora);
+        $this->assertStringContainsString('cambiarTabCargaMasiva', $bitacora);
+        $this->assertStringContainsString('descargarReporteCargaMasiva', $bitacora);
+    }
+
+    public function testCatalogoV42YHistorialMigracion038PresentesEnBaseDeDatos(): void {
+        $activos = $this->modelo->obtenerTodos('', '', 1);
+        $this->assertCount(128, $activos);
+        $this->assertTrue($this->modelo->tieneColumnaCodigoAgn());
+
+        $bloque = $this->modelo->obtenerPorId(33);
+        $adoquin = $this->modelo->obtenerPorId(34);
+        $consolidacion = $this->modelo->obtenerPorId(51);
+        $this->assertSame('Bloques', $bloque['tipo_muestra']);
+        $this->assertSame('Adoquines', $adoquin['tipo_muestra']);
+        $this->assertStringContainsString('Consolidados Unidimensional', (string)$consolidacion['nombre_comercial']);
+
+        $logs = obtenerBitacoraModulo('productos', 10);
+        $encontrado = false;
+        foreach ($logs as $log) {
+            if (($log['accion'] ?? '') === 'importacion_masiva' && !empty($log['datos_json'])) {
+                $payload = json_decode((string)$log['datos_json'], true);
+                if (is_array($payload) && count($payload['agregados'] ?? []) === 27 && count($payload['modificados'] ?? []) === 101) {
+                    $encontrado = true;
+                    break;
+                }
+            }
+        }
+        $this->assertTrue($encontrado, 'Debe existir el registro detallado de carga masiva v4.2 en bitácora.');
+    }
 }

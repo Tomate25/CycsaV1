@@ -507,6 +507,27 @@ class MigradorServicio {
                         $resultados['037_auto_ingreso_lab_sin_aprobacion'] = '[037 WARN] ' . $e037->getMessage();
                     }
                 }
+
+                // =========================================================================
+                // FASE 29: Migración 038 - Catálogo de Productos v4.2 y Código AGN
+                // =========================================================================
+                $ruta038 = dirname(__DIR__, 4) . '/database/migrations/038_catalogo_productos_v42_y_codigo_agn.php';
+                if (file_exists($ruta038)) {
+                    ob_start();
+                    try {
+                        require_once $ruta038;
+                        if (function_exists('ejecutarMigracion038')) {
+                            ejecutarMigracion038($db, true);
+                        }
+                        $resultados['038_catalogo_productos_v42_y_codigo_agn'] = ob_get_clean();
+                    } catch (Throwable $e038) {
+                        if (ob_get_level() > 0) {
+                            ob_end_clean();
+                        }
+                        error_log('Migracion 038: ' . $e038->getMessage());
+                        $resultados['038_catalogo_productos_v42_y_codigo_agn'] = '[038 WARN] ' . $e038->getMessage();
+                    }
+                }
             }
         } catch (Throwable $e) {
             error_log("Error en MigradorServicio: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());

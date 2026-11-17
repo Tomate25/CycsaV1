@@ -61,6 +61,7 @@ $bitacora_acciones_nombre = [
     'correccion_administrativa'  => 'Corrección Administrativa',
     'subir_logo_acreditacion'    => 'Logo de Acreditación',
     'eliminar_logo_acreditacion' => 'Retiro de Logo',
+    'importacion_masiva'         => 'Carga Masiva',
     'aprobada'                   => 'Matriz Aprobada',
     'devuelta'                   => 'Matriz Devuelta',
     'enviado_revision'           => 'Enviado a Revisión',
@@ -74,6 +75,7 @@ if (!function_exists('bitacora_badge_info')) {
         $a = mb_strtolower($accion);
 
         if (str_contains($a, 'congelar'))                                       return ['bitacora-badge-gray',    'fa-lock'];
+        if (str_contains($a, 'importacion') || str_contains($a, 'masiva'))      return ['bitacora-badge-blue',    'fa-file-excel'];
         if (str_contains($a, 'cerrar') || str_contains($a, 'finalizar'))        return ['bitacora-badge-emerald', 'fa-box-archive'];
         if (str_contains($a, 'hoja_') || $a === 'emitir_solicitud')             return ['bitacora-badge-blue',    'fa-file-lines'];
         if (str_contains($a, 'guardar') || str_contains($a, 'omitir'))          return ['bitacora-badge-amber',   'fa-floppy-disk'];
@@ -153,12 +155,25 @@ if (!isset($bitacora_modulo_nombre)) {
 
     .bitacora-panel .bitacora-content {
         display: none; /* Empieza colapsado */
-        overflow: hidden;
+        overflow: visible;
     }
     .bitacora-panel .bitacora-content.bitacora-open {
         display: block;
-        animation: bitacoraSlideDown .3s ease forwards;
     }
+    .cm-hist-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; }
+    .cm-hist-pill { font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; border:1px solid transparent; }
+    .cm-hist-btn { font-size:11.5px; font-weight:700; padding:5px 11px; border-radius:6px; border:1px solid #cbd5e1; background:#fff; color:#1e293b; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+    .cm-hist-btn:hover { background:#eff6ff; border-color:#93c5fd; color:#103487; }
+    .cm-hist-detail { display:none; margin-top:12px; background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:12px; }
+    .cm-hist-detail.visible { display:block; }
+    .cm-hist-tabs { display:flex; flex-wrap:wrap; gap:6px; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:10px; }
+    .cm-hist-tab { font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc; color:#475569; cursor:pointer; }
+    .cm-hist-tab.active { background:#103487; color:#fff; border-color:#103487; }
+    .cm-hist-pane { display:none; max-height:360px; overflow:auto; }
+    .cm-hist-pane.active { display:block; }
+    .cm-hist-table { width:100%; border-collapse:collapse; font-size:11.5px; }
+    .cm-hist-table th { background:#f1f5f9; color:#334155; padding:6px 8px; text-align:left; border-bottom:1px solid #cbd5e1; position:sticky; top:0; }
+    .cm-hist-table td { padding:6px 8px; border-bottom:1px solid #edf2f7; vertical-align:top; color:#1e293b; }
     
     @keyframes bitacoraSlideDown {
         from { opacity: 0; max-height: 0; }
@@ -330,7 +345,7 @@ if (!isset($bitacora_modulo_nombre)) {
 </style>
 
 <!-- ======================== BITÁCORA – HTML ======================== -->
-<div class="bitacora-panel">
+<div class="bitacora-panel" id="bitacoraModuloPanel">
     <!-- Botón Toggle Principal -->
     <button type="button" class="bitacora-toggle-btn<?= $bitacora_abierta ? ' active' : '' ?>" onclick="toggleBitacoraPanel()">
         <i class="fa-solid fa-clock-rotate-left"></i>
@@ -419,6 +434,117 @@ if (!isset($bitacora_modulo_nombre)) {
                                     </span>
                                 <?php endif; ?>
                             </div>
+                            <?php
+                            $cargaDetalle = null;
+                            if ($accion_raw === 'importacion_masiva' && !empty($log['datos_json'])) {
+                                $dec = json_decode((string)$log['datos_json'], true);
+                                if (is_array($dec) && (isset($dec['agregados']) || isset($dec['modificados']) || isset($dec['desactivados']))) {
+                                    $cargaDetalle = $dec;
+                                }
+                            }
+                            if ($cargaDetalle !== null):
+                                $logIdSafe = (int)($log['id'] ?? rand(1000, 99999));
+                                $tot = $cargaDetalle['totales'] ?? [];
+                                $listaMod = is_array($cargaDetalle['modificados'] ?? null) ? $cargaDetalle['modificados'] : [];
+                                $listaAgr = is_array($cargaDetalle['agregados'] ?? null) ? $cargaDetalle['agregados'] : [];
+                                $listaDes = is_array($cargaDetalle['desactivados'] ?? null) ? $cargaDetalle['desactivados'] : [];
+                                $archivoSubido = (string)($cargaDetalle['archivo'] ?? 'Archivo');
+                            ?>
+                                <div class="cm-hist-actions">
+                                    <span class="cm-hist-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;" title="Archivo cargado"><i class="fa-solid fa-file-excel"></i> <?= htmlspecialchars($archivoSubido, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="cm-hist-pill" style="background:#dcfce7;color:#166534;border-color:#bbf7d0;">+<?= count($listaAgr) ?> agregados</span>
+                                    <span class="cm-hist-pill" style="background:#fef3c7;color:#92400e;border-color:#fde68a;">~<?= count($listaMod) ?> modificados</span>
+                                    <span class="cm-hist-pill" style="background:#f1f5f9;color:#475569;border-color:#cbd5e1;">=<?= (int)($tot['sin_cambios'] ?? 0) ?> sin cambios</span>
+                                    <?php if (!empty($listaDes)): ?>
+                                        <span class="cm-hist-pill" style="background:#fee2e2;color:#991b1b;border-color:#fecaca;">-<?= count($listaDes) ?> desactivados</span>
+                                    <?php endif; ?>
+                                    <button type="button" class="cm-hist-btn" onclick="toggleDetalleCargaMasiva(<?= $logIdSafe ?>)">
+                                        <i class="fa-solid fa-list-check"></i> Ver detalle de cambios
+                                    </button>
+                                    <button type="button" class="cm-hist-btn" onclick="descargarReporteCargaMasiva(<?= $logIdSafe ?>)">
+                                        <i class="fa-solid fa-download"></i> Descargar reporte (.csv)
+                                    </button>
+                                </div>
+
+                                <div id="cm-hist-detail-<?= $logIdSafe ?>" class="cm-hist-detail" data-payload="<?= htmlspecialchars((string)$log['datos_json'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <div class="cm-hist-tabs">
+                                        <button type="button" class="cm-hist-tab active" onclick="cambiarTabCargaMasiva(<?= $logIdSafe ?>, 'modificados', this)">Modificados (<?= count($listaMod) ?>)</button>
+                                        <button type="button" class="cm-hist-tab" onclick="cambiarTabCargaMasiva(<?= $logIdSafe ?>, 'agregados', this)">Agregados (<?= count($listaAgr) ?>)</button>
+                                        <?php if (!empty($listaDes)): ?>
+                                            <button type="button" class="cm-hist-tab" onclick="cambiarTabCargaMasiva(<?= $logIdSafe ?>, 'desactivados', this)">Desactivados (<?= count($listaDes) ?>)</button>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div id="cm-pane-<?= $logIdSafe ?>-modificados" class="cm-hist-pane active">
+                                        <?php if (empty($listaMod)): ?>
+                                            <div class="text-muted small">No hubo productos modificados en esta carga.</div>
+                                        <?php else: ?>
+                                            <table class="cm-hist-table">
+                                                <thead><tr><th>Ítem / ID</th><th>Producto</th><th>Qué cambió (Anterior ➔ Nuevo)</th></tr></thead>
+                                                <tbody>
+                                                <?php foreach ($listaMod as $m): ?>
+                                                    <tr>
+                                                        <td style="white-space:nowrap;"><strong>#<?= htmlspecialchars((string)($m['no_item'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></strong><br><small style="color:#64748b;">ID <?= (int)($m['id'] ?? 0) ?><?= !empty($m['codigo_agn']) ? ' · ' . htmlspecialchars((string)$m['codigo_agn'], ENT_QUOTES, 'UTF-8') : '' ?></small></td>
+                                                        <td><strong><?= htmlspecialchars((string)($m['nombre_comercial'] ?? ''), ENT_QUOTES, 'UTF-8') ?></strong></td>
+                                                        <td>
+                                                            <?php foreach (($m['cambios'] ?? []) as $c): ?>
+                                                                <div style="margin-bottom:3px;">
+                                                                    <span style="font-weight:700;color:#103487;"><?= htmlspecialchars((string)($c['etiqueta'] ?? $c['campo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>:</span>
+                                                                    <span style="color:#991b1b;text-decoration:line-through;"><?= htmlspecialchars((string)($c['anterior'] ?? ''), ENT_QUOTES, 'UTF-8') ?: '(vacío)' ?></span>
+                                                                    ➔
+                                                                    <span style="color:#047857;font-weight:600;"><?= htmlspecialchars((string)($c['nuevo'] ?? ''), ENT_QUOTES, 'UTF-8') ?: '(vacío)' ?></span>
+                                                                </div>
+                                                            <?php endforeach; ?>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div id="cm-pane-<?= $logIdSafe ?>-agregados" class="cm-hist-pane">
+                                        <?php if (empty($listaAgr)): ?>
+                                            <div class="text-muted small">No se agregaron productos nuevos en esta carga.</div>
+                                        <?php else: ?>
+                                            <table class="cm-hist-table">
+                                                <thead><tr><th>Ítem</th><th>Código AGN</th><th>Producto</th><th>Matriz</th><th>Precio</th><th>Estatus</th></tr></thead>
+                                                <tbody>
+                                                <?php foreach ($listaAgr as $a): ?>
+                                                    <tr>
+                                                        <td><strong>#<?= htmlspecialchars((string)($a['no_item'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></strong><br><small style="color:#64748b;">ID <?= (int)($a['id'] ?? 0) ?></small></td>
+                                                        <td style="font-family:monospace;"><?= htmlspecialchars((string)($a['codigo_agn'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+                                                        <td><strong><?= htmlspecialchars((string)($a['nombre_comercial'] ?? ''), ENT_QUOTES, 'UTF-8') ?></strong></td>
+                                                        <td><?= htmlspecialchars((string)($a['matriz_tipo'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+                                                        <td style="color:#047857;font-weight:700;white-space:nowrap;">C$ <?= number_format((float)($a['precio'] ?? 0), 2) ?></td>
+                                                        <td><?= htmlspecialchars((string)($a['estatus'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php if (!empty($listaDes)): ?>
+                                    <div id="cm-pane-<?= $logIdSafe ?>-desactivados" class="cm-hist-pane">
+                                        <table class="cm-hist-table">
+                                            <thead><tr><th>ID / Ítem</th><th>Código</th><th>Producto</th><th>Precio</th><th>Motivo</th></tr></thead>
+                                            <tbody>
+                                            <?php foreach ($listaDes as $d): ?>
+                                                <tr>
+                                                    <td>ID <?= (int)($d['id'] ?? 0) ?> · #<?= htmlspecialchars((string)($d['no_item'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+                                                    <td style="font-family:monospace;"><?= htmlspecialchars((string)($d['codigo_servicio'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+                                                    <td><?= htmlspecialchars((string)($d['nombre_comercial'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                                    <td>C$ <?= number_format((float)($d['precio'] ?? 0), 2) ?></td>
+                                                    <td><?= htmlspecialchars((string)($d['motivo'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -481,5 +607,58 @@ if (!isset($bitacora_modulo_nombre)) {
                 emptyMsg.remove();
             }
         }
+    }
+
+    function toggleDetalleCargaMasiva(logId) {
+        const box = document.getElementById('cm-hist-detail-' + logId);
+        if (!box) return;
+        box.classList.toggle('visible');
+    }
+
+    function cambiarTabCargaMasiva(logId, tabName, btnEl) {
+        const box = document.getElementById('cm-hist-detail-' + logId);
+        if (!box) return;
+        box.querySelectorAll('.cm-hist-tab').forEach(b => b.classList.remove('active'));
+        box.querySelectorAll('.cm-hist-pane').forEach(p => p.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+        const pane = document.getElementById(`cm-pane-${logId}-${tabName}`);
+        if (pane) pane.classList.add('active');
+    }
+
+    function descargarReporteCargaMasiva(logId) {
+        const box = document.getElementById('cm-hist-detail-' + logId);
+        if (!box) return;
+        let payload;
+        try {
+            payload = JSON.parse(box.getAttribute('data-payload') || '{}');
+        } catch (e) {
+            alert('No se pudo leer el detalle de la carga masiva.');
+            return;
+        }
+        const esc = v => '"' + String(v ?? '').replaceAll('"', '""').replace(/[\r\n]+/g, ' ') + '"';
+        const filas = [['Tipo_Cambio', 'ID_Producto', 'No_Item', 'Codigo_AGN', 'Nombre_Comercial', 'Campo', 'Valor_Anterior', 'Valor_Nuevo']];
+
+        (payload.agregados || []).forEach(a => {
+            filas.push(['AGREGADO', a.id || '', a.no_item || '', a.codigo_agn || '', a.nombre_comercial || '', 'Registro Nuevo', '', `Precio C$ ${Number(a.precio || 0).toFixed(2)} | ${a.estatus || ''}`]);
+        });
+        (payload.modificados || []).forEach(m => {
+            (m.cambios || []).forEach(c => {
+                filas.push(['MODIFICADO', m.id || '', m.no_item || '', m.codigo_agn || '', m.nombre_comercial || '', c.etiqueta || c.campo || '', c.anterior || '', c.nuevo || '']);
+            });
+        });
+        (payload.desactivados || []).forEach(d => {
+            filas.push(['DESACTIVADO', d.id || '', d.no_item || '', d.codigo_servicio || '', d.nombre_comercial || '', 'Estado', 'Activo', d.motivo || 'Inactivo']);
+        });
+
+        const csv = '\uFEFFsep=;\r\n' + filas.map(r => r.map(esc).join(';')).join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `CYCSA_Historial_Carga_Masiva_${logId}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
     }
 </script>

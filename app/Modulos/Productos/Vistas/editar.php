@@ -34,16 +34,21 @@
                 <label class="form-label">No. de Ítem</label>
                 <input type="text" name="no_item" class="form-control" placeholder="Ej: 15" value="<?= htmlspecialchars($producto['no_item'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
-            
+
             <div class="form-group">
-                <label class="form-label">Nombre Comercial *</label>
-                <input type="text" name="nombre_comercial" class="form-control" required placeholder="Ej: Humedad en Agregados" value="<?= htmlspecialchars($producto['nombre_comercial'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                <label class="form-label">Código AGN</label>
+                <input type="text" name="codigo_agn" class="form-control" placeholder="Ej: 001-CYCSA-PE-01 / CYCSA-PQT-01" value="<?= htmlspecialchars($producto['codigo_agn'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
 
             <div class="form-group">
                 <label class="form-label">Código de Servicio / Formato</label>
-                <input type="text" name="codigo_servicio" class="form-control" placeholder="Ej: CYCSA-RT-FM-22G" value="<?= htmlspecialchars($producto['codigo_servicio'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="text" name="codigo_servicio" class="form-control" placeholder="Ej: CYCSA-RT-FM-22 G" value="<?= htmlspecialchars($producto['codigo_servicio'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Nombre Comercial *</label>
+            <input type="text" name="nombre_comercial" class="form-control" required placeholder="Ej: Humedad en Agregados" value="<?= htmlspecialchars($producto['nombre_comercial'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
         </div>
 
         <div class="form-group">
@@ -83,6 +88,7 @@
                 <select name="estatus" class="form-control">
                     <option value="No acreditado" <?= (isset($producto['estatus']) && strtolower($producto['estatus']) === 'no acreditado') ? 'selected' : '' ?>>No Acreditado</option>
                     <option value="Acreditado" <?= (isset($producto['estatus']) && strtolower($producto['estatus']) === 'acreditado') ? 'selected' : '' ?>>Acreditado (ISO 17025)</option>
+                    <option value="N/A" <?= (isset($producto['estatus']) && strtoupper((string)$producto['estatus']) === 'N/A') ? 'selected' : '' ?>>N/A (Paquete / Movilización)</option>
                 </select>
             </div>
 

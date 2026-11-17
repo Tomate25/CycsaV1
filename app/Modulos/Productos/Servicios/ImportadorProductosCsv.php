@@ -14,6 +14,7 @@ final class ImportadorProductosCsv {
     public const ENCABEZADOS = [
         'ID',
         'No_Item',
+        'Codigo_AGN',
         'Codigo_Servicio',
         'Nombre_Comercial',
         'Ensayo_Servicio',
@@ -56,6 +57,7 @@ final class ImportadorProductosCsv {
             [
                 '1',
                 '1',
+                '001-CYCSA-PE-01',
                 'CYCSA-RT-FM-22 G',
                 'Humedad en agregados, ASTM C566-25',
                 'CYCSA-PE-01-Determinación de Humedad en muestras de Agregados.',
@@ -75,6 +77,7 @@ final class ImportadorProductosCsv {
             [
                 '29',
                 '29',
+                '029-CYCSA-PE-25',
                 'CYCSA-RT-FM-22 B',
                 'Densidad y Humedad In Situ (Densímetro Nuclear) – ASTM D6938-23',
                 '*CYCSA-PE-25-Metodo estándar para la determinación de densidad in situ y contenido de agua',
@@ -93,21 +96,22 @@ final class ImportadorProductosCsv {
             ],
             [
                 '',
-                '63',
+                '79',
                 'CYCSA-026-1',
+                'N/A',
                 'Movilización Managua Urbano',
                 'Movilización Managua Urbano',
                 'Movilización',
                 'N/A',
                 'N/A',
-                'No acreditado',
+                'N/A',
                 'N/A',
                 'N/A',
                 'N/A',
                 'Viaje',
                 '2300.00',
                 'N/A',
-                'A convenir',
+                'Precio a convenir en dependencia del lugar',
                 ''
             ]
         ];
@@ -151,6 +155,7 @@ final class ImportadorProductosCsv {
             $fila = [
                 (string)$p['id'],
                 $limpiar($p['no_item'] ?? ''),
+                $limpiar($p['codigo_agn'] ?? ''),
                 $limpiar($p['codigo_servicio'] ?? ''),
                 $limpiar($p['nombre_comercial'] ?? ''),
                 $limpiar($p['ensayo_servicio'] ?? ''),
@@ -175,6 +180,209 @@ final class ImportadorProductosCsv {
         fclose($flujo);
 
         return preg_replace('/(?<!\r)\n/', "\r\n", (string)$contenido);
+    }
+
+    /**
+     * Despacha CSV o XLSX hacia el validador unificado de carga masiva.
+     */
+    public static function parsearArchivoYValidar(string $contenidoBinario, string $extension, ProductoModelo $modelo): array {
+        $ext = strtolower(trim($extension));
+        if ($ext === 'xlsx') {
+            return self::parsearXlsxYValidar($contenidoBinario, $modelo);
+        }
+        return self::parsearYValidar($contenidoBinario, $modelo);
+    }
+
+    /**
+     * Parsea y valida un libro Excel (.xlsx) usando ZipArchive + SimpleXML nativo de PHP.
+     */
+    public static function parsearXlsxYValidar(string $contenidoBinario, ProductoModelo $modelo): array {
+        if (!class_exists(\ZipArchive::class) || !function_exists('simplexml_load_string')) {
+            return [
+                'exito' => false,
+                'error' => 'El servidor no tiene habilitadas las extensiones ZipArchive/SimpleXML para leer archivos .xlsx.',
+                'total_filas' => 0, 'validas' => 0, 'errores' => 0, 'nuevos' => 0, 'actualizaciones' => 0, 'filas' => []
+            ];
+        }
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'cycsa_xlsx_');
+        if ($tmpFile === false) {
+            return ['exito' => false, 'error' => 'No se pudo crear archivo temporal para leer el libro Excel.', 'filas' => []];
+        }
+        file_put_contents($tmpFile, $contenidoBinario);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($tmpFile) !== true) {
+            @unlink($tmpFile);
+            return ['exito' => false, 'error' => 'El archivo .xlsx no es un libro de Excel válido o está dañado.', 'filas' => []];
+        }
+
+        try {
+            $sharedStrings = [];
+            $ssXml = $zip->getFromName('xl/sharedStrings.xml');
+            if ($ssXml !== false) {
+                $ssDoc = @simplexml_load_string($ssXml);
+                if ($ssDoc !== false) {
+                    foreach ($ssDoc->si as $si) {
+                        if (isset($si->t)) {
+                            $sharedStrings[] = (string)$si->t;
+                        } else {
+                            $txt = '';
+                            foreach ($si->r as $run) {
+                                $txt .= (string)$run->t;
+                            }
+                            $sharedStrings[] = $txt;
+                        }
+                    }
+                }
+            }
+
+            // Resolver rutas de hojas desde workbook.xml + workbook.xml.rels
+            $wbXml = $zip->getFromName('xl/workbook.xml');
+            $relsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
+            $sheets = [];
+            if ($wbXml !== false && $relsXml !== false) {
+                $wbDoc = @simplexml_load_string($wbXml);
+                $relsDoc = @simplexml_load_string($relsXml);
+                $relMap = [];
+                if ($relsDoc !== false) {
+                    foreach ($relsDoc->Relationship as $rel) {
+                        $relMap[(string)$rel['Id']] = (string)$rel['Target'];
+                    }
+                }
+                if ($wbDoc !== false && isset($wbDoc->sheets->sheet)) {
+                    foreach ($wbDoc->sheets->sheet as $s) {
+                        $attrs = $s->attributes('r', true);
+                        $rId = (string)($attrs['id'] ?? '');
+                        $target = $relMap[$rId] ?? '';
+                        if ($target !== '') {
+                            $target = ltrim($target, '/');
+                            if (!str_starts_with($target, 'xl/')) {
+                                $target = 'xl/' . $target;
+                            }
+                            $sheets[] = ['name' => (string)$s['name'], 'path' => $target];
+                        }
+                    }
+                }
+            }
+            if (empty($sheets)) {
+                $sheets[] = ['name' => 'Hoja 1', 'path' => 'xl/worksheets/sheet1.xml'];
+            }
+
+            // Priorizar hoja 'LISTA DE PRECIOS 4.2' si existe; sino evaluar en orden
+            usort($sheets, static function(array $a, array $b): int {
+                $score = static function(string $name): int {
+                    $n = mb_strtolower(trim($name), 'UTF-8');
+                    if (str_contains($n, 'lista de precios 4.2')) return 0;
+                    if (str_contains($n, 'lista de precios')) return 1;
+                    return 2;
+                };
+                return $score($a['name']) <=> $score($b['name']);
+            });
+
+            $tablaSeleccionada = null;
+            $hojaNombre = null;
+
+            foreach ($sheets as $sheet) {
+                $wsXml = $zip->getFromName($sheet['path']);
+                if ($wsXml === false) continue;
+                $wsDoc = @simplexml_load_string($wsXml);
+                if ($wsDoc === false || !isset($wsDoc->sheetData->row)) continue;
+
+                $grid = [];
+                foreach ($wsDoc->sheetData->row as $rowNode) {
+                    $filaVals = [];
+                    foreach ($rowNode->c as $c) {
+                        $ref = (string)$c['r'];
+                        $colIdx = self::xlsxColRefToIndex($ref);
+                        $type = (string)$c['t'];
+                        $val = '';
+                        if ($type === 's') {
+                            $ssIdx = (int)$c->v;
+                            $val = $sharedStrings[$ssIdx] ?? '';
+                        } elseif ($type === 'inlineStr') {
+                            $val = (string)($c->is->t ?? '');
+                        } else {
+                            $val = (string)($c->v ?? '');
+                        }
+                        if ($colIdx >= 0) {
+                            $filaVals[$colIdx] = $val;
+                        }
+                    }
+                    if (!empty($filaVals)) {
+                        $maxCol = max(array_keys($filaVals));
+                        $rowArr = array_fill(0, $maxCol + 1, '');
+                        foreach ($filaVals as $idx => $v) {
+                            $rowArr[$idx] = $v;
+                        }
+                        $grid[] = $rowArr;
+                    }
+                }
+
+                // Buscar fila de encabezados (fila que contenga al menos nombre/ensayo y precio)
+                foreach ($grid as $pos => $rowArr) {
+                    $mapaTest = self::normalizarEncabezados($rowArr);
+                    if ((isset($mapaTest['nombre_comercial']) || isset($mapaTest['ensayo_servicio'])) && isset($mapaTest['precio'])) {
+                        $tablaSeleccionada = [
+                            'headers' => $rowArr,
+                            'rows' => array_slice($grid, $pos + 1),
+                            'header_row_num' => $pos + 1
+                        ];
+                        $hojaNombre = trim($sheet['name']);
+                        break 2;
+                    }
+                }
+            }
+
+            if ($tablaSeleccionada === null) {
+                return [
+                    'exito' => false,
+                    'error' => 'No se encontró una tabla válida con columnas de Producto/Ensayo y Precio en el archivo .xlsx.',
+                    'filas' => []
+                ];
+            }
+
+            // Omitir filas de firmas al pie (Elaborado por:, Revisado por:, Aprobado por:)
+            $filasLimpias = [];
+            foreach ($tablaSeleccionada['rows'] as $rowArr) {
+                $esFirma = false;
+                foreach ($rowArr as $valCell) {
+                    $txtCell = mb_strtolower(trim((string)$valCell), 'UTF-8');
+                    if (preg_match('/^(elaborado|revisado|aprobado)\s+por\s*:?/u', $txtCell)) {
+                        $esFirma = true;
+                        break;
+                    }
+                }
+                if ($esFirma) {
+                    break;
+                }
+                $filasLimpias[] = $rowArr;
+            }
+
+            return self::procesarTablaFilas(
+                $tablaSeleccionada['headers'],
+                $filasLimpias,
+                $modelo,
+                $hojaNombre,
+                (int)$tablaSeleccionada['header_row_num']
+            );
+        } finally {
+            $zip->close();
+            @unlink($tmpFile);
+        }
+    }
+
+    private static function xlsxColRefToIndex(string $ref): int {
+        if (!preg_match('/^([A-Z]+)/i', $ref, $m)) {
+            return -1;
+        }
+        $letters = strtoupper($m[1]);
+        $index = 0;
+        $len = strlen($letters);
+        for ($i = 0; $i < $len; $i++) {
+            $index = $index * 26 + (ord($letters[$i]) - ord('A') + 1);
+        }
+        return $index - 1;
     }
 
     /**
@@ -236,6 +444,19 @@ final class ImportadorProductosCsv {
             ];
         }
 
+        $filasCsv = [];
+        while (($datosFila = fgetcsv($flujo, 0, $delimitador, '"', '\\')) !== false) {
+            $filasCsv[] = $datosFila;
+        }
+        fclose($flujo);
+
+        return self::procesarTablaFilas($rawHeaders, $filasCsv, $modelo, null, 1);
+    }
+
+    /**
+     * Pipeline unificado de validación y cálculo de diferencias (CSV y XLSX).
+     */
+    private static function procesarTablaFilas(array $rawHeaders, array $dataRows, ProductoModelo $modelo, ?string $hojaOrigen = null, int $filaEncabezado = 1): array {
         $mapaColumnas = self::normalizarEncabezados($rawHeaders);
 
         // Cargar índices en memoria para cotejo O(1)
@@ -250,9 +471,9 @@ final class ImportadorProductosCsv {
         $nuevosCount = 0;
         $actualizacionesCount = 0;
         $sinCambiosCount = 0;
-        $numeroFilaFisica = 1; // Fila 1 = Encabezados
+        $numeroFilaFisica = $filaEncabezado;
 
-        while (($datosFila = fgetcsv($flujo, 0, $delimitador, '"', '\\')) !== false) {
+        foreach ($dataRows as $datosFila) {
             $numeroFilaFisica++;
 
             // Omitir filas enteramente vacías
@@ -274,9 +495,11 @@ final class ImportadorProductosCsv {
             if ($evaluacion['es_valida']) {
                 $claveLote = $evaluacion['producto_existente_id']
                     ? 'id:' . $evaluacion['producto_existente_id']
-                    : (!empty($evaluacion['datos']['no_item'])
-                        ? 'no:' . mb_strtolower((string)$evaluacion['datos']['no_item'], 'UTF-8')
-                        : 'nombre:' . mb_strtolower((string)$evaluacion['datos']['nombre_comercial'], 'UTF-8'));
+                    : (!empty($evaluacion['datos']['codigo_agn'])
+                        ? 'agn:' . mb_strtolower((string)$evaluacion['datos']['codigo_agn'], 'UTF-8')
+                        : (!empty($evaluacion['datos']['no_item'])
+                            ? 'no:' . mb_strtolower((string)$evaluacion['datos']['no_item'], 'UTF-8')
+                            : 'nombre:' . mb_strtolower((string)$evaluacion['datos']['nombre_comercial'], 'UTF-8')));
 
                 if (isset($clavesLote[$claveLote])) {
                     $evaluacion['es_valida'] = false;
@@ -302,10 +525,9 @@ final class ImportadorProductosCsv {
             $filasProcesadas[] = $evaluacion;
         }
 
-        fclose($flujo);
-
         return [
             'exito'           => true,
+            'hoja_origen'     => $hojaOrigen,
             'total_filas'     => $totalFilas,
             'validas'         => $validas,
             'errores'         => $erroresCount,
@@ -337,6 +559,8 @@ final class ImportadorProductosCsv {
         $creados = 0;
         $actualizados = 0;
         $sinCambios = 0;
+        $agregadosDetalle = [];
+        $modificadosDetalle = [];
         $errores = [];
 
         try {
@@ -354,6 +578,22 @@ final class ImportadorProductosCsv {
                     $ok = $modelo->actualizar($idProducto, $datos);
                     if ($ok) {
                         $actualizados++;
+                        $cambiosLista = [];
+                        foreach (($item['diferencias'] ?? []) as $campo => $dif) {
+                            $cambiosLista[] = [
+                                'campo'    => $campo,
+                                'etiqueta' => (string)($dif['etiqueta'] ?? $campo),
+                                'anterior' => (string)($dif['anterior'] ?? ''),
+                                'nuevo'    => (string)($dif['nuevo'] ?? '')
+                            ];
+                        }
+                        $modificadosDetalle[] = [
+                            'id'               => $idProducto,
+                            'no_item'          => (string)($datos['no_item'] ?? ''),
+                            'codigo_agn'       => (string)($datos['codigo_agn'] ?? ''),
+                            'nombre_comercial' => (string)($datos['nombre_comercial'] ?? ''),
+                            'cambios'          => $cambiosLista
+                        ];
                     } else {
                         $errores[] = "Error al actualizar producto ID {$idProducto} (Fila {$item['fila_excel']})";
                     }
@@ -363,6 +603,16 @@ final class ImportadorProductosCsv {
                     $nuevoId = $modelo->guardarYRetornarId($datos);
                     if ($nuevoId > 0) {
                         $creados++;
+                        $agregadosDetalle[] = [
+                            'id'               => $nuevoId,
+                            'no_item'          => (string)($datos['no_item'] ?? ''),
+                            'codigo_agn'       => (string)($datos['codigo_agn'] ?? ''),
+                            'codigo_servicio'  => (string)($datos['codigo_servicio'] ?? ''),
+                            'nombre_comercial' => (string)($datos['nombre_comercial'] ?? ''),
+                            'matriz_tipo'      => (string)($datos['matriz_tipo'] ?? ''),
+                            'precio'           => (float)($datos['precio'] ?? 0),
+                            'estatus'          => (string)($datos['estatus'] ?? 'No acreditado')
+                        ];
                     } else {
                         $errores[] = "Error al crear producto '{$datos['nombre_comercial']}' (Fila {$item['fila_excel']})";
                     }
@@ -385,12 +635,14 @@ final class ImportadorProductosCsv {
             $modelo->confirmarTransaccion();
 
             return [
-                'exito' => true,
-                'creados' => $creados,
-                'actualizados' => $actualizados,
-                'modificados' => $actualizados,
-                'sin_cambios' => $sinCambios,
-                'total' => $creados + $actualizados + $sinCambios
+                'exito'              => true,
+                'creados'            => $creados,
+                'actualizados'       => $actualizados,
+                'modificados'        => $actualizados,
+                'sin_cambios'        => $sinCambios,
+                'total'              => $creados + $actualizados + $sinCambios,
+                'agregados_detalle'  => $agregadosDetalle,
+                'modificados_detalle'=> $modificadosDetalle
             ];
 
         } catch (\Throwable $e) {
@@ -418,33 +670,35 @@ final class ImportadorProductosCsv {
 
             if (in_array($h, ['no_item', 'no', 'item', 'numero_item', 'n_item'])) {
                 $mapa['no_item'] = $idx;
-            } elseif (in_array($h, ['codigo_servicio', 'codigo', 'cod_servicio', 'codigo_ensayo'])) {
+            } elseif (in_array($h, ['codigo_agn', 'agn', 'cod_agn'])) {
+                $mapa['codigo_agn'] = $idx;
+            } elseif (in_array($h, ['codigo_servicio', 'codigo', 'cod_servicio', 'codigo_ensayo', 'codigo_de_formato_y_o_codigo_de_servicio'])) {
                 $mapa['codigo_servicio'] = $idx;
-            } elseif (in_array($h, ['nombre_comercial', 'nombre', 'producto', 'servicio_nombre', 'descripcion_comercial'])) {
+            } elseif (in_array($h, ['nombre_comercial', 'nombre', 'producto', 'servicio_nombre', 'descripcion_comercial', 'nombre_comercial_con_norma'])) {
                 $mapa['nombre_comercial'] = $idx;
-            } elseif (in_array($h, ['ensayo_servicio', 'ensayo', 'servicio', 'metodo', 'procedimiento_oficial'])) {
+            } elseif (in_array($h, ['ensayo_servicio', 'ensayo', 'servicio', 'metodo', 'procedimiento_oficial', 'ensayo_y_o_servicio_a_realizar'])) {
                 $mapa['ensayo_servicio'] = $idx;
             } elseif (in_array($h, ['matriz_tipo', 'matriz', 'categoria', 'tipo_matriz'])) {
                 $mapa['matriz_tipo'] = $idx;
-            } elseif (in_array($h, ['tipo_muestra', 'muestra_tipo', 'muestra'])) {
+            } elseif (in_array($h, ['tipo_muestra', 'muestra_tipo', 'muestra', 'tipo_de_muestras', 'tipo_de_muestra'])) {
                 $mapa['tipo_muestra'] = $idx;
-            } elseif (in_array($h, ['tipo_muestreo', 'muestreo_tipo', 'muestreo'])) {
+            } elseif (in_array($h, ['tipo_muestreo', 'muestreo_tipo', 'muestreo', 'tipo_de_muestreo'])) {
                 $mapa['tipo_muestreo'] = $idx;
             } elseif (in_array($h, ['estatus', 'acreditacion', 'estado_acreditacion', 'acreditado'])) {
                 $mapa['estatus'] = $idx;
             } elseif (in_array($h, ['norma_astm', 'norma', 'normativa', 'astm', 'aashto'])) {
                 $mapa['norma_astm'] = $idx;
-            } elseif (in_array($h, ['procedimiento_muestreo', 'procedimiento', 'pe'])) {
+            } elseif (in_array($h, ['procedimiento_muestreo', 'procedimiento', 'pe', 'procedimiento_de_muestreo_cycsa_pe'])) {
                 $mapa['procedimiento_muestreo'] = $idx;
-            } elseif (in_array($h, ['codigo_hoja_campo', 'hoja_campo', 'hoja_solicitud', 'formato_campo'])) {
+            } elseif (in_array($h, ['codigo_hoja_campo', 'hoja_campo', 'hoja_solicitud', 'formato_campo', 'codigo_hoja_de_campo'])) {
                 $mapa['codigo_hoja_campo'] = $idx;
-            } elseif (in_array($h, ['unidad_medida', 'unidad', 'medida', 'um'])) {
+            } elseif (in_array($h, ['unidad_medida', 'unidad', 'medida', 'um', 'unidad_de_medida'])) {
                 $mapa['unidad_medida'] = $idx;
             } elseif (in_array($h, ['precio', 'costo', 'valor', 'precio_oficial', 'tarifa'])) {
                 $mapa['precio'] = $idx;
-            } elseif (in_array($h, ['condiciones_muestra', 'condiciones', 'requisitos_muestra'])) {
+            } elseif (in_array($h, ['condiciones_muestra', 'condiciones', 'requisitos_muestra', 'condiciones_de_muestra'])) {
                 $mapa['condiciones_muestra'] = $idx;
-            } elseif (in_array($h, ['observaciones', 'observacion', 'tiempo_entrega', 'plazo'])) {
+            } elseif (in_array($h, ['observaciones', 'observacion', 'tiempo_entrega', 'plazo', 'tiempo_de_entrega_observaciones'])) {
                 $mapa['observaciones'] = $idx;
             } elseif (in_array($h, ['formato_codigo', 'formato', 'formato_id', 'codigo_formato', 'plantilla'])) {
                 $mapa['formato_codigo'] = $idx;
@@ -470,6 +724,7 @@ final class ImportadorProductosCsv {
         return [
             'id'                     => $get('id', ''),
             'no_item'                => $get('no_item', ''),
+            'codigo_agn'             => $get('codigo_agn', ''),
             'codigo_servicio'        => $get('codigo_servicio', ''),
             'nombre_comercial'       => $get('nombre_comercial', ''),
             'ensayo_servicio'        => $get('ensayo_servicio', ''),
@@ -501,11 +756,14 @@ final class ImportadorProductosCsv {
         // 1. Detectar Upsert (Existente vs Nuevo) antes de completar columnas omitidas.
         $nombreComercial = trim($fila['nombre_comercial']);
         $ensayoServicio = trim($fila['ensayo_servicio']);
+        $codigoAgnUpper = mb_strtoupper(trim((string)($fila['codigo_agn'] ?? '')), 'UTF-8');
 
         $productoExistente = null;
         $idDirecto = (int)$fila['id'];
         if ($idDirecto > 0 && isset($indices['por_id'][$idDirecto])) {
             $productoExistente = $indices['por_id'][$idDirecto];
+        } elseif ($codigoAgnUpper !== '' && isset($indices['por_codigo_agn'][$codigoAgnUpper])) {
+            $productoExistente = $indices['por_codigo_agn'][$codigoAgnUpper];
         } elseif (!empty($fila['no_item']) && isset($indices['por_no_item'][trim($fila['no_item'])])) {
             $productoExistente = $indices['por_no_item'][trim($fila['no_item'])];
         } elseif ($nombreComercial !== '') {
@@ -550,6 +808,8 @@ final class ImportadorProductosCsv {
         $estatus = trim($fila['estatus']);
         if (!$estaPresente('estatus') && $productoExistente) {
             $estatusFinal = (string)($productoExistente['estatus'] ?? 'No acreditado');
+        } elseif (in_array(mb_strtoupper($estatus, 'UTF-8'), ['N/A', 'NA'], true)) {
+            $estatusFinal = 'N/A';
         } elseif (mb_stripos($estatus, 'acredit') !== false && mb_stripos($estatus, 'no') === false) {
             $estatusFinal = 'Acreditado';
         } else {
@@ -579,16 +839,27 @@ final class ImportadorProductosCsv {
             return $importado !== '' ? $importado : $predeterminado;
         };
 
+        $matrizVal = (string)$valor('matriz_tipo', 'Otros ensayos');
+        $matrizLower = mb_strtolower(trim($matrizVal), 'UTF-8');
+        $matrizNormMap = ['suelo' => 'Suelo', 'concreto' => 'Concreto', 'mortero' => 'Mortero'];
+        $matrizVal = $matrizNormMap[$matrizLower] ?? $matrizVal;
+
+        $codSrvVal = $valor('codigo_servicio', null);
+        if (is_string($codSrvVal)) {
+            $codSrvVal = trim((string)preg_replace('/\s*\R\s*/u', ' ', $codSrvVal));
+        }
+
         $datosLimpios = [
             'no_item'                => !empty($fila['no_item']) ? trim($fila['no_item']) : ($productoExistente['no_item'] ?? null),
+            'codigo_agn'             => $valor('codigo_agn', null),
             'formato_id'             => $formatoId,
             'tipo_muestra'           => $valor('tipo_muestra', 'N/A'),
-            'matriz_tipo'            => $valor('matriz_tipo', 'Otros ensayos'),
+            'matriz_tipo'            => $matrizVal,
             'tipo_muestreo'          => $valor('tipo_muestreo', 'Aleatorio / Puntual'),
             'ensayo_servicio'        => $ensayoServicio,
             'nombre_comercial'       => $nombreComercial,
             'condiciones_muestra'    => $valor('condiciones_muestra', null),
-            'codigo_servicio'        => $valor('codigo_servicio', null),
+            'codigo_servicio'        => $codSrvVal,
             'estatus'                => $estatusFinal,
             'norma_astm'             => $valor('norma_astm', null),
             'procedimiento_muestreo' => $valor('procedimiento_muestreo', null),
@@ -625,6 +896,7 @@ final class ImportadorProductosCsv {
             // Comparar campos técnicos y descriptivos
             $camposComparar = [
                 'no_item'                => 'No. Ítem',
+                'codigo_agn'             => 'Código AGN',
                 'codigo_servicio'        => 'Código Servicio',
                 'nombre_comercial'       => 'Nombre Comercial',
                 'ensayo_servicio'        => 'Ensayo/Servicio',
@@ -636,14 +908,16 @@ final class ImportadorProductosCsv {
                 'observaciones'          => 'Observaciones'
             ];
 
+            $normalizarEspacios = static fn(?string $s): string => trim((string)preg_replace('/\s+/u', ' ', (string)($s ?? '')));
+
             foreach ($camposComparar as $campoKey => $campoEtiqueta) {
-                $valAnterior = trim((string)($productoExistente[$campoKey] ?? ''));
-                $valNuevo = trim((string)($datosLimpios[$campoKey] ?? ''));
-                if ($valAnterior !== $valNuevo) {
+                $valAnteriorRaw = trim((string)($productoExistente[$campoKey] ?? ''));
+                $valNuevoRaw = trim((string)($datosLimpios[$campoKey] ?? ''));
+                if ($normalizarEspacios($valAnteriorRaw) !== $normalizarEspacios($valNuevoRaw)) {
                     $diferencias[$campoKey] = [
                         'etiqueta' => $campoEtiqueta,
-                        'anterior' => $valAnterior,
-                        'nuevo'    => $valNuevo
+                        'anterior' => $valAnteriorRaw,
+                        'nuevo'    => $valNuevoRaw
                     ];
                 }
             }

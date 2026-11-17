@@ -26,6 +26,10 @@ class ProductosControlador extends ControladorBase {
             exit;
         }
         
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
         $modelo = new ProductoModelo();
         $busqueda = $_GET['q'] ?? '';
         $categoria = $_GET['cat'] ?? '';
@@ -38,7 +42,8 @@ class ProductosControlador extends ControladorBase {
             'categorias' => $modelo->obtenerCategorias(),
             'busqueda' => $busqueda,
             'categoria_actual' => $categoria,
-            'bitacora_logs' => $bitacora_logs
+            'bitacora_logs' => $bitacora_logs,
+            'bitacora_abierta' => !empty($_GET['historial'])
         ]);
     }
 
@@ -327,18 +332,22 @@ class ProductosControlador extends ControladorBase {
         }
 
         $contenido = '';
+        $extension = 'csv';
+        $nombreArchivo = 'Carga_CSV';
         if (isset($_FILES['archivo_csv']) && is_uploaded_file($_FILES['archivo_csv']['tmp_name'])) {
             $archivo = $_FILES['archivo_csv'];
             if (($archivo['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
                 $respuesta->enviarJson(['exito' => false, 'error' => 'El archivo no pudo cargarse correctamente.'], 400);
                 return;
             }
-            if (($archivo['size'] ?? 0) > 5 * 1024 * 1024) {
-                $respuesta->enviarJson(['exito' => false, 'error' => 'El archivo supera el límite permitido de 5 MB.'], 413);
+            if (($archivo['size'] ?? 0) > 10 * 1024 * 1024) {
+                $respuesta->enviarJson(['exito' => false, 'error' => 'El archivo supera el límite permitido de 10 MB.'], 413);
                 return;
             }
-            if (strtolower(pathinfo((string)($archivo['name'] ?? ''), PATHINFO_EXTENSION)) !== 'csv') {
-                $respuesta->enviarJson(['exito' => false, 'error' => 'Formato no permitido. Guarde el archivo de Excel como CSV.'], 415);
+            $nombreArchivo = (string)($archivo['name'] ?? 'archivo.csv');
+            $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+            if (!in_array($extension, ['csv', 'xlsx'], true)) {
+                $respuesta->enviarJson(['exito' => false, 'error' => 'Formato no permitido. Suba un archivo .csv o .xlsx de Excel.'], 415);
                 return;
             }
             $contenido = (string)file_get_contents($archivo['tmp_name']);
@@ -352,13 +361,18 @@ class ProductosControlador extends ControladorBase {
         }
 
         $modelo = new ProductoModelo();
-        $resultado = ImportadorProductosCsv::parsearYValidar($contenido, $modelo);
+        $resultado = ImportadorProductosCsv::parsearArchivoYValidar($contenido, $extension, $modelo);
 
         if ($resultado['exito'] && !empty($resultado['filas'])) {
             $tokenLote = bin2hex(random_bytes(16));
             $_SESSION['carga_masiva_token'] = $tokenLote;
             $_SESSION['carga_masiva_filas'] = $resultado['filas'];
+            $_SESSION['carga_masiva_meta'] = [
+                'archivo' => $nombreArchivo,
+                'hoja' => $resultado['hoja_origen'] ?? null
+            ];
             $resultado['token_lote'] = $tokenLote;
+            $resultado['archivo'] = $nombreArchivo;
         }
 
         $respuesta->enviarJson($resultado);
@@ -390,12 +404,40 @@ class ProductosControlador extends ControladorBase {
             return;
         }
 
+        $meta = $_SESSION['carga_masiva_meta'] ?? ['archivo' => 'Archivo CSV/Excel', 'hoja' => null];
         $modelo = new ProductoModelo();
         $resultado = ImportadorProductosCsv::ejecutarImportacion($filas, $modelo);
 
         if ($resultado['exito']) {
-            unset($_SESSION['carga_masiva_token'], $_SESSION['carga_masiva_filas']);
-            registrarBitacora('productos', 'importacion_masiva', "Carga masiva completada: {$resultado['creados']} creados, {$resultado['actualizados']} actualizados ({$resultado['total']} total).");
+            unset($_SESSION['carga_masiva_token'], $_SESSION['carga_masiva_filas'], $_SESSION['carga_masiva_meta']);
+            $nombreArchivo = (string)($meta['archivo'] ?? 'Archivo CSV/Excel');
+            $hojaSuffix = !empty($meta['hoja']) ? " ({$meta['hoja']})" : '';
+            $desc = sprintf(
+                "Carga masiva desde '%s'%s: %d agregado(s), %d modificado(s), %d sin cambios (%d total).",
+                $nombreArchivo,
+                $hojaSuffix,
+                (int)$resultado['creados'],
+                (int)$resultado['actualizados'],
+                (int)($resultado['sin_cambios'] ?? 0),
+                (int)$resultado['total']
+            );
+            registrarBitacora('productos', 'importacion_masiva', $desc, null, [
+                'entidad_tipo' => 'carga_masiva_productos',
+                'datos' => [
+                    'archivo' => $nombreArchivo,
+                    'hoja' => $meta['hoja'] ?? null,
+                    'totales' => [
+                        'total' => (int)$resultado['total'],
+                        'creados' => (int)$resultado['creados'],
+                        'actualizados' => (int)$resultado['actualizados'],
+                        'sin_cambios' => (int)($resultado['sin_cambios'] ?? 0),
+                        'desactivados' => 0
+                    ],
+                    'agregados' => $resultado['agregados_detalle'] ?? [],
+                    'modificados' => $resultado['modificados_detalle'] ?? [],
+                    'desactivados' => []
+                ]
+            ]);
         }
 
         $respuesta->enviarJson($resultado);

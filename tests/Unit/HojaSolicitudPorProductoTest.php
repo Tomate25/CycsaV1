@@ -224,7 +224,7 @@ class HojaSolicitudPorProductoTest extends TestCase {
 
         // Compactación (Densímetro Nuclear o Cono de Arena)
 
-        $stmtP3 = $this->db->query("SELECT id FROM productos WHERE (norma_astm LIKE '%D6938%' OR norma_astm LIKE '%D1556%' OR nombre_comercial LIKE '%Densidad%') AND id NOT IN ({$this->idProdConcreto}, {$this->idProdSuelo}) LIMIT 1");
+        $stmtP3 = $this->db->query("SELECT id FROM productos WHERE (norma_astm LIKE '%D6938%' OR norma_astm LIKE '%D1556%' OR nombre_comercial LIKE '%Densímetro%' OR nombre_comercial LIKE '%Cono de Arena%') AND id NOT IN ({$this->idProdConcreto}, {$this->idProdSuelo}) LIMIT 1");
 
         $this->idProdCompactacion = (int)$stmtP3->fetchColumn();
 

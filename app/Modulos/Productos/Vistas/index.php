@@ -72,6 +72,7 @@ foreach (($productos ?? []) as $productoResumen) {
         </div>
         <div class="inventario-actions">
             <?php if (tienePermiso('productos', 'ver') || tienePermiso('productos', 'crear_editar')): ?>
+                <button type="button" class="btn-inv btn-inv-secondary" onclick="irAHistorialCargas()" title="Ver historial de cargas masivas y cambios en productos"><i class="fa-solid fa-clock-rotate-left text-primary"></i> Historial cargas</button>
                 <a href="/Cycsa/publico/productos/exportar-catalogo-csv" class="btn-inv btn-inv-secondary" title="Exportar catálogo completo a CSV / Excel con IDs"><i class="fa-solid fa-file-arrow-down text-primary"></i> Exportar catálogo (.csv)</a>
             <?php endif; ?>
             <?php if (tienePermiso('productos', 'crear_editar')): ?>
@@ -131,7 +132,12 @@ foreach (($productos ?? []) as $productoResumen) {
                 <tr class="producto-main-row" id="producto-row-<?= $idProducto ?>" onclick="toggleProductoDetalle(<?= $idProducto ?>)">
                     <td><i class="fa-solid fa-chevron-right inv-chevron"></i></td>
                     <td style="font-weight:800;color:#64748b;"><?= htmlspecialchars((string)($producto['no_item'] ?? $idProducto), ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><span class="inv-code"><?= htmlspecialchars((string)($producto['codigo_servicio'] ?? 'S/C'), ENT_QUOTES, 'UTF-8') ?></span></td>
+                    <td>
+                        <span class="inv-code"><?= htmlspecialchars((string)($producto['codigo_servicio'] ?? 'S/C'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php if (!empty($producto['codigo_agn'])): ?>
+                            <div style="margin-top:4px;font:700 10.5px monospace;color:#475569;"><?= htmlspecialchars((string)$producto['codigo_agn'], ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php endif; ?>
+                    </td>
                     <td><div class="inv-name"><?= htmlspecialchars($nombre ?: 'Sin nombre comercial', ENT_QUOTES, 'UTF-8') ?></div><small style="color:#2563eb;font-weight:700;">Ver ficha completa</small></td>
                     <td><span class="inv-matrix"><?= htmlspecialchars((string)($producto['matriz_tipo'] ?? 'Sin matriz'), ENT_QUOTES, 'UTF-8') ?></span></td>
                     <td style="font-family:monospace;font-weight:700;"><?= htmlspecialchars((string)($producto['norma_astm'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
@@ -165,7 +171,8 @@ foreach (($productos ?? []) as $productoResumen) {
                                     <div class="producto-detail-item"><span class="producto-detail-label">Procedimiento</span><span class="producto-detail-value"><?= htmlspecialchars((string)($producto['procedimiento_muestreo'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></span></div>
                                 </section>
                                 <section class="producto-detail-card">
-                                    <h4 class="producto-detail-title"><i class="fa-solid fa-file-lines"></i> Formatos asociados</h4>
+                                    <h4 class="producto-detail-title"><i class="fa-solid fa-file-lines"></i> Formatos y códigos</h4>
+                                    <div class="producto-detail-item"><span class="producto-detail-label">Código AGN</span><span class="producto-detail-value" style="font-family:monospace;"><?= htmlspecialchars((string)($producto['codigo_agn'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></span></div>
                                     <div class="producto-detail-item"><span class="producto-detail-label">Formato</span><span class="producto-detail-value"><?= htmlspecialchars((string)($producto['formato_reporte'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></span></div>
                                     <div class="producto-detail-item"><span class="producto-detail-label">Nombre formato</span><span class="producto-detail-value"><?= htmlspecialchars((string)($producto['formato_nombre'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></span></div>
                                     <div class="producto-detail-item"><span class="producto-detail-label">Hoja de campo</span><span class="producto-detail-value"><?= htmlspecialchars((string)($producto['codigo_hoja_campo'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></span></div>
@@ -204,6 +211,17 @@ function toggleProductoDetalle(productoId) {
     if (abrir) {
         detalle.classList.add('visible');
         fila.classList.add('abierta');
+    }
+}
+
+function irAHistorialCargas() {
+    const panel = document.getElementById('bitacoraModuloPanel');
+    const content = document.getElementById('bitacoraContent');
+    if (content && !content.classList.contains('bitacora-open') && typeof toggleBitacoraPanel === 'function') {
+        toggleBitacoraPanel();
+    }
+    if (panel) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 </script>

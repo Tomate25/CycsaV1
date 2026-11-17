@@ -29,6 +29,7 @@ class ProductoModelo extends ModeloBase {
             $compact = preg_replace('/[^a-zA-Z0-9]/', '', $busquedaTrim);
             
             $concatCampos = "CONCAT_WS(' ', 
+                p.codigo_agn,
                 p.nombre_comercial, 
                 p.ensayo_servicio, 
                 p.codigo_servicio, 
@@ -77,6 +78,7 @@ class ProductoModelo extends ModeloBase {
             
             if (strlen($compact) >= 2) {
                 $concatCompacto = "REPLACE(REPLACE(CONCAT_WS('', 
+                    p.codigo_agn,
                     p.procedimiento_muestreo, 
                     p.codigo_servicio, 
                     p.norma_astm, 
@@ -159,9 +161,40 @@ class ProductoModelo extends ModeloBase {
         return $stmt->fetchColumn() > 0;
     }
     
+    private ?bool $tieneColumnaCodigoAgn = null;
+
+    /**
+     * Verifica si la tabla productos dispone de la columna `codigo_agn`.
+     */
+    public function tieneColumnaCodigoAgn(): bool {
+        if ($this->tieneColumnaCodigoAgn !== null) {
+            return $this->tieneColumnaCodigoAgn;
+        }
+        try {
+            $stmt = $this->db->query("SHOW COLUMNS FROM productos LIKE 'codigo_agn'");
+            $this->tieneColumnaCodigoAgn = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            $this->tieneColumnaCodigoAgn = false;
+        }
+        return $this->tieneColumnaCodigoAgn;
+    }
+
     // 💾 GUARDAR NUEVO PRODUCTO
     public function guardar(array $datos): bool {
-        $sql = "INSERT INTO productos (
+        $conAgn = $this->tieneColumnaCodigoAgn();
+        $sql = $conAgn
+            ? "INSERT INTO productos (
+                    no_item, codigo_agn, formato_id, tipo_muestra, matriz_tipo, tipo_muestreo, ensayo_servicio, 
+                    nombre_comercial, condiciones_muestra, codigo_servicio, estatus, 
+                    norma_astm, procedimiento_muestreo, codigo_hoja_campo, unidad_medida, 
+                    precio, observaciones, activo
+                ) VALUES (
+                    :no_item, :codigo_agn, :formato_id, :tipo_muestra, :matriz_tipo, :tipo_muestreo, :ensayo_servicio, 
+                    :nombre_comercial, :condiciones_muestra, :codigo_servicio, :estatus, 
+                    :norma_astm, :procedimiento_muestreo, :codigo_hoja_campo, :unidad_medida, 
+                    :precio, :observaciones, 1
+                )"
+            : "INSERT INTO productos (
                     no_item, formato_id, tipo_muestra, matriz_tipo, tipo_muestreo, ensayo_servicio, 
                     nombre_comercial, condiciones_muestra, codigo_servicio, estatus, 
                     norma_astm, procedimiento_muestreo, codigo_hoja_campo, unidad_medida, 
@@ -173,31 +206,36 @@ class ProductoModelo extends ModeloBase {
                     :precio, :observaciones, 1
                 )";
         
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
-            'no_item'                => !empty(trim($datos['no_item'])) ? trim($datos['no_item']) : null,
+        $params = [
+            'no_item'                => !empty(trim((string)($datos['no_item'] ?? ''))) ? trim((string)$datos['no_item']) : null,
             'formato_id'             => !empty($datos['formato_id']) ? intval($datos['formato_id']) : null,
-            'tipo_muestra'           => !empty(trim($datos['tipo_muestra'])) ? trim($datos['tipo_muestra']) : null,
-            'matriz_tipo'            => !empty(trim($datos['matriz_tipo'])) ? trim($datos['matriz_tipo']) : null,
-            'tipo_muestreo'          => !empty(trim($datos['tipo_muestreo'])) ? trim($datos['tipo_muestreo']) : null,
-            'ensayo_servicio'        => trim($datos['ensayo_servicio']),
-            'nombre_comercial'       => !empty(trim($datos['nombre_comercial'])) ? trim($datos['nombre_comercial']) : null,
-            'condiciones_muestra'    => !empty(trim($datos['condiciones_muestra'])) ? trim($datos['condiciones_muestra']) : null,
-            'codigo_servicio'        => !empty(trim($datos['codigo_servicio'])) ? trim($datos['codigo_servicio']) : null,
-            'estatus'                => !empty(trim($datos['estatus'])) ? trim($datos['estatus']) : 'No acreditado',
-            'norma_astm'             => !empty(trim($datos['norma_astm'])) ? trim($datos['norma_astm']) : null,
-            'procedimiento_muestreo' => !empty(trim($datos['procedimiento_muestreo'])) ? trim($datos['procedimiento_muestreo']) : null,
-            'codigo_hoja_campo'      => !empty(trim($datos['codigo_hoja_campo'])) ? trim($datos['codigo_hoja_campo']) : null,
-            'unidad_medida'          => !empty(trim($datos['unidad_medida'])) ? trim($datos['unidad_medida']) : 'Unidad',
+            'tipo_muestra'           => !empty(trim((string)($datos['tipo_muestra'] ?? ''))) ? trim((string)$datos['tipo_muestra']) : null,
+            'matriz_tipo'            => !empty(trim((string)($datos['matriz_tipo'] ?? ''))) ? trim((string)$datos['matriz_tipo']) : null,
+            'tipo_muestreo'          => !empty(trim((string)($datos['tipo_muestreo'] ?? ''))) ? trim((string)$datos['tipo_muestreo']) : null,
+            'ensayo_servicio'        => trim((string)$datos['ensayo_servicio']),
+            'nombre_comercial'       => !empty(trim((string)($datos['nombre_comercial'] ?? ''))) ? trim((string)$datos['nombre_comercial']) : null,
+            'condiciones_muestra'    => !empty(trim((string)($datos['condiciones_muestra'] ?? ''))) ? trim((string)$datos['condiciones_muestra']) : null,
+            'codigo_servicio'        => !empty(trim((string)($datos['codigo_servicio'] ?? ''))) ? trim((string)$datos['codigo_servicio']) : null,
+            'estatus'                => !empty(trim((string)($datos['estatus'] ?? ''))) ? trim((string)$datos['estatus']) : 'No acreditado',
+            'norma_astm'             => !empty(trim((string)($datos['norma_astm'] ?? ''))) ? trim((string)$datos['norma_astm']) : null,
+            'procedimiento_muestreo' => !empty(trim((string)($datos['procedimiento_muestreo'] ?? ''))) ? trim((string)$datos['procedimiento_muestreo']) : null,
+            'codigo_hoja_campo'      => !empty(trim((string)($datos['codigo_hoja_campo'] ?? ''))) ? trim((string)$datos['codigo_hoja_campo']) : null,
+            'unidad_medida'          => !empty(trim((string)($datos['unidad_medida'] ?? ''))) ? trim((string)$datos['unidad_medida']) : 'Unidad',
             'precio'                 => floatval($datos['precio']),
-            'observaciones'          => !empty(trim($datos['observaciones'])) ? trim($datos['observaciones']) : null
-        ]);
+            'observaciones'          => !empty(trim((string)($datos['observaciones'] ?? ''))) ? trim((string)$datos['observaciones']) : null
+        ];
+        if ($conAgn) {
+            $params['codigo_agn'] = !empty(trim((string)($datos['codigo_agn'] ?? ''))) ? trim((string)$datos['codigo_agn']) : null;
+        }
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($params);
     }
     
     // ✏️ ACTUALIZAR PRODUCTO
     public function actualizar(int $id, array $datos): bool {
+        $conAgn = $this->tieneColumnaCodigoAgn();
         $sql = "UPDATE productos SET 
-                    no_item = :no_item, 
+                    no_item = :no_item, " . ($conAgn ? "codigo_agn = :codigo_agn, " : "") . "
                     formato_id = :formato_id, 
                     tipo_muestra = :tipo_muestra, 
                     matriz_tipo = :matriz_tipo, 
@@ -216,27 +254,31 @@ class ProductoModelo extends ModeloBase {
                     activo = :activo
                 WHERE id = :id";
         
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
-            'no_item'                => !empty(trim($datos['no_item'])) ? trim($datos['no_item']) : null,
+        $params = [
+            'no_item'                => !empty(trim((string)($datos['no_item'] ?? ''))) ? trim((string)$datos['no_item']) : null,
             'formato_id'             => !empty($datos['formato_id']) ? intval($datos['formato_id']) : null,
-            'tipo_muestra'           => !empty(trim($datos['tipo_muestra'])) ? trim($datos['tipo_muestra']) : null,
-            'matriz_tipo'            => !empty(trim($datos['matriz_tipo'])) ? trim($datos['matriz_tipo']) : null,
-            'tipo_muestreo'          => !empty(trim($datos['tipo_muestreo'])) ? trim($datos['tipo_muestreo']) : null,
-            'ensayo_servicio'        => trim($datos['ensayo_servicio']),
-            'nombre_comercial'       => !empty(trim($datos['nombre_comercial'])) ? trim($datos['nombre_comercial']) : null,
-            'condiciones_muestra'    => !empty(trim($datos['condiciones_muestra'])) ? trim($datos['condiciones_muestra']) : null,
-            'codigo_servicio'        => !empty(trim($datos['codigo_servicio'])) ? trim($datos['codigo_servicio']) : null,
-            'estatus'                => !empty(trim($datos['estatus'])) ? trim($datos['estatus']) : 'No acreditado',
-            'norma_astm'             => !empty(trim($datos['norma_astm'])) ? trim($datos['norma_astm']) : null,
-            'procedimiento_muestreo' => !empty(trim($datos['procedimiento_muestreo'])) ? trim($datos['procedimiento_muestreo']) : null,
-            'codigo_hoja_campo'      => !empty(trim($datos['codigo_hoja_campo'])) ? trim($datos['codigo_hoja_campo']) : null,
-            'unidad_medida'          => !empty(trim($datos['unidad_medida'])) ? trim($datos['unidad_medida']) : 'Unidad',
+            'tipo_muestra'           => !empty(trim((string)($datos['tipo_muestra'] ?? ''))) ? trim((string)$datos['tipo_muestra']) : null,
+            'matriz_tipo'            => !empty(trim((string)($datos['matriz_tipo'] ?? ''))) ? trim((string)$datos['matriz_tipo']) : null,
+            'tipo_muestreo'          => !empty(trim((string)($datos['tipo_muestreo'] ?? ''))) ? trim((string)$datos['tipo_muestreo']) : null,
+            'ensayo_servicio'        => trim((string)$datos['ensayo_servicio']),
+            'nombre_comercial'       => !empty(trim((string)($datos['nombre_comercial'] ?? ''))) ? trim((string)$datos['nombre_comercial']) : null,
+            'condiciones_muestra'    => !empty(trim((string)($datos['condiciones_muestra'] ?? ''))) ? trim((string)$datos['condiciones_muestra']) : null,
+            'codigo_servicio'        => !empty(trim((string)($datos['codigo_servicio'] ?? ''))) ? trim((string)$datos['codigo_servicio']) : null,
+            'estatus'                => !empty(trim((string)($datos['estatus'] ?? ''))) ? trim((string)$datos['estatus']) : 'No acreditado',
+            'norma_astm'             => !empty(trim((string)($datos['norma_astm'] ?? ''))) ? trim((string)$datos['norma_astm']) : null,
+            'procedimiento_muestreo' => !empty(trim((string)($datos['procedimiento_muestreo'] ?? ''))) ? trim((string)$datos['procedimiento_muestreo']) : null,
+            'codigo_hoja_campo'      => !empty(trim((string)($datos['codigo_hoja_campo'] ?? ''))) ? trim((string)$datos['codigo_hoja_campo']) : null,
+            'unidad_medida'          => !empty(trim((string)($datos['unidad_medida'] ?? ''))) ? trim((string)$datos['unidad_medida']) : 'Unidad',
             'precio'                 => floatval($datos['precio']),
-            'observaciones'          => !empty(trim($datos['observaciones'])) ? trim($datos['observaciones']) : null,
+            'observaciones'          => !empty(trim((string)($datos['observaciones'] ?? ''))) ? trim((string)$datos['observaciones']) : null,
             'activo'                 => isset($datos['activo']) ? intval($datos['activo']) : 1,
             'id'                     => $id
-        ]);
+        ];
+        if ($conAgn) {
+            $params['codigo_agn'] = !empty(trim((string)($datos['codigo_agn'] ?? ''))) ? trim((string)$datos['codigo_agn']) : null;
+        }
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($params);
     }
     
     // 🗑️ DESACTIVAR PRODUCTO (SOFT DELETE)
@@ -266,7 +308,8 @@ class ProductoModelo extends ModeloBase {
 
     // ⚡ OBTENER ÍNDICE COMPLETO DE MAPEO EN MEMORIA (OPTIMIZACIÓN PARA CARGA MASIVA)
     public function obtenerIndiceMapeo(): array {
-        $sql = "SELECT id, no_item, formato_id, tipo_muestra, matriz_tipo, tipo_muestreo,
+        $conAgn = $this->tieneColumnaCodigoAgn();
+        $sql = "SELECT id, no_item, " . ($conAgn ? "codigo_agn, " : "") . "formato_id, tipo_muestra, matriz_tipo, tipo_muestreo,
                        ensayo_servicio, nombre_comercial, condiciones_muestra, codigo_servicio,
                        estatus, norma_astm, procedimiento_muestreo, codigo_hoja_campo,
                        unidad_medida, precio, observaciones, activo
@@ -277,11 +320,15 @@ class ProductoModelo extends ModeloBase {
         $porId = [];
         $porNoItem = [];
         $porNombre = [];
+        $porCodigoAgn = [];
 
         foreach ($todos as $prod) {
             $porId[$prod['id']] = $prod;
             if (!empty($prod['no_item'])) {
                 $porNoItem[trim($prod['no_item'])] = $prod;
+            }
+            if (!empty($prod['codigo_agn'])) {
+                $porCodigoAgn[mb_strtoupper(trim((string)$prod['codigo_agn']), 'UTF-8')] = $prod;
             }
             if (!empty($prod['nombre_comercial'])) {
                 $claveNombre = mb_strtolower(trim($prod['nombre_comercial']), 'UTF-8');
@@ -290,9 +337,10 @@ class ProductoModelo extends ModeloBase {
         }
 
         return [
-            'por_id'      => $porId,
-            'por_no_item' => $porNoItem,
-            'por_nombre'  => $porNombre
+            'por_id'         => $porId,
+            'por_no_item'    => $porNoItem,
+            'por_codigo_agn' => $porCodigoAgn,
+            'por_nombre'     => $porNombre
         ];
     }
 

@@ -65,7 +65,7 @@ class LaboratorioAutoIngresoMuestrasNuevasTest extends TestCase {
         if ($this->idProdConcreto <= 0) {
             $this->idProdConcreto = (int)$this->db->query("SELECT id FROM productos LIMIT 1")->fetchColumn();
         }
-        $this->idProdCompactacion = (int)$this->db->query("SELECT id FROM productos WHERE COALESCE(ensayo_servicio, nombre_comercial) LIKE '%Densímetro%' OR COALESCE(ensayo_servicio, nombre_comercial) LIKE '%Compactación%' LIMIT 1")->fetchColumn();
+        $this->idProdCompactacion = (int)$this->db->query("SELECT id FROM productos WHERE COALESCE(nombre_comercial, ensayo_servicio) LIKE '%Densímetro%' OR COALESCE(norma_astm, '') LIKE '%D6938%' LIMIT 1")->fetchColumn();
         if ($this->idProdCompactacion <= 0) {
             $this->idProdCompactacion = $this->idProdConcreto;
         }
