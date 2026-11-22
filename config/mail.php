@@ -26,8 +26,8 @@ return [
     'driver' => $_ENV['MAIL_DRIVER'] ?? 'smtp',
     'host' => $_ENV['MAIL_HOST'] ?? 'mail.cycsanic.com',
     'port' => (int)($_ENV['MAIL_PORT'] ?? 465),
-    'username' => $_ENV['MAIL_USER'] ?? 'asistente@cycsanic.com',
-    'password' => $_ENV['MAIL_PASS'] ?? 'Cycsa73465@',
+    'username' => $_ENV['MAIL_USER'] ?? getenv('MAIL_USER') ?: 'asistente@cycsanic.com',
+    'password' => $_ENV['MAIL_PASS'] ?? (getenv('MAIL_PASS') !== false ? getenv('MAIL_PASS') : ''),
     'encryption' => $_ENV['MAIL_ENCRYPTION'] ?? $_ENV['MAIL_SECURE'] ?? 'ssl',
     'from' => [
         'address' => $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_FROM'] ?? 'asistente@cycsanic.com',

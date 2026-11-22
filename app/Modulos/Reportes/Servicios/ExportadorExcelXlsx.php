@@ -58,13 +58,18 @@ final class ExportadorExcelXlsx {
     }
 
     private static function sanitizarNombreHoja(string $nombre): string {
-        $limpio = preg_replace('/[\\\\\/\?\*\[\]:]/u', ' ', trim($nombre)) ?: 'Reporte';
+        $limpio = preg_replace('/[\x00-\x1F\x7F\\\\\/\?\*\[\]:]/u', ' ', trim($nombre));
+        if ($limpio === null) {
+            $limpio = preg_replace('/[\x00-\x1F\x7F\\\\\/\?\*\[\]:]/', ' ', trim($nombre)) ?: 'Reporte';
+        }
+        $limpio = trim($limpio, " \t\n\r\0\x0B'");
         if (function_exists('mb_substr')) {
             $limpio = mb_substr($limpio, 0, 31, 'UTF-8');
         } else {
             $limpio = substr($limpio, 0, 31);
         }
-        return trim($limpio) !== '' ? trim($limpio) : 'Reporte';
+        $limpio = trim($limpio, " \t\n\r\0\x0B'");
+        return $limpio !== '' ? $limpio : 'Reporte';
     }
 
     public static function indiceAColumnaExcel(int $indice): string {
@@ -78,8 +83,14 @@ final class ExportadorExcelXlsx {
     }
 
     private static function escaparXml(string $texto): string {
-        $limpio = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $texto) ?? '';
-        return htmlspecialchars($limpio, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        if (function_exists('mb_convert_encoding') && !mb_check_encoding($texto, 'UTF-8')) {
+            $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+        }
+        $limpio = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x{FFFE}\x{FFFF}]/u', '', $texto);
+        if ($limpio === null) {
+            $limpio = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $texto) ?? '';
+        }
+        return htmlspecialchars($limpio, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
     private static function celdaTexto(string $ref, string $texto, int $estilo): string {
@@ -87,6 +98,9 @@ final class ExportadorExcelXlsx {
     }
 
     private static function celdaNumero(string $ref, float|int $num, int $estilo): string {
+        if (!is_finite((float)$num)) {
+            return self::celdaTexto($ref, '', $estilo);
+        }
         return '<c r="' . $ref . '" s="' . $estilo . '"><v>' . $num . '</v></c>';
     }
 
@@ -149,26 +163,37 @@ final class ExportadorExcelXlsx {
             $rowNum++;
         }
 
-        $colsXml = ['<cols>'];
-        foreach ($anchos as $cIdx => $width) {
-            $n = $cIdx + 1;
-            $colsXml[] = '<col min="' . $n . '" max="' . $n . '" width="' . number_format($width, 2, '.', '') . '" customWidth="1"/>';
+        $colsXmlStr = '';
+        if (!empty($anchos)) {
+            $colsXml = ['<cols>'];
+            foreach ($anchos as $cIdx => $width) {
+                $n = $cIdx + 1;
+                $colsXml[] = '<col min="' . $n . '" max="' . $n . '" width="' . number_format($width, 2, '.', '') . '" customWidth="1"/>';
+            }
+            $colsXml[] = '</cols>';
+            $colsXmlStr = implode('', $colsXml);
         }
-        $colsXml[] = '</cols>';
 
         $lastRowNum = max(3, $rowNum - 1);
-        $merges = '<mergeCells count="2">'
-            . '<mergeCell ref="A1:' . $lastColLetter . '1"/>'
-            . '<mergeCell ref="A2:' . $lastColLetter . '2"/>'
-            . '</mergeCells>';
+        $autoFilter = !empty($columnas)
+            ? '<autoFilter ref="A3:' . $lastColLetter . $lastRowNum . '"/>'
+            : '';
+        $merges = '';
+        if (count($columnas) > 1) {
+            $merges = '<mergeCells count="2">'
+                . '<mergeCell ref="A1:' . $lastColLetter . '1"/>'
+                . '<mergeCell ref="A2:' . $lastColLetter . '2"/>'
+                . '</mergeCells>';
+        }
 
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+            . '<dimension ref="A1:' . $lastColLetter . $lastRowNum . '"/>'
+            . '<sheetViews><sheetView tabSelected="1" workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A4" sqref="A4"/></sheetView></sheetViews>'
             . '<sheetFormatPr defaultRowHeight="18"/>'
-            . implode('', $colsXml)
+            . $colsXmlStr
             . '<sheetData>' . implode('', $rowsXml) . '</sheetData>'
-            . '<autoFilter ref="A3:' . $lastColLetter . $lastRowNum . '"/>'
+            . $autoFilter
             . $merges
             . '</worksheet>';
     }
@@ -176,7 +201,7 @@ final class ExportadorExcelXlsx {
     private static function construirContentTypes(): string {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-officedocument.relationships+xml"/>'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
             . '<Default Extension="xml" ContentType="application/xml"/>'
             . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
@@ -214,10 +239,10 @@ final class ExportadorExcelXlsx {
             . '<numFmt numFmtId="165" formatCode="#,##0.##"/>'
             . '</numFmts>'
             . '<fonts count="4">'
-            . '<font><sz val="10"/><name val="Calibri"/><color rgb="FF0F172A"/></font>'
-            . '<font><b/><sz val="13"/><name val="Calibri"/><color rgb="FF103487"/></font>'
-            . '<font><i/><sz val="9"/><name val="Calibri"/><color rgb="FF475569"/></font>'
-            . '<font><b/><sz val="10"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>'
+            . '<font><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="13"/><color rgb="FF103487"/><name val="Calibri"/></font>'
+            . '<font><i/><sz val="9"/><color rgb="FF475569"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'
             . '</fonts>'
             . '<fills count="5">'
             . '<fill><patternFill patternType="none"/></fill>'
@@ -227,8 +252,8 @@ final class ExportadorExcelXlsx {
             . '<fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/></patternFill></fill>'
             . '</fills>'
             . '<borders count="2">'
-            . '<border/>'
-            . '<border><left style="thin"><color rgb="FFCBD5E1"/></left><right style="thin"><color rgb="FFCBD5E1"/></right><top style="thin"><color rgb="FFCBD5E1"/></top><bottom style="thin"><color rgb="FFCBD5E1"/></bottom></border>'
+            . '<border><left/><right/><top/><bottom/><diagonal/></border>'
+            . '<border><left style="thin"><color rgb="FFCBD5E1"/></left><right style="thin"><color rgb="FFCBD5E1"/></right><top style="thin"><color rgb="FFCBD5E1"/></top><bottom style="thin"><color rgb="FFCBD5E1"/></bottom><diagonal/></border>'
             . '</borders>'
             . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
             . '<cellXfs count="10">'
@@ -243,6 +268,7 @@ final class ExportadorExcelXlsx {
             . '<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>'
             . '<xf numFmtId="165" fontId="0" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>'
             . '</cellXfs>'
+            . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
             . '</styleSheet>';
     }
 }

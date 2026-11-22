@@ -206,17 +206,56 @@ class ReportesModuloTest extends TestCase {
         file_put_contents($tmp, $ctrlSpy->binario);
         $zip = new ZipArchive();
         $this->assertTrue($zip->open($tmp) === true);
-        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $contentTypesXml = $zip->getFromName('[Content_Types].xml');
+        $rootRelsXml = $zip->getFromName('_rels/.rels');
         $workbookXml = $zip->getFromName('xl/workbook.xml');
+        $workbookRelsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
         $stylesXml = $zip->getFromName('xl/styles.xml');
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
         $zip->close();
         @unlink($tmp);
 
+        $this->assertNotFalse($contentTypesXml);
+        $this->assertNotFalse($rootRelsXml);
         $this->assertNotFalse($workbookXml);
+        $this->assertNotFalse($workbookRelsXml);
         $this->assertNotFalse($stylesXml);
         $this->assertNotFalse($sheetXml);
+
+        // Validar ContentType OPC oficial para partes .rels (ECMA-376 Parte 2)
+        $this->assertStringContainsString('application/vnd.openxmlformats-package.relationships+xml', $contentTypesXml);
+        $this->assertStringNotContainsString('application/vnd.openxmlformats-officedocument.relationships+xml', $contentTypesXml);
+
+        // Validar que todas las partes XML del paquete OOXML sean XML bien formado
+        foreach ([$contentTypesXml, $rootRelsXml, $workbookXml, $workbookRelsXml, $stylesXml, $sheetXml] as $xmlPart) {
+            $dom = new \DOMDocument();
+            $this->assertTrue($dom->loadXML($xmlPart), 'Cada parte XML del .xlsx debe ser XML válido.');
+        }
+
+        $this->assertStringContainsString('<cellStyles count="1">', $stylesXml);
         $this->assertStringContainsString('REG-REP-01', $sheetXml);
         $this->assertStringContainsString('Proyecto Reportes &amp; KPIs', $sheetXml);
+    }
+
+    public function testExportadorExcelXlsxCasosBordeOoxmlValido(): void {
+        $xlsxUnaCol = ExportadorExcelXlsx::generar(
+            "'Reporte: [Prueba] / Especial'",
+            'Sin registros',
+            [['key' => 'unico', 'label' => 'Única', 'type' => 'text']],
+            [['unico' => "Valor & <ok>\x01\x0B"]]
+        );
+        $tmp = tempnam(sys_get_temp_dir(), 'verify_xlsx_edge_');
+        file_put_contents($tmp, $xlsxUnaCol);
+        $zip = new ZipArchive();
+        $this->assertTrue($zip->open($tmp) === true);
+        $workbookXml = (string)$zip->getFromName('xl/workbook.xml');
+        $sheetXml = (string)$zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        @unlink($tmp);
+
+        $this->assertStringNotContainsString('<mergeCells', $sheetXml, 'Con 1 sola columna no debe emitir mergeCells A1:A1.');
+        $this->assertStringNotContainsString("name=\"'", $workbookXml, 'El nombre de hoja no debe iniciar con comilla simple.');
+        $this->assertStringContainsString('Valor &amp; &lt;ok&gt;', $sheetXml);
     }
 
     public function testRbacReportesAislaMiniModulosSegunPermisos(): void {
