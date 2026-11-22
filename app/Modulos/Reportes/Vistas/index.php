@@ -181,6 +181,9 @@ $totalModulos = (int)($total_modulos ?? 0);
                         <div class="rep-app-tags">
                             <span class="rep-tag rep-tag-kpi"><i class="fa-solid fa-gauge-high"></i> KPIs</span>
                             <span class="rep-tag rep-tag-xlsx"><i class="fa-solid fa-file-excel"></i> Excel .xlsx</span>
+                            <?php if ($t['slug'] === 'reporteria_mensual'): ?>
+                            <span class="rep-tag rep-tag-kpi"><i class="fa-solid fa-calendar-days"></i> Consolidado Mensual</span>
+                            <?php endif; ?>
                             <?php if (in_array($t['slug'], ['cotizaciones', 'ventas', 'ordenes_servicio', 'rtfm13', 'fm40b', 'laboratorio', 'operaciones'], true)): ?>
                             <span class="rep-tag rep-tag-pdf"><i class="fa-solid fa-file-pdf"></i> Con PDFs</span>
                             <?php endif; ?>

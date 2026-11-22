@@ -626,7 +626,11 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
                                         <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirMatricesOS(<?= $o['id'] ?>)"><i class="fa-solid fa-table-cells me-2 text-primary"></i> Ver Matrices (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)</a></li>
                                         <li><a class="dropdown-item py-2" href="/Cycsa/publico/operaciones/ver?id_os=<?= $o['id'] ?>"><i class="fa-solid fa-arrow-up-right-from-square me-2 text-primary"></i> Ver en Página Completa</a></li>
                                         <?php if ($tieneHojaServicio): ?>
+                                            <?php $idHojaRt60 = (int)($o['hoja_solicitud']['id'] ?? ($o['hojas_solicitud'][0]['id'] ?? 0)); ?>
                                             <li><a class="dropdown-item py-2" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $o['id'] ?>" target="_blank"><i class="fa-solid fa-file-pdf me-2 text-info"></i> Descargar RT-FM-13 (PDF)</a></li>
+                                            <?php if ($idHojaRt60 > 0): ?>
+                                                <li><a class="dropdown-item py-2" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= $idHojaRt60 ?>" target="_blank"><i class="fa-solid fa-file-lines me-2 text-primary"></i> Hoja RT-FM-60</a></li>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <li><a class="dropdown-item py-2 text-warning fw-semibold" href="/Cycsa/publico/ordenes-servicio?id_os=<?= $o['id'] ?>"><i class="fa-solid fa-file-signature me-2"></i> Registrar RT-FM-13</a></li>
                                         <?php endif; ?>
@@ -711,9 +715,19 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
                                                     <i class="fa-solid fa-truck-ramp-box text-primary"></i>
                                                     <span>Custodia y Logística de Muestras</span>
                                                 </span>
-                                                <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 11.5px;">
-                                                    <?= $requiereMuestreo ? 'Muestreo en Campo' : 'Recepción Lab Central' ?>
-                                                </span>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <?php if ($tieneHojaServicio): ?>
+                                                        <?php $idHojaDrawerRt60 = (int)($o['hoja_solicitud']['id'] ?? ($o['hojas_solicitud'][0]['id'] ?? 0)); ?>
+                                                        <?php if ($idHojaDrawerRt60 > 0): ?>
+                                                            <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= $idHojaDrawerRt60 ?>" target="_blank" class="btn btn-outline-primary btn-sm" style="font-size: 11px; padding: 2px 8px; font-weight: 700;">
+                                                                <i class="fa-solid fa-file-lines me-1"></i> Hoja RT-FM-60
+                                                            </a>
+                                                        <?php endif; ?>
+                                                    <?php endif; ?>
+                                                    <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 11.5px;">
+                                                        <?= $requiereMuestreo ? 'Muestreo en Campo' : 'Recepción Lab Central' ?>
+                                                    </span>
+                                                </div>
                                             </div>
                                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted" style="font-size: 13px;">
                                                 <div>
@@ -1573,19 +1587,19 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
 
     // Modal de Resultados Directos por Producto (Schemas de Ensayos CYCSA)
     const FORMATOS_SCHEMA_INDEX = {
-        "compactacion_densimetro_nuclear.md": {"columns": ["Código laboratorio", "Nombre muestra", "Capa (N°)", "Espesor (cm)", "Profundidad (cm)", "P.V.S Max (kg/m³)", "Humedad Óptima ((% )(P/P))", "P.V.S.Sitio (kg/cm²)", "Humedad Sitio ((%) (P/P))", "Humedad Sitio (kg/m³)", "Compactación ((%) (P/P))", "Fecha de muestreo"]},
-        "ensayos_varios.md": {"columns": ["Código laboratorio", "Nombre muestra", "Color", "PVSS (kg/m³)", "PVSC (kg/m³)", "Módulo de finura ((%) (P/P))", "Humedad Natural ((%) (P/P))", "Absorción ((%)(P/P))", "Gravedad Específica.", "Gravedad Específica (SSS)", "Gravedad Específica Aparente"]},
+        "compactacion_densimetro_nuclear.md": {"columns": ["Código laboratorio", "Nombre muestra", "Capa (N°)", "Espesor (cm)", "Profundidad (cm)", "P.V.S Max (kg/m³)", "Humedad Óptima ((% )(P/P))", "P.V.S.Sitio (kg/m³)", "Humedad Sitio ((%) (P/P))", "Humedad Sitio (kg/m³)", "Compactación ((%) (P/P))", "Fecha de muestreo"]},
+        "ensayos_varios.md": {"columns": ["Código laboratorio", "Nombre muestra", "Color", "PVSS (kg/m³)", "PVSC (kg/m³)", "Módulo de finura", "Humedad Natural ((%) (P/P))", "Absorción ((%)(P/P))", "Gravedad Específica.", "Gravedad Específica (SSS)", "Gravedad Específica Aparente"]},
         "formato_de_compactacion_por_cono_de_arena.md": {"columns": ["Código laboratorio", "Nombre muestra", "Capa (N°)", "Espesor (cm)", "Profundidad (cm)", "P.V.S Max (kg/m³)", "Humedad Óptima ((% )(P/P))", "P.V.S.Sitio (kg/m³)", "Humedad sitio ((%) (P/P))", "Humedad Sitio (kg/m³)", "Compactación ((%) (P/P))", "Fecha de muestreo"]},
         "formato_de_compactacion_por_reemplazo_de_agua_no_acreditado.md": {"columns": ["Código laboratorio", "Nombre muestra", "Capa (N°)", "Espesor (cm)", "Profundidad (cm)", "P.V.S Max (kg/m³)", "Humedad Óptima (( %)(P/P))", "P.V.S.Sitio (kg/m³)", "Humedad sitio ((%) (P/P))", "Humedad Sitio (kg/m³)", "Compactación ((%) (P/P))", "Fecha de muestreo"]},
         "formato_de_equivalente_de_arena.md": {"columns": ["Código laboratorio", "Nombre muestra", "Equivalente de arena. ((%)(P/P))"]},
-        "formato_de_granulometria_de_suelo.md": {"columns": ["Malla", "P. Retenido parcial (gr)", "% Retenido parcial", "% Acumulativo", "% que pasa la malla", "Límite Mín", "Límite Máx"]},
+        "formato_de_granulometria_de_suelo.md": {"columns": ["Malla", "P. Retenido parcial (g)", "% Retenido parcial", "% Acumulativo", "% que pasa la malla", "Límite Mín", "Límite Máx"]},
         "formato_de_lodo_concreto.md": {"columns": ["Código laboratorio", "Nombre muestra", "Área (cm²)", "Carga (kg)", "Peso Volumétrico (kg/m³)", "Diseño (kg/cm²)", "R. compresión. (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
         "formato_de_particulas_desmezurables.md": {"columns": ["Código laboratorio", "Nombre muestra", "Terrones de arcilla. ((%)(P/P))"]},
         "formato_de_resistencia_de_a_la_flexion.md": {"columns": ["Código laboratorio", "Nombre muestra", "Ancho Promedio (in)", "Espesor Promedio (in)", "Longitud de Apoyo (in)", "Reven. (in)", "Reven. (cm)", "Temp. (°C)", "Carga (lb)", "Peso volumétrico (kg/m³)", "Diseño MR (kg/cm²)", "Resistencia a la flexión. (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
         "formato_de_resistencia_de_bloques.md": {"columns": ["Descripción", "Método de ensayo", "Unidad", "Resultado", "Min", "Max"]},
         "formato_de_reveniemiento_y_temperatura.md": {"columns": ["Código laboratorio", "Nombre muestra", "Reven. (in)", "Reven. (cm)", "Temp. (°C)", "Diseño de concreto (lb/in²)", "Fecha de Fabricación", "Fecha de Finalización"]},
-        "formato_de_suelo_cemento.md": {"columns": ["Código laboratorio", "Nombre muestra", "Color"]},
-        "granulomnetria_de_agregados.md": {"columns": ["Malla", "P. Retenido parcial (gr)", "% Retenido parcial", "% Acumulativo", "% que pasa la malla", "Límite Mín", "Límite Máx"]},
+        "formato_de_suelo_cemento.md": {"columns": ["Código laboratorio", "Nombre muestra", "Área (cm²)", "Carga (kg)", "Peso Volumétrico (kg/m³)", "Diseño (kg/cm²)", "R. compresión. (kg/cm²)", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
+        "granulomnetria_de_agregados.md": {"columns": ["Malla", "P. Retenido parcial (g)", "% Retenido parcial", "% Acumulativo", "% que pasa la malla", "Límite Mín", "Límite Máx"]},
         "pesos_volumetricos.md": {"columns": ["Código laboratorio", "Nombre muestra", "P.V.S.S (kg/m³)", "P.V.S.C (kg/m³)", "Humedad Natural (%)"]},
         "proctor_estandar.md": {"columns": ["Muestra", "P.V.S Max (kg/m³)", "Humedad Óptima (%)"]},
         "resistencia_de_adoquines.md": {"columns": ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "Peso Volumétrico (kg/m³)", "Diseño (lb/in²)", "R. Compresión (lb/in²)", "R. Compresión. (kg/cm²)", "Absorción ((%)(P/P))", "Fecha de Fabricación", "Fecha de Ensayo", "Edad (Días)"]},
@@ -1890,11 +1904,11 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
 
             <div class="form-group" style="margin-bottom: 14px;">
                 <label style="font-size: 13px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
-                    <i class="fa-solid fa-envelope" style="color: var(--cycsa-azul);"></i> Correo Electrónico del Cliente (Destinatario):
+                    <i class="fa-solid fa-envelope" style="color: var(--cycsa-azul);"></i> Correo(s) Electrónico(s) del Cliente (Destinatarios):
                 </label>
-                <input type="email" name="destinatario" id="envio_destinatario" class="form-control" required style="width: 100%; padding: 10px 14px; font-size: 13.5px; border-radius: 6px; border: 1.5px solid #cbd5e1; box-sizing: border-box;">
+                <input type="text" name="destinatario" id="envio_destinatario" class="form-control" required placeholder="cliente@empresa.com, copia@empresa.com" style="width: 100%; padding: 10px 14px; font-size: 13.5px; border-radius: 6px; border: 1.5px solid #cbd5e1; box-sizing: border-box;">
                 <small style="color: #64748b; font-size: 11.5px; margin-top: 4px; display: block;">
-                    * Correo cargado automáticamente del perfil del cliente. Puede editarlo o escribir una dirección diferente si lo requiere.
+                    * Puede ingresar múltiples destinatarios separados por coma (ej. cliente@empresa.com, copia@empresa.com).
                 </small>
             </div>
 

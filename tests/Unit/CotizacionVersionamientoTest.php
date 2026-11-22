@@ -261,17 +261,23 @@ class CotizacionVersionamientoTest extends TestCase {
             $res = $modelo->actualizarCotizacionCompleta($idCot, $cabecera, $detalles);
             $this->assertTrue($res, 'actualizarCotizacionCompleta debe retornar true sin pantalla blanca');
 
-            // 3. Verificar cotización activa
+            // 3. Verificar cotización activa tras corrección de observación interna (Regla 2.9: NO sube versión todavía)
             $cotActualizada = $modelo->obtenerPorId($idCot);
             $this->assertSame('En Revision', $cotActualizada['estado']);
-            $this->assertEquals(2, $cotActualizada['version']);
+            $this->assertEquals(1, (int)$cotActualizada['version']);
             $this->assertNull($cotActualizada['motivo_observacion']);
             $this->assertEquals(1725.00, (float)$cotActualizada['total']);
 
-            // 4. Verificar versión histórica archivada
+            // 4. Al aprobar internamente y despachar al cliente, ahí sí sube versión a 2 y archiva v1
+            $modelo->registrarAprobacionInterna($idCot, 1);
+            $this->assertTrue($modelo->marcarEnviadaAlCliente($idCot, 1));
+
+            $cotEnviada = $modelo->obtenerPorId($idCot);
+            $this->assertSame('Enviada al Cliente', $cotEnviada['estado']);
+            $this->assertEquals(2, (int)$cotEnviada['version']);
+
             $versionHist = $modelo->obtenerVersionHistorica($idCot, 1);
             $this->assertNotNull($versionHist);
-            $this->assertStringContainsString('Observada por gerencia', $versionHist['motivo_cambio']);
         } finally {
             $db->rollBack();
         }

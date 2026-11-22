@@ -145,6 +145,53 @@ class MotorHojasCalculoServicio {
     }
 
     /**
+     * Carga la tabla de coeficientes polinomiales por posición (A/B/C) para el esclerómetro ESCL-01 (RT-FM-59)
+     * desde BD (`equipos_calibracion_constantes.valor_json`) o catálogo `equipos_calibracion.json`.
+     */
+    private function obtenerCoeficientesEsclerometroPorPosicion(string $posicion, string $codigoEquipo = 'ESCL-01'): ?array {
+        $pos = strtoupper(trim($posicion));
+        if (!in_array($pos, ['A', 'B', 'C'], true)) {
+            return null;
+        }
+
+        // 1. Intentar desde BD (equipos_calibracion_constantes.valor_json)
+        $desdeBd = $this->equipoModelo->obtenerValorPorRefEquipo($codigoEquipo . '.coeficientes_por_posicion', null);
+        if (!is_array($desdeBd)) {
+            $desdeBd = $this->equipoModelo->obtenerValorPorRefEquipo($codigoEquipo, null);
+        }
+        if (is_array($desdeBd)) {
+            $mapaPos = $desdeBd['coeficientes_por_posicion'] ?? $desdeBd;
+            if (isset($mapaPos[$pos]) && is_array($mapaPos[$pos]) && isset($mapaPos[$pos]['a'], $mapaPos[$pos]['b'], $mapaPos[$pos]['c'], $mapaPos[$pos]['d'])) {
+                return [
+                    'coef_a' => (float)$mapaPos[$pos]['a'],
+                    'coef_b' => (float)$mapaPos[$pos]['b'],
+                    'coef_c' => (float)$mapaPos[$pos]['c'],
+                    'coef_d' => (float)$mapaPos[$pos]['d'],
+                ];
+            }
+        }
+
+        // 2. Fallback al catálogo canónico equipos_calibracion.json
+        $rutaCat = $this->rutaBaseHc . '/catalogos/equipos_calibracion.json';
+        if (file_exists($rutaCat)) {
+            $cat = json_decode((string)file_get_contents($rutaCat), true);
+            foreach ($cat['equipos'] ?? [] as $eq) {
+                if (($eq['codigo'] ?? '') === $codigoEquipo && isset($eq['coeficientes_por_posicion'][$pos])) {
+                    $c = $eq['coeficientes_por_posicion'][$pos];
+                    return [
+                        'coef_a' => (float)$c['a'],
+                        'coef_b' => (float)$c['b'],
+                        'coef_c' => (float)$c['c'],
+                        'coef_d' => (float)$c['d'],
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Evalúa todas las fórmulas de un espécimen / fila / determinación usando EvaluadorFormula.
      */
     public function evaluarEspecimen(string $codigoFormato, array $entradas, array $opciones = []): array {
@@ -156,6 +203,31 @@ class MotorHojasCalculoServicio {
         // Preprocesamiento de entradas según correcciones dudosas de captura/unidades
         $entradasEfectivas = $this->preprocesarEntradasPorCorreccion($spec, $entradas, $mapaCorrecciones, $constantes);
 
+        // Fase 1.12 (RT-FM-59 Martillo Suizo): selección dinámica de polinomio por posición A/B/C y toggle de factor_calibracion
+        if ($codigo === 'RT-FM-59') {
+            $posSolicitada = strtoupper(trim((string)($entradasEfectivas['posicion'] ?? ($opciones['posicion'] ?? ''))));
+            if ($posSolicitada === '') {
+                $posSolicitada = strtoupper(trim(ConfigCalculoLabServicio::obtener('martillo_posicion_defecto', 'A')));
+            }
+            $tieneCoefsExplicitos = isset($entradasEfectivas['coef_a'], $entradasEfectivas['coef_b'], $entradasEfectivas['coef_c'], $entradasEfectivas['coef_d']);
+            if (!$tieneCoefsExplicitos && in_array($posSolicitada, ['A', 'B', 'C'], true)) {
+                $eqCod = trim((string)($entradasEfectivas['esclerometro_id'] ?? 'ESCL-01')) ?: 'ESCL-01';
+                $coefsPos = $this->obtenerCoeficientesEsclerometroPorPosicion($posSolicitada, $eqCod);
+                if ($coefsPos !== null) {
+                    $constantes = array_merge($constantes, $coefsPos);
+                }
+            }
+
+            if (!array_key_exists('factor_calibracion', $entradasEfectivas) || $entradasEfectivas['factor_calibracion'] === null || $entradasEfectivas['factor_calibracion'] === '') {
+                $usarFactorCal = array_key_exists('usar_factor_cal', $opciones)
+                    ? (bool)$opciones['usar_factor_cal']
+                    : ConfigCalculoLabServicio::obtenerBool('martillo_usar_factor_cal', false);
+                if (!$usarFactorCal) {
+                    $constantes['factor_calibracion'] = 1.0;
+                }
+            }
+        }
+
         $valores = $constantes;
         $clavesFijas = [];
         foreach ($entradasEfectivas as $k => $v) {
@@ -163,6 +235,11 @@ class MotorHojasCalculoServicio {
                 $valores[$k] = is_numeric($v) ? (float)$v : $v;
                 $clavesFijas[$k] = true;
             }
+        }
+
+        // RT-FM-25: asegurar que ret_3in por defecto sea 0.0 si no se ingresó, preservando total_retenido
+        if ($codigo === 'RT-FM-25' && !array_key_exists('ret_3in', $valores)) {
+            $valores['ret_3in'] = 0.0;
         }
 
         $formulas = $spec['formulas'] ?? [];
@@ -187,6 +264,12 @@ class MotorHojasCalculoServicio {
 
         // Postprocesamiento de validaciones y reglas dudosas delegadas en manejadores del JSON
         $this->postprocesarValoresPorCorreccion($spec, $valores, $clavesFijas, $formulasEfectivas, $mapaCorrecciones);
+
+        // Fase 1.12 (RT-FM-59): redondeo configurable de resistencia estimada (1 / 10 / 100 psi)
+        if ($codigo === 'RT-FM-59' && isset($valores['resistencia_psi']) && is_numeric($valores['resistencia_psi'])) {
+            $pasoRed = isset($opciones['redondeo_psi']) && is_numeric($opciones['redondeo_psi']) ? (int)$opciones['redondeo_psi'] : null;
+            $valores['resistencia_psi_redondeada'] = ConfigCalculoLabServicio::redondearMartilloPsi((float)$valores['resistencia_psi'], $pasoRed);
+        }
 
         $avisos = [];
         $validaciones = [];
@@ -216,6 +299,10 @@ class MotorHojasCalculoServicio {
             } else {
                 $redondeados[$cod] = null;
             }
+        }
+        if ($codigo === 'RT-FM-59' && isset($valores['resistencia_psi_redondeada'])) {
+            $calculados['resistencia_psi_redondeada'] = (float)$valores['resistencia_psi_redondeada'];
+            $redondeados['resistencia_psi_redondeada'] = (float)$valores['resistencia_psi_redondeada'];
         }
 
         return [
@@ -304,6 +391,11 @@ class MotorHojasCalculoServicio {
             if (!empty($corr['manejador'])) {
                 ManejadoresCorreccionHc::postprocesarConjunto($corr['manejador'], $filasValores, $agregacionesResultado, $usarCorregido, $this->agregador);
             }
+        }
+
+        if ($codigo === 'RT-FM-46') {
+            $compDiseno = (float)($datosGlobales['compactacion_diseno'] ?? 95.0);
+            $agregacionesResultado['resumen_cbr_golpes'] = $this->agregador->resumenCbrPorGolpes($filasValores, $compDiseno);
         }
 
         $contextoGlobal = array_merge(

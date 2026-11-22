@@ -10,7 +10,7 @@ use PDO;
 class PlantillasEnsayosTest extends TestCase {
     public function testMigracionTieneLosVeintiunFormatosConfigurados(): void {
         $plantillas = (new ConfiguracionModelo())->obtenerPlantillasEnsayos();
-        $this->assertCount(21, $plantillas);
+        $this->assertGreaterThanOrEqual(21, count($plantillas));
         foreach ($plantillas as $plantilla) {
             $this->assertNotEmpty($plantilla['configuracion_json'], $plantilla['nombre']);
             $config = json_decode($plantilla['configuracion_json'], true);

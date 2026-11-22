@@ -216,12 +216,13 @@ class CotizacionBorradorEdicionTest extends TestCase {
 
             $cot = $modelo->obtenerPorId($idCot);
             $this->assertSame('En Revision', $cot['estado'], 'Una cotización Observada debe pasar a En Revision');
-            $this->assertEquals(2, (int)$cot['version'], 'La versión debe incrementarse de 1 a 2');
+            // Regla 2.9: La observación interna antes de salir al cliente NO incrementa la versión PDF
+            $this->assertEquals(1, (int)$cot['version'], 'La versión no debe incrementarse por observación interna');
             $this->assertNull($cot['motivo_observacion'], 'El motivo de observación debe limpiarse');
 
-            $stmtVer = $db->prepare("SELECT * FROM cotizacion_versiones WHERE id_cotizacion = :id AND version = 1");
+            $stmtVer = $db->prepare("SELECT COUNT(*) FROM cotizacion_versiones WHERE id_cotizacion = :id");
             $stmtVer->execute(['id' => $idCot]);
-            $this->assertNotEmpty($stmtVer->fetch(PDO::FETCH_ASSOC), 'Debe registrar la versión histórica 1');
+            $this->assertEquals(0, (int)$stmtVer->fetchColumn(), 'Una observación interna no debe archivar nueva versión PDF');
 
         } finally {
             $db->prepare("DELETE FROM cotizacion_versiones WHERE id_cotizacion = :id")->execute(['id' => $idCot]);

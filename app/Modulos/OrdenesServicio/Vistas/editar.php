@@ -50,7 +50,9 @@ $listaClientes = $clientes ?? [];
                 <i class="fa-solid fa-pen-to-square" style="color: var(--cycsa-azul);"></i> Editar Orden de Servicio
             </h2>
             <p style="color: #64748b; margin-top: 4px; font-size: 13.5px; margin-bottom: 0;">
-                Documento <strong><?= htmlspecialchars($os['codigo_os']) ?></strong> &bull; Estado actual: <strong><?= htmlspecialchars($os['estado']) ?></strong>
+                Documento <strong><?= htmlspecialchars($os['codigo_os']) ?></strong>
+                <span style="background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; padding: 1px 7px; border-radius: 10px; font-size: 11.5px; font-weight: 700; margin-left: 4px;">v<?= (int)($os['version'] ?? 1) ?></span>
+                &bull; Estado actual: <strong><?= htmlspecialchars($os['estado']) ?></strong>
             </p>
         </div>
         <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary">
@@ -200,10 +202,20 @@ $listaClientes = $clientes ?? [];
                 </div>
             </div>
 
-            <div class="form-group-cycsa" style="margin-bottom: 0;">
+            <div class="form-group-cycsa" style="margin-bottom: <?= $esAprobada ? '16px' : '0' ?>;">
                 <label>Notas y Condiciones Especiales:</label>
                 <textarea name="notas_condiciones" class="form-control-cycsa" rows="2" placeholder="Observaciones o términos adicionales..."><?= htmlspecialchars($os['notas_condiciones'] ?? '') ?></textarea>
             </div>
+
+            <?php if ($esAprobada): ?>
+            <div class="form-group-cycsa" style="margin-bottom: 0; background: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 8px; padding: 14px 16px;">
+                <label for="motivo_cambio_version" style="color: #92400e;">
+                    <i class="fa-solid fa-code-branch"></i> Nota / Motivo de modificación (generará nueva revisión v<?= (int)($os['version'] ?? 1) + 1 ?>) *
+                </label>
+                <textarea id="motivo_cambio_version" name="motivo_cambio_version" class="form-control-cycsa" rows="2" required placeholder="Explique brevemente el motivo del cambio en esta O/S aprobada..."><?= htmlspecialchars($os['motivo_cambio_version'] ?? '') ?></textarea>
+                <small style="display:block; margin-top:4px; color:#92400e; font-size:11.5px;">Se archivará un snapshot de la versión actual v<?= (int)($os['version'] ?? 1) ?> y la O/S pasará a Estado 2: Revisión para re-aprobación.</small>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- TABLA DE ENSAYOS INCLUIDOS (REFERENCIA) -->

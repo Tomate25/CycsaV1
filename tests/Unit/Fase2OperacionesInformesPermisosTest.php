@@ -1,0 +1,371 @@
+<?php
+
+namespace Tests\Unit;
+
+use Cycsa\Modulos\Operaciones\Controladores\OperacionesControlador;
+use Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio;
+use Cycsa\Nucleo\Conexion;
+use Cycsa\Nucleo\Peticion;
+use Cycsa\Nucleo\Respuesta;
+use PDO;
+use PHPUnit\Framework\TestCase;
+
+class TestRespuestaFase2Operaciones extends Respuesta {
+    public string $urlRedirigida = '';
+    public ?array $jsonRespuesta = null;
+    public int $codigoRespuesta = 200;
+
+    public function redirigir(string $url): void {
+        $this->urlRedirigida = $url;
+    }
+
+    public function enviarJson(array $datos, int $codigoHttp = 200): void {
+        $this->jsonRespuesta = $datos;
+        $this->codigoRespuesta = $codigoHttp;
+    }
+}
+
+class Fase2OperacionesInformesPermisosTest extends TestCase {
+    private PDO $db;
+    private array $idsCleanup = [
+        'detalles' => [],
+        'hojas' => [],
+        'os' => [],
+        'cotizaciones' => [],
+    ];
+
+    protected function setUp(): void {
+        parent::setUp();
+        $this->db = Conexion::obtenerInstancia();
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        $_SESSION['usuario_id'] = 1;
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_nombre'] = 'Supervisor QA Test';
+        $_SESSION['csrf_token'] = 'token_fase2_test_123';
+        $_POST = [];
+        $_GET = [];
+    }
+
+    protected function tearDown(): void {
+        try {
+            foreach ($this->idsCleanup['hojas'] as $hid) {
+                $this->db->prepare("DELETE FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :id")->execute(['id' => $hid]);
+                $this->db->prepare("DELETE FROM hojas_solicitud WHERE id = :id")->execute(['id' => $hid]);
+            }
+            foreach ($this->idsCleanup['os'] as $oid) {
+                $this->db->prepare("DELETE FROM ordenes_servicio WHERE id = :id")->execute(['id' => $oid]);
+            }
+            foreach ($this->idsCleanup['detalles'] as $did) {
+                $this->db->prepare("DELETE FROM cotizacion_detalles WHERE id = :id")->execute(['id' => $did]);
+            }
+            foreach ($this->idsCleanup['cotizaciones'] as $cid) {
+                $this->db->prepare("DELETE FROM cotizaciones WHERE id = :id")->execute(['id' => $cid]);
+            }
+        } catch (\Throwable $e) {
+        }
+        $_POST = [];
+        $_GET = [];
+        parent::tearDown();
+    }
+
+    private function crearFixtureMatrizConcreto(): array {
+        $idCliente = (int)$this->db->query("SELECT id FROM clientes LIMIT 1")->fetchColumn();
+        if ($idCliente <= 0) {
+            $this->db->exec("INSERT INTO clientes (nombre_razon_social, email) VALUES ('Cliente Fase2', 'cliente@fase2.test')");
+            $idCliente = (int)$this->db->lastInsertId();
+        }
+        $idUsuario = (int)$this->db->query("SELECT id FROM usuarios LIMIT 1")->fetchColumn() ?: 1;
+        $uid = uniqid();
+        $this->db->prepare("INSERT INTO cotizaciones (codigo, id_cliente, id_usuario_creador, nombre_proyecto, estado, subtotal, impuesto, total) VALUES (:cod, :cli, :uid, 'Proyecto Fase2', 'Aprobada por Cliente', 1000, 150, 1150)")
+            ->execute(['cod' => 'COT-F2-' . $uid, 'cli' => $idCliente, 'uid' => $idUsuario]);
+        $idCot = (int)$this->db->lastInsertId();
+        $this->idsCleanup['cotizaciones'][] = $idCot;
+
+        $this->db->prepare("INSERT INTO cotizacion_detalles (id_cotizacion, descripcion_ensayo, norma_astm, cantidad, precio_unitario, subtotal, resultados_json) VALUES (:cot, 'Resistencia de Concreto', 'ASTM C39', 1, 500, 500, :json)")
+            ->execute([
+                'cot' => $idCot,
+                'json' => json_encode([
+                    'version_actual' => 1,
+                    'filas' => [[
+                        'Código laboratorio' => 'MC-9001-26',
+                        'Nombre muestra' => 'Viga Principal Original',
+                        'Reven. (in)' => '4',
+                        'Reven. (cm)' => '10',
+                        'Temp. (°C)' => '26.5',
+                        'Diseño de concreto (lb/in²)' => '4000',
+                        'Fecha de Fabricación' => '2026-11-01',
+                        'Fecha de Ensayo' => '2026-11-29',
+                        'Edad (Días)' => '28',
+                        'Área (in²)' => '28.27',
+                        'Carga (lb)' => '',
+                    ]],
+                    'metadatos' => [
+                        'equipo_marca' => 'TROXLER',
+                        'equipo_modelo' => '3440',
+                        'equipo_serie' => '99112',
+                        'equipo_codigo' => 'Eq-9999',
+                    ],
+                ], JSON_UNESCAPED_UNICODE),
+            ]);
+        $idDet = (int)$this->db->lastInsertId();
+        $this->idsCleanup['detalles'][] = $idDet;
+
+        $this->db->prepare("INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, id_cliente, nombre_proyecto, estado, fecha_emision) VALUES (:os, :cot, :cli, 'Proyecto Fase2', 'En Proceso', CURRENT_DATE)")
+            ->execute(['os' => 'OS-F2-' . $uid, 'cot' => $idCot, 'cli' => $idCliente]);
+        $idOs = (int)$this->db->lastInsertId();
+        $this->idsCleanup['os'][] = $idOs;
+
+        $this->db->prepare("INSERT INTO hojas_solicitud (id_os, id_detalle_cotizacion, numero_registro, muestras_json) VALUES (:os, :det, :reg, :mj)")
+            ->execute([
+                'os' => $idOs,
+                'det' => $idDet,
+                'reg' => 'REG-F2-' . $uid,
+                'mj' => json_encode([['nombre_muestra' => 'MC-9001-26', 'descripcion' => 'Viga Principal Original']]),
+            ]);
+        $idHoja = (int)$this->db->lastInsertId();
+        $this->idsCleanup['hojas'][] = $idHoja;
+
+        return ['id_cot' => $idCot, 'id_detalle' => $idDet, 'id_os' => $idOs, 'id_hoja' => $idHoja];
+    }
+
+    public function testClasificacionColumnasOcultaNombreMuestraYCompactacionATecnico(): void {
+        $this->assertSame('identidad', clasificarColumnaRecepcionOTecnico('Código laboratorio'));
+        $this->assertSame('recepcion', clasificarColumnaRecepcionOTecnico('Nombre muestra'));
+        $this->assertSame('tecnico', clasificarColumnaRecepcionOTecnico('Carga (lb)'));
+
+        $colsDensimetro = [
+            'Código laboratorio', 'Nombre muestra', 'Capa (N°)', 'Espesor (cm)',
+            'Profundidad (cm)', 'P.V.S Max (kg/m³)', 'Humedad Óptima ((% )(P/P))',
+            'P.V.S.Sitio (kg/m³)', 'Humedad Sitio ((%) (P/P))', 'Compactación ((%) (P/P))',
+            'Fecha de muestreo'
+        ];
+        $clasif = clasificarColumnasMatrizPorRol($colsDensimetro, 'compactacion_densimetro_nuclear.md');
+        $this->assertSame('identidad', $clasif['Código laboratorio']);
+        $this->assertSame('recepcion', $clasif['Nombre muestra']);
+        $this->assertSame('recepcion', $clasif['P.V.S Max (kg/m³)']);
+        $this->assertSame('recepcion', $clasif['Humedad Óptima ((% )(P/P))']);
+        $this->assertSame('recepcion', $clasif['P.V.S.Sitio (kg/m³)']);
+        $this->assertSame('recepcion', $clasif['Compactación ((%) (P/P))']);
+        $this->assertSame('recepcion', $clasif['Capa (N°)']);
+        $this->assertSame('recepcion', $clasif['Espesor (cm)']);
+        $this->assertSame('recepcion', $clasif['Profundidad (cm)']);
+        $this->assertSame('recepcion', $clasif['Fecha de muestreo']);
+    }
+
+    public function testTecnicoNoPuedeSobrescribirRecepcionNombreMuestraNiDensimetroEnBackend(): void {
+        $fx = $this->crearFixtureMatrizConcreto();
+        $_SESSION['usuario_rol'] = 6; // Laboratorista / Técnico (no supervisor)
+        $_SESSION['usuario_nombre'] = 'Técnico Ensayos';
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_detalle' => $fx['id_detalle'],
+            'resultados_json' => json_encode([
+                'filas' => [[
+                    'Código laboratorio' => 'MC-9001-26',
+                    'Nombre muestra' => 'HACKED NOMBRE',
+                    'Reven. (in)' => '99',
+                    'Diseño de concreto (lb/in²)' => '9999',
+                    'Área (in²)' => '28.30',
+                    'Carga (lb)' => '112000',
+                    'R. Compresión (lb/in²)' => '3960',
+                ]],
+                'metadatos' => [
+                    'equipo_marca' => 'FALSO',
+                    'equipo_serie' => '00000',
+                    'nota_aditivos' => 'Plastificante X',
+                ],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $ctrl = new OperacionesControlador();
+        $resp = new TestRespuestaFase2Operaciones();
+        $ctrl->guardarMatrizProductoPOST(new Peticion(), $resp);
+
+        $raw = $this->db->query("SELECT resultados_json FROM cotizacion_detalles WHERE id = {$fx['id_detalle']}")->fetchColumn();
+        $dec = json_decode((string)$raw, true);
+
+        // El técnico SÍ pudo guardar sus mediciones técnicas
+        $this->assertSame('112000', (string)$dec['filas'][0]['Carga (lb)']);
+        $this->assertSame('3960', (string)$dec['filas'][0]['R. Compresión (lb/in²)']);
+
+        // Pero el backend restauró TODOS los datos de recepción, Nombre muestra y equipo densímetro
+        $this->assertSame('Viga Principal Original', $dec['filas'][0]['Nombre muestra']);
+        $this->assertSame('4', (string)$dec['filas'][0]['Reven. (in)']);
+        $this->assertSame('4000', (string)$dec['filas'][0]['Diseño de concreto (lb/in²)']);
+        $this->assertSame('TROXLER', $dec['metadatos']['equipo_marca']);
+        $this->assertSame('99112', $dec['metadatos']['equipo_serie']);
+        $this->assertSame('Plastificante X', $dec['metadatos']['nota_aditivos']);
+    }
+
+    public function testVistaCapturaRestringeDesbloqueoYEquipoASupervisor(): void {
+        $htmlCaptura = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php');
+        $this->assertStringContainsString('if ($esSupervisor && !$esModoHistorico)', $htmlCaptura);
+        $this->assertStringContainsString('col-recepcion-oculta', $htmlCaptura);
+        $this->assertStringContainsString('id="meta_nota_aditivos"', $htmlCaptura);
+        $this->assertStringContainsString('id="meta_observaciones_pendientes"', $htmlCaptura);
+        $this->assertStringContainsString('id="meta_columnas_asterisco"', $htmlCaptura);
+    }
+
+    public function testAprobarMatrizPersisteRevisorAprobadorYObservacionesPendientes(): void {
+        $fx = $this->crearFixtureMatrizConcreto();
+        $_SESSION['usuario_rol'] = 3; // Supervisor
+        $_SESSION['usuario_id'] = 7;
+        $_SESSION['usuario_nombre'] = 'Ing. María Morales';
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_detalle' => $fx['id_detalle'],
+            'nota_aprobacion' => 'Validación conforme.',
+            'observaciones_pendientes' => 'Pendiente firma de revisión técnica',
+        ];
+
+        $ctrl = new OperacionesControlador();
+        $resp = new TestRespuestaFase2Operaciones();
+        $ctrl->aprobarMatrizProducto(new Peticion(), $resp);
+
+        $raw = $this->db->query("SELECT resultados_json FROM cotizacion_detalles WHERE id = {$fx['id_detalle']}")->fetchColumn();
+        $dec = json_decode((string)$raw, true);
+
+        $this->assertSame('aprobada', $dec['revision']['estado']);
+        $this->assertSame('Ing. María Morales', $dec['revision']['usuario_revisor']);
+        $this->assertSame('Ing. María Morales', $dec['revision']['usuario_aprobador']);
+        $this->assertSame(7, (int)$dec['revision']['usuario_aprobador_id']);
+        $this->assertNotEmpty($dec['revision']['fecha_aprobacion']);
+        $this->assertSame('Pendiente firma de revisión técnica', $dec['revision']['observaciones_pendientes']);
+    }
+
+    public function testMatrizPrintYPdfRenderizanFirmasRealesAditivosAsteriscosYSinLogos(): void {
+        $detalle = [
+            'id' => 555,
+            'codigo_os' => 'OS-2026-0555',
+            'descripcion_ensayo' => 'Resistencia de Concreto',
+            'archivo_markdown' => 'resistencia_de_concreto.md',
+            'codigo_documento' => 'CYCSA-RT-FM-22 A V1-R2',
+            'cliente_nombre' => 'CONSTRUCTORA FASE 2',
+            'nombre_proyecto' => 'Torre Norte',
+            'resultados_json' => json_encode([
+                'version_actual' => 1,
+                'filas' => [[
+                    'Código laboratorio' => 'MC-0010-26',
+                    'Nombre muestra' => 'Columna C1',
+                    'Área (in²)' => '28.27',
+                    'Carga (lb)' => '112000',
+                    'Peso Volumétrico (kg/m³)' => '*2380',
+                    'R. Compresión (lb/in²)' => '3960',
+                    'R. Compresión (kg/cm²)' => '279',
+                ]],
+                'metadatos' => [
+                    'logo_acreditacion' => '/Cycsa/publico/img/sello_acreditacion_default.jpeg',
+                    'nota_aditivos' => 'Aditivo superplastificante 0.8% dosis',
+                    'observaciones_pendientes' => 'Pendiente verificación de equipo calibrado',
+                    'columnas_asterisco' => ['Peso Volumétrico (kg/m³)'],
+                ],
+                'revision' => [
+                    'estado' => 'aprobada',
+                    'usuario_revisor' => 'Ing. Ana Revisora',
+                    'usuario_aprobador' => 'Ing. Carlos Aprobador',
+                    'historial' => [[
+                        'accion' => 'enviado_revision',
+                        'nota' => 'BITACORA_INTERNA_SECRETA_NO_IMPRIMIR',
+                    ]],
+                ],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        // 1. Renderizar vista HTML con sin_logo=1 y sin_logo_acreditacion=1
+        $sinLogo = true;
+        $sinLogoAcreditacion = true;
+        $columnas = ['Código laboratorio', 'Nombre muestra', 'Área (in²)', 'Carga (lb)', 'Peso Volumétrico (kg/m³)', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)'];
+        $muestrasSeteadas = [];
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php';
+        $html = ob_get_clean();
+
+        $this->assertStringContainsString('Ing. Ana Revisora', $html);
+        $this->assertStringContainsString('Ing. Carlos Aprobador', $html);
+        $this->assertStringContainsString('Pendiente verificación de equipo calibrado', $html);
+        $this->assertStringContainsString('Aditivo superplastificante 0.8% dosis', $html);
+        $this->assertStringContainsString('Peso Volumétrico (kg/m³) *', $html);
+        $this->assertStringContainsString('Parámetro o resultado marcado fuera del alcance de acreditación', $html);
+        $this->assertStringContainsString('background-image: none;', $html);
+        $this->assertStringNotContainsString('logo-acreditacion-print', $html);
+        $this->assertStringNotContainsString('BITACORA_INTERNA_SECRETA_NO_IMPRIMIR', $html);
+
+        // 2. Generar PDF con sin_logo y sin_logo_acreditacion
+        $pdfNormal = generarMatrizTecnicaPDF($detalle, [], $columnas, '', []);
+        $pdfSinLogos = generarMatrizTecnicaPDF($detalle, [], $columnas, '', [
+            'sin_logo' => true,
+            'sin_logo_acreditacion' => true,
+        ]);
+        $this->assertStringStartsWith('%PDF-', $pdfNormal);
+        $this->assertStringStartsWith('%PDF-', $pdfSinLogos);
+        // Al omitir fondo membretado, el PDF sin logo debe ser considerablemente más liviano
+        $this->assertLessThan(strlen($pdfNormal), strlen($pdfSinLogos));
+    }
+
+    public function testParsearListaCorreosSoportaMultiplesCorreosYRechazaInvalidos(): void {
+        $res = parsearListaCorreos('uno@cycsa.com, DOS@cycsa.com; tres@obra.ni, invalido@, uno@cycsa.com');
+        $this->assertSame(['uno@cycsa.com', 'DOS@cycsa.com', 'tres@obra.ni'], $res);
+
+        $resArr = parsearListaCorreos(['a@b.com; c@d.com', 'not-an-email', 'e@f.org']);
+        $this->assertSame(['a@b.com', 'c@d.com', 'e@f.org'], $resArr);
+
+        $this->assertSame([], parsearListaCorreos('correo-invalido, otro-malo'));
+    }
+
+    public function testVistasOperacionesContienenEnlaceHojaRtFm60YMultiplesCorreos(): void {
+        $indexHtml = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/index.php');
+        $verHtml = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/ver.php');
+        $printHtml = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php');
+
+        $this->assertStringContainsString('/laboratorio/imprimir-solicitud?id_hoja=', $indexHtml);
+        $this->assertStringContainsString('Hoja RT-FM-60', $indexHtml);
+        $this->assertStringContainsString('/laboratorio/imprimir-solicitud?id_hoja=', $verHtml);
+        $this->assertStringContainsString('Hoja RT-FM-60', $verHtml);
+
+        $this->assertStringContainsString('type="text" name="destinatario" id="envio_destinatario"', $indexHtml);
+        $this->assertStringContainsString('type="text" name="destinatario" required', $printHtml);
+    }
+
+    public function testSincronizarRoturasConMatrizYRevenimientoYAreaSinDefaults(): void {
+        // 1.7: Revenimiento a 0.5 cm
+        $this->assertSame(10.0, convertirUnidadMedicionPHP(4.0, 'in', 'cm'));
+        $this->assertSame(11.5, convertirUnidadMedicionPHP(4.5, 'in', 'cm'));
+
+        // 1.2 / 1.11: obtenerDatosMuestraDesdeMatriz NO inyecta área nominal 12.566 / 28.274 cuando no existe
+        $datosSinArea = obtenerDatosMuestraDesdeMatriz([
+            ['Código laboratorio' => 'MC-0100-26', 'Nombre muestra' => 'Cilindro 6x12'],
+        ], 'MC-0100-26');
+        $this->assertTrue($datosSinArea['encontrada']);
+        $this->assertSame('6x12 in (15x30 cm)', $datosSinArea['tamano_cilindro']);
+        $this->assertNull($datosSinArea['area']);
+
+        // 1.3 / 1.4: sincronizarRoturasConMatriz escribe peso_volumetrico, fecha_real, edad_calculada y redondeos RT-FM-61
+        $fx = $this->crearFixtureMatrizConcreto();
+        $act = sincronizarRoturasConMatriz($this->db, $fx['id_hoja'], $fx['id_detalle'], [[
+            'codigo_lab' => 'MC-9001-26',
+            'carga' => 112345.6,
+            'area' => 28.2743,
+            'peso_volumetrico' => 2378.4,
+            'esfuerzo_psi' => 3970.4,
+            'esfuerzo_kgcm2' => 279.6,
+            'fecha_real' => '2026-11-29',
+            'edad_calculada' => 28,
+        ]]);
+        $this->assertSame(1, $act);
+
+        $raw = $this->db->query("SELECT resultados_json FROM cotizacion_detalles WHERE id = {$fx['id_detalle']}")->fetchColumn();
+        $dec = json_decode((string)$raw, true);
+        $fila0 = $dec['filas'][0];
+        $this->assertEquals(112346, $fila0['Carga (lb)']);
+        $this->assertEquals(28.27, $fila0['Área (in²)']);
+        $this->assertEquals(2378, $fila0['Peso Volumétrico (kg/m³)']);
+        $this->assertSame('2026-11-29', $fila0['Fecha de Ensayo']);
+        $this->assertEquals(28, $fila0['Edad (Días)']);
+    }
+}

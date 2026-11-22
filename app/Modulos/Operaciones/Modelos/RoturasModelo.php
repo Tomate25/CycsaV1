@@ -3,6 +3,7 @@
 namespace Cycsa\Modulos\Operaciones\Modelos;
 
 use Cycsa\Nucleo\Conexion;
+use Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio;
 use PDO;
 use Exception;
 
@@ -140,7 +141,8 @@ class RoturasModelo {
         // Especímenes asociados
         $stmtEsp = $this->db->prepare("
             SELECT esp.*, pra.plan_edad_id, pre.edad_dias, pre.fecha_programada, pre.tolerancia_horas,
-                   rot.id AS rotura_id, rot.fecha_real, rot.carga, rot.area, rot.esfuerzo_psi, rot.esfuerzo_kgcm2,
+                   rot.id AS rotura_id, rot.fecha_real, rot.edad_calculada, rot.carga, rot.area, rot.peso_volumetrico,
+                   rot.esfuerzo_psi, rot.esfuerzo_kgcm2,
                    rot.porcentaje_fc, rot.tipo_falla, rot.fuera_tolerancia, rot.justificacion, rot.datos_crudos
             FROM especimenes esp
             LEFT JOIN plan_rotura_asignaciones pra ON pra.especimen_id = esp.id
@@ -182,9 +184,12 @@ class RoturasModelo {
 
         // Historial de Informes de Rotura
         $stmtInf = $this->db->prepare("
-            SELECT ir.*, u.nombre AS aprobado_por_nombre
+            SELECT ir.*,
+                   COALESCE(NULLIF(ir.aprobado_nombre, ''), u.nombre) AS aprobado_por_nombre,
+                   COALESCE(NULLIF(ir.revisado_nombre, ''), ur.nombre) AS revisado_por_nombre
             FROM informes_rotura ir
             LEFT JOIN usuarios u ON ir.aprobado_por = u.id
+            LEFT JOIN usuarios ur ON ir.revisado_por = ur.id
             WHERE ir.muestra_id = :id
             ORDER BY ir.id DESC
         ");
@@ -483,8 +488,9 @@ class RoturasModelo {
                     if (!$nuevaFecha && !empty($plan['fecha_moldeo'])) {
                         $nuevaFecha = date('Y-m-d', strtotime("{$plan['fecha_moldeo']} + {$nuevaEdad} days"));
                     }
-                    $this->db->prepare("UPDATE plan_rotura_edades SET edad_dias = :edad, fecha_programada = COALESCE(:fprog, fecha_programada) WHERE plan_rotura_id = :pid AND estado = 'pendiente'")
-                             ->execute(['edad' => $nuevaEdad, 'fprog' => $nuevaFecha, 'pid' => $planId]);
+                    $nuevaTol = $this->obtenerToleranciaHorasAstmC39($nuevaEdad);
+                    $this->db->prepare("UPDATE plan_rotura_edades SET edad_dias = :edad, fecha_programada = COALESCE(:fprog, fecha_programada), tolerancia_horas = :tol WHERE plan_rotura_id = :pid AND estado = 'pendiente'")
+                             ->execute(['edad' => $nuevaEdad, 'fprog' => $nuevaFecha, 'tol' => $nuevaTol, 'pid' => $planId]);
                 }
             }
 
@@ -502,11 +508,12 @@ class RoturasModelo {
     }
 
     /**
-     * Ejecuta y registra la rotura tradicional clásica de un espécimen (ASTM C39).
-     * Mantiene 100% de compatibilidad con el flujo original clásico (commit 275dad5):
-     * esfuerzoPsi = carga / area, esfuerzoKgCm2 = esfuerzoPsi * 0.070307.
-     * Si se envían lecturas crudas sin código de formato explícito, rechaza con validación clara.
-     * Si se envía un código de formato explícito, redirige al flujo de Hoja de Cálculo (registrarRoturaHc).
+     * Ejecuta y registra la rotura de un espécimen (ASTM C39 / Hoja oficial RT-FM-61).
+     * - Calcula el área desde D1 y D2 (π·(D̄/2)²/6.4516) sin exigir `codigo_formato`, o usa el área explícita.
+     * - Elimina el fallback silencioso de 28.2743 in².
+     * - Aplica fórmulas oficiales centralizadas de ConfigCalculoLabServicio (redondeo a 10 psi, divisor configurable 14.2029).
+     * - Calcula y persiste `peso_volumetrico` y `edad_calculada`.
+     * - Si se envía un `codigo_formato` explícito, redirige a registrarRoturaHc().
      */
     public function registrarRotura(array $datos, int $tecnicoId): array {
         if ($tecnicoId <= 0) {
@@ -535,15 +542,9 @@ class RoturasModelo {
 
         $codigoFormatoHc = $datos['codigo_formato'] ?? ($crudosLimpios['codigo_formato'] ?? null);
 
-        $cargaDirecta = (float)($datos['carga'] ?? 0);
-        $areaDirecta = (float)($datos['area'] ?? 0);
-        $esRoturaDirecta = ($cargaDirecta > 0 && $areaDirecta > 0);
-
-        // Sin deducción implícita: si llegan lecturas crudas de dial/prensa o dimensiones sin carga/área directas y sin código explícito, rechazar
-        $tieneLecturasCrudas = !empty($crudosLimpios['lectura_carga_lbf']) || !empty($datos['lectura_carga_lbf'])
-            || (!$esRoturaDirecta && (!empty($crudosLimpios['diametro_1']) || !empty($datos['diametro_1']) || !empty($crudosLimpios['largo_1']) || !empty($datos['largo_1'])));
-
-        if ($tieneLecturasCrudas && empty($codigoFormatoHc)) {
+        // Si llegan lecturas crudas de dial/prensa sin código explícito, rechazar
+        $tieneLecturaPrensaCruda = !empty($crudosLimpios['lectura_carga_lbf']) || !empty($datos['lectura_carga_lbf']);
+        if ($tieneLecturaPrensaCruda && empty($codigoFormatoHc)) {
             return [
                 'exito' => false,
                 'mensaje' => 'Se enviaron lecturas crudas pero no se especificó un código de formato explícito de hoja de cálculo.'
@@ -554,13 +555,46 @@ class RoturasModelo {
             return $this->registrarRoturaHc($datos, $tecnicoId);
         }
 
-        // Flujo tradicional clásico idéntico a 275dad5
         try {
             $especimenId = (int)($datos['especimen_id'] ?? 0);
             $planEdadId = (int)($datos['plan_edad_id'] ?? 0);
             $fechaReal = !empty($datos['fecha_real']) ? $datos['fecha_real'] : date('Y-m-d H:i:s');
-            $carga = $cargaDirecta;
-            $area = ($areaDirecta > 0) ? $areaDirecta : 28.2743; // 15x30 cm estándar = ~4.4 in diametro = 28.27 in²
+            $carga = (float)($datos['carga'] ?? 0);
+            $areaDirecta = (float)($datos['area'] ?? 0);
+
+            // Aceptar dimensiones y masa a nivel raíz o dentro de datos_crudos sin exigir codigo_formato
+            $extraerNum = static function (string $clave) use ($datos, $crudosLimpios): float {
+                if (isset($datos[$clave]) && $datos[$clave] !== '' && is_numeric($datos[$clave])) {
+                    return (float)$datos[$clave];
+                }
+                if (isset($crudosLimpios[$clave]) && $crudosLimpios[$clave] !== '' && is_numeric($crudosLimpios[$clave])) {
+                    return (float)$crudosLimpios[$clave];
+                }
+                return 0.0;
+            };
+
+            $d1 = $extraerNum('diametro_1');
+            $d2 = $extraerNum('diametro_2');
+            $l1 = $extraerNum('largo_1');
+            $l2 = $extraerNum('largo_2');
+            $largoPromInput = $extraerNum('largo_prom');
+            $masaKg = $extraerNum('masa_kg');
+
+            // Consolidar dimensiones/masa proporcionadas en nivel raíz dentro de datos_crudos
+            foreach (['diametro_1', 'diametro_2', 'largo_1', 'largo_2', 'largo_prom', 'masa_kg'] as $campoDim) {
+                if (isset($datos[$campoDim]) && $datos[$campoDim] !== '' && is_numeric($datos[$campoDim]) && !isset($crudosLimpios[$campoDim])) {
+                    $crudosLimpios[$campoDim] = (string)$datos[$campoDim];
+                }
+            }
+
+            // Resolver área: prioridad D1 & D2 oficiales, luego área explícita. Sin fallback 28.2743.
+            $area = 0.0;
+            if ($d1 > 0 && $d2 > 0) {
+                $area = round(ConfigCalculoLabServicio::calcularAreaCilindroIn2($d1, $d2), 4);
+            } elseif ($areaDirecta > 0) {
+                $area = round($areaDirecta, 4);
+            }
+
             $tipoFalla = trim($datos['tipo_falla'] ?? 'Tipo 1 (Cono)');
             $justificacion = trim($datos['justificacion'] ?? '');
             $datosCrudos = !empty($crudosLimpios)
@@ -568,7 +602,7 @@ class RoturasModelo {
                 : null;
 
             if ($especimenId <= 0 || $carga <= 0 || $area <= 0) {
-                return ['exito' => false, 'mensaje' => 'Datos de ensayo incompletos: Carga y área deben ser valores positivos válidos.'];
+                return ['exito' => false, 'mensaje' => 'Datos de ensayo incompletos: ingrese D1 y D2 (o el área medida) y una carga válida.'];
             }
 
             // Obtener edad programada y fecha de moldeo
@@ -587,10 +621,36 @@ class RoturasModelo {
                 return ['exito' => false, 'mensaje' => 'Edad de rotura programada no válida.'];
             }
 
-            // Cálculos físicos y conversiones (flujo tradicional clásico)
-            $factorPsiToKgCm2 = 0.070307;
-            $esfuerzoPsi = round($carga / $area, 2);
-            $esfuerzoKgCm2 = round($esfuerzoPsi * $factorPsiToKgCm2, 2);
+            // Longitud promedio y peso volumétrico oficial
+            $largoProm = 0.0;
+            if ($l1 > 0 && $l2 > 0) {
+                $largoProm = ($l1 + $l2) / 2.0;
+            } elseif ($largoPromInput > 0) {
+                $largoProm = $largoPromInput;
+            } elseif ($l1 > 0) {
+                $largoProm = $l1;
+            } elseif ($l2 > 0) {
+                $largoProm = $l2;
+            }
+
+            $opcionesCalc = is_array($datos['opciones_calculo'] ?? null) ? $datos['opciones_calculo'] : [];
+            if ($d1 > 0 && $d2 > 0) {
+                $opcionesCalc['diametro_prom_cm'] = ($d1 + $d2) / 2.0;
+            }
+            if ($largoProm > 0) {
+                $opcionesCalc['largo_prom_cm'] = $largoProm;
+            }
+
+            // Cálculos físicos y conversiones oficiales (RT-FM-61 / ConfigCalculoLabServicio)
+            $resCalc = ConfigCalculoLabServicio::calcularResistenciaCilindro($carga, $area, $opcionesCalc, $this->db);
+            $esfuerzoPsi = (float)$resCalc['esfuerzo_psi'];
+            $esfuerzoKgCm2 = (float)$resCalc['esfuerzo_kgcm2'];
+
+            $pesoVolumetrico = ($masaKg > 0 && $largoProm > 0)
+                ? ConfigCalculoLabServicio::calcularPesoVolumetricoKgM3($masaKg, $area, $largoProm, null, $this->db)
+                : null;
+
+            $edadCalculada = ConfigCalculoLabServicio::calcularEdadDias($edadData['fecha_moldeo'] ?? null, $fechaReal);
 
             // Cálculo de porcentaje contra f'c de diseño
             $porcentajeFc = null;
@@ -603,11 +663,11 @@ class RoturasModelo {
                 }
             }
 
-            // Validación de tolerancia temporal según ASTM C39
+            // Validación de tolerancia temporal según ASTM C39 (sin truncar decimales como ±0.5 h)
             $fechaProgTimestamp = strtotime($edadData['fecha_programada'] . ' 08:00:00');
             $fechaRealTimestamp = strtotime($fechaReal);
             $diferenciaHoras = abs($fechaRealTimestamp - $fechaProgTimestamp) / 3600;
-            $toleranciaHoras = (int)$edadData['tolerancia_horas'];
+            $toleranciaHoras = (float)$edadData['tolerancia_horas'];
 
             $fueraTolerancia = ($diferenciaHoras > $toleranciaHoras) ? 1 : 0;
 
@@ -623,10 +683,11 @@ class RoturasModelo {
 
             // Insertar o actualizar registro en roturas
             $stmtRot = $this->db->prepare("
-                INSERT INTO roturas (especimen_id, plan_edad_id, fecha_real, carga, area, esfuerzo_psi, esfuerzo_kgcm2, porcentaje_fc, tipo_falla, tecnico_id, fuera_tolerancia, justificacion, datos_crudos)
-                VALUES (:especimen_id, :plan_edad_id, :fecha_real, :carga, :area, :esfuerzo_psi, :esfuerzo_kgcm2, :porcentaje_fc, :tipo_falla, :tecnico_id, :fuera_tolerancia, :justificacion, :datos_crudos)
+                INSERT INTO roturas (especimen_id, plan_edad_id, fecha_real, edad_calculada, carga, area, peso_volumetrico, esfuerzo_psi, esfuerzo_kgcm2, porcentaje_fc, tipo_falla, tecnico_id, fuera_tolerancia, justificacion, datos_crudos)
+                VALUES (:especimen_id, :plan_edad_id, :fecha_real, :edad_calculada, :carga, :area, :peso_volumetrico, :esfuerzo_psi, :esfuerzo_kgcm2, :porcentaje_fc, :tipo_falla, :tecnico_id, :fuera_tolerancia, :justificacion, :datos_crudos)
                 ON DUPLICATE KEY UPDATE 
-                    fecha_real = VALUES(fecha_real), carga = VALUES(carga), area = VALUES(area),
+                    fecha_real = VALUES(fecha_real), edad_calculada = VALUES(edad_calculada),
+                    carga = VALUES(carga), area = VALUES(area), peso_volumetrico = VALUES(peso_volumetrico),
                     esfuerzo_psi = VALUES(esfuerzo_psi), esfuerzo_kgcm2 = VALUES(esfuerzo_kgcm2),
                     porcentaje_fc = VALUES(porcentaje_fc), tipo_falla = VALUES(tipo_falla),
                     tecnico_id = VALUES(tecnico_id), fuera_tolerancia = VALUES(fuera_tolerancia),
@@ -636,8 +697,10 @@ class RoturasModelo {
                 'especimen_id' => $especimenId,
                 'plan_edad_id' => $planEdadId,
                 'fecha_real' => $fechaReal,
+                'edad_calculada' => $edadCalculada,
                 'carga' => $carga,
                 'area' => $area,
+                'peso_volumetrico' => $pesoVolumetrico,
                 'esfuerzo_psi' => $esfuerzoPsi,
                 'esfuerzo_kgcm2' => $esfuerzoKgCm2,
                 'porcentaje_fc' => $porcentajeFc,
@@ -682,8 +745,11 @@ class RoturasModelo {
                 'mensaje' => 'Rotura registrada exitosamente.',
                 'carga' => $carga,
                 'area' => $area,
+                'peso_volumetrico' => $pesoVolumetrico,
+                'edad_calculada' => $edadCalculada,
                 'esfuerzo_psi' => $esfuerzoPsi,
                 'esfuerzo_kgcm2' => $esfuerzoKgCm2,
+                'divisor_kgcm2' => $resCalc['divisor_kgcm2'],
                 'porcentaje_fc' => $porcentajeFc,
                 'datos_crudos' => $datosCrudos,
                 'evaluacion_hc' => null
@@ -786,15 +852,31 @@ class RoturasModelo {
                 ?? $valsHc['area_bruta_in2']
                 ?? $valsHc['area_1_in2']
                 ?? $valsHc['area_nominal_in2']
-                ?? ($datos['area'] ?? 28.2743));
+                ?? ($datos['area'] ?? 0));
             $area = round($area, 4);
 
             if ($especimenId <= 0 || $carga <= 0 || $area <= 0) {
-                return ['exito' => false, 'mensaje' => 'Datos de ensayo incompletos: Carga y área calculadas deben ser valores positivos válidos.'];
+                return ['exito' => false, 'mensaje' => 'Datos de ensayo incompletos: ingrese D1 y D2 (o el área medida) y una carga válida.'];
             }
 
+            // Resolver peso volumétrico y edad calculada
+            $pesoVolumetrico = null;
+            $masaKgHc = isset($entradasHc['masa_kg']) && is_numeric($entradasHc['masa_kg']) ? (float)$entradasHc['masa_kg'] : 0.0;
+            $largoPromHc = isset($valsHc['largo_prom']) && is_numeric($valsHc['largo_prom']) ? (float)$valsHc['largo_prom'] : 0.0;
+            if ($masaKgHc > 0 && $largoPromHc > 0 && $area > 0) {
+                $pesoVolumetrico = ConfigCalculoLabServicio::calcularPesoVolumetricoKgM3($masaKgHc, $area, $largoPromHc, null, $this->db);
+            } elseif (isset($valsHc['peso_volumetrico']) && is_numeric($valsHc['peso_volumetrico'])) {
+                $pesoVolumetrico = round((float)$valsHc['peso_volumetrico'], 2);
+            } elseif (isset($valsHc['densidad']) && is_numeric($valsHc['densidad'])) {
+                $pesoVolumetrico = round((float)$valsHc['densidad'], 2);
+            } elseif (isset($valsHc['densidad_seca']) && is_numeric($valsHc['densidad_seca'])) {
+                $pesoVolumetrico = round((float)$valsHc['densidad_seca'], 2);
+            }
+
+            $edadCalculada = ConfigCalculoLabServicio::calcularEdadDias($edadData['fecha_moldeo'] ?? null, $fechaReal);
+
             // Resolver esfuerzo y porcentajes
-            $factorPsiToKgCm2 = 0.070307;
+            $divisorKgCm2 = ConfigCalculoLabServicio::obtenerFloat('cilindros_divisor_kgcm2', 14.2029, $this->db);
             $psiCalc = $valsHc['esfuerzo_psi_reportado']
                 ?? $valsHc['esfuerzo_psi']
                 ?? $valsHc['resistencia_neta_psi']
@@ -814,7 +896,7 @@ class RoturasModelo {
                 ?? $valsHc['resistencia_tension_kgcm2']
                 ?? $valsHc['esfuerzo_1_kgcm2']
                 ?? $valsHc['esfuerzo_ultimo_kgcm2']
-                ?? ($esfuerzoPsi * $factorPsiToKgCm2);
+                ?? round($esfuerzoPsi / $divisorKgCm2, 0);
             $esfuerzoKgCm2 = round((float)$kgcm2Calc, 2);
 
             $porcentajeFc = null;
@@ -835,11 +917,11 @@ class RoturasModelo {
             ]);
             $datosCrudos = json_encode($crudosPersistir, JSON_UNESCAPED_UNICODE);
 
-            // Validación de tolerancia temporal según ASTM C39
+            // Validación de tolerancia temporal según ASTM C39 (preservando decimales como ±0.5h)
             $fechaProgTimestamp = strtotime($edadData['fecha_programada'] . ' 08:00:00');
             $fechaRealTimestamp = strtotime($fechaReal);
             $diferenciaHoras = abs($fechaRealTimestamp - $fechaProgTimestamp) / 3600;
-            $toleranciaHoras = (int)$edadData['tolerancia_horas'];
+            $toleranciaHoras = (float)$edadData['tolerancia_horas'];
 
             $fueraTolerancia = ($diferenciaHoras > $toleranciaHoras) ? 1 : 0;
 
@@ -854,10 +936,11 @@ class RoturasModelo {
             $this->db->beginTransaction();
 
             $stmtRot = $this->db->prepare("
-                INSERT INTO roturas (especimen_id, plan_edad_id, fecha_real, carga, area, esfuerzo_psi, esfuerzo_kgcm2, porcentaje_fc, tipo_falla, tecnico_id, fuera_tolerancia, justificacion, datos_crudos)
-                VALUES (:especimen_id, :plan_edad_id, :fecha_real, :carga, :area, :esfuerzo_psi, :esfuerzo_kgcm2, :porcentaje_fc, :tipo_falla, :tecnico_id, :fuera_tolerancia, :justificacion, :datos_crudos)
+                INSERT INTO roturas (especimen_id, plan_edad_id, fecha_real, edad_calculada, carga, area, peso_volumetrico, esfuerzo_psi, esfuerzo_kgcm2, porcentaje_fc, tipo_falla, tecnico_id, fuera_tolerancia, justificacion, datos_crudos)
+                VALUES (:especimen_id, :plan_edad_id, :fecha_real, :edad_calculada, :carga, :area, :peso_volumetrico, :esfuerzo_psi, :esfuerzo_kgcm2, :porcentaje_fc, :tipo_falla, :tecnico_id, :fuera_tolerancia, :justificacion, :datos_crudos)
                 ON DUPLICATE KEY UPDATE 
-                    fecha_real = VALUES(fecha_real), carga = VALUES(carga), area = VALUES(area),
+                    fecha_real = VALUES(fecha_real), edad_calculada = VALUES(edad_calculada),
+                    carga = VALUES(carga), area = VALUES(area), peso_volumetrico = VALUES(peso_volumetrico),
                     esfuerzo_psi = VALUES(esfuerzo_psi), esfuerzo_kgcm2 = VALUES(esfuerzo_kgcm2),
                     porcentaje_fc = VALUES(porcentaje_fc), tipo_falla = VALUES(tipo_falla),
                     tecnico_id = VALUES(tecnico_id), fuera_tolerancia = VALUES(fuera_tolerancia),
@@ -867,8 +950,10 @@ class RoturasModelo {
                 'especimen_id' => $especimenId,
                 'plan_edad_id' => $planEdadId,
                 'fecha_real' => $fechaReal,
+                'edad_calculada' => $edadCalculada,
                 'carga' => $carga,
                 'area' => $area,
+                'peso_volumetrico' => $pesoVolumetrico,
                 'esfuerzo_psi' => $esfuerzoPsi,
                 'esfuerzo_kgcm2' => $esfuerzoKgCm2,
                 'porcentaje_fc' => $porcentajeFc,
@@ -913,6 +998,8 @@ class RoturasModelo {
                 'mensaje' => 'Rotura registrada exitosamente mediante hoja de cálculo.',
                 'carga' => $carga,
                 'area' => $area,
+                'peso_volumetrico' => $pesoVolumetrico,
+                'edad_calculada' => $edadCalculada,
                 'esfuerzo_psi' => $esfuerzoPsi,
                 'esfuerzo_kgcm2' => $esfuerzoKgCm2,
                 'porcentaje_fc' => $porcentajeFc,
@@ -969,7 +1056,7 @@ class RoturasModelo {
      * Si el informe ya está aprobado, se bloquea cualquier modificación posterior (ISO/IEC 17025).
      * Al aprobar, genera una ruta simulada/real de PDF e inscribe un hash SHA-256 inmutable.
      */
-    public function procesarRevisionInforme(int $informeId, string $nuevoEstado, ?string $motivoDevolucion, int $usuarioId, int $rolId): array {
+    public function procesarRevisionInforme(int $informeId, string $nuevoEstado, ?string $motivoDevolucion, int $usuarioId, int $rolId, array $extra = []): array {
         if ($rolId !== 1 && $rolId !== 3) {
             return ['exito' => false, 'mensaje' => 'Acceso denegado: Solo el Administrador o Supervisor de Calidad puede aprobar o devolver informes.'];
         }
@@ -1006,6 +1093,45 @@ class RoturasModelo {
             ];
         }
 
+        // Resolver nombres reales de revisor y aprobador (Fase 2.2 / 2.7)
+        $resolverNombreUsuario = function (int $uid): ?string {
+            if ($uid <= 0) {
+                return null;
+            }
+            try {
+                $stmtU = $this->db->prepare("SELECT nombre FROM usuarios WHERE id = :id LIMIT 1");
+                $stmtU->execute(['id' => $uid]);
+                $nom = $stmtU->fetchColumn();
+                return ($nom !== false && trim((string)$nom) !== '') ? trim((string)$nom) : null;
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
+
+        $revisadoPor = !empty($extra['revisado_por']) ? (int)$extra['revisado_por'] : $usuarioId;
+        $revisadoNombre = trim((string)($extra['revisado_nombre'] ?? ''));
+        if ($revisadoNombre === '') {
+            $revisadoNombre = $resolverNombreUsuario($revisadoPor) ?? (string)($_SESSION['usuario_nombre'] ?? '');
+        }
+        $revisadoNombre = $revisadoNombre !== '' ? $revisadoNombre : null;
+
+        $aprobadoPor = ($nuevoEstado === 'aprobado') ? $usuarioId : null;
+        $aprobadoNombre = null;
+        if ($nuevoEstado === 'aprobado') {
+            $aprobadoNombre = trim((string)($extra['aprobado_nombre'] ?? ''));
+            if ($aprobadoNombre === '') {
+                $aprobadoNombre = $resolverNombreUsuario($usuarioId) ?? (string)($_SESSION['usuario_nombre'] ?? '');
+            }
+            $aprobadoNombre = $aprobadoNombre !== '' ? $aprobadoNombre : null;
+        }
+
+        $obsPendientes = array_key_exists('observaciones_pendientes', $extra)
+            ? trim((string)($extra['observaciones_pendientes'] ?? ''))
+            : ($informe['observaciones_pendientes'] ?? null);
+        if ($obsPendientes === '') {
+            $obsPendientes = null;
+        }
+
         // Al aprobar (nuevoEstado = 'aprobado'):
         // Generar ruta de PDF y calcular hash SHA-256 inmutable
         $pdfRuta = $informe['pdf'] ?? null;
@@ -1029,8 +1155,13 @@ class RoturasModelo {
             UPDATE informes_rotura 
             SET estado = :estado, 
                 motivo_devolucion = :motivo, 
+                revisado_por = :revisado_por,
+                fecha_revision = NOW(),
+                revisado_nombre = :revisado_nombre,
                 aprobado_por = :aprobado_por, 
+                aprobado_nombre = :aprobado_nombre,
                 fecha_aprobacion = " . ($nuevoEstado === 'aprobado' ? "NOW()" : "NULL") . ",
+                observaciones_pendientes = :obs_pendientes,
                 pdf = :pdf,
                 sha256 = :sha256
             WHERE id = :id
@@ -1038,7 +1169,11 @@ class RoturasModelo {
         $stmt->execute([
             'estado' => $nuevoEstado,
             'motivo' => ($nuevoEstado === 'devuelto') ? trim($motivoDevolucion) : null,
-            'aprobado_por' => ($nuevoEstado === 'aprobado') ? $usuarioId : null,
+            'revisado_por' => $revisadoPor > 0 ? $revisadoPor : null,
+            'revisado_nombre' => $revisadoNombre,
+            'aprobado_por' => $aprobadoPor,
+            'aprobado_nombre' => $aprobadoNombre,
+            'obs_pendientes' => $obsPendientes,
             'pdf' => $pdfRuta,
             'sha256' => $hashSha256,
             'id' => $informeId
@@ -1050,7 +1185,10 @@ class RoturasModelo {
             'exito' => true,
             'mensaje' => "El informe ha sido marcado como '{$nuevoEstado}' exitosamente.",
             'pdf' => $pdfRuta,
-            'sha256' => $hashSha256
+            'sha256' => $hashSha256,
+            'revisado_nombre' => $revisadoNombre,
+            'aprobado_nombre' => $aprobadoNombre,
+            'observaciones_pendientes' => $obsPendientes
         ];
     }
 
@@ -1125,9 +1263,36 @@ class RoturasModelo {
             $maxVersion = (int)$stmtMaxVer->fetchColumn();
             $nuevaVersion = max($maxVersion, (int)$informeActual['version']) + 1;
 
-            // 3. Generar nuevo consecutivo anual con obtenerSiguienteNumeroInforme()
-            $anio = (int)date('Y');
-            $nuevoNumero = $this->obtenerSiguienteNumeroInforme($anio);
+            // 3. Preservar número base original y anexar sufijo -1, -2, -3 (Fase 2.16)
+            $numeroOriginal = trim((string)($informeActual['numero'] ?? ''));
+            $versionActual = (int)($informeActual['version'] ?? 1);
+            $numeroBase = $numeroOriginal;
+            if ($versionActual > 1) {
+                $sufijoPrevio = '-' . ($versionActual - 1);
+                if (str_ends_with($numeroBase, $sufijoPrevio)) {
+                    $numeroBase = substr($numeroBase, 0, -strlen($sufijoPrevio));
+                } elseif (preg_match('/^(INF-\d{4}-\d{4}|CYCSA-INF-[A-Z]+-\d+-\d{2})-\d+$/', $numeroBase, $mBase)) {
+                    $numeroBase = $mBase[1];
+                }
+            } elseif (preg_match('/^(INF-\d{4}-\d{4}|CYCSA-INF-[A-Z]+-\d+-\d{2})-\d+$/', $numeroBase, $mBase)) {
+                $numeroBase = $mBase[1];
+            }
+
+            if ($numeroBase === '') {
+                $numeroBase = $this->obtenerSiguienteNumeroInforme((int)date('Y'));
+            }
+
+            $sufijoReemision = max(1, $nuevaVersion - 1);
+            $nuevoNumero = $numeroBase . '-' . $sufijoReemision;
+            $stmtDup = $this->db->prepare("SELECT COUNT(*) FROM informes_rotura WHERE numero = :num");
+            while (true) {
+                $stmtDup->execute(['num' => $nuevoNumero]);
+                if ((int)$stmtDup->fetchColumn() === 0) {
+                    break;
+                }
+                $sufijoReemision++;
+                $nuevoNumero = $numeroBase . '-' . $sufijoReemision;
+            }
 
             // 4. Insertar el nuevo informe con tipo = 'parcial', muestra_id, plan_edad_id, nuevo numero, version N+1, estado = 'en_revision'
             $tipoNuevo = ($informeActual['tipo'] === 'consolidado') ? 'consolidado' : 'parcial';
@@ -1419,18 +1584,10 @@ class RoturasModelo {
     }
 
     /**
-     * Tolerancia en horas para edades estándar ASTM C39.
+     * Tolerancia en horas para edades estándar ASTM C39 (delegada a ConfigCalculoLabServicio).
      */
-    private function obtenerToleranciaHorasAstmC39(int $edadDias): int {
-        return match ($edadDias) {
-            1 => 1,       // 24 h ±0.5 h (redondeado a 1h)
-            3 => 2,       // 3 días ±2 h
-            7 => 6,       // 7 días ±6 h
-            14 => 12,     // 14 días ±12 h
-            28 => 20,     // 28 días ±20 h
-            90 => 48,     // 90 días ±48 h
-            default => max(2, (int)round($edadDias * 0.75))
-        };
+    private function obtenerToleranciaHorasAstmC39(int $edadDias): float {
+        return ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39($edadDias);
     }
 
     /**
@@ -1441,7 +1598,7 @@ class RoturasModelo {
         $stmt->execute(['pat' => "INF-{$anio}-%"]);
         $maxNum = 0;
         while ($num = $stmt->fetchColumn()) {
-            if (preg_match('/^INF-\d+-(\d+)$/', $num, $m)) {
+            if (preg_match('/^INF-\d+-(\d+)(?:-\d+)?$/', $num, $m)) {
                 $val = (int)$m[1];
                 if ($val > $maxNum) {
                     $maxNum = $val;

@@ -366,7 +366,7 @@ class FlujoRecepcionVsTecnicoRtfm13Test extends TestCase {
         $k12 = strtoupper($c1[2]);
         $k20 = strtoupper($c2[0]);
         $k21 = strtoupper($c2[1]);
-        $this->assertSame('10.2', $mapa1[$k10]['Reven. (cm)']);
+        $this->assertSame('10', $mapa1[$k10]['Reven. (cm)']);
         $this->assertSame('7', $mapa1[$k10]['Edad (Días)']);
         $this->assertSame('14', $mapa1[$k11]['Edad (Días)']);
         $this->assertSame('28', $mapa1[$k12]['Edad (Días)']);

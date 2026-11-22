@@ -406,6 +406,9 @@ class OperacionModelo extends ModeloBase {
                 $disenoResistencia = trim($m['diseno_resistencia'] ?? '');
                 $revenimientoIn = !empty($m['revenimiento_in']) ? (float)$m['revenimiento_in'] : null;
                 $revenimientoCm = !empty($m['revenimiento_cm']) ? (float)$m['revenimiento_cm'] : null;
+                if ($revenimientoIn !== null && $revenimientoCm === null) {
+                    $revenimientoCm = \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularRevenimientoCm($revenimientoIn);
+                }
                 $temperaturaC = !empty($m['temperatura_c']) ? (float)$m['temperatura_c'] : null;
                 $procedimiento = trim($m['procedimiento_muestreo'] ?? 'ASTM C172');
                 $idDetalleCotizacion = (int)$m['id_detalle_cotizacion'];
@@ -679,11 +682,10 @@ class OperacionModelo extends ModeloBase {
             $cargaLbs = (float)$datos['carga_lbs'];
             $areaIn2 = (float)$datos['area_in2'];
             
-            // Resistencia PSI = Carga / Área
-            $resistenciaPsi = $areaIn2 > 0 ? $cargaLbs / $areaIn2 : 0;
-            
-            // Resistencia Kg/cm² = PSI * 0.070307
-            $resistenciaKg = $resistenciaPsi * 0.070307;
+            // Cálculo oficial RT-FM-61 / ConfigCalculoLabServicio
+            $calcRes = \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularResistenciaCilindro($cargaLbs, $areaIn2, [], $this->db);
+            $resistenciaPsi = $calcRes['esfuerzo_psi'];
+            $resistenciaKg = $calcRes['esfuerzo_kgcm2'];
 
             // Obtener info del ensayo actual (edad, lote, diseño)
             $stmtLote = $this->db->prepare("SELECT lm.id AS id_lote, lm.diseno_resistencia, ee.id_detalle_cotizacion, ee.edad_dias

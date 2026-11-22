@@ -109,7 +109,7 @@ class MetodosCabeceraMatrizTest extends TestCase {
         // Ensayos varios
         $this->assertNotEmpty($schema['ensayos_varios.md']['column_methods']['Color']);
         $this->assertNotEmpty($schema['ensayos_varios.md']['column_methods']['PVSS (kg/m³)']);
-        $this->assertNotEmpty($schema['ensayos_varios.md']['column_methods']['Módulo de finura ((%) (P/P))']);
+        $this->assertNotEmpty($schema['ensayos_varios.md']['column_methods']['Módulo de finura']);
 
         // Cilindros concreto
         $this->assertNotEmpty($schema['resistencia_de_concreto.md']['column_methods']['Área (in²)']);

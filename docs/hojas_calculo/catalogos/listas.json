@@ -5,6 +5,11 @@
   },
   "tamices": [
     {
+      "codigo": "3in",
+      "designacion": "3\"",
+      "abertura_mm": 75.0
+    },
+    {
       "codigo": "2in",
       "designacion": "2\"",
       "abertura_mm": 50
@@ -350,6 +355,18 @@
     {
       "numero": "8",
       "diametro_in": 1.0
+    },
+    {
+      "numero": "9",
+      "diametro_in": 1.128
+    },
+    {
+      "numero": "10",
+      "diametro_in": 1.27
+    },
+    {
+      "numero": "11",
+      "diametro_in": 1.41
     }
   ],
   "edades_rotura_tipicas_dias": [

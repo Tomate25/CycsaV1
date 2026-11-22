@@ -174,14 +174,14 @@ class LaboratorioRupturasLoteTest extends TestCase {
             $this->assertNotEmpty($resDec['filas']);
             $f1 = $resDec['filas'][0];
             $this->assertEquals(70000, (float)$f1['Carga (lb)']);
-            $this->assertEquals(2475.8, (float)$f1['R. Compresión (lb/in²)']);
-            $this->assertEquals(174.1, (float)$f1['R. Compresión (kg/cm²)']);
+            $this->assertEquals(2476, (float)$f1['R. Compresión (lb/in²)']);
+            $this->assertEquals(174, (float)$f1['R. Compresión (kg/cm²)']);
             $this->assertEquals('2026-11-29', $f1['Fecha de Ruptura']);
 
             $f2 = $resDec['filas'][1];
             $this->assertEquals(72500, (float)$f2['Carga (lb)']);
-            $this->assertEquals(2564.2, (float)$f2['R. Compresión (lb/in²)']);
-            $this->assertEquals(180.3, (float)$f2['R. Compresión (kg/cm²)']);
+            $this->assertEquals(2564, (float)$f2['R. Compresión (lb/in²)']);
+            $this->assertEquals(180, (float)$f2['R. Compresión (kg/cm²)']);
             $this->assertEquals('2026-11-29', $f2['Fecha de Ruptura']);
         } finally {
             $this->db->prepare("DELETE FROM cotizacion_detalles WHERE id = :id")->execute(['id' => $idDetalleCreado]);

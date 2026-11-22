@@ -231,6 +231,21 @@
                 </div>
             </div>
         </div>
+
+        <div class="grid-3" style="margin-top: 10px;">
+            <div class="form-group">
+                <label class="form-label">Responsable de Aprobación Interna (Opcional)</label>
+                <?php $respSelEdit = (int)($cotizacion['id_responsable_interno'] ?? ($responsable_interno_default ?? 0)); ?>
+                <select name="id_responsable_interno" class="form-control">
+                    <option value="">-- Predeterminado (Gerencia / Configurado) --</option>
+                    <?php foreach (($usuarios_internos ?? []) as $uInt): ?>
+                        <option value="<?= (int)$uInt['id'] ?>" <?= ((int)$uInt['id'] === $respSelEdit && $respSelEdit > 0) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars((string)$uInt['nombre'], ENT_QUOTES, 'UTF-8') ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
     </div>
 
     <div class="seccion-form">

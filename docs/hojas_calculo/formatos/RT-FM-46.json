@@ -295,7 +295,7 @@
       "codigo": "esfuerzo_01",
       "expresion": "{lectura_01}*{constante_anillo}/{area_piston}",
       "descripcion": "Esfuerzo a 0.1 in",
-      "unidad": "psi",
+      "unidad": "lbf/in²",
       "redondeo": "ROUND(x,0)",
       "por_especimen": true
     },
@@ -303,7 +303,7 @@
       "codigo": "esfuerzo_02",
       "expresion": "{lectura_02}*{constante_anillo}/{area_piston}",
       "descripcion": "Esfuerzo a 0.2 in",
-      "unidad": "psi",
+      "unidad": "lbf/in²",
       "redondeo": "ROUND(x,0)",
       "por_especimen": true
     },

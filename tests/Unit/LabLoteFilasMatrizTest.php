@@ -531,17 +531,19 @@ class LabLoteFilasMatrizTest extends TestCase
      */
     public function testModalRomperCargaVaciaAreaPorTamanoYRedireccionALote(): void
     {
-        // 1. Detección de área por tamaño 4x8
+        // 1. Detección de tamaño 4x8 sin inyectar área nominal ficticia 12.566 (Fase 1.2)
         $filas4x8 = [['Código laboratorio' => 'M-4x8', 'Tamaño Cilindro' => '4x8', 'Temp. (°C)' => '21.5']];
         $datos4x8 = obtenerDatosMuestraDesdeMatriz($filas4x8, 'M-4x8');
-        $this->assertEqualsWithDelta(12.566, $datos4x8['area'], 0.01);
+        $this->assertSame('4x8 in (10x20 cm)', $datos4x8['tamano_cilindro']);
+        $this->assertNull($datos4x8['area'], 'No debe inventar área nominal 12.566 sin diámetros ni área explícita.');
 
-        // 2. Detección de área por tamaño 6x12
+        // 2. Detección de tamaño 6x12 sin inyectar área nominal ficticia 28.274 (Fase 1.2)
         $filas6x12 = [['Código laboratorio' => 'M-6x12', 'Dimensiones' => '6x12 in', 'Temp. (°C)' => '22.0']];
         $datos6x12 = obtenerDatosMuestraDesdeMatriz($filas6x12, 'M-6x12');
-        $this->assertEqualsWithDelta(28.274, $datos6x12['area'], 0.01);
+        $this->assertSame('6x12 in (15x30 cm)', $datos6x12['tamano_cilindro']);
+        $this->assertNull($datos6x12['area'], 'No debe inventar área nominal 28.274 sin diámetros ni área explícita.');
 
-        // 3. Tamaño desconocido no inventa 28.274
+        // 3. Tamaño desconocido tampoco inventa área
         $filasDesc = [['Código laboratorio' => 'M-DESC', 'Temp. (°C)' => '22.0']];
         $datosDesc = obtenerDatosMuestraDesdeMatriz($filasDesc, 'M-DESC');
         $this->assertNull($datosDesc['area'], 'Si el tamaño es desconocido, el área debe ser NULL y no 28.274 ciego.');
@@ -1153,8 +1155,9 @@ class LabLoteFilasMatrizTest extends TestCase
         ], $fx['id_usuario']);
 
         $this->assertTrue($resRot['exito'], 'El registro de rotura directa con campos crudos vacíos debe ser exitoso: ' . ($resRot['mensaje'] ?? ''));
-        $this->assertEqualsWithDelta(2313.08, (float)$resRot['esfuerzo_psi'], 0.1);
-        $this->assertEqualsWithDelta(162.63, (float)$resRot['esfuerzo_kgcm2'], 0.1);
+        // 65400 / 28.274 = 2313.08 -> redondeado oficial a 10 psi = 2310; 2310 / 14.2029 = 162.64 -> 163 kgf/cm²
+        $this->assertEqualsWithDelta(2310.0, (float)$resRot['esfuerzo_psi'], 0.1);
+        $this->assertEqualsWithDelta(163.0, (float)$resRot['esfuerzo_kgcm2'], 0.1);
     }
 
     /**
@@ -1200,7 +1203,8 @@ class LabLoteFilasMatrizTest extends TestCase
         ], $fx['id_usuario']);
 
         $this->assertTrue($resRot['exito']);
-        $this->assertEqualsWithDelta(2475.77, (float)$resRot['esfuerzo_psi'], 0.1);
+        // D1=15.20, D2=15.22 -> Dprom=15.21 -> A = 28.1619 in² -> 70000 / 28.1619 = 2485.62 -> 2490 psi (redondeo a 10)
+        $this->assertEqualsWithDelta(2490.0, (float)$resRot['esfuerzo_psi'], 0.1);
 
         // Verificar que los metadatos de dimensiones se guardaron limpios en BD
         $stmtRotBd = $this->db->prepare("SELECT datos_crudos FROM roturas WHERE especimen_id = :espId");

@@ -12,6 +12,7 @@ $navegacionModulos = $navegacionModulos ?? [];
 
 $queryExcel = http_build_query([
     'modulo' => $slug,
+    'mes' => $filtros['mes'] ?? '',
     'desde' => $filtros['desde'] ?? '',
     'hasta' => $filtros['hasta'] ?? '',
     'estado' => $filtros['estado'] ?? '',
@@ -197,6 +198,10 @@ foreach ($rows as $rw) {
         <?php endif; ?>
 
         <div class="rep-f-group">
+            <label for="f_mes">Mes (YYYY-MM)</label>
+            <input type="month" id="f_mes" name="mes" value="<?= htmlspecialchars($filtros['mes'] ?? '', ENT_QUOTES, 'UTF-8') ?>" onchange="sincronizarRangoMesReporte(this.value)">
+        </div>
+        <div class="rep-f-group">
             <label for="f_desde">Desde</label>
             <input type="date" id="f_desde" name="desde" value="<?= htmlspecialchars($filtros['desde'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
         </div>
@@ -311,3 +316,16 @@ foreach ($rows as $rw) {
         </div>
     </div>
 </div>
+<script>
+function sincronizarRangoMesReporte(mesVal) {
+    if (!mesVal || !/^\d{4}-\d{2}$/.test(mesVal)) return;
+    const parts = mesVal.split('-');
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const lastDay = new Date(y, m, 0).getDate();
+    const elDesde = document.getElementById('f_desde');
+    const elHasta = document.getElementById('f_hasta');
+    if (elDesde) elDesde.value = mesVal + '-01';
+    if (elHasta) elHasta.value = mesVal + '-' + String(lastDay).padStart(2, '0');
+}
+</script>

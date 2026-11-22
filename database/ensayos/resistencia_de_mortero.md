@@ -13,7 +13,7 @@
 Fecha  recepción ítems de ensayo:		Fecha de ejecución:
 Tipo de muestra:	Mortero	Fecha de emisión del informe:
 ** Procedimiento de muestreo:	Aleatorio	Muestra tomada por:	Laboratorio - Consultoría y Construcción S.A. CYCSA.
-Ensayo realizado:	CYCSA-PE-57 Método de prueba de estándar para la resistencia a la compresión de morteros de cemento hidráulico (utilizando muestras cúbica de 50 nm(2 in))	Ensayado por:
+Ensayo realizado:	CYCSA-PE-57 Método de prueba estándar para la resistencia a la compresión de morteros de cemento hidráulico (utilizando muestras cúbicas de 50 mm (2 in))	Ensayado por:
 ** Ubicación:
 Método de muestreo:	DE-ASTM C109M-24
 

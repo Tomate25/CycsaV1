@@ -96,19 +96,27 @@ class MatrizEnvioClienteTest extends TestCase {
             'tecnico_muestreo' => 'Ing. Noel Quintana Lira',
             'fecha_hora_toma_muestra' => '2026-01-06 08:00:00',
             'resultados_json' => json_encode([
-                [
-                    'Código laboratorio' => 'MS-0001-26',
-                    'Nombre muestra' => 'Muestra Sitio Colector',
-                    'Capa (N°)' => '1',
-                    'Espesor (cm)' => '20',
-                    'Profundidad (cm)' => '15',
-                    'P.V.S Max (kg/m³)' => '1950',
-                    'Humedad Óptima ((% )(P/P))' => '12.0',
-                    'P.V.S.Sitio (kg/cm²)' => '1900',
-                    'Humedad Sitio ((%) (P/P))' => '11.8',
-                    'Humedad Sitio (kg/m³)' => '1890',
-                    'Compactación ((%) (P/P))' => '97.4',
-                    'Fecha de muestreo' => '2026-01-06'
+                'filas' => [
+                    [
+                        'Código laboratorio' => 'MS-0001-26',
+                        'Nombre muestra' => 'Muestra Sitio Colector',
+                        'Capa (N°)' => '1',
+                        'Espesor (cm)' => '20',
+                        'Profundidad (cm)' => '15',
+                        'P.V.S Max (kg/m³)' => '1950',
+                        'Humedad Óptima ((% )(P/P))' => '12.0',
+                        'P.V.S.Sitio (kg/m³)' => '1900',
+                        'Humedad Sitio ((%) (P/P))' => '11.8',
+                        'Humedad Sitio (kg/m³)' => '1890',
+                        'Compactación ((%) (P/P))' => '97.4',
+                        'Fecha de muestreo' => '2026-01-06'
+                    ]
+                ],
+                'metadatos' => [
+                    'equipo_marca' => 'TROXLER',
+                    'equipo_modelo' => '3440',
+                    'equipo_serie' => '62677',
+                    'equipo_codigo' => 'Eq-6555'
                 ]
             ])
         ];

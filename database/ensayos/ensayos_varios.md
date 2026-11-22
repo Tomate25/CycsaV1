@@ -19,7 +19,7 @@ Método de muestreo:	DE-ASTM D75M-19
 
 | Método de ensayo |  | ASTM C40/C40M-26 | ASTM C29/C29M-23 | ASTM C29/C29M-23 | ASTM C136/C136M-25 | ASTM C566-25 | ASTM C128-25 | ASTM C127-25 | ASTM C127-25 | ASTM C127-25 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Código laboratorio | Nombre muestra | Color | PVSS (kg/m³) | PVSC (kg/m³) | Módulo de finura ((%) (P/P)) | Humedad Natural ((%) (P/P)) | Absorción ((%)(P/P)) | Gravedad Específica. | Gravedad Específica (SSS) | Gravedad Específica Aparente |
+| Código laboratorio | Nombre muestra | Color | PVSS (kg/m³) | PVSC (kg/m³) | Módulo de finura | Humedad Natural ((%) (P/P)) | Absorción ((%)(P/P)) | Gravedad Específica. | Gravedad Específica (SSS) | Gravedad Específica Aparente |
 |  |  |  |  |  |  |  |  |  |  |  |
 
 Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.  ** Información Proporcionada por el cliente. y está fuera del alcance de la acreditación.

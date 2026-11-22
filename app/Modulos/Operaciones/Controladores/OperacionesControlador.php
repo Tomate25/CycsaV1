@@ -1978,7 +1978,7 @@ class OperacionesControlador extends ControladorBase {
         }
         unset($mSet);
 
-        $clasificacionColumnas = clasificarColumnasMatrizPorRol($columnas);
+        $clasificacionColumnas = clasificarColumnasMatrizPorRol($columnas, (string)$archivoMd);
         $tieneCamposRecepcion = in_array('recepcion', $clasificacionColumnas, true);
 
         $this->renderizar('operaciones/vistas/captura_matriz', [
@@ -2016,7 +2016,14 @@ class OperacionesControlador extends ControladorBase {
             }
 
             $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-            $stmtDet = $db->prepare("SELECT id, id_cotizacion, descripcion_ensayo, resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+            $stmtDet = $db->prepare("
+                SELECT cd.id, cd.id_cotizacion, cd.descripcion_ensayo, cd.resultados_json,
+                       p.formato_id, fe.archivo_markdown
+                FROM cotizacion_detalles cd
+                LEFT JOIN productos p ON cd.id_producto = p.id
+                LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                WHERE cd.id = :id LIMIT 1
+            ");
             $stmtDet->execute(['id' => $idDetalle]);
             $detalleActual = $stmtDet->fetch(PDO::FETCH_ASSOC);
 
@@ -2025,6 +2032,10 @@ class OperacionesControlador extends ControladorBase {
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
             }
+
+            $archivoMdGuardar = !empty($detalleActual['archivo_markdown'])
+                ? (string)$detalleActual['archivo_markdown']
+                : resolverArchivoMarkdownEnsayo($detalleActual);
 
             // Candado Backend RT-FM-13: Validar que la O/S tenga registrada su hoja de solicitud
             $stmtOS = $db->prepare("SELECT id, codigo_os FROM ordenes_servicio WHERE id_cotizacion = :id_cot LIMIT 1");
@@ -2045,33 +2056,148 @@ class OperacionesControlador extends ControladorBase {
             $filasDecodificadas = isset($rawJsonParsed['filas']) ? $rawJsonParsed['filas'] : $rawJsonParsed;
             $filasDecodificadas = normalizarReplicasMatriz(is_array($filasDecodificadas) ? $filasDecodificadas : []);
 
-            // Respaldo automático de datos de Recepción desde RT-FM-13 si alguna celda de recepción vino vacía
+            $decExistente = json_decode($detalleActual['resultados_json'] ?? '', true) ?: [];
+            $filasPreviasExistentes = isset($decExistente['filas']) && is_array($decExistente['filas'])
+                ? $decExistente['filas']
+                : (isset($decExistente[0]) && is_array($decExistente[0]) ? $decExistente : []);
+
+            $mapaRec = [];
+            $mapaNombresOficiales = [];
             if ($osActual) {
                 $hojaAssoc = resolverHojaPorDetalle($db, (int)$osActual['id'], $idDetalle);
                 if ($hojaAssoc && !empty($hojaAssoc['id'])) {
                     $mapaRec = construirMapaDatosRecepcionPorHoja($db, (int)$hojaAssoc['id']);
-                    if (!empty($mapaRec)) {
-                        foreach ($filasDecodificadas as $idxF => $filaItem) {
-                            if (!is_array($filaItem)) continue;
-                            $codF = strtoupper(trim((string)($filaItem['Código laboratorio'] ?? ($filaItem['Codigo laboratorio'] ?? ($filaItem['codigo_lab'] ?? '')))));
-                            $codOrigen = !empty($filaItem['_muestra_origen']) ? strtoupper(trim((string)$filaItem['_muestra_origen'])) : '';
-                            $recMatch = ($codF !== '' && isset($mapaRec[$codF]))
-                                ? $mapaRec[$codF]
-                                : (($codOrigen !== '' && isset($mapaRec[$codOrigen])) ? $mapaRec[$codOrigen] : null);
-                            if ($recMatch) {
-                                $filasDecodificadas[$idxF] = fusionarDatosRecepcionEnFilaMatriz($filaItem, $recMatch, [], false);
+                    try {
+                        $stmtHsdN = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid");
+                        $stmtHsdN->execute(['hid' => (int)$hojaAssoc['id']]);
+                        foreach ($stmtHsdN->fetchAll(PDO::FETCH_ASSOC) as $rHsd) {
+                            $cH = strtoupper(trim((string)($rHsd['codigo_muestra'] ?? '')));
+                            if ($cH !== '' && !empty($rHsd['descripcion_ubicacion'])) {
+                                $mapaNombresOficiales[$cH] = trim((string)$rHsd['descripcion_ubicacion']);
                             }
                         }
+                    } catch (\Throwable $e) {
                     }
                 }
             }
 
-            $decExistente = json_decode($detalleActual['resultados_json'] ?? '', true) ?: [];
-            $metadatos = !empty($datos['metadatos']) && is_array($datos['metadatos'])
-                ? $datos['metadatos']
-                : (!empty($rawJsonParsed['metadatos']) && is_array($rawJsonParsed['metadatos'])
-                    ? $rawJsonParsed['metadatos']
-                    : ($decExistente['metadatos'] ?? []));
+            // 2.4 Protección estricta servidor: técnico (rol no supervisor/admin) NUNCA puede modificar casillas de Recepción, Nombre muestra ni equipo densímetro
+            $rolSesionGuardar = (int)($_SESSION['usuario_rol'] ?? 0);
+            $esSupervisorGuardar = in_array($rolSesionGuardar, [1, 2, 3], true);
+
+            if (!$esSupervisorGuardar) {
+                $mapaFilasPrevias = [];
+                foreach ($filasPreviasExistentes as $idxPrev => $fPrev) {
+                    if (!is_array($fPrev)) continue;
+                    $cPrev = strtoupper(trim((string)($fPrev['Código laboratorio'] ?? ($fPrev['Codigo laboratorio'] ?? ($fPrev['codigo_lab'] ?? '')))));
+                    if ($cPrev !== '') {
+                        $mapaFilasPrevias[$cPrev] = $fPrev;
+                    }
+                    $mapaFilasPrevias['__IDX_' . $idxPrev] = $fPrev;
+                }
+
+                foreach ($filasDecodificadas as $idxF => $filaItem) {
+                    if (!is_array($filaItem)) continue;
+                    $codF = strtoupper(trim((string)($filaItem['Código laboratorio'] ?? ($filaItem['Codigo laboratorio'] ?? ($filaItem['codigo_lab'] ?? '')))));
+                    $codOrigen = !empty($filaItem['_muestra_origen']) ? strtoupper(trim((string)$filaItem['_muestra_origen'])) : '';
+                    $filaPrev = ($codF !== '' && isset($mapaFilasPrevias[$codF]))
+                        ? $mapaFilasPrevias[$codF]
+                        : ($mapaFilasPrevias['__IDX_' . $idxF] ?? []);
+                    $recMatch = ($codF !== '' && isset($mapaRec[$codF]))
+                        ? $mapaRec[$codF]
+                        : (($codOrigen !== '' && isset($mapaRec[$codOrigen])) ? $mapaRec[$codOrigen] : []);
+
+                    // Restaurar o despojar todas las columnas de recepción enviadas por el técnico
+                    foreach (array_keys($filaItem) as $kCol) {
+                        $kStr = (string)$kCol;
+                        if (str_starts_with($kStr, '_')) continue;
+                        if (clasificarColumnaRecepcionOTecnico($kStr, $archivoMdGuardar) === 'recepcion') {
+                            if (array_key_exists($kStr, $filaPrev) && trim((string)$filaPrev[$kStr]) !== '') {
+                                $filaItem[$kStr] = $filaPrev[$kStr];
+                            } elseif (!empty($recMatch) && buscarValorEnFilaPHP($recMatch, $kStr) !== '') {
+                                $filaItem[$kStr] = buscarValorEnFilaPHP($recMatch, $kStr);
+                            } elseif (normalizarTextoClavePHP($kStr) === 'nombremuestra' && $codF !== '' && isset($mapaNombresOficiales[$codF])) {
+                                $filaItem[$kStr] = $mapaNombresOficiales[$codF];
+                            } else {
+                                unset($filaItem[$kStr]);
+                            }
+                        }
+                    }
+
+                    // Asegurar que columnas de recepción previamente guardadas no desaparezcan si el técnico no las envió
+                    foreach ($filaPrev as $kPrev => $vPrev) {
+                        $kPrevStr = (string)$kPrev;
+                        if (str_starts_with($kPrevStr, '_')) continue;
+                        if (clasificarColumnaRecepcionOTecnico($kPrevStr, $archivoMdGuardar) === 'recepcion' && trim((string)$vPrev) !== '') {
+                            $filaItem[$kPrevStr] = $vPrev;
+                        }
+                    }
+                    $filasDecodificadas[$idxF] = $filaItem;
+                }
+            }
+
+            // Respaldo automático de datos de Recepción desde RT-FM-13 si alguna celda de recepción vino vacía
+            if (!empty($mapaRec)) {
+                foreach ($filasDecodificadas as $idxF => $filaItem) {
+                    if (!is_array($filaItem)) continue;
+                    $codF = strtoupper(trim((string)($filaItem['Código laboratorio'] ?? ($filaItem['Codigo laboratorio'] ?? ($filaItem['codigo_lab'] ?? '')))));
+                    $codOrigen = !empty($filaItem['_muestra_origen']) ? strtoupper(trim((string)$filaItem['_muestra_origen'])) : '';
+                    $recMatch = ($codF !== '' && isset($mapaRec[$codF]))
+                        ? $mapaRec[$codF]
+                        : (($codOrigen !== '' && isset($mapaRec[$codOrigen])) ? $mapaRec[$codOrigen] : null);
+                    if ($recMatch) {
+                        $filasDecodificadas[$idxF] = fusionarDatosRecepcionEnFilaMatriz($filaItem, $recMatch, [], false, $archivoMdGuardar);
+                    }
+                }
+            }
+
+            $metaPost = !empty($datos['metadatos']) && is_array($datos['metadatos']) ? $datos['metadatos'] : [];
+            $metaRawJson = !empty($rawJsonParsed['metadatos']) && is_array($rawJsonParsed['metadatos']) ? $rawJsonParsed['metadatos'] : [];
+            $metaPrev = !empty($decExistente['metadatos']) && is_array($decExistente['metadatos']) ? $decExistente['metadatos'] : [];
+            $metadatos = array_merge($metaPrev, $metaRawJson, $metaPost);
+
+            // Persistir explícitamente nota_aditivos, observaciones_pendientes y columnas_asterisco
+            foreach (['nota_aditivos', 'observaciones_pendientes'] as $campoMetaTexto) {
+                if (array_key_exists($campoMetaTexto, $metaPost)) {
+                    $metadatos[$campoMetaTexto] = trim((string)$metaPost[$campoMetaTexto]);
+                } elseif (array_key_exists($campoMetaTexto, $metaRawJson)) {
+                    $metadatos[$campoMetaTexto] = trim((string)$metaRawJson[$campoMetaTexto]);
+                }
+            }
+            if (array_key_exists('columnas_asterisco', $metadatos)) {
+                if (is_string($metadatos['columnas_asterisco'])) {
+                    $metadatos['columnas_asterisco'] = array_values(array_filter(array_map('trim', explode(',', $metadatos['columnas_asterisco'])), static fn($v) => $v !== ''));
+                } elseif (is_array($metadatos['columnas_asterisco'])) {
+                    $metadatos['columnas_asterisco'] = array_values(array_filter(array_map(static fn($v) => trim((string)$v), $metadatos['columnas_asterisco']), static fn($v) => $v !== ''));
+                }
+            }
+
+            // 2.4 Si no es supervisor/admin, restaurar metadatos de equipo densímetro desde BD previa (el técnico no los edita)
+            if (!$esSupervisorGuardar) {
+                $clavesEquipo = ['equipo_marca', 'equipo_modelo', 'equipo_serie', 'equipo_codigo', 'densimetro_marca', 'densimetro_modelo', 'densimetro_serie', 'densimetro_codigo', 'muestra_tomada_con_equipo'];
+                foreach ($clavesEquipo as $ce) {
+                    if (array_key_exists($ce, $metaPrev)) {
+                        $metadatos[$ce] = $metaPrev[$ce];
+                    } else {
+                        unset($metadatos[$ce]);
+                    }
+                }
+            }
+
+            // Procesar subida de logo de acreditación ANTES de persistir resultados_json
+            if (isset($_FILES['logo_acreditacion_file']) && is_uploaded_file($_FILES['logo_acreditacion_file']['tmp_name'])) {
+                $dirDestino = dirname(__DIR__, 4) . '/publico/uploads/acreditaciones';
+                if (!is_dir($dirDestino)) mkdir($dirDestino, 0755, true);
+                $ext = strtolower(pathinfo((string)$_FILES['logo_acreditacion_file']['name'], PATHINFO_EXTENSION));
+                if (in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'svg'], true)) {
+                    $nombreFinal = 'acred_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    if (move_uploaded_file($_FILES['logo_acreditacion_file']['tmp_name'], $dirDestino . '/' . $nombreFinal)) {
+                        $metadatos['logo_acreditacion'] = '/Cycsa/publico/uploads/acreditaciones/' . $nombreFinal;
+                    }
+                }
+            } elseif (!isset($metadatos['logo_acreditacion']) && !empty($metaPrev['logo_acreditacion'])) {
+                $metadatos['logo_acreditacion'] = $metaPrev['logo_acreditacion'];
+            }
 
             $revisionExistente = isset($decExistente['revision']) && is_array($decExistente['revision'])
                 ? $decExistente['revision']
@@ -2168,20 +2294,6 @@ class OperacionesControlador extends ControladorBase {
                 $hojaSync = resolverHojaPorDetalle($db, $idOsSync, $idDetalle);
                 $idHojaSync = $hojaSync ? (int)$hojaSync['id'] : 0;
                 sincronizarReplicasMatrizConLab($db, $idOsSync, $idHojaSync, $idDetalle, $filasDecodificadas);
-            }
-
-            if (isset($_FILES['logo_acreditacion_file']) && is_uploaded_file($_FILES['logo_acreditacion_file']['tmp_name'])) {
-                $dirDestino = dirname(__DIR__, 4) . '/publico/uploads/acreditaciones';
-                if (!is_dir($dirDestino)) mkdir($dirDestino, 0755, true);
-                $ext = strtolower(pathinfo((string)$_FILES['logo_acreditacion_file']['name'], PATHINFO_EXTENSION));
-                if (in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'svg'], true)) {
-                    $nombreFinal = 'acred_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-                    if (move_uploaded_file($_FILES['logo_acreditacion_file']['tmp_name'], $dirDestino . '/' . $nombreFinal)) {
-                        $metadatos['logo_acreditacion'] = '/Cycsa/publico/uploads/acreditaciones/' . $nombreFinal;
-                    }
-                }
-            } elseif (!isset($metadatos['logo_acreditacion']) && !empty($decExistente['metadatos']['logo_acreditacion'])) {
-                $metadatos['logo_acreditacion'] = $decExistente['metadatos']['logo_acreditacion'];
             }
 
             $idOsMatriz = is_array($osActual) ? (int)($osActual['id'] ?? 0) : 0;
@@ -2465,10 +2577,20 @@ class OperacionesControlador extends ControladorBase {
             ];
 
             $revision['estado'] = 'aprobada';
-            $revision['fecha_revision'] = $fechaActual;
-            $revision['usuario_revisor'] = $usuarioSesion;
-            $revision['usuario_revisor_id'] = $usuarioIdSesion;
+            $revision['fecha_revision'] = $revision['fecha_revision'] ?? $fechaActual;
+            $revision['usuario_revisor'] = !empty($datos['usuario_revisor'])
+                ? trim((string)$datos['usuario_revisor'])
+                : (!empty($revision['usuario_revisor']) ? (string)$revision['usuario_revisor'] : $usuarioSesion);
+            $revision['usuario_revisor_id'] = !empty($revision['usuario_revisor_id']) ? (int)$revision['usuario_revisor_id'] : $usuarioIdSesion;
+            $revision['usuario_aprobador'] = $usuarioSesion;
+            $revision['usuario_aprobador_id'] = $usuarioIdSesion;
+            $revision['fecha_aprobacion'] = $fechaActual;
             $revision['nota_aprobacion'] = $nota;
+            $obsPendientesApr = trim((string)($datos['observaciones_pendientes'] ?? ($metadatos['observaciones_pendientes'] ?? ($revision['observaciones_pendientes'] ?? ''))));
+            $revision['observaciones_pendientes'] = $obsPendientesApr;
+            if ($obsPendientesApr !== '') {
+                $metadatos['observaciones_pendientes'] = $obsPendientesApr;
+            }
             $revision['motivo_devolucion'] = null;
             $revision['historial'] = $historial;
 
@@ -2500,11 +2622,20 @@ class OperacionesControlador extends ControladorBase {
                 [
                     'entidad_tipo' => 'matriz',
                     'entidad_id' => $idDetalle,
-                    'datos' => ['nota' => $nota],
+                    'datos' => ['nota' => $nota, 'usuario_aprobador' => $usuarioSesion, 'observaciones_pendientes' => $obsPendientesApr],
                 ]
             );
 
-            $_SESSION['exito'] = "Matriz técnica aprobada con éxito. Ya se encuentra habilitada para emisión y envío al cliente.";
+            $envioAutoMsg = '';
+            $envioAutoActivo = \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::obtenerBool('informe_envio_auto_aprobar', false, $db)
+                || !empty($_POST['enviar_auto_cliente']);
+            if ($envioAutoActivo && !defined('PHPUNIT_RUNNING')) {
+                if ($this->despacharCorreoMatrizAutomatico($db, $idDetalle)) {
+                    $envioAutoMsg = ' El informe PDF también fue enviado automáticamente al cliente.';
+                }
+            }
+
+            $_SESSION['exito'] = "Matriz técnica aprobada con éxito. Ya se encuentra habilitada para emisión y envío al cliente." . $envioAutoMsg;
             $redir = $this->resolverRedireccionSegura($datos['redirect_to'] ?? null, '/Cycsa/publico/operaciones');
             $respuesta->redirigir($redir);
         }
@@ -3173,6 +3304,12 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
+        $sinLogo = !empty($_GET['sin_logo']) && (string)$_GET['sin_logo'] !== '0';
+        $sinLogoAcreditacion = !empty($_GET['sin_logo_acreditacion']) && (string)$_GET['sin_logo_acreditacion'] !== '0';
+        $revisionPrint = isset($decResultados['revision']) && is_array($decResultados['revision']) ? $decResultados['revision'] : [];
+        $revisadoPorNombre = trim((string)($revisionPrint['usuario_revisor'] ?? ($infoVersionImpresion['usuario_revisor'] ?? '')));
+        $aprobadoPorNombre = trim((string)($revisionPrint['usuario_aprobador'] ?? $revisadoPorNombre));
+        $observacionesPendientes = trim((string)($metadatos['observaciones_pendientes'] ?? ($revisionPrint['observaciones_pendientes'] ?? '')));
 
         // Renderizado directo sin layout maestro para impresión limpia
         require dirname(__DIR__) . '/Vistas/matriz_print.php';
@@ -3266,7 +3403,12 @@ class OperacionesControlador extends ControladorBase {
             }
         }
 
-        $pdfBytes = generarMatrizTecnicaPDF($detalle, $muestrasSeteadas, $columnas);
+        $sinLogo = !empty($_GET['sin_logo']) && (string)$_GET['sin_logo'] !== '0';
+        $sinLogoAcreditacion = !empty($_GET['sin_logo_acreditacion']) && (string)$_GET['sin_logo_acreditacion'] !== '0';
+        $pdfBytes = generarMatrizTecnicaPDF($detalle, $muestrasSeteadas, $columnas, '', [
+            'sin_logo' => $sinLogo,
+            'sin_logo_acreditacion' => $sinLogoAcreditacion,
+        ]);
 
         $codigoLimpio = preg_replace('/[^a-zA-Z0-9_-]/', '_', $detalle['codigo_os']);
         $sufijoVer = ($versionSolicitada > 0) ? "_v{$versionSolicitada}" : "";
@@ -3392,20 +3534,27 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        // Destinatario: tomar el especificado en el formulario o el registrado en la base de datos del cliente
-        $destinatario = trim($datos['destinatario'] ?? ($detalle['cliente_email'] ?? ''));
-        if (empty($destinatario) || !filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
-            $_SESSION['error'] = 'El cliente no tiene un correo electrónico válido registrado para el envío (' . htmlspecialchars($destinatario) . '). Por favor especifique una dirección válida.';
+        // Destinatario(s): soporta múltiples correos separados por coma o punto y coma
+        $destinatarioRaw = trim((string)($datos['destinatario'] ?? ($detalle['cliente_email'] ?? '')));
+        $destinatariosLista = parsearListaCorreos($destinatarioRaw);
+        if (empty($destinatariosLista)) {
+            $_SESSION['error'] = 'El cliente no tiene un correo electrónico válido registrado para el envío (' . htmlspecialchars($destinatarioRaw) . '). Por favor especifique una o más direcciones válidas separadas por coma.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
         }
+        $destinatario = implode(', ', $destinatariosLista);
 
         // Generar PDF idéntico a la impresión oficial con membrete horizontal
         $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
         $detalle['archivo_markdown'] = $archivoMd;
         $columnas = $this->obtenerColumnasFormato($archivoMd, $detalle['descripcion_ensayo'] ?? '');
         $muestrasSeteadas = [];
-        $pdfBytes = generarMatrizTecnicaPDF($detalle, $muestrasSeteadas, $columnas);
+        $sinLogo = !empty($_GET['sin_logo']) && (string)$_GET['sin_logo'] !== '0';
+        $sinLogoAcreditacion = !empty($_GET['sin_logo_acreditacion']) && (string)$_GET['sin_logo_acreditacion'] !== '0';
+        $pdfBytes = generarMatrizTecnicaPDF($detalle, $muestrasSeteadas, $columnas, '', [
+            'sin_logo' => $sinLogo,
+            'sin_logo_acreditacion' => $sinLogoAcreditacion,
+        ]);
 
         $codigoLimpio = preg_replace('/[^a-zA-Z0-9_-]/', '_', $detalle['codigo_os']);
         $nombrePdf = "Informe_Ensayo_{$codigoLimpio}_{$idDetalle}.pdf";
@@ -3488,14 +3637,14 @@ class OperacionesControlador extends ControladorBase {
             </div>
         </div>";
 
-        $enviado = enviarCorreo($destinatario, $asunto, $cuerpoHTML, '', $adjuntos);
+        $enviado = enviarCorreo($destinatariosLista, $asunto, $cuerpoHTML, '', $adjuntos);
 
         if ($enviado) {
             registrarEventoOS('operaciones', 'enviar_matriz_cliente', 'Enviado informe de resultados de matriz (' . $detalle['codigo_os'] . ' - ' . $detalle['descripcion_ensayo'] . ') al correo: ' . $destinatario, (int)($detalle['id_os'] ?? 0), [
                 'entidad_tipo' => 'matriz',
                 'entidad_id' => $idDetalle,
                 'id_referencia' => $idDetalle,
-                'datos' => ['destinatario' => $destinatario],
+                'datos' => ['destinatario' => $destinatario, 'destinatarios' => $destinatariosLista],
             ]);
             
             $logDir = dirname(__DIR__, 4) . '/storage/logs';
@@ -3515,6 +3664,54 @@ class OperacionesControlador extends ControladorBase {
             $respuesta->redirigir('/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=' . $idDetalle);
         } else {
             $respuesta->redirigir('/Cycsa/publico/operaciones');
+        }
+    }
+
+    /**
+     * Despacho automático opcional al aprobar una matriz (configurable en config_calculo_lab.informe_envio_auto_aprobar).
+     */
+    private function despacharCorreoMatrizAutomatico(\PDO $db, int $idDetalle): bool {
+        try {
+            $stmt = $db->prepare("
+                SELECT cd.*, os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo,
+                       os.fecha_muestreo, os.forma_pago,
+                       COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
+                       cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.condicion_pago, cot.nombre_proyecto,
+                       cli.id AS cliente_id, cli.nombre_razon_social AS cliente_nombre, cli.email AS cliente_email,
+                       p.formato_id, fe.archivo_markdown, fe.codigo_formato AS codigo_documento
+                FROM cotizacion_detalles cd
+                JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+                JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+                JOIN clientes cli ON cot.id_cliente = cli.id
+                LEFT JOIN productos p ON cd.id_producto = p.id
+                LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                WHERE cd.id = :id LIMIT 1
+            ");
+            $stmt->execute(['id' => $idDetalle]);
+            $det = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (!$det) {
+                return false;
+            }
+            $authPago = verificarAutorizacionPagoEnvio($det, $db);
+            if (!$authPago['autorizado']) {
+                return false;
+            }
+            $dests = parsearListaCorreos((string)($det['cliente_email'] ?? ''));
+            if (empty($dests)) {
+                return false;
+            }
+            $archivoMd = !empty($det['archivo_markdown']) ? (string)$det['archivo_markdown'] : resolverArchivoMarkdownEnsayo($det);
+            $det['archivo_markdown'] = $archivoMd;
+            $columnas = $this->obtenerColumnasFormato($archivoMd, $det['descripcion_ensayo'] ?? '');
+            $pdfBytes = generarMatrizTecnicaPDF($det, [], $columnas);
+            $codigoLimpio = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string)($det['codigo_os'] ?? 'OS'));
+            $nombrePdf = "Informe_Ensayo_{$codigoLimpio}_{$idDetalle}.pdf";
+            $asunto = "Informe Oficial de Ensayo - " . ($det['codigo_os'] ?? '') . " - " . ($det['descripcion_ensayo'] ?? '') . " - CYCSA";
+            $cuerpo = "<p>Estimado cliente, adjuntamos el informe oficial de ensayo aprobado para su Orden de Servicio <strong>" . htmlspecialchars((string)($det['codigo_os'] ?? '')) . "</strong>.</p>";
+            return enviarCorreo($dests, $asunto, $cuerpo, '', [['contenido' => $pdfBytes, 'nombre' => $nombrePdf]]);
+        } catch (\Throwable $e) {
+            error_log('Error en despacho automático de matriz: ' . $e->getMessage());
+            return false;
         }
     }
 

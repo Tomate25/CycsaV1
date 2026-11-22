@@ -487,6 +487,27 @@ class MigradorServicio {
             }
 
             // =========================================================================
+            // FASE 30: Migración 039 - Plan Maestro Lab, Flujos 16 Nov y Formatos H/F
+            // =========================================================================
+            $ruta039 = dirname(__DIR__, 4) . '/database/migrations/039_plan_maestro_lab_flujos_formatos.php';
+            if (file_exists($ruta039)) {
+                ob_start();
+                try {
+                    require_once $ruta039;
+                    if (function_exists('ejecutarMigracion039')) {
+                        ejecutarMigracion039($db);
+                    }
+                    $resultados['039_plan_maestro_lab_flujos_formatos'] = ob_get_clean();
+                } catch (Throwable $e039) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 039: ' . $e039->getMessage());
+                    $resultados['039_plan_maestro_lab_flujos_formatos'] = '[039 WARN] ' . $e039->getMessage();
+                }
+            }
+
+            // =========================================================================
             // FASE 28: Migración 037 - Auto-ingreso a Laboratorio de RT-FM-13 pendientes
             // =========================================================================
             if (!defined('PHPUNIT_RUNNING')) {

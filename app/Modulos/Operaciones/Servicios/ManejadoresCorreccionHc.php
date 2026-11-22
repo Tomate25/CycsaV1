@@ -309,6 +309,17 @@ class ManejadoresCorreccionHc {
         }
     }
 
+    public static function val_FM59_02(array $valores, bool $usarCorregido, array $contexto = []): ?array {
+        if ($usarCorregido && !empty($valores['conjunto_descartado_c805'])) {
+            $descartados = (int)($valores['rebotes_descartados_c805'] ?? 0);
+            return [
+                'valido' => false,
+                'aviso' => "ASTM C805: Se descartaron {$descartados} lecturas fuera de ±6 unidades del promedio (máximo permitido: 2). El conjunto debe descartarse y repetirse."
+            ];
+        }
+        return ['valido' => true, 'aviso' => null];
+    }
+
     // =========================================================================
     // FM62-03: Validación de monotonía y rango físico de descensos (RT-FM-62)
     // Solo validación normativa

@@ -11,19 +11,19 @@
 ** Nombre del cliente:		** Proyecto:
 ** Dirección:		** Fecha muestreo:
 Fecha  recepción ítems de ensayo:		Fecha de ejecución:
-Tipo de muestra:	Agregados	Fecha de emisión del informe:
+Tipo de muestra:	Suelo-Cemento	Fecha de emisión del informe:
 ** Procedimiento de muestreo:	Aleatorio	Muestra tomada por:	Laboratorio - Consultoría y Construcción S.A. CYCSA.
-Ensayo realizado:	CYCSA-PE-05 Método de prueba estándar para Impurezas Orgánicas en agregados finos para concreto	Ensayado por:
+Ensayo realizado:	CYCSA-PE-58 Método de prueba estándar para la resistencia a la compresión de cilindros de suelo-cemento moldeados	Ensayado por:
 ** Ubicación:
-Método de muestreo:	DE-ASTM140
+Método de muestreo:	DE-ASTM D1633-17
 
-| Método de ensayo |  | ASTM C40 |
-| --- | --- | --- |
-| Código laboratorio | Nombre muestra | Color |
-|  |  |  |
+| Método de ensayo |  | ASTM D1633-17 | ASTM D1633-17 | ASTM D1633-17 |  | ASTM D1633-17 |  |  |  |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Código laboratorio | Nombre muestra | Área (cm²) | Carga (kg) | Peso Volumétrico (kg/m³) | Diseño (kg/cm²) | R. compresión. (kg/cm²) | Fecha de Fabricación | Fecha de Ensayo | Edad (Días) |
+|  |  |  |  |  |  |  |  |  |  |
 
-Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.  ** Información Proporcionada por el cliente. y está fuera del alcance de la acreditación.
-Nota : Ensayo realizado en instalaciones fijas de Consultoría y Construcción SA. CYCSA." CYCSA-05"
+Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.  ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.
+Nota: Ensayo realizado en las instalaciones fijas de Consultoría y Construcción SA. CYCSA: "CYCSA-PE-58".
 --------------------------------Última Línea---------------------------------
 Ing. Noel Quintana Lira
 Gerente General

@@ -9,12 +9,48 @@ use Cycsa\Modulos\Cotizaciones\Modelos\CotizacionModelo;
 use Cycsa\Modulos\Clientes\Modelos\ClienteModelo;
 use Cycsa\Modulos\Productos\Modelos\ProductoModelo;
 use Cycsa\Modulos\Configuracion\Modelos\ConfiguracionModelo;
+use Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio;
 use PDO;
 
 class CotizacionesControlador extends ControladorBase {
     
     private function verificarSesion(Respuesta $respuesta): void {
         if (!isset($_SESSION['usuario_id'])) { $respuesta->redirigir('/Cycsa/publico/login'); exit; }
+    }
+
+    /**
+     * 2.11: Determina si el usuario actual puede emitir aprobación interna / devolver observaciones.
+     */
+    public static function puedeAprobarInternamente(array $cotizacion, ?int $usuarioId = null, ?int $usuarioRol = null): bool {
+        $uid = $usuarioId ?? (int)($_SESSION['usuario_id'] ?? 0);
+        $rol = $usuarioRol ?? (int)($_SESSION['usuario_rol'] ?? 0);
+
+        if ($rol === 1) {
+            return true;
+        }
+        if ($usuarioRol === null && function_exists('tienePermiso') && tienePermiso('cotizaciones', 'aprobar')) {
+            return true;
+        }
+        if (!empty($_SESSION['usuario_permisos']['cotizaciones']['aprobar'])) {
+            return true;
+        }
+        if ($uid > 0 && !empty($cotizacion['id_responsable_interno']) && (int)$cotizacion['id_responsable_interno'] === $uid) {
+            return true;
+        }
+        $respGlobal = (int)ConfigCalculoLabServicio::obtener('cotizacion_responsable_interno_id', '');
+        if ($uid > 0 && $respGlobal > 0 && $respGlobal === $uid) {
+            return true;
+        }
+        return false;
+    }
+
+    private function obtenerUsuariosInternosActivos(): array {
+        try {
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            return $db->query("SELECT id, nombre, email FROM usuarios WHERE activo = 1 ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     public function index(Peticion $peticion, Respuesta $respuesta): void {
@@ -130,7 +166,9 @@ class CotizacionesControlador extends ControladorBase {
             'categorias' => $prodModelo->obtenerCategorias(),
             'condiciones_pago' => $configModelo->obtenerPorTipo('condicion_pago'),
             'tiempos_entrega' => $configModelo->obtenerPorTipo('tiempo_entrega'),
-            'vigencias_oferta' => $configModelo->obtenerPorTipo('vigencia_oferta')
+            'vigencias_oferta' => $configModelo->obtenerPorTipo('vigencia_oferta'),
+            'usuarios_internos' => $this->obtenerUsuariosInternosActivos(),
+            'responsable_interno_default' => ConfigCalculoLabServicio::obtener('cotizacion_responsable_interno_id', ''),
         ]);
     }
 
@@ -163,6 +201,7 @@ class CotizacionesControlador extends ControladorBase {
                 'condicion_comercial' => !empty($datos['condicion_comercial']) ? trim($datos['condicion_comercial']) : (str_contains(strtolower($datos['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado'),
                 'tipo_moneda' => isset($datos['tipo_moneda']) ? (int)$datos['tipo_moneda'] : 1,
                 'id_usuario_creador' => $_SESSION['usuario_id'],
+                'id_responsable_interno' => !empty($datos['id_responsable_interno']) ? (int)$datos['id_responsable_interno'] : null,
                 'atencion_a' => trim($datos['atencion_a']),
                 'nombre_proyecto' => trim($datos['nombre_proyecto']),
                 'direccion_proyecto' => trim($datos['direccion_proyecto']),
@@ -281,7 +320,8 @@ class CotizacionesControlador extends ControladorBase {
             'cotizacion' => $cotizacion, 
             'detalles' => $modelo->obtenerDetalles($id),
             'versiones' => $modelo->obtenerVersiones($id),
-            'bancos' => $bancos
+            'bancos' => $bancos,
+            'puede_aprobar_internamente' => self::puedeAprobarInternamente($cotizacion),
         ]);
     }
 
@@ -321,7 +361,9 @@ class CotizacionesControlador extends ControladorBase {
             'categorias' => $prodModelo->obtenerCategorias(),
             'condiciones_pago' => $configModelo->obtenerPorTipo('condicion_pago'),
             'tiempos_entrega' => $configModelo->obtenerPorTipo('tiempo_entrega'),
-            'vigencias_oferta' => $configModelo->obtenerPorTipo('vigencia_oferta')
+            'vigencias_oferta' => $configModelo->obtenerPorTipo('vigencia_oferta'),
+            'usuarios_internos' => $this->obtenerUsuariosInternosActivos(),
+            'responsable_interno_default' => ConfigCalculoLabServicio::obtener('cotizacion_responsable_interno_id', ''),
         ]);
     }
 
@@ -393,6 +435,9 @@ class CotizacionesControlador extends ControladorBase {
             'id_cliente_informe' => !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)$datos['id_cliente'],
             'condicion_comercial' => !empty($datos['condicion_comercial']) ? trim($datos['condicion_comercial']) : (str_contains(strtolower($datos['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado'),
             'tipo_moneda' => isset($datos['tipo_moneda']) ? (int)$datos['tipo_moneda'] : 1,
+            'id_responsable_interno' => array_key_exists('id_responsable_interno', $datos)
+                ? (!empty($datos['id_responsable_interno']) ? (int)$datos['id_responsable_interno'] : null)
+                : (!empty($cotizacionPrev['id_responsable_interno']) ? (int)$cotizacionPrev['id_responsable_interno'] : null),
             'atencion_a' => trim($datos['atencion_a']),
             'nombre_proyecto' => trim($datos['nombre_proyecto']),
             'direccion_proyecto' => trim($datos['direccion_proyecto']),
@@ -417,13 +462,13 @@ class CotizacionesControlador extends ControladorBase {
             $cot = $modelo->obtenerPorId($id);
 
             if ($eraRechazada) {
-                // Regla P0.1: Al editar una cotizacion rechazada por el cliente, pasa obligatoriamente a En Revision (NO auto-enviar)
-                registrarBitacora('cotizaciones', 'editar_reenviar', 'Corregida cotizacion rechazada y enviada a revision interna: ' . $cot['codigo'] . ' (Nueva Version: ' . $cot['version'] . ')', $id);
-                $_SESSION['envio_exitoso'] = "¡Cotizacion " . $cot['codigo'] . " corregida exitosamente (Nueva Version " . $cot['version'] . ") y enviada a revision interna (requiere aprobacion previa al envio)!";
+                // Regla P0.1 / 2.9: Al editar una cotizacion rechazada por el cliente, pasa obligatoriamente a En Revision (la nueva versión se asigna al enviarla al cliente)
+                registrarBitacora('cotizaciones', 'editar_reenviar', 'Corregida cotizacion rechazada y enviada a revision interna: ' . $cot['codigo'], $id);
+                $_SESSION['envio_exitoso'] = "¡Cotizacion " . $cot['codigo'] . " corregida exitosamente y enviada a revision interna (requiere aprobacion interna previa al envio al cliente)!";
             } elseif ($eraObservada) {
-                // Registrar en la bitácora cuando se corrige una cotización observada por Gerencia
-                registrarBitacora('cotizaciones', 'editar_reenviar', 'Corregida y re-enviada cotización a revisión interna: ' . $cot['codigo'] . ' (Nueva Versión: ' . $cot['version'] . ')', $id);
-                $_SESSION['envio_exitoso'] = "¡Cotización " . $cot['codigo'] . " corregida exitosamente (Nueva Versión " . $cot['version'] . ") y re-enviada a revisión!";
+                // Regla 2.9: Corrección de observación interna no incrementa versión PDF
+                registrarBitacora('cotizaciones', 'editar_reenviar', 'Corregida cotización observada internamente y re-enviada a revisión: ' . $cot['codigo'], $id);
+                $_SESSION['envio_exitoso'] = "¡Cotización " . $cot['codigo'] . " corregida exitosamente y re-enviada a revisión interna!";
             } else {
                 if ($eraBorrador) {
                     registrarBitacora('cotizaciones', 'editar', 'Modificada cotización en borrador: ' . $cot['codigo'], $id);
@@ -445,12 +490,8 @@ class CotizacionesControlador extends ControladorBase {
 
     public function procesarRevision(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
-        if (!tienePermiso('cotizaciones', 'crear_editar')) {
-            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
-            exit;
-        }
         $datos = $peticion->obtenerDatos();
-        $id = (int)($datos['id'] ?? 0);
+        $id = decodificarId($datos['id'] ?? '') ?? (int)($datos['id'] ?? 0);
 
         // 🔒 Validar CSRF
         $csrfToken = $datos['csrf_token'] ?? '';
@@ -461,88 +502,60 @@ class CotizacionesControlador extends ControladorBase {
         }
 
         $modelo = new CotizacionModelo();
-        
-        if ($datos['accion'] === 'aprobar') {
-            $token = bin2hex(random_bytes(32));
-            $modelo->actualizarEstado($id, 'Enviada al Cliente', $_SESSION['usuario_id'], null, $token);
-            
-            // Obtener datos completos para enviar el correo
+        $cotizacionActual = $modelo->obtenerPorId($id);
+        if (!$cotizacionActual) {
+            $_SESSION['error'] = 'La cotización solicitada no existe.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones');
+            return;
+        }
+
+        // 2.11: Autorización por Admin, permiso aprobar, responsable interno de la cotización o responsable global
+        if (!self::puedeAprobarInternamente($cotizacionActual)) {
+            $_SESSION['error'] = 'No cuenta con autorización como Responsable de Aprobación Interna para procesar esta revisión.';
+            $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
+            if (!defined('PHPUNIT_RUNNING')) { exit; }
+            return;
+        }
+
+        $accion = trim((string)($datos['accion'] ?? ''));
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($accion === 'aprobar') {
+            // 2.10: Aprobación Interna -> 'Aprobada Internamente' con sello interno (sin subir versión PDF aún)
+            $modelo->registrarAprobacionInterna($id, $usuarioId);
             $cotizacion = $modelo->obtenerPorId($id);
-            if ($cotizacion) {
-                registrarBitacora('cotizaciones', 'aprobar_gerencia', 'Aprobada cotización por Gerencia: ' . $cotizacion['codigo'] . ' (enviada al cliente)', $id);
-                $detalles = $modelo->obtenerDetalles($id);
-                $pdfContenido = generarCotizacionPDF($cotizacion, $detalles);
-                
-                $destinatario = !empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : '';
-                $titulo_correo = "Cotización Oficial - CYCSA - " . $cotizacion['codigo'];
-                $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id={$id}&token={$token}";
-                
-                $mensaje = "
-                <html>
-                <head>
-                  <title>Cotización Oficial CYCSA</title>
-                </head>
-                <body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">
-                  <div style=\"max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;\">
-                    <h2 style=\"color: #103487; border-bottom: 2px solid #103487; padding-bottom: 10px;\">Envío de Cotización Oficial</h2>
-                    <p>Estimado Cliente <strong>" . htmlspecialchars($cotizacion['cliente_nombre'], ENT_QUOTES, 'UTF-8') . "</strong>,</p>
-                    <p>Adjunto a este mensaje le hacemos llegar la propuesta económica formalizada bajo el código de cotización <strong>" . htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') . "</strong>.</p>
-                    
-                    <div style=\"background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e9ecef;\">
-                        <p style=\"margin: 5px 0;\"><strong>Código de Oferta:</strong> " . htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') . "</p>
-                        <p style=\"margin: 5px 0;\"><strong>Proyecto:</strong> " . htmlspecialchars($cotizacion['nombre_proyecto'], ENT_QUOTES, 'UTF-8') . "</p>
-                        <p style=\"margin: 5px 0;\"><strong>Monto Total:</strong> C$ " . number_format($cotizacion['total'], 2) . "</p>
-                        <p style=\"margin: 5px 0;\"><strong>Condición de Pago:</strong> " . htmlspecialchars($cotizacion['condicion_pago'], ENT_QUOTES, 'UTF-8') . "</p>
-                        <p style=\"margin: 5px 0;\"><strong>Tiempo de Entrega:</strong> " . htmlspecialchars($cotizacion['tiempo_entrega'], ENT_QUOTES, 'UTF-8') . "</p>
-                        <p style=\"margin: 5px 0;\"><strong>Vigencia de Oferta:</strong> " . htmlspecialchars($cotizacion['vigencia_oferta'], ENT_QUOTES, 'UTF-8') . "</p>
-                    </div>
-                    
-                    <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center;\">
-                        <h3 style=\"margin-top: 0; color: #1e293b; font-family: Arial, sans-serif;\">¿Desea aceptar o rechazar esta propuesta?</h3>
-                        <p style=\"color: #64748b; font-size: 14px; margin-bottom: 20px;\">Puede revisar los detalles completos de la cotización y registrar su decisión en línea de forma segura haciendo clic en el siguiente botón:</p>
-                        <a href=\"" . htmlspecialchars($urlDecision, ENT_QUOTES, 'UTF-8') . "\" style=\"background-color: #103487; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block; box-shadow: 0 4px 6px -1px rgba(16, 52, 135, 0.2);\">Revisar y Decidir en Línea</a>
-                        <p style=\"font-size: 12px; color: #94a3b8; margin-top: 15px; margin-bottom: 0;\">Si el botón no funciona, copie y pegue este enlace en su navegador:<br><a href=\"" . htmlspecialchars($urlDecision, ENT_QUOTES, 'UTF-8') . "\" style=\"color: #103487; text-decoration: underline;\">" . htmlspecialchars($urlDecision, ENT_QUOTES, 'UTF-8') . "</a></p>
-                    </div>
-                    
-                    <p>Por favor revise las condiciones. Quedamos a la espera de su confirmación para proceder con la orden.</p>
-                    <hr style=\"border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;\">
-                    <p style=\"font-size: 14px; font-weight: bold; color: #103487;\">CYCSA Laboratorio de Ensayos</p>
-                  </div>
-                </body>
-                </html>
-                ";
-                
-                $adjuntos = [
-                    [
-                        'contenido' => $pdfContenido,
-                        'nombre' => "Cotizacion_{$cotizacion['codigo']}.pdf"
-                    ]
-                ];
-                
-                if (!empty($destinatario)) {
-                    enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
-                    
-                    // Registro local en logs de desarrollo
-                    $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
-                    if (!file_exists(dirname($rutaLog))) {
-                        @mkdir(dirname($rutaLog), 0777, true);
+
+            $enviarDirecto = !empty($datos['enviar_cliente_directo']) && (string)$datos['enviar_cliente_directo'] === '1';
+            if ($enviarDirecto) {
+                $token = bin2hex(random_bytes(32));
+                $modelo->marcarEnviadaAlCliente($id, $usuarioId, $token);
+                $cotizacion = $modelo->obtenerPorId($id);
+                if ($cotizacion) {
+                    registrarBitacora('cotizaciones', 'aprobar_gerencia', 'Aprobada internamente y enviada al cliente: ' . $cotizacion['codigo'] . ' (v' . $cotizacion['version'] . ')', $id);
+                    $detalles = $modelo->obtenerDetalles($id);
+                    $pdfContenido = generarCotizacionPDF($cotizacion, $detalles);
+                    $destinatario = !empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : '';
+                    $titulo_correo = "Cotización Oficial - CYCSA - " . $cotizacion['codigo'] . " (V" . max(1, (int)$cotizacion['version']) . ")";
+                    $urlDecision = obtenerBaseUrl() . "/cotizaciones/decision-cliente?id=" . codificarId($id) . "&token={$cotizacion['token_seguridad']}";
+                    $mensaje = "<html><body style=\"font-family: Arial, sans-serif;\"><p>Estimado Cliente <strong>" . htmlspecialchars($cotizacion['cliente_nombre'], ENT_QUOTES, 'UTF-8') . "</strong>, adjuntamos la cotización oficial <strong>" . htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') . "</strong>.</p><p><a href=\"" . htmlspecialchars($urlDecision, ENT_QUOTES, 'UTF-8') . "\">Revisar y Decidir en Línea</a></p></body></html>";
+                    $adjuntos = [['contenido' => $pdfContenido, 'nombre' => "Cotizacion_{$cotizacion['codigo']}_V{$cotizacion['version']}.pdf"]];
+                    if (!empty($destinatario)) {
+                        enviarCorreo($destinatario, $titulo_correo, $mensaje, '', $adjuntos);
                     }
-                    $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización ENVIADA al Cliente (Aprobación). Destinatario: {$destinatario} | Cotización: {$cotizacion['codigo']} | Monto: C$ " . number_format($cotizacion['total'], 2) . "\n";
-                    @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
-                } else {
-                    // Registro local en logs de desarrollo
-                    $rutaLog = dirname(__DIR__, 4) . '/storage/logs/cotizaciones_emails.log';
-                    if (!file_exists(dirname($rutaLog))) {
-                        @mkdir(dirname($rutaLog), 0777, true);
-                    }
-                    $logMsg = "[" . date('Y-m-d H:i:s') . "] Cotización Aprobada por Gerencia (Entrega Manual - Sin correo). Cotización: {$cotizacion['codigo']} | Monto: C$ " . number_format($cotizacion['total'], 2) . "\n";
-                    @file_put_contents($rutaLog, $logMsg, FILE_APPEND);
+                    $_SESSION['envio_exitoso'] = "Aprobación interna registrada y cotización {$cotizacion['codigo']} (v{$cotizacion['version']}) enviada al cliente.";
+                }
+            } else {
+                if ($cotizacion) {
+                    registrarBitacora('cotizaciones', 'aprobar_interna', 'Aprobación interna otorgada para cotización: ' . $cotizacion['codigo'], $id);
+                    $_SESSION['envio_exitoso'] = "Aprobación interna registrada para {$cotizacion['codigo']}. Ya puede enviarla formalmente al cliente.";
                 }
             }
-        } elseif ($datos['accion'] === 'observar') {
-            $modelo->actualizarEstado($id, 'Observada', $_SESSION['usuario_id'], $datos['motivo_observacion'], null);
+        } elseif ($accion === 'observar') {
+            $motivoObs = trim((string)($datos['motivo_observacion'] ?? ''));
+            $modelo->actualizarEstado($id, 'Observada', $usuarioId, $motivoObs, null);
             $cot = $modelo->obtenerPorId($id);
-            registrarBitacora('cotizaciones', 'devolver_gerencia', 'Devuelta cotización con observaciones por Gerencia: ' . $cot['codigo'] . ' - Motivo: ' . $datos['motivo_observacion'], $id);
+            registrarBitacora('cotizaciones', 'devolver_gerencia', 'Devuelta cotización con observaciones internas: ' . ($cot['codigo'] ?? $id) . ' - Motivo: ' . $motivoObs, $id);
+            $_SESSION['envio_exitoso'] = 'Cotización devuelta con observaciones internas (sin incrementar versión PDF).';
         }
         
         $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id='.codificarId($id));
@@ -552,12 +565,13 @@ class CotizacionesControlador extends ControladorBase {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('cotizaciones', 'crear_editar')) {
             $respuesta->redirigir('/Cycsa/publico/cotizaciones');
-            exit;
+            if (!defined('PHPUNIT_RUNNING')) { exit; }
+            return;
         }
         
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
-            $id = (int)($datos['id'] ?? 0);
+            $id = decodificarId($datos['id'] ?? '') ?? (int)($datos['id'] ?? 0);
 
             // 🔒 Validar CSRF
             $csrfToken = $datos['csrf_token'] ?? '';
@@ -575,24 +589,21 @@ class CotizacionesControlador extends ControladorBase {
                 return;
             }
             
-            // Si el estado es 'Aprobada Internamente', generamos/aseguramos token y actualizamos a 'Enviada al Cliente'
-            $token = $cotizacion['token_seguridad'];
             $esRechazada = ($cotizacion['estado'] === 'Rechazada por Cliente');
-            
             if ($esRechazada) {
                 // Regla P0.1: Bloquear envio directo al cliente si la cotizacion esta rechazada. Requiere edicion y aprobacion interna previa.
                 $_SESSION['error'] = "La cotizacion " . htmlspecialchars($cotizacion['codigo']) . " se encuentra rechazada por el cliente. Debe editarse y pasar por aprobacion interna antes de poder enviarse nuevamente.";
                 $respuesta->redirigir('/Cycsa/publico/cotizaciones/detalle?id=' . codificarId($id));
                 return;
-            } elseif (empty($token)) {
-                $token = bin2hex(random_bytes(32));
-                $modelo->actualizarEstado($id, 'Enviada al Cliente', $cotizacion['id_usuario_revisor'] ?? $_SESSION['usuario_id'], $cotizacion['motivo_observacion'], $token);
-            } elseif ($cotizacion['estado'] === 'Aprobada Internamente') {
-                $modelo->actualizarEstado($id, 'Enviada al Cliente', $cotizacion['id_usuario_revisor'] ?? $_SESSION['usuario_id'], $cotizacion['motivo_observacion'], $token);
             }
+
+            // 2.9: Solo al salir hacia el cliente se marca 'Enviada al Cliente' y se asigna/incrementa la versión PDF oficial
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+            $modelo->marcarEnviadaAlCliente($id, $usuarioId);
             
             // Obtener datos actualizados y detalles para generar el PDF
             $cotizacion = $modelo->obtenerPorId($id);
+            $token = $cotizacion['token_seguridad'] ?? '';
             $detalles = $modelo->obtenerDetalles($id);
             $pdfContenido = generarCotizacionPDF($cotizacion, $detalles);
             

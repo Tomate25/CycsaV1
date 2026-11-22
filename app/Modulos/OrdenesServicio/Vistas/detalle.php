@@ -118,6 +118,12 @@ if (!empty($os['contactos_json'])) {
             <i class="fa-solid fa-arrow-left"></i> Volver a Órdenes
         </a>
         <div class="os-btn-group-secondary">
+            <?php if (!empty($os['hojas_servicio'])): ?>
+                <?php $primeraHojaDet = $os['hojas_servicio'][0]; ?>
+                <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$primeraHojaDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="border-color:#7c3aed; color:#6d28d9; background:#f5f3ff;" title="Imprimir Hoja RT-FM-60 de Laboratorio">
+                    <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
+                </a>
+            <?php endif; ?>
             <?php if (!in_array($os['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
             <a href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= (int)($os['id'] ?? 0) ?>" class="btn-cycsa btn-cycsa-secondary">
                 <i class="fa-solid fa-pen-to-square"></i> Editar Orden de Servicio
@@ -138,6 +144,22 @@ if (!empty($os['contactos_json'])) {
     </div>
 
     <!-- CONTENEDOR DEL DOCUMENTO CÓD. DOC CYCSA-RG-FM-39 V1 -->
+    <?php
+    $alertaAlcanceDet = $os['alerta_alcance_mensual'] ?? [];
+    if (!empty($alertaAlcanceDet['tiene_alerta'])):
+        $esDangerAlc = ($alertaAlcanceDet['nivel'] ?? 'warning') === 'danger';
+    ?>
+    <div class="no-print" style="max-width: 960px; margin: 0 auto 14px auto; background: <?= $esDangerAlc ? '#fef2f2' : '#fffbeb' ?>; border: 1.5px solid <?= $esDangerAlc ? '#fca5a5' : '#fcd34d' ?>; color: <?= $esDangerAlc ? '#991b1b' : '#92400e' ?>; border-radius: 8px; padding: 12px 16px; font-size: 13px;">
+        <div style="font-weight: 700; margin-bottom: 4px;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Alerta de Alcance / Vigencia Mensual de la O/S
+        </div>
+        <ul style="margin: 0; padding-left: 18px;">
+            <?php foreach (($alertaAlcanceDet['mensajes'] ?? []) as $msgAlc): ?>
+                <li><?= htmlspecialchars((string)$msgAlc, ENT_QUOTES, 'UTF-8') ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endif; ?>
     <div class="os-container">
         <!-- ENCABEZADO -->
         <div class="os-header">
@@ -146,7 +168,7 @@ if (!empty($os['contactos_json'])) {
             </div>
             <div class="os-header-right">
                 <h1 class="os-main-title">ORDEN DE SERVICIO</h1>
-                <div class="os-doc-code">Cód. Doc CYCSA-RG-FM-39 V1</div>
+                <div class="os-doc-code">Cód. Doc CYCSA-RG-FM-39 V1 <span style="display:inline-block; margin-left:6px; background:#e0e7ff; color:#1e40af; border:1px solid #93c5fd; padding:1px 8px; border-radius:10px; font-size:11.5px; font-weight:700;">v<?= (int)($os['version'] ?? 1) ?></span></div>
             </div>
         </div>
 
@@ -401,6 +423,88 @@ if (!empty($os['contactos_json'])) {
             </div>
         </div>
     </div>
+</div>
+<?php if (!empty($os['hojas_servicio'])): ?>
+<div class="no-print" style="max-width: 960px; margin: 16px auto 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);">
+    <h3 style="margin: 0 0 12px 0; font-size: 15px; color: #103487; font-weight: 700;">
+        <i class="fa-solid fa-file-signature"></i> Hojas de Servicio (RT-FM-13) y Solicitudes a Laboratorio (RT-FM-60)
+    </h3>
+    <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+        <thead>
+            <tr style="background:#f8fafc; border-bottom:1.5px solid #cbd5e1;">
+                <th style="padding:8px 10px; text-align:left;">Registro</th>
+                <th style="padding:8px 10px; text-align:left;">Ensayo / Servicio</th>
+                <th style="padding:8px 10px; text-align:right;">Documentos</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($os['hojas_servicio'] as $hDet): ?>
+            <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:8px 10px; font-family:monospace; font-weight:700;"><?= htmlspecialchars($hDet['numero_registro'] ?: ('#' . $hDet['id']), ENT_QUOTES, 'UTF-8') ?></td>
+                <td style="padding:8px 10px;"><?= htmlspecialchars($hDet['descripcion_ensayo'] ?: ($hDet['codigo_documento'] ?? 'CYCSA-RT-FM-13'), ENT_QUOTES, 'UTF-8') ?></td>
+                <td style="padding:8px 10px; text-align:right; white-space:nowrap;">
+                    <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$os['id'] ?>&id_hoja=<?= (int)$hDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:4px 10px; font-size:11.5px;">
+                        <i class="fa-solid fa-file-pdf" style="color:#dc2626;"></i> RT-FM-13 PDF
+                    </a>
+                    <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$hDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:4px 10px; font-size:11.5px; border-color:#7c3aed; color:#6d28d9; background:#f5f3ff;">
+                        <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
+                    </a>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
+
+<!-- HISTORIAL DE VERSIONES DE LA O/S (2.5) -->
+<?php $historialVersionesOs = $os['historial_versiones'] ?? []; ?>
+<div class="no-print" style="max-width: 960px; margin: 16px auto 16px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin: 0; font-size: 15px; color: #103487; font-weight: 700;">
+            <i class="fa-solid fa-code-branch"></i> Historial de Versiones de la O/S
+        </h3>
+        <span style="font-size:12px; font-weight:700; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; padding:3px 10px; border-radius:12px;">
+            Versión Vigente: v<?= (int)($os['version'] ?? 1) ?>
+        </span>
+    </div>
+    <?php if (!empty($os['motivo_cambio_version'])): ?>
+        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:8px 12px; font-size:12.5px; color:#92400e; margin-bottom:12px;">
+            <strong>Último motivo de modificación:</strong> <?= htmlspecialchars((string)$os['motivo_cambio_version'], ENT_QUOTES, 'UTF-8') ?>
+        </div>
+    <?php endif; ?>
+    <?php if (!empty($historialVersionesOs)): ?>
+    <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+        <thead>
+            <tr style="background:#f8fafc; border-bottom:1.5px solid #cbd5e1;">
+                <th style="padding:8px 10px; text-align:left; width:80px;">Versión</th>
+                <th style="padding:8px 10px; text-align:left; width:145px;">Fecha</th>
+                <th style="padding:8px 10px; text-align:left; width:150px;">Usuario</th>
+                <th style="padding:8px 10px; text-align:left;">Motivo de Cambio</th>
+                <th style="padding:8px 10px; text-align:left;">Snapshot Anterior</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($historialVersionesOs as $verOs):
+                $snapOs = json_decode((string)($verOs['snapshot_json'] ?? '{}'), true) ?: [];
+            ?>
+            <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:8px 10px;"><span style="background:#64748b; color:#fff; padding:2px 8px; border-radius:4px; font-weight:700; font-size:11.5px;">v<?= (int)$verOs['version'] ?></span></td>
+                <td style="padding:8px 10px; color:#475569;"><?= !empty($verOs['created_at']) ? date('d/m/Y H:i', strtotime($verOs['created_at'])) : '—' ?></td>
+                <td style="padding:8px 10px; font-weight:600; color:#1e293b;"><?= htmlspecialchars((string)($verOs['usuario_nombre'] ?? 'Sistema'), ENT_QUOTES, 'UTF-8') ?></td>
+                <td style="padding:8px 10px; color:#334155;"><?= htmlspecialchars((string)($verOs['motivo_cambio'] ?: 'Modificación registrada'), ENT_QUOTES, 'UTF-8') ?></td>
+                <td style="padding:8px 10px; color:#64748b; font-size:11.5px;">
+                    Proyecto: <strong><?= htmlspecialchars((string)($snapOs['nombre_proyecto'] ?? '—'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    &bull; Atención: <?= htmlspecialchars((string)($snapOs['atencion_a'] ?? '—'), ENT_QUOTES, 'UTF-8') ?>
+                    &bull; Pago: <?= htmlspecialchars((string)($snapOs['forma_pago'] ?? '—'), ENT_QUOTES, 'UTF-8') ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php else: ?>
+        <p style="margin:0; font-size:12.5px; color:#64748b;">Esta Orden de Servicio se encuentra en su versión inicial (v<?= (int)($os['version'] ?? 1) ?>) sin revisiones anteriores archivadas.</p>
+    <?php endif; ?>
 </div>
 <?php if (!empty($mostrar_bitacora)): ?>
 <div class="no-print" style="max-width: 960px; margin: 8px auto 40px auto;">

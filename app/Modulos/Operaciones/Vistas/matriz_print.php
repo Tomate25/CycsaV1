@@ -33,6 +33,8 @@ $orientacion = !empty($detalle['orientacion'])
     ? strtolower(trim((string)$detalle['orientacion'])) 
     : (!empty($schemaInfo['orientacion']) ? strtolower(trim((string)$schemaInfo['orientacion'])) : 'horizontal');
 $esVertical = ($orientacion === 'vertical');
+$sinLogo = isset($sinLogo) ? (bool)$sinLogo : (!empty($_GET['sin_logo']) && (string)$_GET['sin_logo'] !== '0');
+$sinLogoAcreditacion = isset($sinLogoAcreditacion) ? (bool)$sinLogoAcreditacion : (!empty($_GET['sin_logo_acreditacion']) && (string)$_GET['sin_logo_acreditacion'] !== '0');
 $bgImagenMatriz = $esVertical ? '/Cycsa/publico/img/hoja_membretada_vertical.jpg' : '/Cycsa/publico/img/hoja_membretada_horizontal.jpg';
 
 if (!array_key_exists('notas', $schemaInfo) && !empty($archivoMd)) {
@@ -71,9 +73,11 @@ if (!array_key_exists('notas', $schemaInfo) && !empty($archivoMd)) {
 
 $resultados = [];
 $metadatosGuardados = [];
+$dec = [];
 if (!empty($detalle['resultados_json'])) {
     $decoded = json_decode($detalle['resultados_json'], true) ?: [];
     if (is_array($decoded)) {
+        $dec = $decoded;
         if (isset($decoded['filas']) && is_array($decoded['filas'])) {
             $resultados = $decoded['filas'];
             $metadatosGuardados = (isset($decoded['metadatos']) && is_array($decoded['metadatos'])) ? $decoded['metadatos'] : [];
@@ -99,6 +103,29 @@ $resultados = filtrarFilasPublicasMatriz($resultados);
 if (empty($metadatos)) {
     $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
 }
+
+$revisionDatosPrint = isset($dec['revision']) && is_array($dec['revision']) ? $dec['revision'] : [];
+$revisadoPorNombre = isset($revisadoPorNombre) && trim((string)$revisadoPorNombre) !== ''
+    ? trim((string)$revisadoPorNombre)
+    : trim((string)($revisionDatosPrint['usuario_revisor'] ?? ($detalle['revisado_nombre'] ?? '')));
+$aprobadoPorNombre = isset($aprobadoPorNombre) && trim((string)$aprobadoPorNombre) !== ''
+    ? trim((string)$aprobadoPorNombre)
+    : trim((string)($revisionDatosPrint['usuario_aprobador'] ?? ($detalle['aprobado_nombre'] ?? $revisadoPorNombre)));
+$observacionesPendientes = isset($observacionesPendientes) && trim((string)$observacionesPendientes) !== ''
+    ? trim((string)$observacionesPendientes)
+    : trim((string)($metadatos['observaciones_pendientes'] ?? ($revisionDatosPrint['observaciones_pendientes'] ?? ($detalle['observaciones_pendientes'] ?? ''))));
+$notaAditivos = trim((string)($metadatos['nota_aditivos'] ?? ''));
+$ubicacionAditivos = class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+    ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::obtener('informe_ubicacion_aditivos', 'pie')
+    : 'pie';
+$columnasAsteriscoNormPrint = [];
+foreach (($metadatos['columnas_asterisco'] ?? []) as $caP) {
+    $nCaP = normalizarTextoClavePHP((string)$caP);
+    if ($nCaP !== '') {
+        $columnasAsteriscoNormPrint[$nCaP] = true;
+    }
+}
+$tieneAsteriscoSimplePrint = false;
 
 $codigoFormatoOficial = $metadatos['codigo_formato'];
 $ensayoTituloOficial = $metadatos['ensayo_realizado'];
@@ -237,7 +264,7 @@ if (!empty($codigoInformePersonalizado)) {
             max-height: <?= $esVertical ? '279.4mm' : '215.9mm' ?>;
             margin: 60px auto 40px auto;
             background-color: #ffffff;
-            background-image: url('<?= $bgImagenMatriz ?>');
+            <?= !$sinLogo ? "background-image: url('{$bgImagenMatriz}');" : 'background-image: none;' ?>
             background-size: 100% 100%;
             background-position: center;
             background-repeat: no-repeat;
@@ -251,7 +278,7 @@ if (!empty($codigoInformePersonalizado)) {
         .zona-cabecera {
             position: absolute;
             top: 8mm;
-            left: <?= !empty($metadatos['logo_acreditacion']) ? '83mm' : '56mm' ?>; /* Ajuste automático si existe logo de acreditación */
+            left: <?= (!$sinLogoAcreditacion && !empty($metadatos['logo_acreditacion'])) ? ($sinLogo ? '50mm' : '83mm') : ($sinLogo ? '14mm' : '56mm') ?>; /* Ajuste automático si existe logo de acreditación o modo sin logo */
             right: 14mm;
             height: 28mm;
             display: flex;
@@ -573,7 +600,19 @@ if (!empty($codigoInformePersonalizado)) {
             <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $detalle['id'] ?><?= !empty($infoVersionImpresion['version']) && empty($infoVersionImpresion['es_actual']) ? '&version=' . $infoVersionImpresion['version'] : '' ?>" class="btn-accion-top btn-volver">
                 <i class="fa-solid fa-pen-to-square"></i> Volver a Matriz
             </a>
-            <a href="/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=<?= $detalle['id'] ?><?= !empty($infoVersionImpresion['version']) ? '&version=' . $infoVersionImpresion['version'] : '' ?>" target="_blank" class="btn-accion-top" style="background: #334155; color: white;">
+            <?php
+            $qsVer = !empty($infoVersionImpresion['version']) ? '&version=' . (int)$infoVersionImpresion['version'] : '';
+            $qsSinLogoToggle = $sinLogo ? '' : '&sin_logo=1';
+            $qsSinAcredToggle = $sinLogoAcreditacion ? '' : '&sin_logo_acreditacion=1';
+            $qsPdfOpciones = ($sinLogo ? '&sin_logo=1' : '') . ($sinLogoAcreditacion ? '&sin_logo_acreditacion=1' : '');
+            ?>
+            <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $detalle['id'] ?><?= $qsVer ?><?= $qsSinLogoToggle ?><?= $sinLogoAcreditacion ? '&sin_logo_acreditacion=1' : '' ?>" class="btn-accion-top" style="background: <?= $sinLogo ? '#f59e0b' : '#475569' ?>; color: white; font-size: 12px; padding: 7px 12px;">
+                <i class="fa-solid fa-eye-slash"></i> <?= $sinLogo ? 'Restaurar logo' : 'Versión sin logo' ?>
+            </a>
+            <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $detalle['id'] ?><?= $qsVer ?><?= $sinLogo ? '&sin_logo=1' : '' ?><?= $qsSinAcredToggle ?>" class="btn-accion-top" style="background: <?= $sinLogoAcreditacion ? '#f59e0b' : '#475569' ?>; color: white; font-size: 12px; padding: 7px 12px;">
+                <i class="fa-solid fa-award"></i> <?= $sinLogoAcreditacion ? 'Mostrar logo acreditación' : 'Sin logo acreditación' ?>
+            </a>
+            <a href="/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=<?= $detalle['id'] ?><?= $qsVer ?><?= $qsPdfOpciones ?>" target="_blank" class="btn-accion-top" style="background: #334155; color: white;">
                 <i class="fa-solid fa-file-pdf"></i> Descargar PDF
             </a>
             <button onclick="window.print()" class="btn-accion-top btn-imprimir">
@@ -591,9 +630,9 @@ if (!empty($codigoInformePersonalizado)) {
     <!-- PÁGINA IMPRIMIBLE CON MEMBRETE AJUSTADA -->
     <div class="pagina-hoja">
         
-        <?php if (!empty($metadatos['logo_acreditacion'])): ?>
+        <?php if (!$sinLogoAcreditacion && !empty($metadatos['logo_acreditacion'])): ?>
             <!-- Sello / Logotipo Oficial de Acreditación (a la par del logotipo CYCSA) -->
-            <div class="logo-acreditacion-print" style="position: absolute; top: 6mm; left: 47mm; height: 26mm; width: 34mm; display: flex; align-items: center; justify-content: center; z-index: 10;">
+            <div class="logo-acreditacion-print" style="position: absolute; top: 6mm; left: <?= $sinLogo ? '14mm' : '47mm' ?>; height: 26mm; width: 34mm; display: flex; align-items: center; justify-content: center; z-index: 10;">
                 <img src="<?= htmlspecialchars($metadatos['logo_acreditacion']) ?>" alt="Acreditación" style="max-height: 24mm; max-width: 34mm; object-fit: contain;">
             </div>
         <?php endif; ?>
@@ -688,6 +727,12 @@ if (!empty($codigoInformePersonalizado)) {
                         <td class="lbl-informe">Método de muestreo:</td>
                         <td class="val-informe" style="font-weight: bold; font-family: monospace;"><?= htmlspecialchars($metodoMuestreo) ?></td>
                     </tr>
+                    <?php if ($notaAditivos !== '' && ($ubicacionAditivos === 'cabecera' || $ubicacionAditivos === 'ambos')): ?>
+                    <tr>
+                        <td class="lbl-informe">Aditivos:</td>
+                        <td class="val-informe" colspan="3"><?= htmlspecialchars($notaAditivos) ?></td>
+                    </tr>
+                    <?php endif; ?>
                 </table>
 
                 <!-- TABLA DE RESULTADOS DE MATRIZ TÉCNICA (SENCILLA) -->
@@ -749,6 +794,13 @@ if (!empty($codigoInformePersonalizado)) {
                             <tr class="tr-columnas-nombres">
                                 <?php foreach ($columnas as $col): 
                                     $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col;
+                                    $colNormP = normalizarTextoClavePHP($colLabel);
+                                    if (isset($columnasAsteriscoNormPrint[$colNormP]) && !str_contains($colLabel, '*')) {
+                                        $colLabel .= ' *';
+                                        $tieneAsteriscoSimplePrint = true;
+                                    } elseif (str_starts_with(trim($colLabel), '*') && !str_starts_with(trim($colLabel), '**')) {
+                                        $tieneAsteriscoSimplePrint = true;
+                                    }
                                 ?>
                                     <th style="text-align: center; vertical-align: middle; font-weight: bold; background: #ffffff;">
                                         <?= htmlspecialchars($colLabel) ?>
@@ -767,8 +819,12 @@ if (!empty($codigoInformePersonalizado)) {
                                         <td style="font-weight: bold;"><?= $numFila ?></td>
                                         <?php foreach ($columnas as $col): 
                                             $val = is_array($fila) ? buscarValorEnFilaPHP($fila, $col, $schemaInfo['column_aliases'][$col] ?? null) : '';
+                                            $valTrimP = trim((string)$val);
+                                            if ($valTrimP !== '' && str_starts_with($valTrimP, '*') && !str_starts_with($valTrimP, '**')) {
+                                                $tieneAsteriscoSimplePrint = true;
+                                            }
                                             $isCode = ($col === 'Código laboratorio' || $col === 'Codigo Lab');
-                                            $isNum = is_numeric(str_replace(['%', ',', ' '], '', (string)$val)) && !empty($val);
+                                            $isNum = is_numeric(str_replace(['%', ',', ' ', '*'], '', (string)$val)) && !empty($val);
                                         ?>
                                             <td class="<?= $isCode ? 'td-code' : ($isNum ? 'td-num' : ($col === 'Nombre muestra' ? 'td-left' : '')) ?>">
                                                 <?= htmlspecialchars((string)$val) ?>
@@ -795,18 +851,29 @@ if (!empty($codigoInformePersonalizado)) {
                             <?= htmlspecialchars($disclaimerOficial) ?>
                         </div>
                         <?php 
-                        if (strpos($codigoFormatoOficial, 'RT-FM-22 B') !== false || strpos($archivoMd, 'compactacion') !== false) {
+                        if (strpos($codigoFormatoOficial, 'RT-FM-22 B') !== false || strpos($archivoMd, 'compactacion') !== false || strpos($archivoMd, 'densimetro') !== false) {
                             $tieneNota1 = false;
                             foreach ($notasOficiales as $idxNota => $notaExistente) {
                                 if (stripos($notaExistente, 'Nota 1') !== false || stripos($notaExistente, 'TROXLER') !== false || stripos($notaExistente, 'Muestra tomada con equipo') !== false) {
-                                    $notasOficiales[$idxNota] = $metadatos['nota_equipo_densimetro'] ?? $notaExistente;
-                                    $tieneNota1 = true;
+                                    if (!empty($metadatos['nota_equipo_densimetro'])) {
+                                        $notasOficiales[$idxNota] = $metadatos['nota_equipo_densimetro'];
+                                        $tieneNota1 = true;
+                                    } else {
+                                        unset($notasOficiales[$idxNota]);
+                                    }
                                     break;
                                 }
                             }
+                            $notasOficiales = array_values($notasOficiales);
                             if (!$tieneNota1 && !empty($metadatos['nota_equipo_densimetro'])) {
                                 $notasOficiales[] = $metadatos['nota_equipo_densimetro'];
                             }
+                        }
+                        if ($tieneAsteriscoSimplePrint) {
+                            $notasOficiales[] = '* Parámetro o resultado marcado fuera del alcance de acreditación o con observación técnica.';
+                        }
+                        if ($notaAditivos !== '' && ($ubicacionAditivos === 'pie' || $ubicacionAditivos === 'ambos')) {
+                            $notasOficiales[] = 'Nota de Aditivos: ' . $notaAditivos;
                         }
                         ?>
                         <?php if (!empty($notasOficiales)): ?>
@@ -819,6 +886,13 @@ if (!empty($codigoInformePersonalizado)) {
                     </div>
                 </div>
             </div>
+
+            <?php if ($observacionesPendientes !== ''): ?>
+            <div class="caja-obs" style="margin-top: 3px; background: #fffbeb; font-size: 7.2px;">
+                <div class="caja-obs-titulo">Observaciones Pendientes</div>
+                <div style="color: #1e293b; line-height: 1.25;"><?= nl2br(htmlspecialchars($observacionesPendientes)) ?></div>
+            </div>
+            <?php endif; ?>
 
             <!-- OBSERVACIONES Y NOTAS ISO 17025 -->
             <div class="seccion-observaciones">
@@ -839,6 +913,10 @@ if (!empty($codigoInformePersonalizado)) {
             <!-- LÍNEA DE CIERRE OFICIAL (SERIE CYCSA-RT-FM-22) -->
             <div class="linea-cierre-doc">-------------------------------- Última Línea ---------------------------------</div>
 
+            <?php
+            $revisadoMostrarHtml = $revisadoPorNombre !== '' ? $revisadoPorNombre : 'Supervisión de Ensayos';
+            $aprobadoMostrarHtml = $aprobadoPorNombre !== '' ? $aprobadoPorNombre : $firmanteNombre;
+            ?>
             <?php if (($schemaInfo['num_firmas'] ?? 1) == 3): ?>
             <!-- BLOQUE DE FIRMAS TÉCNICAS CON ESPACIO CALIBRADO -->
             <div class="bloque-firmas">
@@ -852,15 +930,32 @@ if (!empty($codigoInformePersonalizado)) {
                 <div class="columna-firma">
                     <div class="espacio-para-firma"></div>
                     <div class="linea-firma">
-                        <div class="firma-nombre">Supervisión de Ensayos</div>
-                        <div class="firma-cargo">Revisado por (Supervisor de Área)</div>
+                        <div class="firma-nombre"><?= htmlspecialchars($revisadoMostrarHtml) ?></div>
+                        <div class="firma-cargo">Revisado por</div>
                     </div>
                 </div>
                 <div class="columna-firma">
                     <div class="espacio-para-firma"></div>
                     <div class="linea-firma">
-                        <div class="firma-nombre"><?= htmlspecialchars($firmanteNombre) ?></div>
-                        <div class="firma-cargo">Aprobado (<?= htmlspecialchars($firmanteCargo) ?> / ISO 17025)</div>
+                        <div class="firma-nombre"><?= htmlspecialchars($aprobadoMostrarHtml) ?></div>
+                        <div class="firma-cargo">Aprobado por (<?= htmlspecialchars($firmanteCargo) ?> / ISO 17025)</div>
+                    </div>
+                </div>
+            </div>
+            <?php elseif ($revisadoPorNombre !== '' || $aprobadoPorNombre !== ''): ?>
+            <div class="bloque-firmas" style="grid-template-columns: 1fr 1fr; width: 80%; margin: 2px auto 0 auto;">
+                <div class="columna-firma">
+                    <div class="espacio-para-firma"></div>
+                    <div class="linea-firma">
+                        <div class="firma-nombre"><?= htmlspecialchars($revisadoMostrarHtml) ?></div>
+                        <div class="firma-cargo">Revisado por</div>
+                    </div>
+                </div>
+                <div class="columna-firma">
+                    <div class="espacio-para-firma"></div>
+                    <div class="linea-firma">
+                        <div class="firma-nombre"><?= htmlspecialchars($aprobadoMostrarHtml) ?></div>
+                        <div class="firma-cargo">Aprobado por</div>
                     </div>
                 </div>
             </div>
@@ -909,11 +1004,11 @@ if (!empty($codigoInformePersonalizado)) {
 
                 <div style="margin-bottom: 14px;">
                     <label style="font-size: 13px; font-weight: bold; color: #1e293b; display: block; margin-bottom: 5px;">
-                        Correo Electrónico del Cliente:
+                        Correo(s) Electrónico(s) del Cliente:
                     </label>
-                    <input type="email" name="destinatario" required value="<?= htmlspecialchars($detalle['cliente_email'] ?? '') ?>" style="width: 100%; padding: 9px 12px; font-size: 13.5px; border-radius: 6px; border: 1.5px solid #cbd5e1; box-sizing: border-box;">
+                    <input type="text" name="destinatario" required value="<?= htmlspecialchars($detalle['cliente_email'] ?? '') ?>" placeholder="cliente@empresa.com, copia@empresa.com" style="width: 100%; padding: 9px 12px; font-size: 13.5px; border-radius: 6px; border: 1.5px solid #cbd5e1; box-sizing: border-box;">
                     <small style="color: #64748b; font-size: 11px; margin-top: 3px; display: block;">
-                        * Correo del cliente registrado en el sistema.
+                        * Puede indicar múltiples correos separados por coma (ej. cliente@empresa.com, copia@empresa.com).
                     </small>
                 </div>
 

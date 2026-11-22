@@ -384,6 +384,9 @@ class SprintDCrossVerificationTest extends TestCase {
         $okActualizar = $cotModelo->actualizarCotizacionCompleta($this->idCotizacionPrueba, $cabeceraV2, $detallesV2);
         $this->assertTrue($okActualizar);
 
+        // Acuerdo 2.9: versión sube al salir al cliente
+        $cotModelo->marcarEnviadaAlCliente($this->idCotizacionPrueba, 1);
+
         $cotData = $cotModelo->obtenerPorId($this->idCotizacionPrueba);
         $this->assertEquals(2, $cotData['version']);
 

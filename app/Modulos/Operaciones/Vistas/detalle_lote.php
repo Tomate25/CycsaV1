@@ -620,58 +620,57 @@
 
     const DEFAULT_ROWS_BY_FORMAT = {
         "formato_de_granulometria_de_suelo.md": [
-            { "Malla": "2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1 1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "3/4\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "3/8\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 4", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 8", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 10", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 16", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 20", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 30", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 40", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 50", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 60", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 80", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 100", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 140", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 200", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Fondo", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Pérdida lavado", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Suma", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Límite Líquido", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Límite Plástico", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "I.P", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" }
+            { "Malla": "3\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1 1/2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/4\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1/2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/8\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 4", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 8", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 10", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 16", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 20", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 30", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 40", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 50", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 60", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 80", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 100", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 140", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 200", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Fondo", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Pérdida lavado", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Suma", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Límite Líquido", "P. Retenido parcial (g)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Límite Plástico", "P. Retenido parcial (g)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "I.P", "P. Retenido parcial (g)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" }
         ],
         "granulomnetria_de_agregados.md": [
-            { "Malla": "2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1 1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "3/4\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "3/8\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 4", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 8", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 10", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 16", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 20", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 30", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 40", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 50", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 60", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 80", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 100", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 140", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 200", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Fondo", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Pérdida lavado", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Suma", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Límite Líquido", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Límite Plástico", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "I.P", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" }
+            { "Malla": "3\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1 1/2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/4\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1/2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/8\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 4", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 8", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 10", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 16", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 20", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 30", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 40", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 50", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 60", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 80", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 100", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 140", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 200", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Fondo", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Pérdida lavado", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Suma", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" }
         ]
     };
 
@@ -784,7 +783,7 @@
         rowsArray.forEach(row => {
             const malla = row['Malla'] ? row['Malla'].value.trim() : '';
             if (malla && !['Suma', 'Límite Líquido', 'Límite Plástico', 'I.P'].includes(malla)) {
-                const wInput = row['P. Retenido parcial (gr)'];
+                const wInput = row['P. Retenido parcial (g)'] || row['P. Retenido parcial (gr)'];
                 if (wInput) {
                     const w = parseFloat(wInput.value) || 0;
                     totalSuma += w;
@@ -794,8 +793,9 @@
         
         // Suma row
         const sumaRow = rowsArray.find(r => r['Malla'] && r['Malla'].value.trim() === 'Suma');
-        if (sumaRow && sumaRow['P. Retenido parcial (gr)']) {
-            sumaRow['P. Retenido parcial (gr)'].value = totalSuma > 0 ? totalSuma.toFixed(4) : '';
+        const sumaPesoInput = sumaRow ? (sumaRow['P. Retenido parcial (g)'] || sumaRow['P. Retenido parcial (gr)']) : null;
+        if (sumaRow && sumaPesoInput) {
+            sumaPesoInput.value = totalSuma > 0 ? totalSuma.toFixed(4) : '';
             if (sumaRow['% Retenido parcial']) sumaRow['% Retenido parcial'].value = totalSuma > 0 ? '100.00' : '';
             if (sumaRow['% Acumulativo']) sumaRow['% Acumulativo'].value = totalSuma > 0 ? '100.00' : '';
             if (sumaRow['% que pasa la malla']) sumaRow['% que pasa la malla'].value = totalSuma > 0 ? '0.00' : '';
@@ -806,7 +806,7 @@
         rowsArray.forEach(row => {
             const malla = row['Malla'] ? row['Malla'].value.trim() : '';
             if (malla && !['Suma', 'Límite Líquido', 'Límite Plástico', 'I.P'].includes(malla)) {
-                const wInput = row['P. Retenido parcial (gr)'];
+                const wInput = row['P. Retenido parcial (g)'] || row['P. Retenido parcial (gr)'];
                 const rpInput = row['% Retenido parcial'];
                 const acInput = row['% Acumulativo'];
                 const qpInput = row['% que pasa la malla'];
@@ -983,7 +983,7 @@
                         }
                     }
                     
-                    if (col === 'P. Retenido parcial (gr)') {
+                    if (col === 'P. Retenido parcial (g)' || col === 'P. Retenido parcial (gr)') {
                         if (['Límite Líquido', 'Límite Plástico', 'I.P'].includes(mallaName)) {
                             input.readOnly = true;
                             input.style.backgroundColor = '#f1f5f9';

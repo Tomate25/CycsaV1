@@ -338,8 +338,273 @@ class OrdenServicioModelo {
         unset($ensayo);
         $os['codigos_muestra'] = $trazas['codigos'];
         $os['informes_vinculados'] = $this->obtenerInformesVinculados((int)$os['id']);
+        $os['historial_versiones'] = $this->obtenerHistorialVersiones((int)$os['id']);
+        $os['alerta_alcance_mensual'] = $this->verificarAlcanceMensual((int)$os['id']);
+
+        try {
+            $stmtHsDet = $this->db->prepare("
+                SELECT hs.id, hs.numero_registro, hs.codigo_documento, hs.id_detalle_cotizacion, hs.id_producto,
+                       COALESCE(cd.descripcion_ensayo, p.nombre_comercial, '') AS descripcion_ensayo
+                FROM hojas_solicitud hs
+                LEFT JOIN cotizacion_detalles cd ON hs.id_detalle_cotizacion = cd.id
+                LEFT JOIN productos p ON COALESCE(hs.id_producto, cd.id_producto) = p.id
+                WHERE hs.id_os = :id_os
+                ORDER BY hs.id ASC
+            ");
+            $stmtHsDet->execute(['id_os' => (int)$os['id']]);
+            $os['hojas_servicio'] = $stmtHsDet->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            $os['hojas_servicio'] = [];
+        }
 
         return $os;
+    }
+
+    /**
+     * Registra (o actualiza) el snapshot de una versión histórica de una Orden de Servicio.
+     */
+    public function registrarSnapshotVersion(int $idOs, int $version, array $snapshot, ?string $motivo, ?int $usuarioId): bool {
+        if ($idOs <= 0 || $version <= 0 || !$this->tablaExiste('ordenes_servicio_versiones')) {
+            return false;
+        }
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO ordenes_servicio_versiones (id_os, version, snapshot_json, motivo_cambio, usuario_id)
+                VALUES (:id_os, :version, :snapshot_json, :motivo_cambio, :usuario_id)
+                ON DUPLICATE KEY UPDATE
+                    snapshot_json = VALUES(snapshot_json),
+                    motivo_cambio = VALUES(motivo_cambio),
+                    usuario_id = VALUES(usuario_id)
+            ");
+            return $stmt->execute([
+                'id_os' => $idOs,
+                'version' => $version,
+                'snapshot_json' => json_encode($snapshot, JSON_UNESCAPED_UNICODE),
+                'motivo_cambio' => $motivo,
+                'usuario_id' => ($usuarioId !== null && $usuarioId > 0) ? $usuarioId : null,
+            ]);
+        } catch (\Throwable $e) {
+            error_log('OrdenServicioModelo::registrarSnapshotVersion: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Devuelve el historial de versiones archivadas de una Orden de Servicio (más reciente primero).
+     */
+    public function obtenerHistorialVersiones(int $idOs): array {
+        if ($idOs <= 0 || !$this->tablaExiste('ordenes_servicio_versiones')) {
+            return [];
+        }
+        try {
+            $stmt = $this->db->prepare("
+                SELECT v.*, COALESCE(u.nombre, 'Sistema') AS usuario_nombre
+                FROM ordenes_servicio_versiones v
+                LEFT JOIN usuarios u ON v.usuario_id = u.id
+                WHERE v.id_os = :id_os
+                ORDER BY v.version DESC, v.id DESC
+            ");
+            $stmt->execute(['id_os' => $idOs]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log('OrdenServicioModelo::obtenerHistorialVersiones: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Evalúa vigencia mensual/contrato largo, pertenencia a whitelist y consumo contra cuota mensual.
+     *
+     * @return array{
+     *     tiene_alerta: bool,
+     *     nivel: string,
+     *     mensajes: array<int, string>,
+     *     en_alcance: bool,
+     *     consumo_mes: int,
+     *     cuota_mensual: ?int,
+     *     vigencia: array<string, mixed>
+     * }
+     */
+    public function verificarAlcanceMensual(int $idOs, int $idProducto = 0, ?string $fechaReferencia = null): array {
+        $resultado = [
+            'tiene_alerta' => false,
+            'nivel' => 'none',
+            'mensajes' => [],
+            'en_alcance' => true,
+            'consumo_mes' => 0,
+            'cuota_mensual' => null,
+            'vigencia' => [],
+        ];
+
+        if ($idOs <= 0) {
+            return $resultado;
+        }
+
+        try {
+            $stmtOs = $this->db->prepare("SELECT * FROM ordenes_servicio WHERE id = :id LIMIT 1");
+            $stmtOs->execute(['id' => $idOs]);
+            $os = $stmtOs->fetch(PDO::FETCH_ASSOC);
+            if (!$os) {
+                return $resultado;
+            }
+
+            $fechaRef = ($fechaReferencia !== null && trim($fechaReferencia) !== '')
+                ? date('Y-m-d', strtotime($fechaReferencia))
+                : date('Y-m-d');
+            $mesRef = substr($fechaRef, 0, 7);
+
+            $vigencia = function_exists('calcularVigenciaContratoOS')
+                ? calcularVigenciaContratoOS($os, $fechaRef)
+                : [];
+            $resultado['vigencia'] = $vigencia;
+
+            $esMensual = !empty($os['es_multimes'])
+                || (int)($os['duracion_meses'] ?? 0) > 0
+                || !empty($vigencia['es_contrato_largo']);
+
+            $mensajes = [];
+            $nivel = 'none';
+            $enAlcance = true;
+            $consumoMes = 0;
+            $cuotaMensual = null;
+
+            if ($esMensual) {
+                $estVig = (string)($vigencia['estado_vigencia'] ?? '');
+                if ($estVig === 'vencido') {
+                    $finTxt = !empty($vigencia['fecha_fin']) ? $vigencia['fecha_fin'] : 'fecha registrada';
+                    $mensajes[] = "El contrato mensual/largo de esta O/S se encuentra vencido (fin: {$finTxt}).";
+                    $nivel = 'danger';
+                } elseif ($estVig === 'por_vencer') {
+                    $diasRest = (int)($vigencia['dias_restantes'] ?? 0);
+                    $mensajes[] = "El contrato mensual/largo está próximo a vencer ({$diasRest} día(s) restante(s)).";
+                    if ($nivel === 'none') {
+                        $nivel = 'warning';
+                    }
+                }
+            }
+
+            if ($this->tablaEnsayosPermitidosDisponible()) {
+                $colsPerm = $this->columnasDe('orden_servicio_ensayos_permitidos');
+                $tieneCuota = in_array('cuota_mensual', $colsPerm, true);
+                $selCuota = $tieneCuota ? 'osep.cuota_mensual' : 'NULL AS cuota_mensual';
+
+                $stmtPerm = $this->db->prepare("
+                    SELECT osep.id_cotizacion_detalle, {$selCuota}, cd.id_producto,
+                           COALESCE(cd.descripcion_ensayo, p.nombre_comercial, '') AS descripcion_ensayo
+                    FROM orden_servicio_ensayos_permitidos osep
+                    INNER JOIN cotizacion_detalles cd ON osep.id_cotizacion_detalle = cd.id
+                    LEFT JOIN productos p ON cd.id_producto = p.id
+                    WHERE osep.id_os = :id_os
+                ");
+                $stmtPerm->execute(['id_os' => $idOs]);
+                $permitidos = $stmtPerm->fetchAll(PDO::FETCH_ASSOC);
+
+                if (!empty($permitidos)) {
+                    if ($idProducto > 0) {
+                        $coincidencias = array_values(array_filter(
+                            $permitidos,
+                            static fn(array $r): bool => (int)($r['id_producto'] ?? 0) === $idProducto
+                        ));
+
+                        if (empty($coincidencias)) {
+                            $enAlcance = false;
+                            $mensajes[] = "Ensayo fuera de alcance: el producto #{$idProducto} no está habilitado en los ensayos permitidos de esta O/S.";
+                            $nivel = 'danger';
+                        } else {
+                            $cuotaAcum = null;
+                            foreach ($coincidencias as $cRow) {
+                                if ($cRow['cuota_mensual'] !== null && (int)$cRow['cuota_mensual'] > 0) {
+                                    $cuotaAcum = ($cuotaAcum ?? 0) + (int)$cRow['cuota_mensual'];
+                                }
+                            }
+                            $cuotaMensual = $cuotaAcum;
+
+                            $stmtCons = $this->db->prepare("
+                                SELECT COUNT(*)
+                                FROM hojas_solicitud
+                                WHERE id_os = :id_os
+                                  AND (id_producto = :prod1 OR ensayo_id = :prod2)
+                                  AND DATE_FORMAT(COALESCE(fecha_hora_toma_muestra, fecha_creacion), '%Y-%m') = :mes
+                            ");
+                            $stmtCons->execute([
+                                'id_os' => $idOs,
+                                'prod1' => $idProducto,
+                                'prod2' => $idProducto,
+                                'mes' => $mesRef,
+                            ]);
+                            $consumoMes = (int)$stmtCons->fetchColumn();
+
+                            if ($cuotaMensual !== null && $cuotaMensual > 0) {
+                                if ($consumoMes >= $cuotaMensual) {
+                                    $enAlcance = false;
+                                    $mensajes[] = "Ensayo fuera de alcance mensual ({$mesRef}): se han registrado {$consumoMes} de {$cuotaMensual} hoja(s) permitida(s) al mes.";
+                                    $nivel = 'danger';
+                                } elseif (($consumoMes + 1) >= $cuotaMensual) {
+                                    $mensajes[] = "Aviso de cuota mensual ({$mesRef}): {$consumoMes} de {$cuotaMensual} hoja(s) registrada(s) este mes (próximo a alcanzar el límite).";
+                                    if ($nivel === 'none') {
+                                        $nivel = 'warning';
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Vista general de la O/S: revisar cuotas mensuales configuradas por producto
+                        $cuotasPorProd = [];
+                        foreach ($permitidos as $pRow) {
+                            $pid = (int)($pRow['id_producto'] ?? 0);
+                            if ($pid > 0 && $pRow['cuota_mensual'] !== null && (int)$pRow['cuota_mensual'] > 0) {
+                                if (!isset($cuotasPorProd[$pid])) {
+                                    $cuotasPorProd[$pid] = [
+                                        'cuota' => 0,
+                                        'nombre' => (string)($pRow['descripcion_ensayo'] ?: ('Producto #' . $pid)),
+                                    ];
+                                }
+                                $cuotasPorProd[$pid]['cuota'] += (int)$pRow['cuota_mensual'];
+                            }
+                        }
+                        foreach ($cuotasPorProd as $pid => $infoCuota) {
+                            $stmtCons = $this->db->prepare("
+                                SELECT COUNT(*)
+                                FROM hojas_solicitud
+                                WHERE id_os = :id_os
+                                  AND (id_producto = :prod1 OR ensayo_id = :prod2)
+                                  AND DATE_FORMAT(COALESCE(fecha_hora_toma_muestra, fecha_creacion), '%Y-%m') = :mes
+                            ");
+                            $stmtCons->execute([
+                                'id_os' => $idOs,
+                                'prod1' => $pid,
+                                'prod2' => $pid,
+                                'mes' => $mesRef,
+                            ]);
+                            $usadas = (int)$stmtCons->fetchColumn();
+                            $consumoMes += $usadas;
+                            $cuotaMensual = ($cuotaMensual ?? 0) + $infoCuota['cuota'];
+                            if ($usadas >= $infoCuota['cuota']) {
+                                $enAlcance = false;
+                                $mensajes[] = "Cuota mensual alcanzada para \"{$infoCuota['nombre']}\" en {$mesRef}: {$usadas}/{$infoCuota['cuota']}.";
+                                $nivel = 'danger';
+                            } elseif ($usadas > 0 && ($usadas + 1) >= $infoCuota['cuota']) {
+                                $mensajes[] = "Cuota mensual próxima al límite para \"{$infoCuota['nombre']}\" en {$mesRef}: {$usadas}/{$infoCuota['cuota']}.";
+                                if ($nivel === 'none') {
+                                    $nivel = 'warning';
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            $resultado['tiene_alerta'] = !empty($mensajes);
+            $resultado['nivel'] = $nivel;
+            $resultado['mensajes'] = $mensajes;
+            $resultado['en_alcance'] = $enAlcance;
+            $resultado['consumo_mes'] = $consumoMes;
+            $resultado['cuota_mensual'] = $cuotaMensual;
+        } catch (\Throwable $e) {
+            error_log('OrdenServicioModelo::verificarAlcanceMensual: ' . $e->getMessage());
+        }
+
+        return $resultado;
     }
 
     /**
@@ -762,7 +1027,7 @@ class OrdenServicioModelo {
             return false;
         }
 
-        $stmtActual = $this->db->prepare("SELECT id, estado, codigo_os FROM ordenes_servicio WHERE id = :id");
+        $stmtActual = $this->db->prepare("SELECT * FROM ordenes_servicio WHERE id = :id");
         $stmtActual->execute(['id' => $idOS]);
         $actual = $stmtActual->fetch(PDO::FETCH_ASSOC);
 
@@ -804,6 +1069,36 @@ class OrdenServicioModelo {
             $nuevoEstado = 'Estado 2: Revision';
         }
 
+        // 2.5 Versionado de O/S: cuando se modifica una O/S aprobada (o se solicita nueva versión con motivo)
+        $motivoCambio = trim((string)($datos['motivo_cambio_version'] ?? ($datos['motivo_cambio'] ?? '')));
+        $forzarNuevaVersion = !empty($datos['nueva_version']) || $motivoCambio !== '';
+        $debeVersionar = $forzarNuevaVersion || (esOrdenServicioAprobada($estadoActual) && $nuevoEstado === 'Estado 2: Revision');
+
+        $colsOs = $this->columnasDe('ordenes_servicio');
+        $tieneColVersion = in_array('version', $colsOs, true);
+        $tieneColMotivoVer = in_array('motivo_cambio_version', $colsOs, true);
+
+        $versionSet = '';
+        $motivoSet = '';
+        $nuevaVersion = max(1, (int)($actual['version'] ?? 1));
+        if ($debeVersionar) {
+            if ($motivoCambio === '') {
+                $motivoCambio = 'Modificación en O/S aprobada';
+            }
+            $usuarioSnap = isset($datos['usuario_id'])
+                ? (int)$datos['usuario_id']
+                : (isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : null);
+            $this->registrarSnapshotVersion($idOS, $nuevaVersion, $actual, $motivoCambio, $usuarioSnap);
+            $nuevaVersion++;
+            $nuevoEstado = 'Estado 2: Revision';
+            if ($tieneColVersion) {
+                $versionSet = "version = :version,";
+            }
+            if ($tieneColMotivoVer) {
+                $motivoSet = "motivo_cambio_version = :motivo_cambio_version,";
+            }
+        }
+
         $tieneDuracion = $this->tieneColumnaDuracionMeses();
         $duracionSet = $tieneDuracion ? "duracion_meses = :duracion_meses," : "";
 
@@ -822,6 +1117,8 @@ class OrdenServicioModelo {
                     fecha_inicio = :fecha_inicio,
                     fecha_fin = :fecha_fin,
                     periodicidad = :periodicidad,
+                    {$versionSet}
+                    {$motivoSet}
                     estado = :estado
                 WHERE id = :id";
 
@@ -844,6 +1141,12 @@ class OrdenServicioModelo {
         ];
         if ($tieneDuracion) {
             $paramsUpd['duracion_meses'] = $esMultimes ? $duracionMeses : null;
+        }
+        if ($debeVersionar && $tieneColVersion) {
+            $paramsUpd['version'] = $nuevaVersion;
+        }
+        if ($debeVersionar && $tieneColMotivoVer) {
+            $paramsUpd['motivo_cambio_version'] = $motivoCambio;
         }
 
         $stmt = $this->db->prepare($sql);

@@ -169,11 +169,15 @@ class FormatosEnsayosTest extends TestCase {
             $this->assertNotEmpty($formato['notas'], "{$contexto} 'notas' no debe estar vacío.");
         }
 
-        // Validación puntual del formato Compactación Densímetro Nuclear (Captura 2026-09-16 092442)
+        // Validación puntual del formato Compactación Densímetro Nuclear (sin fabricar número de serie Troxler por defecto)
         $this->assertArrayHasKey('compactacion_densimetro_nuclear.md', $data);
         $densimetro = $data['compactacion_densimetro_nuclear.md'];
-        $this->assertCount(2, $densimetro['notas'], "El formato de densímetro nuclear debe contener exactamente 2 notas técnicas.");
+        $this->assertGreaterThanOrEqual(1, count($densimetro['notas']), "El formato de densímetro nuclear debe contener nota normativa CYCSA-PE-25.");
         $this->assertStringContainsString('CYCSA-PE-25', $densimetro['notas'][0]);
-        $this->assertStringContainsString('TROXLER, Modelo: 3440', $densimetro['notas'][1]);
+        $this->assertNotContains('P.V.S.Sitio (kg/cm²)', $densimetro['columns']);
+        $this->assertContains('P.V.S.Sitio (kg/m³)', $densimetro['columns']);
+        foreach ($densimetro['notas'] as $notaDens) {
+            $this->assertStringNotContainsString('62677', $notaDens, 'No debe inyectar serie Troxler fija por defecto.');
+        }
     }
 }

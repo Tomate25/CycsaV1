@@ -95,6 +95,9 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
                     <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $o['id'] ?>&id_hoja=<?= $hOS['id'] ?>" target="_blank" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; padding: 7px 14px; border-radius: 6px;" title="Ver RT-FM-13: <?= htmlspecialchars($hOS['descripcion_ensayo'] ?? '') ?>">
                         <i class="fa-solid fa-file-pdf text-info me-1"></i> RT-FM-13 (<?= htmlspecialchars($hOS['numero_registro'] ?? '#' . $hOS['id']) ?><?= !empty($hOS['descripcion_ensayo']) ? ' · ' . htmlspecialchars($hOS['descripcion_ensayo']) : '' ?>)
                     </a>
+                    <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$hOS['id'] ?>" target="_blank" class="btn btn-outline-primary btn-sm" style="font-weight: 600; padding: 7px 14px; border-radius: 6px;" title="Imprimir Hoja de Solicitud de Ensayo RT-FM-60">
+                        <i class="fa-solid fa-file-lines me-1"></i> Hoja RT-FM-60
+                    </a>
                 <?php endforeach; ?>
             <?php else: ?>
                 <a href="/Cycsa/publico/ordenes-servicio?id_os=<?= $o['id'] ?>" class="btn btn-warning btn-sm text-dark fw-bold" style="padding: 7px 14px; border-radius: 6px;">

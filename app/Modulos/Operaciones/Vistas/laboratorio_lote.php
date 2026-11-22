@@ -4,6 +4,12 @@
  * Muestra todas las N muestras de la hoja y sus réplicas CR en la misma secuencia que la matriz técnica.
  * Cada fila corresponde a una muestra o réplica con su edad y fecha individual de rotura.
  */
+use Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio;
+
+$divisorKgCm2Lab = ConfigCalculoLabServicio::obtenerFloat('cilindros_divisor_kgcm2', 14.2029);
+$redondearPsi10Lab = ConfigCalculoLabServicio::obtenerBool('cilindros_redondear_psi_10', true);
+$redondearPv10Lab = ConfigCalculoLabServicio::obtenerBool('cilindros_redondear_pv_10', true);
+
 $totalMuestrasLote = count($muestrasLote ?? []);
 $totalReplicasCr = 0;
 $mapaMatrizJs = [];
@@ -16,21 +22,32 @@ foreach (($muestrasLote ?? []) as $itemLote) {
     if ($esRep) {
         $totalReplicasCr++;
     }
-    $mapaMatrizJs[$mId] = $itemLote['datos_matriz'] ?? [];
-
     $dmRow = $itemLote['datos_matriz'] ?? [];
+    $dmRow['fecha_moldeo'] = $dmRow['fecha_fabricacion'] ?? ($mRow['fecha_moldeo'] ?? '');
+    $mapaMatrizJs[$mId] = $dmRow;
+
     $areaDef = (!empty($dmRow['area']) && (float)$dmRow['area'] > 0) ? (float)$dmRow['area'] : '';
     foreach (($itemLote['especimenes'] ?? []) as $espItem) {
         if (($espItem['estado'] ?? '') !== 'ensayado' && !empty($espItem['plan_edad_id'])) {
+            $edadItem = (int)($espItem['edad_dias'] ?? ($dmRow['edad_dias'] ?? 0));
+            $tolItem = (isset($espItem['tolerancia_horas']) && (float)$espItem['tolerancia_horas'] > 0)
+                ? (float)$espItem['tolerancia_horas']
+                : ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39($edadItem > 0 ? $edadItem : 28);
             $probetasPendientesLote[] = [
                 'muestra_id' => $mId,
                 'especimen_id' => (int)$espItem['id'],
                 'codigo_lab' => (string)$espItem['codigo_lab'],
                 'plan_edad_id' => (int)$espItem['plan_edad_id'],
-                'edad_dias' => (int)($espItem['edad_dias'] ?? ($dmRow['edad_dias'] ?? 0)),
+                'edad_dias' => $edadItem,
+                'fecha_moldeo' => (string)($dmRow['fecha_fabricacion'] ?? ($mRow['fecha_moldeo'] ?? '')),
                 'fecha_programada' => (string)($espItem['fecha_programada'] ?? ($dmRow['fecha_rotura_programada'] ?? '')),
-                'tolerancia_horas' => (int)($espItem['tolerancia_horas'] ?? 24),
+                'tolerancia_horas' => $tolItem,
                 'area' => $areaDef,
+                'diametro_1' => (!empty($dmRow['diametro_1']) && (float)$dmRow['diametro_1'] > 0) ? (float)$dmRow['diametro_1'] : '',
+                'diametro_2' => (!empty($dmRow['diametro_2']) && (float)$dmRow['diametro_2'] > 0) ? (float)$dmRow['diametro_2'] : '',
+                'largo_1' => (!empty($dmRow['largo_1']) && (float)$dmRow['largo_1'] > 0) ? (float)$dmRow['largo_1'] : '',
+                'largo_2' => (!empty($dmRow['largo_2']) && (float)$dmRow['largo_2'] > 0) ? (float)$dmRow['largo_2'] : '',
+                'masa_kg' => (!empty($dmRow['masa_kg']) && (float)$dmRow['masa_kg'] > 0) ? (float)$dmRow['masa_kg'] : '',
                 'carga_precargada' => ''
             ];
         }
@@ -366,8 +383,12 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                                     <i class="fa-solid fa-eye"></i> Ver Lote
                                 </a>
                             <?php endif; ?>
-                        <?php elseif ($tieneProgramacion && $planEdadId > 0 && $espId > 0): ?>
-                            <button type="button" class="btn-accion btn-primary-lab" onclick="abrirModalRegistrarRoturaLote(<?= $mId ?>, <?= $espId ?>, '<?= htmlspecialchars($codLab, ENT_QUOTES) ?>', <?= $planEdadId ?>, <?= (int)($edadDias ?: 28) ?>, '<?= htmlspecialchars((string)$fechaProg, ENT_QUOTES) ?>', 24)">
+                        <?php elseif ($tieneProgramacion && $planEdadId > 0 && $espId > 0):
+                            $tolEspBtn = (isset($esp['tolerancia_horas']) && (float)$esp['tolerancia_horas'] > 0)
+                                ? (float)$esp['tolerancia_horas']
+                                : ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39((int)($edadDias ?: 28));
+                        ?>
+                            <button type="button" class="btn-accion btn-primary-lab" onclick="abrirModalRegistrarRoturaLote(<?= $mId ?>, <?= $espId ?>, '<?= htmlspecialchars($codLab, ENT_QUOTES) ?>', <?= $planEdadId ?>, <?= (int)($edadDias ?: 28) ?>, '<?= htmlspecialchars((string)$fechaProg, ENT_QUOTES) ?>', <?= $tolEspBtn ?>, '<?= htmlspecialchars((string)($fechaMoldeo ?? ''), ENT_QUOTES) ?>')">
                                 <i class="fa-solid fa-hammer"></i> Romper
                             </button>
                         <?php else: ?>
@@ -556,13 +577,14 @@ foreach (($muestrasLote ?? []) as $itemLote) {
             <input type="hidden" id="rot_especimen_id" name="especimen_id" value="">
             <input type="hidden" id="rot_plan_edad_id" name="plan_edad_id" value="">
             <input type="hidden" id="rot_edad_dias" name="edad_dias" value="">
+            <input type="hidden" id="rot_fecha_moldeo" value="">
             <input type="hidden" id="rot_fecha_prog" value="">
-            <input type="hidden" id="rot_tol_horas" value="24">
+            <input type="hidden" id="rot_tol_horas" value="20">
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Fecha y Hora Real:</label>
-                    <input type="datetime-local" id="rot_fecha_real" name="fecha_real" class="form-control" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" value="<?= date('Y-m-d\TH:i') ?>" onchange="verificarToleranciaTiempoLote()" required>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Fecha y Hora de Ensayo:</label>
+                    <input type="datetime-local" id="rot_fecha_real" name="fecha_real" class="form-control" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" value="<?= date('Y-m-d\TH:i') ?>" onchange="verificarToleranciaTiempoLote(); calcularEsfuerzoLote();" required>
                 </div>
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Tipo de Falla (ASTM C39):</label>
@@ -572,57 +594,75 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                         <option value="Tipo 3 (División columnar)">Tipo 3 (División columnar)</option>
                         <option value="Tipo 4 (Fractura diagonal)">Tipo 4 (Fractura diagonal)</option>
                         <option value="Tipo 5 (Fractura en esquinas)">Tipo 5 (Fractura en esquinas)</option>
+                        <option value="Tipo 6 (Extremo en punta)">Tipo 6 (Extremo en punta)</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- Dimensiones y Masa RT-FM-61 visibles directamente -->
+            <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;">
+                <div style="font-size: 12px; font-weight: 800; color: #103487; margin-bottom: 10px;">
+                    <i class="fa-solid fa-ruler-combined"></i> Mediciones del Espécimen (RT-FM-61)
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">D1 (cm):</label>
+                        <input type="text" inputmode="decimal" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" placeholder="Ej. 10.10" oninput="recalcularAreaLote()">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">D2 (cm):</label>
+                        <input type="text" inputmode="decimal" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" placeholder="Ej. 10.10" oninput="recalcularAreaLote()">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">L1 (cm):</label>
+                        <input type="text" inputmode="decimal" name="datos_crudos[largo_1]" id="hc_l1" class="form-control" style="width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" placeholder="Ej. 20.20" oninput="calcularEsfuerzoLote()">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">L2 (cm):</label>
+                        <input type="text" inputmode="decimal" name="datos_crudos[largo_2]" id="hc_l2" class="form-control" style="width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" placeholder="Ej. 20.20" oninput="calcularEsfuerzoLote()">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">Masa (kg):</label>
+                        <input type="text" inputmode="decimal" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" placeholder="Ej. 3.920" oninput="calcularEsfuerzoLote()">
+                    </div>
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Carga de Rotura (lb): *</label>
-                    <input type="text" inputmode="decimal" id="rot_carga" name="carga" class="form-control" style="width: 100%; height: 38px; font-weight: 800; font-family: monospace; font-size: 15px; border: 1.5px solid #0369a1; border-radius: 6px; padding: 4px 8px;" value="" placeholder="Ej. 65400" oninput="calcularEsfuerzoLote()" required>
+                    <input type="text" inputmode="decimal" id="rot_carga" name="carga" class="form-control" style="width: 100%; height: 38px; font-weight: 800; font-family: monospace; font-size: 15px; border: 1.5px solid #0369a1; border-radius: 6px; padding: 4px 8px;" value="" placeholder="Ej. 44840" oninput="calcularEsfuerzoLote()" required>
                 </div>
                 <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Área Transversal (in²): *</label>
-                    <input type="text" inputmode="decimal" id="rot_area" name="area" class="form-control" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" value="" placeholder="Ej. 28.274" oninput="calcularEsfuerzoLote()" required>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Área Transversal (in²) [Calculada de D1/D2]: *</label>
+                    <input type="text" inputmode="decimal" id="rot_area" name="area" class="form-control" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; background: #f1f5f9; font-family: monospace; font-weight: 700;" value="" placeholder="Ingrese D1 y D2" readonly required>
                 </div>
             </div>
 
-            <details style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
-                <summary style="font-size: 12.5px; font-weight: 700; color: #103487; cursor: pointer;">
-                    <i class="fa-solid fa-calculator"></i> Dimensiones adicionales y Masa (RT-FM-61)
-                </summary>
-                <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Diámetro 1 (cm):</label>
-                        <input type="text" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" oninput="recalcularAreaLote()">
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Diámetro 2 (cm):</label>
-                        <input type="text" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;" oninput="recalcularAreaLote()">
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Longitud 1 (cm):</label>
-                        <input type="text" name="datos_crudos[largo_1]" id="hc_l1" class="form-control" style="width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;">
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Longitud 2 (cm):</label>
-                        <input type="text" name="datos_crudos[largo_2]" id="hc_l2" class="form-control" style="width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;">
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Masa (kg):</label>
-                        <input type="text" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;">
-                    </div>
-                </div>
-            </details>
-
-            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;">
                 <div>
-                    <span style="font-size: 11px; color: #64748b; font-weight: 700;">Esfuerzo Calculado PSI:</span>
-                    <div id="calc_psi" style="font-size: 18px; font-weight: 800; font-family: monospace; color: #0369a1;">--</div>
+                    <span style="font-size: 10.5px; color: #64748b; font-weight: 700;">Área (in²):</span>
+                    <div id="calc_area_in2" style="font-size: 14px; font-weight: 800; font-family: monospace; color: #334155;">--</div>
                 </div>
                 <div>
-                    <span style="font-size: 11px; color: #64748b; font-weight: 700;">Esfuerzo Calculado kg/cm²:</span>
-                    <div id="calc_kgcm2" style="font-size: 18px; font-weight: 800; font-family: monospace; color: #047857;">--</div>
+                    <span style="font-size: 10.5px; color: #64748b; font-weight: 700;">Volumen (m³):</span>
+                    <div id="calc_vol_m3" style="font-size: 14px; font-weight: 800; font-family: monospace; color: #334155;">--</div>
+                </div>
+                <div>
+                    <span style="font-size: 10.5px; color: #64748b; font-weight: 700;">Peso Vol. (kg/m³):</span>
+                    <div id="calc_pv" style="font-size: 14px; font-weight: 800; font-family: monospace; color: #7c3aed;">--</div>
+                </div>
+                <div>
+                    <span style="font-size: 10.5px; color: #64748b; font-weight: 700;">Edad Real (días):</span>
+                    <div id="calc_edad_dias" style="font-size: 14px; font-weight: 800; font-family: monospace; color: #0f172a;">--</div>
+                </div>
+                <div>
+                    <span style="font-size: 10.5px; color: #64748b; font-weight: 700;">R. Compresión (psi):</span>
+                    <div id="calc_psi" style="font-size: 17px; font-weight: 800; font-family: monospace; color: #0369a1;">--</div>
+                </div>
+                <div>
+                    <span style="font-size: 10.5px; color: #64748b; font-weight: 700;">R. Compresión (kgf/cm²):</span>
+                    <div id="calc_kgcm2" style="font-size: 17px; font-weight: 800; font-family: monospace; color: #047857;">--</div>
                 </div>
             </div>
 
@@ -632,7 +672,7 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                     <i class="fa-solid fa-triangle-exclamation"></i> ENSAYO FUERA DE TOLERANCIA ASTM C39
                 </div>
                 <div style="font-size: 11.5px; color: #881337; margin-bottom: 6px; line-height: 1.35;">
-                    La fecha/hora seleccionada excede la ventana admisible para esta edad (±<span id="rot_tol_hrs_txt">24</span> hrs). Ingrese una justificación técnica obligatoria.
+                    La fecha/hora seleccionada excede la ventana admisible para esta edad (±<span id="rot_tol_hrs_txt">20</span> hrs). Ingrese una justificación técnica obligatoria.
                 </div>
                 <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 6px 8px; font-size: 12px; border: 1px solid #fca5a5; border-radius: 6px;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
             </div>
@@ -690,7 +730,7 @@ foreach (($muestrasLote ?? []) as $itemLote) {
 
 <!-- Modal Captura de Rompimientos en Lote (Batch) -->
 <div id="modalRoturaLoteBatch" class="modal-lab">
-    <div class="modal-lab-content" style="max-width: 960px;">
+    <div class="modal-lab-content" style="max-width: 1180px;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
             <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--cycsa-azul); display: flex; align-items: center; gap: 8px;">
                 <i class="fa-solid fa-hammer"></i> Captura de Rompimientos del Lote (<?= count($probetasPendientesLote) ?> Probetas Juntas)
@@ -699,7 +739,7 @@ foreach (($muestrasLote ?? []) as $itemLote) {
         </div>
 
         <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: #1e40af; margin-bottom: 15px;">
-            <i class="fa-solid fa-circle-info"></i> Ingrese la <strong>Carga de Rotura (lb)</strong> obtenida en prensa para cada una de las probetas del lote. Al guardar, los resultados se sincronizarán directamente con la Matriz Técnica.
+            <i class="fa-solid fa-circle-info"></i> Ingrese las mediciones (<strong>D1, D2, L1, L2, Masa</strong>), la <strong>Fecha de Ensayo</strong> y la <strong>Carga de Rotura (lb)</strong> para cada probeta. El Área (in²), Peso Volumétrico y Resistencia (psi a 10 / kgf/cm²) se calculan automáticamente conforme a RT-FM-61.
         </div>
 
         <form method="POST" action="/Cycsa/publico/laboratorio/registrar-roturas-lote">
@@ -707,50 +747,59 @@ foreach (($muestrasLote ?? []) as $itemLote) {
             <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
 
             <div style="overflow-x: auto; margin-bottom: 16px;">
-                <table class="tabla-lab" style="font-size: 12.5px;">
+                <table class="tabla-lab" style="font-size: 11.5px;">
                     <thead>
                         <tr>
                             <th>Probeta</th>
+                            <th>D1 (cm)</th>
+                            <th>D2 (cm)</th>
+                            <th>L1 (cm)</th>
+                            <th>L2 (cm)</th>
+                            <th>Masa (kg)</th>
+                            <th>Fecha Ensayo</th>
+                            <th style="width: 105px;">Carga (lb) *</th>
+                            <th style="width: 82px;">Área (in²)</th>
+                            <th>PV (kg/m³)</th>
                             <th>Edad</th>
-                            <th>Fecha Prog.</th>
-                            <th style="width: 140px;">Carga Rotura (lb) *</th>
-                            <th style="width: 105px;">Área (in²) *</th>
-                            <th style="width: 110px;">Esfuerzo PSI</th>
-                            <th style="width: 110px;">Esfuerzo kg/cm²</th>
+                            <th>R (psi)</th>
+                            <th>R (kgf/cm²)</th>
                             <th>Tipo Falla</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($probetasPendientesLote as $bIdx => $pEsp): ?>
                         <tr>
-                            <td style="font-family: monospace; font-weight: 800; color: #0369a1;">
+                            <td style="font-family: monospace; font-weight: 800; color: #0369a1; white-space: nowrap;">
                                 <?= htmlspecialchars($pEsp['codigo_lab'], ENT_QUOTES, 'UTF-8') ?>
                                 <input type="hidden" name="roturas[<?= $bIdx ?>][especimen_id]" value="<?= (int)$pEsp['especimen_id'] ?>">
                                 <input type="hidden" name="roturas[<?= $bIdx ?>][plan_edad_id]" value="<?= (int)$pEsp['plan_edad_id'] ?>">
                                 <input type="hidden" name="roturas[<?= $bIdx ?>][edad_dias]" value="<?= (int)$pEsp['edad_dias'] ?>">
-                                <input type="hidden" name="roturas[<?= $bIdx ?>][fecha_real]" value="<?= date('Y-m-d H:i:s') ?>">
+                                <input type="hidden" class="batch-fecha-moldeo" data-idx="<?= $bIdx ?>" value="<?= htmlspecialchars((string)($pEsp['fecha_moldeo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                             </td>
-                            <td><strong style="color: #7c3aed;"><?= (int)$pEsp['edad_dias'] ?>d</strong></td>
-                            <td><?= !empty($pEsp['fecha_programada']) ? date('d/m/Y', strtotime($pEsp['fecha_programada'])) : '--' ?></td>
+                            <td><input type="number" step="0.01" min="0.1" name="roturas[<?= $bIdx ?>][diametro_1]" class="form-control batch-d1" data-idx="<?= $bIdx ?>" style="width: 68px; height: 32px; padding: 2px 5px; border: 1px solid #cbd5e1; border-radius: 5px;" value="<?= $pEsp['diametro_1'] !== '' ? $pEsp['diametro_1'] : '' ?>" placeholder="cm" oninput="calcularBatchRow(<?= $bIdx ?>)"></td>
+                            <td><input type="number" step="0.01" min="0.1" name="roturas[<?= $bIdx ?>][diametro_2]" class="form-control batch-d2" data-idx="<?= $bIdx ?>" style="width: 68px; height: 32px; padding: 2px 5px; border: 1px solid #cbd5e1; border-radius: 5px;" value="<?= $pEsp['diametro_2'] !== '' ? $pEsp['diametro_2'] : '' ?>" placeholder="cm" oninput="calcularBatchRow(<?= $bIdx ?>)"></td>
+                            <td><input type="number" step="0.01" min="0.1" name="roturas[<?= $bIdx ?>][largo_1]" class="form-control batch-l1" data-idx="<?= $bIdx ?>" style="width: 68px; height: 32px; padding: 2px 5px; border: 1px solid #cbd5e1; border-radius: 5px;" value="<?= $pEsp['largo_1'] !== '' ? $pEsp['largo_1'] : '' ?>" placeholder="cm" oninput="calcularBatchRow(<?= $bIdx ?>)"></td>
+                            <td><input type="number" step="0.01" min="0.1" name="roturas[<?= $bIdx ?>][largo_2]" class="form-control batch-l2" data-idx="<?= $bIdx ?>" style="width: 68px; height: 32px; padding: 2px 5px; border: 1px solid #cbd5e1; border-radius: 5px;" value="<?= $pEsp['largo_2'] !== '' ? $pEsp['largo_2'] : '' ?>" placeholder="cm" oninput="calcularBatchRow(<?= $bIdx ?>)"></td>
+                            <td><input type="number" step="0.001" min="0.01" name="roturas[<?= $bIdx ?>][masa_kg]" class="form-control batch-masa" data-idx="<?= $bIdx ?>" style="width: 72px; height: 32px; padding: 2px 5px; border: 1px solid #cbd5e1; border-radius: 5px;" value="<?= $pEsp['masa_kg'] !== '' ? $pEsp['masa_kg'] : '' ?>" placeholder="kg" oninput="calcularBatchRow(<?= $bIdx ?>)"></td>
+                            <td><input type="datetime-local" name="roturas[<?= $bIdx ?>][fecha_real]" class="form-control batch-fecha" data-idx="<?= $bIdx ?>" style="width: 155px; height: 32px; padding: 2px 5px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 5px;" value="<?= date('Y-m-d\TH:i') ?>" onchange="calcularBatchRow(<?= $bIdx ?>)"></td>
                             <td>
-                                <input type="number" step="0.1" min="1" name="roturas[<?= $bIdx ?>][carga]" class="form-control batch-carga" data-idx="<?= $bIdx ?>" style="width: 100%; height: 34px; font-weight: 800; font-family: monospace; padding: 4px 8px; border: 1.5px solid #0369a1; border-radius: 6px;" value="" placeholder="Ej. 65000" oninput="calcularBatchRow(<?= $bIdx ?>)" required>
-                            </td>
-                            <td>
-                                <input type="number" step="0.001" min="0.01" name="roturas[<?= $bIdx ?>][area]" class="form-control batch-area" data-idx="<?= $bIdx ?>" style="width: 100%; height: 34px; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px;" value="<?= !empty($pEsp['area']) ? number_format((float)$pEsp['area'], 3, '.', '') : '' ?>" placeholder="28.274" oninput="calcularBatchRow(<?= $bIdx ?>)" required>
-                            </td>
-                            <td>
-                                <span id="batch_psi_<?= $bIdx ?>" style="font-family: monospace; font-weight: 700; color: #0369a1;">--</span>
+                                <input type="number" step="0.1" min="1" name="roturas[<?= $bIdx ?>][carga]" class="form-control batch-carga" data-idx="<?= $bIdx ?>" style="width: 96px; height: 32px; font-weight: 800; font-family: monospace; padding: 3px 6px; border: 1.5px solid #0369a1; border-radius: 5px;" value="" placeholder="lb" oninput="calcularBatchRow(<?= $bIdx ?>)" required>
                             </td>
                             <td>
-                                <span id="batch_kgcm2_<?= $bIdx ?>" style="font-family: monospace; font-weight: 700; color: #047857;">--</span>
+                                <input type="number" step="0.001" min="0.01" name="roturas[<?= $bIdx ?>][area]" class="form-control batch-area" data-idx="<?= $bIdx ?>" style="width: 78px; height: 32px; padding: 3px 5px; border: 1px solid #cbd5e1; border-radius: 5px; background: #f1f5f9; font-family: monospace;" value="<?= !empty($pEsp['area']) ? number_format((float)$pEsp['area'], 3, '.', '') : '' ?>" placeholder="D1/D2" readonly required>
                             </td>
+                            <td><span id="batch_pv_<?= $bIdx ?>" style="font-family: monospace; font-weight: 700; color: #7c3aed;">--</span></td>
+                            <td><span id="batch_edad_<?= $bIdx ?>" style="font-family: monospace; font-weight: 700; color: #334155;"><?= (int)$pEsp['edad_dias'] ?>d</span></td>
+                            <td><span id="batch_psi_<?= $bIdx ?>" style="font-family: monospace; font-weight: 700; color: #0369a1;">--</span></td>
+                            <td><span id="batch_kgcm2_<?= $bIdx ?>" style="font-family: monospace; font-weight: 700; color: #047857;">--</span></td>
                             <td>
-                                <select name="roturas[<?= $bIdx ?>][tipo_falla]" class="form-control" style="width: 100%; height: 34px; font-size: 11.5px; border-radius: 6px;">
+                                <select name="roturas[<?= $bIdx ?>][tipo_falla]" class="form-control" style="width: 115px; height: 32px; font-size: 11px; border-radius: 5px;">
                                     <option value="Tipo 1 (Cono bien formado)">Tipo 1 (Cono)</option>
                                     <option value="Tipo 2 (Cono y división)">Tipo 2 (Cono/div)</option>
                                     <option value="Tipo 3 (División columnar)">Tipo 3 (Columnar)</option>
                                     <option value="Tipo 4 (Fractura diagonal)">Tipo 4 (Diagonal)</option>
                                     <option value="Tipo 5 (Fractura en esquinas)">Tipo 5 (Esquinas)</option>
+                                    <option value="Tipo 6 (Extremo en punta)">Tipo 6 (Punta)</option>
                                 </select>
                             </td>
                         </tr>
@@ -771,6 +820,26 @@ foreach (($muestrasLote ?? []) as $itemLote) {
 
 <script>
 const MAPA_MATRIZ_LOTE = <?= json_encode($mapaMatrizJs, JSON_UNESCAPED_UNICODE) ?>;
+const LAB_DIVISOR_KGCM2 = <?= json_encode($divisorKgCm2Lab) ?>;
+const LAB_REDONDEAR_PSI_10 = <?= $redondearPsi10Lab ? 'true' : 'false' ?>;
+const LAB_REDONDEAR_PV_10 = <?= $redondearPv10Lab ? 'true' : 'false' ?>;
+
+function calcularAreaDesdeDiametros(d1, d2) {
+    if (d1 > 0 && d2 > 0) {
+        const dProm = (d1 + d2) / 2.0;
+        return (Math.PI * Math.pow(dProm / 2.0, 2)) / 6.4516;
+    }
+    return 0;
+}
+
+function calcularEdadDiasJs(fechaMoldeo, fechaEnsayo) {
+    if (!fechaMoldeo || !fechaEnsayo) return null;
+    const d1 = new Date(String(fechaMoldeo).slice(0, 10) + 'T00:00:00');
+    const d2 = new Date(String(fechaEnsayo).slice(0, 10) + 'T00:00:00');
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
+    const diff = Math.round((d2.getTime() - d1.getTime()) / 86400000);
+    return diff >= 0 ? diff : null;
+}
 
 function abrirModalRoturaLoteBatch() {
     document.querySelectorAll('.batch-carga').forEach(input => {
@@ -785,25 +854,58 @@ function cerrarModalRoturaLoteBatch() {
 }
 
 function calcularBatchRow(idx) {
+    const d1 = parseFloat(document.querySelector(`.batch-d1[data-idx="${idx}"]`)?.value || 0);
+    const d2 = parseFloat(document.querySelector(`.batch-d2[data-idx="${idx}"]`)?.value || 0);
+    const l1 = parseFloat(document.querySelector(`.batch-l1[data-idx="${idx}"]`)?.value || 0);
+    const l2 = parseFloat(document.querySelector(`.batch-l2[data-idx="${idx}"]`)?.value || 0);
+    const masa = parseFloat(document.querySelector(`.batch-masa[data-idx="${idx}"]`)?.value || 0);
+    const fechaEns = document.querySelector(`.batch-fecha[data-idx="${idx}"]`)?.value || '';
+    const fechaMol = document.querySelector(`.batch-fecha-moldeo[data-idx="${idx}"]`)?.value || '';
     const inputCarga = document.querySelector(`.batch-carga[data-idx="${idx}"]`);
     const inputArea = document.querySelector(`.batch-area[data-idx="${idx}"]`);
     if (!inputCarga || !inputArea) return;
+
+    const areaCalc = calcularAreaDesdeDiametros(d1, d2);
+    if (areaCalc > 0) {
+        inputArea.value = areaCalc.toFixed(3);
+        inputArea.readOnly = true;
+    }
+
     const c = parseFloat(inputCarga.value || 0);
     const a = parseFloat(inputArea.value || 0);
+    const pvSpan = document.getElementById(`batch_pv_${idx}`);
+    const edadSpan = document.getElementById(`batch_edad_${idx}`);
     const psiSpan = document.getElementById(`batch_psi_${idx}`);
     const kgcm2Span = document.getElementById(`batch_kgcm2_${idx}`);
+
+    const lProm = (l1 > 0 && l2 > 0) ? ((l1 + l2) / 2.0) : (l1 > 0 ? l1 : l2);
+    if (masa > 0 && a > 0 && lProm > 0) {
+        const volM3 = (a * 6.4516 * lProm) / 1000000.0;
+        const pvRaw = masa / volM3;
+        const pv = LAB_REDONDEAR_PV_10 ? (Math.round(pvRaw / 10.0) * 10.0) : Math.round(pvRaw);
+        if (pvSpan) pvSpan.innerText = pv.toFixed(0);
+    } else if (pvSpan) {
+        pvSpan.innerText = '--';
+    }
+
+    const edadCalc = calcularEdadDiasJs(fechaMol, fechaEns);
+    if (edadSpan && edadCalc !== null) {
+        edadSpan.innerText = edadCalc + 'd';
+    }
+
     if (c > 0 && a > 0) {
-        const psi = c / a;
-        const kgcm2 = psi * 0.070307;
-        if (psiSpan) psiSpan.innerText = psi.toFixed(1) + ' PSI';
-        if (kgcm2Span) kgcm2Span.innerText = kgcm2.toFixed(1) + ' kg/cm²';
+        const psiBruto = c / a;
+        const psi = LAB_REDONDEAR_PSI_10 ? (Math.round(psiBruto / 10.0) * 10.0) : parseFloat(psiBruto.toFixed(2));
+        const kgcm2 = Math.round(psi / LAB_DIVISOR_KGCM2);
+        if (psiSpan) psiSpan.innerText = psi.toFixed(0) + ' psi';
+        if (kgcm2Span) kgcm2Span.innerText = kgcm2.toFixed(0);
     } else {
         if (psiSpan) psiSpan.innerText = '--';
         if (kgcm2Span) kgcm2Span.innerText = '--';
     }
 }
 
-function abrirModalRegistrarRoturaLote(muestraId, espId, codigoLab, planEdadId, edadDias, fechaProg, tolHoras) {
+function abrirModalRegistrarRoturaLote(muestraId, espId, codigoLab, planEdadId, edadDias, fechaProg, tolHoras, fechaMoldeo) {
     document.getElementById('rot_muestra_id').value = muestraId;
     document.getElementById('rot_especimen_id').value = espId;
     document.getElementById('rot_esp_codigo').innerText = codigoLab;
@@ -813,19 +915,8 @@ function abrirModalRegistrarRoturaLote(muestraId, espId, codigoLab, planEdadId, 
     document.getElementById('rot_tol_horas').value = tolHoras;
 
     const dm = MAPA_MATRIZ_LOTE[muestraId] || {};
-    // Cero precarga de carga en rotura individual: la carga es resultado del laboratorio
+    document.getElementById('rot_fecha_moldeo').value = fechaMoldeo || dm.fecha_moldeo || '';
     document.getElementById('rot_carga').value = '';
-    
-    // Área por tamaño de cilindro si la matriz no la trae
-    let areaVal = '';
-    if (dm.area && parseFloat(dm.area) > 0) {
-        areaVal = parseFloat(dm.area).toFixed(3);
-    } else if (dm.tamano_cilindro && dm.tamano_cilindro.includes('4x8')) {
-        areaVal = '12.566';
-    } else if (dm.tamano_cilindro && dm.tamano_cilindro.includes('6x12')) {
-        areaVal = '28.274';
-    }
-    document.getElementById('rot_area').value = areaVal;
 
     document.getElementById('hc_d1').value = (dm.diametro_1 && dm.diametro_1 > 0) ? dm.diametro_1 : '';
     document.getElementById('hc_d2').value = (dm.diametro_2 && dm.diametro_2 > 0) ? dm.diametro_2 : '';
@@ -833,10 +924,22 @@ function abrirModalRegistrarRoturaLote(muestraId, espId, codigoLab, planEdadId, 
     document.getElementById('hc_l2').value = (dm.largo_2 && dm.largo_2 > 0) ? dm.largo_2 : '';
     document.getElementById('hc_masa').value = (dm.masa_kg && dm.masa_kg > 0) ? dm.masa_kg : '';
 
+    const areaInput = document.getElementById('rot_area');
+    if (dm.diametro_1 > 0 && dm.diametro_2 > 0) {
+        areaInput.value = calcularAreaDesdeDiametros(parseFloat(dm.diametro_1), parseFloat(dm.diametro_2)).toFixed(3);
+        areaInput.readOnly = true;
+    } else if (dm.area && parseFloat(dm.area) > 0) {
+        areaInput.value = parseFloat(dm.area).toFixed(3);
+        areaInput.readOnly = true;
+    } else {
+        areaInput.value = '';
+        areaInput.readOnly = true;
+    }
+
     const justElem = document.getElementById('rot_justificacion');
     if (justElem) justElem.value = '';
     const tolTxt = document.getElementById('rot_tol_hrs_txt');
-    if (tolTxt) tolTxt.innerText = tolHoras || 24;
+    if (tolTxt) tolTxt.innerText = tolHoras;
 
     calcularEsfuerzoLote();
     verificarToleranciaTiempoLote();
@@ -850,11 +953,11 @@ function cerrarModalRegistrarRotura() {
 function recalcularAreaLote() {
     const d1 = parseFloat(document.getElementById('hc_d1')?.value || 0);
     const d2 = parseFloat(document.getElementById('hc_d2')?.value || 0);
-    if (d1 > 0 && d2 > 0) {
-        const a1 = Math.PI * d1 * d1 / 4.0;
-        const a2 = Math.PI * d2 * d2 / 4.0;
-        const areaIn2 = ((a1 + a2) / 2.0) / 6.4516;
-        document.getElementById('rot_area').value = areaIn2.toFixed(3);
+    const areaInput = document.getElementById('rot_area');
+    const areaIn2 = calcularAreaDesdeDiametros(d1, d2);
+    if (areaIn2 > 0) {
+        areaInput.value = areaIn2.toFixed(3);
+        areaInput.readOnly = true;
     }
     calcularEsfuerzoLote();
 }
@@ -862,7 +965,7 @@ function recalcularAreaLote() {
 function verificarToleranciaTiempoLote() {
     const fechaRealStr = document.getElementById('rot_fecha_real')?.value;
     const fechaProgStr = document.getElementById('rot_fecha_prog')?.value;
-    const tolHoras = parseFloat(document.getElementById('rot_tol_horas')?.value || 24);
+    const tolHoras = parseFloat(document.getElementById('rot_tol_horas')?.value || 20);
 
     const box = document.getElementById('box_justificacion_tolerancia_lote');
     const justArea = document.getElementById('rot_justificacion');
@@ -888,16 +991,51 @@ function verificarToleranciaTiempoLote() {
 }
 
 function calcularEsfuerzoLote() {
-    const carga = parseFloat(document.getElementById('rot_carga').value || 0);
-    const area = parseFloat(document.getElementById('rot_area').value || 0);
-    if (carga > 0 && area > 0) {
-        const psi = carga / area;
-        const kgcm2 = psi * 0.070307;
-        document.getElementById('calc_psi').innerText = psi.toFixed(1) + ' PSI';
-        document.getElementById('calc_kgcm2').innerText = kgcm2.toFixed(1) + ' kg/cm²';
+    const carga = parseFloat(document.getElementById('rot_carga')?.value || 0);
+    const area = parseFloat(document.getElementById('rot_area')?.value || 0);
+    const l1 = parseFloat(document.getElementById('hc_l1')?.value || 0);
+    const l2 = parseFloat(document.getElementById('hc_l2')?.value || 0);
+    const masa = parseFloat(document.getElementById('hc_masa')?.value || 0);
+    const fechaMol = document.getElementById('rot_fecha_moldeo')?.value || '';
+    const fechaReal = document.getElementById('rot_fecha_real')?.value || '';
+
+    const elArea = document.getElementById('calc_area_in2');
+    const elVol = document.getElementById('calc_vol_m3');
+    const elPv = document.getElementById('calc_pv');
+    const elEdad = document.getElementById('calc_edad_dias');
+    const elPsi = document.getElementById('calc_psi');
+    const elKg = document.getElementById('calc_kgcm2');
+
+    if (elArea) elArea.innerText = area > 0 ? area.toFixed(3) : '--';
+
+    const lProm = (l1 > 0 && l2 > 0) ? ((l1 + l2) / 2.0) : (l1 > 0 ? l1 : l2);
+    if (area > 0 && lProm > 0) {
+        const volM3 = (area * 6.4516 * lProm) / 1000000.0;
+        if (elVol) elVol.innerText = volM3.toFixed(6);
+        if (masa > 0) {
+            const pvRaw = masa / volM3;
+            const pv = LAB_REDONDEAR_PV_10 ? (Math.round(pvRaw / 10.0) * 10.0) : Math.round(pvRaw);
+            if (elPv) elPv.innerText = pv.toFixed(0);
+        } else if (elPv) {
+            elPv.innerText = '--';
+        }
     } else {
-        document.getElementById('calc_psi').innerText = '--';
-        document.getElementById('calc_kgcm2').innerText = '--';
+        if (elVol) elVol.innerText = '--';
+        if (elPv) elPv.innerText = '--';
+    }
+
+    const edadCalc = calcularEdadDiasJs(fechaMol, fechaReal);
+    if (elEdad) elEdad.innerText = edadCalc !== null ? (edadCalc + ' días') : '--';
+
+    if (carga > 0 && area > 0) {
+        const psiBruto = carga / area;
+        const psi = LAB_REDONDEAR_PSI_10 ? (Math.round(psiBruto / 10.0) * 10.0) : parseFloat(psiBruto.toFixed(2));
+        const kgcm2 = Math.round(psi / LAB_DIVISOR_KGCM2);
+        if (elPsi) elPsi.innerText = psi.toFixed(0) + ' psi';
+        if (elKg) elKg.innerText = kgcm2.toFixed(0) + ' kgf/cm²';
+    } else {
+        if (elPsi) elPsi.innerText = '--';
+        if (elKg) elKg.innerText = '--';
     }
 }
 

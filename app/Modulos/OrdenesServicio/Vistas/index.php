@@ -467,6 +467,7 @@
                                     <div>
                                         <strong style="font-family: monospace; font-size: 14.5px; color: var(--cycsa-azul); display: block; letter-spacing: 0.3px;">
                                             <?= htmlspecialchars($os['codigo_os']) ?>
+                                            <span style="background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 10px; margin-left: 4px; vertical-align: middle;">v<?= (int)($os['version'] ?? 1) ?></span>
                                         </strong>
                                         <span style="font-family: monospace; font-size: 11.5px; color: #475569; background: #f8fafc; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0; display: inline-block; margin-top: 3px;">
                                             <i class="fa-solid fa-file-invoice" style="font-size: 10.5px; color:#64748b;"></i> <?= htmlspecialchars($os['cotizacion_codigo'] ?? 'N/A') ?>
@@ -694,6 +695,13 @@
                                                             <i class="fa-solid fa-file-pdf me-2 text-danger"></i> Descargar PDF Oficial
                                                         </a>
                                                     </li>
+                                                    <?php if (!empty($os['id_hoja'])): ?>
+                                                    <li>
+                                                        <a class="dropdown-item py-2" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$os['id_hoja'] ?>" target="_blank">
+                                                            <i class="fa-solid fa-flask me-2" style="color:#7c3aed;"></i> Hoja RT-FM-60 (Laboratorio)
+                                                        </a>
+                                                    </li>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                             <?php elseif ($esFinalizadaOArchivo && $cantHojas > 0): ?>
                                                 <li><hr class="dropdown-divider my-1"></li>
@@ -1055,8 +1063,11 @@
                                                                             title="Editar Hoja RT-FM-13">
                                                                         <i class="fa-solid fa-pen"></i>
                                                                     </button>
-                                                                    <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>&id_hoja=<?= $hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary" style="min-height:34px; padding:4px 10px; font-size:12px;" title="Descargar PDF Oficial">
+                                                                    <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>&id_hoja=<?= $hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary" style="min-height:34px; padding:4px 10px; font-size:12px;" title="Descargar PDF Oficial RT-FM-13">
                                                                         <i class="fa-solid fa-file-pdf"></i>
+                                                                    </a>
+                                                                    <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:4px 10px; font-size:11.5px; border-color:#7c3aed; color:#6d28d9; background:#f5f3ff; font-weight:700;" title="Ver / Imprimir Hoja RT-FM-60 (Solicitud de Ensayo a Laboratorio)">
+                                                                        <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
                                                                     </a>
                                                                 </div>
                                                             </div>
@@ -1229,6 +1240,9 @@
                 </button>
             </div>
         </div>
+
+        <!-- ALERTA DE ALCANCE / VIGENCIA MENSUAL (2.13 / 2.14) -->
+        <div id="hs_alerta_alcance_mensual" style="display:none; margin-bottom:14px; padding:12px 16px; border-radius:8px; font-size:13px;"></div>
 
         <div id="wrapper-split-rt-fm-13" class="rtfm13-split-layout" style="display:none;">
             
@@ -2803,6 +2817,24 @@
         window.plantillaSugeridaHojaActual = data.plantilla_sugerida_hoja || null;
         window.productosPermitidosActuales = data.productos_permitidos_os || data.productos_permitidos || [];
 
+        const alertaAlcEl = document.getElementById('hs_alerta_alcance_mensual');
+        if (alertaAlcEl) {
+            const alc = data.alerta_alcance_mensual || {};
+            if (alc.tiene_alerta && Array.isArray(alc.mensajes) && alc.mensajes.length > 0) {
+                const esDanger = alc.nivel === 'danger';
+                alertaAlcEl.style.display = 'block';
+                alertaAlcEl.style.background = esDanger ? '#fef2f2' : '#fffbeb';
+                alertaAlcEl.style.border = esDanger ? '1.5px solid #fca5a5' : '1.5px solid #fcd34d';
+                alertaAlcEl.style.color = esDanger ? '#991b1b' : '#92400e';
+                alertaAlcEl.innerHTML = '<strong><i class="fa-solid fa-triangle-exclamation"></i> Alerta de Alcance Mensual / Vigencia:</strong><ul style="margin:6px 0 0 18px; padding:0;">' +
+                    alc.mensajes.map(m => '<li>' + escapeHtml(String(m)) + '</li>').join('') +
+                    '</ul>';
+            } else {
+                alertaAlcEl.style.display = 'none';
+                alertaAlcEl.innerHTML = '';
+            }
+        }
+
         poblarSelectorPlantillaGlobal(window.productoHojaIdActual, window.clienteIdActualHoja, window.plantillaSugeridaHojaActual);
         aplicarFiltroWhitelistReq(window.ensayosDisponiblesOS, !!data.es_nueva);
 
@@ -3962,7 +3994,7 @@
         const inpCm = buscarPorClaves(['revencm', 'revenimientocm']);
         if (inpIn && inpCm) {
             if (origenInp === inpIn && inpIn.value !== '' && !isNaN(parseFloat(inpIn.value))) {
-                inpCm.value = (parseFloat(inpIn.value) * 2.54).toFixed(1);
+                inpCm.value = (Math.round(parseFloat(inpIn.value) * 2.54 * 2) / 2).toFixed(1);
             } else if (origenInp === inpCm && inpCm.value !== '' && !isNaN(parseFloat(inpCm.value))) {
                 inpIn.value = (parseFloat(inpCm.value) / 2.54).toFixed(2);
             }

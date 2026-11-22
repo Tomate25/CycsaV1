@@ -14,7 +14,7 @@
             "Profundidad (cm)",
             "P.V.S Max (kg/m³)",
             "Humedad Óptima ((% )(P/P))",
-            "P.V.S.Sitio (kg/cm²)",
+            "P.V.S.Sitio (kg/m³)",
             "Humedad Sitio ((%) (P/P))",
             "Humedad Sitio (kg/m³)",
             "Compactación ((%) (P/P))",
@@ -28,7 +28,7 @@
             "Profundidad (cm)": "",
             "P.V.S Max (kg/m³)": "CYCSA-PE-18",
             "Humedad Óptima ((% )(P/P))": "CYCSA-PE-13",
-            "P.V.S.Sitio (kg/cm²)": "CYCSA-PE-25",
+            "P.V.S.Sitio (kg/m³)": "CYCSA-PE-25",
             "Humedad Sitio ((%) (P/P))": "CYCSA PE-25",
             "Humedad Sitio (kg/m³)": "CYCSA PE-25",
             "Compactación ((%) (P/P))": "CYCSA-PE-25",
@@ -37,8 +37,7 @@
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
         "notas": [
-            "Notas: Ensayos realizados in Situ: CYCSA-PE-25.\" CYCSA-PE-13\",\"CYCSA-PE-18\"",
-            "Nota 1: Muestra tomada con equipo TROXLER, Modelo: 3440, N/S : 62677 Eq-6555"
+            "Notas: Ensayos realizados in Situ: CYCSA-PE-25.\" CYCSA-PE-13\",\"CYCSA-PE-18\""
         ]
     },
     "compactación_densimetro_nuclear.md": {
@@ -56,7 +55,7 @@
             "Profundidad (cm)",
             "P.V.S Max (kg/m³)",
             "Humedad Óptima ((% )(P/P))",
-            "P.V.S.Sitio (kg/cm²)",
+            "P.V.S.Sitio (kg/m³)",
             "Humedad Sitio ((%) (P/P))",
             "Humedad Sitio (kg/m³)",
             "Compactación ((%) (P/P))",
@@ -70,7 +69,7 @@
             "Profundidad (cm)": "",
             "P.V.S Max (kg/m³)": "CYCSA-PE-18",
             "Humedad Óptima ((% )(P/P))": "CYCSA-PE-13",
-            "P.V.S.Sitio (kg/cm²)": "CYCSA-PE-25",
+            "P.V.S.Sitio (kg/m³)": "CYCSA-PE-25",
             "Humedad Sitio ((%) (P/P))": "CYCSA PE-25",
             "Humedad Sitio (kg/m³)": "CYCSA PE-25",
             "Compactación ((%) (P/P))": "CYCSA-PE-25",
@@ -79,8 +78,7 @@
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
         "notas": [
-            "Notas: Ensayos realizados in Situ: CYCSA-PE-25.\" CYCSA-PE-13\",\"CYCSA-PE-18\"",
-            "Nota 1: Muestra tomada con equipo TROXLER, Modelo: 3440, N/S : 62677 Eq-6555"
+            "Notas: Ensayos realizados in Situ: CYCSA-PE-25.\" CYCSA-PE-13\",\"CYCSA-PE-18\""
         ]
     },
     "ensayos_varios.md": {
@@ -96,7 +94,7 @@
             "Color",
             "PVSS (kg/m³)",
             "PVSC (kg/m³)",
-            "Módulo de finura ((%) (P/P))",
+            "Módulo de finura",
             "Humedad Natural ((%) (P/P))",
             "Absorción ((%)(P/P))",
             "Gravedad Específica.",
@@ -109,7 +107,7 @@
             "Color": "CYCSA-PE-05",
             "PVSS (kg/m³)": "CYCSA-PE-03",
             "PVSC (kg/m³)": "CYCSA-PE-03",
-            "Módulo de finura ((%) (P/P))": "CYCSA-PE-06",
+            "Módulo de finura": "CYCSA-PE-06",
             "Humedad Natural ((%) (P/P))": "CYCSA-PE-01",
             "Absorción ((%)(P/P))": "CYCSA-PE-02",
             "Gravedad Específica.": "CYCSA-PE-02",
@@ -601,25 +599,39 @@
     },
     "formato_de_suelo_cemento.md": {
         "docx_source": "Formato de Suelo Cemento.docx",
-        "codigo_formato": "CYCSA-RT-FM-22 A V1R2",
-        "ensayo_titulo": "CYCSA-PE-05 Método de prueba estándar para Impurezas Orgánicas en agregados finos para concreto",
-        "metodo_muestreo": "DE-ASTM140",
-        "tipo_muestra": "Agregados",
-        "norma": "DE-ASTM140",
+        "codigo_formato": "CYCSA-RT-FM-22 A V1-R2",
+        "ensayo_titulo": "CYCSA-PE-58 Método de prueba estándar para la resistencia a la compresión de cilindros de suelo-cemento moldeados",
+        "metodo_muestreo": "DE-ASTM D1633-17",
+        "tipo_muestra": "Suelo-Cemento",
+        "norma": "DE-ASTM D1633-17",
         "columns": [
             "Código laboratorio",
             "Nombre muestra",
-            "Color"
+            "Área (cm²)",
+            "Carga (kg)",
+            "Peso Volumétrico (kg/m³)",
+            "Diseño (kg/cm²)",
+            "R. compresión. (kg/cm²)",
+            "Fecha de Fabricación",
+            "Fecha de Ensayo",
+            "Edad (Días)"
         ],
         "column_methods": {
             "Código laboratorio": "",
             "Nombre muestra": "",
-            "Color": "ASTM C40"
+            "Área (cm²)": "CYCSA-PE-58",
+            "Carga (kg)": "CYCSA-PE-58",
+            "Peso Volumétrico (kg/m³)": "CYCSA-PE-58",
+            "Diseño (kg/cm²)": "",
+            "R. compresión. (kg/cm²)": "CYCSA-PE-58",
+            "Fecha de Fabricación": "",
+            "Fecha de Ensayo": "",
+            "Edad (Días)": ""
         },
         "fixed_rows": [],
         "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
         "notas": [
-            "Nota : Ensayo realizado en instalaciones fijas de Consultoría y Construcción SA. CYCSA.\" CYCSA-05\""
+            "Nota: Ensayo realizado en las instalaciones fijas de Consultoría y Construcción SA. CYCSA: \"CYCSA-PE-58\"."
         ]
     },
     "formato_de_resistencia_de_bloques.md": {
@@ -1034,7 +1046,7 @@
     "resistencia_de_mortero.md": {
         "docx_source": "Resistencia de Mortero.docx",
         "codigo_formato": "CYCSA-RT-FM-22 A V1R2",
-        "ensayo_titulo": "CYCSA-PE-57 Método de prueba de estándar para la resistencia a la compresión de morteros de cemento hidráulico (utilizando muestras cúbica de 50 nm(2 in))",
+        "ensayo_titulo": "CYCSA-PE-57 Método de prueba estándar para la resistencia a la compresión de morteros de cemento hidráulico (utilizando muestras cúbicas de 50 mm (2 in))",
         "metodo_muestreo": "DE-ASTM C109M-24",
         "tipo_muestra": "Mortero",
         "norma": "DE-ASTM C109M-24",
@@ -1108,6 +1120,205 @@
         "notas": [
             "Nota: Ensayo realizado en las instalaciones fijas de Consultoría y Construcción SA. CYCSA: \"CYCSA-PE-07\".",
             "Nota1: Se añade -1 para sustituir el informe de resultados emitido anteriormente, se corrige método de muestre, informe de resultados"
+        ]
+    },
+    "formato_cbr_h07.md": {
+        "docx_source": "RT-FM-22 H-7 CBR.docx",
+        "codigo_formato": "CYCSA-RT-FM-22 H-7",
+        "ensayo_titulo": "CYCSA-PE-11 Relación de Soporte California (CBR) de Laboratorio",
+        "metodo_muestreo": "DE-ASTM D1883-21 / AASHTO T193",
+        "tipo_muestra": "Suelo / Base Granular",
+        "norma": "DE-ASTM D1883-21 / AASHTO T193",
+        "orientacion": "horizontal",
+        "columns": [
+            "Código laboratorio",
+            "Nombre muestra",
+            "Golpes/Capa",
+            "Densidad Seca (kg/m³)",
+            "Humedad Moldeo (%)",
+            "Compactación (%)",
+            "CBR 0.1\" (%)",
+            "CBR 0.2\" (%)",
+            "CBR Adoptado (%)",
+            "Fecha de Ensayo"
+        ],
+        "column_methods": {
+            "CBR 0.1\" (%)": "CYCSA-PE-11",
+            "CBR 0.2\" (%)": "CYCSA-PE-11",
+            "CBR Adoptado (%)": "CYCSA-PE-11"
+        },
+        "fixed_rows": [],
+        "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
+        "notas": [
+            "Nota: Ensayo ejecutado en instalaciones fijas de Consultoría y Construcción SA. CYCSA conforme a CYCSA-PE-11 (ASTM D1883 / AASHTO T193)."
+        ]
+    },
+    "formato_ge_suelos_h08.md": {
+        "docx_source": "RT-FM-22 H-8 Gravedad Especifica Suelos.docx",
+        "codigo_formato": "CYCSA-RT-FM-22 H-8",
+        "ensayo_titulo": "CYCSA-PE-14 Gravedad Específica de Suelos por Picnómetro (ASTM D854-23)",
+        "metodo_muestreo": "DE-ASTM D854-23",
+        "tipo_muestra": "Suelo",
+        "norma": "DE-ASTM D854-23",
+        "orientacion": "horizontal",
+        "columns": [
+            "Código laboratorio",
+            "Nombre muestra",
+            "Picnómetro (N°)",
+            "Temperatura (°C)",
+            "Masa Suelo Seco (g)",
+            "Gravedad Específica (Gs)",
+            "Fecha de Ensayo"
+        ],
+        "column_methods": {
+            "Gravedad Específica (Gs)": "CYCSA-PE-14"
+        },
+        "fixed_rows": [],
+        "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
+        "notas": [
+            "Nota: Gravedad específica de suelos determinada por picnómetro conforme a CYCSA-PE-14 (ASTM D854-23)."
+        ]
+    },
+    "formato_doblado_acero_h20.md": {
+        "docx_source": "RT-FM-22 H-20 Doblado Acero.docx",
+        "codigo_formato": "CYCSA-RT-FM-22 H-20",
+        "ensayo_titulo": "CYCSA-PE-38 Ensayo de Doblado Simple de Barras de Acero de Refuerzo",
+        "metodo_muestreo": "DE-ASTM A615/A706",
+        "tipo_muestra": "Acero de Refuerzo",
+        "norma": "DE-ASTM A615/A706",
+        "orientacion": "horizontal",
+        "columns": [
+            "Código laboratorio",
+            "Nombre muestra",
+            "Varilla (N°)",
+            "Diámetro Nominal (mm)",
+            "Ángulo de Doblado (°)",
+            "Diámetro de Mandril",
+            "Resultado (Cumple/Falla)",
+            "Fecha de Ensayo"
+        ],
+        "column_methods": {
+            "Resultado (Cumple/Falla)": "CYCSA-PE-38"
+        },
+        "fixed_rows": [],
+        "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
+        "notas": [
+            "Nota: Ensayo de doblado simple conforme a CYCSA-PE-38 (ASTM A615/A706). Separado del ensayo de tracción (CYCSA-PE-61)."
+        ]
+    },
+    "formato_tension_acero_h37.md": {
+        "docx_source": "RT-FM-22 H-37 Tension Acero.docx",
+        "codigo_formato": "CYCSA-RT-FM-22 H-37",
+        "ensayo_titulo": "CYCSA-PE-61 Ensayo de Tracción en Varillas de Acero de Refuerzo (ASTM E8 / A370)",
+        "metodo_muestreo": "DE-ASTM E8/A370",
+        "tipo_muestra": "Acero de Refuerzo",
+        "norma": "DE-ASTM E8/A370",
+        "orientacion": "horizontal",
+        "columns": [
+            "Código laboratorio",
+            "Nombre muestra",
+            "Varilla (N°)",
+            "Diámetro (mm)",
+            "Área (mm²)",
+            "Peso Unitario (kg/m)",
+            "Fluencia (MPa)",
+            "Fluencia (lbf/in²)",
+            "Tensión Máx. (lbf/in²)",
+            "Tensión Máx. (kg/cm²)",
+            "Elongación (%)",
+            "Fecha de Ensayo"
+        ],
+        "column_methods": {
+            "Fluencia (lbf/in²)": "CYCSA-PE-61",
+            "Tensión Máx. (lbf/in²)": "CYCSA-PE-61",
+            "Elongación (%)": "CYCSA-PE-61"
+        },
+        "fixed_rows": [],
+        "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
+        "notas": [
+            "Nota: Ensayo de tracción en varillas de acero de refuerzo #3 a #11 conforme a CYCSA-PE-61 (ASTM E8/A370/A615)."
+        ]
+    },
+    "formato_compresion_roca_h22.md": {
+        "docx_source": "RT-FM-22 H-22 Compresion Roca.docx",
+        "codigo_formato": "CYCSA-RT-FM-22 H-22",
+        "ensayo_titulo": "CYCSA-PE-40 Resistencia a la Compresión Uniaxial en Núcleos de Roca (ASTM D7012-23)",
+        "metodo_muestreo": "DE-ASTM D7012-23",
+        "tipo_muestra": "Núcleo de Roca",
+        "norma": "DE-ASTM D7012-23",
+        "orientacion": "horizontal",
+        "columns": [
+            "Código laboratorio",
+            "Nombre muestra",
+            "Diámetro (cm)",
+            "Altura (cm)",
+            "Relación L/D",
+            "Área (cm²)",
+            "Carga Máx. (lb)",
+            "Resistencia (MPa)",
+            "Resistencia (kg/cm²)",
+            "Resistencia (lbf/in²)",
+            "Fecha de Ensayo"
+        ],
+        "column_methods": {
+            "Resistencia (MPa)": "CYCSA-PE-40",
+            "Resistencia (kg/cm²)": "CYCSA-PE-40"
+        },
+        "fixed_rows": [],
+        "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
+        "notas": [
+            "Nota: Compresión uniaxial en núcleos de roca intactos conforme a CYCSA-PE-40 (ASTM D7012-23)."
+        ]
+    },
+    "formato_sanidad_intemperismo_f.md": {
+        "docx_source": "RT-FM-22 F Sanidad Intemperismo.docx",
+        "codigo_formato": "CYCSA-RT-FM-22 F",
+        "ensayo_titulo": "CYCSA-PE-52 Sanidad de Agregados por Intemperismo Acelerado (ASTM C88/C88M-24)",
+        "metodo_muestreo": "DE-ASTM C88/C88M-24",
+        "tipo_muestra": "Agregados",
+        "norma": "DE-ASTM C88/C88M-24",
+        "orientacion": "horizontal",
+        "columns": [
+            "Fracción",
+            "Retenido Original (g)",
+            "% Gradación Original",
+            "Masa Inicial (g)",
+            "Masa Final (g)",
+            "Pérdida (g)",
+            "% Pérdida Fracción",
+            "% Pérdida Ponderada"
+        ],
+        "column_methods": {
+            "% Pérdida Ponderada": "CYCSA-PE-52"
+        },
+        "fixed_rows": [],
+        "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
+        "notas": [
+            "Nota: Sanidad de agregados (intemperismo acelerado) conforme a CYCSA-PE-52 (ASTM C88/C88M-24)."
+        ]
+    },
+    "formato_colorimetria_pe05.md": {
+        "docx_source": "RT-FM-22 G Colorimetria PE-05.docx",
+        "codigo_formato": "CYCSA-RT-FM-22 G",
+        "ensayo_titulo": "CYCSA-PE-05 Determinación de Impurezas Orgánicas en Agregado Fino (Colorimetría ASTM C40)",
+        "metodo_muestreo": "DE-ASTM C40",
+        "tipo_muestra": "Agregados Finos",
+        "norma": "DE-ASTM C40",
+        "orientacion": "vertical",
+        "columns": [
+            "Código laboratorio",
+            "Nombre muestra",
+            "Color (Placa Orgánica)",
+            "Resultado",
+            "Fecha de Ensayo"
+        ],
+        "column_methods": {
+            "Color (Placa Orgánica)": "CYCSA-PE-05"
+        },
+        "fixed_rows": [],
+        "disclaimer": "Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente y está fuera del alcance de la acreditación.",
+        "notas": [
+            "Nota: Determinación colorimétrica de impurezas orgánicas conforme a CYCSA-PE-05 (ASTM C40)."
         ]
     }
 }

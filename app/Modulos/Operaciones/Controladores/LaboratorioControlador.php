@@ -7,6 +7,7 @@ use Cycsa\Nucleo\Peticion;
 use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\Operaciones\Modelos\OperacionModelo;
 use Cycsa\Modulos\Operaciones\Modelos\RoturasModelo;
+use Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio;
 use Cycsa\Nucleo\Conexion;
 use PDO;
 
@@ -555,15 +556,23 @@ class LaboratorioControlador extends ControladorBase {
                     $stmtEspM->execute(['id' => (int)($datos['especimen_id'] ?? 0)]);
                     $espInfo = $stmtEspM->fetch(PDO::FETCH_ASSOC);
                     if ($espInfo) {
+                        $crudosSync = is_array($datos['datos_crudos'] ?? null) ? $datos['datos_crudos'] : [];
                         sincronizarRoturasConMatriz($db, $idHojaRedir, 0, [[
                             'codigo_lab' => $espInfo['codigo_lab'],
                             'muestra_id' => (int)$espInfo['muestra_id'],
-                            'carga' => (float)($datos['carga'] ?? 0),
-                            'area' => (float)($datos['area'] ?? 28.274),
+                            'carga' => (float)($resultado['carga'] ?? ($datos['carga'] ?? 0)),
+                            'area' => (float)($resultado['area'] ?? ($datos['area'] ?? 0)),
+                            'diametro_1' => $datos['diametro_1'] ?? ($crudosSync['diametro_1'] ?? null),
+                            'diametro_2' => $datos['diametro_2'] ?? ($crudosSync['diametro_2'] ?? null),
+                            'largo_1' => $datos['largo_1'] ?? ($crudosSync['largo_1'] ?? null),
+                            'largo_2' => $datos['largo_2'] ?? ($crudosSync['largo_2'] ?? null),
+                            'masa_kg' => $datos['masa_kg'] ?? ($crudosSync['masa_kg'] ?? null),
+                            'peso_volumetrico' => $resultado['peso_volumetrico'] ?? null,
+                            'edad_calculada' => $resultado['edad_calculada'] ?? null,
                             'esfuerzo_psi' => (float)($resultado['esfuerzo_psi'] ?? 0),
                             'esfuerzo_kgcm2' => (float)($resultado['esfuerzo_kgcm2'] ?? 0),
                             'fecha_real' => $datos['fecha_real'] ?? date('Y-m-d'),
-                            'edad_dias' => (int)($datos['edad_dias'] ?? 0)
+                            'edad_dias' => (int)($resultado['edad_calculada'] ?? ($datos['edad_dias'] ?? 0))
                         ]]);
                     }
                 } catch (\Throwable $e) {
@@ -661,15 +670,23 @@ class LaboratorioControlador extends ControladorBase {
                 $stmtCod->execute(['id' => $especimenId]);
                 $espRow = $stmtCod->fetch(PDO::FETCH_ASSOC);
 
+                $crudosItem = is_array($rItem['datos_crudos'] ?? null) ? $rItem['datos_crudos'] : [];
                 $roturasSincronizar[] = [
                     'codigo_lab' => $espRow['codigo_lab'] ?? '',
                     'muestra_id' => (int)($espRow['muestra_id'] ?? 0),
-                    'carga' => $carga,
-                    'area' => (float)($rItem['area'] ?? 28.274),
+                    'carga' => (float)($res['carga'] ?? $carga),
+                    'area' => (float)($res['area'] ?? ($rItem['area'] ?? 0)),
+                    'diametro_1' => $rItem['diametro_1'] ?? ($crudosItem['diametro_1'] ?? null),
+                    'diametro_2' => $rItem['diametro_2'] ?? ($crudosItem['diametro_2'] ?? null),
+                    'largo_1' => $rItem['largo_1'] ?? ($crudosItem['largo_1'] ?? null),
+                    'largo_2' => $rItem['largo_2'] ?? ($crudosItem['largo_2'] ?? null),
+                    'masa_kg' => $rItem['masa_kg'] ?? ($crudosItem['masa_kg'] ?? null),
+                    'peso_volumetrico' => $res['peso_volumetrico'] ?? null,
+                    'edad_calculada' => $res['edad_calculada'] ?? null,
                     'esfuerzo_psi' => (float)($res['esfuerzo_psi'] ?? 0),
                     'esfuerzo_kgcm2' => (float)($res['esfuerzo_kgcm2'] ?? 0),
                     'fecha_real' => $rItem['fecha_real'] ?? date('Y-m-d H:i:s'),
-                    'edad_dias' => (int)($rItem['edad_dias'] ?? 0)
+                    'edad_dias' => (int)($res['edad_calculada'] ?? ($rItem['edad_dias'] ?? 0))
                 ];
             } else {
                 $errores[] = "Probeta #{$especimenId}: " . ($res['mensaje'] ?? 'Error desconocido');
@@ -728,7 +745,15 @@ class LaboratorioControlador extends ControladorBase {
             $idEnsayo = (int)($datos['id_ensayo'] ?? 0);
             $idLote = (int)($datos['id_lote'] ?? 0);
             $carga = (float)($datos['carga_lbs'] ?? 0);
-            $area = (float)($datos['area_in2'] ?? 28.274);
+            $area = (float)($datos['area_in2'] ?? 0);
+            if ($area <= 0 && !empty($datos['diametro_1']) && !empty($datos['diametro_2'])) {
+                $area = round(ConfigCalculoLabServicio::calcularAreaCilindroIn2((float)$datos['diametro_1'], (float)$datos['diametro_2']), 4);
+            }
+            if ($area <= 0) {
+                $_SESSION['error'] = 'Datos de ensayo incompletos: ingrese D1 y D2 (o el área medida) y una carga válida.';
+                $respuesta->redirigir('/Cycsa/publico/laboratorio/detalle-muestra?id_lote=' . $idLote);
+                return;
+            }
 
             $modelo = new OperacionModelo();
             $resultado = $modelo->guardarResultadoRuptura($idEnsayo, [
@@ -832,9 +857,22 @@ class LaboratorioControlador extends ControladorBase {
             $idHojaRedir = (int)($datos['id_hoja'] ?? 0);
             $nuevoEstado = trim($datos['nuevo_estado'] ?? '');
             $motivo = trim($datos['motivo_devolucion'] ?? '');
+            $obsPendRaw = $datos['observaciones_pendientes'] ?? null;
+            $obsPendientes = is_array($obsPendRaw)
+                ? implode('; ', array_filter(array_map('trim', $obsPendRaw)))
+                : ($obsPendRaw !== null ? trim((string)$obsPendRaw) : null);
+
+            $extraRevision = [
+                'revisado_por' => !empty($datos['revisado_por']) ? (int)$datos['revisado_por'] : $usuarioId,
+                'revisado_nombre' => trim((string)($datos['revisado_nombre'] ?? ($_SESSION['usuario_nombre'] ?? ''))),
+                'aprobado_nombre' => trim((string)($datos['aprobado_nombre'] ?? ($_SESSION['usuario_nombre'] ?? ''))),
+            ];
+            if ($obsPendientes !== null) {
+                $extraRevision['observaciones_pendientes'] = $obsPendientes;
+            }
 
             $roturasModelo = new RoturasModelo();
-            $resultado = $roturasModelo->procesarRevisionInforme($informeId, $nuevoEstado, $motivo, $usuarioId, $rolUsuario);
+            $resultado = $roturasModelo->procesarRevisionInforme($informeId, $nuevoEstado, $motivo, $usuarioId, $rolUsuario, $extraRevision);
 
             if ($esAjax) {
                 $respuesta->enviarJson([
@@ -1490,7 +1528,7 @@ class LaboratorioControlador extends ControladorBase {
         }
 
         $idOs = (int)($datos['id_os'] ?? 0);
-        $codigoFormato = strtoupper(trim((string)($datos['codigo_formato'] ?? 'RT-FM-55')));
+        $codigoFormato = strtoupper(trim((string)($datos['codigo_formato'] ?? '')));
         $variante = trim((string)($datos['variante'] ?? 'ESTANDAR'));
         $encabezado = isset($datos['encabezado']) && is_array($datos['encabezado']) ? $datos['encabezado'] : [];
         $puntos = isset($datos['puntos']) && is_array($datos['puntos']) ? $datos['puntos'] : [];
@@ -1891,14 +1929,21 @@ class LaboratorioControlador extends ControladorBase {
         $idHoja = (int)($_GET['id_hoja'] ?? 0);
         $idDetalle = (int)($_GET['id_detalle'] ?? 0);
         $muestraId = (int)($_GET['muestra_id'] ?? 0);
+        $especimenIdFiltro = (int)($_GET['especimen_id'] ?? 0);
+        $roturaIdFiltro = (int)($_GET['rotura_id'] ?? 0);
+        $sinLogo = !empty($_GET['sin_logo']);
 
         $informeData = null;
         if ($informeId > 0) {
             $stmtInf = $db->prepare("
-                SELECT ir.*, rm.id_hoja, rm.id_os, rm.codigo_muestra, rm.codigo_campo, hs.id_detalle_cotizacion
+                SELECT ir.*, rm.id_hoja, rm.id_os, rm.codigo_muestra, rm.codigo_campo, hs.id_detalle_cotizacion,
+                       COALESCE(NULLIF(ir.revisado_nombre, ''), ur.nombre) AS revisado_por_nombre,
+                       COALESCE(NULLIF(ir.aprobado_nombre, ''), ua.nombre) AS aprobado_por_nombre
                 FROM informes_rotura ir
                 LEFT JOIN recepcion_muestras rm ON ir.muestra_id = rm.id
                 LEFT JOIN hojas_solicitud hs ON rm.id_hoja = hs.id
+                LEFT JOIN usuarios ur ON ir.revisado_por = ur.id
+                LEFT JOIN usuarios ua ON ir.aprobado_por = ua.id
                 WHERE ir.id = :id
             ");
             $stmtInf->execute(['id' => $informeId]);
@@ -1911,6 +1956,18 @@ class LaboratorioControlador extends ControladorBase {
                 if ($idDetalle <= 0 && !empty($informeData['id_detalle_cotizacion'])) {
                     $idDetalle = (int)$informeData['id_detalle_cotizacion'];
                 }
+            }
+        }
+
+        if ($muestraId <= 0 && ($especimenIdFiltro > 0 || $roturaIdFiltro > 0)) {
+            if ($roturaIdFiltro > 0) {
+                $stmtRMF = $db->prepare("SELECT esp.muestra_id FROM roturas rot JOIN especimenes esp ON rot.especimen_id = esp.id WHERE rot.id = :rid LIMIT 1");
+                $stmtRMF->execute(['rid' => $roturaIdFiltro]);
+                $muestraId = (int)$stmtRMF->fetchColumn();
+            } elseif ($especimenIdFiltro > 0) {
+                $stmtRMF = $db->prepare("SELECT muestra_id FROM especimenes WHERE id = :eid LIMIT 1");
+                $stmtRMF->execute(['eid' => $especimenIdFiltro]);
+                $muestraId = (int)$stmtRMF->fetchColumn();
             }
         }
 
@@ -2095,6 +2152,10 @@ class LaboratorioControlador extends ControladorBase {
         $sha256Informe = null;
         $estadoInforme = null;
         $sustituyeA = null;
+        $esDocumentoInterno = false;
+        $revisadoPorNombre = '';
+        $aprobadoPorNombre = '';
+        $observacionesPendientes = '';
 
         if ($informeData) {
             $codigoInformePersonalizado = $informeData['numero'] ?? null;
@@ -2108,11 +2169,21 @@ class LaboratorioControlador extends ControladorBase {
             $tituloInformePersonalizado = ($informeData['tipo'] === 'parcial')
                 ? 'INFORME PARCIAL DE ENSAYO'
                 : 'INFORME CONSOLIDADO DE ENSAYO';
+            $revisadoPorNombre = trim((string)($informeData['revisado_por_nombre'] ?? ($informeData['revisado_nombre'] ?? '')));
+            $aprobadoPorNombre = trim((string)($informeData['aprobado_por_nombre'] ?? ($informeData['aprobado_nombre'] ?? '')));
+            $observacionesPendientes = trim((string)($informeData['observaciones_pendientes'] ?? ''));
+            $esDocumentoInterno = !empty($informeData['es_interno'])
+                || (($informeData['tipo'] ?? '') === 'parcial' && ConfigCalculoLabServicio::obtenerBool('informe_parcial_es_interno', false, $db));
         } else {
             if ($idHojaResolv > 0) {
                 $stmtCheckConsol = $db->prepare("
-                    SELECT ir.* FROM informes_rotura ir
+                    SELECT ir.*,
+                           COALESCE(NULLIF(ir.revisado_nombre, ''), ur.nombre) AS revisado_por_nombre,
+                           COALESCE(NULLIF(ir.aprobado_nombre, ''), ua.nombre) AS aprobado_por_nombre
+                    FROM informes_rotura ir
                     JOIN recepcion_muestras rm ON ir.muestra_id = rm.id
+                    LEFT JOIN usuarios ur ON ir.revisado_por = ur.id
+                    LEFT JOIN usuarios ua ON ir.aprobado_por = ua.id
                     WHERE rm.id_hoja = :id_hoja AND ir.tipo = 'consolidado' AND ir.estado != 'anulado'
                     ORDER BY ir.id DESC LIMIT 1
                 ");
@@ -2124,7 +2195,154 @@ class LaboratorioControlador extends ControladorBase {
                     $estadoInforme = $consolFound['estado'];
                     $sustituyeA = $consolFound['sustituye_a'] ?? null;
                     $tituloInformePersonalizado = 'INFORME CONSOLIDADO DE ENSAYO';
+                    $revisadoPorNombre = trim((string)($consolFound['revisado_por_nombre'] ?? ''));
+                    $aprobadoPorNombre = trim((string)($consolFound['aprobado_por_nombre'] ?? ''));
+                    $observacionesPendientes = trim((string)($consolFound['observaciones_pendientes'] ?? ''));
                 }
+            }
+        }
+
+        // Fase 2.20: Filtrado estricto a espécimen(es) roto(s) para informe parcial o filtro ?especimen_id= / ?rotura_id=
+        $esParcialOFiltrado = ($informeData && ($informeData['tipo'] ?? '') === 'parcial')
+            || $especimenIdFiltro > 0
+            || $roturaIdFiltro > 0;
+
+        if ($esParcialOFiltrado) {
+            $sqlRotFiltro = "
+                SELECT rot.*, esp.id AS esp_id, esp.codigo_lab, esp.muestra_id,
+                       rm.codigo_muestra, rm.codigo_campo,
+                       lm.nombre_lote, lm.fecha_moldeo, lm.diseno_resistencia, lm.revenimiento_in, lm.temperatura_c,
+                       pre.edad_dias AS plan_edad_dias
+                FROM roturas rot
+                JOIN especimenes esp ON rot.especimen_id = esp.id
+                JOIN recepcion_muestras rm ON esp.muestra_id = rm.id
+                LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
+                LEFT JOIN plan_rotura_edades pre ON rot.plan_edad_id = pre.id
+                WHERE 1=1
+            ";
+            $paramsRotFiltro = [];
+            if ($roturaIdFiltro > 0) {
+                $sqlRotFiltro .= " AND rot.id = :rid";
+                $paramsRotFiltro['rid'] = $roturaIdFiltro;
+            } elseif ($especimenIdFiltro > 0) {
+                $sqlRotFiltro .= " AND esp.id = :eid";
+                $paramsRotFiltro['eid'] = $especimenIdFiltro;
+            } elseif ($informeData) {
+                $sqlRotFiltro .= " AND esp.muestra_id = :mid";
+                $paramsRotFiltro['mid'] = (int)$informeData['muestra_id'];
+                if (!empty($informeData['plan_edad_id'])) {
+                    $sqlRotFiltro .= " AND rot.plan_edad_id = :peid";
+                    $paramsRotFiltro['peid'] = (int)$informeData['plan_edad_id'];
+                }
+            }
+            $sqlRotFiltro .= " ORDER BY rot.id ASC";
+
+            $stmtRotFiltro = $db->prepare($sqlRotFiltro);
+            $stmtRotFiltro->execute($paramsRotFiltro);
+            $roturasFiltradas = $stmtRotFiltro->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($roturasFiltradas)) {
+                $mapaRotPorCodigo = [];
+                $codigosPermitidos = [];
+                foreach ($roturasFiltradas as $rf) {
+                    $cLab = strtoupper(trim((string)($rf['codigo_lab'] ?? '')));
+                    $cMue = strtoupper(trim((string)($rf['codigo_muestra'] ?? '')));
+                    $cBase = preg_replace('/-C\d+$/i', '', $cLab);
+                    if ($cLab !== '') {
+                        $mapaRotPorCodigo[$cLab] = $rf;
+                        $codigosPermitidos[$cLab] = true;
+                    }
+                    if ($cMue !== '') {
+                        $mapaRotPorCodigo[$cMue] = $rf;
+                        $codigosPermitidos[$cMue] = true;
+                    }
+                    if ($cBase !== '') {
+                        $mapaRotPorCodigo[$cBase] = $rf;
+                        $codigosPermitidos[$cBase] = true;
+                    }
+                }
+
+                $inyectarDatosRoturaEnFila = static function (array $fila, array $rf): array {
+                    $fechaEns = !empty($rf['fecha_real']) ? date('Y-m-d', strtotime((string)$rf['fecha_real'])) : '';
+                    $edadReal = $rf['edad_calculada'] ?? ($rf['plan_edad_dias'] ?? '');
+                    $revIn = isset($rf['revenimiento_in']) && is_numeric($rf['revenimiento_in']) ? (float)$rf['revenimiento_in'] : null;
+                    $revCm = $revIn !== null ? ConfigCalculoLabServicio::calcularRevenimientoCm($revIn) : null;
+
+                    $fila['Área (in²)'] = isset($rf['area']) && (float)$rf['area'] > 0 ? round((float)$rf['area'], 3) : ($fila['Área (in²)'] ?? '');
+                    $fila['Carga (lb)'] = isset($rf['carga']) && (float)$rf['carga'] > 0 ? round((float)$rf['carga'], 1) : ($fila['Carga (lb)'] ?? '');
+                    if (isset($rf['peso_volumetrico']) && $rf['peso_volumetrico'] !== null && (float)$rf['peso_volumetrico'] > 0) {
+                        $fila['Peso Volumétrico (kg/m³)'] = round((float)$rf['peso_volumetrico'], 0);
+                    }
+                    $fila['R. Compresión (lb/in²)'] = isset($rf['esfuerzo_psi']) ? round((float)$rf['esfuerzo_psi'], 0) : ($fila['R. Compresión (lb/in²)'] ?? '');
+                    $fila['R. Compresión (kg/cm²)'] = isset($rf['esfuerzo_kgcm2']) ? round((float)$rf['esfuerzo_kgcm2'], 0) : ($fila['R. Compresión (kg/cm²)'] ?? '');
+                    if ($fechaEns !== '') {
+                        $fila['Fecha de Ensayo'] = $fechaEns;
+                        if (array_key_exists('Fecha de Ruptura', $fila)) {
+                            $fila['Fecha de Ruptura'] = $fechaEns;
+                        }
+                    }
+                    if ($edadReal !== '' && $edadReal !== null) {
+                        $fila['Edad (Días)'] = (int)$edadReal;
+                    }
+                    if (!empty($rf['tipo_falla'])) {
+                        $fila['Tipo de Falla'] = (string)$rf['tipo_falla'];
+                    }
+                    if (empty($fila['Fecha de Fabricación']) && !empty($rf['fecha_moldeo'])) {
+                        $fila['Fecha de Fabricación'] = (string)$rf['fecha_moldeo'];
+                    }
+                    if (empty($fila['Diseño de concreto (lb/in²)']) && !empty($rf['diseno_resistencia'])) {
+                        $fila['Diseño de concreto (lb/in²)'] = (string)$rf['diseno_resistencia'];
+                    }
+                    if ($revIn !== null && (empty($fila['Reven. (in)']) || $fila['Reven. (in)'] === '-')) {
+                        $fila['Reven. (in)'] = $revIn;
+                        $fila['Reven. (cm)'] = $revCm;
+                    }
+                    if (isset($rf['temperatura_c']) && is_numeric($rf['temperatura_c']) && (empty($fila['Temp. (°C)']) || $fila['Temp. (°C)'] === '-')) {
+                        $fila['Temp. (°C)'] = (float)$rf['temperatura_c'];
+                    }
+                    return $fila;
+                };
+
+                $filasOriginales = isset($decResultados['filas']) && is_array($decResultados['filas']) ? $decResultados['filas'] : [];
+                $filasFiltradas = [];
+                foreach ($filasOriginales as $fOrig) {
+                    if (!is_array($fOrig)) {
+                        continue;
+                    }
+                    $colCod = obtenerColumnaCodigoMuestra($fOrig);
+                    $codF = strtoupper(trim((string)($colCod !== null ? ($fOrig[$colCod] ?? '') : ($fOrig['Código laboratorio'] ?? ($fOrig['codigo_lab'] ?? '')))));
+                    $codFBase = preg_replace('/-C\d+$/i', '', $codF);
+                    if ($codF !== '' && (isset($codigosPermitidos[$codF]) || isset($codigosPermitidos[$codFBase]))) {
+                        $rfMatch = $mapaRotPorCodigo[$codF] ?? $mapaRotPorCodigo[$codFBase];
+                        $filasFiltradas[] = $inyectarDatosRoturaEnFila($fOrig, $rfMatch);
+                    }
+                }
+
+                // Si no hubo filas en matriz para las roturas filtradas, construirlas directamente desde `roturas`
+                if (empty($filasFiltradas)) {
+                    foreach ($roturasFiltradas as $rf) {
+                        $filaNueva = [
+                            'Código laboratorio' => (string)($rf['codigo_lab'] ?? $rf['codigo_muestra'] ?? ''),
+                            'Nombre muestra' => (string)($rf['nombre_lote'] ?: ($rf['codigo_campo'] ?: $rf['codigo_muestra'])),
+                            'Área (in²)' => '',
+                            'Reven. (in)' => '-',
+                            'Reven. (cm)' => '-',
+                            'Temp. (°C)' => '-',
+                            'Carga (lb)' => '',
+                            'Peso Volumétrico (kg/m³)' => '',
+                            'Diseño de concreto (lb/in²)' => '',
+                            'R. Compresión (lb/in²)' => '',
+                            'R. Compresión (kg/cm²)' => '',
+                            'Fecha de Fabricación' => '',
+                            'Fecha de Ensayo' => '',
+                            'Edad (Días)' => '',
+                        ];
+                        $filasFiltradas[] = $inyectarDatosRoturaEnFila($filaNueva, $rf);
+                    }
+                }
+
+                $decResultados['filas'] = $filasFiltradas;
+                $detalle['resultados_json'] = json_encode($decResultados, JSON_UNESCAPED_UNICODE);
             }
         }
 

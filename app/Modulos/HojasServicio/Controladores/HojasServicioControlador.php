@@ -365,12 +365,14 @@ class HojasServicioControlador extends ControladorBase {
         }
         $pltSugeridaHoja = ($idProductoHoja > 0) ? $pltModelo->obtenerPlantillaSugerida($idProductoHoja, $clienteId) : null;
         $esCompactacionHoja = $detalleSeleccionado ? $this->esProductoCompactacion($detalleSeleccionado) : false;
+        $alertaAlcanceMensual = $osModelo->verificarAlcanceMensual($idOS, $idProductoHoja);
 
         $respuesta->enviarJson([
             'status' => 'success',
             'producto_hoja_id' => $idProductoHoja,
             'plantilla_sugerida_hoja' => $pltSugeridaHoja,
             'es_compactacion_hoja' => $esCompactacionHoja,
+            'alerta_alcance_mensual' => $alertaAlcanceMensual,
             'detalle_seleccionado' => $detalleSeleccionado,
             'hoja' => $hoja,
             'todas_las_hojas' => $listaHojasFrontend,
@@ -1035,6 +1037,90 @@ class HojasServicioControlador extends ControladorBase {
     }
 
     /**
+     * 2.4: Enriquece los campos de recepción de una Hoja RT-FM-13 asegurando:
+     * - 'Nombre muestra' editable por Atención al Cliente en cualquier formato.
+     * - Columnas de recepción de compactación/densímetro cuando el formato corresponde a densidad in situ / compactación.
+     *
+     * @param array<string, mixed> $infoFormato
+     * @param array<string, mixed> $hoja
+     * @return array<int, array<string, mixed>>
+     */
+    private function enriquecerCamposRecepcionHoja(array $infoFormato, array $hoja): array {
+        $base = is_array($infoFormato['campos_recepcion'] ?? null) ? $infoFormato['campos_recepcion'] : [];
+        $clavesExistentes = [];
+        foreach ($base as $c) {
+            $nom = (string)($c['nombre'] ?? '');
+            if ($nom !== '') {
+                $clavesExistentes[normalizarTextoClavePHP($nom)] = true;
+            }
+        }
+
+        // 1. Asegurar 'Nombre muestra' como primer campo editable de recepción
+        $campos = [];
+        if (!isset($clavesExistentes['nombremuestra']) && !isset($clavesExistentes['nombredelamuestra'])) {
+            $campos[] = [
+                'nombre' => 'Nombre muestra',
+                'clave' => 'nombremuestra',
+                'tipo' => 'text',
+                'step' => '',
+                'rol' => 'recepcion',
+            ];
+            $clavesExistentes['nombremuestra'] = true;
+        }
+        foreach ($base as $c) {
+            $campos[] = $c;
+        }
+
+        // 2. Detectar formatos de compactación / densímetro / cono de arena / reemplazo de agua
+        $textoFormato = mb_strtolower(
+            (string)($infoFormato['archivo_markdown'] ?? '') . ' ' .
+            (string)($infoFormato['formato_nombre'] ?? '') . ' ' .
+            (string)($infoFormato['codigo_formato'] ?? '') . ' ' .
+            (string)($hoja['descripcion_ensayo'] ?? '') . ' ' .
+            (string)($hoja['codigo_servicio'] ?? '') . ' ' .
+            (string)($hoja['nombre_comercial'] ?? ''),
+            'UTF-8'
+        );
+
+        $esCompactacion = false;
+        foreach (['compactacion', 'compactación', 'densimetro', 'densímetro', 'cono_de_arena', 'cono de arena', 'reemplazo_de_agua', 'reemplazo de agua', 'd6938', 'd1556', 'd2167', 'rt-fm-22 b', 'rt-fm-22 c'] as $kw) {
+            if (str_contains($textoFormato, $kw)) {
+                $esCompactacion = true;
+                break;
+            }
+        }
+
+        if ($esCompactacion) {
+            $columnasCompactacion = [
+                ['nombre' => 'Capa (N°)', 'tipo' => 'text', 'step' => ''],
+                ['nombre' => 'Espesor (cm)', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'Profundidad (cm)', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'P.V.S Max (kg/m³)', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'Humedad Óptima', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'P.V.S.Sitio (kg/m³)', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'Humedad sitio', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'Compactación', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'Fecha de muestreo', 'tipo' => 'date', 'step' => ''],
+            ];
+            foreach ($columnasCompactacion as $colC) {
+                $kNorm = normalizarTextoClavePHP($colC['nombre']);
+                if (!isset($clavesExistentes[$kNorm])) {
+                    $campos[] = [
+                        'nombre' => $colC['nombre'],
+                        'clave' => $kNorm,
+                        'tipo' => $colC['tipo'],
+                        'step' => $colC['step'],
+                        'rol' => 'recepcion',
+                    ];
+                    $clavesExistentes[$kNorm] = true;
+                }
+            }
+        }
+
+        return $campos;
+    }
+
+    /**
      * AJAX: Retorna los campos de Recepción (Órdenes de Servicio) para una Hoja RT-FM-13
      * específica y todas las N muestras declaradas en ella, junto al listado de todas las
      * RT-FM-13 de la O/S para navegar entre hojas sin cerrar el flujo.
@@ -1116,7 +1202,7 @@ class HojasServicioControlador extends ControladorBase {
             !empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : null,
             !empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null
         );
-        $camposRecepcion = $infoFormato['campos_recepcion'];
+        $camposRecepcion = $this->enriquecerCamposRecepcionHoja($infoFormato, $hoja);
         $camposTecnico = $infoFormato['campos_tecnico'];
 
         // Precargar mapa de recepción existente + fallback desde cotizacion_detalles si ya tenía valores
@@ -1152,6 +1238,15 @@ class HojasServicioControlador extends ControladorBase {
                         }
                     }
                 }
+                if (empty($datosGuardados['Nombre muestra'])) {
+                    $nomFallback = isset($mapaDesdeMatriz[$codKey]) ? buscarValorEnFilaPHP($mapaDesdeMatriz[$codKey], 'Nombre muestra') : '';
+                    if ($nomFallback === '' && !empty($d['descripcion_ubicacion'])) {
+                        $nomFallback = trim((string)$d['descripcion_ubicacion']);
+                    }
+                    if ($nomFallback !== '') {
+                        $datosGuardados['Nombre muestra'] = $nomFallback;
+                    }
+                }
                 $muestrasSalida[] = [
                     'codigo_muestra' => $cod,
                     'descripcion_ubicacion' => (string)($d['descripcion_ubicacion'] ?? ''),
@@ -1172,6 +1267,17 @@ class HojasServicioControlador extends ControladorBase {
                         if ($valMat !== '') {
                             $datosGuardados[$cr['nombre']] = $valMat;
                         }
+                    }
+                }
+                if (empty($datosGuardados['Nombre muestra'])) {
+                    $nomFallback = isset($mapaDesdeMatriz[$codKey]) ? buscarValorEnFilaPHP($mapaDesdeMatriz[$codKey], 'Nombre muestra') : '';
+                    if ($nomFallback === '' && !empty($m['nombre_muestra_cliente'])) {
+                        $nomFallback = trim((string)$m['nombre_muestra_cliente']);
+                    } elseif ($nomFallback === '' && !empty($m['descripcion'])) {
+                        $nomFallback = trim((string)$m['descripcion']);
+                    }
+                    if ($nomFallback !== '') {
+                        $datosGuardados['Nombre muestra'] = $nomFallback;
                     }
                 }
                 $muestrasSalida[] = [
@@ -1269,7 +1375,7 @@ class HojasServicioControlador extends ControladorBase {
             !empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : null,
             !empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null
         );
-        $camposRecepcion = $infoFormato['campos_recepcion'];
+        $camposRecepcion = $this->enriquecerCamposRecepcionHoja($infoFormato, $hoja);
 
         $entradaMuestras = [];
         if (!empty($datos['muestras_recepcion_json']) && is_string($datos['muestras_recepcion_json'])) {
@@ -1294,27 +1400,34 @@ class HojasServicioControlador extends ControladorBase {
             $db->beginTransaction();
         }
         try {
-            // 1. Actualizar hojas_solicitud_detalles por código de muestra
+            // 1. Actualizar hojas_solicitud_detalles por código de muestra (incluyendo Nombre muestra en descripcion_ubicacion)
             $stmtUpdDet = $db->prepare("
                 UPDATE hojas_solicitud_detalles
-                SET datos_recepcion_json = :drec
+                SET datos_recepcion_json = :drec,
+                    descripcion_ubicacion = COALESCE(NULLIF(:nom_muestra, ''), descripcion_ubicacion)
                 WHERE id_hoja_solicitud = :hid AND UPPER(TRIM(codigo_muestra)) = :cod
             ");
             foreach ($datosPorCodigo as $codKey => $datosNorm) {
+                $nomMuestraVal = trim((string)($datosNorm['Nombre muestra'] ?? ''));
                 $stmtUpdDet->execute([
                     'drec' => !empty($datosNorm) ? json_encode($datosNorm, JSON_UNESCAPED_UNICODE) : null,
+                    'nom_muestra' => $nomMuestraVal,
                     'hid' => $idHoja,
                     'cod' => $codKey,
                 ]);
             }
 
-            // 2. Actualizar muestras_json de la hoja conservando resto de metadatos
+            // 2. Actualizar muestras_json de la hoja conservando resto de metadatos y sincronizando Nombre muestra
             $muestrasArr = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
             foreach ($muestrasArr as $idx => $mItem) {
                 $codKey = strtoupper(trim((string)($mItem['nombre_muestra'] ?? ($mItem['codigo_muestra'] ?? ''))));
                 if ($codKey !== '' && array_key_exists($codKey, $datosPorCodigo)) {
                     if (!empty($datosPorCodigo[$codKey])) {
                         $muestrasArr[$idx]['datos_recepcion'] = $datosPorCodigo[$codKey];
+                        if (!empty($datosPorCodigo[$codKey]['Nombre muestra'])) {
+                            $muestrasArr[$idx]['descripcion'] = $datosPorCodigo[$codKey]['Nombre muestra'];
+                            $muestrasArr[$idx]['nombre_muestra_cliente'] = $datosPorCodigo[$codKey]['Nombre muestra'];
+                        }
                     } else {
                         unset($muestrasArr[$idx]['datos_recepcion']);
                     }
@@ -1325,6 +1438,40 @@ class HojasServicioControlador extends ControladorBase {
 
             // 3. Sincronizar con matriz técnica en Operaciones / Laboratorio si ya existe
             sincronizarDatosRecepcionEnMatriz($db, $idHoja, $datosPorCodigo);
+
+            // 3b. Sincronizar 'Nombre muestra' (y campos de compactación adicionales) hacia filas ya creadas de cotizacion_detalles.resultados_json
+            $idDetalleSync = (int)($hoja['id_detalle_cotizacion'] ?? 0);
+            if ($idDetalleSync > 0) {
+                $stmtMatSync = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+                $stmtMatSync->execute(['id' => $idDetalleSync]);
+                $resJsonSync = $stmtMatSync->fetchColumn();
+                $decSync = is_string($resJsonSync) ? (json_decode($resJsonSync, true) ?: []) : [];
+                $filasSync = isset($decSync['filas']) && is_array($decSync['filas']) ? $decSync['filas'] : [];
+                if (!empty($filasSync)) {
+                    $cambiosMat = false;
+                    foreach ($filasSync as $idxF => $filaSync) {
+                        if (!is_array($filaSync)) continue;
+                        $codF = strtoupper(trim((string)($filaSync['Código laboratorio'] ?? ($filaSync['Codigo laboratorio'] ?? ($filaSync['codigo_lab'] ?? '')))));
+                        if ($codF !== '' && !empty($datosPorCodigo[$codF])) {
+                            if (!empty($datosPorCodigo[$codF]['Nombre muestra'])) {
+                                $filasSync[$idxF]['Nombre muestra'] = $datosPorCodigo[$codF]['Nombre muestra'];
+                                $cambiosMat = true;
+                            }
+                            foreach ($datosPorCodigo[$codF] as $kCol => $vCol) {
+                                if ($vCol !== '' && array_key_exists($kCol, $filasSync[$idxF])) {
+                                    $filasSync[$idxF][$kCol] = $vCol;
+                                    $cambiosMat = true;
+                                }
+                            }
+                        }
+                    }
+                    if ($cambiosMat) {
+                        $decSync['filas'] = $filasSync;
+                        $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
+                           ->execute(['json' => json_encode($decSync, JSON_UNESCAPED_UNICODE), 'id' => $idDetalleSync]);
+                    }
+                }
+            }
 
             if ($transaccionPropia && $db->inTransaction()) {
                 $db->commit();

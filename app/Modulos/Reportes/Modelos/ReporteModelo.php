@@ -136,6 +136,15 @@ class ReporteModelo extends ModeloBase {
                 'permiso' => 'nomina',
                 'desc' => 'Reportes ejecutivos de planillas de nómina, activos fijos y depreciación, préstamos y proyectos.',
             ],
+            'reporteria_mensual' => [
+                'slug' => 'reporteria_mensual',
+                'nombre' => 'Reportería Mensual Consolidada',
+                'grupo' => 'Comercial & Facturación',
+                'icono' => 'fa-solid fa-calendar-check',
+                'color' => 'linear-gradient(135deg, #0f172a, #1d4ed8)',
+                'permiso' => 'reportes',
+                'desc' => 'Consolidado mensual por período (YYYY-MM) y por cliente/contrato: Cotizaciones, O/S, Hojas RT-FM-13, Muestras, Roturas, Informes y Facturación.',
+            ],
         ];
     }
 
@@ -160,6 +169,7 @@ class ReporteModelo extends ModeloBase {
             'compras' => $this->contarSeguro("SELECT COUNT(*) FROM ordenes_compra"),
             'inventario' => $this->contarSeguro("SELECT COUNT(*) FROM inventario_insumos"),
             'rrhh_finanzas' => $this->contarSeguro("SELECT (SELECT COUNT(*) FROM rrhh_nominas) + (SELECT COUNT(*) FROM activos_fijos) + (SELECT COUNT(*) FROM prestamos_bancarios) + (SELECT COUNT(*) FROM proyectos)"),
+            'reporteria_mensual' => $this->contarSeguro("SELECT COUNT(DISTINCT DATE_FORMAT(COALESCE(fecha_emision, created_at), '%Y-%m')) FROM ordenes_servicio"),
         ];
 
         $kpisGlobales = [];
@@ -221,9 +231,20 @@ class ReporteModelo extends ModeloBase {
         }
 
         $meta = $catalogo[$slug];
+        $mesFiltro = trim((string)($filtros['mes'] ?? ''));
+        $desdeFiltro = trim((string)($filtros['desde'] ?? ''));
+        $hastaFiltro = trim((string)($filtros['hasta'] ?? ''));
+        if (preg_match('/^\d{4}-\d{2}$/', $mesFiltro) === 1) {
+            $tsMes = strtotime($mesFiltro . '-01');
+            if ($tsMes !== false) {
+                $desdeFiltro = date('Y-m-01', $tsMes);
+                $hastaFiltro = date('Y-m-t', $tsMes);
+            }
+        }
         $normFiltros = [
-            'desde' => trim((string)($filtros['desde'] ?? '')),
-            'hasta' => trim((string)($filtros['hasta'] ?? '')),
+            'mes' => $mesFiltro,
+            'desde' => $desdeFiltro,
+            'hasta' => $hastaFiltro,
             'estado' => trim((string)($filtros['estado'] ?? '')),
             'q' => trim((string)($filtros['q'] ?? '')),
             'subvista' => trim((string)($filtros['subvista'] ?? '')),
@@ -243,6 +264,7 @@ class ReporteModelo extends ModeloBase {
             'compras' => $this->reporteCompras($normFiltros),
             'inventario' => $this->reporteInventario($normFiltros),
             'rrhh_finanzas' => $this->reporteRrhhYFinanzas($normFiltros),
+            'reporteria_mensual' => $this->reporteMensualConsolidado($normFiltros),
         };
 
         return array_merge([
@@ -1984,6 +2006,317 @@ class ReporteModelo extends ModeloBase {
                 ['key' => 'deducciones', 'label' => 'Deducciones', 'type' => 'money'],
                 ['key' => 'neto', 'label' => 'Neto a Pagar', 'type' => 'money'],
                 ['key' => 'estado', 'label' => 'Estado', 'type' => 'badge'],
+            ],
+            'rows' => $rows,
+        ];
+    }
+
+    // =========================================================================
+    // 14. REPORTERÍA MENSUAL CONSOLIDADA (FASE 2: 2.21)
+    // =========================================================================
+    private function consultarSeguroMapa(string $sql, array $params = []): array {
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function reporteMensualConsolidado(array $f): array {
+        $sub = ($f['subvista'] === 'por_cliente') ? 'por_cliente' : 'mensual';
+        $subvistas = [
+            'mensual' => 'Resumen Mensual (YYYY-MM)',
+            'por_cliente' => 'Desglose por Cliente y Contrato',
+        ];
+
+        if ($sub === 'por_cliente') {
+            $whereOs = [];
+            $paramsOs = [];
+            $this->aplicarFiltroFechas($whereOs, $paramsOs, 'COALESCE(os.fecha_emision, os.created_at)', $f, 'rm_os');
+            if ($f['q'] !== '') {
+                $whereOs[] = "(cli.nombre_razon_social LIKE :q1 OR os.codigo_os LIKE :q2 OR os.tipo_contrato LIKE :q3)";
+                $term = '%' . $f['q'] . '%';
+                $paramsOs += ['q1' => $term, 'q2' => $term, 'q3' => $term];
+            }
+
+            $sqlCli = "SELECT DATE_FORMAT(COALESCE(os.fecha_emision, os.created_at), '%Y-%m') AS periodo_mes,
+                              cli.id AS id_cliente,
+                              cli.nombre_razon_social AS cliente,
+                              CASE WHEN os.es_multimes = 1 OR os.tipo_contrato IN ('Marco', 'Contrato Activo', 'Contrato Largo', 'Abierto') THEN 'Contrato Largo' ELSE 'Puntual' END AS tipo_contrato,
+                              COUNT(DISTINCT os.id) AS total_os,
+                              COUNT(DISTINCT os.id_cotizacion) AS total_cots,
+                              COALESCE(SUM(cot.total), 0) AS facturacion_os
+                       FROM ordenes_servicio os
+                       JOIN clientes cli ON os.id_cliente = cli.id
+                       LEFT JOIN cotizaciones cot ON os.id_cotizacion = cot.id"
+                . ($whereOs !== [] ? ' WHERE ' . implode(' AND ', $whereOs) : '')
+                . " GROUP BY periodo_mes, cli.id, cli.nombre_razon_social, tipo_contrato
+                    ORDER BY periodo_mes DESC, facturacion_os DESC";
+
+            $baseCli = $this->consultarSeguroMapa($sqlCli, $paramsOs);
+
+            $rows = [];
+            $totCots = 0;
+            $totOs = 0;
+            $totHojas = 0;
+            $totMuestras = 0;
+            $totRoturas = 0;
+            $totInformes = 0;
+            $totFact = 0.0;
+
+            foreach ($baseCli as $r) {
+                $mes = (string)($r['periodo_mes'] ?? '');
+                $idCli = (int)($r['id_cliente'] ?? 0);
+                if ($mes === '' || $idCli <= 0) {
+                    continue;
+                }
+                $esLargo = ($r['tipo_contrato'] === 'Contrato Largo');
+                $condTipo = $esLargo
+                    ? "(os.es_multimes = 1 OR os.tipo_contrato IN ('Marco', 'Contrato Activo', 'Contrato Largo', 'Abierto'))"
+                    : "(COALESCE(os.es_multimes, 0) = 0 AND COALESCE(os.tipo_contrato, 'Puntual') NOT IN ('Marco', 'Contrato Activo', 'Contrato Largo', 'Abierto'))";
+
+                $pSub = ['mes' => $mes, 'cli' => $idCli];
+
+                $hojasCnt = (int)($this->consultarSeguroMapa("
+                    SELECT COUNT(DISTINCT hs.id) AS c
+                    FROM hojas_solicitud hs
+                    JOIN ordenes_servicio os ON hs.id_os = os.id
+                    WHERE os.id_cliente = :cli AND {$condTipo}
+                      AND DATE_FORMAT(COALESCE(hs.fecha_hora_toma_muestra, hs.fecha_creacion), '%Y-%m') = :mes
+                ", $pSub)[0]['c'] ?? 0);
+
+                $muestrasCnt = (int)($this->consultarSeguroMapa("
+                    SELECT COUNT(DISTINCT rm.id) AS c
+                    FROM recepcion_muestras rm
+                    JOIN ordenes_servicio os ON rm.id_os = os.id
+                    WHERE os.id_cliente = :cli AND {$condTipo}
+                      AND DATE_FORMAT(rm.fecha_recepcion, '%Y-%m') = :mes
+                ", $pSub)[0]['c'] ?? 0);
+
+                $roturasCnt = (int)($this->consultarSeguroMapa("
+                    SELECT COUNT(DISTINCT rot.id) AS c
+                    FROM roturas rot
+                    JOIN especimenes esp ON rot.especimen_id = esp.id
+                    JOIN recepcion_muestras rm ON esp.muestra_id = rm.id
+                    JOIN ordenes_servicio os ON rm.id_os = os.id
+                    WHERE os.id_cliente = :cli AND {$condTipo}
+                      AND DATE_FORMAT(COALESCE(rot.fecha_real, rot.created_at), '%Y-%m') = :mes
+                ", $pSub)[0]['c'] ?? 0);
+
+                $infRot = (int)($this->consultarSeguroMapa("
+                    SELECT COUNT(DISTINCT ir.id) AS c
+                    FROM informes_rotura ir
+                    JOIN recepcion_muestras rm ON ir.muestra_id = rm.id
+                    JOIN ordenes_servicio os ON rm.id_os = os.id
+                    WHERE os.id_cliente = :cli AND {$condTipo}
+                      AND DATE_FORMAT(ir.created_at, '%Y-%m') = :mes
+                ", $pSub)[0]['c'] ?? 0);
+
+                $infCtrl = (int)($this->consultarSeguroMapa("
+                    SELECT COUNT(DISTINCT ic.id) AS c
+                    FROM informes_control ic
+                    JOIN lotes_muestras lm ON ic.id_lote = lm.id
+                    JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                    JOIN ordenes_servicio os ON rm.id_os = os.id
+                    WHERE os.id_cliente = :cli AND {$condTipo}
+                      AND DATE_FORMAT(ic.fecha_generacion, '%Y-%m') = :mes
+                ", $pSub)[0]['c'] ?? 0);
+
+                $infTotal = $infRot + $infCtrl;
+                $cotsN = (int)($r['total_cots'] ?? 0);
+                $osN = (int)($r['total_os'] ?? 0);
+                $factVal = round((float)($r['facturacion_os'] ?? 0), 2);
+
+                $totCots += $cotsN;
+                $totOs += $osN;
+                $totHojas += $hojasCnt;
+                $totMuestras += $muestrasCnt;
+                $totRoturas += $roturasCnt;
+                $totInformes += $infTotal;
+                $totFact += $factVal;
+
+                $rows[] = [
+                    'mes' => $mes,
+                    'cliente' => (string)$r['cliente'],
+                    'tipo_contrato' => (string)$r['tipo_contrato'],
+                    'cotizaciones' => $cotsN,
+                    'ordenes_servicio' => $osN,
+                    'hojas_rt13' => $hojasCnt,
+                    'muestras' => $muestrasCnt,
+                    'roturas' => $roturasCnt,
+                    'informes_emitidos' => $infTotal,
+                    'facturacion' => $factVal,
+                ];
+            }
+
+            return [
+                'subvistas' => $subvistas,
+                'kpis' => [
+                    ['titulo' => 'Cotizaciones & O/S', 'valor' => "{$totCots} / {$totOs}", 'subtitulo' => 'Clientes/Contratos activos en rango', 'icono' => 'fa-solid fa-file-contract', 'color' => '#103487'],
+                    ['titulo' => 'Hojas RT-FM-13 & Muestras', 'valor' => "{$totHojas} / {$totMuestras}", 'subtitulo' => 'Cadenas de custodia y recepciones', 'icono' => 'fa-solid fa-flask', 'color' => '#ea580c'],
+                    ['titulo' => 'Roturas & Informes', 'valor' => "{$totRoturas} / {$totInformes}", 'subtitulo' => 'Ensayos ejecutados e informes', 'icono' => 'fa-solid fa-file-shield', 'color' => '#7c3aed'],
+                    ['titulo' => 'Facturación Consolidada', 'valor' => 'C$ ' . number_format($totFact, 2), 'subtitulo' => 'Total consolidado del período', 'icono' => 'fa-solid fa-coins', 'color' => '#15803d'],
+                ],
+                'columns' => [
+                    ['key' => 'mes', 'label' => 'Período (Mes)', 'type' => 'text'],
+                    ['key' => 'cliente', 'label' => 'Cliente', 'type' => 'text'],
+                    ['key' => 'tipo_contrato', 'label' => 'Tipo Contrato', 'type' => 'badge'],
+                    ['key' => 'cotizaciones', 'label' => 'Cotizaciones', 'type' => 'number'],
+                    ['key' => 'ordenes_servicio', 'label' => 'O/S', 'type' => 'number'],
+                    ['key' => 'hojas_rt13', 'label' => 'Hojas RT-FM-13', 'type' => 'number'],
+                    ['key' => 'muestras', 'label' => 'Muestras', 'type' => 'number'],
+                    ['key' => 'roturas', 'label' => 'Roturas', 'type' => 'number'],
+                    ['key' => 'informes_emitidos', 'label' => 'Informes Emitidos', 'type' => 'number'],
+                    ['key' => 'facturacion', 'label' => 'Facturación', 'type' => 'money'],
+                ],
+                'rows' => $rows,
+            ];
+        }
+
+        // Subvista principal: consolidado agrupado por mes YYYY-MM
+        $meses = [];
+        $initMes = static function (array &$bucket, string $m): void {
+            if ($m === '' || preg_match('/^\d{4}-\d{2}$/', $m) !== 1) {
+                return;
+            }
+            if (!isset($bucket[$m])) {
+                $bucket[$m] = [
+                    'mes' => $m,
+                    'cotizaciones' => 0,
+                    'ordenes_servicio' => 0,
+                    'hojas_rt13' => 0,
+                    'muestras' => 0,
+                    'roturas' => 0,
+                    'informes_emitidos' => 0,
+                    'facturacion' => 0.0,
+                ];
+            }
+        };
+
+        $wCot = []; $pCot = [];
+        $this->aplicarFiltroFechas($wCot, $pCot, 'fecha_creacion', $f, 'mcot');
+        foreach ($this->consultarSeguroMapa("SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') AS m, COUNT(*) AS c FROM cotizaciones" . ($wCot ? ' WHERE ' . implode(' AND ', $wCot) : '') . " GROUP BY m", $pCot) as $r) {
+            $m = (string)($r['m'] ?? '');
+            $initMes($meses, $m);
+            if (isset($meses[$m])) $meses[$m]['cotizaciones'] = (int)$r['c'];
+        }
+
+        $wOs = []; $pOs = [];
+        $this->aplicarFiltroFechas($wOs, $pOs, 'COALESCE(fecha_emision, created_at)', $f, 'mos');
+        foreach ($this->consultarSeguroMapa("SELECT DATE_FORMAT(COALESCE(fecha_emision, created_at), '%Y-%m') AS m, COUNT(*) AS c FROM ordenes_servicio" . ($wOs ? ' WHERE ' . implode(' AND ', $wOs) : '') . " GROUP BY m", $pOs) as $r) {
+            $m = (string)($r['m'] ?? '');
+            $initMes($meses, $m);
+            if (isset($meses[$m])) $meses[$m]['ordenes_servicio'] = (int)$r['c'];
+        }
+
+        $wHs = []; $pHs = [];
+        $this->aplicarFiltroFechas($wHs, $pHs, 'COALESCE(fecha_hora_toma_muestra, fecha_creacion)', $f, 'mhs');
+        foreach ($this->consultarSeguroMapa("SELECT DATE_FORMAT(COALESCE(fecha_hora_toma_muestra, fecha_creacion), '%Y-%m') AS m, COUNT(*) AS c FROM hojas_solicitud" . ($wHs ? ' WHERE ' . implode(' AND ', $wHs) : '') . " GROUP BY m", $pHs) as $r) {
+            $m = (string)($r['m'] ?? '');
+            $initMes($meses, $m);
+            if (isset($meses[$m])) $meses[$m]['hojas_rt13'] = (int)$r['c'];
+        }
+
+        $wRm = []; $pRm = [];
+        $this->aplicarFiltroFechas($wRm, $pRm, 'fecha_recepcion', $f, 'mrm');
+        foreach ($this->consultarSeguroMapa("SELECT DATE_FORMAT(fecha_recepcion, '%Y-%m') AS m, COUNT(*) AS c FROM recepcion_muestras" . ($wRm ? ' WHERE ' . implode(' AND ', $wRm) : '') . " GROUP BY m", $pRm) as $r) {
+            $m = (string)($r['m'] ?? '');
+            $initMes($meses, $m);
+            if (isset($meses[$m])) $meses[$m]['muestras'] = (int)$r['c'];
+        }
+
+        $wRot = []; $pRot = [];
+        $this->aplicarFiltroFechas($wRot, $pRot, 'COALESCE(fecha_real, created_at)', $f, 'mrot');
+        foreach ($this->consultarSeguroMapa("SELECT DATE_FORMAT(COALESCE(fecha_real, created_at), '%Y-%m') AS m, COUNT(*) AS c FROM roturas" . ($wRot ? ' WHERE ' . implode(' AND ', $wRot) : '') . " GROUP BY m", $pRot) as $r) {
+            $m = (string)($r['m'] ?? '');
+            $initMes($meses, $m);
+            if (isset($meses[$m])) $meses[$m]['roturas'] = (int)$r['c'];
+        }
+
+        $wIr = []; $pIr = [];
+        $this->aplicarFiltroFechas($wIr, $pIr, 'created_at', $f, 'mir');
+        foreach ($this->consultarSeguroMapa("SELECT DATE_FORMAT(created_at, '%Y-%m') AS m, COUNT(*) AS c FROM informes_rotura" . ($wIr ? ' WHERE ' . implode(' AND ', $wIr) : '') . " GROUP BY m", $pIr) as $r) {
+            $m = (string)($r['m'] ?? '');
+            $initMes($meses, $m);
+            if (isset($meses[$m])) $meses[$m]['informes_emitidos'] += (int)$r['c'];
+        }
+
+        $wIc = []; $pIc = [];
+        $this->aplicarFiltroFechas($wIc, $pIc, 'fecha_generacion', $f, 'mic');
+        foreach ($this->consultarSeguroMapa("SELECT DATE_FORMAT(fecha_generacion, '%Y-%m') AS m, COUNT(*) AS c FROM informes_control" . ($wIc ? ' WHERE ' . implode(' AND ', $wIc) : '') . " GROUP BY m", $pIc) as $r) {
+            $m = (string)($r['m'] ?? '');
+            $initMes($meses, $m);
+            if (isset($meses[$m])) $meses[$m]['informes_emitidos'] += (int)$r['c'];
+        }
+
+        $wFac = []; $pFac = [];
+        $this->aplicarFiltroFechas($wFac, $pFac, 'COALESCE(cxc.fecha_emision, os.fecha_emision, os.created_at)', $f, 'mfac');
+        $sqlFac = "SELECT DATE_FORMAT(COALESCE(cxc.fecha_emision, os.fecha_emision, os.created_at), '%Y-%m') AS m,
+                          COALESCE(SUM(COALESCE(cxc.monto, cot.total, 0)), 0) AS total_fac
+                   FROM ordenes_servicio os
+                   LEFT JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+                   LEFT JOIN cuentas_por_cobrar cxc ON cxc.factura_numero = CONCAT('FAC-', cot.codigo)"
+            . ($wFac ? ' WHERE ' . implode(' AND ', $wFac) : '')
+            . " GROUP BY m";
+        foreach ($this->consultarSeguroMapa($sqlFac, $pFac) as $r) {
+            $m = (string)($r['m'] ?? '');
+            $initMes($meses, $m);
+            if (isset($meses[$m])) $meses[$m]['facturacion'] = round((float)$r['total_fac'], 2);
+        }
+
+        if ($f['q'] !== '') {
+            $qLow = mb_strtolower($f['q'], 'UTF-8');
+            $meses = array_filter($meses, static fn(array $row): bool => str_contains(mb_strtolower($row['mes'], 'UTF-8'), $qLow));
+        }
+
+        krsort($meses);
+        $rows = array_values($meses);
+
+        $sumCots = 0; $sumOs = 0; $sumHojas = 0; $sumMuestras = 0; $sumRoturas = 0; $sumInf = 0; $sumFact = 0.0;
+        foreach ($rows as &$rw) {
+            $sumCots += (int)$rw['cotizaciones'];
+            $sumOs += (int)$rw['ordenes_servicio'];
+            $sumHojas += (int)$rw['hojas_rt13'];
+            $sumMuestras += (int)$rw['muestras'];
+            $sumRoturas += (int)$rw['roturas'];
+            $sumInf += (int)$rw['informes_emitidos'];
+            $sumFact += (float)$rw['facturacion'];
+            $rw['_pdfs'] = [
+                [
+                    'label' => 'Ver por Cliente',
+                    'url' => '/Cycsa/publico/reportes/ver?modulo=reporteria_mensual&subvista=por_cliente&mes=' . urlencode($rw['mes']),
+                    'icon' => 'fa-solid fa-users',
+                    'color' => '#103487',
+                ],
+                [
+                    'label' => 'Excel Mes',
+                    'url' => '/Cycsa/publico/reportes/exportar-excel?modulo=reporteria_mensual&mes=' . urlencode($rw['mes']),
+                    'icon' => 'fa-solid fa-file-excel',
+                    'color' => '#15803d',
+                ],
+            ];
+        }
+        unset($rw);
+
+        return [
+            'subvistas' => $subvistas,
+            'kpis' => [
+                ['titulo' => 'Meses con Actividad', 'valor' => (string)count($rows), 'subtitulo' => "Cotiz.: {$sumCots} · O/S: {$sumOs}", 'icono' => 'fa-solid fa-calendar-days', 'color' => '#103487'],
+                ['titulo' => 'Hojas RT-FM-13 & Muestras', 'valor' => "{$sumHojas} / {$sumMuestras}", 'subtitulo' => 'Hojas emitidas / Muestras lab', 'icono' => 'fa-solid fa-flask', 'color' => '#ea580c'],
+                ['titulo' => 'Roturas & Informes', 'valor' => "{$sumRoturas} / {$sumInf}", 'subtitulo' => 'Ensayos e informes consolidados', 'icono' => 'fa-solid fa-file-shield', 'color' => '#7c3aed'],
+                ['titulo' => 'Facturación del Período', 'valor' => 'C$ ' . number_format($sumFact, 2), 'subtitulo' => 'Monto total facturable', 'icono' => 'fa-solid fa-coins', 'color' => '#15803d'],
+            ],
+            'columns' => [
+                ['key' => 'mes', 'label' => 'Mes (YYYY-MM)', 'type' => 'text'],
+                ['key' => 'cotizaciones', 'label' => 'Cotizaciones', 'type' => 'number'],
+                ['key' => 'ordenes_servicio', 'label' => 'O/S', 'type' => 'number'],
+                ['key' => 'hojas_rt13', 'label' => 'Hojas RT-FM-13', 'type' => 'number'],
+                ['key' => 'muestras', 'label' => 'Muestras', 'type' => 'number'],
+                ['key' => 'roturas', 'label' => 'Roturas', 'type' => 'number'],
+                ['key' => 'informes_emitidos', 'label' => 'Informes Emitidos', 'type' => 'number'],
+                ['key' => 'facturacion', 'label' => 'Facturación', 'type' => 'money'],
             ],
             'rows' => $rows,
         ];

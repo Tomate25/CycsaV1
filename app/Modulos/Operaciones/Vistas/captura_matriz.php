@@ -392,6 +392,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         border-color: #fb923c;
         cursor: not-allowed;
     }
+    .col-recepcion-oculta {
+        display: none !important;
+    }
 </style>
 
 <!-- TOP BAR STICKY (OPERACIONES LIMS - REDISEÑO PROFESIONAL) -->
@@ -836,7 +839,8 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             </div>
         </div>
 
-        <!-- Apartado Oficial para Equipamiento Asignado (Nota 1 Densímetro Nuclear TROXLER) -->
+        <!-- Apartado Oficial para Equipamiento Asignado (Nota 1 Densímetro Nuclear — Solo Supervisión/Recepción) -->
+        <?php if ($esSupervisor): ?>
         <div class="apartado-equipo-box" style="margin-top: 14px; padding: 14px 18px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px;">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
                 <div style="font-weight: 700; font-size: 13.5px; color: #166534; display: flex; align-items: center; gap: 8px;">
@@ -850,23 +854,46 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Marca del Equipo:</label>
-                    <input type="text" name="metadatos[equipo_marca]" id="meta_equipo_marca" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_marca'] ?? 'TROXLER', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. TROXLER">
+                    <input type="text" name="metadatos[equipo_marca]" id="meta_equipo_marca" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_marca'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. TROXLER">
                 </div>
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Modelo:</label>
-                    <input type="text" name="metadatos[equipo_modelo]" id="meta_equipo_modelo" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_modelo'] ?? '3440', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. 3440">
+                    <input type="text" name="metadatos[equipo_modelo]" id="meta_equipo_modelo" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_modelo'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. 3440">
                 </div>
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Número de Serie (N/S):</label>
-                    <input type="text" name="metadatos[equipo_serie]" id="meta_equipo_serie" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_serie'] ?? '62677', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. 62677">
+                    <input type="text" name="metadatos[equipo_serie]" id="meta_equipo_serie" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_serie'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. 62677">
                 </div>
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Código Interno CYCSA:</label>
-                    <input type="text" name="metadatos[equipo_codigo]" id="meta_equipo_codigo" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_codigo'] ?? 'Eq-6555', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Eq-6555">
+                    <input type="text" name="metadatos[equipo_codigo]" id="meta_equipo_codigo" class="meta-input-web" value="<?= htmlspecialchars($metadatos['equipo_codigo'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Eq-6555">
                 </div>
             </div>
             <div style="margin-top: 8px; font-size: 11.5px; color: #166534; font-style: italic;">
-                * Se imprimirá en el informe oficial como: <strong>Nota 1: Muestra tomada con equipo [Marca], Modelo: [Modelo], N/S : [Serie] [Código]</strong>
+                * Se imprimirá en el informe oficial únicamente si se registran datos de equipo: <strong>Nota 1: Muestra tomada con equipo [Marca], Modelo: [Modelo], N/S : [Serie] [Código]</strong>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Apartado Aditivos, Observaciones Pendientes y Asteriscos (*) -->
+        <div class="apartado-notas-informe-box" style="margin-top: 14px; padding: 14px 18px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px;">
+            <div style="font-weight: 700; font-size: 13px; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-flask-vial text-primary"></i>
+                <span>Aditivos, Observaciones Pendientes y Marcadores de Informe (*)</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+                <div>
+                    <label for="meta_nota_aditivos" style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Nota de Aditivos:</label>
+                    <input type="text" name="metadatos[nota_aditivos]" id="meta_nota_aditivos" class="meta-input-web" value="<?= htmlspecialchars($metadatos['nota_aditivos'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Aditivo plastificante Sika 1.2% por peso de cemento">
+                </div>
+                <div>
+                    <label for="meta_observaciones_pendientes" style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Observaciones Pendientes:</label>
+                    <input type="text" name="metadatos[observaciones_pendientes]" id="meta_observaciones_pendientes" class="meta-input-web" value="<?= htmlspecialchars($metadatos['observaciones_pendientes'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Pendiente confirmación de datos de recepción">
+                </div>
+                <div>
+                    <label for="meta_columnas_asterisco" style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Columnas con Asterisco (*):</label>
+                    <input type="text" name="metadatos[columnas_asterisco]" id="meta_columnas_asterisco" class="meta-input-web" value="<?= htmlspecialchars(is_array($metadatos['columnas_asterisco'] ?? null) ? implode(', ', $metadatos['columnas_asterisco']) : (string)($metadatos['columnas_asterisco'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Peso Volumétrico (kg/m³), Temp. (°C)">
+                </div>
             </div>
         </div>
     </div>
@@ -934,7 +961,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         <i class="fa-solid fa-microscope"></i> RELLENA TÉCNICO (Operaciones)
                     </span>
                 </div>
-                <?php if (!$esModoHistorico): ?>
+                <?php if ($esSupervisor && !$esModoHistorico): ?>
                 <button type="button" id="btn-toggle-recepcion-lock" class="btn-matriz-secondary" onclick="toggleEdicionRecepcionMatriz()" style="background:#fff; color:#9a3412; border-color:#fdba74; font-weight:700; font-size:12px;">
                     <i class="fa-solid fa-lock"></i> Desbloquear casillas de Recepción
                 </button>
@@ -998,6 +1025,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     const DATOS_INICIALES = Array.isArray(RAW_RESULTADOS) ? RAW_RESULTADOS : (RAW_RESULTADOS.filas || []);
     const MUESTRAS_SETEADAS = <?= json_encode($muestrasSeteadas ?? [], JSON_UNESCAPED_UNICODE) ?>;
     const ES_MODO_HISTORICO = <?= $esModoHistorico ? 'true' : 'false' ?>;
+    const ES_SUPERVISOR = <?= $esSupervisor ? 'true' : 'false' ?>;
+    const LAB_DIVISOR_KGCM2 = <?= json_encode(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::obtenerFloat('cilindros_divisor_kgcm2', 14.2029)) ?>;
+    const LAB_REDONDEAR_PSI_10 = <?= \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::obtenerBool('cilindros_redondear_psi_10', true) ? 'true' : 'false' ?>;
     const PREFIJO_OFICIAL = <?= json_encode($prefijoMuestraOS ?? determinarPrefijoMuestraOS($detalle)) ?>;
     const CLASIFICACION_COLUMNAS = <?= json_encode($clasificacionColumnas ?? [], JSON_UNESCAPED_UNICODE) ?>;
     const TIENE_CAMPOS_RECEPCION = <?= !empty($tieneCamposRecepcion) ? 'true' : 'false' ?>;
@@ -1008,57 +1038,57 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
     const DEFAULT_ROWS_BY_FORMAT = {
         "formato_de_granulometria_de_suelo.md": [
-            { "Malla": "2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1 1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "3/4\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "3/8\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 4", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 8", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 10", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 16", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 20", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 30", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 40", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 50", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 60", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 80", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 100", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 140", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 200", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Fondo", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Pérdida lavado", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Suma", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Límite Líquido", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Límite Plástico", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "I.P", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" }
+            { "Malla": "3\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1 1/2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/4\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1/2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/8\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 4", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 8", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 10", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 16", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 20", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 30", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 40", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 50", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 60", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 80", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 100", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 140", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 200", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Fondo", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Pérdida lavado", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Suma", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Límite Líquido", "P. Retenido parcial (g)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Límite Plástico", "P. Retenido parcial (g)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "I.P", "P. Retenido parcial (g)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" }
         ],
         "granulomnetria_de_agregados.md": [
-            { "Malla": "2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1 1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "3/4\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "1/2\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "3/8\"", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 4", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 8", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 10", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 16", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 20", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 30", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 40", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 50", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 60", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 80", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 100", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 140", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "No. 200", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Fondo", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Pérdida lavado", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Suma", "P. Retenido parcial (gr)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Límite Líquido", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Malla": "Límite Plástico", "P. Retenido parcial (gr)": "—", "% Retenido parcial": "—", "% Acumulativo": "—", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1 1/2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/4\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "1/2\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "3/8\"", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 4", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 8", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 10", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 16", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 20", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 30", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 40", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 50", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 60", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 80", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 100", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 140", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "No. 200", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Fondo", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Pérdida lavado", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Malla": "Suma", "P. Retenido parcial (g)": "", "% Retenido parcial": "", "% Acumulativo": "", "% que pasa la malla": "", "Límite Mín": "", "Límite Máx": "" }
         ],
         "formato_de_resistencia_de_bloques.md": [
             { "Descripción": "Área bruta.", "Unidad": "in²", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
@@ -1068,10 +1098,10 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             { "Descripción": "Alto", "Unidad": "cm", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
             { "Descripción": "Espesor pared", "Unidad": "mm", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "25", "Límite Máx": "" },
             { "Descripción": "Espesor tabique", "Unidad": "mm", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "25", "Límite Máx": "" },
-            { "Descripción": "Peso recibido", "Unidad": "gr", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Descripción": "Peso sumergido", "Unidad": "gr", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Descripción": "Peso saturado", "Unidad": "gr", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
-            { "Descripción": "Peso seco", "Unidad": "gr", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Descripción": "Peso recibido", "Unidad": "g", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Descripción": "Peso sumergido", "Unidad": "g", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Descripción": "Peso saturado", "Unidad": "g", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
+            { "Descripción": "Peso seco", "Unidad": "g", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
             { "Descripción": "Absorción", "Unidad": "%", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "12.00" },
             { "Descripción": "Humedad", "Unidad": "%", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "", "Límite Máx": "" },
             { "Descripción": "Densidad", "Unidad": "kg/m³", "Método de ensayo": "CYCSA-PE-32", "Resultado": "", "Límite Mín": "2000", "Límite Máx": "" },
@@ -1213,8 +1243,8 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             return parseFloat((valorNum * 0.070307).toFixed(1));
         }
 
-        // Longitud: in <-> cm
-        if (uOri === 'in' && uDes === 'cm') return parseFloat((valorNum * 2.54).toFixed(1));
+        // Longitud: in <-> cm (Revenimiento ASTM C143 redondeado al 0.5 cm más cercano)
+        if (uOri === 'in' && uDes === 'cm') return Math.round(valorNum * 2.54 * 2) / 2;
         if (uOri === 'cm' && uDes === 'in') return parseFloat((valorNum / 2.54).toFixed(2));
 
         return valorNum;
@@ -1359,7 +1389,10 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                     thR.style.background = '#ffedd5';
                     thR.style.color = '#9a3412';
                     thR.innerHTML = '<i class="fa-solid fa-inbox"></i> LLENA RECEPCIÓN';
-                } else if (rol === 'identificacion') {
+                    if (!ES_SUPERVISOR) {
+                        thR.classList.add('col-recepcion-oculta', 'd-none');
+                    }
+                } else if (rol === 'identidad' || rol === 'identificacion') {
                     thR.style.background = '#f1f5f9';
                     thR.style.color = '#334155';
                     thR.innerHTML = '<i class="fa-solid fa-tag"></i> MUESTRA';
@@ -1380,8 +1413,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             trMethods.style.background = '#f8fafc';
             trMethods.style.borderBottom = '1px solid #cbd5e1';
 
+            const nombreOcultoEnInicio = !ES_SUPERVISOR && columnasActuales[1] && (CLASIFICACION_COLUMNAS[columnasActuales[1]] || 'tecnico') === 'recepcion';
             const thMethodTitle = document.createElement('th');
-            thMethodTitle.colSpan = 3 + (replicasHabilitadas ? 1 : 0);
+            thMethodTitle.colSpan = (nombreOcultoEnInicio ? 2 : 3) + (replicasHabilitadas ? 1 : 0);
             thMethodTitle.style.textAlign = 'left';
             thMethodTitle.style.padding = '8px 12px';
             thMethodTitle.style.fontWeight = '700';
@@ -1396,6 +1430,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 thM.style.padding = '6px 8px';
                 thM.style.fontWeight = '600';
                 thM.style.fontSize = '11px';
+                if (!ES_SUPERVISOR && (CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
+                    thM.classList.add('col-recepcion-oculta', 'd-none');
+                }
                 const methodCode = schema.column_methods[col] || '';
                 if (methodCode) {
                     const badgeMetodo = document.createElement('span');
@@ -1431,6 +1468,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         columnasActuales.forEach(col => {
             const th = document.createElement('th');
             th.innerText = col;
+            if (!ES_SUPERVISOR && (CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
+                th.classList.add('col-recepcion-oculta', 'd-none');
+            }
             trH.appendChild(th);
         });
         thead.appendChild(trH);
@@ -1624,7 +1664,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                             input.classList.add('matriz-input-calculated');
                         }
                     }
-                    if (calcCol === 'P. Retenido parcial (gr)') {
+                    if (calcCol === 'P. Retenido parcial (g)' || calcCol === 'P. Retenido parcial (gr)') {
                         if (['Límite Líquido', 'Límite Plástico', 'I.P'].includes(mallaName)) {
                             input.readOnly = true;
                             input.classList.add('matriz-input-locked');
@@ -1671,14 +1711,19 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                     }
                 }
 
-                if (TIENE_CAMPOS_RECEPCION && (CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
+                if ((CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
                     input.classList.add('matriz-input-recepcion');
                     input.dataset.rolRecepcion = '1';
-                    const recBloqueadas = Array.isArray(rowData._recepcion_bloqueadas) ? rowData._recepcion_bloqueadas : [];
-                    if (recBloqueadas.includes(col) && input.value.trim() !== '') {
-                        input.dataset.recepcionPrellena = '1';
-                        input.readOnly = !permitirEdicionRecepcionMatriz;
-                        input.title = (input.title ? input.title + ' — ' : '') + 'Dato capturado en Recepción (O/S RT-FM-13)';
+                    if (!ES_SUPERVISOR) {
+                        td.classList.add('col-recepcion-oculta', 'd-none');
+                        input.readOnly = true;
+                    } else {
+                        const recBloqueadas = Array.isArray(rowData._recepcion_bloqueadas) ? rowData._recepcion_bloqueadas : [];
+                        if (recBloqueadas.includes(col) && input.value.trim() !== '') {
+                            input.dataset.recepcionPrellena = '1';
+                            input.readOnly = !permitirEdicionRecepcionMatriz;
+                            input.title = (input.title ? input.title + ' — ' : '') + 'Dato capturado en Recepción (O/S RT-FM-13)';
+                        }
                     }
                 }
 
@@ -1818,7 +1863,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         rowsArray.forEach(row => {
             const malla = row['Malla'] ? row['Malla'].value.trim() : '';
             if (malla && !['Suma', 'Límite Líquido', 'Límite Plástico', 'I.P'].includes(malla)) {
-                const wInput = row['P. Retenido parcial (gr)'];
+                const wInput = row['P. Retenido parcial (g)'] || row['P. Retenido parcial (gr)'];
                 if (wInput) {
                     totalSuma += (parseFloat(wInput.value) || 0);
                 }
@@ -1827,8 +1872,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
         // Fila Suma
         const sumaRow = rowsArray.find(r => r['Malla'] && r['Malla'].value.trim() === 'Suma');
-        if (sumaRow && sumaRow['P. Retenido parcial (gr)']) {
-            sumaRow['P. Retenido parcial (gr)'].value = totalSuma > 0 ? totalSuma.toFixed(4) : '';
+        const sumaPesoInput = sumaRow ? (sumaRow['P. Retenido parcial (g)'] || sumaRow['P. Retenido parcial (gr)']) : null;
+        if (sumaRow && sumaPesoInput) {
+            sumaPesoInput.value = totalSuma > 0 ? totalSuma.toFixed(4) : '';
             if (sumaRow['% Retenido parcial']) sumaRow['% Retenido parcial'].value = totalSuma > 0 ? '100.00' : '';
             if (sumaRow['% Acumulativo']) sumaRow['% Acumulativo'].value = totalSuma > 0 ? '100.00' : '';
             if (sumaRow['% que pasa la malla']) sumaRow['% que pasa la malla'].value = totalSuma > 0 ? '0.00' : '';
@@ -1839,7 +1885,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         rowsArray.forEach(row => {
             const malla = row['Malla'] ? row['Malla'].value.trim() : '';
             if (malla && !['Suma', 'Límite Líquido', 'Límite Plástico', 'I.P'].includes(malla)) {
-                const wInput = row['P. Retenido parcial (gr)'];
+                const wInput = row['P. Retenido parcial (g)'] || row['P. Retenido parcial (gr)'];
                 const rpInput = row['% Retenido parcial'];
                 const acInput = row['% Acumulativo'];
                 const qpInput = row['% que pasa la malla'];
@@ -1934,24 +1980,25 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                     let kgcm2 = 0;
 
                     if (isLb && isIn2) {
-                        psi = carga / area;
-                        kgcm2 = psi * 0.070307;
+                        const psiBruto = carga / area;
+                        psi = LAB_REDONDEAR_PSI_10 ? (Math.round(psiBruto / 10) * 10) : psiBruto;
+                        kgcm2 = Math.round(psi / LAB_DIVISOR_KGCM2);
                     } else if (!isLb && !isIn2) {
                         // Carga en kg y Área en cm² -> ya está en kg/cm²
                         kgcm2 = carga / area;
-                        psi = kgcm2 * 14.223343;
+                        psi = kgcm2 * LAB_DIVISOR_KGCM2;
                     } else if (isLb && !isIn2) {
                         // Carga en lb y Área en cm²
                         kgcm2 = (carga * 0.45359237) / area;
-                        psi = kgcm2 * 14.223343;
+                        psi = kgcm2 * LAB_DIVISOR_KGCM2;
                     } else {
                         // Carga en kg y Área en in²
                         psi = (carga * 2.2046226) / area;
-                        kgcm2 = psi * 0.070307;
+                        kgcm2 = psi / LAB_DIVISOR_KGCM2;
                     }
 
-                    if (rPsiInput && (!rPsiInput.value || isUserEdit)) rPsiInput.value = psi.toFixed(1);
-                    if (rKgInput && (!rKgInput.value || isUserEdit)) rKgInput.value = kgcm2.toFixed(1);
+                    if (rPsiInput && (!rPsiInput.value || isUserEdit)) rPsiInput.value = (isLb && isIn2) ? String(Math.round(psi)) : psi.toFixed(1);
+                    if (rKgInput && (!rKgInput.value || isUserEdit)) rKgInput.value = (isLb && isIn2) ? String(Math.round(kgcm2)) : kgcm2.toFixed(1);
                 } else if (isUserEdit) {
                     if (rPsiInput) rPsiInput.value = '';
                     if (rKgInput) rKgInput.value = '';
@@ -1968,7 +2015,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             if (revInInput && revCmInput) {
                 const valIn = parseFloat(revInInput.value) || 0;
                 if (valIn > 0) {
-                    revCmInput.value = (valIn * 2.54).toFixed(1);
+                    revCmInput.value = String(Math.round(valIn * 2.54 * 2) / 2);
                 } else {
                     revCmInput.value = '';
                 }
@@ -2172,8 +2219,17 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             ubicacion: document.getElementById('meta_ubicacion') ? document.getElementById('meta_ubicacion').value : '',
             metodo_muestreo: document.getElementById('meta_metodo_muestreo') ? document.getElementById('meta_metodo_muestreo').value : '',
             codigo_formato: <?= json_encode($metadatos['codigo_formato'], JSON_UNESCAPED_UNICODE) ?>,
-            logo_acreditacion: document.getElementById('input_hidden_logo_acreditacion') ? document.getElementById('input_hidden_logo_acreditacion').value : ''
+            logo_acreditacion: document.getElementById('input_hidden_logo_acreditacion') ? document.getElementById('input_hidden_logo_acreditacion').value : '',
+            nota_aditivos: document.getElementById('meta_nota_aditivos') ? document.getElementById('meta_nota_aditivos').value : '',
+            observaciones_pendientes: document.getElementById('meta_observaciones_pendientes') ? document.getElementById('meta_observaciones_pendientes').value : '',
+            columnas_asterisco: document.getElementById('meta_columnas_asterisco') ? document.getElementById('meta_columnas_asterisco').value : ''
         };
+        if (ES_SUPERVISOR) {
+            metaObj.equipo_marca = document.getElementById('meta_equipo_marca') ? document.getElementById('meta_equipo_marca').value : '';
+            metaObj.equipo_modelo = document.getElementById('meta_equipo_modelo') ? document.getElementById('meta_equipo_modelo').value : '';
+            metaObj.equipo_serie = document.getElementById('meta_equipo_serie') ? document.getElementById('meta_equipo_serie').value : '';
+            metaObj.equipo_codigo = document.getElementById('meta_equipo_codigo') ? document.getElementById('meta_equipo_codigo').value : '';
+        }
 
         const payload = {
             filas: resultados,
@@ -2314,6 +2370,11 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             <div style="margin-bottom:16px;">
                 <label style="font-size:12.5px; font-weight:600; color:#334155; display:block; margin-bottom:6px;">Nota de Aprobación (Opcional):</label>
                 <input type="text" name="nota_aprobacion" class="form-control" style="width:100%; box-sizing:border-box; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;" placeholder="Ej: Conforme a norma y tolerancias ASTM.">
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="font-size:12.5px; font-weight:600; color:#334155; display:block; margin-bottom:6px;">Observaciones Pendientes para Informe (Opcional):</label>
+                <input type="text" name="observaciones_pendientes" class="form-control" style="width:100%; box-sizing:border-box; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;" value="<?= htmlspecialchars($metadatos['observaciones_pendientes'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej: Pendiente verificación de equipo calibrado">
             </div>
             
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">

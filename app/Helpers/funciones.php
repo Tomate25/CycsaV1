@@ -13,11 +13,66 @@ if (!function_exists('array_is_list')) {
     }
 }
 /**
+ * Parsea una cadena (separada por coma, punto y coma o espacios/saltos de línea) o un arreglo
+ * de correos electrónicos y retorna únicamente direcciones válidas deduplicadas.
+ *
+ * @param string|array<int, string>|null $entrada
+ * @return array<int, string>
+ */
+function parsearListaCorreos(string|array|null $entrada): array {
+    if ($entrada === null || $entrada === '' || $entrada === []) {
+        return [];
+    }
+
+    $brutos = [];
+    if (is_array($entrada)) {
+        foreach ($entrada as $item) {
+            if (is_string($item) && trim($item) !== '') {
+                $partes = preg_split('/[\s,;]+/', trim($item)) ?: [];
+                foreach ($partes as $p) {
+                    if ($p !== '') {
+                        $brutos[] = $p;
+                    }
+                }
+            }
+        }
+    } else {
+        $brutos = preg_split('/[\s,;]+/', trim($entrada)) ?: [];
+    }
+
+    $validos = [];
+    $vistos = [];
+    foreach ($brutos as $correo) {
+        $correo = trim($correo);
+        if ($correo === '') {
+            continue;
+        }
+        if (filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            $clave = strtolower($correo);
+            if (!isset($vistos[$clave])) {
+                $vistos[$clave] = true;
+                $validos[] = $correo;
+            }
+        }
+    }
+
+    return $validos;
+}
+
+/**
  * Envía un correo electrónico utilizando PHPMailer.
+ * Soporta múltiples destinatarios en $para y $cc (cadena separada por coma/punto y coma o arreglo).
  * Si MAIL_HOST está configurado en .env, usa SMTP (ideal para desarrollo local).
  * Si no, usa la función mail() nativa (ideal para producción en Bluehost).
  */
-function enviarCorreo(string $para, string $asunto, string $cuerpoHTML, string $cuerpoTexto = '', array $adjuntos = []): bool {
+function enviarCorreo(string|array $para, string $asunto, string $cuerpoHTML, string $cuerpoTexto = '', array $adjuntos = [], string|array $cc = []): bool {
+    $destinatarios = parsearListaCorreos($para);
+    if (empty($destinatarios)) {
+        return false;
+    }
+    $copias = parsearListaCorreos($cc);
+    $paraTextoLog = implode(', ', $destinatarios);
+
     $mail = new PHPMailer(true);
 
     try {
@@ -35,7 +90,16 @@ function enviarCorreo(string $para, string $asunto, string $cuerpoHTML, string $
 
         $mail->setFrom($remitenteCorreo, $remitenteNombre);
         $mail->Sender = $remitenteCorreo; // Parámetro -f para cPanel sendmail/Exim
-        $mail->addAddress($para);
+        $agregadosTo = [];
+        foreach ($destinatarios as $dest) {
+            $mail->addAddress($dest);
+            $agregadosTo[strtolower($dest)] = true;
+        }
+        foreach ($copias as $destCc) {
+            if (!isset($agregadosTo[strtolower($destCc)])) {
+                $mail->addCC($destCc);
+            }
+        }
 
         // Contenido
         $mail->isHTML(true);
@@ -97,7 +161,7 @@ function enviarCorreo(string $para, string $asunto, string $cuerpoHTML, string $
         if (!is_dir($logDir)) {
             @mkdir($logDir, 0777, true);
         }
-        $logMsg = "[" . date('Y-m-d H:i:s') . "] Fallo al enviar correo a {$para}: " . $mail->ErrorInfo . " | Excepción: " . $e->getMessage() . "\n";
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] Fallo al enviar correo a {$paraTextoLog}: " . $mail->ErrorInfo . " | Excepción: " . $e->getMessage() . "\n";
         @file_put_contents($logDir . '/mail_errors.log', $logMsg, FILE_APPEND);
         error_log($logMsg);
         return false;
@@ -2333,8 +2397,12 @@ function convertirUnidadMedicionPHP(float $val, string $uOri, string $uDes): flo
         return round($val * 0.070307, 1);
     }
 
-    // Longitud: in <-> cm
-    if ($uOri === 'in' && $uDes === 'cm') return round($val * 2.54, 1);
+    // Longitud: in <-> cm (Revenimiento oficial ASTM C143 / RT-FM-61 redondeado a 0.5 cm)
+    if ($uOri === 'in' && $uDes === 'cm') {
+        return class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+            ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularRevenimientoCm($val)
+            : (round($val * 2.54 * 2.0) / 2.0);
+    }
     if ($uOri === 'cm' && $uDes === 'in') return round($val / 2.54, 2);
 
     return $val;
@@ -2480,25 +2548,55 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
         }
     }
 
-    // B.5: Equipamiento asignado / Densímetro Nuclear (Nota 1 oficial)
-    $equipoMarca = $metadatosGuardados['equipo_marca'] ?? ($metadatosGuardados['densimetro_marca'] ?? (!empty($detalle['equipo_marca']) ? $detalle['equipo_marca'] : 'TROXLER'));
-    $equipoModelo = $metadatosGuardados['equipo_modelo'] ?? ($metadatosGuardados['densimetro_modelo'] ?? (!empty($detalle['equipo_modelo']) ? $detalle['equipo_modelo'] : '3440'));
-    $equipoSerie = $metadatosGuardados['equipo_serie'] ?? ($metadatosGuardados['densimetro_serie'] ?? (!empty($detalle['equipo_serie']) ? $detalle['equipo_serie'] : '62677'));
-    $equipoCodigo = $metadatosGuardados['equipo_codigo'] ?? ($metadatosGuardados['densimetro_codigo'] ?? (!empty($detalle['equipo_codigo']) ? $detalle['equipo_codigo'] : 'Eq-6555'));
+    // B.5 / 1.13: Equipamiento asignado / Densímetro Nuclear (sin fabricar defaults falsos)
+    $equipoMarca = trim((string)($metadatosGuardados['equipo_marca'] ?? ($metadatosGuardados['densimetro_marca'] ?? ($detalle['equipo_marca'] ?? ''))));
+    $equipoModelo = trim((string)($metadatosGuardados['equipo_modelo'] ?? ($metadatosGuardados['densimetro_modelo'] ?? ($detalle['equipo_modelo'] ?? ''))));
+    $equipoSerie = trim((string)($metadatosGuardados['equipo_serie'] ?? ($metadatosGuardados['densimetro_serie'] ?? ($detalle['equipo_serie'] ?? ''))));
+    $equipoCodigo = trim((string)($metadatosGuardados['equipo_codigo'] ?? ($metadatosGuardados['densimetro_codigo'] ?? ($detalle['equipo_codigo'] ?? ''))));
 
-    $muestraTomadaConEquipo = !empty($metadatosGuardados['muestra_tomada_con_equipo'])
-        ? trim($metadatosGuardados['muestra_tomada_con_equipo'])
-        : (!empty($detalle['muestra_tomada_con_equipo']) ? trim($detalle['muestra_tomada_con_equipo']) : "{$equipoMarca}, Modelo: {$equipoModelo}, N/S : {$equipoSerie} {$equipoCodigo}");
+    $rawCustomEquipo = trim((string)($metadatosGuardados['muestra_tomada_con_equipo'] ?? ($detalle['muestra_tomada_con_equipo'] ?? '')));
+    $tieneEquipoExplicito = ($equipoMarca !== '' || $equipoModelo !== '' || $equipoSerie !== '' || $equipoCodigo !== '');
 
-    if (!empty($metadatosGuardados['muestra_tomada_con_equipo'])) {
-        $valCustom = trim($metadatosGuardados['muestra_tomada_con_equipo']);
-        if (stripos($valCustom, 'Nota 1') === 0 || stripos($valCustom, 'Muestra tomada con equipo') !== false) {
-            $notaEquipoDensimetro = $valCustom;
-        } else {
-            $notaEquipoDensimetro = "Nota 1: Muestra tomada con equipo {$valCustom}";
+    $tieneFormatoExplicito = !empty($detalle['archivo_markdown'])
+        || !empty($detalle['descripcion_ensayo'])
+        || !empty($schemaInfo['codigo_formato'])
+        || !empty($schemaInfo['ensayo_titulo']);
+    $esFormatoDensimetroOGenerico = (
+        !$tieneFormatoExplicito
+        || strpos($codigoFormato, 'RT-FM-22 B') !== false
+        || strpos($descLower, 'compacta') !== false
+        || strpos($descLower, 'dens') !== false
+        || strpos($descLower, 'cono') !== false
+        || strpos($descLower, 'reemplazo') !== false
+    );
+
+    $muestraTomadaConEquipo = '';
+    $notaEquipoDensimetro = '';
+    if ($rawCustomEquipo !== '') {
+        $muestraTomadaConEquipo = $rawCustomEquipo;
+        if ($esFormatoDensimetroOGenerico) {
+            if (stripos($rawCustomEquipo, 'Nota 1') === 0 || stripos($rawCustomEquipo, 'Muestra tomada con equipo') !== false) {
+                $notaEquipoDensimetro = $rawCustomEquipo;
+            } else {
+                $notaEquipoDensimetro = "Nota 1: Muestra tomada con equipo {$rawCustomEquipo}";
+            }
         }
-    } else {
-        $notaEquipoDensimetro = "Nota 1: Muestra tomada con equipo {$equipoMarca}, Modelo: {$equipoModelo}, N/S : {$equipoSerie} {$equipoCodigo}";
+    } elseif ($tieneEquipoExplicito && $esFormatoDensimetroOGenerico) {
+        $partesEq = [];
+        if ($equipoMarca !== '') {
+            $partesEq[] = $equipoMarca;
+        }
+        if ($equipoModelo !== '') {
+            $partesEq[] = "Modelo: {$equipoModelo}";
+        }
+        $bloqueNs = trim(($equipoSerie !== '' ? "N/S : {$equipoSerie}" : '') . ($equipoCodigo !== '' ? " {$equipoCodigo}" : ''));
+        if ($bloqueNs !== '') {
+            $partesEq[] = $bloqueNs;
+        }
+        $muestraTomadaConEquipo = implode(', ', $partesEq);
+        if ($muestraTomadaConEquipo !== '') {
+            $notaEquipoDensimetro = "Nota 1: Muestra tomada con equipo {$muestraTomadaConEquipo}";
+        }
     }
 
     $normaTecnica = !empty($schemaInfo['norma'])
@@ -2508,6 +2606,25 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
             : (!empty($metadatosGuardados['norma_tecnica']) ? $metadatosGuardados['norma_tecnica'] : $metodoMuestreo));
 
     $logoAcreditacion = !empty($metadatosGuardados['logo_acreditacion']) ? $metadatosGuardados['logo_acreditacion'] : (!empty($detalle['logo_acreditacion']) ? $detalle['logo_acreditacion'] : '');
+    $notaAditivos = trim((string)($metadatosGuardados['nota_aditivos'] ?? ($detalle['nota_aditivos'] ?? '')));
+    $observacionesPendientes = trim((string)($metadatosGuardados['observaciones_pendientes'] ?? ($detalle['observaciones_pendientes'] ?? '')));
+
+    $rawColsAst = $metadatosGuardados['columnas_asterisco'] ?? ($detalle['columnas_asterisco'] ?? []);
+    $columnasAsterisco = [];
+    if (is_string($rawColsAst) && trim($rawColsAst) !== '') {
+        foreach (explode(',', $rawColsAst) as $ca) {
+            $ca = trim($ca);
+            if ($ca !== '') {
+                $columnasAsterisco[] = $ca;
+            }
+        }
+    } elseif (is_array($rawColsAst)) {
+        foreach ($rawColsAst as $ca) {
+            if (is_string($ca) && trim($ca) !== '') {
+                $columnasAsterisco[] = trim($ca);
+            }
+        }
+    }
 
     return [
         'cliente_nombre' => $clienteNom,
@@ -2533,6 +2650,9 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
         'equipo_serie' => $equipoSerie,
         'equipo_codigo' => $equipoCodigo,
         'nota_equipo_densimetro' => $notaEquipoDensimetro,
+        'nota_aditivos' => $notaAditivos,
+        'observaciones_pendientes' => $observacionesPendientes,
+        'columnas_asterisco' => $columnasAsterisco,
     ];
 }
 
@@ -2685,7 +2805,10 @@ function generarCodigoInformeEnsayo($datosMuestrasOFilas = [], ?string $fechaRef
  * @param string $formatosSchemaJson Contenido JSON de esquemas normativos (opcional)
  * @return string Bytes binarios del PDF generado
  */
-function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], array $columnas = [], string $formatosSchemaJson = ''): string {
+function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], array $columnas = [], string $formatosSchemaJson = '', array $opcionesPdf = []): string {
+    $sinLogo = !empty($opcionesPdf['sin_logo']);
+    $sinLogoAcreditacion = !empty($opcionesPdf['sin_logo_acreditacion']);
+
     $options = new Options();
     $options->set('isHtml5ParserEnabled', true);
     $options->set('isRemoteEnabled', false);
@@ -2716,7 +2839,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         $pageSizeMm = '279.4mm 215.9mm';
         $zonaCuerpoBottom = '32mm';
     }
-    $bgBase64 = file_exists($bgPath) ? base64_encode(file_get_contents($bgPath)) : '';
+    $bgBase64 = (!$sinLogo && file_exists($bgPath)) ? base64_encode(file_get_contents($bgPath)) : '';
 
     $codigoFormatoOficial = !empty($schemaInfo['codigo_formato']) ? $schemaInfo['codigo_formato'] : (!empty($detalle['codigo_documento']) ? $detalle['codigo_documento'] : 'CYCSA-RT-FM-22');
     $ensayoTituloOficial = !empty($schemaInfo['ensayo_titulo']) ? $schemaInfo['ensayo_titulo'] : ($detalle['descripcion_ensayo'] ?? 'Ensayo de Laboratorio');
@@ -2922,10 +3045,27 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     }
     $trMetodos .= '</tr>';
 
+    // 2.18: Asteriscos por columna o valor
+    $columnasAsteriscoNorm = [];
+    foreach (($metaOficial['columnas_asterisco'] ?? []) as $cAst) {
+        $normAst = normalizarTextoClavePHP((string)$cAst);
+        if ($normAst !== '') {
+            $columnasAsteriscoNorm[$normAst] = true;
+        }
+    }
+    $tieneAsteriscoSimple = false;
+
     // Fila 2: Nombres oficiales de las Columnas de resultados
     $trColumnas = '<tr class="tr-columnas">';
     foreach ($columnas as $col) {
         $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col;
+        $colNormCheck = normalizarTextoClavePHP($colLabel);
+        if (isset($columnasAsteriscoNorm[$colNormCheck]) && !str_contains($colLabel, '*')) {
+            $colLabel .= ' *';
+            $tieneAsteriscoSimple = true;
+        } elseif (str_starts_with(trim($colLabel), '*') && !str_starts_with(trim($colLabel), '**')) {
+            $tieneAsteriscoSimple = true;
+        }
         $trColumnas .= '<th style="border: 1px solid #000; background: #ffffff; padding: 3px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . '; line-height: 1.1;">' . htmlspecialchars($colLabel, ENT_QUOTES, 'UTF-8') . '</th>';
     }
     $trColumnas .= '</tr>';
@@ -2942,8 +3082,12 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             $tbodyTrs .= '<td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-weight: bold;">' . $numFila . '</td>';
             foreach ($columnas as $col) {
                 $val = is_array($fila) ? buscarValorEnFilaPHP($fila, $col, $schemaInfo['column_aliases'][$col] ?? null) : '';
+                $valTrim = trim((string)$val);
+                if ($valTrim !== '' && str_starts_with($valTrim, '*') && !str_starts_with($valTrim, '**')) {
+                    $tieneAsteriscoSimple = true;
+                }
                 $isCode = ($col === 'Código laboratorio' || $col === 'Codigo Lab');
-                $isNum = is_numeric(str_replace(['%', ',', ' '], '', (string)$val)) && !empty($val);
+                $isNum = is_numeric(str_replace(['%', ',', ' ', '*'], '', (string)$val)) && !empty($val);
                 $align = $isNum ? 'right' : ($col === 'Nombre muestra' ? 'left' : 'center');
                 $fontW = $isCode ? 'bold' : 'normal';
                 $fontSizeTd = (count($columnas) >= 12) ? '6.8px' : '7.2px';
@@ -2962,18 +3106,44 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         }
     }
 
-    // B.5: Si es formato RT-FM-22 B (compactación), asegurar Nota 1 estructurada de densímetro
-    if (strpos($codigoFormatoOficial, 'RT-FM-22 B') !== false || strpos($archivoMd, 'compactacion') !== false) {
+    // B.5 / 1.13: Si es formato RT-FM-22 B (compactación), incluir Nota 1 SOLO si hay equipo explícito
+    if (strpos($codigoFormatoOficial, 'RT-FM-22 B') !== false || strpos($archivoMd, 'compactacion') !== false || strpos($archivoMd, 'densimetro') !== false) {
         $tieneNota1 = false;
         foreach ($notasOficiales as $idxNota => $notaExistente) {
             if (stripos($notaExistente, 'Nota 1') !== false || stripos($notaExistente, 'TROXLER') !== false || stripos($notaExistente, 'Muestra tomada con equipo') !== false) {
-                $notasOficiales[$idxNota] = $metaOficial['nota_equipo_densimetro'];
-                $tieneNota1 = true;
+                if (!empty($metaOficial['nota_equipo_densimetro'])) {
+                    $notasOficiales[$idxNota] = $metaOficial['nota_equipo_densimetro'];
+                    $tieneNota1 = true;
+                } else {
+                    unset($notasOficiales[$idxNota]);
+                }
                 break;
             }
         }
+        $notasOficiales = array_values($notasOficiales);
         if (!$tieneNota1 && !empty($metaOficial['nota_equipo_densimetro'])) {
             $notasOficiales[] = $metaOficial['nota_equipo_densimetro'];
+        }
+    }
+
+    // 2.18: Leyenda automática de asterisco (*)
+    if ($tieneAsteriscoSimple) {
+        $notasOficiales[] = '* Parámetro o resultado marcado fuera del alcance de acreditación o con observación técnica.';
+    }
+
+    // 2.12: Nota de Aditivos configurable (pie | cabecera | ambos)
+    $notaAditivos = trim((string)($metaOficial['nota_aditivos'] ?? ''));
+    $ubicacionAditivos = class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+        ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::obtener('informe_ubicacion_aditivos', 'pie')
+        : 'pie';
+    $aditivosCabeceraHtml = '';
+    if ($notaAditivos !== '') {
+        $aditivosEsc = htmlspecialchars($notaAditivos, ENT_QUOTES, 'UTF-8');
+        if ($ubicacionAditivos === 'cabecera' || $ubicacionAditivos === 'ambos') {
+            $aditivosCabeceraHtml = '<tr><td class="lbl-col">Aditivos:</td><td class="val-col" colspan="3">' . $aditivosEsc . '</td></tr>';
+        }
+        if ($ubicacionAditivos === 'pie' || $ubicacionAditivos === 'ambos') {
+            $notasOficiales[] = 'Nota de Aditivos: ' . $notaAditivos;
         }
     }
 
@@ -2990,8 +3160,8 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $disclaimerEsc = htmlspecialchars($disclaimerOficial, ENT_QUOTES, 'UTF-8');
 
     $logoAcredHtml = '';
-    $leftZonaCabecera = '56mm';
-    if (!empty($metaOficial['logo_acreditacion'])) {
+    $leftZonaCabecera = $sinLogo ? '14mm' : '56mm';
+    if (!$sinLogoAcreditacion && !empty($metaOficial['logo_acreditacion'])) {
         $urlAcred = $metaOficial['logo_acreditacion'];
         $cleanPath = preg_replace('#^/Cycsa/publico/#', '', $urlAcred);
         $cleanPath = preg_replace('#^/publico/#', '', $cleanPath);
@@ -3001,9 +3171,25 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             $extImg = strtolower(pathinfo($rutaAcredAbs, PATHINFO_EXTENSION));
             $mimeImg = ($extImg === 'svg') ? 'image/svg+xml' : (($extImg === 'png') ? 'image/png' : (($extImg === 'webp') ? 'image/webp' : 'image/jpeg'));
             $base64Acred = 'data:' . $mimeImg . ';base64,' . base64_encode((string)file_get_contents($rutaAcredAbs));
-            $logoAcredHtml = '<div style="position: absolute; top: 6mm; left: 47mm; height: 26mm; width: 34mm; text-align: center;"><img src="' . $base64Acred . '" style="max-height: 24mm; max-width: 34mm; object-fit: contain;"></div>';
-            $leftZonaCabecera = '83mm';
+            $leftAcred = $sinLogo ? '14mm' : '47mm';
+            $logoAcredHtml = '<div style="position: absolute; top: 6mm; left: ' . $leftAcred . '; height: 26mm; width: 34mm; text-align: center;"><img src="' . $base64Acred . '" style="max-height: 24mm; max-width: 34mm; object-fit: contain;"></div>';
+            $leftZonaCabecera = $sinLogo ? '50mm' : '83mm';
         }
+    }
+
+    // 2.2 y 2.7: Nombres reales de Revisado por / Aprobado por + Observaciones Pendientes (nunca bitácora interna)
+    $revisionData = isset($decMatriz['revision']) && is_array($decMatriz['revision']) ? $decMatriz['revision'] : [];
+    $revisadoPorReal = trim((string)($revisionData['usuario_revisor'] ?? ($detalle['revisado_nombre'] ?? '')));
+    $aprobadoPorReal = trim((string)($revisionData['usuario_aprobador'] ?? ($detalle['aprobado_nombre'] ?? '')));
+    $revisadoMostrarPdf = $revisadoPorReal !== '' ? htmlspecialchars($revisadoPorReal, ENT_QUOTES, 'UTF-8') : 'Supervisión de Ensayos';
+    $aprobadoMostrarPdf = $aprobadoPorReal !== ''
+        ? htmlspecialchars($aprobadoPorReal, ENT_QUOTES, 'UTF-8')
+        : ($revisadoPorReal !== '' ? htmlspecialchars($revisadoPorReal, ENT_QUOTES, 'UTF-8') : $firmanteNombre);
+
+    $obsPendientesTexto = trim((string)($metaOficial['observaciones_pendientes'] ?? ($revisionData['observaciones_pendientes'] ?? ($detalle['observaciones_pendientes'] ?? ''))));
+    $obsPendientesHtml = '';
+    if ($obsPendientesTexto !== '') {
+        $obsPendientesHtml = '<div style="border: 1px solid #000; padding: 3px 6px; margin-bottom: 3px; font-size: 7px; background: #fffbeb;"><strong>OBSERVACIONES PENDIENTES:</strong> ' . nl2br(htmlspecialchars($obsPendientesTexto, ENT_QUOTES, 'UTF-8')) . '</div>';
     }
 
     $numFirmas = (int)($schemaInfo['num_firmas'] ?? 1);
@@ -3021,15 +3207,36 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             <td style="width: 33.33%;">
                 <div style="height: 14px;"></div>
                 <div style="border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8px;">Supervisión de Ensayos</div>
-                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Revisado por (Supervisor de Área)</div>
+                    <div style="font-weight: bold; font-size: 8px;">{$revisadoMostrarPdf}</div>
+                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Revisado por</div>
                 </div>
             </td>
             <td style="width: 33.33%;">
                 <div style="height: 14px;"></div>
                 <div style="border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8px;">{$firmanteNombre}</div>
-                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Aprobado ({$firmanteCargo} / ISO 17025)</div>
+                    <div style="font-weight: bold; font-size: 8px;">{$aprobadoMostrarPdf}</div>
+                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Aprobado por ({$firmanteCargo} / ISO 17025)</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+FIRMAS;
+    } elseif ($revisadoPorReal !== '' || $aprobadoPorReal !== '') {
+        $firmasHtml = <<<FIRMAS
+    <table class="firmas-tbl" style="margin: 4px auto 0 auto; width: 80%;">
+        <tr>
+            <td style="width: 50%; text-align: center; vertical-align: top;">
+                <div style="height: 14px;"></div>
+                <div style="display: inline-block; min-width: 190px; border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="font-weight: bold; font-size: 8.5px;">{$revisadoMostrarPdf}</div>
+                    <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">Revisado por</div>
+                </div>
+            </td>
+            <td style="width: 50%; text-align: center; vertical-align: top;">
+                <div style="height: 14px;"></div>
+                <div style="display: inline-block; min-width: 190px; border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="font-weight: bold; font-size: 8.5px;">{$aprobadoMostrarPdf}</div>
+                    <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">Aprobado por</div>
                 </div>
             </td>
         </tr>
@@ -3229,6 +3436,7 @@ FIRMAS;
             <td class="lbl-col">Método de muestreo:</td>
             <td class="val-col" style="font-weight: bold; font-family: monospace;">{$metodoMuestreo}</td>
         </tr>
+        {$aditivosCabeceraHtml}
     </table>
 
     <table class="matriz-tbl">
@@ -3240,6 +3448,8 @@ FIRMAS;
         <div class="disclaimer-normativo">{$disclaimerEsc}</div>
         {$notasHtml}
     </div>
+
+    {$obsPendientesHtml}
 
     <table class="obs-tbl">
         <tr>
@@ -5152,21 +5362,13 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
         }
     }
 
-    // Detección de tamaño de probeta / cilindro
+    // Detección de tamaño de probeta / cilindro (sin inyectar áreas nominales ficticias)
     $diam = $resultado['diametro_1'] ?? ($resultado['diametro_2'] ?? null);
     $filaStr = json_encode($filaEncontrada);
     if (preg_match('/4\s*[xX*]\s*8|10\s*[xX*]\s*20/', $filaStr) || ($diam !== null && (($diam >= 9.0 && $diam <= 11.5) || ($diam >= 3.5 && $diam <= 4.5)))) {
         $resultado['tamano_cilindro'] = '4x8 in (10x20 cm)';
-        if ($resultado['area'] === null) {
-            $resultado['area'] = 12.566;
-            $resultado['unidad_area'] = 'in2';
-        }
     } elseif (preg_match('/6\s*[xX*]\s*12|15\s*[xX*]\s*30/', $filaStr) || ($diam !== null && (($diam >= 14.0 && $diam <= 16.5) || ($diam >= 5.5 && $diam <= 6.5)))) {
         $resultado['tamano_cilindro'] = '6x12 in (15x30 cm)';
-        if ($resultado['area'] === null) {
-            $resultado['area'] = 28.274;
-            $resultado['unidad_area'] = 'in2';
-        }
     }
 
     return $resultado;
@@ -5244,6 +5446,10 @@ function sincronizarEspecimenYPlanFila(PDO $db, int $muestraId, string $codigoLa
 
     // 2. Sincronizar plan de roturas si la fila de matriz tiene edad o fecha programada
     if ($edadDias !== null && $edadDias > 0 && !empty($fechaProg)) {
+        $toleranciaHoras = class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+            ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39((int)$edadDias)
+            : 20.0;
+
         $stmtPlan = $db->prepare("SELECT id, estado FROM planes_rotura WHERE muestra_id = :mid ORDER BY id DESC LIMIT 1");
         $stmtPlan->execute(['mid' => $muestraId]);
         $plan = $stmtPlan->fetch(PDO::FETCH_ASSOC);
@@ -5264,11 +5470,11 @@ function sincronizarEspecimenYPlanFila(PDO $db, int $muestraId, string $codigoLa
                 $planEdadId = (int)$stmtEd->fetchColumn();
 
                 if ($planEdadId > 0) {
-                    $db->prepare("UPDATE plan_rotura_edades SET edad_dias = :edad, fecha_programada = :fprog, cantidad = 1, estado = 'pendiente' WHERE id = :id")
-                       ->execute(['edad' => $edadDias, 'fprog' => $fechaProg, 'id' => $planEdadId]);
+                    $db->prepare("UPDATE plan_rotura_edades SET edad_dias = :edad, fecha_programada = :fprog, tolerancia_horas = :tol, cantidad = 1, estado = 'pendiente' WHERE id = :id")
+                       ->execute(['edad' => $edadDias, 'fprog' => $fechaProg, 'tol' => $toleranciaHoras, 'id' => $planEdadId]);
                 } else {
-                    $db->prepare("INSERT INTO plan_rotura_edades (plan_rotura_id, edad_dias, cantidad, fecha_programada, tolerancia_horas, estado) VALUES (:pid, :edad, 1, :fprog, 24, 'pendiente')")
-                       ->execute(['pid' => $planId, 'edad' => $edadDias, 'fprog' => $fechaProg]);
+                    $db->prepare("INSERT INTO plan_rotura_edades (plan_rotura_id, edad_dias, cantidad, fecha_programada, tolerancia_horas, estado) VALUES (:pid, :edad, 1, :fprog, :tol, 'pendiente')")
+                       ->execute(['pid' => $planId, 'edad' => $edadDias, 'fprog' => $fechaProg, 'tol' => $toleranciaHoras]);
                     $planEdadId = (int)$db->lastInsertId();
                 }
             }
@@ -5280,8 +5486,8 @@ function sincronizarEspecimenYPlanFila(PDO $db, int $muestraId, string $codigoLa
             $stmtInsPlan->execute(['mid' => $muestraId]);
             $planId = (int)$db->lastInsertId();
 
-            $db->prepare("INSERT INTO plan_rotura_edades (plan_rotura_id, edad_dias, cantidad, fecha_programada, tolerancia_horas, estado) VALUES (:pid, :edad, 1, :fprog, 24, 'pendiente')")
-               ->execute(['pid' => $planId, 'edad' => $edadDias, 'fprog' => $fechaProg]);
+            $db->prepare("INSERT INTO plan_rotura_edades (plan_rotura_id, edad_dias, cantidad, fecha_programada, tolerancia_horas, estado) VALUES (:pid, :edad, 1, :fprog, :tol, 'pendiente')")
+               ->execute(['pid' => $planId, 'edad' => $edadDias, 'fprog' => $fechaProg, 'tol' => $toleranciaHoras]);
             $planEdadId = (int)$db->lastInsertId();
         }
 
@@ -5512,12 +5718,15 @@ function sincronizarRoturasConMatriz(PDO $db, int $idHoja, int $idDetalle, array
     foreach ($roturasEjecutadas as $rot) {
         $codLab = strtoupper(trim((string)($rot['codigo_lab'] ?? '')));
         $codBase = preg_replace('/-\d+$/', '', $codLab);
-        $carga = isset($rot['carga']) ? (float)$rot['carga'] : null;
-        $area = isset($rot['area']) ? (float)$rot['area'] : null;
-        $psi = isset($rot['esfuerzo_psi']) ? (float)$rot['esfuerzo_psi'] : null;
-        $kgcm2 = isset($rot['esfuerzo_kgcm2']) ? (float)$rot['esfuerzo_kgcm2'] : null;
+        $carga = isset($rot['carga']) && $rot['carga'] !== '' ? (float)$rot['carga'] : null;
+        $area = isset($rot['area']) && $rot['area'] !== '' ? (float)$rot['area'] : null;
+        $pesoVol = isset($rot['peso_volumetrico']) && $rot['peso_volumetrico'] !== '' ? (float)$rot['peso_volumetrico'] : null;
+        $psi = isset($rot['esfuerzo_psi']) && $rot['esfuerzo_psi'] !== '' ? (float)$rot['esfuerzo_psi'] : null;
+        $kgcm2 = isset($rot['esfuerzo_kgcm2']) && $rot['esfuerzo_kgcm2'] !== '' ? (float)$rot['esfuerzo_kgcm2'] : null;
         $fechaReal = !empty($rot['fecha_real']) ? date('Y-m-d', strtotime((string)$rot['fecha_real'])) : date('Y-m-d');
-        $edad = isset($rot['edad_dias']) ? (int)$rot['edad_dias'] : null;
+        $edad = (isset($rot['edad_calculada']) && $rot['edad_calculada'] !== '' && $rot['edad_calculada'] !== null)
+            ? (int)$rot['edad_calculada']
+            : ((isset($rot['edad_dias']) && $rot['edad_dias'] !== '' && $rot['edad_dias'] !== null) ? (int)$rot['edad_dias'] : null);
 
         foreach ($filas as &$f) {
             if (!is_array($f)) continue;
@@ -5531,24 +5740,41 @@ function sincronizarRoturasConMatriz(PDO $db, int $idHoja, int $idDetalle, array
             }
 
             if ($codFila !== '' && ($codFila === $codLab || $codFila === $codBase)) {
+                $actualizoPv = false;
+                $actualizoFecha = false;
+                $actualizoEdad = false;
                 foreach ($f as $kCol => $vCol) {
                     if (str_starts_with((string)$kCol, '_')) continue;
                     $kNorm = mb_strtolower(trim((string)$kCol), 'UTF-8');
-                    $kClean = preg_replace('/[^a-z0-9]/u', '', strtr($kNorm, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','²'=>'2']));
+                    $kClean = preg_replace('/[^a-z0-9]/u', '', strtr($kNorm, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','²'=>'2','³'=>'3']));
 
                     if ($carga !== null && in_array($kClean, ['cargalb', 'cargakg', 'carga', 'cargamaxima', 'lecturacargalbf'], true)) {
-                        $f[$kCol] = round($carga, 1);
+                        $f[$kCol] = round($carga, 0);
                     } elseif ($area !== null && in_array($kClean, ['areain2', 'areacm2', 'areain', 'areacm', 'area', 'areatransversal'], true)) {
-                        $f[$kCol] = round($area, 3);
+                        $f[$kCol] = round($area, 2);
+                    } elseif ($pesoVol !== null && (in_array($kClean, ['pesovolumetricokgm3', 'pesovolumetrico'], true) || str_contains($kClean, 'pesovolumetrico'))) {
+                        $f[$kCol] = round($pesoVol, 0);
+                        $actualizoPv = true;
                     } elseif ($psi !== null && str_contains($kClean, 'compresion') && (str_contains($kClean, 'lbin') || str_contains($kClean, 'psi'))) {
-                        $f[$kCol] = round($psi, 1);
+                        $f[$kCol] = round($psi, 0);
                     } elseif ($kgcm2 !== null && str_contains($kClean, 'compresion') && str_contains($kClean, 'kgcm')) {
-                        $f[$kCol] = round($kgcm2, 1);
+                        $f[$kCol] = round($kgcm2, 0);
                     } elseif (in_array($kClean, ['fechaderuptura', 'fecharuptura', 'fechadeensayo', 'fechaensayo', 'fecharotura', 'fechaderotura'], true) || (str_contains($kClean, 'fecha') && (str_contains($kClean, 'ruptura') || str_contains($kClean, 'ensayo') || str_contains($kClean, 'rotura')))) {
                         $f[$kCol] = $fechaReal;
+                        $actualizoFecha = true;
                     } elseif ($edad !== null && in_array($kClean, ['edaddias', 'edad', 'dias', 'diasrotura', 'edadrotura'], true)) {
                         $f[$kCol] = $edad;
+                        $actualizoEdad = true;
                     }
+                }
+                if ($pesoVol !== null && !$actualizoPv) {
+                    $f['Peso Volumétrico (kg/m³)'] = round($pesoVol, 0);
+                }
+                if (!$actualizoFecha && !empty($rot['fecha_real'])) {
+                    $f['Fecha de Ensayo'] = $fechaReal;
+                }
+                if ($edad !== null && !$actualizoEdad) {
+                    $f['Edad (Días)'] = $edad;
                 }
                 $actualizadas++;
                 break;
@@ -5609,14 +5835,18 @@ if (!function_exists('clasificarColumnaRecepcionOTecnico')) {
      * - 'recepcion': datos capturados en Recepción / Órdenes de Servicio por RT-FM-13
      * - 'tecnico': mediciones y cálculos ejecutados por el técnico en Operaciones
      */
-    function clasificarColumnaRecepcionOTecnico(string $nombreColumna): string {
+    function clasificarColumnaRecepcionOTecnico(string $nombreColumna, string $archivoFormato = ''): string {
         $norm = normalizarTextoClavePHP($nombreColumna);
         if ($norm === '') {
             return 'tecnico';
         }
 
-        if (in_array($norm, ['codigolaboratorio', 'codigolab', 'codigomuestra', 'nombremuestra', 'nombredelamuestra'], true)) {
+        if (in_array($norm, ['codigolaboratorio', 'codigolab', 'codigomuestra'], true)) {
             return 'identidad';
+        }
+
+        if (in_array($norm, ['nombremuestra', 'nombredelamuestra'], true)) {
+            return 'recepcion';
         }
 
         $clavesRecepcion = [
@@ -5630,6 +5860,46 @@ if (!function_exists('clasificarColumnaRecepcionOTecnico')) {
             return 'recepcion';
         }
 
+        $fmtNorm = mb_strtolower($archivoFormato, 'UTF-8');
+        $esCompactacionFmt = (
+            str_contains($fmtNorm, 'compactacion')
+            || str_contains($fmtNorm, 'compactación')
+            || str_contains($fmtNorm, 'densimetro')
+            || str_contains($fmtNorm, 'densímetro')
+            || str_contains($fmtNorm, 'cono_de_arena')
+            || str_contains($fmtNorm, 'reemplazo_de_agua')
+        );
+        if ($esCompactacionFmt) {
+            $clavesCompactacionRecepcion = [
+                'pvsmaxkgm3', 'pvsmax', 'pvsmaximo',
+                'humedadoptimapp', 'humedadoptima', 'conthumedadoptima',
+                'pvssitiokgm3', 'pvssitiokgcm2', 'pvssitio',
+                'pvhsitiokgm3', 'pvhsitio',
+                'humedadsitiopp', 'humedadsitiokgm3', 'humedadsitio',
+                'compactacionpp', 'compactacion',
+                'espesorcm', 'espesor',
+                'profundidadcm', 'profundidad',
+                'capan', 'capa', 'capano',
+                'fechademuestreo', 'fechamuestreo',
+            ];
+            if (
+                in_array($norm, $clavesCompactacionRecepcion, true)
+                || str_starts_with($norm, 'pvsmax')
+                || str_starts_with($norm, 'pvssitio')
+                || str_starts_with($norm, 'pvhsitio')
+                || str_starts_with($norm, 'humedadoptima')
+                || str_starts_with($norm, 'humedadsitio')
+                || str_starts_with($norm, 'compactacion')
+                || str_starts_with($norm, 'espesor')
+                || str_starts_with($norm, 'profundidad')
+                || str_starts_with($norm, 'capa')
+                || str_starts_with($norm, 'fechademuestreo')
+                || str_starts_with($norm, 'fechamuestreo')
+            ) {
+                return 'recepcion';
+            }
+        }
+
         return 'tecnico';
     }
 }
@@ -5638,12 +5908,12 @@ if (!function_exists('construirDescriptorCampoRecepcion')) {
     /**
      * Genera metadatos de UI para una columna de Recepción o Técnico.
      */
-    function construirDescriptorCampoRecepcion(string $nombreColumna): array {
+    function construirDescriptorCampoRecepcion(string $nombreColumna, string $archivoFormato = ''): array {
         $norm = normalizarTextoClavePHP($nombreColumna);
         $tipo = 'text';
         $step = 'any';
 
-        if (in_array($norm, ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado', 'fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion'], true)) {
+        if (in_array($norm, ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado', 'fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion', 'fechademuestreo', 'fechamuestreo'], true)) {
             $tipo = 'date';
             $step = '';
         } elseif (in_array($norm, ['edaddias', 'edad'], true)) {
@@ -5659,7 +5929,7 @@ if (!function_exists('construirDescriptorCampoRecepcion')) {
             'clave' => $norm,
             'tipo' => $tipo,
             'step' => $step,
-            'rol' => clasificarColumnaRecepcionOTecnico($nombreColumna),
+            'rol' => clasificarColumnaRecepcionOTecnico($nombreColumna, $archivoFormato),
         ];
     }
 }
@@ -5671,14 +5941,14 @@ if (!function_exists('clasificarColumnasMatrizPorRol')) {
      * @param string[] $columnas
      * @return array<string, string>
      */
-    function clasificarColumnasMatrizPorRol(array $columnas): array {
+    function clasificarColumnasMatrizPorRol(array $columnas, string $archivoFormato = ''): array {
         $mapa = [];
         foreach ($columnas as $col) {
             $colStr = (string)$col;
             if ($colStr === '') {
                 continue;
             }
-            $mapa[$colStr] = clasificarColumnaRecepcionOTecnico($colStr);
+            $mapa[$colStr] = clasificarColumnaRecepcionOTecnico($colStr, $archivoFormato);
         }
         return $mapa;
     }
@@ -5732,9 +6002,9 @@ if (!function_exists('obtenerCamposRecepcionParaDetalle')) {
         $camposTecnico = [];
         foreach ($columnas as $col) {
             $colStr = (string)$col;
-            $rol = clasificarColumnaRecepcionOTecnico($colStr);
+            $rol = clasificarColumnaRecepcionOTecnico($colStr, (string)$archivoMd);
             if ($rol === 'recepcion') {
-                $camposRecepcion[] = construirDescriptorCampoRecepcion($colStr);
+                $camposRecepcion[] = construirDescriptorCampoRecepcion($colStr, (string)$archivoMd);
             } elseif ($rol === 'tecnico') {
                 $camposTecnico[] = $colStr;
             }
@@ -5744,12 +6014,12 @@ if (!function_exists('obtenerCamposRecepcionParaDetalle')) {
         if (empty($camposRecepcion) && !empty($schema['fixed_rows']) && is_array($schema['fixed_rows'])) {
             foreach ($schema['fixed_rows'] as $fr) {
                 $desc = trim((string)($fr['Descripción'] ?? ''));
-                if ($desc !== '' && clasificarColumnaRecepcionOTecnico($desc) === 'recepcion') {
+                if ($desc !== '' && clasificarColumnaRecepcionOTecnico($desc, (string)$archivoMd) === 'recepcion') {
                     $unidad = trim((string)($fr['Unidad'] ?? ''));
                     $nombreCampo = ($unidad !== '' && stripos($desc, $unidad) === false)
                         ? "{$desc} ({$unidad})"
                         : $desc;
-                    $camposRecepcion[] = construirDescriptorCampoRecepcion($nombreCampo);
+                    $camposRecepcion[] = construirDescriptorCampoRecepcion($nombreCampo, (string)$archivoMd);
                 }
             }
         }
@@ -5828,7 +6098,10 @@ if (!function_exists('normalizarYCompletarDatosRecepcionMuestra')) {
             $vIn = $limpio[$colIn] ?? '';
             $vCm = $limpio[$colCm] ?? '';
             if ($vIn !== '' && is_numeric($vIn) && $vCm === '') {
-                $limpio[$colCm] = (string)round((float)$vIn * 2.54, 1);
+                $revCmCalc = class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+                    ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularRevenimientoCm((float)$vIn)
+                    : (round((float)$vIn * 2.54 * 2.0) / 2.0);
+                $limpio[$colCm] = (string)$revCmCalc;
             } elseif ($vCm !== '' && is_numeric($vCm) && $vIn === '') {
                 $limpio[$colIn] = (string)round((float)$vCm / 2.54, 2);
             }
@@ -5912,7 +6185,7 @@ if (!function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
      * @param string[] $columnasFormato
      * @return array<string, mixed>
      */
-    function fusionarDatosRecepcionEnFilaMatriz(array $fila, array $datosRecepcion, array $columnasFormato = [], bool $sobrescribirRecepcion = false): array {
+    function fusionarDatosRecepcionEnFilaMatriz(array $fila, array $datosRecepcion, array $columnasFormato = [], bool $sobrescribirRecepcion = false, string $archivoFormato = ''): array {
         if (empty($datosRecepcion)) {
             return $fila;
         }
@@ -5920,7 +6193,7 @@ if (!function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
         $destinos = !empty($columnasFormato) ? $columnasFormato : array_keys($datosRecepcion);
         foreach ($destinos as $colDest) {
             $colStr = (string)$colDest;
-            if (clasificarColumnaRecepcionOTecnico($colStr) !== 'recepcion') {
+            if (clasificarColumnaRecepcionOTecnico($colStr, $archivoFormato) !== 'recepcion') {
                 continue;
             }
             $valRec = buscarValorEnFilaPHP($datosRecepcion, $colStr);
@@ -5934,7 +6207,7 @@ if (!function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
 
         foreach ($datosRecepcion as $kRec => $vRec) {
             $kStr = (string)$kRec;
-            if ($vRec !== '' && clasificarColumnaRecepcionOTecnico($kStr) === 'recepcion') {
+            if ($vRec !== '' && clasificarColumnaRecepcionOTecnico($kStr, $archivoFormato) === 'recepcion') {
                 if (!empty($columnasFormato)) {
                     $encontrada = false;
                     $kNorm = normalizarTextoClavePHP($kStr);
@@ -5997,7 +6270,7 @@ if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
                     $codFila = strtoupper(trim((string)($fila['Código laboratorio'] ?? ($fila['Codigo laboratorio'] ?? ($fila['codigo_lab'] ?? '')))));
                     $recMuestra = $codFila !== '' && isset($datosPorCodigo[$codFila]) ? $datosPorCodigo[$codFila] : null;
                     if ($recMuestra !== null) {
-                        $filas[$idx] = fusionarDatosRecepcionEnFilaMatriz($fila, $recMuestra, $columnasFormato, true);
+                        $filas[$idx] = fusionarDatosRecepcionEnFilaMatriz($fila, $recMuestra, $columnasFormato, true, (string)($infoCampos['archivo_markdown'] ?? ''));
                         $huboCambios = true;
                     }
                 }
@@ -6018,6 +6291,13 @@ if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
             $stmtRm = $db->prepare("SELECT id, codigo_muestra FROM recepcion_muestras WHERE id_hoja = :hid");
             $stmtRm->execute(['hid' => $idHoja]);
             $recepciones = $stmtRm->fetchAll(PDO::FETCH_ASSOC);
+            $tieneColRevCm = false;
+            try {
+                $chkRevCm = $db->query("SHOW COLUMNS FROM lotes_muestras LIKE 'revenimiento_cm'");
+                $tieneColRevCm = $chkRevCm && (bool)$chkRevCm->fetch(PDO::FETCH_ASSOC);
+            } catch (\Throwable $e) {
+                $tieneColRevCm = false;
+            }
             foreach ($recepciones as $rm) {
                 $cod = strtoupper(trim((string)($rm['codigo_muestra'] ?? '')));
                 if ($cod === '' || empty($datosPorCodigo[$cod])) {
@@ -6025,6 +6305,7 @@ if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
                 }
                 $dr = $datosPorCodigo[$cod];
                 $revIn = null;
+                $revCm = null;
                 $tempC = null;
                 $diseno = null;
                 $fMoldeo = null;
@@ -6033,6 +6314,7 @@ if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
                 foreach ($dr as $k => $v) {
                     $kn = normalizarTextoClavePHP((string)$k);
                     if ($revIn === null && in_array($kn, ['revenin', 'revenimientoin'], true) && is_numeric($v)) $revIn = (float)$v;
+                    if ($revCm === null && in_array($kn, ['revencm', 'revenimientocm'], true) && is_numeric($v)) $revCm = (float)$v;
                     if ($tempC === null && in_array($kn, ['tempc', 'temperaturac', 'temperatura', 'temp'], true) && is_numeric($v)) $tempC = (float)$v;
                     if ($diseno === null && str_starts_with($kn, 'diseno') && $v !== '') $diseno = (string)$v;
                     if ($fMoldeo === null && in_array($kn, ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado'], true) && strtotime((string)$v) !== false) {
@@ -6041,10 +6323,17 @@ if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
                     if ($edadDias === null && in_array($kn, ['edaddias', 'edad'], true) && is_numeric($v)) $edadDias = (int)$v;
                 }
 
-                if ($revIn !== null || $tempC !== null || $diseno !== null || $fMoldeo !== null) {
+                if ($revIn !== null && $revCm === null) {
+                    $revCm = class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+                        ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularRevenimientoCm($revIn)
+                        : (round($revIn * 2.54 * 2.0) / 2.0);
+                }
+
+                if ($revIn !== null || $revCm !== null || $tempC !== null || $diseno !== null || $fMoldeo !== null) {
                     $sets = [];
                     $paramsLm = ['id_rec' => (int)$rm['id']];
                     if ($revIn !== null) { $sets[] = "revenimiento_in = :rev"; $paramsLm['rev'] = $revIn; }
+                    if ($tieneColRevCm && $revCm !== null) { $sets[] = "revenimiento_cm = :rev_cm"; $paramsLm['rev_cm'] = $revCm; }
                     if ($tempC !== null) { $sets[] = "temperatura_c = :temp"; $paramsLm['temp'] = $tempC; }
                     if ($diseno !== null) { $sets[] = "diseno_resistencia = :dis"; $paramsLm['dis'] = $diseno; }
                     if ($fMoldeo !== null) { $sets[] = "fecha_moldeo = :fmol"; $paramsLm['fmol'] = $fMoldeo; }

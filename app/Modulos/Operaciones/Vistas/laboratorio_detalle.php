@@ -1,5 +1,11 @@
 <?php
-// Laboratorio Detalle Muestra - Programa de Roturas PeriÃ³dicas e Imparcialidad ISO 17025
+// Laboratorio Detalle Muestra - Programa de Roturas Periódicas e Imparcialidad ISO 17025
+use Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio;
+
+$divisorKgCm2Lab = ConfigCalculoLabServicio::obtenerFloat('cilindros_divisor_kgcm2', 14.2029);
+$redondearPsi10Lab = ConfigCalculoLabServicio::obtenerBool('cilindros_redondear_psi_10', true);
+$redondearPv10Lab = ConfigCalculoLabServicio::obtenerBool('cilindros_redondear_pv_10', true);
+
 $totalEspecimenes = count($especimenes ?? []);
 $totalEnsayados = 0;
 foreach (($especimenes ?? []) as $esp) {
@@ -76,6 +82,9 @@ $puedeEditarPlan = ($totalEnsayados === 0);
         </p>
     </div>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?muestra_id=<?= (int)$muestra['muestra_id'] ?>" target="_blank" class="btn-accion btn-secondary-lab" title="Ver e imprimir Hoja de Solicitud de Laboratorio CYCSA-RT-FM-60">
+            <i class="fa-solid fa-print text-primary"></i> Hoja RT-FM-60
+        </a>
         <?php if (!empty($muestra['id_hoja'])): ?>
             <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$muestra['id_hoja'] ?>" class="btn-accion btn-primary-lab">
                 <i class="fa-solid fa-layer-group"></i> Ver Lote Completo (<?= (int)($muestra['total_muestras_lote'] ?? 1) ?>)
@@ -142,7 +151,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
     <?php
         $dmVista = $datosMatriz ?? [];
         $tempVista = $dmVista['temperatura_c'] ?? ($muestra['temperatura_c'] ?? null);
-        $areaVista = (!empty($dmVista['area']) && (float)$dmVista['area'] > 0) ? (float)$dmVista['area'] : 28.274;
+        $areaVista = (!empty($dmVista['area']) && (float)$dmVista['area'] > 0) ? (float)$dmVista['area'] : null;
         $edadMatVista = $dmVista['edad_dias'] ?? null;
     ?>
     <div class="grid-4" style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed #cbd5e1; background: #f8fafc; padding: 10px 12px; border-radius: 8px;">
@@ -156,7 +165,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
         </div>
         <div>
             <span style="font-size:11px; color:#0369a1; font-weight:700; text-transform:uppercase;"><i class="fa-solid fa-vector-square"></i> Área Transversal (Matriz):</span><br>
-            <strong style="color:#1e293b; font-family:monospace;"><?= number_format($areaVista, 3) ?> in²</strong>
+            <strong style="color:#1e293b; font-family:monospace;"><?= $areaVista !== null ? (number_format($areaVista, 3) . ' in²') : '--' ?></strong>
         </div>
         <div>
             <span style="font-size:11px; color:#0369a1; font-weight:700; text-transform:uppercase;"><i class="fa-solid fa-ruler-combined"></i> Diámetros / Masa (Matriz):</span><br>
@@ -221,7 +230,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     <td>
                         <strong><?= htmlspecialchars(date('d/m/Y', strtotime($ed['fecha_programada']))) ?></strong>
                     </td>
-                    <td>&plusmn; <?= (int)$ed['tolerancia_horas'] ?> hrs</td>
+                    <td>&plusmn; <?= rtrim(rtrim(number_format((float)$ed['tolerancia_horas'], 2, '.', ''), '0'), '.') ?> hrs</td>
                     <td>
                         <?php if ($completada): ?>
                             <span class="badge-lab badge-ensayado"><i class="fa-solid fa-circle-check"></i> Completada</span>
@@ -375,8 +384,12 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     <?php endif; ?>
                 </td>
                 <td style="text-align: right; white-space: nowrap;">
-                    <?php if (!$ensayado && !empty($esp['plan_edad_id'])): ?>
-                        <button type="button" class="btn-accion btn-primary-lab" onclick="abrirModalRegistrarRotura(<?= (int)$esp['id'] ?>, '<?= htmlspecialchars($esp['codigo_lab']) ?>', <?= (int)$esp['plan_edad_id'] ?>, <?= (int)$esp['edad_dias'] ?>, '<?= $esp['fecha_programada'] ?>', <?= (int)$esp['tolerancia_horas'] ?>)">
+                    <?php if (!$ensayado && !empty($esp['plan_edad_id'])):
+                        $tolEspDetalle = (isset($esp['tolerancia_horas']) && (float)$esp['tolerancia_horas'] > 0)
+                            ? (float)$esp['tolerancia_horas']
+                            : ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39((int)($esp['edad_dias'] ?: 28));
+                    ?>
+                        <button type="button" class="btn-accion btn-primary-lab" onclick="abrirModalRegistrarRotura(<?= (int)$esp['id'] ?>, '<?= htmlspecialchars($esp['codigo_lab']) ?>', <?= (int)$esp['plan_edad_id'] ?>, <?= (int)$esp['edad_dias'] ?>, '<?= $esp['fecha_programada'] ?>', <?= $tolEspDetalle ?>)">
                             <i class="fa-solid fa-hammer"></i> Ensayar
                         </button>
                     <?php endif; ?>
@@ -579,7 +592,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
 
 <!-- Modal 2: Registrar Ensayo de Rotura -->
 <div id="modalRegistrarRotura" class="modal-lab">
-    <div class="modal-lab-content" style="max-width: 760px;">
+    <div class="modal-lab-content" style="max-width: 780px;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
             <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--cycsa-azul); display: flex; align-items: center; gap: 8px;">
                 <i class="fa-solid fa-hammer"></i> Captura de Rotura: <span id="rot_esp_codigo" style="font-family: monospace; color:#0369a1;"></span>
@@ -593,104 +606,128 @@ $puedeEditarPlan = ($totalEnsayados === 0);
             <input type="hidden" id="rot_especimen_id" name="especimen_id" value="">
             <input type="hidden" id="rot_plan_edad_id" name="plan_edad_id" value="">
             <input type="hidden" id="rot_fecha_prog" value="">
-            <input type="hidden" id="rot_tol_horas" value="24">
+            <input type="hidden" id="rot_fecha_moldeo" value="<?= htmlspecialchars((string)($muestra['fecha_moldeo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" id="rot_tol_horas" value="20">
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Fecha y Hora Real:</label>
-                    <input type="datetime-local" id="rot_fecha_real" name="fecha_real" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="<?= date('Y-m-d\TH:i') ?>" onchange="verificarToleranciaTiempo()" required>
+                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Fecha y Hora Real de Ensayo:</label>
+                    <input type="datetime-local" id="rot_fecha_real" name="fecha_real" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="<?= date('Y-m-d\TH:i') ?>" onchange="verificarToleranciaTiempo(); calcularEsfuerzoEnVivo();" required>
                 </div>
                 <div>
                     <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Tipo de Falla (ASTM C39):</label>
                     <select name="tipo_falla" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;">
                         <option value="Tipo 1 (Cono bien formado)">Tipo 1 (Cono bien formado)</option>
-                        <option value="Tipo 2 (Cono y divisiÃ³n)">Tipo 2 (Cono y divisiÃ³n)</option>
-                        <option value="Tipo 3 (DivisiÃ³n columnar)">Tipo 3 (DivisiÃ³n columnar)</option>
+                        <option value="Tipo 2 (Cono y división)">Tipo 2 (Cono y división)</option>
+                        <option value="Tipo 3 (División columnar)">Tipo 3 (División columnar)</option>
                         <option value="Tipo 4 (Fractura diagonal)">Tipo 4 (Fractura diagonal)</option>
                         <option value="Tipo 5 (Fractura en esquinas)">Tipo 5 (Fractura en esquinas)</option>
                     </select>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
-                <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Carga de Rotura (lb):</label>
-                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_carga" name="carga" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 15px; font-weight: 700; height: 38px;" placeholder="Ej. 85000" oninput="calcularEsfuerzoEnVivo()" required>
+            <!-- Dimensiones y Masa RT-FM-61 (directos en modal, sin área prellenada 28.274) -->
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;">
+                <div style="font-size: 11.5px; font-weight: 800; color: #103487; margin-bottom: 8px;">
+                    <i class="fa-solid fa-ruler-combined"></i> Dimensiones, Masa y Carga del Espécimen (RT-FM-61)
                 </div>
-                <div>
-                    <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Ãrea Transversal (inÂ²):</label>
-                    <?php $areaPrefillModal = (!empty($datosMatriz['area']) && (float)$datosMatriz['area'] > 0) ? (string)$datosMatriz['area'] : '28.274'; ?>
-                    <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px;" value="<?= htmlspecialchars($areaPrefillModal, ENT_QUOTES, 'UTF-8') ?>" oninput="calcularEsfuerzoEnVivo()" required>
+                <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">D1 (cm):</label>
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12.5px; height: 36px;" placeholder="Ej. 10.10" oninput="recalcularDesdeHc61()">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">D2 (cm):</label>
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12.5px; height: 36px;" placeholder="Ej. 10.10" oninput="recalcularDesdeHc61()">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">L1 (cm):</label>
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[largo_1]" id="hc_l1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12.5px; height: 36px;" placeholder="Ej. 20.15" oninput="recalcularDesdeHc61()">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">L2 (cm):</label>
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[largo_2]" id="hc_l2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12.5px; height: 36px;" placeholder="Ej. 20.15" oninput="recalcularDesdeHc61()">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 3px;">Masa (kg):</label>
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12.5px; height: 36px;" placeholder="Ej. 3.820" oninput="recalcularDesdeHc61()">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                    <div>
+                        <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Carga de Rotura (lb):</label>
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_carga" name="carga" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 15px; font-weight: 700; height: 38px;" placeholder="Ej. 44840" oninput="calcularEsfuerzoEnVivo()" required>
+                    </div>
+                    <div>
+                        <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Área Transversal (in²) <span style="font-weight:500; color:#64748b;">(auto desde D1 y D2)</span>:</label>
+                        <?php $areaPrefillModal = (!empty($datosMatriz['area']) && (float)$datosMatriz['area'] > 0) ? (string)$datosMatriz['area'] : ''; ?>
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px; background:#f1f5f9;" value="<?= htmlspecialchars($areaPrefillModal, ENT_QUOTES, 'UTF-8') ?>" placeholder="Calculada automáticamente" readonly required>
+                    </div>
                 </div>
             </div>
 
-            <!-- Hoja de CÃ¡lculo RT-FM-61 / Roturas (Datos Crudos Opcionales con CalibraciÃ³n PRENSA-01 y Factor L/D) -->
-            <details style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
-                <summary style="font-size: 12.5px; font-weight: 700; color: #103487; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-calculator"></i> Hoja de CÃ¡lculo RT-FM-61 (Dimensiones, Masa, Prensa PRENSA-01 y Factor L/D)
+            <!-- Opciones avanzadas HC (Formato alternativo / Lectura Prensa PRENSA-01) -->
+            <details style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                <summary style="font-size: 12px; font-weight: 700; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-sliders"></i> Opciones avanzadas (Formato HC alternativo / Calibración PRENSA-01)
                 </summary>
-                
-                <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Formato HC:</label>
                         <select name="datos_crudos[codigo_formato]" id="hc_codigo_formato" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;">
-                            <option value="">-- Directo --</option>
-                            <option value="RT-FM-61">RT-FM-61 (Cilindro C39)</option>
+                            <option value="">-- Directo (RT-FM-61 oficial) --</option>
+                            <option value="RT-FM-61">RT-FM-61 (Cilindro C39 + PRENSA-01)</option>
                             <option value="RT-FM-36">RT-FM-36 (Bloques C140)</option>
                             <option value="RT-FM-38">RT-FM-38 (Vigas C78)</option>
                             <option value="RT-FM-57">RT-FM-57 (Cubos Mortero C109)</option>
-                            <option value="RT-FM-63">RT-FM-63 (NÃºcleos/AdoquÃ­n)</option>
+                            <option value="RT-FM-63">RT-FM-63 (Núcleos/Adoquín)</option>
                             <option value="RT-FM-64">RT-FM-64 (Acero A615)</option>
                         </select>
                     </div>
                     <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">DiÃ¡metro 1 (cm):</label>
-                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[diametro_1]" id="hc_d1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.20" oninput="recalcularDesdeHc61()">
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">DiÃ¡metro 2 (cm):</label>
-                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[diametro_2]" id="hc_d2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 15.22" oninput="recalcularDesdeHc61()">
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Longitud 1 (cm):</label>
-                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[largo_1]" id="hc_l1" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 30.40" oninput="recalcularDesdeHc61()">
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Longitud 2 (cm):</label>
-                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[largo_2]" id="hc_l2" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 30.45" oninput="recalcularDesdeHc61()">
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Masa (kg):</label>
-                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[masa_kg]" id="hc_masa" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 12.850">
-                    </div>
-                    <div style="grid-column: 1 / -1;">
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Lectura Prensa sin corregir (lbf) â aplica polinomio PRENSA-01:</label>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Lectura Prensa sin corregir (lbf) — opcional:</label>
                         <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" name="datos_crudos[lectura_carga_lbf]" id="hc_lectura_lbf" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 12px; height: 36px;" placeholder="Ej. 91932" oninput="recalcularDesdeHc61()">
                     </div>
                 </div>
             </details>
 
-            <!-- PrevisualizaciÃ³n de CÃ¡lculos -->
-            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center;">
-                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px;">
-                    <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Esfuerzo PSI:</div>
-                    <div id="calc_psi" style="font-size: 20px; font-weight: 800; font-family: monospace; color: #0369a1; margin-top: 2px;">--</div>
+            <!-- Previsualización de Cálculos en Vivo (RT-FM-61 oficial) -->
+            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px;">
+                    <div style="font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">Área (in²):</div>
+                    <div id="calc_area_in2" style="font-size: 16px; font-weight: 800; font-family: monospace; color: #1e293b; margin-top: 2px;">--</div>
                 </div>
-                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px;">
-                    <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Esfuerzo kg/cmÂ²:</div>
-                    <div id="calc_kgcm2" style="font-size: 20px; font-weight: 800; font-family: monospace; color: #047857; margin-top: 2px;">--</div>
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px;">
+                    <div style="font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">Volumen (m³):</div>
+                    <div id="calc_vol_m3" style="font-size: 15px; font-weight: 800; font-family: monospace; color: #1e293b; margin-top: 2px;">--</div>
+                </div>
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px;">
+                    <div style="font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">Peso Vol. (kg/m³):</div>
+                    <div id="calc_pv" style="font-size: 16px; font-weight: 800; font-family: monospace; color: #0f766e; margin-top: 2px;">--</div>
+                </div>
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px;">
+                    <div style="font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">Edad Real:</div>
+                    <div id="calc_edad_dias" style="font-size: 16px; font-weight: 800; font-family: monospace; color: #7c3aed; margin-top: 2px;">--</div>
+                </div>
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px;">
+                    <div style="font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">Esfuerzo PSI (a 10):</div>
+                    <div id="calc_psi" style="font-size: 18px; font-weight: 800; font-family: monospace; color: #0369a1; margin-top: 2px;">--</div>
+                </div>
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px;">
+                    <div style="font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">Esfuerzo kgf/cm²:</div>
+                    <div id="calc_kgcm2" style="font-size: 18px; font-weight: 800; font-family: monospace; color: #047857; margin-top: 2px;">--</div>
                 </div>
             </div>
 
-            <!-- Alerta y JustificaciÃ³n de Tolerancia Temporal -->
+            <!-- Alerta y Justificación de Tolerancia Temporal -->
             <div id="box_justificacion_tolerancia" style="display: none; background: #fff1f2; border: 1.5px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 15px;">
                 <div style="font-size: 12px; font-weight: 800; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
                     <i class="fa-solid fa-triangle-exclamation"></i> ENSAYO FUERA DE TOLERANCIA ASTM C39
                 </div>
                 <div style="font-size: 12px; color: #881337; margin-bottom: 8px; line-height: 1.4;">
-                    La fecha/hora seleccionada excede la ventana de tolerancia admisible para esta edad. Es mandatorio registrar una justificaciÃ³n tÃ©cnica para el informe.
+                    La fecha/hora seleccionada excede la ventana de tolerancia admisible para esta edad. Es mandatorio registrar una justificación técnica para el informe.
                 </div>
-                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; font-size: 12.5px;" placeholder="JustificaciÃ³n tÃ©cnica por ensayo extemporÃ¡neo..."></textarea>
+                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; font-size: 12.5px;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
@@ -702,7 +739,6 @@ $puedeEditarPlan = ($totalEnsayados === 0);
         </form>
     </div>
 </div>
-
 <!-- Modal 3: Devolver Informe Parcial (Calidad) -->
 <div id="modalDevolverInforme" class="modal-lab">
     <div class="modal-lab-content" style="max-width: 480px;">
@@ -822,6 +858,9 @@ function recalcularPlanEspecimenes() {
 
 // Manejo de la Rotura de Probeta (precargado con fuente de verdad de la Matriz)
 const DATOS_MATRIZ_MUESTRA = <?= json_encode($datosMatriz ?? [], JSON_UNESCAPED_UNICODE) ?>;
+const LAB_DIVISOR_KGCM2 = <?= json_encode($divisorKgCm2Lab) ?>;
+const LAB_REDONDEAR_PSI_10 = <?= $redondearPsi10Lab ? 'true' : 'false' ?>;
+const LAB_REDONDEAR_PV_10 = <?= $redondearPv10Lab ? 'true' : 'false' ?>;
 
 function abrirModalRegistrarRotura(espId, codigoLab, planEdadId, edadDias, fechaProg, tolHoras) {
     document.getElementById('rot_especimen_id').value = espId;
@@ -832,7 +871,17 @@ function abrirModalRegistrarRotura(espId, codigoLab, planEdadId, edadDias, fecha
 
     const dm = DATOS_MATRIZ_MUESTRA || {};
     document.getElementById('rot_carga').value = (dm.carga && dm.carga > 0) ? dm.carga : '';
-    document.getElementById('rot_area').value = (dm.area && dm.area > 0) ? dm.area : '28.274';
+    const areaInput = document.getElementById('rot_area');
+    if (dm.diametro_1 > 0 && dm.diametro_2 > 0) {
+        const dProm = (parseFloat(dm.diametro_1) + parseFloat(dm.diametro_2)) / 2.0;
+        areaInput.value = ((Math.PI * Math.pow(dProm / 2.0, 2)) / 6.4516).toFixed(3);
+    } else if (dm.area && parseFloat(dm.area) > 0) {
+        areaInput.value = parseFloat(dm.area).toFixed(3);
+    } else {
+        areaInput.value = '';
+    }
+    areaInput.readOnly = true;
+
     if (document.getElementById('hc_d1')) document.getElementById('hc_d1').value = (dm.diametro_1 && dm.diametro_1 > 0) ? dm.diametro_1 : '';
     if (document.getElementById('hc_d2')) document.getElementById('hc_d2').value = (dm.diametro_2 && dm.diametro_2 > 0) ? dm.diametro_2 : '';
     if (document.getElementById('hc_l1')) document.getElementById('hc_l1').value = (dm.largo_1 && dm.largo_1 > 0) ? dm.largo_1 : '';
@@ -858,17 +907,59 @@ function cerrarModalRegistrarRotura() {
 }
 
 function calcularEsfuerzoEnVivo() {
-    const carga = parseFloat(document.getElementById('rot_carga').value || 0);
-    const area = parseFloat(document.getElementById('rot_area').value || 28.274);
+    const carga = parseFloat(document.getElementById('rot_carga')?.value || 0);
+    const area = parseFloat(document.getElementById('rot_area')?.value || 0);
+    const l1 = parseFloat(document.getElementById('hc_l1')?.value || 0);
+    const l2 = parseFloat(document.getElementById('hc_l2')?.value || 0);
+    const masa = parseFloat(document.getElementById('hc_masa')?.value || 0);
+    const fechaMol = document.getElementById('rot_fecha_moldeo')?.value || '';
+    const fechaReal = document.getElementById('rot_fecha_real')?.value || '';
+
+    const elArea = document.getElementById('calc_area_in2');
+    const elVol = document.getElementById('calc_vol_m3');
+    const elPv = document.getElementById('calc_pv');
+    const elEdad = document.getElementById('calc_edad_dias');
+    const elPsi = document.getElementById('calc_psi');
+    const elKg = document.getElementById('calc_kgcm2');
+
+    if (elArea) elArea.innerText = area > 0 ? area.toFixed(3) : '--';
+
+    const lProm = (l1 > 0 && l2 > 0) ? ((l1 + l2) / 2.0) : (l1 > 0 ? l1 : l2);
+    if (area > 0 && lProm > 0) {
+        const volM3 = (area * 6.4516 * lProm) / 1000000.0;
+        if (elVol) elVol.innerText = volM3.toFixed(6);
+        if (masa > 0) {
+            const pvRaw = masa / volM3;
+            const pv = LAB_REDONDEAR_PV_10 ? (Math.round(pvRaw / 10.0) * 10.0) : Math.round(pvRaw);
+            if (elPv) elPv.innerText = pv.toFixed(0);
+        } else if (elPv) {
+            elPv.innerText = '--';
+        }
+    } else {
+        if (elVol) elVol.innerText = '--';
+        if (elPv) elPv.innerText = '--';
+    }
+
+    if (elEdad) {
+        if (fechaMol && fechaReal) {
+            const d1 = new Date(String(fechaMol).slice(0, 10) + 'T00:00:00');
+            const d2 = new Date(String(fechaReal).slice(0, 10) + 'T00:00:00');
+            const diff = (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) ? Math.round((d2.getTime() - d1.getTime()) / 86400000) : null;
+            elEdad.innerText = (diff !== null && diff >= 0) ? (diff + ' días') : '--';
+        } else {
+            elEdad.innerText = '--';
+        }
+    }
 
     if (carga > 0 && area > 0) {
-        const psi = carga / area;
-        const kgcm2 = psi * 0.070307;
-        document.getElementById('calc_psi').innerText = psi.toFixed(1) + ' PSI';
-        document.getElementById('calc_kgcm2').innerText = kgcm2.toFixed(1) + ' kg/cmÂ²';
+        const psiBruto = carga / area;
+        const psi = LAB_REDONDEAR_PSI_10 ? (Math.round(psiBruto / 10.0) * 10.0) : parseFloat(psiBruto.toFixed(2));
+        const kgcm2 = Math.round(psi / LAB_DIVISOR_KGCM2);
+        if (elPsi) elPsi.innerText = psi.toFixed(0) + ' psi';
+        if (elKg) elKg.innerText = kgcm2.toFixed(0) + ' kgf/cm²';
     } else {
-        document.getElementById('calc_psi').innerText = '--';
-        document.getElementById('calc_kgcm2').innerText = '--';
+        if (elPsi) elPsi.innerText = '--';
+        if (elKg) elKg.innerText = '--';
     }
 }
 
@@ -878,14 +969,13 @@ function recalcularDesdeHc61() {
     const lectura = parseFloat(document.getElementById('hc_lectura_lbf')?.value || 0);
     const fmtSelect = document.getElementById('hc_codigo_formato');
 
-    if (fmtSelect && !fmtSelect.value && (d1 > 0 || lectura > 0)) {
+    if (fmtSelect && !fmtSelect.value && lectura > 0) {
         fmtSelect.value = 'RT-FM-61';
     }
 
     if (d1 > 0 && d2 > 0) {
-        const a1 = Math.PI * d1 * d1 / 4.0;
-        const a2 = Math.PI * d2 * d2 / 4.0;
-        const areaIn2 = ((a1 + a2) / 2.0) / 6.4516;
+        const dProm = (d1 + d2) / 2.0;
+        const areaIn2 = (Math.PI * Math.pow(dProm / 2.0, 2)) / 6.4516;
         document.getElementById('rot_area').value = areaIn2.toFixed(3);
     }
 
@@ -903,7 +993,7 @@ function recalcularDesdeHc61() {
 function verificarToleranciaTiempo() {
     const fechaRealStr = document.getElementById('rot_fecha_real').value;
     const fechaProgStr = document.getElementById('rot_fecha_prog').value;
-    const tolHoras = parseFloat(document.getElementById('rot_tol_horas').value || 24);
+    const tolHoras = parseFloat(document.getElementById('rot_tol_horas').value || 20);
 
     if (!fechaRealStr || !fechaProgStr) return;
 

@@ -13,7 +13,7 @@
 Fecha  recepción ítems de ensayo:		Fecha de ejecución:
 Tipo de muestra:	Lodo concreto	Fecha de emisión del informe:
 ** Procedimiento de muestreo:	Aleatorio	Muestra tomada por:	Laboratorio - Consultoría y Construcción S.A. CYCSA.
-Ensayo realizado:	CYCSA-PE-58 Metodo de prueba estándar para la resistencia a la compresión de cilindros de suelo-cemento moldeados	Ensayado por:
+Ensayo realizado:	CYCSA-PE-58 Método de prueba estándar para la resistencia a la compresión de cilindros de suelo-cemento moldeados	Ensayado por:
 ** Ubicación:
 Método de muestreo:	DE-ASTM D1633-17
 

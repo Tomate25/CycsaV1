@@ -148,7 +148,7 @@ class ReportesModuloTest extends TestCase {
     public function testTodosLosMiniModulosYSubvistasGeneranKpisYFilasSinError(): void {
         $modelo = new ReporteModelo();
         $catalogo = $modelo->obtenerCatalogoMiniModulos();
-        $this->assertCount(13, $catalogo);
+        $this->assertCount(14, $catalogo);
 
         foreach ($catalogo as $slug => $meta) {
             $rep = $modelo->generarReporteModulo($slug);

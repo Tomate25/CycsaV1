@@ -854,6 +854,28 @@ if (isset($servicios) && is_array($servicios)) {
         document.getElementById('btn-agregar-muestra-bloque').addEventListener('click', () => {
             agregarMuestraBloque();
         });
+
+        // Auto-cálculo oficial de Revenimiento (cm) = round(in * 2.54 * 2) / 2 (Fase 1.7 / ASTM C143)
+        const contenedorBloquesRev = document.getElementById('contenedor-bloques-muestras');
+        if (contenedorBloquesRev) {
+            contenedorBloquesRev.addEventListener('input', (e) => {
+                if (e.target && e.target.classList.contains('input-revenimiento-in')) {
+                    const bloque = e.target.closest('.muestra-bloque');
+                    const cmInput = bloque ? bloque.querySelector('.input-revenimiento-cm') : null;
+                    if (!cmInput) return;
+                    const raw = String(e.target.value || '').replace(',', '.').trim();
+                    if (raw === '') {
+                        cmInput.value = '';
+                        return;
+                    }
+                    const valIn = parseFloat(raw);
+                    if (!isNaN(valIn) && valIn >= 0) {
+                        const valCm = Math.round(valIn * 2.54 * 2) / 2;
+                        cmInput.value = Number.isInteger(valCm) ? String(valCm) : valCm.toFixed(1);
+                    }
+                }
+            });
+        }
         
         // Modificar el action del formulario para procesar antes del submit
         const form = document.querySelector('form');

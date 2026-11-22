@@ -474,7 +474,7 @@ class SembradorPlantillasHcServicio {
                         'formula' => $fDef['expresion'] ?? null,
                         'vis' => 1,
                         'ro' => ($campo['tipo'] ?? '') === 'calculado' || $fDef !== null ? 1 : 0,
-                        'ayuda' => $campo['texto_ayuda'] ?? ($fDef['descripcion'] ?? null)
+                        'ayuda' => $this->construirTextoAyudaCampo($campo, $fDef)
                     ]);
                     $ordCmp++;
                 }
@@ -511,7 +511,7 @@ class SembradorPlantillasHcServicio {
                         'formula' => $fDef['expresion'] ?? null,
                         'vis' => 1,
                         'ro' => ($campo['tipo'] ?? '') === 'calculado' || $fDef !== null ? 1 : 0,
-                        'ayuda' => $campo['texto_ayuda'] ?? ($fDef['descripcion'] ?? null)
+                        'ayuda' => $this->construirTextoAyudaCampo($campo, $fDef)
                     ]);
                     $camposYaIncluidos[$campo['codigo']] = true;
                     $ordCmp++;
@@ -559,7 +559,7 @@ class SembradorPlantillasHcServicio {
                         'formula' => $f['expresion'],
                         'vis' => 1,
                         'ro' => 1,
-                        'ayuda' => $f['descripcion'] ?? null
+                        'ayuda' => $this->construirTextoAyudaCampo($f, $f)
                     ]);
                     $ordCmp++;
                 }
@@ -739,30 +739,84 @@ class SembradorPlantillasHcServicio {
         return (int)$this->db->lastInsertId();
     }
 
-    private function buscarProductoAsociado(string $codigoHc, string $nombreHc, int $fallbackId): int {
-        $mapaKeywords = [
-            'RT-FM-61' => 'Cilindros de Concreto',
-            'RT-FM-36' => 'Bloques',
-            'RT-FM-38' => 'Esclerometr',
-            'RT-FM-57' => 'Mortero',
-            'RT-FM-63' => 'Núcleos',
-            'RT-FM-64' => 'Acero',
-            'RT-FM-54' => 'Densímetro',
-            'RT-FM-55' => 'Cono y Arena',
-            'RT-FM-62' => 'Infiltración',
-            'RT-FM-27' => 'Proctor',
-            'RT-FM-25' => 'Granulometr',
-            'RT-FM-42' => 'Agregado Fino',
-            'RT-FM-35' => 'Gravedad Específica',
-            'RT-FM-46' => 'CBR',
-            'RT-FM-58' => 'Sanidad',
-            'RT-FM-59' => 'Abrasión',
-        ];
+    /**
+     * Preserva la etiqueta y unidad específica de la plantilla dentro de `plantilla_campos.texto_ayuda`
+     * para evitar colisiones de unidad en variables compartidas globalmente (ej. masa_seca en kg vs g,
+     * ancho_* en cm vs in).
+     */
+    private function construirTextoAyudaCampo(array $campo, ?array $fDef = null): ?string {
+        $base = trim((string)($campo['texto_ayuda'] ?? ($fDef['descripcion'] ?? ($campo['etiqueta'] ?? ''))));
+        $unidad = trim((string)($campo['unidad'] ?? ($fDef['unidad'] ?? '')));
+        if ($unidad === '') {
+            return $base !== '' ? $base : null;
+        }
+        $etiquetaUnidad = "[Unidad: {$unidad}]";
+        if ($base === '') {
+            return $etiquetaUnidad;
+        }
+        if (stripos($base, "[Unidad:") === false) {
+            return "{$base} {$etiquetaUnidad}";
+        }
+        return $base;
+    }
 
-        $kw = $mapaKeywords[$codigoHc] ?? $nombreHc;
-        $stmt = $this->db->prepare("SELECT id FROM productos WHERE ensayo_servicio LIKE :kw OR nombre_comercial LIKE :kw2 LIMIT 1");
-        $stmt->execute(['kw' => '%' . $kw . '%', 'kw2' => '%' . $kw . '%']);
-        $id = (int)$stmt->fetchColumn();
-        return $id > 0 ? $id : $fallbackId;
+    /**
+     * Mapa canónico corregido de palabras clave por código de Hoja de Cálculo (Fase 3).
+     *
+     * @return array<string, string[]>
+     */
+    public static function obtenerMapaKeywordsProductos(): array {
+        return [
+            'RT-FM-61' => ['CYCSA-PE-07', 'Cilindros de Concreto'],
+            'RT-FM-36' => ['Bloque', 'Mampostería'],
+            'RT-FM-38' => ['CYCSA-PE-30', 'Flexión'],
+            'RT-FM-57' => ['CYCSA-PE-57', 'Mortero'],
+            'RT-FM-63' => ['Adoquin', 'Adoquín'],
+            'RT-FM-64' => ['CYCSA-PE-61', 'Tracción'],
+            'RT-FM-54' => ['CYCSA-PE-46', 'Reemplazo de Agua'],
+            'RT-FM-55' => ['Cono y Arena', 'Cono de Arena'],
+            'RT-FM-62' => ['Infiltración'],
+            'RT-FM-27' => ['Proctor'],
+            'RT-FM-25' => ['Granulometr'],
+            'RT-FM-42' => ['CYCSA-PE-17', 'Límites de Atterberg', 'Límite Líquido'],
+            'RT-FM-35' => ['CYCSA-PE-02', 'Densidad relativa'],
+            'RT-FM-46' => ['CBR'],
+            'RT-FM-58' => ['CYCSA-PE-52', 'Solidez de Agregados', 'Intemperismo'],
+            'RT-FM-59' => ['CYCSA-PE-12', 'Esclerómetro', 'Martillo Suizo'],
+        ];
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function obtenerKeywordsProducto(string $codigoHc): array {
+        $mapa = self::obtenerMapaKeywordsProductos();
+        return $mapa[strtoupper(trim($codigoHc))] ?? [];
+    }
+
+    private function buscarProductoAsociado(string $codigoHc, string $nombreHc, int $fallbackId): int {
+        $keywords = self::obtenerKeywordsProducto($codigoHc);
+        if (empty($keywords) && trim($nombreHc) !== '') {
+            $keywords = [trim($nombreHc)];
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT id FROM productos
+            WHERE codigo_servicio LIKE :kw1 OR ensayo_servicio LIKE :kw2 OR nombre_comercial LIKE :kw3
+            LIMIT 1
+        ");
+        foreach ($keywords as $kw) {
+            $kw = trim($kw);
+            if ($kw === '') {
+                continue;
+            }
+            $like = '%' . $kw . '%';
+            $stmt->execute(['kw1' => $like, 'kw2' => $like, 'kw3' => $like]);
+            $id = (int)$stmt->fetchColumn();
+            if ($id > 0) {
+                return $id;
+            }
+        }
+        return $fallbackId;
     }
 }

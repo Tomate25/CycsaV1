@@ -91,10 +91,14 @@ class CotizacionModelo extends ModeloBase {
                        COALESCE(NULLIF(cl.email, ''), NULLIF(cl.contacto_correo, ''), '') AS cliente_email, 
                        COALESCE(NULLIF(cl.telefono, ''), '') AS cliente_tel, 
                        COALESCE(NULLIF(u.nombre, ''), 'Personal Autorizado') AS creador_nombre, 
-                       COALESCE(NULLIF(u.email, ''), 'admon@cycsanic.com') AS creador_email 
+                       COALESCE(NULLIF(u.email, ''), 'admon@cycsanic.com') AS creador_email,
+                       COALESCE(NULLIF(u_resp.nombre, ''), '') AS responsable_interno_nombre,
+                       COALESCE(NULLIF(u_aprob.nombre, ''), '') AS aprobacion_interna_nombre
                 FROM cotizaciones c 
                 INNER JOIN clientes cl ON c.id_cliente = cl.id 
                 LEFT JOIN usuarios u ON c.id_usuario_creador = u.id 
+                LEFT JOIN usuarios u_resp ON c.id_responsable_interno = u_resp.id
+                LEFT JOIN usuarios u_aprob ON c.aprobacion_interna_por = u_aprob.id
                 WHERE c.id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $id]);
@@ -149,7 +153,132 @@ class CotizacionModelo extends ModeloBase {
         $sql .= " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
-    }    public function registrarDecisionCliente(
+    }
+
+    /**
+     * 2.10 / 2.11: Registra la aprobación interna sin enviar aún al cliente ni incrementar versión PDF.
+     */
+    public function registrarAprobacionInterna(int $id, int $usuarioId): bool {
+        $sql = "UPDATE cotizaciones
+                SET estado = 'Aprobada Internamente',
+                    id_usuario_revisor = :revisor,
+                    aprobacion_interna_por = :aprobador,
+                    fecha_aprobacion_interna = NOW(),
+                    motivo_observacion = NULL,
+                    fecha_actualizacion = NOW()
+                WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'revisor' => $usuarioId,
+            'aprobador' => $usuarioId,
+            'id' => $id,
+        ]);
+    }
+
+    /**
+     * 2.9: Marca la cotización como 'Enviada al Cliente' e incrementa la versión PDF solo al salir al cliente.
+     * - Si versión actual es 0 (primera salida al cliente), pasa a versión 1.
+     * - Si versión actual >= 1 y el estado previo no era ya 'Enviada al Cliente', archiva snapshot (si falta) y sube a versión + 1.
+     */
+    public function marcarEnviadaAlCliente(int $id, int $usuarioId, ?string $token = null, ?string $motivoSnapshot = null): bool {
+        $yaEnTransaccion = $this->db->inTransaction();
+        try {
+            if (!$yaEnTransaccion) {
+                $this->db->beginTransaction();
+            }
+
+            $oldCot = $this->obtenerPorId($id);
+            if (!$oldCot || $oldCot['estado'] === 'Rechazada por Cliente') {
+                if (!$yaEnTransaccion && $this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                return false;
+            }
+
+            $estadoPrev = (string)($oldCot['estado'] ?? '');
+            $versionActual = (int)($oldCot['version'] ?? 0);
+            $tokenFinal = !empty($token)
+                ? $token
+                : (!empty($oldCot['token_seguridad']) ? $oldCot['token_seguridad'] : bin2hex(random_bytes(32)));
+
+            $nuevaVersion = $versionActual;
+            if ($estadoPrev === 'Enviada al Cliente') {
+                // Re-envío del mismo correo/documento ya enviado al cliente: no sube versión nuevamente
+                $nuevaVersion = max(1, $versionActual);
+            } else {
+                if ($versionActual <= 0) {
+                    // Primera salida al cliente -> v1
+                    $nuevaVersion = 1;
+                } else {
+                    // Ya había salido antes (ej. v1 fue rechazada/revisada) -> archivar snapshot si aún no existe y subir a v+1
+                    $existeSnap = $this->obtenerVersionHistorica($id, $versionActual);
+                    if (!$existeSnap) {
+                        $oldDets = $this->obtenerDetalles($id);
+                        $detallesSnapshot = [];
+                        foreach ($oldDets as $d) {
+                            $detallesSnapshot[] = [
+                                'id_producto' => $d['id_producto'],
+                                'descripcion_ensayo' => $d['descripcion_ensayo'],
+                                'condiciones_muestra' => $d['condiciones_muestra'] ?? null,
+                                'procedimiento' => $d['procedimiento'] ?? null,
+                                'unidad_medida' => $d['unidad_medida'] ?? 'Unidad',
+                                'codigo_servicio' => $d['codigo_servicio'] ?? null,
+                                'norma_astm' => $d['norma_astm'] ?? null,
+                                'formato_reporte' => $d['formato_reporte'] ?? null,
+                                'observaciones' => $d['observaciones'] ?? null,
+                                'descripcion_adicional' => $d['descripcion_adicional'] ?? null,
+                                'cantidad' => $d['cantidad'],
+                                'precio_unitario' => $d['precio_unitario'],
+                                'subtotal' => $d['subtotal'],
+                            ];
+                        }
+                        $snapshot = array_merge($oldCot, ['detalles' => $detallesSnapshot]);
+                        $motivoSnap = $motivoSnapshot ?: (!empty($oldCot['motivo_rechazo_cliente'])
+                            ? ('Devuelta por cliente: ' . $oldCot['motivo_rechazo_cliente'])
+                            : 'Versión anterior archivada al emitir nueva versión al cliente');
+
+                        $insStmt = $this->db->prepare("INSERT INTO cotizacion_versiones (id_cotizacion, version, datos_json, motivo_cambio) VALUES (:id_cotizacion, :version, :datos_json, :motivo)");
+                        $insStmt->execute([
+                            'id_cotizacion' => $id,
+                            'version' => $versionActual,
+                            'datos_json' => json_encode($snapshot, JSON_UNESCAPED_UNICODE),
+                            'motivo' => $motivoSnap,
+                        ]);
+                    }
+                    $nuevaVersion = $versionActual + 1;
+                }
+            }
+
+            $sql = "UPDATE cotizaciones
+                    SET estado = 'Enviada al Cliente',
+                        version = :version,
+                        id_usuario_revisor = COALESCE(id_usuario_revisor, :revisor),
+                        token_seguridad = :token,
+                        motivo_rechazo_cliente = NULL,
+                        fecha_actualizacion = NOW()
+                    WHERE id = :id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                'version' => $nuevaVersion,
+                'revisor' => $usuarioId > 0 ? $usuarioId : null,
+                'token' => $tokenFinal,
+                'id' => $id,
+            ]);
+
+            if (!$yaEnTransaccion && $this->db->inTransaction()) {
+                $this->db->commit();
+            }
+            return true;
+        } catch (\Throwable $e) {
+            if (!$yaEnTransaccion && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('Error en marcarEnviadaAlCliente: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function registrarDecisionCliente(
         int $id, 
         string $estado, 
         ?string $motivo = null, 
@@ -295,8 +424,9 @@ class CotizacionModelo extends ModeloBase {
             $cabecera['id_cliente_factura'] = !empty($cabecera['id_cliente_factura']) ? (int)$cabecera['id_cliente_factura'] : (int)$cabecera['id_cliente'];
             $cabecera['id_cliente_informe'] = !empty($cabecera['id_cliente_informe']) ? (int)$cabecera['id_cliente_informe'] : (int)$cabecera['id_cliente'];
             $cabecera['condicion_comercial'] = !empty($cabecera['condicion_comercial']) ? trim($cabecera['condicion_comercial']) : (str_contains(strtolower($cabecera['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado');
+            $cabecera['id_responsable_interno'] = !empty($cabecera['id_responsable_interno']) ? (int)$cabecera['id_responsable_interno'] : null;
 
-            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, tipo_moneda, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :tipo_moneda, :id_usuario_creador, :atencion_a, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
+            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, tipo_moneda, id_usuario_creador, id_responsable_interno, atencion_a, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :tipo_moneda, :id_usuario_creador, :id_responsable_interno, :atencion_a, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute($cabecera);
             $idCotizacion = $this->db->lastInsertId();
@@ -357,7 +487,13 @@ class CotizacionModelo extends ModeloBase {
                 // Borrador: se conserva estado Borrador, sin crear versión histórica y sin bump de versión
                 $nuevoEstado = 'Borrador';
                 $nuevaVersion = (int)($oldCot['version'] ?? 0);
-            } elseif ($oldCot['estado'] === 'Rechazada por Cliente' || $oldCot['estado'] === 'Observada') {
+            } elseif ($oldCot['estado'] === 'Observada') {
+                // Regla 2.9: Observación interna (antes de salir al cliente) NO incrementa la versión PDF ni archiva snapshot
+                $nuevoEstado = 'En Revision';
+                $nuevaVersion = (int)($oldCot['version'] ?? 0);
+                $motivoObs = null;
+            } elseif ($oldCot['estado'] === 'Rechazada por Cliente') {
+                // La versión que salió al cliente se archiva antes de sobreescribirla; la nueva versión sube al enviarse nuevamente al cliente (2.9)
                 $vNumParaArchivar = max(1, (int)($oldCot['version'] ?? 1));
                 $oldDets = $this->obtenerDetalles($id);
 
@@ -384,36 +520,35 @@ class CotizacionModelo extends ModeloBase {
                     'detalles' => $detallesSnapshot
                 ]);
 
-                $motivoCambio = ($oldCot['estado'] === 'Rechazada por Cliente')
-                    ? ('Devuelta por cliente: ' . ($oldCot['motivo_rechazo_cliente'] ?? 'Rechazo'))
-                    : ('Observada por gerencia: ' . ($oldCot['motivo_observacion'] ?? 'Observación'));
+                $motivoCambio = 'Devuelta por cliente: ' . ($oldCot['motivo_rechazo_cliente'] ?? 'Rechazo');
 
-                $insStmt = $this->db->prepare("INSERT INTO cotizacion_versiones (id_cotizacion, version, datos_json, motivo_cambio) VALUES (:id_cotizacion, :version, :datos_json, :motivo)");
-                $insStmt->execute([
-                    'id_cotizacion' => $id,
-                    'version' => $vNumParaArchivar,
-                    'datos_json' => json_encode($snapshot),
-                    'motivo' => $motivoCambio
-                ]);
-
-                // Al corregir una cotización observada o rechazada, se incrementa la versión oficial
-                $nuevaVersion = $vNumParaArchivar + 1;
-                if ($oldCot['estado'] === 'Rechazada por Cliente') {
-                    $nuevoEstado = 'En Revision';
-                    $token = bin2hex(random_bytes(32));
-                    $motivoRechazo = null; // Se limpia la observación/motivo de rechazo de la versión vieja
-                } elseif ($oldCot['estado'] === 'Observada') {
-                    $nuevoEstado = 'En Revision';
-                    $motivoObs = null; // Se limpia la observación al guardar y re-enviar la nueva versión
+                if (!$this->obtenerVersionHistorica($id, $vNumParaArchivar)) {
+                    $insStmt = $this->db->prepare("INSERT INTO cotizacion_versiones (id_cotizacion, version, datos_json, motivo_cambio) VALUES (:id_cotizacion, :version, :datos_json, :motivo)");
+                    $insStmt->execute([
+                        'id_cotizacion' => $id,
+                        'version' => $vNumParaArchivar,
+                        'datos_json' => json_encode($snapshot, JSON_UNESCAPED_UNICODE),
+                        'motivo' => $motivoCambio
+                    ]);
                 }
+
+                // Se conserva versión actual hasta que salga nuevamente al cliente en enviarCliente()
+                $nuevaVersion = $vNumParaArchivar;
+                $nuevoEstado = 'En Revision';
+                $token = bin2hex(random_bytes(32));
+                $motivoRechazo = null; // Se limpia el motivo de rechazo de la versión vieja
             }
 
             // 3. Sobrescribir los datos de la cotización actual
             $cabecera['id_cliente_factura'] = !empty($cabecera['id_cliente_factura']) ? (int)$cabecera['id_cliente_factura'] : (int)$cabecera['id_cliente'];
             $cabecera['id_cliente_informe'] = !empty($cabecera['id_cliente_informe']) ? (int)$cabecera['id_cliente_informe'] : (int)$cabecera['id_cliente'];
             $cabecera['condicion_comercial'] = !empty($cabecera['condicion_comercial']) ? trim($cabecera['condicion_comercial']) : (str_contains(strtolower($cabecera['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado');
+            $idRespInterno = array_key_exists('id_responsable_interno', $cabecera)
+                ? (!empty($cabecera['id_responsable_interno']) ? (int)$cabecera['id_responsable_interno'] : null)
+                : (!empty($oldCot['id_responsable_interno']) ? (int)$oldCot['id_responsable_interno'] : null);
+            $cabecera['id_responsable_interno'] = $idRespInterno;
 
-            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, id_cliente_factura = :id_cliente_factura, id_cliente_informe = :id_cliente_informe, condicion_comercial = :condicion_comercial, tipo_moneda = :tipo_moneda, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, motivo_observacion = :motivo_observacion, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, incluir_anexo_tecnico = :incluir_anexo_tecnico, anexo_tecnico = :anexo_tecnico, archivo_adjunto = :archivo_adjunto, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
+            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, id_cliente_factura = :id_cliente_factura, id_cliente_informe = :id_cliente_informe, condicion_comercial = :condicion_comercial, tipo_moneda = :tipo_moneda, id_responsable_interno = :id_responsable_interno, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, motivo_observacion = :motivo_observacion, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, incluir_anexo_tecnico = :incluir_anexo_tecnico, anexo_tecnico = :anexo_tecnico, archivo_adjunto = :archivo_adjunto, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute(array_merge($cabecera, [
                 'id' => $id,

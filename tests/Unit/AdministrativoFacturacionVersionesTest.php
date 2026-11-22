@@ -312,6 +312,13 @@ class AdministrativoFacturacionVersionesTest extends TestCase {
         $this->assertCount(1, $versionesHistoricas);
         $this->assertSame(1, (int)$versionesHistoricas[0]['version']);
 
+        // Acuerdo 2.9: la versión solo sube al salir al cliente (permanece en 1 mientras se edita internamente)
+        $cotAntesEnvio = $cotModelo->obtenerPorId($this->idCotizacionPrueba);
+        $this->assertSame(1, (int)$cotAntesEnvio['version']);
+
+        // Al enviar al cliente sube oficialmente a versión 2
+        $cotModelo->marcarEnviadaAlCliente($this->idCotizacionPrueba, 1);
+
         // Verificar que la versión actual es 2
         $cotV2 = $cotModelo->obtenerPorId($this->idCotizacionPrueba);
         $this->assertSame(2, (int)$cotV2['version']);

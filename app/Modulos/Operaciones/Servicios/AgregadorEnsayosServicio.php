@@ -76,6 +76,7 @@ class AgregadorEnsayosServicio {
      */
     public function calcularCurvaGranulometrica(array $fila): array {
         $tamices = [
+            'ret_3in' => ['etiqueta' => '3"', 'abertura_mm' => 75.0],
             'ret_2in' => ['etiqueta' => '2"', 'abertura_mm' => 50.0],
             'ret_1_1_2in' => ['etiqueta' => '1 1/2"', 'abertura_mm' => 37.5],
             'ret_1in' => ['etiqueta' => '1"', 'abertura_mm' => 25.0],
@@ -126,12 +127,24 @@ class AgregadorEnsayosServicio {
         $pctGrava = max(0.0, 100.0 - $pctPasaNo4);
         $pctArena = max(0.0, $pctPasaNo4 - $pctPasaNo200);
 
+        // Módulo de Finura ASTM C136 / C33: suma de % retenido acumulado en 3/8", No.4, No.8, No.16, No.30, No.50, No.100 / 100
+        $moduloFinura = null;
+        if ($masaSeca > 0) {
+            $tamicesMf = ['ret_3_8in', 'ret_no4', 'ret_no8', 'ret_no16', 'ret_no30', 'ret_no50', 'ret_no100'];
+            $sumaMf = 0.0;
+            foreach ($tamicesMf as $codMf) {
+                $sumaMf += (float)($detalleTamices[$codMf]['pct_retenido_acumulado'] ?? 0.0);
+            }
+            $moduloFinura = round($sumaMf / 100.0, 2);
+        }
+
         return [
             'masa_seca_g' => $masaSeca,
             'tamices' => $detalleTamices,
             'pct_grava' => round($pctGrava, 2),
             'pct_arena' => round($pctArena, 2),
             'pct_finos' => round($pctPasaNo200, 2),
+            'modulo_finura' => $moduloFinura,
         ];
     }
 
@@ -310,16 +323,22 @@ class AgregadorEnsayosServicio {
 
     /**
      * Obtiene el valor máximo de la curva (ej. P.V.S. Máximo en Proctor RT-FM-27).
-     * Si hay >= 3 puntos con parábola cóncava hacia abajo (a < 0) y vértice dentro del rango razonable,
-     * usa el vértice de la parábola; de lo contrario retorna el máximo de los puntos medidos.
+     * Por defecto (proctor_metodo = 'maximo_medido') retorna el máximo de los puntos medidos.
+     * Solo aplica regresión parabólica si se solicita explícitamente (`usar_regresion => true` o
+     * config `proctor_metodo = 'regresion_parabolica'`) y el vértice cae dentro de [min(x), max(x)].
      */
     public function maxCurva(array $datos, ?string $campoY = 'densidad_seca', array $parametrosExtras = []): ?float {
         $campoX = $parametrosExtras['campo_x'] ?? (isset($datos[0]['humedad']) ? 'humedad' : 'humedad_pct');
         $campoY = $campoY ?: ($parametrosExtras['campo_y'] ?? (isset($datos[0]['densidad_seca']) ? 'densidad_seca' : 'densidad_seca_kg_m3'));
 
-        if (!empty($parametrosExtras['usar_regresion']) && count($datos) >= 3) {
+        $usarReg = array_key_exists('usar_regresion', $parametrosExtras)
+            ? !empty($parametrosExtras['usar_regresion'])
+            : (ConfigCalculoLabServicio::obtener('proctor_metodo', 'maximo_medido') === 'regresion_parabolica');
+
+        if ($usarReg && count($datos) >= 3) {
             $reg = $this->regresionCuadratica($datos, $campoX, $campoY);
-            if ($reg && $reg['a'] < 0) {
+            $xs = $this->extraerValoresNumericos($datos, $campoX);
+            if ($reg && $reg['a'] < 0 && !empty($xs) && $reg['x_vertice'] >= min($xs) && $reg['x_vertice'] <= max($xs)) {
                 return $reg['y_vertice'];
             }
         }
@@ -330,14 +349,21 @@ class AgregadorEnsayosServicio {
 
     /**
      * Obtiene la abscisa X correspondiente al máximo de la curva (ej. Humedad Óptima en Proctor RT-FM-27).
+     * Por defecto usa el punto medido de máxima densidad; solo usa regresión si se solicita explícitamente
+     * y el vértice cae dentro del rango medido [min(x), max(x)].
      */
     public function xDeMaxCurva(array $datos, ?string $campoX = 'humedad', array $parametrosExtras = []): ?float {
         $campoX = $campoX ?: ($parametrosExtras['campo_x'] ?? (isset($datos[0]['humedad']) ? 'humedad' : 'humedad_pct'));
         $campoY = $parametrosExtras['campo_y'] ?? (isset($datos[0]['densidad_seca']) ? 'densidad_seca' : 'densidad_seca_kg_m3');
 
-        if (!empty($parametrosExtras['usar_regresion']) && count($datos) >= 3) {
+        $usarReg = array_key_exists('usar_regresion', $parametrosExtras)
+            ? !empty($parametrosExtras['usar_regresion'])
+            : (ConfigCalculoLabServicio::obtener('proctor_metodo', 'maximo_medido') === 'regresion_parabolica');
+
+        if ($usarReg && count($datos) >= 3) {
             $reg = $this->regresionCuadratica($datos, $campoX, $campoY);
-            if ($reg && $reg['a'] < 0) {
+            $xs = $this->extraerValoresNumericos($datos, $campoX);
+            if ($reg && $reg['a'] < 0 && !empty($xs) && $reg['x_vertice'] >= min($xs) && $reg['x_vertice'] <= max($xs)) {
                 return $reg['x_vertice'];
             }
         }
@@ -360,6 +386,51 @@ class AgregadorEnsayosServicio {
 
         $valoresX = $this->extraerValoresNumericos($datos, $campoX);
         return !empty($valoresX) ? $valoresX[0] : null;
+    }
+
+    /**
+     * Resumen CBR por energía de compactación (RT-FM-46 / AASHTO T193 / Fase 1.10):
+     * Extrae el CBR medido a 56 golpes (100%), 25 golpes (95%) y 12 golpes (90%),
+     * junto con el valor interpolado `cbr_diseno`.
+     */
+    public function resumenCbrPorGolpes(array $filasValores, float $compactacionDiseno = 95.0): array {
+        $cbr100 = null;
+        $cbr95 = null;
+        $cbr90 = null;
+
+        foreach ($filasValores as $fila) {
+            if (!is_array($fila)) {
+                continue;
+            }
+            $golpes = isset($fila['golpes']) && is_numeric($fila['golpes']) ? (int)round((float)$fila['golpes']) : 0;
+            $cbr = isset($fila['cbr']) && is_numeric($fila['cbr']) ? round((float)$fila['cbr'], 1) : null;
+            if ($cbr === null) {
+                continue;
+            }
+            if ($golpes === 56) {
+                $cbr100 = $cbr;
+            } elseif ($golpes === 25) {
+                $cbr95 = $cbr;
+            } elseif ($golpes === 12) {
+                $cbr90 = $cbr;
+            }
+        }
+
+        $cbrDiseno = $this->interpolar($compactacionDiseno, $filasValores, 'compactacion', 'cbr', false);
+
+        return [
+            'cbr_100_56_golpes' => $cbr100,
+            'cbr_95_25_golpes' => $cbr95,
+            'cbr_90_12_golpes' => $cbr90,
+            'por_energia' => [
+                '100%' => ['golpes' => 56, 'cbr' => $cbr100],
+                '95%' => ['golpes' => 25, 'cbr' => $cbr95],
+                '90%' => ['golpes' => 12, 'cbr' => $cbr90],
+            ],
+            'cbr_diseno' => $cbrDiseno !== null ? round($cbrDiseno, 2) : null,
+            'compactacion_diseno' => $compactacionDiseno,
+            'modo_reporte' => ConfigCalculoLabServicio::obtener('cbr_modo_reporte', 'golpes'),
+        ];
     }
 
     /**

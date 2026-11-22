@@ -123,6 +123,23 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                 <td style="font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;">Teléfono:</td>
                 <td style="color: #0f172a; padding: 9px 12px;"><?= htmlspecialchars(!empty($cotizacion['cliente_tel']) ? $cotizacion['cliente_tel'] : ($cotizacion['telefono'] ?? '(505) 8209-6275'), ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
+            <?php if (!empty($cotizacion['responsable_interno_nombre']) || !empty($cotizacion['aprobacion_interna_por'])): ?>
+            <tr style="border-top: 1px solid #e2e8f0;">
+                <td style="font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;">Responsable Interno:</td>
+                <td style="color: #0f172a; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;"><?= htmlspecialchars($cotizacion['responsable_interno_nombre'] ?: 'Gerencia / Autorizado', ENT_QUOTES, 'UTF-8') ?></td>
+                <td style="font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;">Aprobación Interna:</td>
+                <td style="color: #1e40af; font-weight: 600; padding: 9px 12px;">
+                    <?php if (!empty($cotizacion['aprobacion_interna_por'])): ?>
+                        <i class="fa-solid fa-stamp"></i> <?= htmlspecialchars($cotizacion['aprobacion_interna_nombre'] ?: ('Usuario #' . (int)$cotizacion['aprobacion_interna_por']), ENT_QUOTES, 'UTF-8') ?>
+                        <?php if (!empty($cotizacion['fecha_aprobacion_interna'])): ?>
+                            <span style="font-weight: normal; color: #64748b; font-size: 11.5px;">(<?= date('d/m/Y H:i', strtotime($cotizacion['fecha_aprobacion_interna'])) ?>)</span>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <span style="color: #94a3b8; font-weight: normal;">Pendiente</span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endif; ?>
         </table>
     </div>
 
@@ -403,10 +420,15 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         </div>
     <?php endif; ?>
 
-    <?php if (($_SESSION['usuario_rol'] == 1) && ($cotizacion['estado'] == 'Borrador' || $cotizacion['estado'] == 'En Revision')): ?>
-        <div class="panel-aprobacion">
-            <h3 style="margin: 0 0 15px 0; color: #b45309;"><i class="fa-solid fa-clipboard-check"></i> Revisión de Gerencia</h3>
-            <p style="font-size: 14px; color: #78350f; margin-bottom: 20px;">Revisa los datos comerciales. Si todo es correcto, apruébala para generar el PDF oficial. Si hay errores, devuélvela con observaciones.</p>
+    <?php
+    $puedeAprobarInterno = isset($puede_aprobar_internamente)
+        ? (bool)$puede_aprobar_internamente
+        : \Cycsa\Modulos\Cotizaciones\Controladores\CotizacionesControlador::puedeAprobarInternamente($cotizacion);
+    ?>
+    <?php if ($puedeAprobarInterno && ($cotizacion['estado'] == 'Borrador' || $cotizacion['estado'] == 'En Revision')): ?>
+        <div class="panel-aprobacion" style="background: #eef2ff; border: 1.5px solid #a5b4fc;">
+            <h3 style="margin: 0 0 15px 0; color: #3730a3;"><i class="fa-solid fa-stamp"></i> Revisión y Aprobación Interna</h3>
+            <p style="font-size: 14px; color: #312e81; margin-bottom: 20px;">Valida los datos comerciales antes de enviarla al cliente. La <strong>Aprobación Interna</strong> autoriza el despacho sin cerrar la decisión del cliente; si hay correcciones, devuélvela con observaciones (sin incrementar la versión PDF).</p>
             
             <?php if (!empty($cotizacion['motivo_rechazo_cliente'])): ?>
                 <div style="background: #fff5f5; border: 1px solid #feb2b2; padding: 15px; border-radius: 6px; margin-bottom: 20px; color: #9b2c2c; font-size: 13.5px; border-left: 4px solid #ef4444; text-align: left;">
@@ -420,10 +442,10 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                 <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
                 <input type="hidden" name="accion" id="input-accion" value="">
 
-                <textarea name="motivo_observacion" id="txt-motivo" placeholder="Escribe el motivo del rechazo u observación aquí..." style="width: 100%; padding: 10px; border: 1px solid #fcd34d; border-radius: 4px; font-family: 'Inter', sans-serif; display: none; margin-bottom: 15px;" rows="3"></textarea>
+                <textarea name="motivo_observacion" id="txt-motivo" placeholder="Escribe el motivo del rechazo u observación aquí..." style="width: 100%; padding: 10px; border: 1px solid #a5b4fc; border-radius: 4px; font-family: 'Inter', sans-serif; display: none; margin-bottom: 15px;" rows="3"></textarea>
 
-                <div style="display: flex; gap: 10px;">
-                    <button type="button" class="btn-aprobar" onclick="enviarRevision('aprobar')"><i class="fa-solid fa-check"></i> Aprobar Cotización</button>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" class="btn-aprobar" style="background: #4f46e5; border: 1px solid #4338ca;" onclick="enviarRevision('aprobar')"><i class="fa-solid fa-stamp"></i> Aprobación Interna</button>
                     <button type="button" class="btn-observar" onclick="mostrarCajaObservacion()"><i class="fa-solid fa-xmark"></i> Devolver con Observación</button>
                 </div>
             </form>
@@ -494,7 +516,7 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                         </div>
                         
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button type="button" onclick="confirmarDecisionAdmin('aceptar')" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;"><i class="fa-solid fa-circle-check"></i> Aprobar Cotización</button>
+                            <button type="button" onclick="confirmarDecisionAdmin('aceptar')" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;"><i class="fa-solid fa-circle-check"></i> Aprobar Cotización (Cliente)</button>
                             <button type="button" id="btn-admin-rechazar-init" onclick="mostrarRechazoAdmin()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;"><i class="fa-solid fa-circle-xmark"></i> Rechazar Cotización</button>
                             <button type="button" id="btn-admin-rechazar-confirm" onclick="confirmarDecisionAdmin('rechazar')" style="background: #b91c1c; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; display: none;"><i class="fa-solid fa-circle-check"></i> Confirmar Rechazo</button>
                             <button type="button" id="btn-admin-cancelar" onclick="cancelarRechazoAdmin()" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; display: none;">Cancelar</button>

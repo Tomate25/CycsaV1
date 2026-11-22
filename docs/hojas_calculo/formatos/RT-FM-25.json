@@ -123,6 +123,15 @@
       "tipo_layout": "tabla_matriz",
       "campos": [
         {
+          "codigo": "ret_3in",
+          "etiqueta": "Masa retenida tamiz 3\"",
+          "tipo": "numero",
+          "unidad": "g",
+          "decimales": 2,
+          "requerido": false,
+          "por_especimen": false
+        },
+        {
           "codigo": "ret_2in",
           "etiqueta": "Masa retenida tamiz 2\"",
           "tipo": "numero",
@@ -382,7 +391,7 @@
     },
     {
       "codigo": "total_retenido",
-      "expresion": "{perdida_lavado}+{ret_2in}+{ret_1_1_2in}+{ret_1in}+{ret_3_4in}+{ret_1_2in}+{ret_3_8in}+{ret_no4}+{ret_no8}+{ret_no10}+{ret_no16}+{ret_no20}+{ret_no30}+{ret_no40}+{ret_no50}+{ret_no60}+{ret_no80}+{ret_no100}+{ret_no140}+{ret_no200}+{ret_fondo}",
+      "expresion": "{perdida_lavado}+{ret_3in}+{ret_2in}+{ret_1_1_2in}+{ret_1in}+{ret_3_4in}+{ret_1_2in}+{ret_3_8in}+{ret_no4}+{ret_no8}+{ret_no10}+{ret_no16}+{ret_no20}+{ret_no30}+{ret_no40}+{ret_no50}+{ret_no60}+{ret_no80}+{ret_no100}+{ret_no140}+{ret_no200}+{ret_fondo}",
       "descripcion": "Pérdida por lavado + suma de retenidos",
       "unidad": "g",
       "redondeo": null,

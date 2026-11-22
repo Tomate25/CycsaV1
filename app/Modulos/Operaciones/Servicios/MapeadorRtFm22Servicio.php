@@ -90,33 +90,38 @@ class MapeadorRtFm22Servicio {
             'nuevo' => false,
             'archivo_markdown' => 'ensayos_varios.md',
         ],
-        // 5 formatos sin RT-FM-22 equivalente (generan reporte nuevo propio)
+        // 5 formatos sin RT-FM-22 equivalente (generan reporte nuevo propio; con letra sugerida Fase 3)
         'RT-FM-46' => [
             'letra' => null,
+            'letra_rt_fm_22_sugerida' => 'H',
             'nuevo' => true,
             'codigo_reporte_nuevo' => 'CYCSA-RT-FM-22-CBR',
             'titulo_reporte' => 'INFORME DE ENSAYO DE RELACIÓN DE SOPORTE CALIFORNIA (CBR)',
         ],
         'RT-FM-56' => [
             'letra' => null,
+            'letra_rt_fm_22_sugerida' => null,
             'nuevo' => true,
             'codigo_reporte_nuevo' => 'CYCSA-RT-FM-56-CERT',
             'titulo_reporte' => 'CERTIFICADO INTERNO DE CALIBRACIÓN VOLUMÉTRICA DE PICNÓMETROS',
         ],
         'RT-FM-58' => [
             'letra' => null,
+            'letra_rt_fm_22_sugerida' => 'F',
             'nuevo' => true,
             'codigo_reporte_nuevo' => 'CYCSA-RT-FM-22-SAN',
             'titulo_reporte' => 'INFORME DE SANIDAD DE AGREGADOS POR INTEMPERISMO ACELERADO (ASTM C88)',
         ],
         'RT-FM-62' => [
             'letra' => null,
+            'letra_rt_fm_22_sugerida' => null,
             'nuevo' => true,
             'codigo_reporte_nuevo' => 'CYCSA-RT-FM-22-INF',
             'titulo_reporte' => 'INFORME DE PRUEBA DE INFILTRACIÓN / PERCOLACIÓN DE SUELO',
         ],
         'RT-FM-64' => [
             'letra' => null,
+            'letra_rt_fm_22_sugerida' => 'H',
             'nuevo' => true,
             'codigo_reporte_nuevo' => 'CYCSA-RT-FM-22-ACE',
             'titulo_reporte' => 'INFORME DE ENSAYO DE TENSIÓN EN VARILLAS DE ACERO DE REFUERZO (ASTM A370 / A615)',
@@ -380,27 +385,41 @@ class MapeadorRtFm22Servicio {
         $especimenes = $evaluacionConjunto['especimenes'] ?? [];
         $agregaciones = $evaluacionConjunto['agregaciones'] ?? [];
         $global = array_merge($evaluacionConjunto['contexto_global'] ?? [], $metadatosExtra);
+        $archivoMarkdown = $destino['archivo_markdown'];
 
-        $filas = match ($cod) {
-            'RT-FM-61' => $this->mapearRtFm61($especimenes, $global),
-            'RT-FM-36' => $this->mapearRtFm36($especimenes, $agregaciones, $global),
-            'RT-FM-57' => $this->mapearRtFm57($especimenes, $global),
-            'RT-FM-63' => $this->mapearRtFm63($especimenes, $global),
-            'RT-FM-54' => $this->mapearRtFm54($especimenes, $global),
-            'RT-FM-55' => $this->mapearRtFm55($especimenes, $global),
-            'RT-FM-27' => $this->mapearRtFm27($agregaciones, $global),
-            'RT-FM-59' => $this->mapearRtFm59($especimenes, $global),
-            'RT-FM-38' => $this->mapearRtFm38($especimenes, $global),
-            'RT-FM-25', 'RT-FM-42' => $this->mapearRtFm25Y42($especimenes, $agregaciones, $global),
-            'RT-FM-35' => $this->mapearRtFm35($especimenes, $global),
-            default => [],
-        };
+        $archivoDest = strtolower(trim((string)($global['archivo_destino'] ?? '')));
+        if ($cod === 'RT-FM-61' && $archivoDest === 'formato_de_lodo_concreto.md') {
+            $filas = $this->mapearLodoConcreto($especimenes, $global);
+            $archivoMarkdown = 'formato_de_lodo_concreto.md';
+        } else {
+            if ($cod === 'RT-FM-25') {
+                $tipoMatCheck = strtolower(trim((string)($especimenes[0]['valores']['tipo_material'] ?? ($global['tipo_material'] ?? ''))));
+                if (str_contains($tipoMatCheck, 'agregado') || $archivoDest === 'granulomnetria_de_agregados.md') {
+                    $archivoMarkdown = 'granulomnetria_de_agregados.md';
+                }
+            }
+
+            $filas = match ($cod) {
+                'RT-FM-61' => $this->mapearRtFm61($especimenes, $global),
+                'RT-FM-36' => $this->mapearRtFm36($especimenes, $agregaciones, $global),
+                'RT-FM-57' => $this->mapearRtFm57($especimenes, $global),
+                'RT-FM-63' => $this->mapearRtFm63($especimenes, $global),
+                'RT-FM-54' => $this->mapearRtFm54($especimenes, $global),
+                'RT-FM-55' => $this->mapearRtFm55($especimenes, $global),
+                'RT-FM-27' => $this->mapearRtFm27($agregaciones, $global),
+                'RT-FM-59' => $this->mapearRtFm59($especimenes, $global),
+                'RT-FM-38' => $this->mapearRtFm38($especimenes, $global),
+                'RT-FM-25', 'RT-FM-42' => $this->mapearRtFm25Y42($especimenes, $agregaciones, $global),
+                'RT-FM-35' => $this->mapearRtFm35($especimenes, $global),
+                default => [],
+            };
+        }
 
         return [
             'es_reporte_nuevo' => false,
             'codigo_formato_hc' => $cod,
             'letra_rt_fm_22' => $destino['letra'],
-            'archivo_markdown' => $destino['archivo_markdown'],
+            'archivo_markdown' => $archivoMarkdown,
             'resultados_json' => [
                 'version_actual' => 1,
                 'filas' => $filas,
@@ -413,26 +432,125 @@ class MapeadorRtFm22Servicio {
         ];
     }
 
+    /**
+     * Mapeador específico para Lodo Concreto / Suelo-Cemento (`formato_de_lodo_concreto.md` · Fase 3.6)
+     * con unidades métricas oficiales (`cm²`, `kg`, `kg/cm²`).
+     */
+    public function mapearLodoConcreto(array $especimenes, array $global = []): array {
+        $filas = [];
+        foreach ($especimenes as $idx => $esp) {
+            $v = $esp['valores'] ?? $esp;
+            $r = $esp['redondeados'] ?? [];
+
+            $areaCm2 = $r['area_cm2']
+                ?? (isset($v['area_cm2']) && is_numeric($v['area_cm2']) ? round((float)$v['area_cm2'], 2) : null);
+            if ($areaCm2 === null && isset($v['diametro_1'], $v['diametro_2']) && is_numeric($v['diametro_1']) && is_numeric($v['diametro_2']) && (float)$v['diametro_1'] > 0 && (float)$v['diametro_2'] > 0) {
+                $dProm = ((float)$v['diametro_1'] + (float)$v['diametro_2']) / 2.0;
+                $areaCm2 = round(M_PI * (($dProm / 2.0) ** 2), 2);
+            }
+            if ($areaCm2 === null && isset($v['area_in2']) && is_numeric($v['area_in2'])) {
+                $areaCm2 = round((float)$v['area_in2'] * 6.4516, 2);
+            }
+
+            $cargaKg = $r['carga_real_kg']
+                ?? $r['carga_kg']
+                ?? (isset($v['carga_real_kg']) && is_numeric($v['carga_real_kg'])
+                    ? round((float)$v['carga_real_kg'], 0)
+                    : (isset($v['carga_kg']) && is_numeric($v['carga_kg']) ? round((float)$v['carga_kg'], 0) : null));
+            if ($cargaKg === null) {
+                $cargaLb = $v['carga_real_lbf'] ?? $v['lectura_carga_lbf'] ?? $v['carga_lbf'] ?? $v['carga'] ?? 0;
+                $cargaKg = is_numeric($cargaLb) && (float)$cargaLb > 0 ? round((float)$cargaLb / 2.20462, 0) : 0;
+            }
+
+            $pvRaw = $v['peso_volumetrico'] ?? $v['densidad'] ?? null;
+            $pv = ($pvRaw !== null && is_numeric($pvRaw)) ? round((float)$pvRaw / 10.0) * 10.0 : ($r['peso_volumetrico'] ?? $r['densidad'] ?? 0);
+
+            $resKgCm2 = $r['esfuerzo_kgcm2']
+                ?? $r['resistencia_kgcm2']
+                ?? (isset($v['esfuerzo_kgcm2']) && is_numeric($v['esfuerzo_kgcm2']) ? round((float)$v['esfuerzo_kgcm2'], 1) : null);
+            if ($resKgCm2 === null && $areaCm2 > 0 && $cargaKg > 0) {
+                $resKgCm2 = round($cargaKg / $areaCm2, 1);
+            }
+
+            $filas[] = [
+                'Código laboratorio' => (string)($v['codigo_muestra'] ?? ($global['codigo_muestra'] ?? ('MS-000' . ($idx + 1)))),
+                'Nombre muestra' => (string)($v['identificacion'] ?? ($global['nombre_muestra'] ?? ('Lodo Concreto #' . ($idx + 1)))),
+                'Área (cm²)' => $areaCm2 ?? 0,
+                'Carga (kg)' => $cargaKg,
+                'Peso Volumétrico (kg/m³)' => $pv,
+                'Diseño (kg/cm²)' => $v['diseno_kgcm2'] ?? ($global['diseno_kgcm2'] ?? '-'),
+                'R. compresión. (kg/cm²)' => $resKgCm2 ?? 0,
+                'Fecha de Fabricación' => (string)($v['fecha_moldeo'] ?? ($v['fecha_fabricacion'] ?? ($global['fecha_moldeo'] ?? ''))),
+                'Fecha de Ensayo' => (string)($v['fecha_rotura'] ?? ($v['fecha_ensayo'] ?? ($v['fecha_ruptura'] ?? ($global['fecha_ensayo'] ?? '')))),
+                'Edad (Días)' => $r['edad_dias'] ?? $r['edad_calculada'] ?? ($v['edad_dias'] ?? ($v['edad_calculada'] ?? ($global['edad_dias'] ?? ''))),
+            ];
+        }
+        return $filas;
+    }
+
     private function mapearRtFm61(array $especimenes, array $global): array {
+        $redondearPv10 = ConfigCalculoLabServicio::obtenerBool('cilindros_redondear_pv_10', true);
         $filas = [];
         foreach ($especimenes as $idx => $esp) {
             $v = $esp['valores'] ?? [];
             $r = $esp['redondeados'] ?? [];
+
+            $cargaVal = $r['carga_real_lbf']
+                ?? $r['lectura_carga_lbf']
+                ?? $r['carga_lbf']
+                ?? round((float)($v['carga_real_lbf'] ?? $v['lectura_carga_lbf'] ?? $v['carga_lbf'] ?? 0), 0);
+
+            $psiVal = $r['esfuerzo_psi_reportado']
+                ?? $r['esfuerzo_psi']
+                ?? round((float)($v['esfuerzo_psi_reportado'] ?? $v['esfuerzo_psi'] ?? 0), 0);
+
+            $kgCm2Val = $r['esfuerzo_kgcm2']
+                ?? round((float)($v['esfuerzo_kgcm2'] ?? 0), 0);
+
+            $pvRaw = $v['peso_volumetrico'] ?? $v['densidad'] ?? null;
+            if ($pvRaw !== null && is_numeric($pvRaw) && (float)$pvRaw > 0) {
+                $pvVal = $redondearPv10 ? (round((float)$pvRaw / 10.0) * 10.0) : round((float)$pvRaw, 0);
+            } else {
+                $pvVal = $r['peso_volumetrico'] ?? $r['densidad'] ?? 0;
+            }
+
+            $revIn = isset($r['revenimiento_in']) && is_numeric($r['revenimiento_in'])
+                ? $r['revenimiento_in']
+                : (isset($v['revenimiento_in']) && is_numeric($v['revenimiento_in'])
+                    ? round((float)$v['revenimiento_in'], 1)
+                    : ($global['revenimiento_in'] ?? '-'));
+
+            $revCm = isset($v['revenimiento_cm']) && is_numeric($v['revenimiento_cm'])
+                ? round((float)$v['revenimiento_cm'], 1)
+                : ($global['revenimiento_cm'] ?? '-');
+
+            $fechaEnsayo = (string)($v['fecha_rotura']
+                ?? $v['fecha_ensayo']
+                ?? $v['fecha_ruptura']
+                ?? $global['fecha_rotura']
+                ?? $global['fecha_ensayo']
+                ?? $global['fecha_ruptura']
+                ?? '');
+
+            $edadVal = $r['edad_dias']
+                ?? $r['edad_calculada']
+                ?? ($v['edad_dias'] ?? $v['edad_calculada'] ?? ($global['edad_dias'] ?? ''));
+
             $filas[] = [
                 'Código laboratorio' => (string)($v['codigo_muestra'] ?? ($global['codigo_muestra'] ?? ('MS-000' . ($idx + 1)))),
                 'Nombre muestra' => (string)($v['identificacion'] ?? ($global['nombre_muestra'] ?? ('Cilindro #' . ($idx + 1)))),
                 'Área (in²)' => $r['area_in2'] ?? round((float)($v['area_in2'] ?? 0), 2),
-                'Reven. (in)' => $v['revenimiento_in'] ?? ($global['revenimiento_in'] ?? '-'),
-                'Reven. (cm)' => $v['revenimiento_cm'] ?? ($global['revenimiento_cm'] ?? '-'),
+                'Reven. (in)' => $revIn,
+                'Reven. (cm)' => $revCm,
                 'Temp. (°C)' => $v['temperatura_c'] ?? ($global['temperatura_c'] ?? '-'),
-                'Carga (lb)' => $r['carga_lbf'] ?? round((float)($v['carga_lbf'] ?? 0), 0),
-                'Peso Volumétrico (kg/m³)' => $r['densidad'] ?? round((float)($v['densidad'] ?? 0), 0),
+                'Carga (lb)' => $cargaVal,
+                'Peso Volumétrico (kg/m³)' => $pvVal,
                 'Diseño de concreto (lb/in²)' => $v['resistencia_diseno_psi'] ?? ($global['resistencia_diseno_psi'] ?? '-'),
-                'R. Compresión (lb/in²)' => $r['esfuerzo_psi'] ?? round((float)($v['esfuerzo_psi'] ?? 0), 0),
-                'R. Compresión (kg/cm²)' => $r['esfuerzo_kgcm2'] ?? round((float)($v['esfuerzo_kgcm2'] ?? 0), 0),
+                'R. Compresión (lb/in²)' => $psiVal,
+                'R. Compresión (kg/cm²)' => $kgCm2Val,
                 'Fecha de Fabricación' => (string)($v['fecha_moldeo'] ?? ($global['fecha_moldeo'] ?? '')),
-                'Fecha de Ensayo' => (string)($v['fecha_ruptura'] ?? ($global['fecha_ruptura'] ?? '')),
-                'Edad (Días)' => $r['edad_calculada'] ?? ($v['edad_dias'] ?? ($global['edad_dias'] ?? '')),
+                'Fecha de Ensayo' => $fechaEnsayo,
+                'Edad (Días)' => $edadVal,
             ];
         }
         return $filas;
@@ -442,20 +560,69 @@ class MapeadorRtFm22Servicio {
         $v = $especimenes[0]['valores'] ?? [];
         $r = $especimenes[0]['redondeados'] ?? [];
 
+        $areaBrutaIn2 = $r['area_bruta_in2']
+            ?? (isset($v['area_bruta_in2']) && is_numeric($v['area_bruta_in2'])
+                ? round((float)$v['area_bruta_in2'], 2)
+                : (isset($v['area_bruta']) && is_numeric($v['area_bruta']) ? round((float)$v['area_bruta'] / 6.4516, 2) : 0));
+
+        $areaNetaIn2 = $r['area_neta_in2']
+            ?? (isset($v['area_neta_in2']) && is_numeric($v['area_neta_in2'])
+                ? round((float)$v['area_neta_in2'], 2)
+                : (isset($v['area_neta']) && is_numeric($v['area_neta']) ? round((float)$v['area_neta'] / 6.4516, 2) : 0));
+
+        $largoVal = $r['largo_prom']
+            ?? (isset($v['largo_prom']) && is_numeric($v['largo_prom']) ? round((float)$v['largo_prom'], 2) : round((float)($v['largo'] ?? 0), 2));
+        $altoVal = $r['alto_prom']
+            ?? (isset($v['alto_prom']) && is_numeric($v['alto_prom']) ? round((float)$v['alto_prom'], 2) : round((float)($v['alto'] ?? 0), 2));
+        $anchoVal = $r['ancho_prom']
+            ?? (isset($v['ancho_prom']) && is_numeric($v['ancho_prom']) ? round((float)$v['ancho_prom'], 2) : round((float)($v['ancho'] ?? 0), 2));
+
+        // espesor_pared_int / espesor_pared_ext ya están expresados en cm en RT-FM-36.json (no dividir entre 10)
+        $espIntVal = isset($v['espesor_pared_int']) && is_numeric($v['espesor_pared_int'])
+            ? round((float)$v['espesor_pared_int'], 2)
+            : ($r['espesor_alma_prom_mm'] ?? (isset($v['espesor_alma_prom_mm']) ? round((float)$v['espesor_alma_prom_mm'] / 10, 2) : 0));
+        $espExtVal = isset($v['espesor_pared_ext']) && is_numeric($v['espesor_pared_ext'])
+            ? round((float)$v['espesor_pared_ext'], 2)
+            : ($r['espesor_pared_prom_mm'] ?? (isset($v['espesor_pared_prom_mm']) ? round((float)$v['espesor_pared_prom_mm'] / 10, 2) : 0));
+
+        $densidadVal = $r['densidad_seca']
+            ?? (isset($agregaciones['densidad_promedio']) && is_numeric($agregaciones['densidad_promedio'])
+                ? round((float)$agregaciones['densidad_promedio'], 0)
+                : ($r['densidad'] ?? round((float)($v['densidad_seca'] ?? $v['densidad'] ?? 0), 0)));
+
+        // Fase 1.6: Bloques de concreto reportan resistencia sobre ÁREA NETA (ASTM C140 / NTON 12 008-16)
+        $resNetaPsi = $r['resistencia_psi']
+            ?? (isset($agregaciones['resistencia_promedio_psi']) && is_numeric($agregaciones['resistencia_promedio_psi'])
+                ? round((float)$agregaciones['resistencia_promedio_psi'], 0)
+                : round((float)($v['resistencia_psi'] ?? 0), 0));
+        $resNetaKgCm2 = $r['resistencia_kgcm2']
+            ?? (isset($agregaciones['resistencia_promedio_kgcm2']) && is_numeric($agregaciones['resistencia_promedio_kgcm2'])
+                ? round((float)$agregaciones['resistencia_promedio_kgcm2'], 1)
+                : round((float)($v['resistencia_kgcm2'] ?? 0), 1));
+
+        $absVal = $r['absorcion_pct']
+            ?? (isset($v['absorcion_pct']) && is_numeric($v['absorcion_pct'])
+                ? round((float)$v['absorcion_pct'], 2)
+                : (isset($agregaciones['absorcion_promedio_pct']) && is_numeric($agregaciones['absorcion_promedio_pct'])
+                    ? round((float)$agregaciones['absorcion_promedio_pct'], 2)
+                    : (isset($agregaciones['absorcion_promedio_kgm3']) && is_numeric($agregaciones['absorcion_promedio_kgm3'])
+                        ? round((float)$agregaciones['absorcion_promedio_kgm3'], 2)
+                        : 0)));
+
         return [
-            ['Descripción' => 'Área bruta.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'in²', 'Resultado' => $r['area_bruta_in2'] ?? round((float)($v['area_bruta_in2'] ?? 0), 2), 'Min' => '', 'Max' => ''],
-            ['Descripción' => 'Área neta.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'in²', 'Resultado' => $r['area_neta_in2'] ?? round((float)($v['area_neta_in2'] ?? 0), 2), 'Min' => '50% A.B', 'Max' => ''],
+            ['Descripción' => 'Área bruta.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'in²', 'Resultado' => $areaBrutaIn2, 'Min' => '', 'Max' => ''],
+            ['Descripción' => 'Área neta.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'in²', 'Resultado' => $areaNetaIn2, 'Min' => '50% A.B', 'Max' => ''],
             ['Descripción' => 'Carga', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'lb', 'Resultado' => $r['carga_lbf'] ?? round((float)($v['carga_lbf'] ?? 0), 0), 'Min' => '-', 'Max' => '-'],
-            ['Descripción' => 'Largo', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $r['largo_prom'] ?? round((float)($v['largo_prom'] ?? 0), 2), 'Min' => '39', 'Max' => '-'],
-            ['Descripción' => 'Alto', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $r['alto_prom'] ?? round((float)($v['alto_prom'] ?? 0), 2), 'Min' => '19', 'Max' => '-'],
-            ['Descripción' => 'Ancho', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $r['ancho_prom'] ?? round((float)($v['ancho_prom'] ?? 0), 2), 'Min' => '10', 'Max' => '-'],
-            ['Descripción' => 'Espesor interno.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $r['espesor_alma_prom_mm'] ?? round((float)($v['espesor_alma_prom_mm'] ?? 0) / 10, 2), 'Min' => '2; 2.5; 3', 'Max' => ''],
-            ['Descripción' => 'Espesor externo.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $r['espesor_pared_prom_mm'] ?? round((float)($v['espesor_pared_prom_mm'] ?? 0) / 10, 2), 'Min' => '2; 2.5; 3', 'Max' => '-'],
-            ['Descripción' => 'Peso volumétrico', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'kg/m³', 'Resultado' => $r['densidad'] ?? round((float)($v['densidad'] ?? 0), 0), 'Min' => '-', 'Max' => '-'],
-            ['Descripción' => 'R. Compresión', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'lb/in²', 'Resultado' => $r['esfuerzo_bruto_psi'] ?? round((float)($agregaciones['resistencia_bruta_promedio_psi'] ?? ($v['esfuerzo_bruto_psi'] ?? 0)), 0), 'Min' => '1714', 'Max' => '-'],
-            ['Descripción' => 'R. Compresión.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'kg/cm²', 'Resultado' => $r['esfuerzo_bruto_kgcm2'] ?? round((float)($v['esfuerzo_bruto_kgcm2'] ?? 0), 0), 'Min' => '120', 'Max' => '-'],
-            ['Descripción' => 'Absorción', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => '(%)(P/P)', 'Resultado' => $r['absorcion_pct'] ?? round((float)($agregaciones['absorcion_promedio_pct'] ?? ($v['absorcion_pct'] ?? 0)), 2), 'Min' => '-', 'Max' => '10'],
-            ['Descripción' => 'Fecha de Fabricación', 'Método de ensayo' => '', 'Unidad' => '', 'Resultado' => (string)($v['fecha_moldeo'] ?? ($global['fecha_moldeo'] ?? '-')), 'Min' => '-', 'Max' => '-'],
+            ['Descripción' => 'Largo', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $largoVal, 'Min' => '39', 'Max' => '-'],
+            ['Descripción' => 'Alto', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $altoVal, 'Min' => '19', 'Max' => '-'],
+            ['Descripción' => 'Ancho', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $anchoVal, 'Min' => '10', 'Max' => '-'],
+            ['Descripción' => 'Espesor interno.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $espIntVal, 'Min' => '2; 2.5; 3', 'Max' => ''],
+            ['Descripción' => 'Espesor externo.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'cm', 'Resultado' => $espExtVal, 'Min' => '2; 2.5; 3', 'Max' => '-'],
+            ['Descripción' => 'Peso volumétrico', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'kg/m³', 'Resultado' => $densidadVal, 'Min' => '-', 'Max' => '-'],
+            ['Descripción' => 'R. Compresión', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'lb/in²', 'Resultado' => $resNetaPsi, 'Min' => '1714', 'Max' => '-'],
+            ['Descripción' => 'R. Compresión.', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => 'kg/cm²', 'Resultado' => $resNetaKgCm2, 'Min' => '120', 'Max' => '-'],
+            ['Descripción' => 'Absorción', 'Método de ensayo' => 'CYCSA-PE-32', 'Unidad' => '(%)(P/P)', 'Resultado' => $absVal, 'Min' => '-', 'Max' => '10'],
+            ['Descripción' => 'Fecha de Fabricación', 'Método de ensayo' => '', 'Unidad' => '', 'Resultado' => (string)($v['fecha_fabricacion'] ?? $v['fecha_moldeo'] ?? $global['fecha_fabricacion'] ?? $global['fecha_moldeo'] ?? '-'), 'Min' => '-', 'Max' => '-'],
             ['Descripción' => 'Fecha de Ensayo', 'Método de ensayo' => '', 'Unidad' => '', 'Resultado' => (string)($v['fecha_ensayo'] ?? ($global['fecha_ensayo'] ?? date('Y-m-d'))), 'Min' => '-', 'Max' => '-'],
             ['Descripción' => 'Edad', 'Método de ensayo' => '', 'Unidad' => 'Días', 'Resultado' => (string)($v['edad_dias'] ?? ($global['edad_dias'] ?? '-')), 'Min' => '-', 'Max' => '-'],
         ];
@@ -471,13 +638,13 @@ class MapeadorRtFm22Servicio {
                 'Nombre muestra' => (string)($v['identificacion'] ?? ($global['nombre_muestra'] ?? ('Cubo Mortero #' . ($idx + 1)))),
                 'Área (in²)' => $r['area_in2'] ?? round((float)($v['area_in2'] ?? 4.0), 2),
                 'Carga (lb)' => $r['carga_lbf'] ?? round((float)($v['carga_lbf'] ?? 0), 0),
-                'Peso Volumétrico (kg/m³)' => $r['densidad'] ?? round((float)($v['densidad'] ?? 0), 0),
+                'Peso Volumétrico (kg/m³)' => $r['peso_volumetrico'] ?? $r['densidad'] ?? round((float)($v['peso_volumetrico'] ?? $v['densidad'] ?? 0), 0),
                 'Diseño de Mortero (lb/in²)' => $v['resistencia_diseno_psi'] ?? ($global['resistencia_diseno_psi'] ?? '-'),
-                'R. Compresión (lb/in²)' => $r['esfuerzo_psi'] ?? round((float)($v['esfuerzo_psi'] ?? 0), 0),
-                'R. Compresión. (kg/cm²)' => $r['esfuerzo_kgcm2'] ?? round((float)($v['esfuerzo_kgcm2'] ?? 0), 0),
-                'Fecha de Fabricación' => (string)($v['fecha_moldeo'] ?? ($global['fecha_moldeo'] ?? '')),
-                'Fecha de Ensayo' => (string)($v['fecha_ruptura'] ?? ($global['fecha_ruptura'] ?? '')),
-                'Edad (Días)' => $r['edad_calculada'] ?? ($v['edad_dias'] ?? ''),
+                'R. Compresión (lb/in²)' => $r['resistencia_psi'] ?? $r['esfuerzo_psi'] ?? round((float)($v['resistencia_psi'] ?? $v['esfuerzo_psi'] ?? 0), 0),
+                'R. Compresión. (kg/cm²)' => $r['resistencia_kgcm2'] ?? $r['esfuerzo_kgcm2'] ?? round((float)($v['resistencia_kgcm2'] ?? $v['esfuerzo_kgcm2'] ?? 0), 1),
+                'Fecha de Fabricación' => (string)($v['fecha_fabricacion'] ?? $v['fecha_moldeo'] ?? $global['fecha_fabricacion'] ?? $global['fecha_moldeo'] ?? ''),
+                'Fecha de Ensayo' => (string)($v['fecha_ensayo'] ?? $v['fecha_ruptura'] ?? $global['fecha_ensayo'] ?? $global['fecha_ruptura'] ?? ''),
+                'Edad (Días)' => $r['edad_dias'] ?? $r['edad_calculada'] ?? ($v['edad_dias'] ?? ($global['edad_dias'] ?? '')),
             ];
         }
         return $filas;
@@ -493,12 +660,12 @@ class MapeadorRtFm22Servicio {
                 'Nombre muestra' => (string)($v['identificacion'] ?? ($global['nombre_muestra'] ?? ('Adoquín #' . ($idx + 1)))),
                 'Área (in²)' => $r['area_neta_in2'] ?? round((float)($v['area_neta_in2'] ?? 0), 2),
                 'Carga (lb)' => $r['carga_prom'] ?? round((float)($v['carga_prom'] ?? ($v['carga_1'] ?? 0)), 0),
-                'Peso Volumétrico (kg/m³)' => $r['densidad'] ?? round((float)($v['densidad'] ?? 0), 0),
+                'Peso Volumétrico (kg/m³)' => $r['peso_volumetrico'] ?? $r['densidad'] ?? round((float)($v['peso_volumetrico'] ?? $v['densidad'] ?? 0), 0),
                 'Diseño (lb/in²)' => $v['resistencia_diseno_psi'] ?? ($global['resistencia_diseno_psi'] ?? '-'),
                 'R. Compresión (lb/in²)' => $r['resistencia_psi'] ?? round((float)($v['resistencia_psi'] ?? 0), 0),
-                'R. Compresión. (kg/cm²)' => $r['resistencia_kgcm2'] ?? round((float)($v['resistencia_kgcm2'] ?? ((float)($v['resistencia_psi'] ?? 0) / 14.2233)), 0),
-                'Absorción ((%)(P/P))' => $r['absorcion'] ?? round((float)($v['absorcion'] ?? 0), 2),
-                'Fecha de Fabricación' => (string)($v['fecha_moldeo'] ?? ($global['fecha_moldeo'] ?? '-')),
+                'R. Compresión. (kg/cm²)' => $r['resistencia_kgcm2'] ?? round((float)($v['resistencia_kgcm2'] ?? ((float)($v['resistencia_psi'] ?? 0) / 14.2)), 0),
+                'Absorción ((%)(P/P))' => $r['absorcion_pct'] ?? $r['absorcion'] ?? round((float)($v['absorcion_pct'] ?? $v['absorcion'] ?? 0), 2),
+                'Fecha de Fabricación' => (string)($v['fecha_fabricacion'] ?? $v['fecha_moldeo'] ?? $global['fecha_fabricacion'] ?? $global['fecha_moldeo'] ?? '-'),
                 'Fecha de Ensayo' => (string)($v['fecha_ensayo'] ?? ($global['fecha_ensayo'] ?? date('Y-m-d'))),
                 'Edad (Días)' => $v['edad_dias'] ?? ($global['edad_dias'] ?? '-'),
             ];
@@ -514,10 +681,10 @@ class MapeadorRtFm22Servicio {
             $filas[] = [
                 'Código laboratorio' => (string)($v['codigo_muestra'] ?? ($global['codigo_muestra'] ?? ('MC-000' . ($idx + 1)))),
                 'Nombre muestra' => (string)($v['ubicacion'] ?? ($global['nombre_muestra'] ?? ('Punto #' . ($idx + 1)))),
-                'Capa (N°)' => $v['capa'] ?? ($global['capa'] ?? 1),
-                'Espesor (cm)' => $v['espesor'] ?? ($v['profundidad'] ?? ($global['profundidad'] ?? 20)),
-                'Profundidad (cm)' => $v['profundidad'] ?? ($global['profundidad'] ?? 20),
-                '**P.V.S Max (kg/m³)' => $v['pvs_maximo'] ?? ($global['pvs_maximo'] ?? 0),
+                'Capa (N°)' => $v['capa'] ?? ($global['capa'] ?? ''),
+                'Espesor (cm)' => $v['espesor'] ?? ($v['profundidad'] ?? ($global['espesor'] ?? ($global['profundidad'] ?? ''))),
+                'Profundidad (cm)' => $v['profundidad'] ?? ($global['profundidad'] ?? ''),
+                '**P.V.S Max (kg/m³)' => $v['pvs_maximo'] ?? ($global['pvs_maximo'] ?? ''),
                 '**Humedad Óptima (( %)(P/P))' => $v['humedad_optima'] ?? ($global['humedad_optima'] ?? '-'),
                 'P.V.S.Sitio (kg/m³)' => $r['densidad_seca'] ?? round((float)($v['densidad_seca'] ?? 0), 0),
                 'Humedad sitio ((%) (P/P))' => $r['humedad'] ?? round((float)($v['humedad'] ?? 0), 1),
@@ -537,10 +704,10 @@ class MapeadorRtFm22Servicio {
             $filas[] = [
                 'Código laboratorio' => (string)($v['codigo_muestra'] ?? ($global['codigo_muestra'] ?? ('MC-000' . ($idx + 1)))),
                 'Nombre muestra' => (string)($v['procedencia'] ?? ($global['nombre_muestra'] ?? ('Punto #' . ($idx + 1)))),
-                'Capa (N°)' => $v['capa'] ?? ($global['capa'] ?? 1),
-                'Espesor (cm)' => $v['espesor'] ?? ($v['profundidad'] ?? ($global['profundidad'] ?? 20)),
-                'Profundidad (cm)' => $v['profundidad'] ?? ($global['profundidad'] ?? 20),
-                'P.V.S Max (kg/m³)' => $v['pvs_maximo'] ?? ($global['pvs_maximo'] ?? 0),
+                'Capa (N°)' => $v['capa'] ?? ($global['capa'] ?? ''),
+                'Espesor (cm)' => $v['espesor'] ?? ($v['profundidad'] ?? ($global['espesor'] ?? ($global['profundidad'] ?? ''))),
+                'Profundidad (cm)' => $v['profundidad'] ?? ($global['profundidad'] ?? ''),
+                'P.V.S Max (kg/m³)' => $v['pvs_maximo'] ?? ($global['pvs_maximo'] ?? ''),
                 'Humedad Óptima ((% )(P/P))' => $v['humedad_optima'] ?? ($global['humedad_optima'] ?? '-'),
                 'P.V.S.Sitio (kg/m³)' => $r['densidad_seca'] ?? round((float)($v['densidad_seca'] ?? 0), 0),
                 'Humedad sitio ((%) (P/P))' => $r['humedad'] ?? round((float)($v['humedad'] ?? 0), 1),
@@ -577,7 +744,7 @@ class MapeadorRtFm22Servicio {
                 'Diseño de Concreto (lb/in²)' => $v['resistencia_diseno_psi'] ?? ($global['resistencia_diseno_psi'] ?? '-'),
                 'Forma de Prueba' => 'Posición ' . ($v['posicion'] ?? ($global['posicion'] ?? 'A')),
                 'Promedio de Rebotes (N°)' => $r['rebote_promedio'] ?? round((float)($v['rebote_promedio'] ?? 0), 0),
-                'Estimación R. compresión (lb/in²)' => $r['resistencia_psi'] ?? round((float)($v['resistencia_psi'] ?? 0), 0),
+                'Estimación R. compresión (lb/in²)' => $r['resistencia_psi_redondeada'] ?? $r['resistencia_psi'] ?? round((float)($v['resistencia_psi'] ?? 0), 0),
                 'Estimación R. compresión (kg/cm²)' => $r['resistencia_kgcm2'] ?? round((float)($v['resistencia_kgcm2'] ?? 0), 0),
                 'Fecha de Fabricación' => (string)($v['fecha_fabricacion'] ?? ($global['fecha_fabricacion'] ?? '-')),
                 'Edad (Días)' => $v['edad_dias'] ?? ($global['edad_dias'] ?? '-'),
@@ -594,19 +761,19 @@ class MapeadorRtFm22Servicio {
             $filas[] = [
                 'Código laboratorio' => (string)($v['codigo_muestra'] ?? ($global['codigo_muestra'] ?? ('MS-000' . ($idx + 1)))),
                 'Nombre muestra' => (string)($v['identificacion'] ?? ($global['nombre_muestra'] ?? ('Viga #' . ($idx + 1)))),
-                'Ancho Promedio (in)' => $r['ancho_in'] ?? round((float)($v['ancho_in'] ?? 0), 2),
-                'Espesor Promedio (in)' => $r['peralte_in'] ?? round((float)($v['peralte_in'] ?? 0), 2),
-                'Longitud de Apoyo (in)' => $r['luz_in'] ?? round((float)($v['luz_in'] ?? 0), 2),
+                'Ancho Promedio (in)' => $r['ancho_prom'] ?? $r['ancho_in'] ?? round((float)($v['ancho_prom'] ?? $v['ancho_in'] ?? 0), 2),
+                'Espesor Promedio (in)' => $r['espesor_prom'] ?? $r['peralte_in'] ?? round((float)($v['espesor_prom'] ?? $v['peralte_in'] ?? 0), 2),
+                'Longitud de Apoyo (in)' => $r['luz_apoyos'] ?? $r['luz_in'] ?? round((float)($v['luz_apoyos'] ?? $v['luz_in'] ?? 0), 2),
                 'Reven. (in)' => $v['revenimiento_in'] ?? ($global['revenimiento_in'] ?? '-'),
                 'Reven. (cm)' => $v['revenimiento_cm'] ?? ($global['revenimiento_cm'] ?? '-'),
                 'Temp. (°C)' => $v['temperatura_c'] ?? ($global['temperatura_c'] ?? '-'),
                 'Carga (lb)' => $r['carga_lbf'] ?? round((float)($v['carga_lbf'] ?? 0), 0),
-                'Peso volumétrico (kg/m³)' => $r['densidad'] ?? round((float)($v['densidad'] ?? 0), 0),
+                'Peso volumétrico (kg/m³)' => $r['peso_volumetrico'] ?? $r['densidad'] ?? round((float)($v['peso_volumetrico'] ?? $v['densidad'] ?? 0), 0),
                 'Diseño MR (kg/cm²)' => $v['mr_diseno_kgcm2'] ?? ($global['mr_diseno_kgcm2'] ?? '-'),
-                'Resistencia a la flexión. (kg/cm²)' => $r['mr_kgcm2'] ?? round((float)($v['mr_kgcm2'] ?? 0), 1),
-                'Fecha de Fabricación' => (string)($v['fecha_moldeo'] ?? ($global['fecha_moldeo'] ?? '')),
-                'Fecha de Ensayo' => (string)($v['fecha_ruptura'] ?? ($global['fecha_ruptura'] ?? '')),
-                'Edad (Días)' => $r['edad_calculada'] ?? ($v['edad_dias'] ?? ''),
+                'Resistencia a la flexión. (kg/cm²)' => $r['modulo_ruptura_kgcm2'] ?? $r['mr_kgcm2'] ?? round((float)($v['modulo_ruptura_kgcm2'] ?? $v['mr_kgcm2'] ?? 0), 1),
+                'Fecha de Fabricación' => (string)($v['fecha_fabricacion'] ?? $v['fecha_moldeo'] ?? $global['fecha_fabricacion'] ?? $global['fecha_moldeo'] ?? ''),
+                'Fecha de Ensayo' => (string)($v['fecha_ensayo'] ?? $v['fecha_ruptura'] ?? $global['fecha_ensayo'] ?? $global['fecha_ruptura'] ?? ''),
+                'Edad (Días)' => $r['edad_dias'] ?? $r['edad_calculada'] ?? ($v['edad_dias'] ?? ($global['edad_dias'] ?? '')),
             ];
         }
         return $filas;
@@ -615,7 +782,57 @@ class MapeadorRtFm22Servicio {
     private function mapearRtFm25Y42(array $especimenes, array $agregaciones, array $global): array {
         $v = $especimenes[0]['valores'] ?? [];
         $r = $especimenes[0]['redondeados'] ?? [];
-        $curva = $agregaciones['curva_granulometrica']['tamices'] ?? [];
+        $curvaObj = $agregaciones['curva_granulometrica'] ?? [];
+        $curva = $curvaObj['tamices'] ?? [];
+
+        $tipoMaterial = strtolower(trim((string)($v['tipo_material'] ?? ($global['tipo_material'] ?? ''))));
+        $archivoDest = strtolower(trim((string)($global['archivo_destino'] ?? '')));
+        $esAgregado = str_contains($tipoMaterial, 'agregado') || $archivoDest === 'granulomnetria_de_agregados.md';
+
+        if ($esAgregado) {
+            // Fase 3.7: Tabla de tamices ASTM C33/C136 para agregados (CYCSA-PE-06), sin Atterberg/SUCS, + Módulo de Finura
+            $mapaTamicesAgregado = [
+                'Tamiz 3"' => $curva['ret_3in']['pct_pasa'] ?? null,
+                'Tamiz 2"' => $curva['ret_2in']['pct_pasa'] ?? null,
+                'Tamiz 1 1/2"' => $curva['ret_1_1_2in']['pct_pasa'] ?? null,
+                'Tamiz 1"' => $curva['ret_1in']['pct_pasa'] ?? null,
+                'Tamiz 3/4"' => $curva['ret_3_4in']['pct_pasa'] ?? null,
+                'Tamiz 1/2"' => $curva['ret_1_2in']['pct_pasa'] ?? null,
+                'Tamiz 3/8"' => $curva['ret_3_8in']['pct_pasa'] ?? null,
+                'Tamiz No. 4' => $curva['ret_no4']['pct_pasa'] ?? null,
+                'Tamiz No. 8' => $curva['ret_no8']['pct_pasa'] ?? null,
+                'Tamiz No. 16' => $curva['ret_no16']['pct_pasa'] ?? null,
+                'Tamiz No. 30' => $curva['ret_no30']['pct_pasa'] ?? null,
+                'Tamiz No. 50' => $curva['ret_no50']['pct_pasa'] ?? null,
+                'Tamiz No. 100' => $curva['ret_no100']['pct_pasa'] ?? null,
+                'Tamiz No. 200' => $curva['ret_no200']['pct_pasa'] ?? ($r['pasa_no200'] ?? null),
+            ];
+
+            $filas = [];
+            foreach ($mapaTamicesAgregado as $desc => $val) {
+                $filas[] = [
+                    'Descripción' => $desc,
+                    'Unidad' => '(%)(P/P)',
+                    'Resultado' => $val !== null ? round((float)$val, 1) : '',
+                    'Método de ensayo' => 'CYCSA-PE-06',
+                    'Min' => '',
+                    'Max' => '',
+                ];
+            }
+
+            $mf = $curvaObj['modulo_finura'] ?? ($v['modulo_finura'] ?? ($global['modulo_finura'] ?? null));
+            $filas[] = [
+                'Descripción' => 'Módulo de Finura',
+                'Unidad' => '',
+                'Resultado' => is_numeric($mf) ? round((float)$mf, 2) : '',
+                'Método de ensayo' => 'CYCSA-PE-06',
+                'Min' => '',
+                'Max' => '',
+            ];
+
+            return $filas;
+        }
+
         $sucs = $agregaciones['clasificacion_sucs'] ?? ['simbolo' => $global['sucs'] ?? '-', 'descripcion' => ''];
 
         $ll = $agregaciones['ll'] ?? ($v['ll'] ?? ($global['ll'] ?? 'NP'));
@@ -624,10 +841,10 @@ class MapeadorRtFm22Servicio {
         $humedad = $r['humedad'] ?? ($v['humedad'] ?? ($global['humedad'] ?? '-'));
 
         $mapaTamices = [
-            'Tamiz 3"' => 100.0,
-            'Tamiz 2"' => $curva['ret_2in']['pct_pasa'] ?? 100.0,
-            'Tamiz 1 1/2"' => $curva['ret_1_1_2in']['pct_pasa'] ?? 100.0,
-            'Tamiz 1"' => $curva['ret_1in']['pct_pasa'] ?? 100.0,
+            'Tamiz 3"' => $curva['ret_3in']['pct_pasa'] ?? null,
+            'Tamiz 2"' => $curva['ret_2in']['pct_pasa'] ?? null,
+            'Tamiz 1 1/2"' => $curva['ret_1_1_2in']['pct_pasa'] ?? null,
+            'Tamiz 1"' => $curva['ret_1in']['pct_pasa'] ?? null,
             'Tamiz 3/4"' => $curva['ret_3_4in']['pct_pasa'] ?? null,
             'Tamiz 3/8"' => $curva['ret_3_8in']['pct_pasa'] ?? null,
             'Tamiz 4' => $curva['ret_no4']['pct_pasa'] ?? null,
@@ -664,7 +881,9 @@ class MapeadorRtFm22Servicio {
         foreach ($especimenes as $idx => $esp) {
             $v = $esp['valores'] ?? [];
             $r = $esp['redondeados'] ?? [];
-            $esGrueso = isset($v['g_ge_bulk']) && $v['g_ge_bulk'] !== null && (!isset($v['ge_bulk']) || $v['ge_bulk'] === null);
+            $fraccionLower = strtolower(trim((string)($v['fraccion'] ?? ($global['fraccion'] ?? ''))));
+            $esGrueso = ($fraccionLower === 'agregado grueso')
+                || (isset($v['g_ge_bulk']) && $v['g_ge_bulk'] !== null && (!isset($v['ge_bulk']) || $v['ge_bulk'] === null));
 
             $filas[] = [
                 'Código laboratorio' => (string)($v['codigo_muestra'] ?? ($global['codigo_muestra'] ?? ('MS-000' . ($idx + 1)))),
@@ -672,7 +891,7 @@ class MapeadorRtFm22Servicio {
                 'Color' => $v['color'] ?? ($global['color'] ?? '-'),
                 'PVSS (kg/m³)' => $v['pvss'] ?? ($global['pvss'] ?? '-'),
                 'PVSC (kg/m³)' => $v['pvsc'] ?? ($global['pvsc'] ?? '-'),
-                'Módulo de finura ((%) (P/P))' => $v['modulo_finura'] ?? ($global['modulo_finura'] ?? '-'),
+                'Módulo de finura' => $v['modulo_finura'] ?? ($global['modulo_finura'] ?? '-'),
                 'Humedad Natural ((%) (P/P))' => $v['humedad_natural'] ?? ($global['humedad_natural'] ?? '-'),
                 'Absorción ((%)(P/P))' => $esGrueso ? ($r['g_absorcion'] ?? round((float)($v['g_absorcion'] ?? 0), 2)) : ($r['absorcion'] ?? round((float)($v['absorcion'] ?? 0), 2)),
                 'Gravedad Específica.' => $esGrueso ? ($r['g_ge_bulk'] ?? round((float)($v['g_ge_bulk'] ?? 0), 3)) : ($r['ge_bulk'] ?? round((float)($v['ge_bulk'] ?? 0), 3)),
@@ -727,7 +946,7 @@ class MapeadorRtFm22Servicio {
                         'Masa Picnómetro + Agua (g)' => $v['masa_lleno'] ?? null,
                         'Temperatura (°C)' => $v['temperatura'] ?? null,
                         'Densidad Agua (g/mL)' => $r['densidad_agua'] ?? null,
-                        'Masa Agua (g)' => $v['masa_agua'] ?? null,
+                        'Masa Agua (g)' => isset($v['masa_agua']) && is_numeric($v['masa_agua']) ? round((float)$v['masa_agua'], 2) : null,
                         'Volumen Calibrado (mL)' => $r['volumen'] ?? null,
                     ];
                 }
@@ -761,8 +980,8 @@ class MapeadorRtFm22Servicio {
                         'Descenso 20 min (cm)' => $v['descenso_20min'] ?? null,
                         'Descenso 25 min (cm)' => $v['descenso_25min'] ?? null,
                         'Descenso 30 min (cm)' => $v['descenso_30min'] ?? null,
-                        'Dif. 20-25 (cm)' => $v['dif_25'] ?? null,
-                        'Dif. 25-30 (cm)' => $v['dif_30'] ?? null,
+                        'Dif. 20-25 (cm)' => isset($v['dif_25']) && is_numeric($v['dif_25']) ? round((float)$v['dif_25'], 2) : null,
+                        'Dif. 25-30 (cm)' => isset($v['dif_30']) && is_numeric($v['dif_30']) ? round((float)$v['dif_30'], 2) : null,
                         'Tasa Q (L/m²·día)' => $r['tasa_lm2_dia'] ?? null,
                         'Tasa G (gal/ft²·día)' => $r['tasa_galft2_dia'] ?? null,
                     ];
@@ -770,22 +989,22 @@ class MapeadorRtFm22Servicio {
                 break;
 
             case 'RT-FM-64':
-                $columnas = ['Varilla', 'Diámetro (mm)', 'Área (mm²)', 'Masa Unitaria (kg/m)', 'Carga Fluencia (kgf)', 'Carga Máxima (kgf)', 'Esfuerzo Fluencia (MPa)', 'Esfuerzo Fluencia (psi)', 'Esfuerzo Máximo (MPa)', 'Esfuerzo Máximo (psi)', 'Elongación (%)'];
+                $columnas = ['Varilla', 'Diámetro (mm)', 'Área (mm²)', 'Peso Unitario (kg/m)', 'Fuerza Máx. (kN)', 'Fuerza Máx. (lbf)', 'Fluencia (MPa)', 'Fluencia (psi)', 'Resistencia Tensión (psi)', 'Resistencia Tensión (kg/cm²)', 'Elongación (%)'];
                 foreach ($especimenes as $idx => $esp) {
                     $v = $esp['valores'] ?? [];
                     $r = $esp['redondeados'] ?? [];
                     $filasTabla[] = [
                         'Varilla' => $v['codigo_muestra'] ?? ('V-' . ($idx + 1)),
-                        'Diámetro (mm)' => $r['diametro_mm'] ?? null,
-                        'Área (mm²)' => $r['area_mm2'] ?? null,
-                        'Masa Unitaria (kg/m)' => $r['masa_unitaria'] ?? null,
-                        'Carga Fluencia (kgf)' => $v['carga_fluencia_kgf'] ?? null,
-                        'Carga Máxima (kgf)' => $v['carga_maxima_kgf'] ?? null,
-                        'Esfuerzo Fluencia (MPa)' => $r['esfuerzo_fluencia_mpa'] ?? null,
-                        'Esfuerzo Fluencia (psi)' => $r['esfuerzo_fluencia_psi'] ?? null,
-                        'Esfuerzo Máximo (MPa)' => $r['esfuerzo_maximo_mpa'] ?? null,
-                        'Esfuerzo Máximo (psi)' => $r['esfuerzo_maximo_psi'] ?? null,
-                        'Elongación (%)' => $r['elongacion'] ?? null,
+                        'Diámetro (mm)' => isset($v['diametro_mm']) && is_numeric($v['diametro_mm']) ? round((float)$v['diametro_mm'], 2) : ($r['diametro_mm'] ?? null),
+                        'Área (mm²)' => $r['area_mm2'] ?? (isset($v['area_mm2']) && is_numeric($v['area_mm2']) ? round((float)$v['area_mm2'], 2) : null),
+                        'Peso Unitario (kg/m)' => $r['peso_unitario'] ?? (isset($v['peso_unitario']) && is_numeric($v['peso_unitario']) ? round((float)$v['peso_unitario'], 3) : null),
+                        'Fuerza Máx. (kN)' => isset($v['fuerza_max_kn']) && is_numeric($v['fuerza_max_kn']) ? round((float)$v['fuerza_max_kn'], 2) : null,
+                        'Fuerza Máx. (lbf)' => $r['fuerza_lbf'] ?? (isset($v['fuerza_lbf']) && is_numeric($v['fuerza_lbf']) ? round((float)$v['fuerza_lbf'], 0) : null),
+                        'Fluencia (MPa)' => isset($v['fluencia_mpa']) && is_numeric($v['fluencia_mpa']) ? round((float)$v['fluencia_mpa'], 2) : null,
+                        'Fluencia (psi)' => $r['fluencia_psi'] ?? (isset($v['fluencia_psi']) && is_numeric($v['fluencia_psi']) ? round((float)$v['fluencia_psi'], 0) : null),
+                        'Resistencia Tensión (psi)' => $r['resistencia_tension_psi'] ?? (isset($v['resistencia_tension_psi']) && is_numeric($v['resistencia_tension_psi']) ? round((float)$v['resistencia_tension_psi'], 0) : null),
+                        'Resistencia Tensión (kg/cm²)' => $r['resistencia_tension_kgcm2'] ?? (isset($v['resistencia_tension_kgcm2']) && is_numeric($v['resistencia_tension_kgcm2']) ? round((float)$v['resistencia_tension_kgcm2'], 0) : null),
+                        'Elongación (%)' => $r['elongacion'] ?? $r['elongacion_excel'] ?? (isset($v['elongacion']) && is_numeric($v['elongacion']) ? round((float)$v['elongacion'], 1) : (isset($v['elongacion_excel']) && is_numeric($v['elongacion_excel']) ? round((float)$v['elongacion_excel'], 1) : null)),
                     ];
                 }
                 break;
@@ -795,6 +1014,7 @@ class MapeadorRtFm22Servicio {
             'es_reporte_nuevo' => true,
             'codigo_formato_hc' => $cod,
             'letra_rt_fm_22' => null,
+            'letra_rt_fm_22_sugerida' => $destino['letra_rt_fm_22_sugerida'] ?? null,
             'codigo_reporte_nuevo' => $destino['codigo_reporte_nuevo'],
             'titulo_reporte' => $destino['titulo_reporte'],
             'norma' => $spec['norma']['texto'] ?? '',

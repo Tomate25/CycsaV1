@@ -203,24 +203,36 @@ class RtFm61CilindrosTest extends TestCase {
         $detalle = $roturasModelo->obtenerDetalleMuestraAnonima($this->recepcionId);
         $esp = $detalle['especimenes'][0];
 
-        // Llamada clásica exacta: carga = 85000 lbf, sin enviar area (usa default 28.2743 in²) ni datos_crudos
-        $res = $roturasModelo->registrarRotura([
+        // 1. Llamada sin área ni D1/D2: DEBE rechazar (se eliminó el fallback silencioso 28.2743 in²)
+        $resSinArea = $roturasModelo->registrarRotura([
             'especimen_id' => $esp['id'],
             'plan_edad_id' => $esp['plan_edad_id'],
             'fecha_real' => $esp['fecha_programada'] . ' 08:30:00',
             'carga' => 85000,
             'tipo_falla' => 'Tipo 1 (Cono)',
         ], 1);
+        $this->assertFalse($resSinArea['exito']);
+        $this->assertStringContainsString('D1 y D2', $resSinArea['mensaje']);
+
+        // 2. Llamada con carga = 85000 lbf y área explícita = 28.2743 in² -> fórmula oficial RT-FM-61
+        $res = $roturasModelo->registrarRotura([
+            'especimen_id' => $esp['id'],
+            'plan_edad_id' => $esp['plan_edad_id'],
+            'fecha_real' => $esp['fecha_programada'] . ' 08:30:00',
+            'carga' => 85000,
+            'area' => 28.2743,
+            'tipo_falla' => 'Tipo 1 (Cono)',
+        ], 1);
 
         $this->assertTrue($res['exito'], $res['mensaje'] ?? '');
         $this->assertSame(85000.0, (float)$res['carga']);
         $this->assertSame(28.2743, (float)$res['area']);
-        // 85000 / 28.2743 = 3006.263638... -> round(..., 2) = 3006.26
-        $this->assertSame(3006.26, (float)$res['esfuerzo_psi']);
-        // 3006.26 * 0.070307 = 211.36112182 -> round(..., 2) = 211.36
-        $this->assertSame(211.36, (float)$res['esfuerzo_kgcm2']);
-        // (3006.26 / 3000) * 100 = 100.20866... -> round(..., 2) = 100.21
-        $this->assertSame(100.21, (float)$res['porcentaje_fc']);
+        // 85000 / 28.2743 = 3006.26 -> redondeo oficial a 10 psi = 3010
+        $this->assertSame(3010.0, (float)$res['esfuerzo_psi']);
+        // 3010 / 14.2029 = 211.9285 -> round(..., 0) = 212
+        $this->assertSame(212.0, (float)$res['esfuerzo_kgcm2']);
+        // (3010 / 3000) * 100 = 100.33
+        $this->assertSame(100.33, (float)$res['porcentaje_fc']);
         $this->assertNull($res['datos_crudos']);
         $this->assertNull($res['evaluacion_hc']);
 

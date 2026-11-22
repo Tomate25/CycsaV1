@@ -107,7 +107,8 @@ class CotizacionRechazadaRevisionTest extends TestCase {
             // Verificar que el estado resultante sea 'En Revision' y NO 'Enviada al Cliente'
             $cotActualizada = $modelo->obtenerPorId($idCot);
             $this->assertSame('En Revision', $cotActualizada['estado'], 'Una cotización rechazada debe pasar a En Revision');
-            $this->assertEquals(2, (int)$cotActualizada['version'], 'La versión debe incrementarse a 2');
+            // Regla 2.9: la versión solo sube al salir nuevamente al cliente; durante revisión interna conserva v1
+            $this->assertEquals(1, (int)$cotActualizada['version'], 'La versión se mantiene en 1 hasta salir al cliente');
             $this->assertNull($cotActualizada['motivo_rechazo_cliente'], 'El motivo de rechazo debe limpiarse de la versión activa');
 
             // Verificar que se archivó la versión 1 en cotizacion_versiones
@@ -116,6 +117,13 @@ class CotizacionRechazadaRevisionTest extends TestCase {
             $versionArchivada = $stmtVer->fetch(PDO::FETCH_ASSOC);
             $this->assertNotEmpty($versionArchivada, 'Debe existir la versión 1 archivada en cotizacion_versiones');
             $this->assertStringContainsString('Devuelta por cliente', $versionArchivada['motivo_cambio']);
+
+            // Al aprobar internamente y enviar nuevamente al cliente, sube a v2
+            $this->assertTrue($modelo->registrarAprobacionInterna($idCot, $idUsuario));
+            $this->assertTrue($modelo->marcarEnviadaAlCliente($idCot, $idUsuario));
+            $cotReenviada = $modelo->obtenerPorId($idCot);
+            $this->assertSame('Enviada al Cliente', $cotReenviada['estado']);
+            $this->assertEquals(2, (int)$cotReenviada['version'], 'Al enviarse nuevamente al cliente debe incrementar a v2');
 
         } finally {
             $db->prepare("DELETE FROM cotizacion_versiones WHERE id_cotizacion = :id")->execute(['id' => $idCot]);

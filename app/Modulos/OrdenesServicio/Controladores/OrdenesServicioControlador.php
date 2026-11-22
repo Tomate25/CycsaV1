@@ -337,9 +337,13 @@ class OrdenesServicioControlador extends ControladorBase {
         $estadoActual = $os['estado'] ?? '';
         $requiereReaprobacion = false;
         $nuevoEstado = $estadoActual;
+        $motivoCambioVersion = trim((string)($datos['motivo_cambio_version'] ?? ''));
         if (esOrdenServicioAprobada($estadoActual) && $cambioComercialCore) {
             $nuevoEstado = 'Estado 2: Revision';
             $requiereReaprobacion = true;
+            if ($motivoCambioVersion === '') {
+                $motivoCambioVersion = 'Modificación comercial en O/S aprobada';
+            }
         }
 
         $datosActualizar = [
@@ -358,20 +362,32 @@ class OrdenesServicioControlador extends ControladorBase {
             'fecha_fin' => $fechaFin,
             'periodicidad' => $periodicidad,
             'estado' => $nuevoEstado,
+            'nueva_version' => $requiereReaprobacion,
+            'motivo_cambio_version' => $requiereReaprobacion ? $motivoCambioVersion : '',
         ];
 
         $actualizado = $osModelo->actualizar($idOS, $datosActualizar);
 
         if ($actualizado) {
             if ($requiereReaprobacion) {
+                $osPost = $osModelo->obtenerPorId($idOS);
+                $nuevaVer = (int)($osPost['version'] ?? ((int)($os['version'] ?? 1) + 1));
                 registrarEventoOS(
                     'ordenes_servicio',
                     'actualizar',
-                    'O/S actualizada; requiere re-aprobación del supervisor',
+                    "O/S actualizada a v{$nuevaVer}; requiere re-aprobación del supervisor. Motivo: {$motivoCambioVersion}",
                     $idOS,
-                    ['datos' => ['estado_anterior' => $estadoActual, 'estado_nuevo' => $nuevoEstado]]
+                    [
+                        'datos' => [
+                            'estado_anterior' => $estadoActual,
+                            'estado_nuevo' => $nuevoEstado,
+                            'version_anterior' => (int)($os['version'] ?? 1),
+                            'version_nueva' => $nuevaVer,
+                            'motivo_cambio_version' => $motivoCambioVersion,
+                        ],
+                    ]
                 );
-                $_SESSION['exito'] = 'Orden de Servicio ' . $os['codigo_os'] . ' actualizada. Al estar aprobada previamente, pasó a Revisión y requiere re-aprobación del supervisor.';
+                $_SESSION['exito'] = 'Orden de Servicio ' . $os['codigo_os'] . " actualizada a versión v{$nuevaVer}. Al estar aprobada previamente, pasó a Revisión y requiere re-aprobación del supervisor.";
             } else {
                 registrarEventoOS(
                     'ordenes_servicio',

@@ -195,7 +195,7 @@
       "codigo": "volumen_frasco",
       "expresion": "{frasco_agua}-{frasco}",
       "descripcion": "Capacidad del frasco (V)",
-      "unidad": "g",
+      "unidad": "mL",
       "redondeo": null,
       "por_especimen": false
     },

@@ -19,12 +19,12 @@ Método de muestreo:	DE-ASTM D6938-23
 
 | Método de ensayo |  |  |  |  | ASTM D698 / D1557 | ASTM D2216-19 | ASTM D6938 / D1556 | ASTM D6938 / D2216 | ASTM D6938-23 | ASTM D6938-23 |  |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Código laboratorio | Nombre muestra | Capa (N°) | Espesor (cm) | Profundidad (cm) | P.V.S Max (kg/m³) | Humedad Óptima ((% )(P/P)) | P.V.S.Sitio (kg/cm²) | Humedad Sitio ((%) (P/P)) | Humedad Sitio (kg/m³) | Compactación ((%) (P/P)) | Fecha de muestreo |
+| Código laboratorio | Nombre muestra | Capa (N°) | Espesor (cm) | Profundidad (cm) | P.V.S Max (kg/m³) | Humedad Óptima ((% )(P/P)) | P.V.S.Sitio (kg/m³) | Humedad Sitio ((%) (P/P)) | Humedad Sitio (kg/m³) | Compactación ((%) (P/P)) | Fecha de muestreo |
 |  |  |  |  |  |  |  |  |  |  |  |  |
 |  |  |  |  |  |  |  |  |  |  |  |  |
 
 Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA.  ** Información Proporcionada por el cliente. y está fuera del alcance de la acreditación.
-Notas: Ensayos realizados in Situ: CYCSA-PE-25." CYCSA-PE-13","CYCSA-PE-18" Nota 1: Muestra tomada con equipo TROXLER, Modelo: 3440, N/S : 62677 Eq-6555
+Notas: Ensayos realizados in Situ: CYCSA-PE-25." CYCSA-PE-13","CYCSA-PE-18"
 --------------------------------Última Línea---------------------------------
 
 ## Ing. Noel Quintana Lira

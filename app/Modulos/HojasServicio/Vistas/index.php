@@ -327,6 +327,9 @@
                                         <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $n['id'] ?>" target="_blank" class="btn-accion-hs btn-pdf" title="Ver PDF preliminar de la Hoja de Servicio">
                                             <i class="fa-solid fa-file-pdf"></i> Ver PDF
                                         </a>
+                                        <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$n['id_hoja'] ?>" target="_blank" class="btn-accion-hs" style="background:#7c3aed; color:white;" title="Ver / Imprimir Hoja RT-FM-60">
+                                            <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
+                                        </a>
                                         <button type="button" class="btn-accion-hs btn-editar" onclick="abrirModalHojaSolicitud(<?= $n['id'] ?>, '<?= $n['codigo_os'] ?>')">
                                             <i class="fa-solid fa-edit"></i> Editar
                                         </button>
@@ -389,6 +392,11 @@
                                 <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $p['id'] ?>" target="_blank" class="btn-accion-hs btn-pdf" title="Ver PDF preliminar de la Hoja de Servicio">
                                     <i class="fa-solid fa-file-pdf"></i> Ver PDF
                                 </a>
+                                <?php if (!empty($p['id_hoja'])): ?>
+                                <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$p['id_hoja'] ?>" target="_blank" class="btn-accion-hs" style="background:#7c3aed; color:white;" title="Ver / Imprimir Hoja RT-FM-60">
+                                    <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
+                                </a>
+                                <?php endif; ?>
 
                                 <?php if ($p['estado'] === 'Estado 1: Recepcion' || $p['estado'] === 'Estado 2: Observada'): ?>
                                     <!-- Editar Borrador u Observada -->
@@ -462,10 +470,15 @@
                             <td>
                                 <span class="badge-hs badge-aprobado"><i class="fa-solid fa-circle-check"></i> <?= htmlspecialchars($a['estado']) ?></span>
                             </td>
-                            <td style="text-align:right;">
+                            <td style="text-align:right; display:flex; justify-content:flex-end; gap:8px;">
                                 <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $a['id'] ?>" target="_blank" class="btn-accion-hs btn-pdf">
                                     <i class="fa-solid fa-file-pdf"></i> PDF Oficial
                                 </a>
+                                <?php if (!empty($a['id_hoja'])): ?>
+                                <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$a['id_hoja'] ?>" target="_blank" class="btn-accion-hs" style="background:#7c3aed; color:white;" title="Ver / Imprimir Hoja RT-FM-60">
+                                    <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
+                                </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
