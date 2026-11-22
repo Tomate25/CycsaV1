@@ -142,4 +142,53 @@ WHERE `configuracion_json` LIKE '%P.V.S.Sitio (kg/cm²)%'
    OR `configuracion_json` LIKE '%Módulo de finura ((%) (P/P))%'
    OR `configuracion_json` LIKE '%50 nm%';
 
+-- ----------------------------------------------------------------------------
+-- 8. Migración 040: Reordenamiento Flujo Recepción -> Técnico -> Matriz -> Lab
+-- ----------------------------------------------------------------------------
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'etapa_flujo'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `etapa_flujo` VARCHAR(40) NOT NULL DEFAULT ''recepcion_borrador'''));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'recepcion_completa'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `recepcion_completa` TINYINT(1) NOT NULL DEFAULT 0'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'fecha_recepcion_completa'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `fecha_recepcion_completa` DATETIME NULL'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'recepcion_completada_por'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `recepcion_completada_por` INT NULL'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'motivo_reapertura_recepcion'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `motivo_reapertura_recepcion` TEXT NULL'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'autorizacion_urgente_supervisor'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `autorizacion_urgente_supervisor` TINYINT(1) NOT NULL DEFAULT 0'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'motivo_urgente_supervisor'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `motivo_urgente_supervisor` TEXT NULL'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'recepcion_muestras' AND COLUMN_NAME = 'etapa_flujo'), 'SELECT 1', 'ALTER TABLE `recepcion_muestras` ADD COLUMN `etapa_flujo` VARCHAR(40) NOT NULL DEFAULT ''recepcion_completa'''));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Backfill de hojas existentes con muestras en laboratorio para no trabar producción
+UPDATE `hojas_solicitud` hs
+INNER JOIN `recepcion_muestras` rm ON rm.id_hoja = hs.id
+SET hs.recepcion_completa = 1,
+    hs.fecha_recepcion_completa = COALESCE(hs.fecha_recepcion_completa, rm.fecha_recepcion, NOW()),
+    hs.etapa_flujo = CASE WHEN hs.etapa_flujo = 'recepcion_borrador' THEN 'recepcion_completa' ELSE hs.etapa_flujo END
+WHERE hs.recepcion_completa = 0 AND hs.motivo_reapertura_recepcion IS NULL;
+
+-- Backfill tolerancias ASTM C39 en plan_rotura_edades
+UPDATE `plan_rotura_edades`
+SET `tolerancia_horas` = CASE `edad_dias`
+    WHEN 1 THEN 0.50
+    WHEN 3 THEN 2.00
+    WHEN 7 THEN 6.00
+    WHEN 14 THEN 12.00
+    WHEN 28 THEN 20.00
+    WHEN 56 THEN 36.00
+    WHEN 90 THEN 48.00
+    ELSE ROUND(GREATEST(2.0, `edad_dias` * 0.75), 2)
+END
+WHERE `tolerancia_horas` = 24.00 AND `edad_dias` IN (1, 3, 7, 14, 28, 56, 90);
+
 SELECT 'UPDATE_PRODUCCION_20261122_OK' AS resultado;

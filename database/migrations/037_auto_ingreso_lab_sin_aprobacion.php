@@ -1,10 +1,11 @@
 <?php
 
 /**
- * Migración 037: Ingreso automático a Laboratorio de Hojas RT-FM-13 pendientes sin paso manual de Aceptar/Observar.
+ * Migración 037: Ingreso automático a Laboratorio de Hojas RT-FM-13 con recepción completa.
  *
- * Sincroniza de forma idempotente cualquier hoja RT-FM-13 existente (no compactación)
- * de órdenes aprobadas que aún no hubiera ingresado a recepcion_muestras.
+ * Actualizado por Migración 040 (Propuesta Flujo 22 Nov 2026):
+ * Solo sincroniza hojas que ya cuentan con `recepcion_completa = 1` (si la columna existe),
+ * evitando que hojas nuevas en `recepcion_borrador` entren prematuramente al laboratorio.
  */
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
@@ -14,6 +15,16 @@ require_once dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Modelos/OperacionMo
 
 if (!function_exists('ejecutarMigracion037')) {
     function ejecutarMigracion037(PDO $db): void {
+        $tieneColRecCompleta = false;
+        try {
+            $chk = $db->query("SHOW COLUMNS FROM `hojas_solicitud` LIKE 'recepcion_completa'");
+            $tieneColRecCompleta = $chk && (bool)$chk->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            $tieneColRecCompleta = false;
+        }
+
+        $filtroRecepcionCompleta = $tieneColRecCompleta ? "AND hs.recepcion_completa = 1" : "";
+
         $stmtPend = $db->query("
             SELECT hs.id AS id_hoja, hs.id_os, os.estado
             FROM hojas_solicitud hs
@@ -21,6 +32,7 @@ if (!function_exists('ejecutarMigracion037')) {
             WHERE hs.muestras_json IS NOT NULL
               AND hs.muestras_json <> ''
               AND hs.muestras_json <> '[]'
+              {$filtroRecepcionCompleta}
               AND os.estado NOT IN ('Finalizado', 'Archivado', 'Cerrado', 'Cancelada', 'Borrador')
               AND NOT EXISTS (
                   SELECT 1 FROM recepcion_muestras rm
@@ -28,7 +40,7 @@ if (!function_exists('ejecutarMigracion037')) {
               )
             ORDER BY hs.id ASC
         ");
-        $pendientes = $stmtPend->fetchAll(PDO::FETCH_ASSOC);
+        $pendientes = $stmtPend ? $stmtPend->fetchAll(PDO::FETCH_ASSOC) : [];
         if (empty($pendientes)) {
             return;
         }

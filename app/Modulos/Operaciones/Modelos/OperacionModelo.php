@@ -1869,6 +1869,16 @@ class OperacionModelo extends ModeloBase {
             $stmtExist = $this->db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_os = :id_os AND id_hoja = :id_hoja");
             $stmtExist->execute(['id_os' => $idOS, 'id_hoja' => $actualHojaId]);
             if ((int)$stmtExist->fetchColumn() > 0) {
+                try {
+                    $this->db->prepare("
+                        UPDATE hojas_solicitud
+                        SET recepcion_completa = 1,
+                            fecha_recepcion_completa = COALESCE(fecha_recepcion_completa, NOW()),
+                            etapa_flujo = CASE WHEN etapa_flujo = 'recepcion_borrador' THEN 'recepcion_completa' ELSE etapa_flujo END
+                        WHERE id = :id_hoja
+                    ")->execute(['id_hoja' => $actualHojaId]);
+                } catch (\Throwable $e) {
+                }
                 return [
                     'ok' => true,
                     'ya_existia' => true,
@@ -2062,37 +2072,56 @@ class OperacionModelo extends ModeloBase {
                     'fecha_rotura_programada' => $fProg,
                     'fecha_fabricacion' => $fMoldeo,
                     'tamano_cilindro' => '15 x 30 cm',
-                    'area' => 14.137,
+                    'area' => null,
                 ];
                 if (function_exists('sincronizarEspecimenYPlanFila')) {
                     sincronizarEspecimenYPlanFila($this->db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
                 }
 
-                if ($sincronizarMatrizEnRevision) {
-                    $filaInit = [
-                        'Código laboratorio' => (string)$mItem['codigo_muestra'],
-                        'Nombre muestra' => 'Probeta ' . ($idx + 1),
-                        'Área (in²)' => '14.137',
-                        'Reven. (in)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (in)') : '',
-                        'Reven. (cm)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (cm)') : '',
-                        'Temp. (°C)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Temp. (°C)') : '',
-                        'Carga (lb)' => '',
-                        'Peso Volumétrico (kg/m³)' => '',
-                        'Diseño de concreto (lb/in²)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Diseño de concreto (lb/in²)') : '',
-                        'R. Compresión (lb/in²)' => '',
-                        'R. Compresión (kg/cm²)' => '',
-                        'Fecha de Fabricación' => $fMoldeo,
-                        'Fecha de Ensayo' => $fProg,
-                        'Edad (Días)' => (string)$edadDef,
-                    ];
-                    if (!empty($recM) && function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
-                        $filaInit = fusionarDatosRecepcionEnFilaMatriz($filaInit, $recM, [], true);
-                    }
-                    $filasInicialesMatriz[] = $filaInit;
+                $nomMuestraRec = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Nombre muestra') : '';
+                if ($nomMuestraRec === '' && !empty($muestrasDeclaradasRT[$idx]['descripcion'])) {
+                    $nomMuestraRec = trim((string)$muestrasDeclaradasRT[$idx]['descripcion']);
                 }
+                if ($nomMuestraRec === '') {
+                    $nomMuestraRec = 'Probeta ' . ($idx + 1);
+                }
+
+                $revInInit = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (in)') : '';
+                $revCmInit = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (cm)') : '';
+                if ($revCmInit === '' && $revInInit !== '' && is_numeric($revInInit)) {
+                    $revCmInit = (string)(class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+                        ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularRevenimientoCm((float)$revInInit)
+                        : (round((float)$revInInit * 2.54 * 2.0) / 2.0));
+                }
+
+                $filaInit = [
+                    'Código laboratorio' => (string)$mItem['codigo_muestra'],
+                    'Nombre muestra' => $nomMuestraRec,
+                    'Área (in²)' => '',
+                    'Reven. (in)' => $revInInit,
+                    'Reven. (cm)' => $revCmInit,
+                    'Temp. (°C)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Temp. (°C)') : '',
+                    'Carga (lb)' => '',
+                    'Peso Volumétrico (kg/m³)' => '',
+                    'Diseño de concreto (lb/in²)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Diseño de concreto (lb/in²)') : '',
+                    'R. Compresión (lb/in²)' => '',
+                    'R. Compresión (kg/cm²)' => '',
+                    'Fecha de Fabricación' => $fMolRec !== '' ? $fMoldeo : '',
+                    'Fecha de Ensayo' => '',
+                    'Edad (Días)' => '',
+                ];
+                if (!empty($recM) && function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
+                    $filaInit = fusionarDatosRecepcionEnFilaMatriz($filaInit, $recM, [], true);
+                }
+                $filaInit['Área (in²)'] = '';
+                $filaInit['Carga (lb)'] = '';
+                $filaInit['Peso Volumétrico (kg/m³)'] = '';
+                $filaInit['R. Compresión (lb/in²)'] = '';
+                $filaInit['R. Compresión (kg/cm²)'] = '';
+                $filasInicialesMatriz[] = $filaInit;
             }
 
-            if ($sincronizarMatrizEnRevision && $idDetalleCotizacion > 0 && !empty($filasInicialesMatriz)) {
+            if ($idDetalleCotizacion > 0 && !empty($filasInicialesMatriz)) {
                 $stmtCheckDet = $this->db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
                 $stmtCheckDet->execute(['id' => $idDetalleCotizacion]);
                 $detCurrJson = $stmtCheckDet->fetchColumn();
@@ -2102,9 +2131,9 @@ class OperacionModelo extends ModeloBase {
                         'filas' => $filasInicialesMatriz,
                         'metadatos' => [],
                         'revision' => [
-                            'estado' => 'en_revision',
-                            'fecha_envio' => date('Y-m-d H:i:s'),
-                            'usuario_envio' => $_SESSION['usuario_nombre'] ?? 'Laboratorio',
+                            'estado' => $sincronizarMatrizEnRevision ? 'en_revision' : 'borrador',
+                            'fecha_envio' => $sincronizarMatrizEnRevision ? date('Y-m-d H:i:s') : null,
+                            'usuario_envio' => $sincronizarMatrizEnRevision ? ($_SESSION['usuario_nombre'] ?? 'Laboratorio') : null,
                             'historial' => [],
                         ],
                     ];
@@ -2125,6 +2154,19 @@ class OperacionModelo extends ModeloBase {
                     }
                     sincronizarEspecimenYPlanFila($this->db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
                 }
+            }
+        }
+
+        if ($actualHojaId > 0) {
+            try {
+                $this->db->prepare("
+                    UPDATE hojas_solicitud
+                    SET recepcion_completa = 1,
+                        fecha_recepcion_completa = COALESCE(fecha_recepcion_completa, NOW()),
+                        etapa_flujo = CASE WHEN etapa_flujo = 'recepcion_borrador' THEN 'recepcion_completa' ELSE etapa_flujo END
+                    WHERE id = :id_hoja
+                ")->execute(['id_hoja' => $actualHojaId]);
+            } catch (\Throwable $e) {
             }
         }
 

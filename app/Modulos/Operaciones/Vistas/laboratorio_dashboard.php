@@ -1,5 +1,7 @@
 <?php
 // Laboratorio Dashboard - Portal de Gestión Técnica e Imparcialidad ISO/IEC 17025
+use Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio;
+
 $tabActiva = $_GET['tab'] ?? 'bandeja';
 if (!in_array($tabActiva, ['bandeja', 'programadas'], true)) {
     $tabActiva = 'bandeja';
@@ -10,6 +12,16 @@ $rupturas = $rupturas ?? [];
 $kpis = $kpis ?? ['total' => 0, 'rotura_hoy' => 0, 'vencidas' => 0, 'activas' => 0, 'cerradas' => 0];
 $filtros = $filtros ?? [];
 $puedeReidentificar = $puedeReidentificar ?? false;
+
+$edadesAstmDash = [1, 3, 7, 14, 28, 56, 90];
+$resolverTolAstmDash = static function (int $edadDias, $tolRaw) use ($edadesAstmDash): string {
+    $edad = $edadDias > 0 ? $edadDias : 28;
+    $tol = is_numeric($tolRaw) ? (float)$tolRaw : 0.0;
+    if ($tol <= 0.0 || (abs($tol - 24.0) < 0.01 && in_array($edad, $edadesAstmDash, true))) {
+        $tol = ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39($edad);
+    }
+    return rtrim(rtrim(number_format($tol, 2, '.', ''), '0'), '.');
+};
 ?>
 <style>
     :root {
@@ -494,15 +506,12 @@ $puedeReidentificar = $puedeReidentificar ?? false;
                         </td>
                         <td style="text-align: right; white-space: nowrap;" onclick="event.stopPropagation();">
                             <?php if (!empty($m['id_hoja'])): ?>
-                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?>" class="btn-accion btn-os" style="font-weight:700;" title="Abrir Lote completo con todas las probetas juntas">
-                                    <i class="fa-solid fa-layer-group"></i> Ver Lote (<?= (int)($m['total_muestras_lote'] ?? count($m['muestras_items'] ?? [1])) ?>)
-                                </a>
-                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?>" class="btn-accion btn-primary-lab" title="Romper probetas del lote juntas o individualmente">
-                                    <i class="fa-solid fa-hammer"></i> Ensayar Lote
+                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?>" class="btn-accion" style="background: #103487; color: #ffffff; border: 1px solid #103487; font-size: 13px; padding: 7px 14px;" title="Capturar y Ensayar Lote completo (<?= (int)($m['total_muestras_lote'] ?? count($m['muestras_items'] ?? [1])) ?> probetas)">
+                                    <i class="fa-solid fa-hammer"></i> Capturar Lote (Ensayar Lote)
                                 </a>
                             <?php else: ?>
-                                <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$m['muestra_id'] ?>" class="btn-accion btn-detalle" title="Abrir detalle individual de la muestra">
-                                    <i class="fa-solid fa-folder-open"></i> Detalle
+                                <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$m['muestra_id'] ?>" class="btn-accion" style="background: #103487; color: #ffffff; border: 1px solid #103487; font-size: 13px; padding: 7px 14px;" title="Capturar y abrir detalle individual de la muestra">
+                                    <i class="fa-solid fa-hammer"></i> Capturar Muestra
                                 </a>
                             <?php endif; ?>
                             <?php if ($puedeReidentificar && !$esLoteConsolidado): ?>
@@ -575,18 +584,19 @@ $puedeReidentificar = $puedeReidentificar ?? false;
                         </td>
                         <td><?= htmlspecialchars($r['material_descripcion'], ENT_QUOTES, 'UTF-8') ?></td>
                         <td><?= htmlspecialchars($r['dimensiones'] ?: '15 x 30 cm', ENT_QUOTES, 'UTF-8') ?></td>
-                        <td><strong style="color: #7c3aed;"><?= (int)$r['edad_dias'] ?> días</strong></td>
-                        <td>&plusmn; <?= (int)$r['tolerancia_horas'] ?> hrs</td>
+                        <td><strong style="color: #103487;"><?= (int)$r['edad_dias'] ?> días</strong></td>
+                        <td>&plusmn; <?= htmlspecialchars($resolverTolAstmDash((int)$r['edad_dias'], $r['tolerancia_horas'] ?? null), ENT_QUOTES, 'UTF-8') ?> hrs</td>
                         <td><?= htmlspecialchars($r['diseno_resistencia'] ?: 'N/A') ?></td>
                         <td style="text-align: right; white-space: nowrap;">
                             <?php if (!empty($r['id_hoja'])): ?>
-                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$r['id_hoja'] ?>" class="btn-accion btn-os" title="Ensayar lote completo con todas las probetas juntas">
-                                    <i class="fa-solid fa-layer-group"></i> Ensayar Lote
+                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$r['id_hoja'] ?>" class="btn-accion" style="background: #103487; color: #ffffff; border: 1px solid #103487; font-size: 13px; padding: 7px 14px;" title="Capturar lote completo con todas las probetas juntas">
+                                    <i class="fa-solid fa-hammer"></i> Capturar Lote
+                                </a>
+                            <?php else: ?>
+                                <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$r['muestra_id'] ?>" class="btn-accion" style="background: #103487; color: #ffffff; border: 1px solid #103487; font-size: 13px; padding: 7px 14px;" title="Capturar probeta individual">
+                                    <i class="fa-solid fa-hammer"></i> Capturar Muestra
                                 </a>
                             <?php endif; ?>
-                            <a href="/Cycsa/publico/laboratorio/detalle-muestra?muestra_id=<?= (int)$r['muestra_id'] ?>" class="btn-accion btn-detalle" title="Ensayar probeta individual">
-                                <i class="fa-solid fa-hammer"></i> Individual
-                            </a>
                         </td>
                     </tr>
                     <?php endforeach; ?>

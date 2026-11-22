@@ -15,6 +15,28 @@ foreach (($especimenes ?? []) as $esp) {
 }
 $planActivo = !empty($plan);
 $puedeEditarPlan = ($totalEnsayados === 0);
+
+$edadesAstmEstandarDet = [1, 3, 7, 14, 28, 56, 90];
+$resolverToleranciaAstmRealDet = static function (int $edadDias, $tolRaw) use ($edadesAstmEstandarDet): float {
+    $edadEfectiva = $edadDias > 0 ? $edadDias : 28;
+    $tolFloat = is_numeric($tolRaw) ? (float)$tolRaw : 0.0;
+    if ($tolFloat <= 0.0 || (abs($tolFloat - 24.0) < 0.01 && in_array($edadEfectiva, $edadesAstmEstandarDet, true))) {
+        return ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39($edadEfectiva);
+    }
+    return $tolFloat;
+};
+
+if (isset($datosMatriz) && is_array($datosMatriz)) {
+    $d1MatDet = (!empty($datosMatriz['diametro_1']) && (float)$datosMatriz['diametro_1'] > 0) ? (float)$datosMatriz['diametro_1'] : 0.0;
+    $d2MatDet = (!empty($datosMatriz['diametro_2']) && (float)$datosMatriz['diametro_2'] > 0) ? (float)$datosMatriz['diametro_2'] : 0.0;
+    if ($d1MatDet <= 0.0 || $d2MatDet <= 0.0) {
+        if ($totalEnsayados === 0 || in_array(rtrim(rtrim(number_format((float)($datosMatriz['area'] ?? 0), 4, '.', ''), '0'), '.'), ['14.137', '14.1372', '28.274', '28.2743', '12.566', '12.5664'], true)) {
+            $datosMatriz['area'] = '';
+        }
+    } else {
+        $datosMatriz['area'] = round(ConfigCalculoLabServicio::calcularAreaCilindroIn2($d1MatDet, $d2MatDet), 3);
+    }
+}
 ?>
 <style>
     :root {
@@ -230,7 +252,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     <td>
                         <strong><?= htmlspecialchars(date('d/m/Y', strtotime($ed['fecha_programada']))) ?></strong>
                     </td>
-                    <td>&plusmn; <?= rtrim(rtrim(number_format((float)$ed['tolerancia_horas'], 2, '.', ''), '0'), '.') ?> hrs</td>
+                    <td>&plusmn; <?= rtrim(rtrim(number_format($resolverToleranciaAstmRealDet((int)($ed['edad_dias'] ?? 28), $ed['tolerancia_horas'] ?? null), 2, '.', ''), '0'), '.') ?> hrs</td>
                     <td>
                         <?php if ($completada): ?>
                             <span class="badge-lab badge-ensayado"><i class="fa-solid fa-circle-check"></i> Completada</span>
@@ -385,9 +407,7 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                 </td>
                 <td style="text-align: right; white-space: nowrap;">
                     <?php if (!$ensayado && !empty($esp['plan_edad_id'])):
-                        $tolEspDetalle = (isset($esp['tolerancia_horas']) && (float)$esp['tolerancia_horas'] > 0)
-                            ? (float)$esp['tolerancia_horas']
-                            : ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39((int)($esp['edad_dias'] ?: 28));
+                        $tolEspDetalle = $resolverToleranciaAstmRealDet((int)($esp['edad_dias'] ?: 28), $esp['tolerancia_horas'] ?? null);
                     ?>
                         <button type="button" class="btn-accion btn-primary-lab" onclick="abrirModalRegistrarRotura(<?= (int)$esp['id'] ?>, '<?= htmlspecialchars($esp['codigo_lab']) ?>', <?= (int)$esp['plan_edad_id'] ?>, <?= (int)$esp['edad_dias'] ?>, '<?= $esp['fecha_programada'] ?>', <?= $tolEspDetalle ?>)">
                             <i class="fa-solid fa-hammer"></i> Ensayar
@@ -660,8 +680,12 @@ $puedeEditarPlan = ($totalEnsayados === 0);
                     </div>
                     <div>
                         <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Área Transversal (in²) <span style="font-weight:500; color:#64748b;">(auto desde D1 y D2)</span>:</label>
-                        <?php $areaPrefillModal = (!empty($datosMatriz['area']) && (float)$datosMatriz['area'] > 0) ? (string)$datosMatriz['area'] : ''; ?>
-                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px; background:#f1f5f9;" value="<?= htmlspecialchars($areaPrefillModal, ENT_QUOTES, 'UTF-8') ?>" placeholder="Calculada automáticamente" readonly required>
+                        <?php
+                            $d1PreDet = (!empty($datosMatriz['diametro_1']) && (float)$datosMatriz['diametro_1'] > 0) ? (float)$datosMatriz['diametro_1'] : 0.0;
+                            $d2PreDet = (!empty($datosMatriz['diametro_2']) && (float)$datosMatriz['diametro_2'] > 0) ? (float)$datosMatriz['diametro_2'] : 0.0;
+                            $areaPrefillModal = ($d1PreDet > 0.0 && $d2PreDet > 0.0 && !empty($datosMatriz['area']) && (float)$datosMatriz['area'] > 0) ? (string)$datosMatriz['area'] : '';
+                        ?>
+                        <input type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" id="rot_area" name="area" class="form-control" style="width: 100%; box-sizing: border-box; height: 38px; font-size: 13px; background:#f1f5f9;" value="<?= htmlspecialchars($areaPrefillModal, ENT_QUOTES, 'UTF-8') ?>" placeholder="Ingrese D1 y D2" readonly required>
                     </div>
                 </div>
             </div>
@@ -721,13 +745,13 @@ $puedeEditarPlan = ($totalEnsayados === 0);
 
             <!-- Alerta y Justificación de Tolerancia Temporal -->
             <div id="box_justificacion_tolerancia" style="display: none; background: #fff1f2; border: 1.5px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 15px;">
-                <div style="font-size: 12px; font-weight: 800; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                    <i class="fa-solid fa-triangle-exclamation"></i> ENSAYO FUERA DE TOLERANCIA ASTM C39
+                <div style="font-size: 13px; font-weight: 800; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> ENSAYO FUERA DE TOLERANCIA ASTM C39 (<span id="rot_alerta_tolerancia">&plusmn;20 hrs</span>)
                 </div>
-                <div style="font-size: 12px; color: #881337; margin-bottom: 8px; line-height: 1.4;">
-                    La fecha/hora seleccionada excede la ventana de tolerancia admisible para esta edad. Es mandatorio registrar una justificación técnica para el informe.
+                <div style="font-size: 13px; color: #881337; margin-bottom: 8px; line-height: 1.4;">
+                    La fecha/hora seleccionada excede la ventana de tolerancia admisible para esta edad (&plusmn;<span id="rot_tol_hrs_txt">20</span> hrs). Es mandatorio registrar una justificación técnica para el informe.
                 </div>
-                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; font-size: 12.5px;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
+                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; font-size: 13px;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
@@ -862,12 +886,27 @@ const LAB_DIVISOR_KGCM2 = <?= json_encode($divisorKgCm2Lab) ?>;
 const LAB_REDONDEAR_PSI_10 = <?= $redondearPsi10Lab ? 'true' : 'false' ?>;
 const LAB_REDONDEAR_PV_10 = <?= $redondearPv10Lab ? 'true' : 'false' ?>;
 
+function obtenerToleranciaAstmC39DetJs(edadDias, tolRaw) {
+    const edad = parseInt(edadDias || 28, 10);
+    const tabla = {1: 0.5, 3: 2, 7: 6, 14: 12, 28: 20, 56: 36, 90: 48};
+    const tol = parseFloat(tolRaw || 0);
+    if (!tol || tol <= 0 || (Math.abs(tol - 24) < 0.01 && tabla[edad] !== undefined)) {
+        return tabla[edad] !== undefined ? tabla[edad] : Math.max(2, Math.round(edad * 0.75 * 100) / 100);
+    }
+    return tol;
+}
+
 function abrirModalRegistrarRotura(espId, codigoLab, planEdadId, edadDias, fechaProg, tolHoras) {
+    const tolNorm = obtenerToleranciaAstmC39DetJs(edadDias, tolHoras);
     document.getElementById('rot_especimen_id').value = espId;
     document.getElementById('rot_esp_codigo').innerText = codigoLab;
     document.getElementById('rot_plan_edad_id').value = planEdadId;
     document.getElementById('rot_fecha_prog').value = fechaProg;
-    document.getElementById('rot_tol_horas').value = tolHoras;
+    document.getElementById('rot_tol_horas').value = tolNorm;
+    const tolTxt = document.getElementById('rot_tol_hrs_txt');
+    if (tolTxt) tolTxt.innerText = tolNorm;
+    const alertaTol = document.getElementById('rot_alerta_tolerancia');
+    if (alertaTol) alertaTol.innerText = '±' + tolNorm + ' hrs';
 
     const dm = DATOS_MATRIZ_MUESTRA || {};
     document.getElementById('rot_carga').value = (dm.carga && dm.carga > 0) ? dm.carga : '';
@@ -875,8 +914,6 @@ function abrirModalRegistrarRotura(espId, codigoLab, planEdadId, edadDias, fecha
     if (dm.diametro_1 > 0 && dm.diametro_2 > 0) {
         const dProm = (parseFloat(dm.diametro_1) + parseFloat(dm.diametro_2)) / 2.0;
         areaInput.value = ((Math.PI * Math.pow(dProm / 2.0, 2)) / 6.4516).toFixed(3);
-    } else if (dm.area && parseFloat(dm.area) > 0) {
-        areaInput.value = parseFloat(dm.area).toFixed(3);
     } else {
         areaInput.value = '';
     }
@@ -977,6 +1014,8 @@ function recalcularDesdeHc61() {
         const dProm = (d1 + d2) / 2.0;
         const areaIn2 = (Math.PI * Math.pow(dProm / 2.0, 2)) / 6.4516;
         document.getElementById('rot_area').value = areaIn2.toFixed(3);
+    } else {
+        document.getElementById('rot_area').value = '';
     }
 
     if (lectura > 0) {

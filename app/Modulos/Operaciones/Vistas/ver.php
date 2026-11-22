@@ -119,44 +119,89 @@ $esSoloCompactacion = esOrdenSoloCompactacion($o['items']);
         </div>
     </div>
 
-    <!-- TRACKER DE PROGRESO EN 4 PASOS -->
+    <!-- BARRA DE ESPACIO DE TRABAJO EN 3 SECCIONES (REDISEÑO FLUJO OPERACIONES Y LABORATORIO) -->
+    <?php
+    $hojaPrincipalVer = !empty($o['hoja_solicitud']) ? $o['hoja_solicitud'] : ($o['hojas_solicitud'][0] ?? null);
+    $idHojaVer = (int)($hojaPrincipalVer['id'] ?? 0);
+    $etapaFlujoVer = !empty($hojaPrincipalVer['etapa_flujo']) ? (string)$hojaPrincipalVer['etapa_flujo'] : ($o['tecnico_100'] ? 'informe' : ($tieneHojaServicio ? 'recepcion_borrador' : 'sin_hoja'));
+    $recCompletaVer = !empty($hojaPrincipalVer['recepcion_completa']) || in_array($etapaFlujoVer, ['recepcion_completa', 'en_ejecucion', 'tecnico_completo', 'matriz_en_revision', 'informe'], true);
+    $primerItemVerId = !empty($o['items'][0]['id']) ? (int)$o['items'][0]['id'] : 0;
+    ?>
+    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 20px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <a href="/Cycsa/publico/ordenes-servicio?id_os=<?= (int)$o['id'] ?><?= $idHojaVer > 0 ? '&id_hoja=' . $idHojaVer : '' ?>" style="text-decoration: none; padding: 12px 16px; border-radius: 8px; border: 1.5px solid <?= $recCompletaVer ? '#a7f3d0' : '#cbd5e1' ?>; background: <?= $recCompletaVer ? '#f0fdf4' : '#f8fafc' ?>; color: #0f172a; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div>
+                <div style="font-size: 13.5px; font-weight: 800; color: #103487;">① Recepción</div>
+                <div style="font-size: 12.5px; color: #475569; margin-top: 2px;">Hoja RT-FM-13 y muestras recibidas</div>
+            </div>
+            <span class="badge" style="background: <?= $recCompletaVer ? '#059669' : '#64748b' ?>; color: #fff; font-size: 12px; padding: 4px 10px;">
+                <?= $recCompletaVer ? 'Completa' : 'Pendiente' ?>
+            </span>
+        </a>
+
+        <a href="<?= $idHojaVer > 0 ? '/Cycsa/publico/laboratorio/ensayos-hoja?id_hoja=' . $idHojaVer : '/Cycsa/publico/laboratorio' ?>" style="text-decoration: none; padding: 12px 16px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #0f172a; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div>
+                <div style="font-size: 13.5px; font-weight: 800; color: #103487;">② Ejecución Técnica (Laboratorio)</div>
+                <div style="font-size: 12.5px; color: #475569; margin-top: 2px;">Captura en línea del lote y roturas</div>
+            </div>
+            <span class="badge" style="background: #103487; color: #fff; font-size: 12px; padding: 4px 10px;">
+                Ir a Lab
+            </span>
+        </a>
+
+        <a href="<?= $primerItemVerId > 0 ? '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $primerItemVerId : '#tab-full-ensayos' ?>" style="text-decoration: none; padding: 12px 16px; border-radius: 8px; border: 1.5px solid #103487; background: #eff6ff; color: #0f172a; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div>
+                <div style="font-size: 13.5px; font-weight: 800; color: #103487;">③ Matriz RT-FM-22 (Auto-llenada / Solo lectura) y Aprobación</div>
+                <div style="font-size: 12.5px; color: #475569; margin-top: 2px;">Revisión única de supervisor e informe PDF</div>
+            </div>
+            <span class="badge" style="background: <?= $o['tecnico_100'] ? '#059669' : '#103487' ?>; color: #fff; font-size: 12px; padding: 4px 10px;">
+                <?= $o['ensayos_aprobados'] ?>/<?= $o['total_ensayos'] ?> Aprob.
+            </span>
+        </a>
+    </div>
+
+    <!-- TRACKER DE PROGRESO EN 5 PASOS -->
     <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 20px; margin-bottom: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
         <div style="font-size: 13px; font-weight: 700; color: #334155;">
-            <i class="fa-solid fa-route text-primary me-1"></i> Ciclo de Vida LIMS:
+            <i class="fa-solid fa-route text-primary me-1"></i> Progreso en 5 Pasos:
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <!-- PASO 1: RT-FM-13 -->
+            <!-- PASO 1: 1. RT-FM-13 -->
             <?php if ($tieneHojaServicio): ?>
-                <span class="lims-step-chip step-ok"><i class="fa-solid fa-circle-check"></i> 1 RT-FM-13 Registrada</span>
+                <span class="lims-step-chip step-ok"><i class="fa-solid fa-circle-check"></i> 1. RT-FM-13</span>
             <?php else: ?>
-                <span class="lims-step-chip step-warn"><i class="fa-solid fa-clock"></i> 1 RT-FM-13 Pendiente</span>
+                <span class="lims-step-chip step-warn"><i class="fa-solid fa-clock"></i> 1. RT-FM-13</span>
             <?php endif; ?>
 
-            <!-- PASO 2: MATRIZ -->
+            <!-- PASO 2: 2. Recepción Completa -->
+            <?php if ($recCompletaVer): ?>
+                <span class="lims-step-chip step-ok"><i class="fa-solid fa-circle-check"></i> 2. Recepción Completa</span>
+            <?php else: ?>
+                <span class="lims-step-chip step-warn"><i class="fa-solid fa-inbox"></i> 2. Recepción Completa</span>
+            <?php endif; ?>
+
+            <!-- PASO 3: 3. Ejecución Lab -->
             <?php if ($matrizCompleta): ?>
-                <span class="lims-step-chip step-ok"><i class="fa-solid fa-circle-check"></i> 2 Matrices Completas (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)</span>
-            <?php elseif ($matricesLlenadas > 0): ?>
-                <span class="lims-step-chip step-warn"><i class="fa-solid fa-pen-ruler"></i> 2 Matriz en Captura (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)</span>
+                <span class="lims-step-chip step-ok"><i class="fa-solid fa-circle-check"></i> 3. Ejecución Lab (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)</span>
+            <?php elseif ($matricesLlenadas > 0 || $tieneMuestrasAceptadas): ?>
+                <span class="lims-step-chip step-info"><i class="fa-solid fa-flask"></i> 3. Ejecución Lab (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)</span>
             <?php else: ?>
-                <span class="lims-step-chip step-muted"><i class="fa-solid fa-hourglass-start"></i> 2 Matriz Pendiente</span>
+                <span class="lims-step-chip step-muted"><i class="fa-solid fa-hourglass-start"></i> 3. Ejecución Lab</span>
             <?php endif; ?>
 
-            <!-- PASO 3: APROBACIÓN -->
+            <!-- PASO 4: 4. Revisión Supervisor -->
             <?php if ($o['tecnico_100']): ?>
-                <span class="lims-step-chip step-ok"><i class="fa-solid fa-circle-check"></i> 3 Supervisión 100% Aprobada</span>
+                <span class="lims-step-chip step-ok"><i class="fa-solid fa-circle-check"></i> 4. Revisión Supervisor</span>
             <?php elseif ($o['ensayos_con_resultados'] > 0): ?>
-                <span class="lims-step-chip step-info"><i class="fa-solid fa-magnifying-glass"></i> 3 En Revisión Técnica (<?= $o['ensayos_aprobados'] ?>/<?= $o['total_ensayos'] ?>)</span>
+                <span class="lims-step-chip step-info"><i class="fa-solid fa-magnifying-glass"></i> 4. Revisión Supervisor (<?= $o['ensayos_aprobados'] ?>/<?= $o['total_ensayos'] ?>)</span>
             <?php else: ?>
-                <span class="lims-step-chip step-muted"><i class="fa-solid fa-hourglass"></i> 3 Aprobación Pendiente</span>
+                <span class="lims-step-chip step-muted"><i class="fa-solid fa-hourglass"></i> 4. Revisión Supervisor</span>
             <?php endif; ?>
 
-            <!-- PASO 4: CIERRE -->
-            <?php if (in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'])): ?>
-                <span class="lims-step-chip step-ok"><i class="fa-solid fa-box-archive"></i> 4 Orden Archivada</span>
-            <?php elseif (!empty($o['puede_cerrar'])): ?>
-                <span class="lims-step-chip step-ready"><i class="fa-solid fa-flag-checkered"></i> 4 Lista para Cierre</span>
+            <!-- PASO 5: 5. Informe PDF -->
+            <?php if ($o['tecnico_100']): ?>
+                <span class="lims-step-chip step-ready"><i class="fa-solid fa-file-pdf"></i> 5. Informe PDF</span>
             <?php else: ?>
-                <span class="lims-step-chip step-muted"><i class="fa-solid fa-lock"></i> 4 Cierre Bloqueado</span>
+                <span class="lims-step-chip step-muted"><i class="fa-solid fa-lock"></i> 5. Informe PDF</span>
             <?php endif; ?>
         </div>
     </div>

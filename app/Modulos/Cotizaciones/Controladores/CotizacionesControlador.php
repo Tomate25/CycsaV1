@@ -19,7 +19,9 @@ class CotizacionesControlador extends ControladorBase {
     }
 
     /**
-     * 2.11: Determina si el usuario actual puede emitir aprobación interna / devolver observaciones.
+     * 2.11 & Sección 10 Riesgo #4: Determina si el usuario actual puede emitir aprobación interna / devolver observaciones.
+     * Blindaje anti-autoaprobación: El creador de la cotización (si no es Admin rol 1) no puede autoaprobar su propia
+     * cotización a menos que haya sido designado explícitamente como responsable interno o responsable global.
      */
     public static function puedeAprobarInternamente(array $cotizacion, ?int $usuarioId = null, ?int $usuarioRol = null): bool {
         $uid = $usuarioId ?? (int)($_SESSION['usuario_id'] ?? 0);
@@ -28,16 +30,30 @@ class CotizacionesControlador extends ControladorBase {
         if ($rol === 1) {
             return true;
         }
+
+        $creadorId = (int)($cotizacion['id_usuario_creador'] ?? ($cotizacion['id_usuario'] ?? 0));
+        $respInternoId = !empty($cotizacion['id_responsable_interno']) ? (int)$cotizacion['id_responsable_interno'] : 0;
+        $respGlobal = (int)ConfigCalculoLabServicio::obtener('cotizacion_responsable_interno_id', '');
+
+        if ($uid > 0 && $creadorId > 0 && $creadorId === $uid && $rol !== 1) {
+            if ($respInternoId > 0 && $respInternoId === $uid && empty($cotizacion['autoasignado_por_creador'])) {
+                return true;
+            }
+            if ($respGlobal > 0 && $respGlobal === $uid) {
+                return true;
+            }
+            return false;
+        }
+
         if ($usuarioRol === null && function_exists('tienePermiso') && tienePermiso('cotizaciones', 'aprobar')) {
             return true;
         }
         if (!empty($_SESSION['usuario_permisos']['cotizaciones']['aprobar'])) {
             return true;
         }
-        if ($uid > 0 && !empty($cotizacion['id_responsable_interno']) && (int)$cotizacion['id_responsable_interno'] === $uid) {
+        if ($uid > 0 && $respInternoId > 0 && $respInternoId === $uid) {
             return true;
         }
-        $respGlobal = (int)ConfigCalculoLabServicio::obtener('cotizacion_responsable_interno_id', '');
         if ($uid > 0 && $respGlobal > 0 && $respGlobal === $uid) {
             return true;
         }

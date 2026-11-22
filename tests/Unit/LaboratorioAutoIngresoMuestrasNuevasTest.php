@@ -156,8 +156,12 @@ class LaboratorioAutoIngresoMuestrasNuevasTest extends TestCase {
         $hsCtrl = new HojasServicioControlador();
         $capturador = new class extends Respuesta {
             public ?string $redir = null;
+            public ?array $json = null;
             public function redirigir(string $url): void {
                 $this->redir = $url;
+            }
+            public function enviarJson(array $datos, int $codigoHttp = 200): void {
+                $this->json = $datos;
             }
         };
 
@@ -186,26 +190,62 @@ class LaboratorioAutoIngresoMuestrasNuevasTest extends TestCase {
         ];
         $hsCtrl->guardarHojaSolicitud(new Peticion(), $capturador);
 
-        $stmtHojaConc = $this->db->prepare("SELECT id, numero_registro FROM hojas_solicitud WHERE id_os = ? AND id_detalle_cotizacion = ? LIMIT 1");
+        $stmtHojaConc = $this->db->prepare("SELECT id, numero_registro, etapa_flujo, recepcion_completa FROM hojas_solicitud WHERE id_os = ? AND id_detalle_cotizacion = ? LIMIT 1");
         $stmtHojaConc->execute([$this->idOSPrueba, $this->idDetalleConcreto]);
         $hojaConc = $stmtHojaConc->fetch(PDO::FETCH_ASSOC);
         $this->assertNotEmpty($hojaConc, 'Debe guardarse la Hoja RT-FM-13 de concreto.');
         $idHojaConc = (int)$hojaConc['id'];
         $this->hojasCreadas[] = $idHojaConc;
 
-        // Verificar que las 3 muestras cayeron automáticamente a recepcion_muestras sin necesidad de aceptar/observar en Lab
+        // 1A. Al guardar RT-FM-13 sin marcar recepción completa, permanece en recepcion_borrador y aún no ingresa a recepcion_muestras
+        $this->assertSame('recepcion_borrador', $hojaConc['etapa_flujo'] ?? 'recepcion_borrador');
+        $this->assertSame(0, (int)($hojaConc['recepcion_completa'] ?? 0));
+        $stmtRmBorrador = $this->db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_os = ? AND id_hoja = ?");
+        $stmtRmBorrador->execute([$this->idOSPrueba, $idHojaConc]);
+        $this->assertSame(0, (int)$stmtRmBorrador->fetchColumn(), 'En recepcion_borrador aún no debe ingresar a recepcion_muestras.');
+
+        // 1B. Completar datos de recepción y marcar recepción completa -> transiciona a recepcion_completa e ingresa las 3 muestras a recepcion_muestras
+        $stmtCods = $this->db->prepare("SELECT codigo_muestra FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = ? ORDER BY orden ASC, id ASC");
+        $stmtCods->execute([$idHojaConc]);
+        $codigosHoja = $stmtCods->fetchAll(PDO::FETCH_COLUMN);
+        $payloadRec = [];
+        foreach ($codigosHoja as $idxC => $codH) {
+            $payloadRec[$codH] = [
+                'Nombre muestra' => 'Columna C' . ($idxC + 1),
+                'Reven. (in)' => '4',
+                'Temp. (°C)' => '27',
+                'Diseño de concreto (lb/in²)' => '3000',
+                'Fecha de Fabricación' => date('Y-m-d'),
+            ];
+        }
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_hoja' => $idHojaConc,
+            'muestras_recepcion_json' => json_encode($payloadRec, JSON_UNESCAPED_UNICODE),
+            'marcar_recepcion_completa' => 1,
+        ];
+        $hsCtrl->marcarRecepcionCompleta(new Peticion(), $capturador);
+
+        $stmtHojaConc->execute([$this->idOSPrueba, $this->idDetalleConcreto]);
+        $hojaConcPost = $stmtHojaConc->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame('recepcion_completa', $hojaConcPost['etapa_flujo']);
+        $this->assertSame(1, (int)$hojaConcPost['recepcion_completa']);
+
+        // Verificar que las 3 muestras cayeron automáticamente a recepcion_muestras al marcar recepción completa
         $stmtRm = $this->db->prepare("SELECT id, codigo_muestra FROM recepcion_muestras WHERE id_os = ? AND id_hoja = ? ORDER BY orden_en_lote ASC");
         $stmtRm->execute([$this->idOSPrueba, $idHojaConc]);
         $recRows = $stmtRm->fetchAll(PDO::FETCH_ASSOC);
-        $this->assertCount(3, $recRows, 'Las 3 muestras nuevas deben caer automáticamente a recepcion_muestras al emitir RT-FM-13.');
+        $this->assertCount(3, $recRows, 'Las 3 muestras nuevas deben caer automáticamente a recepcion_muestras al marcar recepción completa.');
         $codRec1 = (string)($recRows[0]['codigo_muestra'] ?? '');
         $this->assertStringStartsWith('MS-', $codRec1);
 
-        // Verificar que cotizacion_detalles.resultados_json NO quedó marcado prematuramente en_revision
+        // Verificar que cotizacion_detalles.resultados_json NO quedó marcado prematuramente en_revision ni con 14.137
         $stmtRes = $this->db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = ?");
         $stmtRes->execute([$this->idDetalleConcreto]);
         $resRaw = (string)$stmtRes->fetchColumn();
         $this->assertStringNotContainsString('en_revision', $resRaw);
+        $this->assertStringNotContainsString('14.137', $resRaw);
 
         // 2. Guardar Hoja RT-FM-13 de Compactación in-situ (Densímetro Nuclear) -> NO debe caer en recepcion_muestras
         $_POST = [

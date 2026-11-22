@@ -1373,6 +1373,7 @@ function tienePermiso(string $modulo, string $accion = 'ver'): bool {
     $aliasModulo = [
         'ordenes_servicio' => ['cotizaciones'],
         'ventas'           => ['cotizaciones'],
+        'recepcion'        => ['ordenes_servicio', 'operaciones'],
         'control_calidad'  => ['laboratorio'],
         'equipos_bodegas'  => ['laboratorio'],
         'rrhh'             => ['nomina'],
@@ -2502,6 +2503,55 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
     $fechaMuestreo = !empty($metadatosGuardados['fecha_muestreo']) ? $metadatosGuardados['fecha_muestreo'] : (!empty($detalle['fecha_muestreo']) ? substr($detalle['fecha_muestreo'], 0, 10) : (!empty($detalle['pm_fecha_ida']) ? substr($detalle['pm_fecha_ida'], 0, 10) : (!empty($detalle['fecha_hora_toma_muestra']) ? substr($detalle['fecha_hora_toma_muestra'], 0, 10) : date('Y-m-d'))));
     $fechaEjecucion = !empty($metadatosGuardados['fecha_ejecucion']) ? $metadatosGuardados['fecha_ejecucion'] : (!empty($detalle['fecha_ejecucion']) ? substr($detalle['fecha_ejecucion'], 0, 10) : date('Y-m-d'));
     $fechaEmision = !empty($metadatosGuardados['fecha_emision']) ? $metadatosGuardados['fecha_emision'] : (!empty($detalle['fecha_emision']) ? substr($detalle['fecha_emision'], 0, 10) : (!empty($detalle['os_fecha_emision']) ? substr($detalle['os_fecha_emision'], 0, 10) : date('Y-m-d')));
+
+    // Sección 9 Hallazgo #3: La fecha de emisión del informe nunca puede ser anterior a la fecha de ejecución/ensayo
+    $fechasCandidatasEjecucion = [
+        $fechaEjecucion,
+        (string)($metadatosGuardados['fecha_ensayo'] ?? ($detalle['fecha_ensayo'] ?? '')),
+        (string)($metadatosGuardados['fecha_finalizacion'] ?? ($detalle['fecha_finalizacion'] ?? '')),
+    ];
+    if (!empty($detalle['resultados_json']) && is_string($detalle['resultados_json'])) {
+        $decResTmp = json_decode($detalle['resultados_json'], true);
+        if (is_array($decResTmp)) {
+            $metaInRes = isset($decResTmp['metadatos']) && is_array($decResTmp['metadatos']) ? $decResTmp['metadatos'] : [];
+            foreach (['fecha_ejecucion', 'fecha_ensayo', 'fecha_finalizacion'] as $kMetaF) {
+                if (!empty($metaInRes[$kMetaF])) {
+                    $fechasCandidatasEjecucion[] = (string)$metaInRes[$kMetaF];
+                }
+            }
+            $filasInRes = isset($decResTmp['filas']) && is_array($decResTmp['filas'])
+                ? $decResTmp['filas']
+                : (isset($decResTmp[0]) && is_array($decResTmp[0]) ? $decResTmp : []);
+            foreach ($filasInRes as $filaTmp) {
+                if (!is_array($filaTmp)) continue;
+                foreach ($filaTmp as $colTmp => $valTmp) {
+                    if ($valTmp === null || $valTmp === '' || is_array($valTmp)) continue;
+                    $colNormTmp = normalizarTextoClavePHP((string)$colTmp);
+                    if (in_array($colNormTmp, ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion'], true)) {
+                        $fechasCandidatasEjecucion[] = (string)$valTmp;
+                    }
+                }
+            }
+        }
+    }
+    $maxTsEjecucion = false;
+    $maxFechaEjecucion = '';
+    foreach ($fechasCandidatasEjecucion as $fCand) {
+        $fCandStr = trim(substr((string)$fCand, 0, 10));
+        if ($fCandStr === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fCandStr)) {
+            continue;
+        }
+        $tsCand = strtotime($fCandStr);
+        if ($tsCand !== false && ($maxTsEjecucion === false || $tsCand > $maxTsEjecucion)) {
+            $maxTsEjecucion = $tsCand;
+            $maxFechaEjecucion = date('Y-m-d', $tsCand);
+        }
+    }
+    $fEmisionNorm = trim(substr((string)$fechaEmision, 0, 10));
+    $tsEmision = ($fEmisionNorm !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fEmisionNorm)) ? strtotime($fEmisionNorm) : false;
+    if ($tsEmision !== false && $maxTsEjecucion !== false && $maxTsEjecucion > $tsEmision) {
+        $fechaEmision = $maxFechaEjecucion;
+    }
     $tipoMuestra = !empty($metadatosGuardados['tipo_muestra']) ? $metadatosGuardados['tipo_muestra'] : (!empty($detalle['tipo_muestra']) ? $detalle['tipo_muestra'] : (!empty($detalle['prod_tipo_muestra']) ? $detalle['prod_tipo_muestra'] : (!empty($schemaInfo['tipo_muestra']) ? $schemaInfo['tipo_muestra'] : (!empty($detalle['condiciones_muestra']) ? $detalle['condiciones_muestra'] : (!empty($detalle['naturaleza_muestra']) ? $detalle['naturaleza_muestra'] : 'Especímenes / Muestras')))));
     $muestraTomadaPor = !empty($metadatosGuardados['muestra_tomada_por']) ? $metadatosGuardados['muestra_tomada_por'] : (!empty($detalle['muestra_tomada_por']) ? $detalle['muestra_tomada_por'] : (!empty($detalle['requiere_muestreo']) ? 'Laboratorio - Consultoría y Construcción S.A. CYCSA.' : 'El Cliente y entrega en Laboratorio'));
     $procedimientoMuestreo = !empty($metadatosGuardados['procedimiento_muestreo']) ? $metadatosGuardados['procedimiento_muestreo'] : (!empty($detalle['procedimiento_muestreo']) ? $detalle['procedimiento_muestreo'] : (!empty($detalle['procedimiento']) ? $detalle['procedimiento'] : (!empty($detalle['prod_procedimiento']) ? $detalle['prod_procedimiento'] : (!empty($detalle['formato_procedimiento']) ? $detalle['formato_procedimiento'] : 'Aleatorio Procedimiento A (TD)'))));
@@ -4751,6 +4801,19 @@ function obtenerEstadoRevisionMatriz(?string $resultadosJson): array {
             $puedeDevolver = false;
             break;
 
+        case 'borrador':
+            $estado = 'borrador';
+            $label = 'EN CAPTURA / EJECUCIÓN';
+            $badgeClase = 'badge-borrador';
+            $badgeBg = '#e0f2fe';
+            $badgeColor = '#0369a1';
+            $badgeBorder = '#bae6fd';
+            $badgeIcono = 'fa-solid fa-pen-ruler';
+            $puedeEnviar = false;
+            $puedeAprobar = false;
+            $puedeDevolver = false;
+            break;
+
         case 'en_revision':
         default:
             $estado = 'en_revision';
@@ -5850,11 +5913,9 @@ if (!function_exists('clasificarColumnaRecepcionOTecnico')) {
         }
 
         $clavesRecepcion = [
-            'revenin', 'revenimientoin', 'revencm', 'revenimientocm', 'revenimiento',
+            'revenin', 'revenimientoin', 'revenimiento',
             'tempc', 'temperaturac', 'temperatura', 'temp',
             'fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado',
-            'fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion',
-            'edaddias', 'edad',
         ];
         if (in_array($norm, $clavesRecepcion, true) || str_starts_with($norm, 'diseno')) {
             return 'recepcion';
@@ -5901,6 +5962,212 @@ if (!function_exists('clasificarColumnaRecepcionOTecnico')) {
         }
 
         return 'tecnico';
+    }
+}
+
+if (!function_exists('clasificarOrigenColumnaMatriz')) {
+    /**
+     * Clasifica el origen exacto de cada columna de la matriz técnica según la Tabla de Sección 5:
+     * - 'identidad': Código laboratorio
+     * - 'recepcion': Nombre muestra, Reven. (in), Temp. (°C), Diseño..., Fecha de Fabricación, campos de recepción compactación
+     * - 'calculado': Reven. (cm), Área (in²), Peso Volumétrico (kg/m³), R. Compresión (lb/in²), R. Compresión (kg/cm²), Edad (Días)
+     * - 'laboratorio': Carga (lb), Fecha de Ensayo (en formatos de rotura de concreto/cilindros/mortero)
+     * - 'tecnico': demás columnas técnicas
+     */
+    function clasificarOrigenColumnaMatriz(string $nombreColumna, string $archivoFormato = ''): string {
+        $norm = normalizarTextoClavePHP($nombreColumna);
+        if ($norm === '') {
+            return 'tecnico';
+        }
+
+        if (in_array($norm, ['codigolaboratorio', 'codigolab', 'codigomuestra'], true)) {
+            return 'identidad';
+        }
+
+        $clavesCalculadas = [
+            'revencm', 'revenimientocm',
+            'areain2', 'areacm2', 'areain', 'areacm', 'area',
+            'pesovolumetricokgm3', 'pesovolumetrico',
+            'rcompresionlbin2', 'rcompresionlbpin2', 'resistencialbin2', 'resistencialbpin2', 'rcompresionpsi', 'resistenciapsi',
+            'rcompresionkgcm2', 'resistenciakgcm2', 'rcompresion', 'resistenciaalacompresion',
+            'edaddias', 'edad',
+        ];
+        if (in_array($norm, $clavesCalculadas, true)) {
+            return 'calculado';
+        }
+
+        if (clasificarColumnaRecepcionOTecnico($nombreColumna, $archivoFormato) === 'recepcion') {
+            return 'recepcion';
+        }
+
+        $fmtNorm = mb_strtolower($archivoFormato, 'UTF-8');
+        $esRoturaConcreto = (
+            $fmtNorm === ''
+            || str_contains($fmtNorm, 'concreto')
+            || str_contains($fmtNorm, 'cilindro')
+            || str_contains($fmtNorm, 'mortero')
+            || str_contains($fmtNorm, 'nucleo')
+            || str_contains($fmtNorm, 'núcleo')
+            || str_contains($fmtNorm, 'viga')
+            || str_contains($fmtNorm, 'adoquin')
+            || str_contains($fmtNorm, 'bloque')
+        );
+
+        if (in_array($norm, ['cargalb', 'cargakg', 'carga', 'cargamaxima', 'cargamaximalb', 'cargamaximakg'], true)) {
+            return 'laboratorio';
+        }
+        if ($esRoturaConcreto && in_array($norm, ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura'], true)) {
+            return 'laboratorio';
+        }
+
+        return 'tecnico';
+    }
+}
+
+if (!function_exists('etapasFlujoOperacionesOrdenadas')) {
+    /**
+     * Retorna las 6 etapas canónicas del flujo unificado Recepción → Técnico → Matriz → Laboratorio → Informe.
+     *
+     * @return array<string, array{codigo: string, orden: int, etiqueta: string, color: string, bg: string, border: string}>
+     */
+    function etapasFlujoOperacionesOrdenadas(): array {
+        return [
+            'recepcion_borrador' => [
+                'codigo' => 'recepcion_borrador',
+                'orden' => 1,
+                'etiqueta' => 'Recepción en borrador',
+                'color' => '#475569',
+                'bg' => '#f1f5f9',
+                'border' => '#cbd5e1',
+            ],
+            'recepcion_completa' => [
+                'codigo' => 'recepcion_completa',
+                'orden' => 2,
+                'etiqueta' => 'Recepción completa',
+                'color' => '#1e40af',
+                'bg' => '#dbeafe',
+                'border' => '#93c5fd',
+            ],
+            'en_ejecucion' => [
+                'codigo' => 'en_ejecucion',
+                'orden' => 3,
+                'etiqueta' => 'En ejecución',
+                'color' => '#92400e',
+                'bg' => '#fef3c7',
+                'border' => '#fde68a',
+            ],
+            'tecnico_completo' => [
+                'codigo' => 'tecnico_completo',
+                'orden' => 4,
+                'etiqueta' => 'Técnico completo',
+                'color' => '#065f46',
+                'bg' => '#d1fae5',
+                'border' => '#6ee7b7',
+            ],
+            'matriz_en_revision' => [
+                'codigo' => 'matriz_en_revision',
+                'orden' => 5,
+                'etiqueta' => 'Matriz en revisión',
+                'color' => '#3730a3',
+                'bg' => '#e0e7ff',
+                'border' => '#a5b4fc',
+            ],
+            'informe' => [
+                'codigo' => 'informe',
+                'orden' => 6,
+                'etiqueta' => 'Informe emitido',
+                'color' => '#166534',
+                'bg' => '#dcfce7',
+                'border' => '#86efac',
+            ],
+        ];
+    }
+}
+
+if (!function_exists('validarCamposObligatoriosRecepcionHoja')) {
+    /**
+     * Valida que cada muestra de una Hoja RT-FM-13 tenga sus campos obligatorios de recepción completos
+     * antes de pasar a `recepcion_completa` e ingresar a Laboratorio.
+     *
+     * @param array<string, array<string, string>> $datosPorCodigo
+     * @return array{completo: bool, faltantes: array<int, string>, total_muestras: int}
+     */
+    function validarCamposObligatoriosRecepcionHoja(PDO $db, int $idHoja, array $datosPorCodigo = []): array {
+        if ($idHoja <= 0) {
+            return ['completo' => false, 'faltantes' => ['Hoja RT-FM-13 inválida'], 'total_muestras' => 0];
+        }
+
+        $stmtHoja = $db->prepare("SELECT id, id_detalle_cotizacion, id_producto, muestras_json FROM hojas_solicitud WHERE id = :id LIMIT 1");
+        $stmtHoja->execute(['id' => $idHoja]);
+        $hoja = $stmtHoja->fetch(PDO::FETCH_ASSOC);
+        if (!$hoja) {
+            return ['completo' => false, 'faltantes' => ['Hoja RT-FM-13 no encontrada'], 'total_muestras' => 0];
+        }
+
+        $infoCampos = obtenerCamposRecepcionParaDetalle(
+            $db,
+            !empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : null,
+            !empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null
+        );
+        $archivoMd = mb_strtolower((string)($infoCampos['archivo_markdown'] ?? ''), 'UTF-8');
+        $esConcretoCilindros = str_contains($archivoMd, 'resistencia_de_concreto');
+
+        $mapaActual = construirMapaDatosRecepcionPorHoja($db, $idHoja);
+        foreach ($datosPorCodigo as $codK => $valsK) {
+            $kUp = strtoupper(trim((string)$codK));
+            if ($kUp !== '' && is_array($valsK)) {
+                $mapaActual[$kUp] = array_merge($mapaActual[$kUp] ?? [], $valsK);
+            }
+        }
+
+        $muestrasLista = [];
+        try {
+            $stmtDet = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion, datos_recepcion_json FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid ORDER BY orden ASC, id ASC");
+            $stmtDet->execute(['hid' => $idHoja]);
+            $muestrasLista = $stmtDet->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable $e) {
+            $muestrasLista = [];
+        }
+
+        if (empty($muestrasLista)) {
+            $mArr = json_decode((string)($hoja['muestras_json'] ?? '[]'), true) ?: [];
+            foreach ($mArr as $m) {
+                $muestrasLista[] = [
+                    'codigo_muestra' => (string)($m['nombre_muestra'] ?? ($m['codigo_muestra'] ?? '')),
+                    'descripcion_ubicacion' => (string)($m['descripcion'] ?? ($m['nombre_muestra_cliente'] ?? '')),
+                ];
+            }
+        }
+
+        if (empty($muestrasLista)) {
+            return ['completo' => false, 'faltantes' => ['La hoja RT-FM-13 no tiene muestras declaradas'], 'total_muestras' => 0];
+        }
+
+        $faltantes = [];
+        foreach ($muestrasLista as $mRow) {
+            $cod = trim((string)($mRow['codigo_muestra'] ?? ''));
+            if ($cod === '') continue;
+            $codKey = strtoupper($cod);
+            $datosM = $mapaActual[$codKey] ?? [];
+
+            $nomMuestra = trim((string)(buscarValorEnFilaPHP($datosM, 'Nombre muestra') ?: ($mRow['descripcion_ubicacion'] ?? '')));
+            if ($nomMuestra === '') {
+                $faltantes[] = "{$cod}: Nombre muestra";
+            }
+
+            if ($esConcretoCilindros) {
+                $fFab = trim((string)buscarValorEnFilaPHP($datosM, 'Fecha de Fabricación'));
+                if ($fFab === '') {
+                    $faltantes[] = "{$cod}: Fecha de Fabricación";
+                }
+            }
+        }
+
+        return [
+            'completo' => empty($faltantes),
+            'faltantes' => $faltantes,
+            'total_muestras' => count($muestrasLista),
+        ];
     }
 }
 
@@ -6065,16 +6332,27 @@ if (!function_exists('normalizarYCompletarDatosRecepcionMuestra')) {
             $limpio[$nombre] = trim((string)$val);
         }
 
-        // Conservar claves adicionales ya existentes si coinciden por nombre normalizado
+        // Conservar claves adicionales ya existentes si coinciden por nombre normalizado o si el llamador envía claves de recepción/derivación
         foreach ($entrada as $k => $v) {
             $kStr = (string)$k;
+            if (is_array($v)) {
+                continue;
+            }
+            $vTrim = trim((string)$v);
+            $kNorm = normalizarTextoClavePHP($kStr);
             if (!array_key_exists($kStr, $limpio) && clasificarColumnaRecepcionOTecnico($kStr) === 'recepcion') {
-                $kNorm = normalizarTextoClavePHP($kStr);
+                $asignado = false;
                 foreach ($nombresPermitidos as $nombre) {
                     if ($limpio[$nombre] === '' && normalizarTextoClavePHP($nombre) === $kNorm) {
-                        $limpio[$nombre] = trim((string)$v);
+                        $limpio[$nombre] = $vTrim;
+                        $asignado = true;
                     }
                 }
+                if (!$asignado && $vTrim !== '') {
+                    $limpio[$kStr] = $vTrim;
+                }
+            } elseif (!array_key_exists($kStr, $limpio) && $vTrim !== '' && in_array($kNorm, ['revencm', 'revenimientocm', 'fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion', 'edaddias', 'edad'], true)) {
+                $limpio[$kStr] = $vTrim;
             }
         }
 
@@ -6085,13 +6363,21 @@ if (!function_exists('normalizarYCompletarDatosRecepcionMuestra')) {
         $colEns = null;
         $colEdad = null;
 
-        foreach ($nombresPermitidos as $nombre) {
-            $n = normalizarTextoClavePHP($nombre);
-            if ($colIn === null && in_array($n, ['revenin', 'revenimientoin'], true)) $colIn = $nombre;
-            if ($colCm === null && in_array($n, ['revencm', 'revenimientocm'], true)) $colCm = $nombre;
-            if ($colFab === null && in_array($n, ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado'], true)) $colFab = $nombre;
-            if ($colEns === null && in_array($n, ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion'], true)) $colEns = $nombre;
-            if ($colEdad === null && in_array($n, ['edaddias', 'edad'], true)) $colEdad = $nombre;
+        foreach (array_unique(array_merge($nombresPermitidos, array_keys($limpio))) as $nombre) {
+            $n = normalizarTextoClavePHP((string)$nombre);
+            if ($colIn === null && in_array($n, ['revenin', 'revenimientoin'], true)) $colIn = (string)$nombre;
+            if ($colCm === null && in_array($n, ['revencm', 'revenimientocm'], true)) $colCm = (string)$nombre;
+            if ($colFab === null && in_array($n, ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado'], true)) $colFab = (string)$nombre;
+            if ($colEns === null && in_array($n, ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion'], true)) $colEns = (string)$nombre;
+            if ($colEdad === null && in_array($n, ['edaddias', 'edad'], true)) $colEdad = (string)$nombre;
+        }
+
+        if ($colIn !== null && $colCm === null) {
+            $colCm = 'Reven. (cm)';
+        }
+        if ($colFab !== null) {
+            if ($colEns === null) $colEns = 'Fecha de Ensayo';
+            if ($colEdad === null) $colEdad = 'Edad (Días)';
         }
 
         if ($colIn !== null && $colCm !== null) {
@@ -6107,7 +6393,7 @@ if (!function_exists('normalizarYCompletarDatosRecepcionMuestra')) {
             }
         }
 
-        // Relación Fecha Fabricación / Fecha Ensayo / Edad (Días)
+        // Relación Fecha Fabricación / Fecha Ensayo / Edad (Días) cuando el llamador provee explícitamente alguno de los dos
         if ($colFab !== null && $colEns !== null && $colEdad !== null) {
             $fFab = $limpio[$colFab] ?? '';
             $fEns = $limpio[$colEns] ?? '';
@@ -6190,16 +6476,20 @@ if (!function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
             return $fila;
         }
 
+        $clavesDerivadasRecepcion = ['revencm', 'revenimientocm', 'fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'edaddias', 'edad'];
         $destinos = !empty($columnasFormato) ? $columnasFormato : array_keys($datosRecepcion);
         foreach ($destinos as $colDest) {
             $colStr = (string)$colDest;
-            if (clasificarColumnaRecepcionOTecnico($colStr, $archivoFormato) !== 'recepcion') {
+            $colNorm = normalizarTextoClavePHP($colStr);
+            $esRec = clasificarColumnaRecepcionOTecnico($colStr, $archivoFormato) === 'recepcion';
+            $esDerivada = in_array($colNorm, $clavesDerivadasRecepcion, true);
+            if (!$esRec && !$esDerivada) {
                 continue;
             }
             $valRec = buscarValorEnFilaPHP($datosRecepcion, $colStr);
             if ($valRec !== '') {
                 $actual = isset($fila[$colStr]) ? trim((string)$fila[$colStr]) : '';
-                if ($sobrescribirRecepcion || $actual === '') {
+                if (($esRec && $sobrescribirRecepcion) || $actual === '' || in_array($colNorm, ['revencm', 'revenimientocm'], true)) {
                     $fila[$colStr] = $valRec;
                 }
             }
@@ -6207,10 +6497,12 @@ if (!function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
 
         foreach ($datosRecepcion as $kRec => $vRec) {
             $kStr = (string)$kRec;
-            if ($vRec !== '' && clasificarColumnaRecepcionOTecnico($kStr, $archivoFormato) === 'recepcion') {
+            $kNorm = normalizarTextoClavePHP($kStr);
+            $esRec = clasificarColumnaRecepcionOTecnico($kStr, $archivoFormato) === 'recepcion';
+            $esDerivada = in_array($kNorm, $clavesDerivadasRecepcion, true);
+            if ($vRec !== '' && ($esRec || $esDerivada)) {
                 if (!empty($columnasFormato)) {
                     $encontrada = false;
-                    $kNorm = normalizarTextoClavePHP($kStr);
                     foreach ($columnasFormato as $colFmt) {
                         if (normalizarTextoClavePHP((string)$colFmt) === $kNorm) {
                             $encontrada = true;
@@ -6222,7 +6514,7 @@ if (!function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
                     }
                 }
                 $actual = isset($fila[$kStr]) ? trim((string)$fila[$kStr]) : '';
-                if ($sobrescribirRecepcion || $actual === '') {
+                if (($esRec && $sobrescribirRecepcion) || $actual === '' || in_array($kNorm, ['revencm', 'revenimientocm'], true)) {
                     $fila[$kStr] = (string)$vRec;
                 }
             }

@@ -347,6 +347,43 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
 
     <!-- CONTENIDO PESTAÑA: ÓRDENES DE SERVICIO -->
     <div id="tab-os" class="tab-content tab-content-active">
+        <?php
+        $bandejaActiva = $bandejaActiva ?? ($_GET['bandeja'] ?? 'todas');
+        $conteoBandejas = $conteoBandejas ?? [
+            'todas' => count($ordenes ?? []),
+            'recepcion' => 0,
+            'tecnico' => 0,
+            'supervisor' => 0,
+            'informes' => 0,
+        ];
+        ?>
+        <!-- BARRA DE BANDEJAS POR ROL (PROPUESTA FLUJO OPERACIONES Y LABORATORIO) -->
+        <div class="bandejas-rol-bar" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 10px; align-items: center;">
+            <span style="font-size: 13px; font-weight: 700; color: #1e293b; margin-right: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-inbox" style="color: #103487;"></i> Bandejas por Rol:
+            </span>
+            <a href="/Cycsa/publico/operaciones?bandeja=todas" class="quick-tab-link <?= ($bandejaActiva === 'todas') ? 'active' : '' ?>" style="font-size: 13px;">
+                Todas las Órdenes
+                <span class="quick-tab-badge"><?= (int)($conteoBandejas['todas'] ?? 0) ?></span>
+            </a>
+            <a href="/Cycsa/publico/operaciones?bandeja=recepcion" class="quick-tab-link <?= ($bandejaActiva === 'recepcion') ? 'active' : '' ?>" style="font-size: 13px;">
+                ① Bandeja de Recepción
+                <span class="quick-tab-badge"><?= (int)($conteoBandejas['recepcion'] ?? 0) ?></span>
+            </a>
+            <a href="/Cycsa/publico/operaciones?bandeja=tecnico" class="quick-tab-link <?= ($bandejaActiva === 'tecnico') ? 'active' : '' ?>" style="font-size: 13px;">
+                ② Bandeja del Técnico
+                <span class="quick-tab-badge"><?= (int)($conteoBandejas['tecnico'] ?? 0) ?></span>
+            </a>
+            <a href="/Cycsa/publico/operaciones?bandeja=supervisor" class="quick-tab-link <?= ($bandejaActiva === 'supervisor') ? 'active' : '' ?>" style="font-size: 13px;">
+                ③ Bandeja del Supervisor
+                <span class="quick-tab-badge"><?= (int)($conteoBandejas['supervisor'] ?? 0) ?></span>
+            </a>
+            <a href="/Cycsa/publico/operaciones?bandeja=informes" class="quick-tab-link <?= ($bandejaActiva === 'informes') ? 'active' : '' ?>" style="font-size: 13px;">
+                ④ Bandeja de Informes
+                <span class="quick-tab-badge"><?= (int)($conteoBandejas['informes'] ?? 0) ?></span>
+            </a>
+        </div>
+
         <!-- BARRA DE FILTROS RÁPIDOS (TABS) + SELECTOR DE MODO DE VISTA -->
         <div class="lims-toolbar-top" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; background: #ffffff; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
             <div class="quick-tabs-bar">
@@ -378,8 +415,8 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
                         <th style="width: 44px; text-align: center;"></th>
                         <th style="min-width: 280px;">Identidad de Orden</th>
                         <th style="min-width: 170px;">Modalidad / Servicio</th>
-                        <th style="min-width: 310px;">Progreso en 4 Pasos</th>
-                        <th style="min-width: 260px; text-align: right;">Siguiente Acción</th>
+                        <th style="min-width: 340px;">Progreso en 5 Pasos</th>
+                        <th style="min-width: 260px; text-align: right;">Siguiente Paso</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -557,26 +594,68 @@ $esSupervisor = in_array($rolSesion, [1, 2, 3]) || tienePermiso('operaciones', '
                                 </div>
                             <?php endif; ?>
                         </td>
-                        <!-- ZONA 2: PROGRESO EN 4 PASOS -->
+                        <!-- ZONA 2: PROGRESO EN 5 PASOS -->
                         <td>
+                            <?php
+                            $etapaFlujoFila = $o['etapa_flujo_os'] ?? ($o['hoja_solicitud']['etapa_flujo'] ?? ($tieneHojaServicio ? 'recepcion_borrador' : 'sin_hoja'));
+                            $recCompletaFila = !empty($o['recepcion_completa_os']) || !empty($o['hoja_solicitud']['recepcion_completa']) || in_array($etapaFlujoFila, ['recepcion_completa', 'en_ejecucion', 'tecnico_completo', 'matriz_en_revision', 'informe'], true);
+                            $labEnEjecucionFila = in_array($etapaFlujoFila, ['en_ejecucion', 'tecnico_completo', 'matriz_en_revision', 'informe'], true) || $matricesLlenadas > 0 || $tieneMuestrasAceptadas;
+                            $labCompletoFila = in_array($etapaFlujoFila, ['tecnico_completo', 'matriz_en_revision', 'informe'], true) || $matrizCompleta;
+                            $supEnRevisionFila = ($etapaFlujoFila === 'matriz_en_revision') || (!empty($o['ensayos_con_resultados']) && !$o['tecnico_100']);
+                            $supAprobadoFila = ($etapaFlujoFila === 'informe') || !empty($o['tecnico_100']);
+                            $sigPasoTexto = $o['siguiente_paso_texto'] ?? ($btnPrimario['texto'] ?? 'Ver Detalle');
+                            $sigPasoUrl = $o['siguiente_paso_url'] ?? ($btnPrimario['href'] ?? ('/Cycsa/publico/operaciones/ver?id_os=' . (int)$o['id']));
+                            ?>
                             <div class="lims-steps-container d-flex flex-wrap gap-1 align-items-center">
-                                <!-- PASO 1: RT-FM-13 -->
+                                <!-- PASO 1: 1. RT-FM-13 -->
                                 <?php if ($tieneHojaServicio): ?>
-                                    <span class="lims-step-chip step-ok" title="Hoja RT-FM-13 registrada"><i class="fa-solid fa-circle-check"></i> 1 RT-FM-13</span>
+                                    <span class="lims-step-chip step-ok" title="Hoja RT-FM-13 registrada"><i class="fa-solid fa-circle-check"></i> 1. RT-FM-13</span>
                                 <?php else: ?>
-                                    <span class="lims-step-chip step-warn" title="Falta registrar Hoja RT-FM-13 oficial"><i class="fa-solid fa-clock"></i> 1 RT-FM-13</span>
+                                    <span class="lims-step-chip step-warn" title="Falta registrar Hoja RT-FM-13 oficial"><i class="fa-solid fa-clock"></i> 1. RT-FM-13</span>
                                 <?php endif; ?>
 
-                                <!-- PASO 2: MATRIZ -->
-                                <?php if ($matrizCompleta): ?>
-                                    <span class="lims-step-chip step-ok" title="Matrices completadas (100%)"><i class="fa-solid fa-circle-check"></i> 2 Matriz</span>
-                                <?php elseif ($matricesLlenadas > 0): ?>
-                                    <span class="lims-step-chip step-warn" title="Captura en curso (<?= $matricesLlenadas ?>/<?= $totalItemsOS ?>)"><i class="fa-solid fa-pen-ruler"></i> 2 Matriz</span>
-                                <?php elseif (!$tieneHojaServicio && !$esSoloCompactacion): ?>
-                                    <span class="lims-step-chip step-muted" title="Bloqueado: requiere RT-FM-13 previa"><i class="fa-solid fa-lock"></i> 2 Matriz</span>
+                                <!-- PASO 2: 2. Recepción Completa -->
+                                <?php if ($recCompletaFila): ?>
+                                    <span class="lims-step-chip step-ok" title="Recepción marcada como completa"><i class="fa-solid fa-circle-check"></i> 2. Recepción Completa</span>
+                                <?php elseif ($tieneHojaServicio): ?>
+                                    <span class="lims-step-chip step-warn" title="Hoja en borrador pendiente de cierre de recepción"><i class="fa-solid fa-inbox"></i> 2. Recepción Completa</span>
                                 <?php else: ?>
-                                    <span class="lims-step-chip step-muted" title="Pendiente de captura"><i class="fa-solid fa-hourglass-start"></i> 2 Matriz</span>
+                                    <span class="lims-step-chip step-muted" title="Requiere RT-FM-13 previa"><i class="fa-solid fa-hourglass-start"></i> 2. Recepción Completa</span>
                                 <?php endif; ?>
+
+                                <!-- PASO 3: 3. Ejecución Lab -->
+                                <?php if ($labCompletoFila): ?>
+                                    <span class="lims-step-chip step-ok" title="Ejecución técnica completada"><i class="fa-solid fa-circle-check"></i> 3. Ejecución Lab</span>
+                                <?php elseif ($labEnEjecucionFila): ?>
+                                    <span class="lims-step-chip step-info" title="Ensayos en ejecución en laboratorio"><i class="fa-solid fa-flask"></i> 3. Ejecución Lab</span>
+                                <?php else: ?>
+                                    <span class="lims-step-chip step-muted" title="Pendiente de recepción completa"><i class="fa-solid fa-lock"></i> 3. Ejecución Lab</span>
+                                <?php endif; ?>
+
+                                <!-- PASO 4: 4. Revisión Supervisor -->
+                                <?php if ($supAprobadoFila): ?>
+                                    <span class="lims-step-chip step-ok" title="Aprobación única de supervisor completada"><i class="fa-solid fa-circle-check"></i> 4. Revisión Supervisor</span>
+                                <?php elseif ($supEnRevisionFila): ?>
+                                    <span class="lims-step-chip step-info" title="En bandeja del supervisor para aprobación"><i class="fa-solid fa-user-check"></i> 4. Revisión Supervisor</span>
+                                <?php else: ?>
+                                    <span class="lims-step-chip step-muted" title="Pendiente de envío a revisión"><i class="fa-solid fa-hourglass"></i> 4. Revisión Supervisor</span>
+                                <?php endif; ?>
+
+                                <!-- PASO 5: 5. Informe PDF -->
+                                <?php if ($supAprobadoFila): ?>
+                                    <span class="lims-step-chip step-ready" title="Informe PDF habilitado"><i class="fa-solid fa-file-pdf"></i> 5. Informe PDF</span>
+                                <?php else: ?>
+                                    <span class="lims-step-chip step-muted" title="Requiere aprobación del supervisor"><i class="fa-solid fa-lock"></i> 5. Informe PDF</span>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                        <!-- ZONA 3: ACCIONES CONTEXTUALES -->
+                        <td style="text-align: right; white-space: nowrap;">
+                            <div class="d-inline-flex align-items-center justify-content-end gap-2">
+                                <!-- BOTÓN PRIMARIO ÚNICO: SIGUIENTE PASO -->
+                                <a href="<?= htmlspecialchars($sigPasoUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn btn-primary btn-sm" style="height:36px; padding: 0 14px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; background-color: #103487; border-color: #103487; color: #ffffff;" title="Ir directamente al siguiente paso pendiente de esta orden">
+                                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Siguiente paso: <?= htmlspecialchars($sigPasoTexto, ENT_QUOTES, 'UTF-8') ?>
+                                </a>
 
                                 <!-- PASO 3: APROBACIÓN -->
                                 <?php if ($o['tecnico_100']): ?>

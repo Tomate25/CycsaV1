@@ -10,6 +10,22 @@ $divisorKgCm2Lab = ConfigCalculoLabServicio::obtenerFloat('cilindros_divisor_kgc
 $redondearPsi10Lab = ConfigCalculoLabServicio::obtenerBool('cilindros_redondear_psi_10', true);
 $redondearPv10Lab = ConfigCalculoLabServicio::obtenerBool('cilindros_redondear_pv_10', true);
 
+$edadesAstmEstandar = [1, 3, 7, 14, 28, 56, 90];
+$areasNominalesFicticias = ['14.137', '14.1372', '28.274', '28.2743', '12.566', '12.5664'];
+
+$resolverToleranciaAstmReal = static function (int $edadDias, $tolRaw) use ($edadesAstmEstandar): float {
+    $edadEfectiva = $edadDias > 0 ? $edadDias : 28;
+    $tolFloat = is_numeric($tolRaw) ? (float)$tolRaw : 0.0;
+    if ($tolFloat <= 0.0 || (abs($tolFloat - 24.0) < 0.01 && in_array($edadEfectiva, $edadesAstmEstandar, true))) {
+        return ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39($edadEfectiva);
+    }
+    return $tolFloat;
+};
+
+$formatearTolTxt = static function (float $tol): string {
+    return rtrim(rtrim(number_format($tol, 2, '.', ''), '0'), '.');
+};
+
 $totalMuestrasLote = count($muestrasLote ?? []);
 $totalReplicasCr = 0;
 $mapaMatrizJs = [];
@@ -24,15 +40,39 @@ foreach (($muestrasLote ?? []) as $itemLote) {
     }
     $dmRow = $itemLote['datos_matriz'] ?? [];
     $dmRow['fecha_moldeo'] = $dmRow['fecha_fabricacion'] ?? ($mRow['fecha_moldeo'] ?? '');
+
+    $esp0Check = $itemLote['especimenes'][0] ?? [];
+    $estaEnsayado = (($esp0Check['estado'] ?? '') === 'ensayado');
+    $d1Check = (!empty($dmRow['diametro_1']) && (float)$dmRow['diametro_1'] > 0) ? (float)$dmRow['diametro_1'] : 0.0;
+    $d2Check = (!empty($dmRow['diametro_2']) && (float)$dmRow['diametro_2'] > 0) ? (float)$dmRow['diametro_2'] : 0.0;
+    $areaRawStr = isset($dmRow['area']) && $dmRow['area'] !== null && $dmRow['area'] !== ''
+        ? rtrim(rtrim(number_format((float)$dmRow['area'], 4, '.', ''), '0'), '.')
+        : '';
+
+    // Bug En Vivo #1: si D1 y D2 están vacíos y la probeta no ha sido ensayada, forzar $areaPrevia = '' (limpiando 14.137 / 28.274 / 12.566)
+    if (!$estaEnsayado && ($d1Check <= 0.0 || $d2Check <= 0.0)) {
+        $dmRow['area'] = '';
+        $areaDef = '';
+    } elseif ($d1Check > 0.0 && $d2Check > 0.0) {
+        $areaCalcD = round(ConfigCalculoLabServicio::calcularAreaCilindroIn2($d1Check, $d2Check), 3);
+        $dmRow['area'] = $areaCalcD;
+        $areaDef = $areaCalcD;
+    } elseif ($estaEnsayado && !empty($esp0Check['area']) && (float)$esp0Check['area'] > 0) {
+        $areaDef = (float)$esp0Check['area'];
+        $dmRow['area'] = $areaDef;
+    } elseif ($estaEnsayado && !empty($dmRow['area']) && !in_array($areaRawStr, $areasNominalesFicticias, true)) {
+        $areaDef = (float)$dmRow['area'];
+    } else {
+        $dmRow['area'] = '';
+        $areaDef = '';
+    }
+
     $mapaMatrizJs[$mId] = $dmRow;
 
-    $areaDef = (!empty($dmRow['area']) && (float)$dmRow['area'] > 0) ? (float)$dmRow['area'] : '';
     foreach (($itemLote['especimenes'] ?? []) as $espItem) {
         if (($espItem['estado'] ?? '') !== 'ensayado' && !empty($espItem['plan_edad_id'])) {
             $edadItem = (int)($espItem['edad_dias'] ?? ($dmRow['edad_dias'] ?? 0));
-            $tolItem = (isset($espItem['tolerancia_horas']) && (float)$espItem['tolerancia_horas'] > 0)
-                ? (float)$espItem['tolerancia_horas']
-                : ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39($edadItem > 0 ? $edadItem : 28);
+            $tolItem = $resolverToleranciaAstmReal($edadItem, $espItem['tolerancia_horas'] ?? null);
             $probetasPendientesLote[] = [
                 'muestra_id' => $mId,
                 'especimen_id' => (int)$espItem['id'],
@@ -42,9 +82,9 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                 'fecha_moldeo' => (string)($dmRow['fecha_fabricacion'] ?? ($mRow['fecha_moldeo'] ?? '')),
                 'fecha_programada' => (string)($espItem['fecha_programada'] ?? ($dmRow['fecha_rotura_programada'] ?? '')),
                 'tolerancia_horas' => $tolItem,
-                'area' => $areaDef,
-                'diametro_1' => (!empty($dmRow['diametro_1']) && (float)$dmRow['diametro_1'] > 0) ? (float)$dmRow['diametro_1'] : '',
-                'diametro_2' => (!empty($dmRow['diametro_2']) && (float)$dmRow['diametro_2'] > 0) ? (float)$dmRow['diametro_2'] : '',
+                'area' => ($d1Check > 0.0 && $d2Check > 0.0) ? $areaDef : '',
+                'diametro_1' => $d1Check > 0.0 ? $d1Check : '',
+                'diametro_2' => $d2Check > 0.0 ? $d2Check : '',
                 'largo_1' => (!empty($dmRow['largo_1']) && (float)$dmRow['largo_1'] > 0) ? (float)$dmRow['largo_1'] : '',
                 'largo_2' => (!empty($dmRow['largo_2']) && (float)$dmRow['largo_2'] > 0) ? (float)$dmRow['largo_2'] : '',
                 'masa_kg' => (!empty($dmRow['masa_kg']) && (float)$dmRow['masa_kg'] > 0) ? (float)$dmRow['masa_kg'] : '',
@@ -97,32 +137,36 @@ foreach (($muestrasLote ?? []) as $itemLote) {
         --cycsa-azul-hover: #0c2766;
         --cycsa-rojo: #e31837;
     }
-    .lab-box { background: white; padding: 22px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 22px; border: 1px solid #e2e8f0; }
-    .tabla-lab { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
-    .tabla-lab th { background: #f8fafc; color: #475569; font-weight: 700; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; font-size: 11px; white-space: nowrap; }
-    .tabla-lab td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #334155; }
+    .lab-box { background: #ffffff; padding: 22px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 22px; border: 1px solid #e2e8f0; }
+    .tabla-lab { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
+    .tabla-lab th { background: #f8fafc; color: #334155; font-weight: 700; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; font-size: 12px; white-space: nowrap; }
+    .tabla-lab td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #334155; font-size: 13.5px; }
     .tabla-lab tr:hover td { background-color: #f8fafc; }
-    .badge-lab { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-lab { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
     .badge-ensayado { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .badge-aprobado { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
     .badge-devuelto { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
     .badge-revision { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
-    .badge-programado { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .badge-programado { background: #f1f5f9; color: #103487; border: 1px solid #cbd5e1; }
     .badge-curado { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
     .badge-vencido { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
     .badge-replica { background: #fef3c7; color: #b45309; border: 1px solid #f59e0b; }
-    .btn-accion { border: none; background: none; cursor: pointer; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-accion { border: none; background: none; cursor: pointer; padding: 7px 13px; border-radius: 6px; font-size: 13px; font-weight: 700; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
     .btn-primary-lab { background: #103487; color: white; border: 1px solid #103487; }
     .btn-primary-lab:hover { background: #0c2766; color: white; }
-    .btn-success-lab { background: #10b981; color: white; border: 1px solid #059669; }
-    .btn-success-lab:hover { background: #059669; color: white; }
-    .btn-warning-lab { background: #f59e0b; color: white; border: 1px solid #d97706; }
-    .btn-warning-lab:hover { background: #d97706; color: white; }
-    .btn-secondary-lab { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
-    .btn-secondary-lab:hover { background: #e2e8f0; }
+    .btn-success-lab { background: #166534; color: white; border: 1px solid #15803d; }
+    .btn-success-lab:hover { background: #14532d; color: white; }
+    .btn-warning-lab { background: #b45309; color: white; border: 1px solid #92400e; }
+    .btn-warning-lab:hover { background: #92400e; color: white; }
+    .btn-secondary-lab { background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; }
+    .btn-secondary-lab:hover { background: #e2e8f0; color: #0f172a; }
     .btn-accion[disabled] { opacity: 0.6; cursor: not-allowed; }
-    .modal-lab { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
-    .modal-lab-content { background: white; margin: 3% auto; padding: 25px 30px; border-radius: 12px; width: 92%; max-width: 720px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15); border: 1px solid #e2e8f0; box-sizing: border-box; }
+    .modal-lab { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(3px); }
+    .modal-lab-content { background: #ffffff; margin: 3% auto; padding: 25px 30px; border-radius: 12px; width: 92%; max-width: 720px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15); border: 1px solid #e2e8f0; box-sizing: border-box; }
+    .modal-header-sobrio { background: #ffffff; border-bottom: 1px solid #e2e8f0; color: #0f172a; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .input-inline-lab { height: 34px; padding: 4px 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #0f172a; background: #ffffff; box-sizing: border-box; }
+    .input-inline-lab:focus { border-color: #103487; outline: none; box-shadow: 0 0 0 2px rgba(16, 52, 135, 0.12); }
+    .input-inline-readonly { background: #f8fafc; color: #334155; font-family: monospace; font-weight: 700; }
 </style>
 
 <!-- Encabezado del Lote -->
@@ -215,13 +259,25 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                 $tempMuestra = $dm['temperatura_c'] ?? ($m['temperatura_c'] ?? null);
                 
                 $tamanoCil = $dm['tamano_cilindro'] ?? (!empty($esp['dimensiones']) ? $esp['dimensiones'] : null);
-                $areaVal = !empty($dm['area']) ? (float)$dm['area'] : (!empty($esp['area']) ? (float)$esp['area'] : null);
+                $ensayado = (!empty($esp['estado']) && $esp['estado'] === 'ensayado');
+                $d1Fila = (!empty($dm['diametro_1']) && (float)$dm['diametro_1'] > 0) ? (float)$dm['diametro_1'] : 0.0;
+                $d2Fila = (!empty($dm['diametro_2']) && (float)$dm['diametro_2'] > 0) ? (float)$dm['diametro_2'] : 0.0;
+                if (!$ensayado && ($d1Fila <= 0.0 || $d2Fila <= 0.0)) {
+                    $areaVal = null;
+                } elseif ($d1Fila > 0.0 && $d2Fila > 0.0) {
+                    $areaVal = round(ConfigCalculoLabServicio::calcularAreaCilindroIn2($d1Fila, $d2Fila), 3);
+                } elseif ($ensayado && !empty($esp['area']) && (float)$esp['area'] > 0) {
+                    $areaVal = (float)$esp['area'];
+                } elseif ($ensayado && !empty($dm['area']) && (float)$dm['area'] > 0) {
+                    $areaVal = (float)$dm['area'];
+                } else {
+                    $areaVal = null;
+                }
                 
                 $edadDias = $dm['edad_dias'] ?? (!empty($esp['edad_dias']) ? (int)$esp['edad_dias'] : null);
                 $fechaProg = $dm['fecha_rotura_programada'] ?? (!empty($esp['fecha_programada']) ? (string)$esp['fecha_programada'] : null);
                 $fechaMoldeo = $dm['fecha_fabricacion'] ?? (!empty($m['fecha_moldeo']) ? (string)$m['fecha_moldeo'] : null);
                 
-                $ensayado = (!empty($esp['estado']) && $esp['estado'] === 'ensayado');
                 $planEdadId = !empty($esp['plan_edad_id']) ? (int)$esp['plan_edad_id'] : 0;
                 $planId = !empty($item['plan']['id']) ? (int)$item['plan']['id'] : 0;
                 $espId = !empty($esp['id']) ? (int)$esp['id'] : 0;
@@ -384,9 +440,7 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                                 </a>
                             <?php endif; ?>
                         <?php elseif ($tieneProgramacion && $planEdadId > 0 && $espId > 0):
-                            $tolEspBtn = (isset($esp['tolerancia_horas']) && (float)$esp['tolerancia_horas'] > 0)
-                                ? (float)$esp['tolerancia_horas']
-                                : ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39((int)($edadDias ?: 28));
+                            $tolEspBtn = $resolverToleranciaAstmReal((int)($edadDias ?: 28), $esp['tolerancia_horas'] ?? null);
                         ?>
                             <button type="button" class="btn-accion btn-primary-lab" onclick="abrirModalRegistrarRoturaLote(<?= $mId ?>, <?= $espId ?>, '<?= htmlspecialchars($codLab, ENT_QUOTES) ?>', <?= $planEdadId ?>, <?= (int)($edadDias ?: 28) ?>, '<?= htmlspecialchars((string)$fechaProg, ENT_QUOTES) ?>', <?= $tolEspBtn ?>, '<?= htmlspecialchars((string)($fechaMoldeo ?? ''), ENT_QUOTES) ?>')">
                                 <i class="fa-solid fa-hammer"></i> Romper
@@ -419,6 +473,179 @@ foreach (($muestrasLote ?? []) as $itemLote) {
             <?php endif; ?>
         </tbody>
     </table>
+</div>
+
+<!-- CAPTURA EN LÍNEA EN LA MISMA TABLA (SIN MODAL POR PROBETA - SECCIÓN 2 Y 6.1) -->
+<div class="lab-box" id="seccionCapturaEnLineaLote" style="padding: 18px; overflow-x: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h4 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-table-cells" style="color: var(--cycsa-azul);"></i>
+                Captura en Línea de Mediciones y Roturas del Lote (RT-FM-61)
+            </h4>
+            <span style="font-size: 13px; color: #475569;">
+                Capture <strong>D1, D2, L1, L2, Masa y Carga</strong> directamente en la tabla sin abrir modales individuales. El Área permanece vacía hasta ingresar D1 y D2.
+            </span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <?php
+                $idOsHojaEnvio = (int)($hoja['id_os'] ?? ($muestrasLote[0]['muestra']['id_os'] ?? 0));
+                $idDetalleHojaEnvio = (int)($hoja['id_detalle_cotizacion'] ?? ($detalleCotizacion['id'] ?? 0));
+                $todasProbetasEnsayadas = ($totalProbetas > 0 && $totalEnsayadas >= $totalProbetas);
+            ?>
+            <?php if ($idOsHojaEnvio > 0 && $idDetalleHojaEnvio > 0): ?>
+                <form method="POST" action="/Cycsa/publico/operaciones/enviar-matriz-revision" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="id_os" value="<?= $idOsHojaEnvio ?>">
+                    <input type="hidden" name="id_detalle" value="<?= $idDetalleHojaEnvio ?>">
+                    <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
+                    <button type="submit" id="btnEnviarRevisionSupervisorLote" class="btn-accion <?= $todasProbetasEnsayadas ? 'btn-success-lab' : 'btn-secondary-lab' ?>" <?= $todasProbetasEnsayadas ? '' : 'disabled title="Disponible al completar todas las roturas del lote"' ?>>
+                        <i class="fa-solid fa-paper-plane"></i> Enviar a Revisión del Supervisor
+                    </button>
+                </form>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <form id="formCapturaEnLineaLote" method="POST" action="/Cycsa/publico/laboratorio/registrar-roturas-lote">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="id_hoja" value="<?= (int)$id_hoja ?>">
+
+        <table class="tabla-lab" id="tablaCapturaEnLineaLote">
+            <thead>
+                <tr>
+                    <th>Probeta</th>
+                    <th>Edad / Tol. ASTM C39</th>
+                    <th>D1 (cm)</th>
+                    <th>D2 (cm)</th>
+                    <th>L1 (cm)</th>
+                    <th>L2 (cm)</th>
+                    <th>Masa (kg)</th>
+                    <th>Carga (lb)</th>
+                    <th>Fecha Ensayo</th>
+                    <th>Tipo de Falla</th>
+                    <th>Área (in²)</th>
+                    <th>PV (kg/m³)</th>
+                    <th>Edad (días)</th>
+                    <th>PSI (a 10)</th>
+                    <th>kgf/cm²</th>
+                    <th style="text-align: right;">Guardar Fila</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach (($muestrasLote ?? []) as $inIdx => $itemIn):
+                    $mIn = $itemIn['muestra'] ?? [];
+                    $mIdIn = (int)($mIn['muestra_id'] ?? 0);
+                    $espIn = $itemIn['especimenes'][0] ?? [];
+                    $dmIn = $itemIn['datos_matriz'] ?? [];
+                    $espIdIn = (int)($espIn['id'] ?? 0);
+                    $planEdadIdIn = (int)($espIn['plan_edad_id'] ?? 0);
+                    $codLabIn = (string)($espIn['codigo_lab'] ?? ($mIn['codigo_lab'] ?? ''));
+                    $ensayadoIn = (($espIn['estado'] ?? '') === 'ensayado');
+                    $edadProgIn = (int)($dmIn['edad_dias'] ?? ($espIn['edad_dias'] ?? 28));
+                    $fechaMoldeoIn = (string)($dmIn['fecha_fabricacion'] ?? ($mIn['fecha_moldeo'] ?? ''));
+                    $fechaProgIn = (string)($dmIn['fecha_rotura_programada'] ?? ($espIn['fecha_programada'] ?? ''));
+                    $tolHorasIn = $resolverToleranciaAstmReal($edadProgIn, $espIn['tolerancia_horas'] ?? null);
+                    $tolTxtIn = $formatearTolTxt($tolHorasIn);
+
+                    $crudosEsp = [];
+                    if (!empty($espIn['datos_crudos'])) {
+                        $crudosEsp = is_string($espIn['datos_crudos']) ? (json_decode($espIn['datos_crudos'], true) ?: []) : (array)$espIn['datos_crudos'];
+                    }
+                    $d1In = $crudosEsp['diametro_1'] ?? ($dmIn['diametro_1'] ?? '');
+                    $d2In = $crudosEsp['diametro_2'] ?? ($dmIn['diametro_2'] ?? '');
+                    $l1In = $crudosEsp['largo_1'] ?? ($dmIn['largo_1'] ?? '');
+                    $l2In = $crudosEsp['largo_2'] ?? ($dmIn['largo_2'] ?? '');
+                    $masaIn = $crudosEsp['masa_kg'] ?? ($dmIn['masa_kg'] ?? '');
+
+                    $tieneDiametrosIn = (is_numeric($d1In) && (float)$d1In > 0 && is_numeric($d2In) && (float)$d2In > 0);
+                    if ($tieneDiametrosIn) {
+                        $areaInStr = number_format(ConfigCalculoLabServicio::calcularAreaCilindroIn2((float)$d1In, (float)$d2In), 3, '.', '');
+                    } elseif ($ensayadoIn && !empty($espIn['area']) && (float)$espIn['area'] > 0) {
+                        $areaInStr = number_format((float)$espIn['area'], 3, '.', '');
+                    } else {
+                        $areaInStr = '';
+                    }
+
+                    $cargaInStr = ($ensayadoIn && !empty($espIn['carga']) && (float)$espIn['carga'] > 0) ? (string)(float)$espIn['carga'] : '';
+                    $fechaRealIn = !empty($espIn['fecha_real']) ? date('Y-m-d\TH:i', strtotime((string)$espIn['fecha_real'])) : date('Y-m-d\TH:i');
+                    $tipoFallaIn = (string)($espIn['tipo_falla'] ?? 'Tipo 1 (Cono bien formado)');
+                    $pvInTxt = ($ensayadoIn && !empty($espIn['peso_volumetrico'])) ? number_format((float)$espIn['peso_volumetrico'], 0, '.', '') : '--';
+                    $edadRealInTxt = ($ensayadoIn && isset($espIn['edad_calculada'])) ? ((int)$espIn['edad_calculada'] . 'd') : ($edadProgIn > 0 ? ($edadProgIn . 'd') : '--');
+                    $psiInTxt = ($ensayadoIn && !empty($espIn['esfuerzo_psi'])) ? number_format((float)$espIn['esfuerzo_psi'], 0, '.', '') : '--';
+                    $kgcm2InTxt = ($ensayadoIn && !empty($espIn['esfuerzo_kgcm2'])) ? number_format((float)$espIn['esfuerzo_kgcm2'], 0, '.', '') : '--';
+                ?>
+                <tr class="fila-captura-inline" data-idx="<?= $inIdx ?>">
+                    <td style="font-family: monospace; font-weight: 800; color: #103487; white-space: nowrap;">
+                        <?= htmlspecialchars($codLabIn, ENT_QUOTES, 'UTF-8') ?>
+                        <input type="hidden" name="roturas[<?= $inIdx ?>][muestra_id]" class="inline-muestra-id" data-idx="<?= $inIdx ?>" value="<?= $mIdIn ?>">
+                        <input type="hidden" name="roturas[<?= $inIdx ?>][especimen_id]" class="inline-especimen-id" data-idx="<?= $inIdx ?>" value="<?= $espIdIn ?>">
+                        <input type="hidden" name="roturas[<?= $inIdx ?>][plan_edad_id]" class="inline-plan-edad-id" data-idx="<?= $inIdx ?>" value="<?= $planEdadIdIn ?>">
+                        <input type="hidden" name="roturas[<?= $inIdx ?>][edad_dias]" class="inline-edad-prog" data-idx="<?= $inIdx ?>" value="<?= $edadProgIn ?>">
+                        <input type="hidden" class="inline-fecha-moldeo" data-idx="<?= $inIdx ?>" value="<?= htmlspecialchars($fechaMoldeoIn, ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" class="inline-fecha-prog" data-idx="<?= $inIdx ?>" value="<?= htmlspecialchars($fechaProgIn, ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" class="inline-tol-horas" data-idx="<?= $inIdx ?>" value="<?= htmlspecialchars($tolTxtIn, ENT_QUOTES, 'UTF-8') ?>">
+                    </td>
+                    <td style="white-space: nowrap; font-size: 12.5px;">
+                        <strong><?= $edadProgIn ?>d</strong>
+                        <span class="inline-tol-badge" data-idx="<?= $inIdx ?>" style="color: #475569; font-size: 12px;">(&plusmn;<?= htmlspecialchars($tolTxtIn, ENT_QUOTES, 'UTF-8') ?> hrs)</span>
+                    </td>
+                    <td>
+                        <input type="text" inputmode="decimal" name="roturas[<?= $inIdx ?>][diametro_1]" class="input-inline-lab inline-d1" data-idx="<?= $inIdx ?>" style="width: 72px;" value="<?= htmlspecialchars((string)$d1In, ENT_QUOTES, 'UTF-8') ?>" placeholder="D1 cm" oninput="calcularFilaInline(<?= $inIdx ?>)">
+                    </td>
+                    <td>
+                        <input type="text" inputmode="decimal" name="roturas[<?= $inIdx ?>][diametro_2]" class="input-inline-lab inline-d2" data-idx="<?= $inIdx ?>" style="width: 72px;" value="<?= htmlspecialchars((string)$d2In, ENT_QUOTES, 'UTF-8') ?>" placeholder="D2 cm" oninput="calcularFilaInline(<?= $inIdx ?>)">
+                    </td>
+                    <td>
+                        <input type="text" inputmode="decimal" name="roturas[<?= $inIdx ?>][largo_1]" class="input-inline-lab inline-l1" data-idx="<?= $inIdx ?>" style="width: 72px;" value="<?= htmlspecialchars((string)$l1In, ENT_QUOTES, 'UTF-8') ?>" placeholder="L1 cm" oninput="calcularFilaInline(<?= $inIdx ?>)">
+                    </td>
+                    <td>
+                        <input type="text" inputmode="decimal" name="roturas[<?= $inIdx ?>][largo_2]" class="input-inline-lab inline-l2" data-idx="<?= $inIdx ?>" style="width: 72px;" value="<?= htmlspecialchars((string)$l2In, ENT_QUOTES, 'UTF-8') ?>" placeholder="L2 cm" oninput="calcularFilaInline(<?= $inIdx ?>)">
+                    </td>
+                    <td>
+                        <input type="text" inputmode="decimal" name="roturas[<?= $inIdx ?>][masa_kg]" class="input-inline-lab inline-masa" data-idx="<?= $inIdx ?>" style="width: 76px;" value="<?= htmlspecialchars((string)$masaIn, ENT_QUOTES, 'UTF-8') ?>" placeholder="kg" oninput="calcularFilaInline(<?= $inIdx ?>)">
+                    </td>
+                    <td>
+                        <input type="text" inputmode="decimal" name="roturas[<?= $inIdx ?>][carga]" class="input-inline-lab inline-carga" data-idx="<?= $inIdx ?>" style="width: 96px; font-weight: 800; font-family: monospace;" value="<?= htmlspecialchars($cargaInStr, ENT_QUOTES, 'UTF-8') ?>" placeholder="Carga lb" oninput="calcularFilaInline(<?= $inIdx ?>)">
+                    </td>
+                    <td>
+                        <input type="datetime-local" name="roturas[<?= $inIdx ?>][fecha_real]" class="input-inline-lab inline-fecha" data-idx="<?= $inIdx ?>" style="width: 158px;" value="<?= htmlspecialchars($fechaRealIn, ENT_QUOTES, 'UTF-8') ?>" onchange="calcularFilaInline(<?= $inIdx ?>)">
+                    </td>
+                    <td>
+                        <select name="roturas[<?= $inIdx ?>][tipo_falla]" class="input-inline-lab inline-falla" data-idx="<?= $inIdx ?>" style="width: 130px;">
+                            <option value="Tipo 1 (Cono bien formado)" <?= str_contains($tipoFallaIn, 'Tipo 1') ? 'selected' : '' ?>>Tipo 1 (Cono)</option>
+                            <option value="Tipo 2 (Cono y división)" <?= str_contains($tipoFallaIn, 'Tipo 2') ? 'selected' : '' ?>>Tipo 2 (Cono/div)</option>
+                            <option value="Tipo 3 (División columnar)" <?= str_contains($tipoFallaIn, 'Tipo 3') ? 'selected' : '' ?>>Tipo 3 (Columnar)</option>
+                            <option value="Tipo 4 (Fractura diagonal)" <?= str_contains($tipoFallaIn, 'Tipo 4') ? 'selected' : '' ?>>Tipo 4 (Diagonal)</option>
+                            <option value="Tipo 5 (Fractura en esquinas)" <?= str_contains($tipoFallaIn, 'Tipo 5') ? 'selected' : '' ?>>Tipo 5 (Esquinas)</option>
+                            <option value="Tipo 6 (Extremo en punta)" <?= str_contains($tipoFallaIn, 'Tipo 6') ? 'selected' : '' ?>>Tipo 6 (Punta)</option>
+                        </select>
+                        <input type="text" name="roturas[<?= $inIdx ?>][justificacion]" class="input-inline-lab inline-justificacion" data-idx="<?= $inIdx ?>" style="display: none; width: 130px; margin-top: 4px; border-color: #dc2626;" placeholder="Justificación ASTM C39">
+                    </td>
+                    <td>
+                        <input type="text" name="roturas[<?= $inIdx ?>][area]" class="input-inline-lab input-inline-readonly inline-area" data-idx="<?= $inIdx ?>" style="width: 78px;" value="<?= htmlspecialchars($areaInStr, ENT_QUOTES, 'UTF-8') ?>" placeholder="D1 y D2" readonly>
+                    </td>
+                    <td><span id="inline_pv_<?= $inIdx ?>" style="font-family: monospace; font-weight: 700; color: #334155;"><?= htmlspecialchars($pvInTxt, ENT_QUOTES, 'UTF-8') ?></span></td>
+                    <td><span id="inline_edad_<?= $inIdx ?>" style="font-family: monospace; font-weight: 700; color: #334155;"><?= htmlspecialchars($edadRealInTxt, ENT_QUOTES, 'UTF-8') ?></span></td>
+                    <td><span id="inline_psi_<?= $inIdx ?>" style="font-family: monospace; font-weight: 800; color: #103487;"><?= htmlspecialchars($psiInTxt, ENT_QUOTES, 'UTF-8') ?></span></td>
+                    <td><span id="inline_kgcm2_<?= $inIdx ?>" style="font-family: monospace; font-weight: 800; color: #166534;"><?= htmlspecialchars($kgcm2InTxt, ENT_QUOTES, 'UTF-8') ?></span></td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <button type="button" class="btn-accion btn-secondary-lab" onclick="guardarFilaCapturaEnLinea(<?= $inIdx ?>)" title="Guardar esta probeta en línea">
+                            <i class="fa-solid fa-floppy-disk"></i> Guardar
+                        </button>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; gap: 10px;">
+            <span id="inline_feedback_msg" style="font-size: 13px; color: #475569;"></span>
+            <button type="submit" id="btnGuardarCapturaEnLineaLote" class="btn-accion btn-primary-lab" style="font-size: 13.5px; padding: 8px 18px;">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar Captura en Línea del Lote
+            </button>
+        </div>
+    </form>
 </div>
 
 <!-- 4. ROMPIMIENTO CONSOLIDADO E INFORMES OFICIALES DEL LOTE (RT-FM-13) -->
@@ -563,9 +790,9 @@ foreach (($muestrasLote ?? []) as $itemLote) {
 <!-- Modal Captura de Rotura Individual -->
 <div id="modalRegistrarRotura" class="modal-lab">
     <div class="modal-lab-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
-            <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--cycsa-azul);">
-                <i class="fa-solid fa-hammer"></i> Captura de Rotura: <span id="rot_esp_codigo" style="font-family: monospace; color:#0369a1;"></span>
+        <div class="modal-header-sobrio">
+            <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #0f172a;">
+                <i class="fa-solid fa-hammer" style="color: var(--cycsa-azul);"></i> Captura de Rotura: <span id="rot_esp_codigo" style="font-family: monospace; color: var(--cycsa-azul);"></span>
             </h3>
             <button type="button" onclick="cerrarModalRegistrarRotura()" style="border: none; background: none; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
         </div>
@@ -668,13 +895,13 @@ foreach (($muestrasLote ?? []) as $itemLote) {
 
             <!-- Alerta y Justificación de Tolerancia Temporal (ASTM C39) -->
             <div id="box_justificacion_tolerancia_lote" style="display: none; background: #fff1f2; border: 1.5px solid #fecaca; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;">
-                <div style="font-size: 11.5px; font-weight: 800; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                    <i class="fa-solid fa-triangle-exclamation"></i> ENSAYO FUERA DE TOLERANCIA ASTM C39
+                <div style="font-size: 13px; font-weight: 800; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> ENSAYO FUERA DE TOLERANCIA ASTM C39 (<span id="rot_alerta_tolerancia">&plusmn;20 hrs</span>)
                 </div>
-                <div style="font-size: 11.5px; color: #881337; margin-bottom: 6px; line-height: 1.35;">
-                    La fecha/hora seleccionada excede la ventana admisible para esta edad (±<span id="rot_tol_hrs_txt">20</span> hrs). Ingrese una justificación técnica obligatoria.
+                <div style="font-size: 13px; color: #881337; margin-bottom: 6px; line-height: 1.35;">
+                    La fecha/hora seleccionada excede la ventana admisible para esta edad (&plusmn;<span id="rot_tol_hrs_txt">20</span> hrs). Ingrese una justificación técnica obligatoria.
                 </div>
-                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 6px 8px; font-size: 12px; border: 1px solid #fca5a5; border-radius: 6px;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
+                <textarea id="rot_justificacion" name="justificacion" rows="2" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical; padding: 6px 8px; font-size: 13px; border: 1px solid #fca5a5; border-radius: 6px;" placeholder="Justificación técnica por ensayo extemporáneo..."></textarea>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
@@ -869,6 +1096,9 @@ function calcularBatchRow(idx) {
     if (areaCalc > 0) {
         inputArea.value = areaCalc.toFixed(3);
         inputArea.readOnly = true;
+    } else {
+        inputArea.value = '';
+        inputArea.readOnly = true;
     }
 
     const c = parseFloat(inputCarga.value || 0);
@@ -928,9 +1158,6 @@ function abrirModalRegistrarRoturaLote(muestraId, espId, codigoLab, planEdadId, 
     if (dm.diametro_1 > 0 && dm.diametro_2 > 0) {
         areaInput.value = calcularAreaDesdeDiametros(parseFloat(dm.diametro_1), parseFloat(dm.diametro_2)).toFixed(3);
         areaInput.readOnly = true;
-    } else if (dm.area && parseFloat(dm.area) > 0) {
-        areaInput.value = parseFloat(dm.area).toFixed(3);
-        areaInput.readOnly = true;
     } else {
         areaInput.value = '';
         areaInput.readOnly = true;
@@ -938,12 +1165,26 @@ function abrirModalRegistrarRoturaLote(muestraId, espId, codigoLab, planEdadId, 
 
     const justElem = document.getElementById('rot_justificacion');
     if (justElem) justElem.value = '';
+    const tolNorm = obtenerToleranciaAstmC39Js(edadDias, tolHoras);
+    document.getElementById('rot_tol_horas').value = tolNorm;
     const tolTxt = document.getElementById('rot_tol_hrs_txt');
-    if (tolTxt) tolTxt.innerText = tolHoras;
+    if (tolTxt) tolTxt.innerText = tolNorm;
+    const alertaTol = document.getElementById('rot_alerta_tolerancia');
+    if (alertaTol) alertaTol.innerText = '±' + tolNorm + ' hrs';
 
     calcularEsfuerzoLote();
     verificarToleranciaTiempoLote();
     document.getElementById('modalRegistrarRotura').style.display = 'block';
+}
+
+function obtenerToleranciaAstmC39Js(edadDias, tolRaw) {
+    const edad = parseInt(edadDias || 28, 10);
+    const tabla = {1: 0.5, 3: 2, 7: 6, 14: 12, 28: 20, 56: 36, 90: 48};
+    const tol = parseFloat(tolRaw || 0);
+    if (!tol || tol <= 0 || (Math.abs(tol - 24) < 0.01 && tabla[edad] !== undefined)) {
+        return tabla[edad] !== undefined ? tabla[edad] : Math.max(2, Math.round(edad * 0.75 * 100) / 100);
+    }
+    return tol;
 }
 
 function cerrarModalRegistrarRotura() {
@@ -957,6 +1198,9 @@ function recalcularAreaLote() {
     const areaIn2 = calcularAreaDesdeDiametros(d1, d2);
     if (areaIn2 > 0) {
         areaInput.value = areaIn2.toFixed(3);
+        areaInput.readOnly = true;
+    } else if (areaInput) {
+        areaInput.value = '';
         areaInput.readOnly = true;
     }
     calcularEsfuerzoLote();
@@ -1079,6 +1323,166 @@ function abrirModalReemitirInforme(informeId, numero) {
 function cerrarModalReemitirInforme() {
     const modal = document.getElementById('modalReemitirInforme');
     if (modal) modal.style.display = 'none';
+}
+
+function calcularFilaInline(idx) {
+    const d1 = parseFloat((document.querySelector(`.inline-d1[data-idx="${idx}"]`)?.value || '').replace(',', '.')) || 0;
+    const d2 = parseFloat((document.querySelector(`.inline-d2[data-idx="${idx}"]`)?.value || '').replace(',', '.')) || 0;
+    const l1 = parseFloat((document.querySelector(`.inline-l1[data-idx="${idx}"]`)?.value || '').replace(',', '.')) || 0;
+    const l2 = parseFloat((document.querySelector(`.inline-l2[data-idx="${idx}"]`)?.value || '').replace(',', '.')) || 0;
+    const masa = parseFloat((document.querySelector(`.inline-masa[data-idx="${idx}"]`)?.value || '').replace(',', '.')) || 0;
+    const carga = parseFloat((document.querySelector(`.inline-carga[data-idx="${idx}"]`)?.value || '').replace(',', '.')) || 0;
+    const fechaEns = document.querySelector(`.inline-fecha[data-idx="${idx}"]`)?.value || '';
+    const fechaMol = document.querySelector(`.inline-fecha-moldeo[data-idx="${idx}"]`)?.value || '';
+    const fechaProg = document.querySelector(`.inline-fecha-prog[data-idx="${idx}"]`)?.value || '';
+    const edadProg = parseInt(document.querySelector(`.inline-edad-prog[data-idx="${idx}"]`)?.value || '28', 10);
+    const tolRaw = document.querySelector(`.inline-tol-horas[data-idx="${idx}"]`)?.value || '';
+    const tolHoras = obtenerToleranciaAstmC39Js(edadProg, tolRaw);
+
+    const inputArea = document.querySelector(`.inline-area[data-idx="${idx}"]`);
+    const inputJust = document.querySelector(`.inline-justificacion[data-idx="${idx}"]`);
+    const tolBadge = document.querySelector(`.inline-tol-badge[data-idx="${idx}"]`);
+    const pvSpan = document.getElementById(`inline_pv_${idx}`);
+    const edadSpan = document.getElementById(`inline_edad_${idx}`);
+    const psiSpan = document.getElementById(`inline_psi_${idx}`);
+    const kgcm2Span = document.getElementById(`inline_kgcm2_${idx}`);
+
+    const areaCalc = calcularAreaDesdeDiametros(d1, d2);
+    if (inputArea) {
+        inputArea.value = areaCalc > 0 ? areaCalc.toFixed(3) : '';
+    }
+
+    const lProm = (l1 > 0 && l2 > 0) ? ((l1 + l2) / 2.0) : (l1 > 0 ? l1 : l2);
+    if (masa > 0 && areaCalc > 0 && lProm > 0) {
+        const volM3 = (areaCalc * 6.4516 * lProm) / 1000000.0;
+        const pvRaw = masa / volM3;
+        const pv = LAB_REDONDEAR_PV_10 ? (Math.round(pvRaw / 10.0) * 10.0) : Math.round(pvRaw);
+        if (pvSpan) pvSpan.innerText = pv.toFixed(0);
+    } else if (pvSpan) {
+        pvSpan.innerText = '--';
+    }
+
+    const edadCalc = calcularEdadDiasJs(fechaMol, fechaEns);
+    if (edadSpan) {
+        edadSpan.innerText = edadCalc !== null ? (edadCalc + 'd') : (edadProg > 0 ? (edadProg + 'd') : '--');
+    }
+
+    if (carga > 0 && areaCalc > 0) {
+        const psiBruto = carga / areaCalc;
+        const psi = LAB_REDONDEAR_PSI_10 ? (Math.round(psiBruto / 10.0) * 10.0) : parseFloat(psiBruto.toFixed(2));
+        const kgcm2 = Math.round(psi / LAB_DIVISOR_KGCM2);
+        if (psiSpan) psiSpan.innerText = psi.toFixed(0);
+        if (kgcm2Span) kgcm2Span.innerText = kgcm2.toFixed(0);
+    } else {
+        if (psiSpan) psiSpan.innerText = '--';
+        if (kgcm2Span) kgcm2Span.innerText = '--';
+    }
+
+    if (fechaProg && fechaEns) {
+        const tReal = new Date(fechaEns).getTime();
+        const tProg = new Date(fechaProg + 'T08:00:00').getTime();
+        const difHoras = Math.abs(tReal - tProg) / (1000 * 3600);
+        if (difHoras > tolHoras) {
+            if (inputJust) {
+                inputJust.style.display = 'block';
+                inputJust.placeholder = `Justif. fuera ±${tolHoras}h`;
+            }
+            if (tolBadge) {
+                tolBadge.style.color = '#b91c1c';
+                tolBadge.style.fontWeight = '700';
+                tolBadge.innerText = `(Fuera ±${tolHoras} hrs)`;
+            }
+        } else {
+            if (inputJust) inputJust.style.display = 'none';
+            if (tolBadge) {
+                tolBadge.style.color = '#475569';
+                tolBadge.style.fontWeight = '400';
+                tolBadge.innerText = `(±${tolHoras} hrs)`;
+            }
+        }
+    }
+}
+
+function guardarFilaCapturaEnLinea(idx) {
+    calcularFilaInline(idx);
+    const token = document.querySelector('#formCapturaEnLineaLote input[name="csrf_token"]')?.value || '';
+    const idHoja = document.querySelector('#formCapturaEnLineaLote input[name="id_hoja"]')?.value || '';
+    const muestraId = document.querySelector(`.inline-muestra-id[data-idx="${idx}"]`)?.value || '';
+    const especimenId = document.querySelector(`.inline-especimen-id[data-idx="${idx}"]`)?.value || '';
+    const planEdadId = document.querySelector(`.inline-plan-edad-id[data-idx="${idx}"]`)?.value || '';
+    const edadDias = document.querySelector(`.inline-edad-prog[data-idx="${idx}"]`)?.value || '';
+    const d1 = document.querySelector(`.inline-d1[data-idx="${idx}"]`)?.value || '';
+    const d2 = document.querySelector(`.inline-d2[data-idx="${idx}"]`)?.value || '';
+    const l1 = document.querySelector(`.inline-l1[data-idx="${idx}"]`)?.value || '';
+    const l2 = document.querySelector(`.inline-l2[data-idx="${idx}"]`)?.value || '';
+    const masa = document.querySelector(`.inline-masa[data-idx="${idx}"]`)?.value || '';
+    const carga = document.querySelector(`.inline-carga[data-idx="${idx}"]`)?.value || '';
+    const area = document.querySelector(`.inline-area[data-idx="${idx}"]`)?.value || '';
+    const fechaReal = document.querySelector(`.inline-fecha[data-idx="${idx}"]`)?.value || '';
+    const tipoFalla = document.querySelector(`.inline-falla[data-idx="${idx}"]`)?.value || 'Tipo 1 (Cono bien formado)';
+    const justificacion = document.querySelector(`.inline-justificacion[data-idx="${idx}"]`)?.value || '';
+    const msgEl = document.getElementById('inline_feedback_msg');
+
+    if (!d1 || !d2 || !carga || parseFloat(carga) <= 0) {
+        if (msgEl) {
+            msgEl.style.color = '#b91c1c';
+            msgEl.innerText = 'Ingrese D1, D2 y una Carga (lb) válida antes de guardar la fila.';
+        }
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('csrf_token', token);
+    fd.append('id_hoja', idHoja);
+    fd.append('muestra_id', muestraId);
+    fd.append('especimen_id', especimenId);
+    fd.append('plan_edad_id', planEdadId);
+    fd.append('edad_dias', edadDias);
+    fd.append('diametro_1', d1);
+    fd.append('diametro_2', d2);
+    fd.append('largo_1', l1);
+    fd.append('largo_2', l2);
+    fd.append('masa_kg', masa);
+    fd.append('carga', carga);
+    fd.append('area', area);
+    fd.append('fecha_real', fechaReal);
+    fd.append('tipo_falla', tipoFalla);
+    fd.append('justificacion', justificacion);
+    fd.append('formato_respuesta', 'json');
+
+    fetch('/Cycsa/publico/laboratorio/registrar-rotura', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success') {
+            if (msgEl) {
+                msgEl.style.color = '#166534';
+                msgEl.innerText = res.message || 'Rotura guardada y sincronizada en línea.';
+            }
+            window.location.reload();
+        } else {
+            if (res.requiere_justificacion) {
+                const inputJust = document.querySelector(`.inline-justificacion[data-idx="${idx}"]`);
+                if (inputJust) {
+                    inputJust.style.display = 'block';
+                    inputJust.focus();
+                }
+            }
+            if (msgEl) {
+                msgEl.style.color = '#b91c1c';
+                msgEl.innerText = res.message || 'No se pudo guardar la fila.';
+            }
+        }
+    })
+    .catch(() => {
+        if (msgEl) {
+            msgEl.style.color = '#b91c1c';
+            msgEl.innerText = 'Error de red al guardar la fila.';
+        }
+    });
 }
 </script>
 

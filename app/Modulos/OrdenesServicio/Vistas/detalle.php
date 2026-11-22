@@ -124,6 +124,11 @@ if (!empty($os['contactos_json'])) {
                     <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
                 </a>
             <?php endif; ?>
+            <?php if (in_array((int)($_SESSION['usuario_rol'] ?? 0), [1, 2, 3], true) || tienePermiso('operaciones', 'aprobar')): ?>
+            <a href="/Cycsa/publico/operaciones?bandeja=supervisor&id_os=<?= (int)($os['id'] ?? 0) ?>" class="btn-cycsa btn-cycsa-secondary" title="Revisión y aprobación técnica unificada del supervisor en Operaciones">
+                <i class="fa-solid fa-user-check"></i> Revisión Supervisor (Operaciones)
+            </a>
+            <?php endif; ?>
             <?php if (!in_array($os['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
             <a href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= (int)($os['id'] ?? 0) ?>" class="btn-cycsa btn-cycsa-secondary">
                 <i class="fa-solid fa-pen-to-square"></i> Editar Orden de Servicio

@@ -461,6 +461,23 @@
             .kpi-container {
                 grid-template-columns: repeat(4, 1fr) !important;
                 gap: 15px !important;
+            }
+        }
+
+        /* Sección 7 Guía Visual Sobria CYCSA: Tipografía mínima legible >= 13px y encabezados sobrios */
+        .modal-header-sobrio {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+        .badge-etapa-sobria {
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
     </style>
 </head>
@@ -487,14 +504,6 @@
             </li>
             
             <li class="menu-categoria">Módulos</li>
-            <?php if (tienePermiso('ventas', 'ver')): ?>
-            <li>
-                <a href="/Cycsa/publico/ventas" class="<?= strpos($rutaActual, '/ventas') !== false ? 'activo' : '' ?>">
-                    <i class="fa-solid fa-cash-register"></i>
-                    <span class="menu-texto">Ventas</span>
-                </a>
-            </li>
-            <?php endif; ?>
             <?php if (tienePermiso('cotizaciones', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/cotizaciones" class="<?= strpos($rutaActual, '/cotizaciones') !== false ? 'activo' : '' ?>">
@@ -503,7 +512,7 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('ordenes_servicio', 'ver')): ?>
+            <?php if (tienePermiso('ordenes_servicio', 'ver') || tienePermiso('recepcion', 'ver')): ?>
             <li>
                 <a href="/Cycsa/publico/ordenes-servicio" class="<?= strpos($rutaActual, '/ordenes-servicio') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-file-contract"></i>
@@ -515,7 +524,15 @@
             <li>
                 <a href="/Cycsa/publico/operaciones" class="<?= strpos($rutaActual, '/operaciones') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-gears"></i>
-                    <span class="menu-texto">Operaciones LIMS</span>
+                    <span class="menu-texto">Operaciones</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('laboratorio', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/laboratorio" class="<?= strpos($rutaActual, '/laboratorio') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-flask-vial"></i>
+                    <span class="menu-texto">Laboratorio</span>
                 </a>
             </li>
             <?php endif; ?>
@@ -527,11 +544,11 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('laboratorio', 'ver')): ?>
+            <?php if (tienePermiso('ventas', 'ver')): ?>
             <li>
-                <a href="/Cycsa/publico/laboratorio" class="<?= strpos($rutaActual, '/laboratorio') !== false ? 'activo' : '' ?>">
-                    <i class="fa-solid fa-flask-vial"></i>
-                    <span class="menu-texto">Laboratorio</span>
+                <a href="/Cycsa/publico/ventas" class="<?= strpos($rutaActual, '/ventas') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-cash-register"></i>
+                    <span class="menu-texto">Ventas y Facturación</span>
                 </a>
             </li>
             <?php endif; ?>

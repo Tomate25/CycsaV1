@@ -254,21 +254,35 @@ class FlujoRecepcionVsTecnicoRtfm13Test extends TestCase {
         $recNombres = array_column($info['campos_recepcion'], 'nombre');
         $tecNombres = $info['campos_tecnico'];
 
-        // Casillas "LLENA RECEPCIÓN" en imagen RT-FM-13
+        // Casillas "LLENA RECEPCIÓN" en RT-FM-13 (Sección 5 Propuesta)
+        $this->assertContains('Nombre muestra', $recNombres);
         $this->assertContains('Reven. (in)', $recNombres);
-        $this->assertContains('Reven. (cm)', $recNombres);
         $this->assertContains('Temp. (°C)', $recNombres);
         $this->assertContains('Diseño de concreto (lb/in²)', $recNombres);
         $this->assertContains('Fecha de Fabricación', $recNombres);
-        $this->assertContains('Fecha de Ensayo', $recNombres);
-        $this->assertContains('Edad (Días)', $recNombres);
+        $this->assertNotContains('Fecha de Ensayo', $recNombres, 'Fecha de Ensayo la genera el técnico al ensayar/romper.');
+        $this->assertNotContains('Edad (Días)', $recNombres, 'Edad (Días) es calculada al registrar la fecha real de ensayo.');
+        $this->assertNotContains('Reven. (cm)', $recNombres, 'Reven. (cm) es calculado automáticamente a partir de Reven. (in).');
 
-        // Casillas "RELLENA TÉCNICO" en imagen Operaciones
+        // Casillas de Técnico / Calculadas / Laboratorio en Operaciones
         $this->assertContains('Área (in²)', $tecNombres);
+        $this->assertContains('Reven. (cm)', $tecNombres);
         $this->assertContains('Carga (lb)', $tecNombres);
         $this->assertContains('Peso Volumétrico (kg/m³)', $tecNombres);
         $this->assertContains('R. Compresión (lb/in²)', $tecNombres);
         $this->assertContains('R. Compresión (kg/cm²)', $tecNombres);
+        $this->assertContains('Fecha de Ensayo', $tecNombres);
+        $this->assertContains('Edad (Días)', $tecNombres);
+
+        // Clasificación de origen exacto según Tabla de Sección 5
+        $this->assertSame('identidad', clasificarOrigenColumnaMatriz('Código laboratorio', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Nombre muestra', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Reven. (in)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('calculado', clasificarOrigenColumnaMatriz('Reven. (cm)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('calculado', clasificarOrigenColumnaMatriz('Área (in²)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('calculado', clasificarOrigenColumnaMatriz('Edad (Días)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('laboratorio', clasificarOrigenColumnaMatriz('Carga (lb)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('laboratorio', clasificarOrigenColumnaMatriz('Fecha de Ensayo', 'formato_de_resistencia_de_concreto.md'));
 
         // Sin traslape entre roles
         $this->assertEmpty(array_intersect($recNombres, $tecNombres));
@@ -539,5 +553,68 @@ class FlujoRecepcionVsTecnicoRtfm13Test extends TestCase {
                 $this->assertSame(1, (int)$os['hojas_servicio'][0]['recepcion_muestras_completas']);
             }
         }
+    }
+
+    public function testMaquinaEtapasRecepcionYClampingFechaEmisionInforme(): void {
+        $creada = $this->crearHojaRtfm13ParaDetalle($this->idDetalleConcreto1, 2, 'MCT-ETP');
+        $idHoja = $creada['id_hoja'];
+        $cods = $creada['codigos'];
+
+        // 1. Validar rechazo 422 si faltan campos obligatorios (Fecha de Fabricación) sin forzar_urgente
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_hoja' => $idHoja,
+            'muestras_recepcion_json' => json_encode([
+                $cods[0] => ['Nombre muestra' => 'Viga V1'],
+                $cods[1] => ['Nombre muestra' => 'Viga V2'],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+        $respIncompleta = new TestRespuestaRecepcionVsTecnico();
+        $this->hsControlador->marcarRecepcionCompleta(new Peticion(), $respIncompleta);
+        $this->assertSame(422, $respIncompleta->codigoRespuesta);
+        $this->assertStringContainsString('Fecha de Fabricación', $respIncompleta->jsonRespuesta['message'] ?? '');
+
+        // 2. Completar Fecha de Fabricación y marcar recepción completa -> 200 OK y recepcion_completa = 1
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_hoja' => $idHoja,
+            'muestras_recepcion_json' => json_encode([
+                $cods[0] => ['Nombre muestra' => 'Viga V1', 'Reven. (in)' => '4', 'Temp. (°C)' => '27', 'Diseño de concreto (lb/in²)' => '3500', 'Fecha de Fabricación' => '2026-11-01'],
+                $cods[1] => ['Nombre muestra' => 'Viga V2', 'Reven. (in)' => '4', 'Temp. (°C)' => '27', 'Diseño de concreto (lb/in²)' => '3500', 'Fecha de Fabricación' => '2026-11-01'],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+        $respCompleta = new TestRespuestaRecepcionVsTecnico();
+        $this->hsControlador->marcarRecepcionCompleta(new Peticion(), $respCompleta);
+        $this->assertSame(200, $respCompleta->codigoRespuesta);
+        $this->assertSame('recepcion_completa', $respCompleta->jsonRespuesta['etapa_flujo']);
+
+        // Verificar que la matriz inicializada NO tiene 14.137
+        $resMatJson = (string)$this->db->query("SELECT resultados_json FROM cotizacion_detalles WHERE id = {$this->idDetalleConcreto1}")->fetchColumn();
+        $this->assertStringNotContainsString('14.137', $resMatJson);
+
+        // 3. Reabrir recepción como supervisor con motivo obligatorio
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_hoja' => $idHoja,
+            'motivo_reapertura' => 'Corrección solicitada de diseño de mezcla en recepción',
+        ];
+        $respReabrir = new TestRespuestaRecepcionVsTecnico();
+        $this->hsControlador->reabrirRecepcion(new Peticion(), $respReabrir);
+        $this->assertSame(200, $respReabrir->codigoRespuesta);
+        $this->assertSame('recepcion_borrador', $respReabrir->jsonRespuesta['etapa_flujo']);
+        $this->assertSame(0, $respReabrir->jsonRespuesta['recepcion_completa']);
+
+        // 4. Hallazgo #3: Fecha de emisión en resolverMetadatosEnsayo nunca anterior a fecha de ejecución
+        $meta = resolverMetadatosEnsayo([
+            'fecha_emision' => '2026-11-09',
+            'fecha_ejecucion' => '2026-11-10',
+            'resultados_json' => json_encode([
+                'filas' => [
+                    ['Código laboratorio' => $cods[0], 'Fecha de Ensayo' => '2026-11-12'],
+                ],
+            ]),
+        ]);
+        $this->assertSame('2026-11-12', $meta['fecha_emision']);
     }
 }

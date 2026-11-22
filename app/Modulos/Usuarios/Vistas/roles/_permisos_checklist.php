@@ -71,6 +71,16 @@ $gruposModulos = [
         'icono' => 'fa-microscope',
         'color' => '#0284c7',
         'modulos' => [
+            'recepcion' => [
+                'nombre' => 'Recepción de Muestras (RT-FM-13)',
+                'icono' => 'fa-clipboard-check',
+                'desc' => 'Captura de datos de recepción por muestra, validación e ingreso formal al laboratorio.',
+                'acciones' => [
+                    'ver' => ['Ver Bandeja de Recepción', 'Consultar hojas RT-FM-13 y estado de recepción de muestras.'],
+                    'crear_editar' => ['Capturar Datos y Completar Recepción', 'Registrar datos de recepción en RT-FM-13 y marcar recepción completa para ingreso a laboratorio.'],
+                    'aprobar' => ['Reabrir Recepción / Autorizar Urgencia', 'Reabrir hojas con recepción completa o autorizar ingreso urgente con nota obligatoria.']
+                ]
+            ],
             'operaciones' => [
                 'nombre' => 'Operaciones LIMS',
                 'icono' => 'fa-calendar-days',

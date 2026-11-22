@@ -475,14 +475,63 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 <i class="fa-solid fa-pen-to-square"></i> Ir a Versión Actual (v<?= $versionActualNum ?>) para Modificar
             </a>
         <?php else: ?>
+            <?php if (!empty($esEnsayoRoturaLab) && !empty($detalle['id_hoja'])): ?>
+                <a href="/Cycsa/publico/laboratorio/ensayos-hoja?id_hoja=<?= (int)$detalle['id_hoja'] ?>" class="btn-matriz-secondary" style="background:#f8fafc; color:#103487; border:1.5px solid #103487; font-weight:700; text-decoration:none; height: 38px; padding: 0 16px; display:inline-flex; align-items:center; gap:6px; border-radius: 6px;" title="Abrir Captura en Línea del Lote en Laboratorio">
+                    <i class="fa-solid fa-flask"></i> Ir a Captura en Línea del Lote (Laboratorio)
+                </a>
+            <?php endif; ?>
             <button type="button" onclick="guardarMatrizFullSubmit()" class="btn-matriz-primary" style="height: 38px; padding: 0 20px; font-size: 13.5px; border-radius: 6px;">
                 <i class="fa-solid fa-floppy-disk"></i> Guardar Matriz del Producto
             </button>
+            <?php if ($revisionInfo['estado'] !== 'aprobada'): ?>
+                <button type="button" onclick="enviarMatrizARevisionSubmit()" class="btn-matriz-secondary" style="background:#eff6ff; color:#103487; border:1.5px solid #103487; font-weight:700; height: 38px; padding: 0 16px; font-size: 13px; border-radius: 6px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Enviar matriz a la bandeja de revisión del supervisor">
+                    <i class="fa-solid fa-paper-plane"></i> Enviar a Revisión del Supervisor
+                </button>
+            <?php endif; ?>
         <?php endif; ?>
 
         <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $detalle['id'] ?><?= $esModoHistorico ? '&version=' . $versionSeleccionadaNum : '' ?>" target="_blank" class="btn-matriz-secondary" style="background:#f8fafc; color:#103487; border:1.5px solid #bfdbfe; font-weight:700; text-decoration:none; height: 38px; padding: 0 16px; display:inline-flex; align-items:center; gap:8px; border-radius: 6px;" title="Ver e imprimir formato técnico horizontal oficial con membrete CYCSA">
             <i class="fa-solid fa-print" style="color:#103487;"></i> Imprimir Matriz <?= $esModoHistorico ? "v{$versionSeleccionadaNum}" : "(Horizontal)" ?>
         </a>
+    </div>
+</div>
+
+<!-- BARRA DE ESPACIO DE TRABAJO EN 3 SECCIONES (REDISEÑO FLUJO OPERACIONES Y LABORATORIO) -->
+<?php
+$idHojaMatrizBar = (int)($detalle['id_hoja'] ?? 0);
+$idOsMatrizBar = (int)($detalle['id_os'] ?? 0);
+$etapaFlujoMatrizBar = (string)($etapaFlujo ?? ($detalle['etapa_flujo'] ?? 'recepcion_borrador'));
+$recCompletaMatrizBar = !empty($recepcionCompleta) || !empty($detalle['recepcion_completa']) || in_array($etapaFlujoMatrizBar, ['recepcion_completa', 'en_ejecucion', 'tecnico_completo', 'matriz_en_revision', 'informe'], true);
+?>
+<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <a href="/Cycsa/publico/ordenes-servicio?id_os=<?= $idOsMatrizBar ?><?= $idHojaMatrizBar > 0 ? '&id_hoja=' . $idHojaMatrizBar : '' ?>" style="text-decoration: none; padding: 10px 14px; border-radius: 6px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #0f172a; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div>
+            <div style="font-size: 13px; font-weight: 800; color: #103487;">① Recepción</div>
+            <div style="font-size: 12px; color: #475569;">Hoja RT-FM-13 y datos del cliente</div>
+        </div>
+        <span style="background: <?= $recCompletaMatrizBar ? '#059669' : '#64748b' ?>; color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 12px;">
+            <?= $recCompletaMatrizBar ? 'Completa' : 'En Borrador' ?>
+        </span>
+    </a>
+
+    <a href="<?= $idHojaMatrizBar > 0 ? '/Cycsa/publico/laboratorio/ensayos-hoja?id_hoja=' . $idHojaMatrizBar : '/Cycsa/publico/laboratorio' ?>" style="text-decoration: none; padding: 10px 14px; border-radius: 6px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #0f172a; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div>
+            <div style="font-size: 13px; font-weight: 800; color: #103487;">② Ejecución Técnica (Laboratorio)</div>
+            <div style="font-size: 12px; color: #475569;">Captura en línea del lote y roturas</div>
+        </div>
+        <span style="background: #103487; color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 12px;">
+            Captura en Línea
+        </span>
+    </a>
+
+    <div style="padding: 10px 14px; border-radius: 6px; border: 1.5px solid #103487; background: #eff6ff; color: #0f172a; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div>
+            <div style="font-size: 13px; font-weight: 800; color: #103487;">③ Matriz RT-FM-22 (Auto-llenada / Solo lectura) y Aprobación</div>
+            <div style="font-size: 12px; color: #475569;">Consolidado automático y aprobación única</div>
+        </div>
+        <span style="background: #103487; color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 12px;">
+            Activa
+        </span>
     </div>
 </div>
 
@@ -951,21 +1000,29 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         </div>
         <!-- CONTENEDOR DE LA TABLA DINÁMICA -->
             <?php if (!empty($tieneCamposRecepcion)): ?>
-            <div id="recepcion-vs-tecnico-bar" style="margin: 0 0 14px; padding: 12px 15px; border: 1px solid #fed7aa; background: linear-gradient(90deg, #fff7ed 0%, #eff6ff 100%); border-radius: 9px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12.5px;">
-                    <span style="display:inline-flex; align-items:center; gap:6px; background:#ffedd5; color:#9a3412; border:1px solid #fdba74; padding:4px 10px; border-radius:999px; font-weight:800;">
+            <div id="recepcion-vs-tecnico-bar" style="margin: 0 0 14px; padding: 12px 15px; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 9px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px;">
+                    <span style="display:inline-flex; align-items:center; gap:6px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:4px 10px; border-radius:999px; font-weight:800;">
                         <i class="fa-solid fa-inbox"></i> LLENA RECEPCIÓN (O/S RT-FM-13)
                     </span>
-                    <span style="color:#475569;">Pre-cargado desde Órdenes de Servicio (<strong><?= (int)($muestrasRecepcionCompletas ?? 0) ?>/<?= count($muestrasSeteadas ?? []) ?></strong> muestras con datos).</span>
-                    <span style="display:inline-flex; align-items:center; gap:6px; background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; padding:4px 10px; border-radius:999px; font-weight:800;">
-                        <i class="fa-solid fa-microscope"></i> RELLENA TÉCNICO (Operaciones)
+                    <span style="color:#475569;">Pre-cargado desde Recepción (<strong><?= (int)($muestrasRecepcionCompletas ?? 0) ?>/<?= count($muestrasSeteadas ?? []) ?></strong> muestras).</span>
+                    <span style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#103487; border:1px solid #bfdbfe; padding:4px 10px; border-radius:999px; font-weight:800;">
+                        <i class="fa-solid fa-flask"></i> Viene del laboratorio
+                    </span>
+                    <span style="display:inline-flex; align-items:center; gap:6px; background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; padding:4px 10px; border-radius:999px; font-weight:800;">
+                        <i class="fa-solid fa-calculator"></i> Calculado · Solo lectura
                     </span>
                 </div>
-                <?php if ($esSupervisor && !$esModoHistorico): ?>
-                <button type="button" id="btn-toggle-recepcion-lock" class="btn-matriz-secondary" onclick="toggleEdicionRecepcionMatriz()" style="background:#fff; color:#9a3412; border-color:#fdba74; font-weight:700; font-size:12px;">
-                    <i class="fa-solid fa-lock"></i> Desbloquear casillas de Recepción
-                </button>
-                <?php endif; ?>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" id="btn-toggle-plegar-recepcion" class="btn-matriz-secondary" onclick="togglePlegarColumnasRecepcion()" style="background:#ffffff; color:#103487; border-color:#cbd5e1; font-weight:700; font-size:13px;">
+                        <i class="fa-solid fa-table-columns"></i> Plegar columnas de recepción
+                    </button>
+                    <?php if ($esSupervisor && !$esModoHistorico): ?>
+                    <button type="button" id="btn-toggle-recepcion-lock" class="btn-matriz-secondary" onclick="toggleEdicionRecepcionMatriz()" style="background:#fff; color:#334155; border-color:#cbd5e1; font-weight:700; font-size:13px;">
+                        <i class="fa-solid fa-lock"></i> Desbloquear casillas de Recepción
+                    </button>
+                    <?php endif; ?>
+                </div>
             </div>
             <?php endif; ?>
             <div id="replicas-control-bar" style="display:none; margin: 0 0 14px; padding: 13px 15px; border: 1px solid #99f6e4; background: #f0fdfa; border-radius: 9px; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
@@ -1031,7 +1088,9 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
     const PREFIJO_OFICIAL = <?= json_encode($prefijoMuestraOS ?? determinarPrefijoMuestraOS($detalle)) ?>;
     const CLASIFICACION_COLUMNAS = <?= json_encode($clasificacionColumnas ?? [], JSON_UNESCAPED_UNICODE) ?>;
     const TIENE_CAMPOS_RECEPCION = <?= !empty($tieneCamposRecepcion) ? 'true' : 'false' ?>;
+    const ES_ENSAYO_ROTURA_LAB = <?= !empty($esEnsayoRoturaLab) ? 'true' : 'false' ?>;
     let permitirEdicionRecepcionMatriz = false;
+    let columnasRecepcionPlegadas = true;
     let replicasHabilitadas = false;
     let columnaCodigoReplica = null;
     let columnaNombreReplica = null;
@@ -1378,24 +1437,40 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             }
 
             columnasActuales.forEach(col => {
+                const calcCol = aliases[col] || col;
                 const thR = document.createElement('th');
                 thR.style.textAlign = 'center';
                 thR.style.padding = '5px 6px';
-                thR.style.fontSize = '10.5px';
+                thR.style.fontSize = '11px';
                 thR.style.fontWeight = '800';
                 thR.style.letterSpacing = '0.03em';
                 const rol = CLASIFICACION_COLUMNAS[col] || 'tecnico';
+                const esColumnaCalculada = (rol === 'calculado') || [
+                    'Reven. (cm)', 'Área (in²)', 'Peso Volumétrico (kg/m³)',
+                    'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)', 'R. compresión. (kg/cm²)',
+                    'Resistencia a la flexión. (kg/cm²)', 'Edad (Días)', 'Compactación ((%) (P/P))'
+                ].includes(calcCol);
+                const esColumnaLabRotura = ES_ENSAYO_ROTURA_LAB && ['Carga (lb)', 'Carga (kg)', 'Fecha de Ensayo', 'Fecha de Ruptura'].includes(calcCol);
                 if (rol === 'recepcion') {
-                    thR.style.background = '#ffedd5';
-                    thR.style.color = '#9a3412';
+                    thR.style.background = '#f1f5f9';
+                    thR.style.color = '#334155';
                     thR.innerHTML = '<i class="fa-solid fa-inbox"></i> LLENA RECEPCIÓN';
-                    if (!ES_SUPERVISOR) {
+                    thR.dataset.colRecepcion = '1';
+                    if (!ES_SUPERVISOR || columnasRecepcionPlegadas) {
                         thR.classList.add('col-recepcion-oculta', 'd-none');
                     }
                 } else if (rol === 'identidad' || rol === 'identificacion') {
                     thR.style.background = '#f1f5f9';
                     thR.style.color = '#334155';
                     thR.innerHTML = '<i class="fa-solid fa-tag"></i> MUESTRA';
+                } else if (esColumnaCalculada) {
+                    thR.style.background = '#f8fafc';
+                    thR.style.color = '#0f172a';
+                    thR.innerHTML = '<i class="fa-solid fa-calculator"></i> Calculado · Solo lectura';
+                } else if (esColumnaLabRotura) {
+                    thR.style.background = '#eff6ff';
+                    thR.style.color = '#103487';
+                    thR.innerHTML = '<i class="fa-solid fa-flask"></i> Viene del laboratorio';
                 } else {
                     thR.style.background = '#dbeafe';
                     thR.style.color = '#1e40af';
@@ -1413,14 +1488,14 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             trMethods.style.background = '#f8fafc';
             trMethods.style.borderBottom = '1px solid #cbd5e1';
 
-            const nombreOcultoEnInicio = !ES_SUPERVISOR && columnasActuales[1] && (CLASIFICACION_COLUMNAS[columnasActuales[1]] || 'tecnico') === 'recepcion';
+            const nombreOcultoEnInicio = (!ES_SUPERVISOR || columnasRecepcionPlegadas) && columnasActuales[1] && (CLASIFICACION_COLUMNAS[columnasActuales[1]] || 'tecnico') === 'recepcion';
             const thMethodTitle = document.createElement('th');
             thMethodTitle.colSpan = (nombreOcultoEnInicio ? 2 : 3) + (replicasHabilitadas ? 1 : 0);
             thMethodTitle.style.textAlign = 'left';
             thMethodTitle.style.padding = '8px 12px';
             thMethodTitle.style.fontWeight = '700';
             thMethodTitle.style.fontSize = '12px';
-            thMethodTitle.style.color = '#0284c7';
+            thMethodTitle.style.color = '#103487';
             thMethodTitle.innerHTML = '<i class="fa-solid fa-flask-vial"></i> Método de ensayo';
             trMethods.appendChild(thMethodTitle);
 
@@ -1430,8 +1505,11 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 thM.style.padding = '6px 8px';
                 thM.style.fontWeight = '600';
                 thM.style.fontSize = '11px';
-                if (!ES_SUPERVISOR && (CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
-                    thM.classList.add('col-recepcion-oculta', 'd-none');
+                if ((CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
+                    thM.dataset.colRecepcion = '1';
+                    if (!ES_SUPERVISOR || columnasRecepcionPlegadas) {
+                        thM.classList.add('col-recepcion-oculta', 'd-none');
+                    }
                 }
                 const methodCode = schema.column_methods[col] || '';
                 if (methodCode) {
@@ -1468,8 +1546,11 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         columnasActuales.forEach(col => {
             const th = document.createElement('th');
             th.innerText = col;
-            if (!ES_SUPERVISOR && (CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
-                th.classList.add('col-recepcion-oculta', 'd-none');
+            if ((CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
+                th.dataset.colRecepcion = '1';
+                if (!ES_SUPERVISOR || columnasRecepcionPlegadas) {
+                    th.classList.add('col-recepcion-oculta', 'd-none');
+                }
             }
             trH.appendChild(th);
         });
@@ -1479,6 +1560,20 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         let filas = [];
         const codigoCol = columnasActuales.find(col => (aliases[col] || col) === 'Código laboratorio') || 'Código laboratorio';
         const nombreCol = columnasActuales.find(col => (aliases[col] || col) === 'Nombre muestra') || 'Nombre muestra';
+
+        const AREAS_PREFILL_PROHIBIDAS = ['14.137', '28.274', '28.2743', '12.566'];
+        function limpiarAreaNominalSinCargaJS(row) {
+            if (!row || typeof row !== 'object') return row;
+            const cargaVal = String(row['Carga (lb)'] || row['Carga (kg)'] || row['Carga'] || '').trim();
+            if (!cargaVal || cargaVal === '—' || parseFloat(cargaVal) <= 0) {
+                ['Área (in²)', 'Area (in2)', 'Área (cm²)', 'area'].forEach(kA => {
+                    if (row[kA] !== undefined && AREAS_PREFILL_PROHIBIDAS.includes(String(row[kA]).trim())) {
+                        row[kA] = '';
+                    }
+                });
+            }
+            return row;
+        }
 
         function aplicarDatosRecepcionEnFila(row, idx) {
             if (!Array.isArray(MUESTRAS_SETEADAS) || MUESTRAS_SETEADAS.length === 0) return row;
@@ -1512,7 +1607,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
             if (bloqueadas.length > 0) {
                 row._recepcion_bloqueadas = bloqueadas;
             }
-            return row;
+            return limpiarAreaNominalSinCargaJS(row);
         }
 
         if (Array.isArray(DATOS_INICIALES) && DATOS_INICIALES.length > 0) {
@@ -1524,7 +1619,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         row['Código laboratorio'] = PREFIJO_OFICIAL + '-' + String(idx + 1).padStart(4, '0') + '-26';
                     }
                 }
-                return aplicarDatosRecepcionEnFila(row, idx);
+                return aplicarDatosRecepcionEnFila(limpiarAreaNominalSinCargaJS(row), idx);
             });
         } else if (DEFAULT_ROWS_BY_FORMAT[ARCHIVO_MARKDOWN]) {
             filas = JSON.parse(JSON.stringify(DEFAULT_ROWS_BY_FORMAT[ARCHIVO_MARKDOWN]));
@@ -1549,6 +1644,7 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
 
         // 3. Renderizar cuerpo
         renderizarFilas(filas);
+        actualizarBotonPlegarRecepcion();
 
         if (ARCHIVO_MARKDOWN.includes('granulometria') || ARCHIVO_MARKDOWN.includes('granulomnetria')) {
             recalculateGranulometria();
@@ -1556,6 +1652,26 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         } else {
             recalculateAll();
         }
+    }
+
+    function actualizarBotonPlegarRecepcion() {
+        const btn = document.getElementById('btn-toggle-plegar-recepcion');
+        if (!btn) return;
+        btn.innerHTML = columnasRecepcionPlegadas
+            ? '<i class="fa-solid fa-eye"></i> Mostrar columnas de recepción'
+            : '<i class="fa-solid fa-eye-slash"></i> Plegar columnas de recepción';
+    }
+
+    function togglePlegarColumnasRecepcion() {
+        columnasRecepcionPlegadas = !columnasRecepcionPlegadas;
+        document.querySelectorAll('[data-col-recepcion="1"]').forEach(el => {
+            if (columnasRecepcionPlegadas) {
+                el.classList.add('col-recepcion-oculta', 'd-none');
+            } else {
+                el.classList.remove('col-recepcion-oculta', 'd-none');
+            }
+        });
+        actualizarBotonPlegarRecepcion();
     }
 
     function toggleEdicionRecepcionMatriz() {
@@ -1687,8 +1803,23 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                         input.readOnly = true;
                         input.classList.add('matriz-input-locked');
                     }
-                    if (['Compactación ((%) (P/P))', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)', 'R. compresión. (kg/cm²)', 'Resistencia a la flexión. (kg/cm²)', 'Reven. (cm)', 'Edad (Días)'].includes(calcCol)) {
+                    const rolCol = CLASIFICACION_COLUMNAS[col] || 'tecnico';
+                    const esCalculadoStrict = (rolCol === 'calculado') || [
+                        'Compactación ((%) (P/P))', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)',
+                        'R. compresión. (kg/cm²)', 'Resistencia a la flexión. (kg/cm²)', 'Reven. (cm)',
+                        'Edad (Días)', 'Área (in²)', 'Peso Volumétrico (kg/m³)'
+                    ].includes(calcCol);
+                    if (esCalculadoStrict) {
+                        input.readOnly = true;
                         input.classList.add('matriz-input-calculated');
+                        input.dataset.calculadoReadonly = '1';
+                        input.title = (input.title ? input.title + ' — ' : '') + 'Calculado · Solo lectura';
+                    }
+                    if (ES_ENSAYO_ROTURA_LAB && ['Carga (lb)', 'Carga (kg)', 'Fecha de Ensayo', 'Fecha de Ruptura'].includes(calcCol)) {
+                        input.readOnly = true;
+                        input.classList.add('matriz-input-locked');
+                        input.dataset.vieneDeLaboratorio = '1';
+                        input.title = (input.title ? input.title + ' — ' : '') + 'Viene del laboratorio';
                     }
                     if (['Carga (lb)', 'Carga (kg)', 'Área (in²)', 'Área (cm²)'].includes(calcCol)) {
                         input.addEventListener('input', recalculateCompresion);
@@ -1714,15 +1845,21 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
                 if ((CLASIFICACION_COLUMNAS[col] || 'tecnico') === 'recepcion') {
                     input.classList.add('matriz-input-recepcion');
                     input.dataset.rolRecepcion = '1';
+                    td.dataset.colRecepcion = '1';
                     if (!ES_SUPERVISOR) {
                         td.classList.add('col-recepcion-oculta', 'd-none');
                         input.readOnly = true;
                     } else {
+                        if (columnasRecepcionPlegadas) {
+                            td.classList.add('col-recepcion-oculta', 'd-none');
+                        }
                         const recBloqueadas = Array.isArray(rowData._recepcion_bloqueadas) ? rowData._recepcion_bloqueadas : [];
                         if (recBloqueadas.includes(col) && input.value.trim() !== '') {
                             input.dataset.recepcionPrellena = '1';
                             input.readOnly = !permitirEdicionRecepcionMatriz;
                             input.title = (input.title ? input.title + ' — ' : '') + 'Dato capturado en Recepción (O/S RT-FM-13)';
+                        } else {
+                            input.readOnly = !permitirEdicionRecepcionMatriz;
                         }
                     }
                 }
@@ -2249,6 +2386,26 @@ $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metada
         prepararEnvioMatriz();
         const form = document.getElementById('form-matriz-completa');
         if (form) {
+            form.submit();
+        } else {
+            enviandoMatriz = false;
+        }
+    }
+
+    function enviarMatrizARevisionSubmit() {
+        if (enviandoMatriz) return;
+        enviandoMatriz = true;
+        prepararEnvioMatriz();
+        const form = document.getElementById('form-matriz-completa');
+        if (form) {
+            let inpEnv = form.querySelector('input[name="enviar_a_revision"]');
+            if (!inpEnv) {
+                inpEnv = document.createElement('input');
+                inpEnv.type = 'hidden';
+                inpEnv.name = 'enviar_a_revision';
+                form.appendChild(inpEnv);
+            }
+            inpEnv.value = '1';
             form.submit();
         } else {
             enviandoMatriz = false;

@@ -509,7 +509,17 @@ class LaboratorioControlador extends ControladorBase {
 
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
-            $esAjax = $peticion->esAjax();
+            $esAjax = $peticion->esAjax()
+                || !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                || (($datos['formato_respuesta'] ?? '') === 'json');
+
+            // Seguridad (Sección 10 Riesgo #4): eliminar cualquier parámetro de cálculo inyectado desde el formulario
+            foreach (['divisor_kgcm2', 'usar_prensa', 'usar_factor_ld', 'redondear_psi_10', 'opciones_calculo', '_opciones_internas_test'] as $campoProtegido) {
+                unset($datos[$campoProtegido], $_POST[$campoProtegido]);
+                if (isset($datos['datos_crudos']) && is_array($datos['datos_crudos'])) {
+                    unset($datos['datos_crudos'][$campoProtegido]);
+                }
+            }
 
             if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
                 if ($esAjax) {
@@ -552,10 +562,13 @@ class LaboratorioControlador extends ControladorBase {
             if (!empty($resultado['exito'])) {
                 try {
                     $db = Conexion::obtenerInstancia();
-                    $stmtEspM = $db->prepare("SELECT esp.codigo_lab, esp.muestra_id FROM especimenes esp WHERE esp.id = :id");
+                    $stmtEspM = $db->prepare("SELECT esp.codigo_lab, esp.muestra_id, rm.id_hoja FROM especimenes esp JOIN recepcion_muestras rm ON esp.muestra_id = rm.id WHERE esp.id = :id");
                     $stmtEspM->execute(['id' => (int)($datos['especimen_id'] ?? 0)]);
                     $espInfo = $stmtEspM->fetch(PDO::FETCH_ASSOC);
                     if ($espInfo) {
+                        if ($idHojaRedir <= 0 && !empty($espInfo['id_hoja'])) {
+                            $idHojaRedir = (int)$espInfo['id_hoja'];
+                        }
                         $crudosSync = is_array($datos['datos_crudos'] ?? null) ? $datos['datos_crudos'] : [];
                         sincronizarRoturasConMatriz($db, $idHojaRedir, 0, [[
                             'codigo_lab' => $espInfo['codigo_lab'],
@@ -574,6 +587,9 @@ class LaboratorioControlador extends ControladorBase {
                             'fecha_real' => $datos['fecha_real'] ?? date('Y-m-d'),
                             'edad_dias' => (int)($resultado['edad_calculada'] ?? ($datos['edad_dias'] ?? 0))
                         ]]);
+                        if ($idHojaRedir > 0) {
+                            $roturasModelo->actualizarEtapaFlujoHojaPorRoturas($idHojaRedir);
+                        }
                     }
                 } catch (\Throwable $e) {
                     error_log('Error sincronizando rotura individual con matriz: ' . $e->getMessage());
@@ -605,7 +621,7 @@ class LaboratorioControlador extends ControladorBase {
     }
 
     /**
-     * Registra los rompimientos periódicos de múltiples probetas del lote juntas en una sola operación (Batch).
+     * Registra los rompimientos periódicos de múltiples probetas del lote juntas en una sola operación (Batch / Captura en Línea).
      */
     public function registrarRoturasLote(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
@@ -617,11 +633,18 @@ class LaboratorioControlador extends ControladorBase {
         }
 
         $datos = $peticion->obtenerDatos();
-        $esAjax = $peticion->esAjax();
+        $esAjax = $peticion->esAjax()
+            || !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+            || (($datos['formato_respuesta'] ?? '') === 'json');
         $idHoja = (int)($datos['id_hoja'] ?? 0);
         $redirectUrl = $idHoja > 0
             ? '/Cycsa/publico/laboratorio/detalle-lote?id_hoja=' . $idHoja
             : '/Cycsa/publico/laboratorio?tab=bandeja';
+
+        // Seguridad (Sección 10 Riesgo #4): eliminar parámetros de cálculo inyectados desde el formulario
+        foreach (['divisor_kgcm2', 'usar_prensa', 'usar_factor_ld', 'redondear_psi_10', 'opciones_calculo', '_opciones_internas_test'] as $campoProtegido) {
+            unset($datos[$campoProtegido], $_POST[$campoProtegido]);
+        }
 
         if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
             if ($esAjax) {
@@ -656,9 +679,27 @@ class LaboratorioControlador extends ControladorBase {
         $roturasSincronizar = [];
 
         foreach ($roturasPayload as $rItem) {
+            if (!is_array($rItem)) {
+                continue;
+            }
+            foreach (['divisor_kgcm2', 'usar_prensa', 'usar_factor_ld', 'redondear_psi_10', 'opciones_calculo', '_opciones_internas_test'] as $campoProtegido) {
+                unset($rItem[$campoProtegido]);
+                if (isset($rItem['datos_crudos']) && is_array($rItem['datos_crudos'])) {
+                    unset($rItem['datos_crudos'][$campoProtegido]);
+                }
+            }
+
             $especimenId = (int)($rItem['especimen_id'] ?? 0);
             $planEdadId = (int)($rItem['plan_edad_id'] ?? 0);
             $carga = (float)($rItem['carga'] ?? 0);
+
+            if ($especimenId > 0 && $planEdadId <= 0) {
+                $stmtPE = $db->prepare("SELECT plan_edad_id FROM plan_rotura_asignaciones WHERE especimen_id = :id LIMIT 1");
+                $stmtPE->execute(['id' => $especimenId]);
+                $planEdadId = (int)$stmtPE->fetchColumn();
+                $rItem['plan_edad_id'] = $planEdadId;
+            }
+
             if ($especimenId <= 0 || $planEdadId <= 0 || $carga <= 0) {
                 continue; // Omitir probetas sin carga ingresada
             }
@@ -693,10 +734,13 @@ class LaboratorioControlador extends ControladorBase {
             }
         }
 
-        // Sincronizar todos los rompimientos registrados con la matriz técnica
+        // Sincronizar todos los rompimientos registrados con la matriz técnica y actualizar etapa_flujo de la hoja
         if (!empty($roturasSincronizar)) {
             try {
                 sincronizarRoturasConMatriz($db, $idHoja, 0, $roturasSincronizar);
+                if ($idHoja > 0) {
+                    $roturasModelo->actualizarEtapaFlujoHojaPorRoturas($idHoja);
+                }
             } catch (\Throwable $e) {
                 error_log('Error en sincronizarRoturasConMatriz en registrarRoturasLote: ' . $e->getMessage());
             }
@@ -862,10 +906,28 @@ class LaboratorioControlador extends ControladorBase {
                 ? implode('; ', array_filter(array_map('trim', $obsPendRaw)))
                 : ($obsPendRaw !== null ? trim((string)$obsPendRaw) : null);
 
+            // Seguridad (Sección 10 Riesgo #1): derivar firmantes estrictamente del usuario autenticado en BD, NUNCA de $_POST['aprobado_nombre']
+            unset($_POST['aprobado_nombre'], $_POST['revisado_nombre'], $_POST['revisado_por'], $datos['aprobado_nombre'], $datos['revisado_nombre'], $datos['revisado_por']);
+            $nombreUsuarioReal = '';
+            try {
+                $dbUsr = Conexion::obtenerInstancia();
+                $stmtUsr = $dbUsr->prepare("SELECT nombre FROM usuarios WHERE id = :id LIMIT 1");
+                $stmtUsr->execute(['id' => $usuarioId]);
+                $nomDb = $stmtUsr->fetchColumn();
+                if ($nomDb !== false && trim((string)$nomDb) !== '') {
+                    $nombreUsuarioReal = trim((string)$nomDb);
+                }
+            } catch (\Throwable $e) {
+                // fallback a sesión
+            }
+            if ($nombreUsuarioReal === '') {
+                $nombreUsuarioReal = trim((string)($_SESSION['usuario_nombre'] ?? ''));
+            }
+
             $extraRevision = [
-                'revisado_por' => !empty($datos['revisado_por']) ? (int)$datos['revisado_por'] : $usuarioId,
-                'revisado_nombre' => trim((string)($datos['revisado_nombre'] ?? ($_SESSION['usuario_nombre'] ?? ''))),
-                'aprobado_nombre' => trim((string)($datos['aprobado_nombre'] ?? ($_SESSION['usuario_nombre'] ?? ''))),
+                'revisado_por' => $usuarioId,
+                'revisado_nombre' => $nombreUsuarioReal,
+                'aprobado_nombre' => $nombreUsuarioReal,
             ];
             if ($obsPendientes !== null) {
                 $extraRevision['observaciones_pendientes'] = $obsPendientes;
@@ -2347,6 +2409,81 @@ class LaboratorioControlador extends ControladorBase {
         }
 
         $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
+
+        // Corrección Bug En Vivo #3 (Sección 9): Fecha de emisión nunca puede ser anterior a la fecha máxima de ejecución del ensayo
+        $normalizarFechaYmd = static function (?string $raw): string {
+            $val = trim((string)$raw);
+            if ($val === '' || $val === '-' || $val === '--') {
+                return '';
+            }
+            if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $val, $m)) {
+                return $m[1];
+            }
+            if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})/', $val, $m)) {
+                return "{$m[3]}-{$m[2]}-{$m[1]}";
+            }
+            $ts = strtotime($val);
+            return $ts !== false ? date('Y-m-d', $ts) : '';
+        };
+
+        $maxFechaEjecucion = $normalizarFechaYmd((string)($metadatos['fecha_ejecucion'] ?? ''));
+        $filasRevisarFecha = isset($decResultados['filas']) && is_array($decResultados['filas']) ? $decResultados['filas'] : [];
+        foreach ($filasRevisarFecha as $fRev) {
+            if (!is_array($fRev)) {
+                continue;
+            }
+            foreach (['fecha_real', 'Fecha de Ensayo', 'Fecha Ensayo', 'Fecha de Ruptura', 'fecha_ensayo', 'fecha_ruptura'] as $kFecha) {
+                if (!empty($fRev[$kFecha])) {
+                    $fCand = $normalizarFechaYmd((string)$fRev[$kFecha]);
+                    if ($fCand !== '' && ($maxFechaEjecucion === '' || $fCand > $maxFechaEjecucion)) {
+                        $maxFechaEjecucion = $fCand;
+                    }
+                }
+            }
+        }
+
+        try {
+            if ($idHojaResolv > 0) {
+                $stmtMaxRot = $db->prepare("
+                    SELECT MAX(DATE(rot.fecha_real))
+                    FROM roturas rot
+                    JOIN especimenes esp ON rot.especimen_id = esp.id
+                    JOIN recepcion_muestras rm ON esp.muestra_id = rm.id
+                    WHERE rm.id_hoja = :id_hoja
+                ");
+                $stmtMaxRot->execute(['id_hoja' => $idHojaResolv]);
+                $fRotMax = $normalizarFechaYmd((string)$stmtMaxRot->fetchColumn());
+                if ($fRotMax !== '' && ($maxFechaEjecucion === '' || $fRotMax > $maxFechaEjecucion)) {
+                    $maxFechaEjecucion = $fRotMax;
+                }
+            } elseif ($muestraId > 0) {
+                $stmtMaxRot = $db->prepare("
+                    SELECT MAX(DATE(rot.fecha_real))
+                    FROM roturas rot
+                    JOIN especimenes esp ON rot.especimen_id = esp.id
+                    WHERE esp.muestra_id = :mid
+                ");
+                $stmtMaxRot->execute(['mid' => $muestraId]);
+                $fRotMax = $normalizarFechaYmd((string)$stmtMaxRot->fetchColumn());
+                if ($fRotMax !== '' && ($maxFechaEjecucion === '' || $fRotMax > $maxFechaEjecucion)) {
+                    $maxFechaEjecucion = $fRotMax;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silencioso
+        }
+
+        if ($maxFechaEjecucion !== '') {
+            $fechaEjecActual = $normalizarFechaYmd((string)($metadatos['fecha_ejecucion'] ?? ''));
+            if ($fechaEjecActual === '' || $fechaEjecActual < $maxFechaEjecucion) {
+                $metadatos['fecha_ejecucion'] = $maxFechaEjecucion;
+            }
+            $fechaEmisionActual = $normalizarFechaYmd((string)($metadatos['fecha_emision'] ?? ''));
+            if ($fechaEmisionActual === '' || $fechaEmisionActual < $maxFechaEjecucion) {
+                $metadatos['fecha_emision'] = $maxFechaEjecucion;
+            }
+        }
+
         $esLaboratorio = true;
 
         require dirname(__DIR__) . '/Vistas/matriz_print.php';

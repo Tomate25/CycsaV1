@@ -508,6 +508,27 @@ class MigradorServicio {
             }
 
             // =========================================================================
+            // FASE 31: Migración 040 - Reordenamiento Flujo Recepción -> Técnico -> Matriz -> Lab
+            // =========================================================================
+            $ruta040 = dirname(__DIR__, 4) . '/database/migrations/040_reordenamiento_flujo_recepcion_tecnico_matriz_lab.php';
+            if (file_exists($ruta040)) {
+                ob_start();
+                try {
+                    require_once $ruta040;
+                    if (function_exists('ejecutarMigracion040')) {
+                        ejecutarMigracion040($db);
+                    }
+                    $resultados['040_reordenamiento_flujo_recepcion_tecnico_matriz_lab'] = ob_get_clean();
+                } catch (Throwable $e040) {
+                    if (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    error_log('Migracion 040: ' . $e040->getMessage());
+                    $resultados['040_reordenamiento_flujo_recepcion_tecnico_matriz_lab'] = '[040 WARN] ' . $e040->getMessage();
+                }
+            }
+
+            // =========================================================================
             // FASE 28: Migración 037 - Auto-ingreso a Laboratorio de RT-FM-13 pendientes
             // =========================================================================
             if (!defined('PHPUNIT_RUNNING')) {

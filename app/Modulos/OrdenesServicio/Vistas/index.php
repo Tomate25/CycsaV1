@@ -1672,72 +1672,77 @@
      MODAL DE CAPTURA DE DATOS DE RECEPCIÓN POR RT-FM-13 Y SUS N MUESTRAS
      ========================================================================= -->
 <div id="modalDatosRecepcion" class="modal-premium" style="display:none; position:fixed; z-index:9998; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(15,23,42,0.58);">
-    <div class="modal-premium-content" style="width:94%; max-width:1180px; background:#fff; margin:2.5% auto; border-radius:14px; overflow:hidden; box-shadow:0 24px 54px rgba(15,23,42,0.32); display:flex; flex-direction:column; max-height:92vh;">
-        <div style="background:linear-gradient(135deg,#c2410c,#ea580c); color:#fff; padding:16px 22px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+    <div class="modal-premium-content" style="width:94%; max-width:1180px; background:#fff; margin:2.5% auto; border-radius:14px; overflow:hidden; box-shadow:0 24px 54px rgba(15,23,42,0.32); display:flex; flex-direction:column; max-height:92vh; border:1px solid #e2e8f0;">
+        <div style="background:#ffffff; color:#0f172a; border-bottom:1px solid #e2e8f0; padding:16px 22px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
             <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:40px; height:40px; border-radius:10px; background:rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; font-size:18px;">
+                <div style="width:40px; height:40px; border-radius:10px; background:#eff6ff; color:#103487; border:1px solid #bfdbfe; display:flex; align-items:center; justify-content:center; font-size:18px;">
                     <i class="fa-solid fa-table-list"></i>
                 </div>
                 <div>
-                    <h4 style="margin:0; font-size:16px; font-weight:800;">Datos de Recepción por Hoja RT-FM-13 (Casillas "Llena Recepción")</h4>
-                    <div style="font-size:12px; opacity:0.92; margin-top:2px;">
-                        O/S: <strong id="rec_os_codigo">--</strong> · Hoja: <strong id="rec_hoja_reg">--</strong> · <span id="rec_ensayo_nombre">--</span>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <h4 style="margin:0; font-size:16px; font-weight:800; color:#103487;">Datos de Recepción por Hoja RT-FM-13 (Casillas "Llena Recepción")</h4>
+                        <span id="rec_badge_etapa" style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">
+                            Recepción en borrador
+                        </span>
+                    </div>
+                    <div style="font-size:13px; color:#475569; margin-top:3px;">
+                        O/S: <strong id="rec_os_codigo" style="color:#0f172a;">--</strong> · Hoja: <strong id="rec_hoja_reg" style="color:#0f172a;">--</strong> · <span id="rec_ensayo_nombre">--</span>
                     </div>
                 </div>
             </div>
-            <button type="button" onclick="cerrarModalDatosRecepcion()" style="background:rgba(255,255,255,0.2); border:none; color:#fff; width:34px; height:34px; border-radius:8px; font-size:20px; cursor:pointer;">&times;</button>
+            <button type="button" onclick="cerrarModalDatosRecepcion()" style="background:#f8fafc; border:1px solid #cbd5e1; color:#475569; width:34px; height:34px; border-radius:8px; font-size:20px; cursor:pointer;">&times;</button>
         </div>
 
         <div style="padding:18px 22px; overflow-y:auto; flex:1;">
             <div id="rec_loading" style="display:none; text-align:center; padding:45px 20px; color:#64748b;">
-                <i class="fa-solid fa-spinner fa-spin" style="font-size:32px; color:#ea580c;"></i>
-                <div style="margin-top:10px; font-weight:600;">Cargando muestras y campos de recepción de la RT-FM-13...</div>
+                <i class="fa-solid fa-spinner fa-spin" style="font-size:32px; color:#103487;"></i>
+                <div style="margin-top:10px; font-weight:600; font-size:13.5px;">Cargando muestras y campos de recepción de la RT-FM-13...</div>
             </div>
 
             <div id="rec_contenido" style="display:none;">
                 <!-- Pestañas para navegar entre todas las RT-FM-13 de la O/S -->
                 <div id="rec_tabs_hojas_wrap" style="margin-bottom:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; display:none;">
-                    <div style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; margin-bottom:8px;">
-                        <i class="fa-solid fa-layer-group me-1" style="color:#ea580c;"></i> Hojas RT-FM-13 de esta O/S (seleccione para llenar sus datos):
+                    <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:8px;">
+                        <i class="fa-solid fa-layer-group me-1" style="color:#103487;"></i> Hojas RT-FM-13 de esta O/S (seleccione para llenar sus datos):
                     </div>
                     <div id="rec_tabs_hojas_list" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
                 </div>
 
                 <!-- Distribución Recepción vs Técnico -->
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-                    <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:9px; padding:10px 14px;">
-                        <div style="font-size:11.5px; font-weight:800; color:#9a3412; margin-bottom:4px;">
+                    <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #103487; border-radius:9px; padding:10px 14px;">
+                        <div style="font-size:13px; font-weight:800; color:#103487; margin-bottom:4px;">
                             <i class="fa-solid fa-inbox me-1"></i> LLENA RECEPCIÓN (En esta pantalla · por muestra de la RT-FM-13)
                         </div>
-                        <div id="rec_lista_campos_recepcion" style="font-size:12px; color:#7c2d12;"></div>
+                        <div id="rec_lista_campos_recepcion" style="font-size:13px; color:#334155;"></div>
                     </div>
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:9px; padding:10px 14px;">
-                        <div style="font-size:11.5px; font-weight:800; color:#1e40af; margin-bottom:4px;">
-                            <i class="fa-solid fa-microscope me-1"></i> RELLENA TÉCNICO (En Operaciones · Matriz Técnica)
+                    <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #0284c7; border-radius:9px; padding:10px 14px;">
+                        <div style="font-size:13px; font-weight:800; color:#0369a1; margin-bottom:4px;">
+                            <i class="fa-solid fa-microscope me-1"></i> RELLENA TÉCNICO / LABORATORIO (Operaciones y Roturas)
                         </div>
-                        <div id="rec_lista_campos_tecnico" style="font-size:12px; color:#1e3a8a;"></div>
+                        <div id="rec_lista_campos_tecnico" style="font-size:13px; color:#334155;"></div>
                     </div>
                 </div>
 
-                <div id="rec_sin_campos_notice" style="display:none; background:#f1f5f9; border:1px dashed #94a3b8; border-radius:10px; padding:22px; text-align:center; color:#475569;">
+                <div id="rec_sin_campos_notice" style="display:none; background:#f1f5f9; border:1px dashed #94a3b8; border-radius:10px; padding:22px; text-align:center; color:#475569; font-size:13.5px;">
                     <i class="fa-solid fa-circle-info" style="font-size:24px; color:#0284c7; display:block; margin-bottom:8px;"></i>
                     El formato de ensayo de esta RT-FM-13 no solicita casillas adicionales de Recepción por espécimen; todos sus parámetros se capturan en Operaciones.
                 </div>
 
                 <div id="rec_tabla_section">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-                        <div style="font-size:12.5px; color:#475569;">
+                        <div style="font-size:13px; color:#334155;">
                             Complete las casillas para las <strong id="rec_total_muestras_lbl">0</strong> muestra(s) de esta hoja RT-FM-13.
-                            <span style="color:#9a3412; font-weight:600;">Reven. cm y Edad (Días) se calculan automáticamente al llenar Reven. in o las fechas.</span>
+                            <span style="color:#103487; font-weight:600;">Reven. (cm) se calcula automáticamente a 0.5 cm al capturar Reven. (in).</span>
                         </div>
-                        <button type="button" id="rec_btn_copiar_fila1" onclick="copiarFilaUnoDatosRecepcion()" class="btn-cycsa btn-cycsa-secondary" style="min-height:32px; padding:4px 12px; font-size:12px; font-weight:700;">
+                        <button type="button" id="rec_btn_copiar_fila1" onclick="copiarFilaUnoDatosRecepcion()" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:4px 12px; font-size:13px; font-weight:700;">
                             <i class="fa-solid fa-copy me-1"></i> Copiar Fila 1 a todas las muestras
                         </button>
                     </div>
 
-                    <div style="overflow-x:auto; border:1px solid #fed7aa; border-radius:10px;">
-                        <table id="rec_tabla_muestras" style="width:100%; border-collapse:collapse; font-size:12.5px; min-width:820px;">
-                            <thead id="rec_thead_muestras" style="background:#ffedd5; color:#9a3412;"></thead>
+                    <div style="overflow-x:auto; border:1px solid #cbd5e1; border-radius:10px;">
+                        <table id="rec_tabla_muestras" style="width:100%; border-collapse:collapse; font-size:13px; min-width:820px;">
+                            <thead id="rec_thead_muestras" style="background:#f8fafc; color:#0f172a; border-bottom:1.5px solid #cbd5e1;"></thead>
                             <tbody id="rec_tbody_muestras"></tbody>
                         </table>
                     </div>
@@ -1746,13 +1751,19 @@
         </div>
 
         <div style="padding:14px 22px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-            <div id="rec_feedback_msg" style="font-size:12.5px; font-weight:600; color:#475569;"></div>
-            <div style="display:flex; gap:10px;">
-                <button type="button" onclick="cerrarModalDatosRecepcion()" class="btn-cycsa btn-cycsa-secondary" style="min-height:38px;">
+            <div id="rec_feedback_msg" style="font-size:13px; font-weight:600; color:#475569;"></div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <button type="button" onclick="cerrarModalDatosRecepcion()" class="btn-cycsa btn-cycsa-secondary" style="min-height:38px; font-size:13px;">
                     Cerrar
                 </button>
-                <button type="button" id="rec_btn_guardar" onclick="guardarDatosRecepcionModal()" class="btn-cycsa btn-cycsa-primary" style="min-height:38px; background:#ea580c; border-color:#ea580c; font-weight:700;">
-                    <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Datos de Recepción
+                <button type="button" id="rec_btn_reabrir" onclick="reabrirRecepcionModal()" class="btn-cycsa btn-cycsa-secondary" style="min-height:38px; font-size:13px; border-color:#b45309; color:#b45309; font-weight:700; display:none;">
+                    <i class="fa-solid fa-unlock-keyhole me-1"></i> Reabrir Recepción
+                </button>
+                <button type="button" id="rec_btn_guardar" onclick="guardarDatosRecepcionModal(false)" class="btn-cycsa btn-cycsa-secondary" style="min-height:38px; font-size:13px; border-color:#103487; color:#103487; font-weight:700;">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Borrador Recepción
+                </button>
+                <button type="button" id="rec_btn_completar" onclick="guardarDatosRecepcionModal(true)" class="btn-cycsa btn-cycsa-primary" style="min-height:38px; font-size:13px; background:#103487; border-color:#103487; font-weight:700;">
+                    <i class="fa-solid fa-circle-check me-1"></i> Guardar y Marcar Recepción Completa (Ingresar a Laboratorio)
                 </button>
             </div>
         </div>
@@ -3884,6 +3895,31 @@
         document.getElementById('rec_hoja_reg').textContent = 'Reg: ' + (hoja.numero_registro || ('#' + recHojaActualId));
         document.getElementById('rec_ensayo_nombre').textContent = hoja.descripcion_ensayo || hoja.formato_nombre || '';
 
+        const recCompleta = parseInt(hoja.recepcion_completa || 0, 10) === 1;
+        const badgeEtapa = document.getElementById('rec_badge_etapa');
+        if (badgeEtapa) {
+            if (recCompleta) {
+                badgeEtapa.textContent = 'Recepción completa';
+                badgeEtapa.style.background = '#dbeafe';
+                badgeEtapa.style.color = '#1e40af';
+                badgeEtapa.style.borderColor = '#93c5fd';
+            } else {
+                badgeEtapa.textContent = 'Recepción en borrador';
+                badgeEtapa.style.background = '#f1f5f9';
+                badgeEtapa.style.color = '#475569';
+                badgeEtapa.style.borderColor = '#cbd5e1';
+            }
+        }
+        const btnReabrir = document.getElementById('rec_btn_reabrir');
+        const btnCompletar = document.getElementById('rec_btn_completar');
+        const esSupRec = <?= in_array((int)($_SESSION['usuario_rol'] ?? 0), [1, 2, 3], true) || tienePermiso('recepcion', 'aprobar') ? 'true' : 'false' ?>;
+        if (btnReabrir) {
+            btnReabrir.style.display = (recCompleta && esSupRec && !recSoloLecturaActual) ? 'inline-flex' : 'none';
+        }
+        if (btnCompletar) {
+            btnCompletar.style.display = (!recSoloLecturaActual) ? 'inline-flex' : 'none';
+        }
+
         // Tabs para cambiar entre todas las RT-FM-13 de la O/S
         const tabsWrap = document.getElementById('rec_tabs_hojas_wrap');
         const tabsList = document.getElementById('rec_tabs_hojas_list');
@@ -3893,14 +3929,14 @@
                 const activa = parseInt(h.id, 10) === recHojaActualId;
                 const tot = parseInt(h.total_muestras, 10) || 0;
                 const comp = parseInt(h.muestras_con_datos, 10) || 0;
-                const completo = tot > 0 && comp >= tot;
-                const bg = activa ? '#ea580c' : '#fff';
+                const completo = parseInt(h.recepcion_completa || 0, 10) === 1 || (tot > 0 && comp >= tot);
+                const bg = activa ? '#103487' : '#fff';
                 const fg = activa ? '#fff' : '#0f172a';
-                const br = activa ? '#ea580c' : '#cbd5e1';
+                const br = activa ? '#103487' : '#cbd5e1';
                 const badgeCount = h.requiere_datos_recepcion
-                    ? `<span style="margin-left:6px; padding:1px 6px; border-radius:999px; font-size:10.5px; background:${activa ? 'rgba(255,255,255,0.22)' : (completo ? '#dcfce7' : '#ffedd5')}; color:${activa ? '#fff' : (completo ? '#166534' : '#9a3412')};">${comp}/${tot}</span>`
+                    ? `<span style="margin-left:6px; padding:1px 6px; border-radius:999px; font-size:11px; background:${activa ? 'rgba(255,255,255,0.22)' : (completo ? '#dcfce7' : '#f1f5f9')}; color:${activa ? '#fff' : (completo ? '#166534' : '#475569')};">${comp}/${tot}</span>`
                     : '';
-                return `<button type="button" onclick="cargarDatosRecepcionHoja(${recOsActualId}, ${h.id})" style="border:1px solid ${br}; background:${bg}; color:${fg}; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">
+                return `<button type="button" onclick="cargarDatosRecepcionHoja(${recOsActualId}, ${h.id})" style="border:1px solid ${br}; background:${bg}; color:${fg}; padding:6px 12px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer;">
                     Reg: ${escapeHtml(h.numero_registro)} · ${escapeHtml((h.descripcion_ensayo || '').substring(0, 34))}${badgeCount}
                 </button>`;
             }).join('');
@@ -3911,11 +3947,11 @@
         const cRecDiv = document.getElementById('rec_lista_campos_recepcion');
         const cTecDiv = document.getElementById('rec_lista_campos_tecnico');
         cRecDiv.innerHTML = recCamposActuales.length > 0
-            ? recCamposActuales.map(c => `<span style="display:inline-block; background:#ffedd5; border:1px solid #fdba74; color:#9a3412; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:11px; font-weight:700;">${escapeHtml(c.nombre)}</span>`).join('')
+            ? recCamposActuales.map(c => `<span style="display:inline-block; background:#eff6ff; border:1px solid #bfdbfe; color:#103487; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:12px; font-weight:700;">${escapeHtml(c.nombre)}</span>`).join('')
             : '<em>Sin casillas adicionales de recepción para este formato.</em>';
         const camposTec = Array.isArray(data.campos_tecnico) ? data.campos_tecnico : [];
         cTecDiv.innerHTML = camposTec.length > 0
-            ? camposTec.map(c => `<span style="display:inline-block; background:#dbeafe; border:1px solid #93c5fd; color:#1e40af; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:11px; font-weight:700;">${escapeHtml(c)}</span>`).join('')
+            ? camposTec.map(c => `<span style="display:inline-block; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:12px; font-weight:700;">${escapeHtml(c)}</span>`).join('')
             : '<em>Ninguno adicional.</em>';
 
         const sinNotice = document.getElementById('rec_sin_campos_notice');
@@ -4038,7 +4074,7 @@
         document.getElementById('rec_feedback_msg').innerHTML = '<span style="color:#0369a1;"><i class="fa-solid fa-check me-1"></i>Valores copiados de la fila 1 a todas las muestras (revise edades/fechas individuales si varían y guarde).</span>';
     }
 
-    function guardarDatosRecepcionModal() {
+    function guardarDatosRecepcionModal(marcarCompleta = false) {
         if (recHojaActualId <= 0 || recSoloLecturaActual) return;
         const payloadMuestras = {};
         document.querySelectorAll('#rec_tbody_muestras tr').forEach(tr => {
@@ -4050,25 +4086,37 @@
             });
         });
 
-        const btn = document.getElementById('rec_btn_guardar');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Guardando...';
+        const btn = marcarCompleta ? (document.getElementById('rec_btn_completar') || document.getElementById('rec_btn_guardar')) : document.getElementById('rec_btn_guardar');
+        const textoOriginal = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Procesando...';
+        }
 
         const csrfInput = document.querySelector('input[name="csrf_token"]');
         const formData = new FormData();
         formData.append('csrf_token', csrfInput ? csrfInput.value : '');
         formData.append('id_hoja', String(recHojaActualId));
         formData.append('muestras_recepcion_json', JSON.stringify(payloadMuestras));
+        if (marcarCompleta) {
+            formData.append('marcar_recepcion_completa', '1');
+        }
 
-        fetch('/Cycsa/publico/hojas-servicio/guardar-datos-recepcion', {
+        const endpoint = marcarCompleta
+            ? '/Cycsa/publico/hojas-servicio/marcar-recepcion-completa'
+            : '/Cycsa/publico/hojas-servicio/guardar-datos-recepcion';
+
+        fetch(endpoint, {
             method: 'POST',
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         })
         .then(r => r.json())
         .then(res => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> Guardar Datos de Recepción';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+            }
             if (res.status === 'success') {
                 document.getElementById('rec_feedback_msg').innerHTML = `<span style="color:#15803d;"><i class="fa-solid fa-circle-check me-1"></i>${escapeHtml(res.message || 'Guardado correctamente.')}</span>`;
                 cargarDatosRecepcionHoja(recOsActualId, recHojaActualId);
@@ -4077,9 +4125,44 @@
             }
         })
         .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> Guardar Datos de Recepción';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+            }
             document.getElementById('rec_feedback_msg').innerHTML = '<span style="color:#dc2626;">Error de red al guardar los datos de recepción.</span>';
+        });
+    }
+
+    function reabrirRecepcionModal() {
+        if (recHojaActualId <= 0) return;
+        const motivo = window.prompt('Indique el motivo obligatorio de reapertura de recepción (mínimo 5 caracteres):', '');
+        if (motivo === null) return;
+        if (motivo.trim().length < 5) {
+            document.getElementById('rec_feedback_msg').innerHTML = '<span style="color:#dc2626;">El motivo de reapertura debe tener al menos 5 caracteres.</span>';
+            return;
+        }
+        const csrfInput = document.querySelector('input[name="csrf_token"]');
+        const formData = new FormData();
+        formData.append('csrf_token', csrfInput ? csrfInput.value : '');
+        formData.append('id_hoja', String(recHojaActualId));
+        formData.append('motivo_reapertura', motivo.trim());
+
+        fetch('/Cycsa/publico/hojas-servicio/reabrir-recepcion', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'success') {
+                document.getElementById('rec_feedback_msg').innerHTML = `<span style="color:#15803d;"><i class="fa-solid fa-circle-check me-1"></i>${escapeHtml(res.message || 'Recepción reabierta.')}</span>`;
+                cargarDatosRecepcionHoja(recOsActualId, recHojaActualId);
+            } else {
+                document.getElementById('rec_feedback_msg').innerHTML = `<span style="color:#dc2626;">${escapeHtml(res.message || 'No se pudo reabrir la recepción.')}</span>`;
+            }
+        })
+        .catch(() => {
+            document.getElementById('rec_feedback_msg').innerHTML = '<span style="color:#dc2626;">Error de red al reabrir la recepción.</span>';
         });
     }
 

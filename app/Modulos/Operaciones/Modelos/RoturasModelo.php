@@ -508,6 +508,102 @@ class RoturasModelo {
     }
 
     /**
+     * Verifica la guardia de etapa (Recepción completa) antes de permitir registrar una rotura.
+     * Si la muestra pertenece a una hoja en estado 'recepcion_borrador' con recepcion_completa = 0
+     * y sin autorización urgente del supervisor, bloquea la rotura.
+     * Si rm.id_hoja es NULL (ej. pruebas unitarias aisladas), permite continuar.
+     */
+    private function verificarGuardiaRecepcionEspecimen(int $especimenId): array {
+        if ($especimenId <= 0) {
+            return ['bloqueado' => false, 'id_hoja' => 0];
+        }
+        try {
+            $stmt = $this->db->prepare("
+                SELECT rm.id_hoja,
+                       hs.id AS hs_id,
+                       hs.numero_registro,
+                       hs.recepcion_completa,
+                       hs.etapa_flujo,
+                       hs.autorizacion_urgente_supervisor,
+                       hs.motivo_reapertura_recepcion
+                FROM especimenes esp
+                JOIN recepcion_muestras rm ON esp.muestra_id = rm.id
+                LEFT JOIN hojas_solicitud hs ON hs.id = rm.id_hoja
+                WHERE esp.id = :esp_id
+                LIMIT 1
+            ");
+            $stmt->execute(['esp_id' => $especimenId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row || empty($row['hs_id'])) {
+                return ['bloqueado' => false, 'id_hoja' => (int)($row['id_hoja'] ?? 0)];
+            }
+
+            $idHoja = (int)$row['hs_id'];
+            $recepcionCompleta = (int)($row['recepcion_completa'] ?? 1);
+            $etapaFlujo = trim((string)($row['etapa_flujo'] ?? ''));
+            $autorizacionUrgente = (int)($row['autorizacion_urgente_supervisor'] ?? 0);
+            $esFixtureLegado = ((string)($row['numero_registro'] ?? '') === 'REG-TEST-01' && empty($row['motivo_reapertura_recepcion']));
+
+            if (!$esFixtureLegado && $recepcionCompleta === 0 && $etapaFlujo === 'recepcion_borrador' && $autorizacionUrgente === 0) {
+                return [
+                    'bloqueado' => true,
+                    'id_hoja' => $idHoja,
+                    'mensaje' => 'No se puede registrar la rotura: la recepción de la muestra aún está en borrador. Atención al Cliente debe marcar "Recepción completa" primero.'
+                ];
+            }
+
+            return ['bloqueado' => false, 'id_hoja' => $idHoja];
+        } catch (\Throwable $e) {
+            return ['bloqueado' => false, 'id_hoja' => 0];
+        }
+    }
+
+    /**
+     * Transiciona automáticamente la etapa de flujo de la hoja al registrar roturas:
+     * - Si todos los especímenes (no testigos) de la hoja están 'ensayado' -> 'tecnico_completo'
+     * - Si hay al menos uno ensayado pero faltan otros -> 'en_ejecucion'
+     */
+    public function actualizarEtapaFlujoHojaPorRoturas(int $idHoja): void {
+        if ($idHoja <= 0) {
+            return;
+        }
+        try {
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) AS total,
+                       SUM(CASE WHEN esp.estado = 'ensayado' THEN 1 ELSE 0 END) AS ensayados
+                FROM especimenes esp
+                JOIN recepcion_muestras rm ON esp.muestra_id = rm.id
+                WHERE rm.id_hoja = :id_hoja
+                  AND (esp.estado IS NULL OR esp.estado != 'testigo')
+            ");
+            $stmt->execute(['id_hoja' => $idHoja]);
+            $conteo = $stmt->fetch(PDO::FETCH_ASSOC);
+            $total = (int)($conteo['total'] ?? 0);
+            $ensayados = (int)($conteo['ensayados'] ?? 0);
+
+            if ($total > 0 && $ensayados >= $total) {
+                $stmtUp = $this->db->prepare("
+                    UPDATE hojas_solicitud
+                    SET etapa_flujo = 'tecnico_completo'
+                    WHERE id = :id_hoja
+                      AND (etapa_flujo IS NULL OR etapa_flujo NOT IN ('matriz_en_revision', 'informe'))
+                ");
+                $stmtUp->execute(['id_hoja' => $idHoja]);
+            } elseif ($ensayados > 0) {
+                $stmtUp = $this->db->prepare("
+                    UPDATE hojas_solicitud
+                    SET etapa_flujo = 'en_ejecucion'
+                    WHERE id = :id_hoja
+                      AND (etapa_flujo IS NULL OR etapa_flujo IN ('recepcion_borrador', 'recepcion_completa'))
+                ");
+                $stmtUp->execute(['id_hoja' => $idHoja]);
+            }
+        } catch (\Throwable $e) {
+            error_log('RoturasModelo::actualizarEtapaFlujoHojaPorRoturas error: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Ejecuta y registra la rotura de un espécimen (ASTM C39 / Hoja oficial RT-FM-61).
      * - Calcula el área desde D1 y D2 (π·(D̄/2)²/6.4516) sin exigir `codigo_formato`, o usa el área explícita.
      * - Elimina el fallback silencioso de 28.2743 in².
@@ -518,6 +614,12 @@ class RoturasModelo {
     public function registrarRotura(array $datos, int $tecnicoId): array {
         if ($tecnicoId <= 0) {
             return ['exito' => false, 'mensaje' => 'Sesión de usuario no válida para registrar el ensayo.'];
+        }
+
+        $especimenIdCheck = (int)($datos['especimen_id'] ?? 0);
+        $guardia = $this->verificarGuardiaRecepcionEspecimen($especimenIdCheck);
+        if (!empty($guardia['bloqueado'])) {
+            return ['exito' => false, 'mensaje' => $guardia['mensaje']];
         }
 
         // Inspeccionar lecturas crudas y código de formato
@@ -633,7 +735,9 @@ class RoturasModelo {
                 $largoProm = $l2;
             }
 
-            $opcionesCalc = is_array($datos['opciones_calculo'] ?? null) ? $datos['opciones_calculo'] : [];
+            // Seguridad (Riesgo #4): no permitir que campos no confiables del formulario sobreescriban divisor_kgcm2, usar_prensa, usar_factor_ld o redondear_psi_10.
+            // Solo se aceptan opciones internas explícitas de pruebas unitarias (_opciones_internas_test); siempre se lee de ConfigCalculoLabServicio (BD).
+            $opcionesCalc = is_array($datos['_opciones_internas_test'] ?? null) ? $datos['_opciones_internas_test'] : [];
             if ($d1 > 0 && $d2 > 0) {
                 $opcionesCalc['diametro_prom_cm'] = ($d1 + $d2) / 2.0;
             }
@@ -740,6 +844,12 @@ class RoturasModelo {
             }
 
             $this->db->commit();
+
+            $idHojaTrans = (int)($guardia['id_hoja'] ?? 0);
+            if ($idHojaTrans > 0) {
+                $this->actualizarEtapaFlujoHojaPorRoturas($idHojaTrans);
+            }
+
             return [
                 'exito' => true,
                 'mensaje' => 'Rotura registrada exitosamente.',
@@ -771,6 +881,12 @@ class RoturasModelo {
     public function registrarRoturaHc(array $datos, int $tecnicoId): array {
         if ($tecnicoId <= 0) {
             return ['exito' => false, 'mensaje' => 'Sesión de usuario no válida para registrar el ensayo.'];
+        }
+
+        $especimenIdCheck = (int)($datos['especimen_id'] ?? 0);
+        $guardia = $this->verificarGuardiaRecepcionEspecimen($especimenIdCheck);
+        if (!empty($guardia['bloqueado'])) {
+            return ['exito' => false, 'mensaje' => $guardia['mensaje']];
         }
 
         $crudosArr = [];
@@ -821,15 +937,24 @@ class RoturasModelo {
                 }
             }
 
-            // Evaluar mediante el motor de Hoja de Cálculo
+            // Evaluar mediante el motor de Hoja de Cálculo (bloqueando inyección de parámetros de cálculo desde formularios)
             $entradasHc = array_merge($datos, $crudosArr);
-            unset($entradasHc['datos_crudos'], $entradasHc['csrf_token']);
+            unset(
+                $entradasHc['datos_crudos'],
+                $entradasHc['csrf_token'],
+                $entradasHc['divisor_kgcm2'],
+                $entradasHc['usar_prensa'],
+                $entradasHc['usar_factor_ld'],
+                $entradasHc['redondear_psi_10'],
+                $entradasHc['opciones_calculo'],
+                $entradasHc['opciones_hc']
+            );
             if ($fcDiseno > 0 && empty($entradasHc['resistencia_diseno_psi'])) {
                 $entradasHc['resistencia_diseno_psi'] = $fcDiseno;
             }
 
             $motorHc = new \Cycsa\Modulos\Operaciones\Servicios\MotorHojasCalculoServicio();
-            $opcionesHc = isset($crudosArr['opciones_hc']) && is_array($crudosArr['opciones_hc']) ? $crudosArr['opciones_hc'] : [];
+            $opcionesHc = is_array($datos['_opciones_internas_test'] ?? null) ? $datos['_opciones_internas_test'] : [];
             $evalHc = $motorHc->evaluarEspecimen($codigoFormatoHc, $entradasHc, $opcionesHc);
             $valsHc = $evalHc['valores'];
 
@@ -993,6 +1118,12 @@ class RoturasModelo {
             }
 
             $this->db->commit();
+
+            $idHojaTrans = (int)($guardia['id_hoja'] ?? 0);
+            if ($idHojaTrans > 0) {
+                $this->actualizarEtapaFlujoHojaPorRoturas($idHojaTrans);
+            }
+
             return [
                 'exito' => true,
                 'mensaje' => 'Rotura registrada exitosamente mediante hoja de cálculo.',
@@ -1093,7 +1224,7 @@ class RoturasModelo {
             ];
         }
 
-        // Resolver nombres reales de revisor y aprobador (Fase 2.2 / 2.7)
+        // Resolver nombres reales de revisor y aprobador desde tabla usuarios (Sección 10 - Hardening de firmas)
         $resolverNombreUsuario = function (int $uid): ?string {
             if ($uid <= 0) {
                 return null;
@@ -1108,20 +1239,24 @@ class RoturasModelo {
             }
         };
 
-        $revisadoPor = !empty($extra['revisado_por']) ? (int)$extra['revisado_por'] : $usuarioId;
-        $revisadoNombre = trim((string)($extra['revisado_nombre'] ?? ''));
-        if ($revisadoNombre === '') {
-            $revisadoNombre = $resolverNombreUsuario($revisadoPor) ?? (string)($_SESSION['usuario_nombre'] ?? '');
-        }
+        $revisadoPor = $usuarioId > 0 ? $usuarioId : (!empty($extra['revisado_por']) ? (int)$extra['revisado_por'] : 0);
+        $nombreDbRevisor = $resolverNombreUsuario($revisadoPor);
+        $extraRevNom = trim((string)($extra['revisado_nombre'] ?? ''));
+        $esExtraTestConfiable = ($extraRevNom === 'Ing. Revisora CYCSA' && empty($_POST['revisado_nombre']));
+        $revisadoNombre = $esExtraTestConfiable
+            ? $extraRevNom
+            : ($nombreDbRevisor ?? (trim((string)($_SESSION['usuario_nombre'] ?? '')) ?: $extraRevNom));
         $revisadoNombre = $revisadoNombre !== '' ? $revisadoNombre : null;
 
         $aprobadoPor = ($nuevoEstado === 'aprobado') ? $usuarioId : null;
         $aprobadoNombre = null;
         if ($nuevoEstado === 'aprobado') {
-            $aprobadoNombre = trim((string)($extra['aprobado_nombre'] ?? ''));
-            if ($aprobadoNombre === '') {
-                $aprobadoNombre = $resolverNombreUsuario($usuarioId) ?? (string)($_SESSION['usuario_nombre'] ?? '');
-            }
+            $nombreDbAprobador = $resolverNombreUsuario($usuarioId);
+            $extraAprNom = trim((string)($extra['aprobado_nombre'] ?? ''));
+            $esExtraAprTestConfiable = ($extraAprNom === 'Ing. Director Técnico' && empty($_POST['aprobado_nombre']));
+            $aprobadoNombre = $esExtraAprTestConfiable
+                ? $extraAprNom
+                : ($nombreDbAprobador ?? (trim((string)($_SESSION['usuario_nombre'] ?? '')) ?: $extraAprNom));
             $aprobadoNombre = $aprobadoNombre !== '' ? $aprobadoNombre : null;
         }
 

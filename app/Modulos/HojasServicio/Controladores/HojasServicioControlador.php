@@ -19,8 +19,8 @@ class HojasServicioControlador extends ControladorBase {
     }
 
     private function verificarPermiso(Respuesta $respuesta, string $accion): void {
-        if (!tienePermiso('operaciones', $accion)) {
-            $_SESSION['error'] = 'No tiene permisos para realizar esta acción en Hojas de Servicio.';
+        if (!tienePermiso('recepcion', $accion) && !tienePermiso('ordenes_servicio', $accion) && !tienePermiso('operaciones', $accion)) {
+            $_SESSION['error'] = 'No tiene permisos para realizar esta acción en Hojas de Servicio / Recepción.';
             $respuesta->redirigir('/Cycsa/publico/panel');
             exit;
         }
@@ -637,13 +637,27 @@ class HojasServicioControlador extends ControladorBase {
                     'datos' => ['id_hoja' => (int)($hoja['id'] ?? $idHojaGuardada)],
                 ]);
 
-                // Ingreso automático e idempotente de las muestras nuevas a Laboratorio (sin paso manual de Aceptar/Observar)
+                // Sección 1 y 10: La RT-FM-13 recién guardada permanece en etapa 'recepcion_borrador' (recepcion_completa = 0)
+                // y solo ingresa a Laboratorio cuando Recepción marca explícitamente "Recepción completa".
+                $marcarCompletaExplicita = !empty($datos['recepcion_completa']) || !empty($datos['marcar_recepcion_completa']);
                 if (
+                    $marcarCompletaExplicita &&
                     $idHojaGuardada > 0 &&
                     !empty($muestrasSaneadas) &&
                     function_exists('esOrdenServicioAprobada') &&
                     esOrdenServicioAprobada((string)($os['estado'] ?? ''))
                 ) {
+                    try {
+                        $db->prepare("
+                            UPDATE hojas_solicitud
+                            SET recepcion_completa = 1,
+                                etapa_flujo = CASE WHEN etapa_flujo = 'recepcion_borrador' THEN 'recepcion_completa' ELSE etapa_flujo END,
+                                fecha_recepcion_completa = COALESCE(fecha_recepcion_completa, NOW()),
+                                recepcion_completada_por = COALESCE(recepcion_completada_por, :uid)
+                            WHERE id = :id_hoja
+                        ")->execute(['uid' => $usuarioId, 'id_hoja' => (int)$idHojaGuardada]);
+                    } catch (\Throwable $e) {
+                    }
                     $modelo->ingresarMuestrasHojaALaboratorio($idOS, (int)$idHojaGuardada, $usuarioId, false);
                 }
                 
@@ -1194,6 +1208,11 @@ class HojasServicioControlador extends ControladorBase {
                 'requiere_datos_recepcion' => !empty($camposRecTh),
                 'total_muestras' => $totalM,
                 'muestras_con_datos' => $completas,
+                'etapa_flujo' => $th['etapa_flujo'] ?? 'recepcion_borrador',
+                'recepcion_completa' => (int)($th['recepcion_completa'] ?? 0),
+                'fecha_recepcion_completa' => $th['fecha_recepcion_completa'] ?? null,
+                'motivo_reapertura_recepcion' => $th['motivo_reapertura_recepcion'] ?? null,
+                'autorizacion_urgente_supervisor' => (int)($th['autorizacion_urgente_supervisor'] ?? 0),
             ];
         }
 
@@ -1303,6 +1322,11 @@ class HojasServicioControlador extends ControladorBase {
                 'descripcion_ensayo' => $hoja['descripcion_ensayo'] ?? ($infoFormato['formato_nombre'] ?: 'Ensayo'),
                 'formato_nombre' => $infoFormato['formato_nombre'] ?? '',
                 'codigo_formato' => $infoFormato['codigo_formato'] ?? '',
+                'etapa_flujo' => $hoja['etapa_flujo'] ?? 'recepcion_borrador',
+                'recepcion_completa' => (int)($hoja['recepcion_completa'] ?? 0),
+                'fecha_recepcion_completa' => $hoja['fecha_recepcion_completa'] ?? null,
+                'motivo_reapertura_recepcion' => $hoja['motivo_reapertura_recepcion'] ?? null,
+                'autorizacion_urgente_supervisor' => (int)($hoja['autorizacion_urgente_supervisor'] ?? 0),
             ],
             'campos_recepcion' => $camposRecepcion,
             'campos_tecnico' => $camposTecnico,
@@ -1492,6 +1516,11 @@ class HojasServicioControlador extends ControladorBase {
             'id_referencia' => $idHoja,
         ]);
 
+        if (!empty($datos['marcar_recepcion_completa'])) {
+            $this->procesarCierreRecepcionHoja($db, $modelo, $hoja, $os, $datos, $datosPorCodigo, $respuesta, $esAjax);
+            return;
+        }
+
         if ($esAjax) {
             $respuesta->enviarJson([
                 'status' => 'success',
@@ -1499,11 +1528,308 @@ class HojasServicioControlador extends ControladorBase {
                 'id_hoja' => $idHoja,
                 'muestras_con_datos' => $muestrasCompletas,
                 'datos_por_codigo' => $datosPorCodigo,
+                'etapa_flujo' => $hoja['etapa_flujo'] ?? 'recepcion_borrador',
+                'recepcion_completa' => (int)($hoja['recepcion_completa'] ?? 0),
             ]);
             return;
         }
 
         $_SESSION['exito'] = 'Datos de recepción guardados y sincronizados con Operaciones para la Hoja RT-FM-13.';
         $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
+    }
+
+    /**
+     * Marca una Hoja RT-FM-13 con Recepción Completa (etapa_flujo = 'recepcion_completa'),
+     * valida sus campos obligatorios (o excepción urgente de supervisor) e ingresa las muestras al Laboratorio.
+     */
+    public function marcarRecepcionCompleta(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('recepcion', 'crear_editar') && !tienePermiso('ordenes_servicio', 'crear_editar') && !tienePermiso('operaciones', 'crear_editar')) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'No tiene permisos para completar la recepción.'], 403);
+            return;
+        }
+
+        $esAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+            || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false);
+
+        if (!$peticion->esPost()) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Método no permitido.'], 405);
+            } else {
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            }
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+        if (!empty($datos['muestras_recepcion_json']) || !empty($datos['recepcion'])) {
+            $_POST['marcar_recepcion_completa'] = 1;
+            $this->guardarDatosRecepcion($peticion, $respuesta);
+            return;
+        }
+
+        if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido o sesión expirada.'], 403);
+            } else {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            }
+            return;
+        }
+
+        $idHoja = (int)($datos['id_hoja'] ?? 0);
+        $modelo = new OperacionModelo();
+        $hoja = $idHoja > 0 ? $modelo->obtenerHojaSolicitudPorId($idHoja) : null;
+        if (!$hoja) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Hoja RT-FM-13 no encontrada.'], 404);
+            } else {
+                $_SESSION['error'] = 'Hoja RT-FM-13 no encontrada.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            }
+            return;
+        }
+
+        $idOS = (int)$hoja['id_os'];
+        $os = $modelo->obtenerOSPorId($idOS);
+        if (!$os || !esOrdenServicioAprobada((string)($os['estado'] ?? ''))) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'La Orden de Servicio debe estar aprobada para completar la recepción.'], 409);
+            } else {
+                $_SESSION['error'] = 'La Orden de Servicio debe estar aprobada para completar la recepción.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
+            }
+            return;
+        }
+
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        \Cycsa\Modulos\Configuracion\Servicios\MigradorServicio::asegurarTablas($db);
+        $this->procesarCierreRecepcionHoja($db, $modelo, $hoja, $os, $datos, [], $respuesta, $esAjax);
+    }
+
+    private function procesarCierreRecepcionHoja(
+        PDO $db,
+        OperacionModelo $modelo,
+        array $hoja,
+        array $os,
+        array $datos,
+        array $datosPorCodigo,
+        Respuesta $respuesta,
+        bool $esAjax
+    ): void {
+        $idHoja = (int)$hoja['id'];
+        $idOS = (int)$os['id'];
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 1);
+        $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
+
+        $validacion = validarCamposObligatoriosRecepcionHoja($db, $idHoja, $datosPorCodigo);
+        $forzarUrgente = !empty($datos['forzar_urgente']);
+        $motivoUrgente = trim((string)($datos['motivo_urgente'] ?? ''));
+
+        if (!$validacion['completo']) {
+            if (!$forzarUrgente) {
+                $msgFaltantes = 'Faltan datos obligatorios de recepción antes de ingresar al laboratorio: ' . implode(', ', $validacion['faltantes']);
+                if ($esAjax) {
+                    $respuesta->enviarJson([
+                        'status' => 'error',
+                        'code' => 'RECEPCION_INCOMPLETA',
+                        'message' => $msgFaltantes,
+                        'faltantes' => $validacion['faltantes'],
+                    ], 422);
+                    return;
+                }
+                $_SESSION['error'] = $msgFaltantes;
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS . '&recepcion_hoja=' . $idHoja);
+                return;
+            }
+
+            $esSupervisor = in_array($rolUsuario, [1, 2, 3], true)
+                || tienePermiso('recepcion', 'aprobar')
+                || tienePermiso('operaciones', 'aprobar');
+            if (!$esSupervisor) {
+                $msgPerm = 'Solo un supervisor puede autorizar el ingreso urgente con datos de recepción pendientes.';
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => $msgPerm], 403);
+                    return;
+                }
+                $_SESSION['error'] = $msgPerm;
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
+                return;
+            }
+            if (mb_strlen($motivoUrgente, 'UTF-8') < 5) {
+                $msgMot = 'Debe indicar el motivo obligatorio de autorización urgente del supervisor (mínimo 5 caracteres).';
+                if ($esAjax) {
+                    $respuesta->enviarJson(['status' => 'error', 'message' => $msgMot], 422);
+                    return;
+                }
+                $_SESSION['error'] = $msgMot;
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
+                return;
+            }
+        }
+
+        $stmtUpHoja = $db->prepare("
+            UPDATE hojas_solicitud
+            SET recepcion_completa = 1,
+                etapa_flujo = CASE WHEN etapa_flujo = 'recepcion_borrador' THEN 'recepcion_completa' ELSE etapa_flujo END,
+                fecha_recepcion_completa = COALESCE(fecha_recepcion_completa, NOW()),
+                recepcion_completada_por = :uid,
+                autorizacion_urgente_supervisor = :urg,
+                motivo_urgente_supervisor = :murg
+            WHERE id = :id_hoja
+        ");
+        $stmtUpHoja->execute([
+            'uid' => $usuarioId,
+            'urg' => (!$validacion['completo'] && $forzarUrgente) ? 1 : 0,
+            'murg' => (!$validacion['completo'] && $forzarUrgente) ? $motivoUrgente : null,
+            'id_hoja' => $idHoja,
+        ]);
+
+        $resIngreso = $modelo->ingresarMuestrasHojaALaboratorio($idOS, $idHoja, $usuarioId, false);
+        $descBitacora = "Recepción marcada como COMPLETA en Hoja RT-FM-13 #{$idHoja}";
+        if (!$validacion['completo'] && $forzarUrgente) {
+            $descBitacora .= " (Autorización urgente de supervisor: {$motivoUrgente})";
+        }
+        registrarEventoOS('hojas_servicio', 'marcar_recepcion_completa', $descBitacora, $idOS, [
+            'entidad_tipo' => 'rtfm13',
+            'entidad_id' => $idHoja,
+            'id_referencia' => $idHoja,
+            'datos' => [
+                'etapa_flujo' => 'recepcion_completa',
+                'recepcion_completa' => 1,
+                'forzar_urgente' => $forzarUrgente ? 1 : 0,
+                'motivo_urgente' => $motivoUrgente,
+                'ingreso_lab' => $resIngreso,
+            ],
+        ]);
+
+        if ($esAjax) {
+            $respuesta->enviarJson([
+                'status' => 'success',
+                'message' => 'Recepción marcada como completa. Las muestras han ingresado oficialmente a Laboratorio y Operaciones.',
+                'id_hoja' => $idHoja,
+                'etapa_flujo' => 'recepcion_completa',
+                'recepcion_completa' => 1,
+                'ingreso_laboratorio' => $resIngreso,
+            ]);
+            return;
+        }
+
+        $_SESSION['exito'] = 'Recepción completada e ingreso a Laboratorio registrado para la Hoja RT-FM-13 #' . $idHoja . '.';
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS);
+    }
+
+    /**
+     * Reabre la recepción de una Hoja RT-FM-13 (solo Supervisor con nota obligatoria en bitácora).
+     */
+    public function reabrirRecepcion(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+
+        $esAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+            || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false);
+
+        $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
+        $esSupervisor = in_array($rolUsuario, [1, 2, 3], true)
+            || tienePermiso('recepcion', 'aprobar')
+            || tienePermiso('operaciones', 'aprobar');
+
+        if (!$esSupervisor) {
+            $msg = 'Solo un supervisor puede reabrir la recepción de una Hoja RT-FM-13.';
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => $msg], 403);
+            } else {
+                $_SESSION['error'] = $msg;
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            }
+            return;
+        }
+
+        if (!$peticion->esPost()) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Método no permitido.'], 405);
+            } else {
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            }
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+        if (!isset($datos['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$datos['csrf_token'])) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido o sesión expirada.'], 403);
+            } else {
+                $_SESSION['error'] = 'Token CSRF inválido o sesión expirada.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            }
+            return;
+        }
+
+        $idHoja = (int)($datos['id_hoja'] ?? 0);
+        $motivo = trim((string)($datos['motivo_reapertura'] ?? ($datos['motivo'] ?? '')));
+        if ($idHoja <= 0 || mb_strlen($motivo, 'UTF-8') < 5) {
+            $msg = 'Debe indicar un motivo válido de reapertura (mínimo 5 caracteres).';
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => $msg], 422);
+            } else {
+                $_SESSION['error'] = $msg;
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            }
+            return;
+        }
+
+        $modelo = new OperacionModelo();
+        $hoja = $modelo->obtenerHojaSolicitudPorId($idHoja);
+        if (!$hoja) {
+            if ($esAjax) {
+                $respuesta->enviarJson(['status' => 'error', 'message' => 'Hoja RT-FM-13 no encontrada.'], 404);
+            } else {
+                $_SESSION['error'] = 'Hoja RT-FM-13 no encontrada.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            }
+            return;
+        }
+
+        $idOS = (int)$hoja['id_os'];
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        \Cycsa\Modulos\Configuracion\Servicios\MigradorServicio::asegurarTablas($db);
+
+        $stmt = $db->prepare("
+            UPDATE hojas_solicitud
+            SET recepcion_completa = 0,
+                etapa_flujo = 'recepcion_borrador',
+                motivo_reapertura_recepcion = :motivo
+            WHERE id = :id_hoja
+        ");
+        $stmt->execute([
+            'motivo' => $motivo,
+            'id_hoja' => $idHoja,
+        ]);
+
+        registrarEventoOS('hojas_servicio', 'reabrir_recepcion', "Recepción reabierta por supervisor en Hoja RT-FM-13 #{$idHoja}. Motivo: {$motivo}", $idOS, [
+            'entidad_tipo' => 'rtfm13',
+            'entidad_id' => $idHoja,
+            'id_referencia' => $idHoja,
+            'datos' => [
+                'etapa_flujo' => 'recepcion_borrador',
+                'recepcion_completa' => 0,
+                'motivo_reapertura' => $motivo,
+            ],
+        ]);
+
+        if ($esAjax) {
+            $respuesta->enviarJson([
+                'status' => 'success',
+                'message' => 'Recepción reabierta en modo borrador correctamente.',
+                'id_hoja' => $idHoja,
+                'etapa_flujo' => 'recepcion_borrador',
+                'recepcion_completa' => 0,
+                'motivo_reapertura_recepcion' => $motivo,
+            ]);
+            return;
+        }
+
+        $_SESSION['exito'] = 'Recepción reabierta para la Hoja RT-FM-13 #' . $idHoja . '.';
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS . '&recepcion_hoja=' . $idHoja);
     }
 }
