@@ -76,154 +76,17 @@ class OperacionesControlador extends ControladorBase {
         ];
 
         foreach ($ordenesActivas as &$o) {
-            $o['items'] = $modelo->obtenerItemsOS((int)$o['id']);
-            $o['hoja_solicitud'] = $modelo->obtenerHojaSolicitudPorOS((int)$o['id']);
-            $o['hojas_solicitud'] = $modelo->obtenerHojasSolicitudPorOS((int)$o['id']);
+            $o = $this->enriquecerOrdenBaseOperacion($db, $modelo, $o, $cxcMap);
+            $o = array_merge($o, $this->construirStepperDeterministicoOS($db, $o, $o['items'], $o['hojas_solicitud']));
+            $o = $this->completarEstadoComercialOS($o);
 
-            // Verificar si ya cuenta con muestras aceptadas en laboratorio
-            $stmtRecCount = $db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_os = :id_os");
-            $stmtRecCount->execute(['id_os' => $o['id']]);
-            $o['muestras_aceptadas_lab'] = (int)$stmtRecCount->fetchColumn();
-
-            // Vincular estado y datos de facturación (CXC)
-            $facturaNum = 'FAC-' . ($o['cot_codigo'] ?? '');
-            $o['factura_numero'] = $facturaNum;
-            $o['cxc'] = $cxcMap[$facturaNum] ?? null;
-
-            // Calcular métricas de progreso de calidad y cierre (Técnico + Comercial)
-            $totalEnsayos = count($o['items']);
-            $ensayosAprobados = 0;
-            $ensayosConResultados = 0;
-            $ensayosEnRevision = 0;
-            $ensayosDevueltos = 0;
-            $primerDetalleId = null;
-            $primerDetalleRevisionId = null;
-            $primerDetallePendienteId = null;
-            foreach ($o['items'] as &$it) {
-                $itId = (int)($it['id'] ?? 0);
-                if ($itId > 0 && $primerDetalleId === null) {
-                    $primerDetalleId = $itId;
-                }
-                $it['revision_info'] = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
-                if ($it['revision_info']['estado'] === 'aprobada') {
-                    $ensayosAprobados++;
-                } elseif ($it['revision_info']['estado'] === 'en_revision') {
-                    $ensayosEnRevision++;
-                    if ($itId > 0 && $primerDetalleRevisionId === null) {
-                        $primerDetalleRevisionId = $itId;
-                    }
-                } elseif ($it['revision_info']['estado'] === 'devuelta') {
-                    $ensayosDevueltos++;
-                    if ($itId > 0 && $primerDetallePendienteId === null) {
-                        $primerDetallePendienteId = $itId;
-                    }
-                } else {
-                    if ($itId > 0 && $primerDetallePendienteId === null) {
-                        $primerDetallePendienteId = $itId;
-                    }
-                }
-                if ($it['revision_info']['tiene_resultados']) {
-                    $ensayosConResultados++;
-                }
-            }
-            unset($it);
-
-            $o['total_ensayos'] = $totalEnsayos;
-            $o['ensayos_aprobados'] = $ensayosAprobados;
-            $o['ensayos_con_resultados'] = $ensayosConResultados;
-            $o['ensayos_en_revision'] = $ensayosEnRevision;
-            $o['ensayos_devueltos'] = $ensayosDevueltos;
-            $o['tecnico_100'] = ($totalEnsayos > 0 && $ensayosAprobados === $totalEnsayos);
-
-            $hojaPrincipal = !empty($o['hoja_solicitud']) ? $o['hoja_solicitud'] : ($o['hojas_solicitud'][0] ?? null);
-            $idHojaPrincipal = (int)($hojaPrincipal['id'] ?? 0);
-            $recepcionCompletaOS = !empty($hojaPrincipal['recepcion_completa']) ? (int)$hojaPrincipal['recepcion_completa'] : 0;
-            $etapaFlujoRaw = !empty($hojaPrincipal['etapa_flujo']) ? trim((string)$hojaPrincipal['etapa_flujo']) : '';
-            $esSoloComp = esOrdenSoloCompactacion($o['items']);
-
-            if ($o['tecnico_100'] || $etapaFlujoRaw === 'informe') {
-                $etapaFlujoOS = 'informe';
-            } elseif ($etapaFlujoRaw === 'matriz_en_revision' || ($ensayosEnRevision > 0 && $ensayosDevueltos === 0)) {
-                $etapaFlujoOS = 'matriz_en_revision';
-            } elseif ($etapaFlujoRaw === 'tecnico_completo') {
-                $etapaFlujoOS = 'tecnico_completo';
-            } elseif ($etapaFlujoRaw === 'en_ejecucion' || $ensayosDevueltos > 0 || $ensayosConResultados > 0 || $o['muestras_aceptadas_lab'] > 0) {
-                $etapaFlujoOS = 'en_ejecucion';
-            } elseif ($etapaFlujoRaw === 'recepcion_completa' || $recepcionCompletaOS === 1) {
-                $etapaFlujoOS = 'recepcion_completa';
-            } elseif ($idHojaPrincipal > 0) {
-                $etapaFlujoOS = 'recepcion_borrador';
-            } else {
-                $etapaFlujoOS = 'sin_hoja';
-            }
-
-            if ($etapaFlujoOS === 'informe') {
-                $bandejaRol = 'informes';
-                $sigTexto = 'Ver Informe PDF';
-                $sigUrl = $primerDetalleId
-                    ? ('/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=' . $primerDetalleId)
-                    : ('/Cycsa/publico/operaciones/ver?id_os=' . (int)$o['id']);
-            } elseif ($etapaFlujoOS === 'matriz_en_revision') {
-                $bandejaRol = 'supervisor';
-                $targetDet = $primerDetalleRevisionId ?? $primerDetalleId;
-                $sigTexto = 'Aprobar Matriz';
-                $sigUrl = $targetDet
-                    ? ('/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $targetDet)
-                    : ('/Cycsa/publico/operaciones/ver?id_os=' . (int)$o['id']);
-            } elseif (in_array($etapaFlujoOS, ['sin_hoja', 'recepcion_borrador'], true) && !$esSoloComp && $recepcionCompletaOS === 0) {
-                $bandejaRol = 'recepcion';
-                $sigTexto = ($etapaFlujoOS === 'sin_hoja') ? 'Completar Recepción (RT-FM-13)' : 'Completar Recepción';
-                $sigUrl = '/Cycsa/publico/ordenes-servicio?id_os=' . (int)$o['id'] . ($idHojaPrincipal > 0 ? '&id_hoja=' . $idHojaPrincipal : '');
-            } else {
-                $bandejaRol = 'tecnico';
-                $targetDet = $primerDetallePendienteId ?? $primerDetalleId;
-                if ($etapaFlujoOS === 'tecnico_completo') {
-                    $sigTexto = 'Enviar Matriz a Revisión';
-                    $sigUrl = $targetDet
-                        ? ('/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $targetDet)
-                        : ('/Cycsa/publico/operaciones/ver?id_os=' . (int)$o['id']);
-                } elseif ($idHojaPrincipal > 0 && !$esSoloComp) {
-                    $sigTexto = 'Capturar Lote en Lab';
-                    $sigUrl = '/Cycsa/publico/laboratorio/ensayos-hoja?id_hoja=' . $idHojaPrincipal;
-                } else {
-                    $sigTexto = 'Capturar Lote en Lab';
-                    $sigUrl = $targetDet
-                        ? ('/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $targetDet)
-                        : ('/Cycsa/publico/operaciones/ver?id_os=' . (int)$o['id']);
-                }
-            }
-
-            $o['etapa_flujo_os'] = $etapaFlujoOS;
-            $o['recepcion_completa_os'] = ($recepcionCompletaOS === 1 || in_array($etapaFlujoOS, ['recepcion_completa', 'en_ejecucion', 'tecnico_completo', 'matriz_en_revision', 'informe'], true)) ? 1 : 0;
-            $o['bandeja_rol'] = $bandejaRol;
-            $o['siguiente_paso_texto'] = $sigTexto;
-            $o['siguiente_paso_url'] = $sigUrl;
-
+            $bandejaRol = (string)($o['bandeja_rol'] ?? 'recepcion');
             $conteoBandejas['todas']++;
             if (isset($conteoBandejas[$bandejaRol])) {
                 $conteoBandejas[$bandejaRol]++;
             }
 
-            $montoOS = (float)($o['cot_total'] ?? 0.0);
-            $saldoOS = $o['cxc'] ? (float)$o['cxc']['saldo'] : $montoOS;
-            $estadoPago = $o['cxc'] ? $o['cxc']['estado'] : 'Pendiente';
-            $condicionCom = strtolower(trim($o['condicion_comercial'] ?? $o['condicion_pago'] ?? $o['forma_pago'] ?? 'contado'));
-            $esCredito = ($condicionCom === 'credito');
-
-            if ($esCredito) {
-                // En crédito se autoriza cierre y entrega con la cuenta por cobrar documentada
-                $o['comercial_100'] = ($o['cxc'] !== null);
-            } else {
-                $o['comercial_100'] = ($o['cxc'] !== null && $estadoPago === 'Pagado' && $saldoOS <= 0.01);
-            }
-            $o['saldo_os'] = $saldoOS;
-            $o['estado_pago'] = $estadoPago;
-            $o['condicion_comercial_activa'] = $condicionCom;
-
-            // Condición explícita de cierre (100% técnico + 100% comercial)
-            $o['puede_cerrar'] = ($o['tecnico_100'] && $o['comercial_100'] && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado']));
-
-            if (!$o['tecnico_100']) {
+            if (empty($o['tecnico_100'])) {
                 $conteoEnsayosPendientes++;
             }
         }
@@ -1691,57 +1554,9 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $db = Conexion::obtenerInstancia();
-        $orden['items'] = $modelo->obtenerItemsOS($idOS);
-        $orden['items'] = array_values(array_filter($orden['items'] ?? [], static function ($it): bool {
-            return !is_array($it) || !array_key_exists('permitido', $it) || (int)$it['permitido'] === 1;
-        }));
-        $orden['hoja_solicitud'] = $modelo->obtenerHojaSolicitudPorOS($idOS);
-        $orden['hojas_solicitud'] = $modelo->obtenerHojasSolicitudPorOS($idOS);
-
-        $stmtRecCount = $db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_os = :id_os");
-        $stmtRecCount->execute(['id_os' => $idOS]);
-        $orden['muestras_aceptadas_lab'] = (int)$stmtRecCount->fetchColumn();
-
-        $facturaNum = 'FAC-' . ($orden['cot_codigo'] ?? '');
-        $orden['factura_numero'] = $facturaNum;
-        $stmtCxc = $db->prepare("SELECT * FROM cuentas_por_cobrar WHERE factura_numero = :fn LIMIT 1");
-        $stmtCxc->execute(['fn' => $facturaNum]);
-        $orden['cxc'] = $stmtCxc->fetch(PDO::FETCH_ASSOC) ?: null;
-
-        $totalEnsayos = count($orden['items']);
-        $ensayosAprobados = 0;
-        $ensayosConResultados = 0;
-        foreach ($orden['items'] as &$it) {
-            $it['revision_info'] = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
-            if ($it['revision_info']['estado'] === 'aprobada') {
-                $ensayosAprobados++;
-            }
-            if ($it['revision_info']['tiene_resultados']) {
-                $ensayosConResultados++;
-            }
-        }
-        unset($it);
-
-        $orden['total_ensayos'] = $totalEnsayos;
-        $orden['ensayos_aprobados'] = $ensayosAprobados;
-        $orden['ensayos_con_resultados'] = $ensayosConResultados;
-        $orden['tecnico_100'] = ($totalEnsayos > 0 && $ensayosAprobados === $totalEnsayos);
-
-        $montoOS = (float)($orden['cot_total'] ?? 0.0);
-        $saldoOS = $orden['cxc'] ? (float)$orden['cxc']['saldo'] : $montoOS;
-        $estadoPago = $orden['cxc'] ? $orden['cxc']['estado'] : 'Pendiente';
-        $condicionCom = strtolower(trim($orden['condicion_comercial'] ?? $orden['condicion_pago'] ?? $orden['forma_pago'] ?? 'contado'));
-        $esCredito = ($condicionCom === 'credito');
-
-        if ($esCredito) {
-            $orden['comercial_100'] = ($orden['cxc'] !== null);
-        } else {
-            $orden['comercial_100'] = ($orden['cxc'] !== null && $estadoPago === 'Pagado' && $saldoOS <= 0.01);
-        }
-        $orden['saldo_os'] = $saldoOS;
-        $orden['estado_pago'] = $estadoPago;
-        $orden['condicion_comercial_activa'] = $condicionCom;
-        $orden['puede_cerrar'] = ($orden['tecnico_100'] && $orden['comercial_100'] && !in_array($orden['estado'], ['Finalizado', 'Archivado', 'Cerrado']));
+        $orden = $this->enriquecerOrdenBaseOperacion($db, $modelo, $orden);
+        $orden = array_merge($orden, $this->construirStepperDeterministicoOS($db, $orden, $orden['items'], $orden['hojas_solicitud']));
+        $orden = $this->completarEstadoComercialOS($orden);
 
         $informeLabServicio = new InformeLaboratorioServicio();
         $informesUnificados = $informeLabServicio->obtenerInformesUnificadosOS($idOS);
@@ -1778,12 +1593,622 @@ class OperacionesControlador extends ControladorBase {
             $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de servicio no encontrada']);
             return;
         }
-        $items = $modelo->obtenerItemsDetalle($idOS);
+
+        $db = Conexion::obtenerInstancia();
+        $orden = $this->enriquecerOrdenBaseOperacion($db, $modelo, $orden);
+        $orden = array_merge($orden, $this->construirStepperDeterministicoOS($db, $orden, $orden['items'], $orden['hojas_solicitud']));
+        $orden = $this->completarEstadoComercialOS($orden);
+
         $respuesta->enviarJson([
             'status' => 'success',
             'orden' => $orden,
-            'items' => $items
+            'items' => $orden['items'],
+            'hojas' => $orden['hojas_solicitud'],
         ]);
+    }
+
+    /**
+     * Construye de forma determinística el stepper de 5 pasos, contadores reales,
+     * pill de etapa, metadatos del panel lateral y siguiente acción de la O/S.
+     */
+    public function construirStepperDeterministicoOS(PDO $db, array $os, array $items = [], array $hojas = []): array {
+        $idOS = (int)($os['id'] ?? 0);
+
+        if (empty($items) && !empty($os['items']) && is_array($os['items'])) {
+            $items = $os['items'];
+        }
+        if (empty($hojas)) {
+            if (!empty($os['hojas_solicitud']) && is_array($os['hojas_solicitud'])) {
+                $hojas = $os['hojas_solicitud'];
+            } elseif (!empty($os['hoja_solicitud']) && is_array($os['hoja_solicitud'])) {
+                $hojas = [$os['hoja_solicitud']];
+            }
+        }
+
+        $totalHojas = count($hojas);
+        $hojasRecepcionCompleta = 0;
+        $idHojaPrincipal = 0;
+        $idHojaIncompleta = 0;
+        $mapaHojas = [];
+
+        foreach ($hojas as $h) {
+            if (!is_array($h)) {
+                continue;
+            }
+            $hid = (int)($h['id'] ?? 0);
+            if ($hid > 0) {
+                $mapaHojas[$hid] = $h;
+                $idHojaPrincipal = $hid;
+            }
+            $etapaH = trim((string)($h['etapa_flujo'] ?? ''));
+            $recH = !empty($h['recepcion_completa'])
+                || in_array($etapaH, ['recepcion_completa', 'en_ejecucion', 'tecnico_completo', 'matriz_en_revision', 'informe'], true);
+            if ($recH) {
+                $hojasRecepcionCompleta++;
+            } elseif ($hid > 0 && $idHojaIncompleta === 0) {
+                $idHojaIncompleta = $hid;
+            }
+        }
+        if ($idHojaPrincipal === 0 && !empty($os['hoja_solicitud']['id'])) {
+            $idHojaPrincipal = (int)$os['hoja_solicitud']['id'];
+        }
+
+        $totalMatrices = count($items);
+        $matricesAprobadas = 0;
+        $matricesCapturadas = 0;
+        $matricesEnRevision = 0;
+        $matricesDevueltas = 0;
+        $ensayosConResultados = 0;
+
+        $primerDetalleId = null;
+        $primerDetalleRevisionId = null;
+        $primerDetallePendienteId = null;
+        $primerDetalleDevueltoId = null;
+        $nombreEnsayoRevision = '';
+        $nombreEnsayoPendiente = '';
+        $nombreEnsayoDevuelto = '';
+
+        foreach ($items as $it) {
+            if (!is_array($it)) {
+                continue;
+            }
+            $itId = (int)($it['id'] ?? ($it['id_detalle'] ?? 0));
+            $itNombre = trim((string)($it['descripcion_ensayo'] ?? ''));
+            if ($itId > 0 && $primerDetalleId === null) {
+                $primerDetalleId = $itId;
+            }
+
+            $revInfo = (isset($it['revision_info']) && is_array($it['revision_info']))
+                ? $it['revision_info']
+                : (function_exists('obtenerEstadoRevisionMatriz')
+                    ? obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null)
+                    : ['estado' => 'pendiente', 'tiene_resultados' => false]);
+
+            $estadoRev = (string)($revInfo['estado'] ?? 'pendiente');
+            if (!empty($revInfo['tiene_resultados'])) {
+                $ensayosConResultados++;
+            }
+
+            if ($estadoRev === 'aprobada') {
+                $matricesAprobadas++;
+                $matricesCapturadas++;
+            } elseif ($estadoRev === 'en_revision') {
+                $matricesEnRevision++;
+                $matricesCapturadas++;
+                if ($itId > 0 && $primerDetalleRevisionId === null) {
+                    $primerDetalleRevisionId = $itId;
+                    $nombreEnsayoRevision = $itNombre;
+                }
+            } elseif ($estadoRev === 'devuelta') {
+                $matricesDevueltas++;
+                if ($itId > 0 && $primerDetalleDevueltoId === null) {
+                    $primerDetalleDevueltoId = $itId;
+                    $nombreEnsayoDevuelto = $itNombre;
+                }
+                if ($itId > 0 && $primerDetallePendienteId === null) {
+                    $primerDetallePendienteId = $itId;
+                    $nombreEnsayoPendiente = $itNombre;
+                }
+            } else {
+                if ($estadoRev === 'borrador' && $this->matrizTieneResultadosTecnicosCapturados($it['resultados_json'] ?? null, (string)($it['archivo_markdown'] ?? ''))) {
+                    $matricesCapturadas++;
+                }
+                if ($itId > 0 && $primerDetallePendienteId === null) {
+                    $primerDetallePendienteId = $itId;
+                    $nombreEnsayoPendiente = $itNombre;
+                }
+            }
+        }
+
+        $totalProbetas = 0;
+        $probetasRotas = 0;
+        $idHojaProbetasPendientes = 0;
+        if ($idOS > 0) {
+            try {
+                $stmtProb = $db->prepare("
+                    SELECT COALESCE(rm.id_hoja, 0) AS id_hoja,
+                           COUNT(DISTINCT esp.id) AS total_probetas,
+                           COUNT(DISTINCT CASE WHEN esp.estado = 'ensayado' OR rot.id IS NOT NULL THEN esp.id END) AS probetas_rotas
+                    FROM especimenes esp
+                    JOIN recepcion_muestras rm ON esp.muestra_id = rm.id
+                    LEFT JOIN hojas_solicitud hs ON rm.id_hoja = hs.id
+                    LEFT JOIN roturas rot ON rot.especimen_id = esp.id
+                    WHERE (rm.id_os = :id_os1 OR hs.id_os = :id_os2)
+                      AND (esp.estado IS NULL OR esp.estado != 'testigo')
+                    GROUP BY COALESCE(rm.id_hoja, 0)
+                    ORDER BY id_hoja ASC
+                ");
+                $stmtProb->execute(['id_os1' => $idOS, 'id_os2' => $idOS]);
+                foreach ($stmtProb->fetchAll(PDO::FETCH_ASSOC) as $rowProb) {
+                    $tp = (int)($rowProb['total_probetas'] ?? 0);
+                    $pr = (int)($rowProb['probetas_rotas'] ?? 0);
+                    $hidP = (int)($rowProb['id_hoja'] ?? 0);
+                    $totalProbetas += $tp;
+                    $probetasRotas += $pr;
+                    if ($idHojaProbetasPendientes === 0 && $hidP > 0 && $pr < $tp) {
+                        $idHojaProbetasPendientes = $hidP;
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+        if ($totalProbetas === 0 && isset($os['total_probetas'])) {
+            $totalProbetas = max(0, (int)$os['total_probetas']);
+            $probetasRotas = max(0, (int)($os['probetas_rotas'] ?? 0));
+        }
+
+        $informesEmitidos = 0;
+        $cierreEmitido = in_array(trim((string)($os['estado'] ?? '')), ['Finalizado', 'Archivado', 'Cerrado'], true);
+        if ($idOS > 0) {
+            try {
+                $stmtIr = $db->prepare("
+                    SELECT COUNT(DISTINCT ir.id)
+                    FROM informes_rotura ir
+                    JOIN recepcion_muestras rm ON ir.muestra_id = rm.id
+                    LEFT JOIN hojas_solicitud hs ON rm.id_hoja = hs.id
+                    WHERE (rm.id_os = :id_os1 OR hs.id_os = :id_os2)
+                      AND ir.estado = 'aprobado'
+                ");
+                $stmtIr->execute(['id_os1' => $idOS, 'id_os2' => $idOS]);
+                $informesEmitidos += (int)$stmtIr->fetchColumn();
+            } catch (\Throwable $e) {
+            }
+
+            try {
+                $stmtIc = $db->prepare("
+                    SELECT COUNT(DISTINCT ic.id)
+                    FROM informes_control ic
+                    JOIN lotes_muestras lm ON ic.id_lote = lm.id
+                    JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
+                    LEFT JOIN hojas_solicitud hs ON rm.id_hoja = hs.id
+                    WHERE (rm.id_os = :id_os1 OR hs.id_os = :id_os2)
+                      AND ic.estado_aprobacion = 'Aprobado'
+                ");
+                $stmtIc->execute(['id_os1' => $idOS, 'id_os2' => $idOS]);
+                $informesEmitidos += (int)$stmtIc->fetchColumn();
+            } catch (\Throwable $e) {
+            }
+
+            try {
+                $stmtBit = $db->prepare("
+                    SELECT COUNT(*)
+                    FROM bitacora
+                    WHERE id_os = :id_os
+                      AND modulo = 'operaciones'
+                      AND accion IN ('enviar_matriz_cliente', 'cerrar_orden')
+                ");
+                $stmtBit->execute(['id_os' => $idOS]);
+                $cntBit = (int)$stmtBit->fetchColumn();
+                if ($cntBit > 0) {
+                    $informesEmitidos += $cntBit;
+                    $cierreEmitido = true;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+        if ($informesEmitidos === 0 && isset($os['informes_emitidos'])) {
+            $informesEmitidos = max(0, (int)$os['informes_emitidos']);
+        }
+
+        $esSoloComp = !empty($items) && function_exists('esOrdenSoloCompactacion')
+            ? esOrdenSoloCompactacion($items)
+            : false;
+
+        // Evaluación determinística de los 5 pasos
+        $paso1Hecho = ($totalHojas > 0);
+        $paso1Texto = $paso1Hecho ? 'Emitida' : 'Pendiente';
+
+        $paso2Hecho = ($totalHojas > 0) && ($hojasRecepcionCompleta >= $totalHojas || $esSoloComp);
+        $paso2Texto = $paso2Hecho
+            ? 'Completa'
+            : ($totalHojas > 0 ? "{$hojasRecepcionCompleta} de {$totalHojas} hojas" : 'Pendiente');
+
+        $paso3Hecho = $paso2Hecho && (
+            $totalProbetas > 0
+                ? ($probetasRotas >= $totalProbetas)
+                : ($matricesCapturadas >= $totalMatrices && $totalMatrices > 0)
+        );
+        $paso3Texto = $paso3Hecho
+            ? 'Completa'
+            : ($totalProbetas > 0
+                ? "{$probetasRotas} de {$totalProbetas} probetas"
+                : "{$matricesCapturadas} de {$totalMatrices} matrices");
+
+        $paso4Hecho = $paso3Hecho && ($totalMatrices > 0 && $matricesAprobadas >= $totalMatrices);
+        $paso4Texto = $paso4Hecho
+            ? 'Aprobada'
+            : "{$matricesAprobadas} de {$totalMatrices} aprobadas";
+
+        // REGLA ESTRICTA: Nunca se marca verde 'Informe' mientras haya matrices sin aprobar
+        $paso5Hecho = $paso4Hecho
+            && ($totalMatrices > 0 && $matricesAprobadas >= $totalMatrices)
+            && ($informesEmitidos > 0 || $cierreEmitido);
+        $paso5Texto = $paso5Hecho ? 'Emitido' : 'Pendiente';
+
+        $stepperPasos = [
+            [
+                'numero' => 1,
+                'clave' => 'rt_fm_13',
+                'titulo' => 'RT-FM-13',
+                'label' => 'RT-FM-13',
+                'hecho' => $paso1Hecho,
+                'estado_texto' => $paso1Texto,
+                'clase' => '',
+            ],
+            [
+                'numero' => 2,
+                'clave' => 'recepcion',
+                'titulo' => 'Recepción',
+                'label' => 'Recepción',
+                'hecho' => $paso2Hecho,
+                'estado_texto' => $paso2Texto,
+                'clase' => '',
+            ],
+            [
+                'numero' => 3,
+                'clave' => 'ejecucion',
+                'titulo' => 'Ejecución',
+                'label' => 'Ejecución',
+                'hecho' => $paso3Hecho,
+                'estado_texto' => $paso3Texto,
+                'clase' => '',
+            ],
+            [
+                'numero' => 4,
+                'clave' => 'revision',
+                'titulo' => 'Revisión',
+                'label' => 'Revisión',
+                'hecho' => $paso4Hecho,
+                'estado_texto' => $paso4Texto,
+                'clase' => '',
+            ],
+            [
+                'numero' => 5,
+                'clave' => 'informe',
+                'titulo' => 'Informe',
+                'label' => 'Informe',
+                'hecho' => $paso5Hecho,
+                'estado_texto' => $paso5Texto,
+                'clase' => '',
+            ],
+        ];
+
+        $todosAnterioresHechos = true;
+        $currentAsignado = false;
+        foreach ($stepperPasos as &$paso) {
+            if ($todosAnterioresHechos && $paso['hecho']) {
+                $paso['clase'] = 'is-done';
+            } elseif (!$currentAsignado) {
+                $paso['clase'] = 'is-current';
+                $currentAsignado = true;
+                $todosAnterioresHechos = false;
+            } else {
+                $paso['clase'] = '';
+                $todosAnterioresHechos = false;
+            }
+        }
+        unset($paso);
+
+        // Estado agregado de etapa, pill, bandeja y siguiente acción
+        $tecnico100 = ($totalMatrices > 0 && $matricesAprobadas === $totalMatrices);
+        $urlVerOS = $idOS > 0 ? "/Cycsa/publico/operaciones/ver?id_os={$idOS}" : '/Cycsa/publico/operaciones';
+
+        if ($matricesDevueltas > 0 && !$paso4Hecho) {
+            $pillEtapaClase = 'cy-pill-danger';
+            $pillEtapaTexto = 'Devuelto';
+            $etapaFlujoOS = 'en_ejecucion';
+            $bandejaRol = 'tecnico';
+            $targetDet = $primerDetalleDevueltoId ?? $primerDetallePendienteId ?? $primerDetalleId;
+            $sigAccionTitulo = 'Corregir matriz devuelta';
+            $sigAccionSubtitulo = $nombreEnsayoDevuelto !== ''
+                ? "Matriz observada por supervisión en {$nombreEnsayoDevuelto}; corregir y reenviar a revisión."
+                : 'Matriz observada por supervisión; corregir y reenviar a revisión.';
+            $sigAccionBotonTexto = 'Corregir matriz';
+            $sigAccionUrl = $targetDet
+                ? "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$targetDet}"
+                : $urlVerOS;
+            $sigPasoTexto = 'Corregir Matriz Devuelta';
+            $sigPasoUrl = $sigAccionUrl;
+        } elseif (!$paso1Hecho) {
+            $pillEtapaClase = 'cy-pill-pend';
+            $pillEtapaTexto = 'Recepción en borrador';
+            $etapaFlujoOS = 'sin_hoja';
+            $bandejaRol = 'recepcion';
+            $sigAccionTitulo = 'Emitir hoja RT-FM-13';
+            $sigAccionSubtitulo = 'La orden aún no tiene hoja de solicitud de servicio RT-FM-13 registrada.';
+            $sigAccionBotonTexto = 'Crear RT-FM-13';
+            $sigAccionUrl = $idOS > 0 ? "/Cycsa/publico/ordenes-servicio?id_os={$idOS}" : '/Cycsa/publico/ordenes-servicio';
+            $sigPasoTexto = 'Completar Recepción (RT-FM-13)';
+            $sigPasoUrl = $sigAccionUrl;
+        } elseif (!$paso2Hecho) {
+            $pillEtapaClase = 'cy-pill-pend';
+            $pillEtapaTexto = 'Recepción en borrador';
+            $etapaFlujoOS = 'recepcion_borrador';
+            $bandejaRol = 'recepcion';
+            $idHojaRec = $idHojaIncompleta > 0 ? $idHojaIncompleta : $idHojaPrincipal;
+            $sigAccionTitulo = 'Completar datos de recepción';
+            $sigAccionSubtitulo = "{$hojasRecepcionCompleta} de {$totalHojas} hojas RT-FM-13 con recepción completa.";
+            $sigAccionBotonTexto = 'Completar recepción';
+            $sigAccionUrl = $idOS > 0
+                ? ('/Cycsa/publico/ordenes-servicio?id_os=' . $idOS . ($idHojaRec > 0 ? '&id_hoja=' . $idHojaRec : ''))
+                : '/Cycsa/publico/ordenes-servicio';
+            $sigPasoTexto = 'Completar Recepción';
+            $sigPasoUrl = $sigAccionUrl;
+        } elseif (!$paso3Hecho) {
+            $pillEtapaClase = 'cy-pill-warn';
+            $pillEtapaTexto = 'Ejecución técnica';
+            $etapaFlujoOS = 'en_ejecucion';
+            $bandejaRol = 'tecnico';
+            if ($totalProbetas > 0 && $probetasRotas < $totalProbetas) {
+                $idHojaLab = $idHojaProbetasPendientes > 0 ? $idHojaProbetasPendientes : $idHojaPrincipal;
+                $hojaLab = ($idHojaLab > 0 && isset($mapaHojas[$idHojaLab])) ? $mapaHojas[$idHojaLab] : null;
+                $numReg = trim((string)($hojaLab['numero_registro'] ?? ''));
+                $ensayoHoja = trim((string)($hojaLab['descripcion_ensayo'] ?? ''));
+                $restantes = max(0, $totalProbetas - $probetasRotas);
+
+                $sigAccionTitulo = 'Capturar roturas' . ($numReg !== '' ? " del lote Reg. {$numReg}" : '');
+                $sigAccionSubtitulo = $ensayoHoja !== ''
+                    ? "Quedan {$restantes} probetas programadas en {$ensayoHoja} ({$probetasRotas} de {$totalProbetas} completadas)."
+                    : "Quedan {$restantes} probetas programadas por ensayar ({$probetasRotas} de {$totalProbetas} completadas).";
+                $sigAccionBotonTexto = 'Capturar roturas';
+                $sigAccionUrl = $idHojaLab > 0
+                    ? "/Cycsa/publico/laboratorio/detalle-lote?id_hoja={$idHojaLab}"
+                    : $urlVerOS;
+                $sigPasoTexto = "Capturar rotura ({$probetasRotas} de {$totalProbetas} probetas)";
+                $sigPasoUrl = $sigAccionUrl;
+            } else {
+                $targetDet = $primerDetallePendienteId ?? $primerDetalleId;
+                $sigAccionTitulo = 'Capturar resultados de matriz';
+                $sigAccionSubtitulo = $nombreEnsayoPendiente !== ''
+                    ? "Pendiente captura técnica en {$nombreEnsayoPendiente} ({$matricesCapturadas} de {$totalMatrices} matrices)."
+                    : "{$matricesCapturadas} de {$totalMatrices} matrices capturadas para esta orden.";
+                $sigAccionBotonTexto = 'Capturar matriz';
+                $sigAccionUrl = $targetDet
+                    ? "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$targetDet}"
+                    : $urlVerOS;
+                $sigPasoTexto = 'Capturar Matriz Técnica';
+                $sigPasoUrl = $sigAccionUrl;
+            }
+        } elseif (!$paso4Hecho) {
+            if ($matricesEnRevision > 0) {
+                $pillEtapaClase = 'cy-pill-warn';
+                $pillEtapaTexto = 'Matriz en revisión';
+                $etapaFlujoOS = 'matriz_en_revision';
+                $bandejaRol = 'supervisor';
+                $targetDet = $primerDetalleRevisionId ?? $primerDetalleId;
+                $sigAccionTitulo = $nombreEnsayoRevision !== ''
+                    ? "Aprobar matriz de {$nombreEnsayoRevision}"
+                    : 'Aprobar matriz pendiente';
+                $sigAccionSubtitulo = "{$matricesAprobadas} de {$totalMatrices} matrices aprobadas ({$matricesEnRevision} en revisión).";
+                $sigAccionBotonTexto = 'Aprobar matriz';
+                $sigAccionUrl = $targetDet
+                    ? "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$targetDet}"
+                    : $urlVerOS;
+                $sigPasoTexto = 'Aprobar Matriz';
+                $sigPasoUrl = $sigAccionUrl;
+            } else {
+                $pillEtapaClase = 'cy-pill-warn';
+                $pillEtapaTexto = 'Ejecución técnica';
+                $etapaFlujoOS = ($matricesCapturadas >= $totalMatrices && $totalMatrices > 0) ? 'tecnico_completo' : 'en_ejecucion';
+                $bandejaRol = 'tecnico';
+                $targetDet = $primerDetallePendienteId ?? $primerDetalleId;
+                $sigAccionTitulo = 'Enviar matriz a revisión';
+                $sigAccionSubtitulo = "Ensayos ejecutados; falta completar y enviar matrices a supervisión ({$matricesAprobadas} de {$totalMatrices} aprobadas).";
+                $sigAccionBotonTexto = 'Capturar / Enviar';
+                $sigAccionUrl = $targetDet
+                    ? "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$targetDet}"
+                    : $urlVerOS;
+                $sigPasoTexto = 'Enviar Matriz a Revisión';
+                $sigPasoUrl = $sigAccionUrl;
+            }
+        } else {
+            $pillEtapaClase = 'cy-pill-ok';
+            $pillEtapaTexto = 'Aprobado';
+            $etapaFlujoOS = 'informe';
+            $bandejaRol = 'informes';
+            $urlInforme = $primerDetalleId
+                ? "/Cycsa/publico/operaciones/imprimir-matriz?id_detalle={$primerDetalleId}"
+                : $urlVerOS;
+            if ($paso5Hecho) {
+                $sigAccionTitulo = $cierreEmitido && in_array(trim((string)($os['estado'] ?? '')), ['Finalizado', 'Archivado', 'Cerrado'], true)
+                    ? 'Orden finalizada y archivada'
+                    : 'Informe oficial emitido';
+                $sigAccionSubtitulo = "Las {$totalMatrices} matrices están aprobadas y el informe fue emitido.";
+                $sigAccionBotonTexto = 'Ver Informe PDF';
+            } else {
+                $sigAccionTitulo = 'Emitir y enviar informe oficial';
+                $sigAccionSubtitulo = "Las {$totalMatrices} matrices están aprobadas; pendiente emitir o enviar el informe PDF al cliente.";
+                $sigAccionBotonTexto = 'Enviar al cliente';
+            }
+            $sigAccionUrl = $urlInforme;
+            $sigPasoTexto = 'Ver Informe PDF';
+            $sigPasoUrl = $urlInforme;
+        }
+
+        $porcentajeMatrices = $totalMatrices > 0
+            ? min(100, max(0, (int)round(($matricesCapturadas / $totalMatrices) * 100)))
+            : 0;
+        $avanceMatricesTexto = "{$matricesCapturadas} de {$totalMatrices} matrices";
+
+        $clienteNombre = trim((string)($os['cliente_nombre'] ?? ($os['cliente_informe_nombre'] ?? 'Cliente'))) ?: 'Cliente';
+        $nombreProyecto = trim((string)($os['nombre_proyecto'] ?? '')) ?: 'Sin proyecto';
+        $codigoCotizacion = trim((string)($os['cot_codigo'] ?? ($os['codigo_cotizacion'] ?? ''))) ?: 'Sin cotización';
+        $condicionPago = trim((string)($os['condicion_pago'] ?? ($os['forma_pago'] ?? '')));
+        if ($condicionPago === '') {
+            $condComRaw = strtolower(trim((string)($os['condicion_comercial'] ?? 'contado')));
+            $condicionPago = $condComRaw === 'credito' ? 'Crédito' : 'Contado';
+        }
+        $lineaMetaPanel = (string)preg_replace('/\s+/', ' ', "{$clienteNombre} · {$nombreProyecto} · {$codigoCotizacion} · {$condicionPago}");
+
+        return [
+            'stepper_pasos' => $stepperPasos,
+            'matrices_aprobadas_count' => (int)$matricesAprobadas,
+            'matrices_capturadas_count' => (int)$matricesCapturadas,
+            'matrices_total_count' => (int)$totalMatrices,
+            'porcentaje_matrices' => $porcentajeMatrices,
+            'avance_matrices_texto' => $avanceMatricesTexto,
+            'probetas_rotas_count' => (int)$probetasRotas,
+            'probetas_total_count' => (int)$totalProbetas,
+            'hojas_completas_count' => (int)$hojasRecepcionCompleta,
+            'hojas_total_count' => (int)$totalHojas,
+            'informes_emitidos_count' => (int)$informesEmitidos,
+            'pill_etapa_clase' => $pillEtapaClase,
+            'pill_etapa_texto' => $pillEtapaTexto,
+            'linea_meta_panel' => $lineaMetaPanel,
+            'siguiente_accion_titulo' => $sigAccionTitulo,
+            'siguiente_accion_subtitulo' => $sigAccionSubtitulo,
+            'siguiente_accion_boton_texto' => $sigAccionBotonTexto,
+            'siguiente_accion_url' => $sigAccionUrl,
+            // Claves previas preservadas para retrocompatibilidad con tests y vistas
+            'total_ensayos' => (int)$totalMatrices,
+            'ensayos_aprobados' => (int)$matricesAprobadas,
+            'ensayos_con_resultados' => (int)$ensayosConResultados,
+            'ensayos_en_revision' => (int)$matricesEnRevision,
+            'ensayos_devueltos' => (int)$matricesDevueltas,
+            'tecnico_100' => $tecnico100,
+            'etapa_flujo_os' => $etapaFlujoOS,
+            'recepcion_completa_os' => $paso2Hecho ? 1 : 0,
+            'bandeja_rol' => $bandejaRol,
+            'siguiente_paso_texto' => $sigPasoTexto,
+            'siguiente_paso_url' => $sigPasoUrl,
+        ];
+    }
+
+    private function enriquecerOrdenBaseOperacion(PDO $db, OperacionModelo $modelo, array $orden, ?array $cxcMap = null): array {
+        $idOS = (int)($orden['id'] ?? 0);
+        $items = $idOS > 0 ? $modelo->obtenerItemsOS($idOS) : [];
+        $items = array_values(array_filter($items, static function ($it): bool {
+            return !is_array($it) || !array_key_exists('permitido', $it) || (int)$it['permitido'] === 1;
+        }));
+        foreach ($items as &$it) {
+            $it['revision_info'] = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
+        }
+        unset($it);
+
+        $orden['items'] = $items;
+        $orden['hoja_solicitud'] = $idOS > 0 ? $modelo->obtenerHojaSolicitudPorOS($idOS) : null;
+        $orden['hojas_solicitud'] = $idOS > 0 ? $modelo->obtenerHojasSolicitudPorOS($idOS) : [];
+
+        $muestrasAceptadas = 0;
+        if ($idOS > 0) {
+            $stmtRecCount = $db->prepare("SELECT COUNT(*) FROM recepcion_muestras WHERE id_os = :id_os");
+            $stmtRecCount->execute(['id_os' => $idOS]);
+            $muestrasAceptadas = (int)$stmtRecCount->fetchColumn();
+        }
+        $orden['muestras_aceptadas_lab'] = $muestrasAceptadas;
+
+        $facturaNum = 'FAC-' . ($orden['cot_codigo'] ?? '');
+        $orden['factura_numero'] = $facturaNum;
+        if ($cxcMap !== null) {
+            $orden['cxc'] = $cxcMap[$facturaNum] ?? null;
+        } else {
+            $stmtCxc = $db->prepare("SELECT * FROM cuentas_por_cobrar WHERE factura_numero = :fn LIMIT 1");
+            $stmtCxc->execute(['fn' => $facturaNum]);
+            $orden['cxc'] = $stmtCxc->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        return $orden;
+    }
+
+    private function completarEstadoComercialOS(array $orden): array {
+        $montoOS = (float)($orden['cot_total'] ?? 0.0);
+        $saldoOS = !empty($orden['cxc']) ? (float)$orden['cxc']['saldo'] : $montoOS;
+        $estadoPago = !empty($orden['cxc']) ? (string)$orden['cxc']['estado'] : 'Pendiente';
+        $condicionCom = strtolower(trim((string)($orden['condicion_comercial'] ?? $orden['condicion_pago'] ?? $orden['forma_pago'] ?? 'contado')));
+        $esCredito = ($condicionCom === 'credito');
+
+        if ($esCredito) {
+            $orden['comercial_100'] = !empty($orden['cxc']);
+        } else {
+            $orden['comercial_100'] = (!empty($orden['cxc']) && $estadoPago === 'Pagado' && $saldoOS <= 0.01);
+        }
+        $orden['saldo_os'] = $saldoOS;
+        $orden['estado_pago'] = $estadoPago;
+        $orden['condicion_comercial_activa'] = $condicionCom;
+        $orden['puede_cerrar'] = (!empty($orden['tecnico_100']) && $orden['comercial_100'] && !in_array($orden['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true));
+
+        return $orden;
+    }
+
+    private function matrizTieneResultadosTecnicosCapturados(?string $resultadosJson, string $archivoMd = ''): bool {
+        if (empty($resultadosJson) || $resultadosJson === '[]') {
+            return false;
+        }
+        $dec = json_decode($resultadosJson, true);
+        if (!is_array($dec)) {
+            return false;
+        }
+        $filas = isset($dec['filas']) && is_array($dec['filas'])
+            ? $dec['filas']
+            : (array_is_list($dec) ? $dec : []);
+        if (empty($filas)) {
+            return false;
+        }
+
+        foreach ($filas as $fila) {
+            if (!is_array($fila)) {
+                continue;
+            }
+            $tieneFechaEnsayo = false;
+            foreach ($fila as $colCheck => $valCheck) {
+                $colCheckLow = mb_strtolower((string)$colCheck, 'UTF-8');
+                if ((str_contains($colCheckLow, 'fecha de ensayo') || str_contains($colCheckLow, 'fecha de ruptura')) && trim((string)$valCheck) !== '') {
+                    $tieneFechaEnsayo = true;
+                    break;
+                }
+            }
+            foreach ($fila as $col => $val) {
+                $colStr = (string)$col;
+                if ($colStr === '' || str_starts_with($colStr, '_')) {
+                    continue;
+                }
+                if (trim((string)$val) === '') {
+                    continue;
+                }
+                if (function_exists('clasificarColumnaRecepcionOTecnico')) {
+                    $origen = clasificarColumnaRecepcionOTecnico($colStr, $archivoMd);
+                    if (in_array($origen, ['tecnico', 'laboratorio'], true)) {
+                        $colLow = mb_strtolower($colStr, 'UTF-8');
+                        if (str_contains($colLow, 'reven')) {
+                            continue;
+                        }
+                        if (str_contains($colLow, 'edad') && !$tieneFechaEnsayo) {
+                            continue;
+                        }
+                        return true;
+                    }
+                    if ($origen === 'calculado') {
+                        $colLow = mb_strtolower($colStr, 'UTF-8');
+                        if (!str_contains($colLow, 'reven') && (!str_contains($colLow, 'edad') || $tieneFechaEnsayo)) {
+                            return true;
+                        }
+                    }
+                } else {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public function obtenerMatrizOSAjax(Peticion $peticion, Respuesta $respuesta): void {
