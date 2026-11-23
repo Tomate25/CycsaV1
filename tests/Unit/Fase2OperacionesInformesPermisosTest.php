@@ -192,22 +192,76 @@ class Fase2OperacionesInformesPermisosTest extends TestCase {
         $this->assertSame('112000', (string)$dec['filas'][0]['Carga (lb)']);
         $this->assertSame('3960', (string)$dec['filas'][0]['R. Compresión (lb/in²)']);
 
-        // Pero el backend restauró TODOS los datos de recepción, Nombre muestra y equipo densímetro
+        // Pero el backend restauró TODOS los datos de recepción, Nombre muestra, fechas/edad y equipo densímetro
         $this->assertSame('Viga Principal Original', $dec['filas'][0]['Nombre muestra']);
         $this->assertSame('4', (string)$dec['filas'][0]['Reven. (in)']);
+        $this->assertSame('10', (string)$dec['filas'][0]['Reven. (cm)']);
         $this->assertSame('4000', (string)$dec['filas'][0]['Diseño de concreto (lb/in²)']);
+        $this->assertSame('2026-11-01', (string)$dec['filas'][0]['Fecha de Fabricación']);
+        $this->assertSame('2026-11-29', (string)$dec['filas'][0]['Fecha de Ensayo']);
+        $this->assertSame('28', (string)$dec['filas'][0]['Edad (Días)']);
         $this->assertSame('TROXLER', $dec['metadatos']['equipo_marca']);
         $this->assertSame('99112', $dec['metadatos']['equipo_serie']);
         $this->assertSame('Plastificante X', $dec['metadatos']['nota_aditivos']);
     }
 
-    public function testVistaCapturaRestringeDesbloqueoYEquipoASupervisor(): void {
+    public function testVistaCapturaOcultaRecepcionYMetadatosATecnicoYMuestraASupervisor(): void {
         $htmlCaptura = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php');
         $this->assertStringContainsString('if ($esSupervisor && !$esModoHistorico)', $htmlCaptura);
         $this->assertStringContainsString('col-recepcion-oculta', $htmlCaptura);
         $this->assertStringContainsString('id="meta_nota_aditivos"', $htmlCaptura);
         $this->assertStringContainsString('id="meta_observaciones_pendientes"', $htmlCaptura);
         $this->assertStringContainsString('id="meta_columnas_asterisco"', $htmlCaptura);
+
+        // Renderizar la vista real como Técnico (rol 6) y verificar que NO ve recepción ni metadatos
+        $detalle = [
+            'id' => 999,
+            'id_os' => 888,
+            'codigo_os' => 'OS-2026-0888',
+            'descripcion_ensayo' => 'Resistencia a la compresión de cilindros',
+            'norma_astm' => 'ASTM C39',
+            'archivo_markdown' => 'resistencia_de_concreto.md',
+            'resultados_json' => json_encode(['filas' => [['Código laboratorio' => 'MS-16798-26', 'Carga (lb)' => '79204']]], JSON_UNESCAPED_UNICODE),
+        ];
+        $idDetalle = 999;
+        $columnas = ['Código laboratorio', 'Nombre muestra', 'Área (in²)', 'Reven. (in)', 'Reven. (cm)', 'Temp. (°C)', 'Carga (lb)', 'Peso Volumétrico (kg/m³)', 'Diseño de concreto (lb/in²)', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)', 'Fecha de Fabricación', 'Fecha de Ensayo', 'Edad (Días)'];
+        $clasificacionColumnas = clasificarColumnasMatrizPorRol($columnas, 'resistencia_de_concreto.md');
+        $tieneCamposRecepcion = true;
+        $muestrasRecepcionCompletas = 1;
+        $muestrasSeteadas = [['codigo_lab' => 'MS-16798-26', 'datos_recepcion' => []]];
+        $schemaInfo = obtenerEsquemaPlantillaEnsayo('resistencia_de_concreto.md');
+        $formatosSchemaJson = json_encode(['resistencia_de_concreto.md' => $schemaInfo], JSON_UNESCAPED_UNICODE);
+        $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, ['cliente_nombre' => 'CLIENTE CONFIDENCIAL TEST', 'proyecto' => 'PROYECTO SECRETO']);
+        $versionActual = 1;
+        $versionSolicitada = 1;
+        $esHistorica = false;
+        $listaVersiones = [];
+        $versionActivaInfo = null;
+        $prefijoMuestraOS = 'MS';
+        $esEnsayoRoturaLab = true;
+
+        $_SESSION['usuario_rol'] = 6;
+        $_SESSION['usuario_permisos'] = ['operaciones' => ['ver' => true, 'crear_editar' => true, 'aprobar' => false]];
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php';
+        $htmlTecnico = (string)ob_get_clean();
+
+        $this->assertStringContainsString('id="seccion-captura-tecnica-lab"', $htmlTecnico);
+        $this->assertStringNotContainsString('id="recepcion-vs-tecnico-bar"', $htmlTecnico, 'El técnico NO debe ver la barra de recepción ni el botón para mostrar columnas de recepción.');
+        $this->assertStringNotContainsString('id="btn-toggle-plegar-recepcion"', $htmlTecnico);
+        $this->assertStringNotContainsString('CLIENTE CONFIDENCIAL TEST', $htmlTecnico, 'El técnico NO debe ver metadatos de cliente/recepción.');
+        $this->assertStringNotContainsString('Metadatos Oficiales del Encabezado del Informe', $htmlTecnico);
+
+        // Renderizar como Supervisor (rol 1): SÍ ve metadatos y control de columnas de recepción
+        $_SESSION['usuario_rol'] = 1;
+        unset($_SESSION['usuario_permisos']);
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php';
+        $htmlSupervisor = (string)ob_get_clean();
+
+        $this->assertStringContainsString('id="recepcion-vs-tecnico-bar"', $htmlSupervisor);
+        $this->assertStringContainsString('id="btn-toggle-plegar-recepcion"', $htmlSupervisor);
+        $this->assertStringContainsString('Metadatos Oficiales del Encabezado del Informe', $htmlSupervisor);
     }
 
     public function testAprobarMatrizPersisteRevisorAprobadorYObservacionesPendientes(): void {

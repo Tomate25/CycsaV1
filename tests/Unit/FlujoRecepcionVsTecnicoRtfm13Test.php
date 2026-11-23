@@ -254,35 +254,41 @@ class FlujoRecepcionVsTecnicoRtfm13Test extends TestCase {
         $recNombres = array_column($info['campos_recepcion'], 'nombre');
         $tecNombres = $info['campos_tecnico'];
 
-        // Casillas "LLENA RECEPCIÓN" en RT-FM-13 (Sección 5 Propuesta)
+        // Casillas "LLENA RECEPCIÓN" en Órdenes de Servicio / RT-FM-13 (Tabla oficial CYCSA MS-16798-26)
         $this->assertContains('Nombre muestra', $recNombres);
         $this->assertContains('Reven. (in)', $recNombres);
+        $this->assertContains('Reven. (cm)', $recNombres);
         $this->assertContains('Temp. (°C)', $recNombres);
         $this->assertContains('Diseño de concreto (lb/in²)', $recNombres);
         $this->assertContains('Fecha de Fabricación', $recNombres);
-        $this->assertNotContains('Fecha de Ensayo', $recNombres, 'Fecha de Ensayo la genera el técnico al ensayar/romper.');
-        $this->assertNotContains('Edad (Días)', $recNombres, 'Edad (Días) es calculada al registrar la fecha real de ensayo.');
-        $this->assertNotContains('Reven. (cm)', $recNombres, 'Reven. (cm) es calculado automáticamente a partir de Reven. (in).');
+        $this->assertContains('Fecha de Ensayo', $recNombres);
+        $this->assertContains('Edad (Días)', $recNombres);
 
-        // Casillas de Técnico / Calculadas / Laboratorio en Operaciones
+        // Casillas "RELLENA TÉCNICO" exclusivas del Técnico en Operaciones
         $this->assertContains('Área (in²)', $tecNombres);
-        $this->assertContains('Reven. (cm)', $tecNombres);
         $this->assertContains('Carga (lb)', $tecNombres);
         $this->assertContains('Peso Volumétrico (kg/m³)', $tecNombres);
         $this->assertContains('R. Compresión (lb/in²)', $tecNombres);
         $this->assertContains('R. Compresión (kg/cm²)', $tecNombres);
-        $this->assertContains('Fecha de Ensayo', $tecNombres);
-        $this->assertContains('Edad (Días)', $tecNombres);
+        $this->assertNotContains('Reven. (cm)', $tecNombres);
+        $this->assertNotContains('Fecha de Ensayo', $tecNombres);
+        $this->assertNotContains('Edad (Días)', $tecNombres);
 
-        // Clasificación de origen exacto según Tabla de Sección 5
+        // Clasificación de origen exacto según tabla oficial Recepción vs Técnico
         $this->assertSame('identidad', clasificarOrigenColumnaMatriz('Código laboratorio', 'formato_de_resistencia_de_concreto.md'));
         $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Nombre muestra', 'formato_de_resistencia_de_concreto.md'));
         $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Reven. (in)', 'formato_de_resistencia_de_concreto.md'));
-        $this->assertSame('calculado', clasificarOrigenColumnaMatriz('Reven. (cm)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Reven. (cm)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Temp. (°C)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Diseño de concreto (lb/in²)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Fecha de Fabricación', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Fecha de Ensayo', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('recepcion', clasificarOrigenColumnaMatriz('Edad (Días)', 'formato_de_resistencia_de_concreto.md'));
         $this->assertSame('calculado', clasificarOrigenColumnaMatriz('Área (in²)', 'formato_de_resistencia_de_concreto.md'));
-        $this->assertSame('calculado', clasificarOrigenColumnaMatriz('Edad (Días)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('calculado', clasificarOrigenColumnaMatriz('Peso Volumétrico (kg/m³)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('calculado', clasificarOrigenColumnaMatriz('R. Compresión (lb/in²)', 'formato_de_resistencia_de_concreto.md'));
+        $this->assertSame('calculado', clasificarOrigenColumnaMatriz('R. Compresión (kg/cm²)', 'formato_de_resistencia_de_concreto.md'));
         $this->assertSame('laboratorio', clasificarOrigenColumnaMatriz('Carga (lb)', 'formato_de_resistencia_de_concreto.md'));
-        $this->assertSame('laboratorio', clasificarOrigenColumnaMatriz('Fecha de Ensayo', 'formato_de_resistencia_de_concreto.md'));
 
         // Sin traslape entre roles
         $this->assertEmpty(array_intersect($recNombres, $tecNombres));

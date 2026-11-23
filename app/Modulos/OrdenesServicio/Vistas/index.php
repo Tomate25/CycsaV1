@@ -3998,15 +3998,21 @@
             `;
 
             const dRec = m.datos_recepcion || {};
+            const tieneRevenIn = recCamposActuales.some(cc => ['revenin', 'revenimientoin'].includes(normalizarClaveJsRec(cc.nombre)));
             recCamposActuales.forEach(c => {
                 const val = dRec[c.nombre] !== undefined ? dRec[c.nombre] : '';
                 const stepAttr = c.step ? `step="${escapeHtml(c.step)}"` : '';
-                const roAttr = recSoloLecturaActual ? 'readonly disabled' : '';
                 const clave = normalizarClaveJsRec(c.nombre);
+                const esAutoCalcRec = tieneRevenIn && ['revencm', 'revenimientocm'].includes(clave);
+                const roAttr = recSoloLecturaActual
+                    ? 'readonly disabled'
+                    : (esAutoCalcRec ? 'readonly tabindex="-1" title="Calculado automáticamente desde Reven. (in)"' : '');
+                const bgInput = (recSoloLecturaActual || esAutoCalcRec) ? '#f1f5f9' : '#fff';
+                const cursorCss = esAutoCalcRec ? 'cursor:not-allowed; color:#334155; font-weight:600;' : '';
                 html += `<td style="padding:6px 8px; border-bottom:1px solid #f1f5f9;">
                     <input type="${escapeHtml(c.tipo || 'text')}" ${stepAttr} ${roAttr}
                            class="rtfm13-input rec-campo-input"
-                           style="height:34px; font-size:12.5px; padding:4px 8px; background:${recSoloLecturaActual ? '#f8fafc' : '#fff'};"
+                           style="height:34px; font-size:12.5px; padding:4px 8px; background:${bgInput}; ${cursorCss}"
                            data-campo="${escapeHtml(c.nombre)}"
                            data-clave="${escapeHtml(clave)}"
                            value="${escapeHtml(val)}">
@@ -4030,9 +4036,14 @@
         const inpIn = buscarPorClaves(['revenin', 'revenimientoin']);
         const inpCm = buscarPorClaves(['revencm', 'revenimientocm']);
         if (inpIn && inpCm) {
-            if (origenInp === inpIn && inpIn.value !== '' && !isNaN(parseFloat(inpIn.value))) {
-                inpCm.value = (Math.round(parseFloat(inpIn.value) * 2.54 * 2) / 2).toFixed(1);
-            } else if (origenInp === inpCm && inpCm.value !== '' && !isNaN(parseFloat(inpCm.value))) {
+            if (origenInp === inpIn) {
+                if (inpIn.value !== '' && !isNaN(parseFloat(inpIn.value))) {
+                    const cmCalc = Math.round(parseFloat(inpIn.value) * 2.54 * 2) / 2;
+                    inpCm.value = Number.isInteger(cmCalc) ? String(cmCalc) : cmCalc.toFixed(1);
+                } else {
+                    inpCm.value = '';
+                }
+            } else if (origenInp === inpCm && !inpCm.readOnly && inpCm.value !== '' && !isNaN(parseFloat(inpCm.value))) {
                 inpIn.value = (parseFloat(inpCm.value) / 2.54).toFixed(2);
             }
         }

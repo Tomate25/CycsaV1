@@ -163,26 +163,20 @@ class PropuestaFlujoOperacionesLaboratorioTest extends TestCase {
     }
 
     /**
-     * 1) Clasificación de columnas por origen:
-     *    - Nombre muestra = recepcion
-     *    - Fecha de Ensayo != recepcion (tecnico/laboratorio)
-     *    - Edad (Días), Reven. (cm), Área (in²) = calculado o tecnico (nunca recepcion)
+     * 1) Clasificación de columnas por origen (Tabla oficial CYCSA Recepción vs Técnico):
+     *    - Recepción (Órdenes de Servicio): Nombre muestra, Reven. (in), Reven. (cm), Temp. (°C), Diseño, Fecha de Fabricación, Fecha de Ensayo, Edad (Días)
+     *    - Técnico (Operaciones): Área (in²), Carga (lb), Peso Volumétrico (kg/m³), R. Compresión (lb/in²), R. Compresión (kg/cm²)
      */
     public function testClasificacionColumnasPorOrigen(): void {
         $this->assertSame('identidad', clasificarColumnaRecepcionOTecnico('Código laboratorio', 'resistencia_de_concreto.md'));
-        $this->assertSame('recepcion', clasificarColumnaRecepcionOTecnico('Nombre muestra', 'resistencia_de_concreto.md'));
-        $this->assertSame('recepcion', clasificarColumnaRecepcionOTecnico('Reven. (in)', 'resistencia_de_concreto.md'));
-        $this->assertSame('recepcion', clasificarColumnaRecepcionOTecnico('Diseño de concreto (lb/in²)', 'resistencia_de_concreto.md'));
-        $this->assertSame('recepcion', clasificarColumnaRecepcionOTecnico('Fecha de Fabricación', 'resistencia_de_concreto.md'));
+        foreach (['Nombre muestra', 'Reven. (in)', 'Reven. (cm)', 'Temp. (°C)', 'Diseño de concreto (lb/in²)', 'Fecha de Fabricación', 'Fecha de Ensayo', 'Edad (Días)'] as $colRec) {
+            $this->assertSame('recepcion', clasificarColumnaRecepcionOTecnico($colRec, 'resistencia_de_concreto.md'), "La columna {$colRec} corresponde a Recepción (Órdenes de Servicio).");
+        }
 
-        // Fecha de Ensayo pertenece a ejecución técnica / laboratorio, nunca a recepción
-        $origenFechaEnsayo = clasificarColumnaRecepcionOTecnico('Fecha de Ensayo', 'resistencia_de_concreto.md');
-        $this->assertContains($origenFechaEnsayo, ['tecnico', 'laboratorio']);
-
-        // Columnas calculadas (Edad (Días), Reven. (cm), Área (in²)) nunca deben clasificarse como recepción
-        foreach (['Edad (Días)', 'Reven. (cm)', 'Área (in²)', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)'] as $colCalc) {
-            $origenCalc = clasificarColumnaRecepcionOTecnico($colCalc, 'resistencia_de_concreto.md');
-            $this->assertContains($origenCalc, ['calculado', 'tecnico'], "La columna {$colCalc} debe ser calculado/tecnico, no recepcion.");
+        // Columnas exclusivas del Técnico en Operaciones
+        foreach (['Área (in²)', 'Carga (lb)', 'Peso Volumétrico (kg/m³)', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)'] as $colTec) {
+            $origenTec = clasificarColumnaRecepcionOTecnico($colTec, 'resistencia_de_concreto.md');
+            $this->assertSame('tecnico', $origenTec, "La columna {$colTec} corresponde exclusivamente al Técnico en Operaciones.");
         }
     }
 

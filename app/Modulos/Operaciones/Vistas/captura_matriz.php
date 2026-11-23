@@ -2,7 +2,15 @@
 // Vista de Captura de Matriz Técnica - Dinámica y Específica para los 21 Formatos CYCSA
 $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
 $esLaboratorista = ($rolUsuario === 6);
-$esSupervisor = in_array($rolUsuario, [1, 2, 3]) || tienePermiso('operaciones', 'aprobar') || tienePermiso('control_calidad', 'aprobar');
+$permisosSesionVista = $_SESSION['usuario_permisos'] ?? [];
+if (is_string($permisosSesionVista)) {
+    $permisosSesionVista = json_decode($permisosSesionVista, true) ?: [];
+}
+$tieneAprobarExplicitoVista = is_array($permisosSesionVista) && (
+    !empty($permisosSesionVista['operaciones']['aprobar'])
+    || !empty($permisosSesionVista['control_calidad']['aprobar'])
+);
+$esSupervisor = in_array($rolUsuario, [1, 2, 3], true) || (!$esLaboratorista && $tieneAprobarExplicitoVista);
 $idDetalleActivo = (int)(!empty($idDetalle) ? $idDetalle : (!empty($detalle['id']) ? $detalle['id'] : ($_GET['id_detalle'] ?? $_GET['id'] ?? 0)));
 $idDetalle = $idDetalleActivo;
 $detalle['id'] = $idDetalleActivo;
@@ -653,7 +661,8 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
     <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
     <input type="hidden" name="resultados_json" id="input_resultados_json" value="">
 
-    <!-- SECCIÓN 2: CABECERA DEL INFORME Y METADATOS OFICIALES (COLAPSABLE) -->
+    <!-- SECCIÓN 2: CABECERA DEL INFORME Y METADATOS OFICIALES (SOLO SUPERVISIÓN / ADMINISTRACIÓN) -->
+    <?php if ($esSupervisor): ?>
     <details class="mb-3" style="background: white; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); overflow: hidden;">
         <summary style="padding: 16px 22px; cursor: pointer; font-size: 15px; font-weight: 700; color: #1e293b; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; list-style: none;">
             <span class="d-flex align-items-center gap-2">
@@ -944,6 +953,38 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
             </div>
         </div>
     </details>
+    <?php else: ?>
+    <!-- Técnico / Laboratorista: sin acceso visual a datos de cliente/recepción; el servidor preserva metadatos oficiales -->
+    <?php if ($isGranulometria): ?>
+    <div style="margin-bottom: 14px; display: flex; align-items: center; justify-content: flex-end;">
+        <div style="display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 8px;">
+            <label style="font-size: 12px; font-weight: 700; color: #334155; margin: 0; white-space: nowrap;">
+                <i class="fa-solid fa-sliders"></i> Aplicar Límites por Material:
+            </label>
+            <select id="select-limites-material" class="matriz-input" style="width: auto; padding: 5px 10px; font-size: 12.5px; background: white;" onchange="aplicarLimitesMaterial(this.value)">
+                <option value="">-- Seleccionar Especificación --</option>
+                <option value="Arena colchon">Arena colchón</option>
+                <option value="Material Cero">Material Cero</option>
+                <option value="Material 1 1/2">Material 1 1/2"</option>
+                <option value="Material 1">Material 1"</option>
+                <option value="Material 3/4">Material 3/4"</option>
+                <option value="Material 1/2">Material 1/2"</option>
+                <option value="Material 3/8">Material 3/8"</option>
+                <option value="Suelo">Suelo</option>
+                <option value="Selecto">Selecto</option>
+                <option value="Selecto relleno tipo 1">Selecto relleno tipo 1</option>
+                <option value="Selecto relleno tipo 2">Selecto relleno tipo 2</option>
+                <option value="Mezcla relleno 1-2">Mezcla relleno 1-2</option>
+                <option value="Selecto Base A">Selecto Base A</option>
+                <option value="Selecto Base B">Selecto Base B</option>
+                <option value="Selecto Base C">Selecto Base C</option>
+                <option value="Selecto Base D">Selecto Base D</option>
+                <option value="Sub base A-1">Sub base A-1</option>
+            </select>
+        </div>
+    </div>
+    <?php endif; ?>
+    <?php endif; ?>
 
     <style>
     /* SECCIÓN CAPTURA TÉCNICA EN LÍNEA DEL TÉCNICO (POR FORMATO / HOJA DE CÁLCULO) */
@@ -1070,6 +1111,15 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
     </style>
 
     <!-- SECCIÓN 1A: CAPTURA TÉCNICA DEL TÉCNICO DE LABORATORIO (MEDICIONES CRUDAS POR PRODUCTO) -->
+    <?php $esSoloRecepcionDensimetro = (!$esSupervisor && strtolower(trim((string)$archivoMd)) === 'compactacion_densimetro_nuclear.md'); ?>
+    <?php if ($esSoloRecepcionDensimetro): ?>
+    <div id="seccion-captura-tecnica-lab" class="ht-lab-card">
+        <div style="font-size: 13.5px; color: #334155;">
+            <i class="fa-solid fa-circle-info me-1" style="color: #1F3864;"></i>
+            Los datos de <strong>Densímetro Nuclear</strong> corresponden a <strong>Recepción (Órdenes de Servicio)</strong>. No existen campos técnicos adicionales pendientes para captura de laboratorio en este formato.
+        </div>
+    </div>
+    <?php else: ?>
     <div id="seccion-captura-tecnica-lab" class="ht-lab-card">
         <div class="ht-lab-header">
             <div>
@@ -1107,19 +1157,20 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
             <div id="ht-resumen-bar" style="display: none; margin-top: 10px; padding: 10px 14px; background: #EEF1F7; border: 1px solid #d1d9e6; border-radius: 8px; font-size: 13px; color: #1F3864; font-weight: 600;"></div>
         </div>
     </div>
+    <?php endif; ?>
 
     <!-- SECCIÓN 1B: GRILLA DE CAPTURA Y MEDICIONES (INFORME OFICIAL RT-FM-22) -->
     <div class="seccion-form" style="margin-bottom: 24px; padding: 22px; border-radius: 8px; border: 1px solid #cbd5e1; border-top: 4px solid var(--cycsa-azul, #103487); background: #ffffff;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
             <h3 style="margin: 0; color: #1e293b; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-table-cells" style="color: var(--cycsa-azul);"></i> Grilla de Captura y Mediciones de Ensayo
+                <i class="fa-solid fa-table-cells" style="color: var(--cycsa-azul);"></i> <?= $esSupervisor ? 'Grilla de Captura y Mediciones de Ensayo' : 'Resultados Técnicos del Ensayo (Solo Datos de Técnico)' ?>
             </h3>
             <span style="font-size: 12px; color: #64748b; font-weight: 600;">
-                <i class="fa-solid fa-keyboard me-1"></i> Ingrese lecturas y réplicas directamente en la tabla
+                <i class="fa-solid fa-keyboard me-1"></i> <?= $esSupervisor ? 'Ingrese lecturas y réplicas directamente en la tabla' : 'Solo lectura · Se calcula automáticamente desde Captura Técnica' ?>
             </span>
         </div>
         <!-- CONTENEDOR DE LA TABLA DINÁMICA -->
-            <?php if (!empty($tieneCamposRecepcion)): ?>
+            <?php if (!empty($tieneCamposRecepcion) && $esSupervisor): ?>
             <div id="recepcion-vs-tecnico-bar" style="margin: 0 0 14px; padding: 12px 15px; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 9px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px;">
                     <span style="display:inline-flex; align-items:center; gap:6px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:4px 10px; border-radius:999px; font-weight:800;">
@@ -1525,9 +1576,13 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
 
     function inicializarMatriz() {
         const schema = FORMATOS_SCHEMA[ARCHIVO_MARKDOWN] || { columns: [] };
-        columnasActuales = (schema.columns && schema.columns.length > 0) 
+        const columnasBase = (schema.columns && schema.columns.length > 0) 
             ? schema.columns 
             : ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
+        // Técnicos (no supervisores) NUNCA ven columnas de Recepción (RT-FM-13 / O/S) en Operaciones
+        columnasActuales = ES_SUPERVISOR
+            ? columnasBase.slice()
+            : columnasBase.filter(col => (CLASIFICACION_COLUMNAS[col] || 'tecnico') !== 'recepcion');
         const aliases = schema.column_aliases || {};
         columnaCodigoReplica = columnasActuales.find(col => ['Código laboratorio', 'Codigo laboratorio', 'codigo_lab', 'codigo_muestra'].includes(aliases[col] || col)) || null;
         columnaNombreReplica = columnasActuales.find(col => (aliases[col] || col) === 'Nombre muestra') || null;
@@ -1611,9 +1666,13 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
             trMethods.style.background = '#f8fafc';
             trMethods.style.borderBottom = '1px solid #cbd5e1';
 
-            const nombreOcultoEnInicio = (!ES_SUPERVISOR || columnasRecepcionPlegadas) && columnasActuales[1] && (CLASIFICACION_COLUMNAS[columnasActuales[1]] || 'tecnico') === 'recepcion';
+            const tieneNombreEnIndice1 = !!(columnasActuales[1] && ['nombremuestra', 'nombredelamuestra'].includes(normalizarTextoClave(columnasActuales[1])));
+            const inicioColsMetodo = tieneNombreEnIndice1 ? 2 : 1;
+            const nombreOcultoEnInicio = tieneNombreEnIndice1 && (!ES_SUPERVISOR || columnasRecepcionPlegadas) && (CLASIFICACION_COLUMNAS[columnasActuales[1]] || 'tecnico') === 'recepcion';
             const thMethodTitle = document.createElement('th');
-            thMethodTitle.colSpan = (nombreOcultoEnInicio ? 2 : 3) + (replicasHabilitadas ? 1 : 0);
+            thMethodTitle.id = 'th-method-title';
+            thMethodTitle.dataset.tieneNombre = tieneNombreEnIndice1 ? '1' : '0';
+            thMethodTitle.colSpan = (tieneNombreEnIndice1 ? (nombreOcultoEnInicio ? 2 : 3) : 2) + (replicasHabilitadas ? 1 : 0);
             thMethodTitle.style.textAlign = 'left';
             thMethodTitle.style.padding = '8px 12px';
             thMethodTitle.style.fontWeight = '700';
@@ -1622,7 +1681,7 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
             thMethodTitle.innerHTML = '<i class="fa-solid fa-flask-vial"></i> Método de ensayo';
             trMethods.appendChild(thMethodTitle);
 
-            columnasActuales.slice(2).forEach(col => {
+            columnasActuales.slice(inicioColsMetodo).forEach(col => {
                 const thM = document.createElement('th');
                 thM.style.textAlign = 'center';
                 thM.style.padding = '6px 8px';
@@ -1786,6 +1845,7 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
     }
 
     function togglePlegarColumnasRecepcion() {
+        if (!ES_SUPERVISOR) return;
         columnasRecepcionPlegadas = !columnasRecepcionPlegadas;
         document.querySelectorAll('[data-col-recepcion="1"]').forEach(el => {
             if (columnasRecepcionPlegadas) {
@@ -1794,11 +1854,15 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                 el.classList.remove('col-recepcion-oculta', 'd-none');
             }
         });
+        const thMethodTitle = document.getElementById('th-method-title');
+        if (thMethodTitle && thMethodTitle.dataset.tieneNombre === '1') {
+            thMethodTitle.colSpan = (columnasRecepcionPlegadas ? 2 : 3) + (replicasHabilitadas ? 1 : 0);
+        }
         actualizarBotonPlegarRecepcion();
     }
 
     function toggleEdicionRecepcionMatriz() {
-        if (ES_MODO_HISTORICO) return;
+        if (!ES_SUPERVISOR || ES_MODO_HISTORICO) return;
         permitirEdicionRecepcionMatriz = !permitirEdicionRecepcionMatriz;
         document.querySelectorAll('#tabla-body input[data-recepcion-prellena="1"]').forEach(inp => {
             inp.readOnly = !permitirEdicionRecepcionMatriz;
@@ -2456,27 +2520,26 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
             }
         });
 
-        const metaObj = {
-            cliente_nombre: document.getElementById('meta_cliente_nombre') ? document.getElementById('meta_cliente_nombre').value : '',
-            cliente_direccion: document.getElementById('meta_cliente_direccion') ? document.getElementById('meta_cliente_direccion').value : '',
-            fecha_ingreso: document.getElementById('meta_fecha_ingreso') ? document.getElementById('meta_fecha_ingreso').value : '',
-            tipo_muestra: document.getElementById('meta_tipo_muestra') ? document.getElementById('meta_tipo_muestra').value : '',
-            procedimiento_muestreo: document.getElementById('meta_procedimiento_muestreo') ? document.getElementById('meta_procedimiento_muestreo').value : '',
-            ensayo_realizado: document.getElementById('meta_ensayo_realizado') ? document.getElementById('meta_ensayo_realizado').value : '',
-            proyecto: document.getElementById('meta_proyecto') ? document.getElementById('meta_proyecto').value : '',
-            fecha_muestreo: document.getElementById('meta_fecha_muestreo') ? document.getElementById('meta_fecha_muestreo').value : '',
-            fecha_ejecucion: document.getElementById('meta_fecha_ejecucion') ? document.getElementById('meta_fecha_ejecucion').value : '',
-            fecha_emision: document.getElementById('meta_fecha_emision') ? document.getElementById('meta_fecha_emision').value : '',
-            muestra_tomada_por: document.getElementById('meta_muestra_tomada_por') ? document.getElementById('meta_muestra_tomada_por').value : '',
-            ubicacion: document.getElementById('meta_ubicacion') ? document.getElementById('meta_ubicacion').value : '',
-            metodo_muestreo: document.getElementById('meta_metodo_muestreo') ? document.getElementById('meta_metodo_muestreo').value : '',
-            codigo_formato: <?= json_encode($metadatos['codigo_formato'], JSON_UNESCAPED_UNICODE) ?>,
-            logo_acreditacion: document.getElementById('input_hidden_logo_acreditacion') ? document.getElementById('input_hidden_logo_acreditacion').value : '',
-            nota_aditivos: document.getElementById('meta_nota_aditivos') ? document.getElementById('meta_nota_aditivos').value : '',
-            observaciones_pendientes: document.getElementById('meta_observaciones_pendientes') ? document.getElementById('meta_observaciones_pendientes').value : '',
-            columnas_asterisco: document.getElementById('meta_columnas_asterisco') ? document.getElementById('meta_columnas_asterisco').value : ''
-        };
+        const metaObj = {};
         if (ES_SUPERVISOR) {
+            metaObj.cliente_nombre = document.getElementById('meta_cliente_nombre') ? document.getElementById('meta_cliente_nombre').value : '';
+            metaObj.cliente_direccion = document.getElementById('meta_cliente_direccion') ? document.getElementById('meta_cliente_direccion').value : '';
+            metaObj.fecha_ingreso = document.getElementById('meta_fecha_ingreso') ? document.getElementById('meta_fecha_ingreso').value : '';
+            metaObj.tipo_muestra = document.getElementById('meta_tipo_muestra') ? document.getElementById('meta_tipo_muestra').value : '';
+            metaObj.procedimiento_muestreo = document.getElementById('meta_procedimiento_muestreo') ? document.getElementById('meta_procedimiento_muestreo').value : '';
+            metaObj.ensayo_realizado = document.getElementById('meta_ensayo_realizado') ? document.getElementById('meta_ensayo_realizado').value : '';
+            metaObj.proyecto = document.getElementById('meta_proyecto') ? document.getElementById('meta_proyecto').value : '';
+            metaObj.fecha_muestreo = document.getElementById('meta_fecha_muestreo') ? document.getElementById('meta_fecha_muestreo').value : '';
+            metaObj.fecha_ejecucion = document.getElementById('meta_fecha_ejecucion') ? document.getElementById('meta_fecha_ejecucion').value : '';
+            metaObj.fecha_emision = document.getElementById('meta_fecha_emision') ? document.getElementById('meta_fecha_emision').value : '';
+            metaObj.muestra_tomada_por = document.getElementById('meta_muestra_tomada_por') ? document.getElementById('meta_muestra_tomada_por').value : '';
+            metaObj.ubicacion = document.getElementById('meta_ubicacion') ? document.getElementById('meta_ubicacion').value : '';
+            metaObj.metodo_muestreo = document.getElementById('meta_metodo_muestreo') ? document.getElementById('meta_metodo_muestreo').value : '';
+            metaObj.codigo_formato = <?= json_encode($metadatos['codigo_formato'], JSON_UNESCAPED_UNICODE) ?>;
+            metaObj.logo_acreditacion = document.getElementById('input_hidden_logo_acreditacion') ? document.getElementById('input_hidden_logo_acreditacion').value : '';
+            metaObj.nota_aditivos = document.getElementById('meta_nota_aditivos') ? document.getElementById('meta_nota_aditivos').value : '';
+            metaObj.observaciones_pendientes = document.getElementById('meta_observaciones_pendientes') ? document.getElementById('meta_observaciones_pendientes').value : '';
+            metaObj.columnas_asterisco = document.getElementById('meta_columnas_asterisco') ? document.getElementById('meta_columnas_asterisco').value : '';
             metaObj.equipo_marca = document.getElementById('meta_equipo_marca') ? document.getElementById('meta_equipo_marca').value : '';
             metaObj.equipo_modelo = document.getElementById('meta_equipo_modelo') ? document.getElementById('meta_equipo_modelo').value : '';
             metaObj.equipo_serie = document.getElementById('meta_equipo_serie') ? document.getElementById('meta_equipo_serie').value : '';
@@ -2735,7 +2798,13 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
         const tbody = document.getElementById('ht-tabla-body');
         if (!thead || !tbody || !cfg.campos_entrada) return;
 
-        const camposIn = cfg.campos_entrada || [];
+        const tieneFechaEnsayoRecepcion = Object.entries(CLASIFICACION_COLUMNAS || {}).some(
+            ([colName, rol]) => rol === 'recepcion' && ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion', 'fechademuestreo', 'fechamuestreo'].includes(normalizarTextoClave(colName))
+        );
+        const camposIn = (cfg.campos_entrada || []).filter(c => {
+            if (!ES_SUPERVISOR && tieneFechaEnsayoRecepcion && c.clave === 'fecha_ensayo') return false;
+            return true;
+        });
         const camposCalc = cfg.campos_calculados || [];
 
         thead.innerHTML = '';

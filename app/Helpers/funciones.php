@@ -5914,8 +5914,11 @@ if (!function_exists('clasificarColumnaRecepcionOTecnico')) {
 
         $clavesRecepcion = [
             'revenin', 'revenimientoin', 'revenimiento',
+            'revencm', 'revenimientocm',
             'tempc', 'temperaturac', 'temperatura', 'temp',
             'fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado',
+            'fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion',
+            'edaddias', 'edad',
         ];
         if (in_array($norm, $clavesRecepcion, true) || str_starts_with($norm, 'diseno')) {
             return 'recepcion';
@@ -5984,39 +5987,21 @@ if (!function_exists('clasificarOrigenColumnaMatriz')) {
             return 'identidad';
         }
 
+        if (clasificarColumnaRecepcionOTecnico($nombreColumna, $archivoFormato) === 'recepcion') {
+            return 'recepcion';
+        }
+
         $clavesCalculadas = [
-            'revencm', 'revenimientocm',
             'areain2', 'areacm2', 'areain', 'areacm', 'area',
             'pesovolumetricokgm3', 'pesovolumetrico',
             'rcompresionlbin2', 'rcompresionlbpin2', 'resistencialbin2', 'resistencialbpin2', 'rcompresionpsi', 'resistenciapsi',
             'rcompresionkgcm2', 'resistenciakgcm2', 'rcompresion', 'resistenciaalacompresion',
-            'edaddias', 'edad',
         ];
         if (in_array($norm, $clavesCalculadas, true)) {
             return 'calculado';
         }
 
-        if (clasificarColumnaRecepcionOTecnico($nombreColumna, $archivoFormato) === 'recepcion') {
-            return 'recepcion';
-        }
-
-        $fmtNorm = mb_strtolower($archivoFormato, 'UTF-8');
-        $esRoturaConcreto = (
-            $fmtNorm === ''
-            || str_contains($fmtNorm, 'concreto')
-            || str_contains($fmtNorm, 'cilindro')
-            || str_contains($fmtNorm, 'mortero')
-            || str_contains($fmtNorm, 'nucleo')
-            || str_contains($fmtNorm, 'núcleo')
-            || str_contains($fmtNorm, 'viga')
-            || str_contains($fmtNorm, 'adoquin')
-            || str_contains($fmtNorm, 'bloque')
-        );
-
         if (in_array($norm, ['cargalb', 'cargakg', 'carga', 'cargamaxima', 'cargamaximalb', 'cargamaximakg'], true)) {
-            return 'laboratorio';
-        }
-        if ($esRoturaConcreto && in_array($norm, ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura'], true)) {
             return 'laboratorio';
         }
 

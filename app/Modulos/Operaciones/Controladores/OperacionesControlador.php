@@ -2574,6 +2574,59 @@ class OperacionesControlador extends ControladorBase {
             $idHojaResolv
         );
 
+        // Protección de visibilidad estricta para técnicos (no supervisores):
+        // Los técnicos en Operaciones SOLO ven sus columnas técnicas; nunca ven datos de Recepción (RT-FM-13 / O/S).
+        $rolVistaMatriz = (int)($_SESSION['usuario_rol'] ?? 0);
+        $permisosVistaCtrl = $_SESSION['usuario_permisos'] ?? [];
+        if (is_string($permisosVistaCtrl)) {
+            $permisosVistaCtrl = json_decode($permisosVistaCtrl, true) ?: [];
+        }
+        $tieneAprobarExplicitoCtrl = is_array($permisosVistaCtrl) && (
+            !empty($permisosVistaCtrl['operaciones']['aprobar'])
+            || !empty($permisosVistaCtrl['control_calidad']['aprobar'])
+        );
+        $esSupervisorVista = in_array($rolVistaMatriz, [1, 2, 3], true) || ($rolVistaMatriz !== 6 && $tieneAprobarExplicitoCtrl);
+
+        if (!$esSupervisorVista) {
+            foreach ($muestrasSeteadas as &$mSetTec) {
+                $mSetTec['datos_recepcion'] = [];
+                $mSetTec['nombre_muestra'] = '';
+            }
+            unset($mSetTec);
+
+            $decVistaTec = json_decode($detalle['resultados_json'] ?? '', true);
+            if (is_array($decVistaTec)) {
+                $filtrarFilaTecnico = static function (array $fila) use ($archivoMd): array {
+                    $limpia = [];
+                    foreach ($fila as $kCol => $vCol) {
+                        $kStr = (string)$kCol;
+                        if (str_starts_with($kStr, '_')) {
+                            $limpia[$kStr] = $vCol;
+                            continue;
+                        }
+                        if (clasificarColumnaRecepcionOTecnico($kStr, (string)$archivoMd) === 'recepcion') {
+                            continue;
+                        }
+                        $limpia[$kStr] = $vCol;
+                    }
+                    return $limpia;
+                };
+
+                if (isset($decVistaTec['filas']) && is_array($decVistaTec['filas'])) {
+                    $decVistaTec['filas'] = array_map(
+                        static fn($f) => is_array($f) ? $filtrarFilaTecnico($f) : $f,
+                        $decVistaTec['filas']
+                    );
+                } elseif (isset($decVistaTec[0]) && is_array($decVistaTec[0])) {
+                    $decVistaTec = array_map(
+                        static fn($f) => is_array($f) ? $filtrarFilaTecnico($f) : $f,
+                        $decVistaTec
+                    );
+                }
+                $detalle['resultados_json'] = json_encode($decVistaTec, JSON_UNESCAPED_UNICODE);
+            }
+        }
+
         $this->renderizar('operaciones/vistas/captura_matriz', [
             'titulo' => 'Captura de Matriz Técnica - ' . $detalle['descripcion_ensayo'],
             'detalle' => $detalle,
@@ -2886,10 +2939,18 @@ class OperacionesControlador extends ControladorBase {
                 }
             }
 
-            // 2.4 Si no es supervisor/admin, restaurar metadatos de equipo densímetro desde BD previa (el técnico no los edita)
+            // 2.4 Si no es supervisor/admin, restaurar metadatos de cliente/recepción y equipo densímetro desde BD previa (el técnico no los edita ni ve)
             if (!$esSupervisorGuardar) {
-                $clavesEquipo = ['equipo_marca', 'equipo_modelo', 'equipo_serie', 'equipo_codigo', 'densimetro_marca', 'densimetro_modelo', 'densimetro_serie', 'densimetro_codigo', 'muestra_tomada_con_equipo'];
-                foreach ($clavesEquipo as $ce) {
+                $clavesSoloSupervisor = [
+                    'cliente_nombre', 'cliente_direccion', 'proyecto',
+                    'fecha_ingreso', 'tipo_muestra', 'procedimiento_muestreo',
+                    'fecha_muestreo', 'fecha_emision', 'muestra_tomada_por',
+                    'ubicacion', 'metodo_muestreo', 'logo_acreditacion',
+                    'equipo_marca', 'equipo_modelo', 'equipo_serie', 'equipo_codigo',
+                    'densimetro_marca', 'densimetro_modelo', 'densimetro_serie', 'densimetro_codigo',
+                    'muestra_tomada_con_equipo',
+                ];
+                foreach ($clavesSoloSupervisor as $ce) {
                     if (array_key_exists($ce, $metaPrev)) {
                         $metadatos[$ce] = $metaPrev[$ce];
                     } else {
