@@ -1038,18 +1038,28 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
         padding: 6px 10px;
         border: 1px solid #dbe2ec;
         border-radius: 8px;
-        background: #f8fafc;
+        background: #f1f5f9;
         color: #475569;
         font-size: 13.5px;
         font-weight: 600;
         text-align: center;
         box-sizing: border-box;
+        cursor: not-allowed;
+        user-select: none;
+        pointer-events: none;
     }
     .ht-input-calc.is-highlight {
         background: #EEF1F7;
         color: #1F3864;
         border-color: #cbd5e1;
         font-weight: 700;
+    }
+    .matriz-input-calculated,
+    .matriz-input-locked {
+        cursor: not-allowed !important;
+        user-select: none;
+        background-color: #f1f5f9 !important;
+        color: #334155 !important;
     }
     .ht-code-cell {
         font-weight: 700;
@@ -1872,79 +1882,71 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                 }
                 input.addEventListener('change', () => { input.title = input.value; });
 
-                if (isGranulo) {
-                    if (calcCol === 'Malla') {
-                        input.readOnly = true;
-                        input.classList.add('matriz-input-locked');
+                const bloquearSoloLecturaEstricto = (inp, claseCss, etiquetaMotivo) => {
+                    inp.readOnly = true;
+                    inp.tabIndex = -1;
+                    inp.classList.add(claseCss || 'matriz-input-calculated');
+                    inp.dataset.calculadoReadonly = '1';
+                    inp.style.cursor = 'not-allowed';
+                    inp.addEventListener('keydown', e => { if (e.key !== 'Tab') e.preventDefault(); });
+                    inp.addEventListener('paste', e => e.preventDefault());
+                    inp.addEventListener('drop', e => e.preventDefault());
+                    inp.addEventListener('mousedown', e => { e.preventDefault(); inp.blur(); });
+                    if (etiquetaMotivo) {
+                        inp.title = (inp.title ? inp.title + ' — ' : '') + etiquetaMotivo;
                     }
-                    if (['% Retenido parcial', '% Acumulativo'].includes(calcCol)) {
-                        input.readOnly = true;
-                        input.classList.add('matriz-input-calculated');
+                };
+
+                if (isGranulo) {
+                    if (['Malla', 'Descripción', 'Unidad', 'Método de ensayo'].includes(calcCol)) {
+                        bloquearSoloLecturaEstricto(input, 'matriz-input-locked', 'Columna fija de norma');
+                    }
+                    if (['% Retenido parcial', '% Acumulativo', 'Resultado'].includes(calcCol)) {
+                        bloquearSoloLecturaEstricto(input, 'matriz-input-calculated', 'Calculado · Solo lectura');
                     }
                     if (calcCol === '% que pasa la malla') {
-                        if (['Límite Líquido', 'Límite Plástico'].includes(mallaName)) {
-                            input.style.fontWeight = 'bold';
-                            input.addEventListener('input', recalculateGranulometria);
-                        } else if (mallaName === 'I.P') {
-                            input.readOnly = true;
-                            input.classList.add('matriz-input-calculated');
-                        } else {
-                            input.readOnly = true;
-                            input.classList.add('matriz-input-calculated');
-                        }
+                        bloquearSoloLecturaEstricto(input, 'matriz-input-calculated', 'Calculado · Solo lectura');
                     }
                     if (calcCol === 'P. Retenido parcial (g)' || calcCol === 'P. Retenido parcial (gr)') {
                         if (['Límite Líquido', 'Límite Plástico', 'I.P'].includes(mallaName)) {
-                            input.readOnly = true;
-                            input.classList.add('matriz-input-locked');
                             input.value = '—';
+                            bloquearSoloLecturaEstricto(input, 'matriz-input-locked', 'Se calcula desde Captura Técnica superior');
                         } else if (mallaName === 'Suma') {
-                            input.readOnly = true;
-                            input.classList.add('matriz-input-calculated');
+                            bloquearSoloLecturaEstricto(input, 'matriz-input-calculated', 'Calculado · Solo lectura');
                         } else {
                             input.addEventListener('input', recalculateGranulometria);
                         }
                     }
                 } else if (ARCHIVO_MARKDOWN.includes('bloques')) {
                     if (['Descripción', 'Unidad', 'Método de ensayo'].includes(calcCol)) {
-                        input.readOnly = true;
-                        input.classList.add('matriz-input-locked');
+                        bloquearSoloLecturaEstricto(input, 'matriz-input-locked', 'Columna fija de norma');
+                    } else if (calcCol === 'Resultado') {
+                        bloquearSoloLecturaEstricto(input, 'matriz-input-calculated', 'Calculado automáticamente desde Captura Técnica');
                     }
                 } else {
-                    // Ensayos de compresión / cilindros / probetas / compactación / otros
-                    if (calcCol === 'Código laboratorio') {
-                        input.readOnly = true;
-                        input.classList.add('matriz-input-locked');
-                    }
+                    // Ensayos con captura técnica integrada arriba: bloquear TODAS las columnas calculadas, de identidad y auto-llenadas
                     const rolCol = CLASIFICACION_COLUMNAS[col] || 'tecnico';
-                    const esCalculadoStrict = (rolCol === 'calculado') || [
-                        'Compactación ((%) (P/P))', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)',
-                        'R. compresión. (kg/cm²)', 'Resistencia a la flexión. (kg/cm²)', 'Reven. (cm)',
-                        'Edad (Días)', 'Área (in²)', 'Peso Volumétrico (kg/m³)'
-                    ].includes(calcCol);
-                    if (esCalculadoStrict) {
-                        input.readOnly = true;
-                        input.classList.add('matriz-input-calculated');
-                        input.dataset.calculadoReadonly = '1';
-                        input.title = (input.title ? input.title + ' — ' : '') + 'Calculado · Solo lectura';
-                    }
-                    if (ES_ENSAYO_ROTURA_LAB && ['Carga (lb)', 'Carga (kg)', 'Fecha de Ensayo', 'Fecha de Ruptura'].includes(calcCol)) {
-                        input.readOnly = true;
-                        input.classList.add('matriz-input-locked');
-                        input.dataset.vieneDeLaboratorio = '1';
-                        input.title = (input.title ? input.title + ' — ' : '') + 'Viene del laboratorio';
-                    }
-                    if (['Carga (lb)', 'Carga (kg)', 'Área (in²)', 'Área (cm²)'].includes(calcCol)) {
-                        input.addEventListener('input', recalculateCompresion);
+                    const colNormL = normalizarTextoClave(calcCol);
+                    const esColumnaPermitidaManualEnMatriz =
+                        (ARCHIVO_MARKDOWN === 'proctor_estandar.md' && colNormL === 'tipodematerial')
+                        || (ARCHIVO_MARKDOWN === 'ensayos_varios.md' && ['pvsskgm3', 'pvsckgm3', 'modulodefinura'].includes(colNormL))
+                        || ['limitemin', 'limitemax', 'min', 'max'].includes(colNormL);
+
+                    if (calcCol === 'Código laboratorio') {
+                        bloquearSoloLecturaEstricto(input, 'matriz-input-locked', 'Código de muestra');
+                    } else if (rolCol !== 'recepcion' && !esColumnaPermitidaManualEnMatriz) {
+                        const esLabRot = ES_ENSAYO_ROTURA_LAB && ['Carga (lb)', 'Carga (kg)', 'Fecha de Ensayo', 'Fecha de Ruptura'].includes(calcCol);
+                        if (esLabRot) {
+                            input.dataset.vieneDeLaboratorio = '1';
+                        }
+                        bloquearSoloLecturaEstricto(
+                            input,
+                            esLabRot ? 'matriz-input-locked' : 'matriz-input-calculated',
+                            esLabRot ? 'Viene de Captura Técnica / Laboratorio · Solo lectura' : 'Calculado · Solo lectura (llene los datos en Captura Técnica arriba)'
+                        );
                     }
                     if (['Reven. (in)'].includes(calcCol)) {
                         input.addEventListener('input', recalculateRevenimiento);
-                    }
-                    if (['P.V.S Max (kg/m³)', 'P.V.S.Sitio (kg/cm²)', 'P.V.S.Sitio (kg/m³)'].includes(calcCol)) {
-                        input.addEventListener('input', recalculateCompactacion);
-                    }
-                    if (['Ancho Promedio (in)', 'Espesor Promedio (in)', 'Longitud de Apoyo (in)', 'Carga (lb)'].includes(calcCol)) {
-                        input.addEventListener('input', recalculateFlexion);
                     }
                     if (['Fecha de Fabricación', 'Fecha de Ensayo', 'Fecha de Ruptura'].includes(calcCol)) {
                         input.addEventListener('change', recalculateEdades);
@@ -2822,6 +2824,7 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                 const inp = document.createElement('input');
                 inp.type = 'text';
                 inp.readOnly = true;
+                inp.disabled = true;
                 inp.tabIndex = -1;
                 inp.className = 'ht-input-calc' + (c.destacado ? ' is-highlight' : '');
                 if (c.ancho) inp.style.width = c.ancho + 'px';

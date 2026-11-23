@@ -149,5 +149,7 @@ class HojaTecnicaMatrizCoberturaTest extends TestCase {
         $this->assertStringContainsString('const HOJA_TECNICA_CONFIG =', $vista);
         $this->assertStringContainsString('captura_tecnica: leerFilasCapturaTecnicaActual()', $vista);
         $this->assertStringContainsString('inicializarHojaTecnica();', $vista);
+        $this->assertStringContainsString('bloquearSoloLecturaEstricto', $vista);
+        $this->assertStringContainsString('pointer-events: none;', $vista);
     }
 }
