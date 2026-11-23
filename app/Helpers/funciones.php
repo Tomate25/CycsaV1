@@ -5879,6 +5879,64 @@ if (!function_exists('estadosOrdenServicioAprobados')) {
     }
 }
 
+if (!function_exists('esTecnicoCiegoISO17025')) {
+    /**
+     * Indica si el usuario autenticado corresponde a un Técnico de Laboratorio (Rol 6)
+     * sujeto a confidencialidad estricta ISO/IEC 17025:
+     * - No puede ver cliente, razón social, dirección, proyecto ni correo.
+     * - No puede imprimir, descargar PDF ni enviar informes al cliente.
+     * - Solo captura sus mediciones técnicas en Operaciones y envía a revisión.
+     */
+    function esTecnicoCiegoISO17025(): bool {
+        $rol = (int)($_SESSION['usuario_rol'] ?? 0);
+        if ($rol === 6) {
+            return true;
+        }
+        if ($rol <= 0 || in_array($rol, [1, 2, 3, 4, 5, 7], true)) {
+            return false;
+        }
+        $permisos = $_SESSION['usuario_permisos'] ?? [];
+        if (is_string($permisos)) {
+            $permisos = json_decode($permisos, true) ?: [];
+        }
+        $tieneAprobar = is_array($permisos) && (
+            !empty($permisos['operaciones']['aprobar'])
+            || !empty($permisos['control_calidad']['aprobar'])
+        );
+        $tieneComercial = is_array($permisos) && (
+            !empty($permisos['ordenes_servicio']['ver'])
+            || !empty($permisos['ordenes_servicio']['crear_editar'])
+            || !empty($permisos['recepcion']['ver'])
+            || !empty($permisos['cotizaciones']['ver'])
+        );
+        return !$tieneAprobar && !$tieneComercial;
+    }
+}
+
+if (!function_exists('esSupervisorOperacionesCYCSA')) {
+    /**
+     * Determina si el usuario tiene privilegios de Supervisión / Control de Calidad en Operaciones.
+     * Nunca devuelve true para Rol 6 (Técnico de Laboratorio) aunque tenga operaciones.crear_editar.
+     */
+    function esSupervisorOperacionesCYCSA(): bool {
+        $rol = (int)($_SESSION['usuario_rol'] ?? 0);
+        if (in_array($rol, [1, 2, 3], true)) {
+            return true;
+        }
+        if ($rol === 6) {
+            return false;
+        }
+        $permisos = $_SESSION['usuario_permisos'] ?? [];
+        if (is_string($permisos)) {
+            $permisos = json_decode($permisos, true) ?: [];
+        }
+        return is_array($permisos) && (
+            !empty($permisos['operaciones']['aprobar'])
+            || !empty($permisos['control_calidad']['aprobar'])
+        );
+    }
+}
+
 if (!function_exists('esOrdenServicioAprobada')) {
     /**
      * Indica si el estado de una Orden de Servicio corresponde a una orden ya aprobada.

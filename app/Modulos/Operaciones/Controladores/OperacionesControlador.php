@@ -525,6 +525,11 @@ class OperacionesControlador extends ControladorBase {
      */
     public function generarInforme(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $_SESSION['error'] = 'Acceso restringido (ISO/IEC 17025): el perfil técnico no puede generar ni visualizar informes con datos de cliente.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
         $this->verificarPermiso($respuesta, 'crear_editar');
 
         if ($peticion->esPost()) {
@@ -816,6 +821,11 @@ class OperacionesControlador extends ControladorBase {
 
     public function descargarInforme(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $_SESSION['error'] = 'Acceso restringido (ISO/IEC 17025): el perfil técnico no puede descargar informes con datos de cliente.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
         
         $id = (int)($_GET['id'] ?? 0);
         if ($id <= 0) {
@@ -1359,6 +1369,11 @@ class OperacionesControlador extends ControladorBase {
 
     public function descargarSolicitudPDF(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $_SESSION['error'] = 'Acceso restringido (ISO/IEC 17025): el perfil técnico no puede descargar solicitudes con datos de cliente.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
         
         $idOS = (int)($_GET['id_os'] ?? 0);
         if ($idOS <= 0) {
@@ -4088,6 +4103,11 @@ class OperacionesControlador extends ControladorBase {
      */
     public function imprimirMatrizProducto(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $_SESSION['error'] = 'Acceso restringido (ISO/IEC 17025): el perfil técnico no puede imprimir informes ni visualizar datos de cliente.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
 
         $idDetalle = (int)($_GET['id_detalle'] ?? ($_GET['id'] ?? 0));
         if ($idDetalle <= 0) {
@@ -4330,6 +4350,11 @@ class OperacionesControlador extends ControladorBase {
      */
     public function descargarMatrizPDF(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $_SESSION['error'] = 'Acceso restringido (ISO/IEC 17025): el perfil técnico no puede descargar informes PDF ni visualizar datos de cliente.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
 
         $idDetalle = (int)($_GET['id_detalle'] ?? ($_GET['id'] ?? 0));
         if ($idDetalle <= 0) {
@@ -4438,7 +4463,20 @@ class OperacionesControlador extends ControladorBase {
      */
     public function enviarMatrizCliente(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
-        $this->verificarPermiso($respuesta, 'ver');
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $_SESSION['error'] = 'Acceso restringido (ISO/IEC 17025): el perfil técnico no puede enviar informes al cliente.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+        $puedeVerEntrega = tienePermiso('operaciones', 'ver')
+            || tienePermiso('ordenes_servicio', 'ver')
+            || tienePermiso('recepcion', 'ver')
+            || tienePermiso('control_calidad', 'ver');
+        if (!$puedeVerEntrega) {
+            $_SESSION['error'] = 'No tiene permiso para enviar informes al cliente.';
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            return;
+        }
 
         $datos = $peticion->esPost() ? $peticion->obtenerDatos() : $_GET;
         $idDetalle = (int)($datos['id_detalle'] ?? ($datos['id'] ?? 0));
@@ -4669,8 +4707,11 @@ class OperacionesControlador extends ControladorBase {
             $_SESSION['error'] = "No se pudo conectar al servidor de correo saliente. Verifique la configuración SMTP o revise storage/logs/mail_errors.log.";
         }
 
+        $redirectSeguro = trim((string)($datos['redirect_to'] ?? ''));
         $retorno = $_GET['retorno'] ?? '';
-        if ($retorno === 'print') {
+        if ($redirectSeguro !== '' && str_starts_with($redirectSeguro, '/Cycsa/publico/')) {
+            $respuesta->redirigir($redirectSeguro);
+        } elseif ($retorno === 'print') {
             $respuesta->redirigir('/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=' . $idDetalle);
         } else {
             $respuesta->redirigir('/Cycsa/publico/operaciones');

@@ -1093,32 +1093,41 @@
                                                 <?php endif; ?>
                                             </div>
 
-                                            <!-- TARJETA 4: ENSAYOS, MATRIZ TÉCNICA Y LIMS -->
+                                            <!-- TARJETA 4: ENSAYOS E INFORMES PARA CLIENTE (ATENCIÓN AL CLIENTE / RECEPCIÓN) -->
                                             <div class="tarjeta-detalle-os">
                                                 <div class="tarjeta-detalle-titulo" style="display:flex; justify-content:space-between; align-items:center;">
-                                                    <span><i class="fa-solid fa-microscope"></i> 4. Ensayos y Matriz Técnica</span>
-                                                    <a href="/Cycsa/publico/operaciones" class="btn-cycsa btn-cycsa-secondary" style="min-height:30px; padding:4px 10px; font-size:11.5px;" title="Ir al módulo de Operaciones">
+                                                    <span><i class="fa-solid fa-file-contract"></i> 4. Ensayos e Informes para Cliente</span>
+                                                    <?php if (function_exists('tienePermiso') && tienePermiso('operaciones', 'ver') && !(function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025())): ?>
+                                                    <a href="/Cycsa/publico/operaciones/ver?id_os=<?= (int)$os['id'] ?>" class="btn-cycsa btn-cycsa-secondary" style="min-height:30px; padding:4px 10px; font-size:11.5px;" title="Ver orden en Operaciones">
                                                         <i class="fa-solid fa-arrow-up-right-from-square"></i> Operaciones
                                                     </a>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <?php 
                                                 $itemsEnsayos = $os['items'] ?? [];
+                                                $osCliNombre = (string)($os['cliente_informe_nombre'] ?? ($os['cliente_nombre'] ?? 'Cliente'));
+                                                $osCliEmail = (string)($os['cliente_email'] ?? '');
+                                                $esSupOS = function_exists('esSupervisorOperacionesCYCSA') ? esSupervisorOperacionesCYCSA() : in_array((int)($_SESSION['usuario_rol'] ?? 0), [1, 2, 3], true);
+                                                $esTecCiegoOS = function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025();
                                                 ?>
                                                 <?php if (!empty($itemsEnsayos)): ?>
-                                                    <div style="display:flex; flex-direction:column; gap:10px; max-height:240px; overflow-y:auto; padding-right:4px;">
+                                                    <div style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto; padding-right:4px;">
                                                         <?php foreach ($itemsEnsayos as $it): ?>
                                                             <?php 
+                                                            $idDetOS = (int)($it['id'] ?? 0);
                                                             $tieneMatriz = !empty($it['resultados_json']);
                                                             $revInfo = ($tieneMatriz && function_exists('obtenerEstadoRevisionMatriz')) ? obtenerEstadoRevisionMatriz($it['resultados_json']) : null;
+                                                            $estadoRevOS = (string)($revInfo['estado'] ?? '');
+                                                            $estaAprobadaOS = ($estadoRevOS === 'aprobada');
                                                             $codInf = ($tieneMatriz && function_exists('generarCodigoInformeEnsayo')) ? generarCodigoInformeEnsayo($it['resultados_json'], $os['fecha_muestreo'] ?? null, $it['descripcion_ensayo']) : null;
                                                             ?>
-                                                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; display:flex; flex-direction:column; gap:6px;">
+                                                            <div style="background:#f8fafc; border:1px solid <?= $estaAprobadaOS ? '#bbf7d0' : '#e2e8f0' ?>; border-radius:8px; padding:10px 14px; display:flex; flex-direction:column; gap:8px;">
                                                                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                                                                     <div style="font-size:13px; font-weight:700; color:#0f172a;">
                                                                         <i class="fa-solid fa-vial-virus" style="color:var(--cycsa-azul);"></i> <?= htmlspecialchars($it['descripcion_ensayo']) ?>
                                                                     </div>
                                                                     <?php if ($tieneMatriz && $revInfo): ?>
-                                                                        <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; background:<?= $revInfo['badge_bg'] ?>; color:<?= $revInfo['badge_color'] ?>; border:1px solid <?= $revInfo['badge_border'] ?>;">
+                                                                        <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; background:<?= $revInfo['badge_bg'] ?>; color:<?= $revInfo['badge_color'] ?>; border:1px solid <?= $revInfo['badge_border'] ?>; white-space:nowrap;">
                                                                             <?= htmlspecialchars($revInfo['estado_label']) ?>
                                                                         </span>
                                                                     <?php elseif ($tieneMatriz): ?>
@@ -1131,16 +1140,45 @@
                                                                         </span>
                                                                     <?php else: ?>
                                                                         <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:6px; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">
-                                                                            Sin Matriz
+                                                                            En Laboratorio
                                                                         </span>
                                                                     <?php endif; ?>
                                                                 </div>
 
-                                                                <?php if ($tieneMatriz && !empty($codInf)): ?>
-                                                                    <div style="font-size:11.5px; font-family:monospace; color:#0369a1; background:#e0f2fe; padding:2px 8px; border-radius:4px; border:1px solid #bae6fd; align-self:flex-start;">
-                                                                        <i class="fa-solid fa-barcode"></i> <?= htmlspecialchars($codInf) ?>
-                                                                    </div>
-                                                                <?php endif; ?>
+                                                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                                                                    <?php if ($tieneMatriz && !empty($codInf)): ?>
+                                                                        <div style="font-size:11.5px; font-family:monospace; color:#0369a1; background:#e0f2fe; padding:2px 8px; border-radius:4px; border:1px solid #bae6fd;">
+                                                                            <i class="fa-solid fa-barcode"></i> <?= htmlspecialchars($codInf) ?>
+                                                                        </div>
+                                                                    <?php else: ?>
+                                                                        <span style="font-size:11.5px; color:#64748b;">Sin código de informe aún</span>
+                                                                    <?php endif; ?>
+
+                                                                    <?php if (!$esTecCiegoOS && $idDetOS > 0 && $estaAprobadaOS): ?>
+                                                                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                                                            <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDetOS ?>" target="_blank"
+                                                                               class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:3px 9px; font-size:11.5px; font-weight:600;" title="Ver e imprimir hoja oficial RT-FM-22">
+                                                                                <i class="fa-solid fa-print"></i> Ver / Imprimir
+                                                                            </a>
+                                                                            <a href="/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=<?= $idDetOS ?>" target="_blank"
+                                                                               class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:3px 9px; font-size:11.5px; font-weight:600;" title="Descargar PDF oficial">
+                                                                                <i class="fa-solid fa-file-pdf text-danger"></i> PDF
+                                                                            </a>
+                                                                            <button type="button"
+                                                                                    onclick="abrirModalEnviarInformeOS(<?= $idDetOS ?>, '<?= htmlspecialchars(addslashes((string)$it['descripcion_ensayo']), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($osCliNombre), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($osCliEmail), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes((string)$os['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')"
+                                                                                    class="btn-cycsa btn-cycsa-primary" style="min-height:28px; padding:3px 10px; font-size:11.5px; font-weight:600;" title="Enviar informe PDF al correo del cliente">
+                                                                                <i class="fa-solid fa-paper-plane"></i> Enviar al Cliente
+                                                                            </button>
+                                                                        </div>
+                                                                    <?php elseif (!$esTecCiegoOS && $idDetOS > 0 && $tieneMatriz && $esSupOS): ?>
+                                                                        <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDetOS ?>" target="_blank"
+                                                                           class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:3px 9px; font-size:11.5px;" title="Vista previa (pendiente de aprobación)">
+                                                                            <i class="fa-solid fa-eye"></i> Vista previa
+                                                                        </a>
+                                                                    <?php elseif (!$esTecCiegoOS && $tieneMatriz): ?>
+                                                                        <span style="font-size:11px; color:#64748b; font-style:italic;">Disponible al aprobar Supervisión</span>
+                                                                    <?php endif; ?>
+                                                                </div>
                                                             </div>
                                                         <?php endforeach; ?>
                                                     </div>
@@ -4683,4 +4721,70 @@
             rehabilitarBotonesEnvioHoja();
         }
     });
+
+    function abrirModalEnviarInformeOS(idDetalle, nombreEnsayo, clienteNombre, clienteEmail, codigoOS) {
+        const mod = document.getElementById('modalEnviarInformeOS');
+        if (!mod) return;
+        document.getElementById('env_os_id_detalle').value = idDetalle;
+        document.getElementById('env_os_txt_ensayo').textContent = nombreEnsayo || 'Informe de Ensayo';
+        document.getElementById('env_os_txt_os').textContent = codigoOS || '';
+        document.getElementById('env_os_txt_cliente').textContent = clienteNombre || '';
+        document.getElementById('env_os_destinatario').value = clienteEmail || '';
+        document.getElementById('env_os_asunto').value = 'Informe Oficial de Ensayo CYCSA - ' + (codigoOS || '') + ' (' + (nombreEnsayo || '') + ')';
+        const btnPrev = document.getElementById('env_os_btn_prev_pdf');
+        if (btnPrev) {
+            btnPrev.href = '/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=' + encodeURIComponent(idDetalle);
+        }
+        mod.style.display = 'flex';
+    }
+
+    function cerrarModalEnviarInformeOS() {
+        const mod = document.getElementById('modalEnviarInformeOS');
+        if (mod) mod.style.display = 'none';
+    }
 </script>
+
+<!-- MODAL: ENVIAR INFORME APROBADO AL CLIENTE (ATENCIÓN AL CLIENTE - ÓRDENES DE SERVICIO) -->
+<div id="modalEnviarInformeOS" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:10050; align-items:center; justify-content:center; padding:16px;" onclick="if (event.target === this) cerrarModalEnviarInformeOS()">
+    <div style="background:#ffffff; border-radius:12px; border:1px solid #cbd5e1; width:min(520px, 95vw); padding:22px 24px; box-shadow:0 20px 40px rgba(15,23,42,0.18);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+            <h3 style="margin:0; font-size:17px; font-weight:700; color:#0f172a;">
+                <i class="fa-solid fa-paper-plane" style="color:var(--cycsa-azul);"></i> Enviar Informe al Cliente
+            </h3>
+            <button type="button" onclick="cerrarModalEnviarInformeOS()" style="background:none; border:none; font-size:22px; color:#64748b; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+        <form method="POST" action="/Cycsa/publico/operaciones/enviar-matriz-cliente">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="id_detalle" id="env_os_id_detalle" value="">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/ordenes-servicio">
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; margin-bottom:14px;">
+                <div id="env_os_txt_ensayo" style="font-weight:700; color:#0f172a; font-size:13.5px;"></div>
+                <div style="font-size:12px; color:#475569; margin-top:2px;">
+                    Orden: <strong id="env_os_txt_os"></strong> · Cliente: <strong id="env_os_txt_cliente"></strong>
+                </div>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px;">Correo(s) del destinatario *</label>
+                <input type="text" name="destinatario" id="env_os_destinatario" required placeholder="cliente@empresa.com, copia@empresa.com"
+                       style="width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:13.5px;">
+                <div style="font-size:11.5px; color:#64748b; margin-top:3px;">Separe múltiples destinatarios con coma.</div>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="display:block; font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px;">Asunto del correo *</label>
+                <input type="text" name="asunto" id="env_os_asunto" required
+                       style="width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:13.5px;">
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; border-top:1px solid #e2e8f0; padding-top:14px; flex-wrap:wrap;">
+                <a href="#" id="env_os_btn_prev_pdf" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:5px 12px; font-size:12.5px;">
+                    <i class="fa-solid fa-file-pdf text-danger"></i> Previsualizar PDF
+                </a>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" onclick="cerrarModalEnviarInformeOS()" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:5px 12px; font-size:12.5px;">Cancelar</button>
+                    <button type="submit" class="btn-cycsa btn-cycsa-primary" style="min-height:34px; padding:5px 14px; font-size:12.5px;">
+                        <i class="fa-solid fa-paper-plane"></i> Enviar por Correo
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

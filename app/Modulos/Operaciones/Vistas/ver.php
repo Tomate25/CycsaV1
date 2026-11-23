@@ -1,8 +1,10 @@
 <?php
 // Vista de página completa para una Operación (O/S) — Guía de Diseño Sobrio CYCSA
 $rolSesion = (int)($_SESSION['usuario_rol'] ?? 0);
-$esSupervisor = in_array($rolSesion, [1, 2, 3], true)
-    || (function_exists('tienePermiso') && (tienePermiso('operaciones', 'aprobar') || tienePermiso('control_calidad', 'aprobar')));
+$esTecnicoCiego = function_exists('esTecnicoCiegoISO17025') ? esTecnicoCiegoISO17025() : ($rolSesion === 6);
+$esSupervisor = function_exists('esSupervisorOperacionesCYCSA')
+    ? esSupervisorOperacionesCYCSA()
+    : in_array($rolSesion, [1, 2, 3], true);
 
 $o = $o ?? ($orden ?? []);
 $o['id'] = (int)($o['id'] ?? 0);
@@ -343,16 +345,41 @@ $stepperPasos = (!empty($o['stepper_pasos']) && is_array($o['stepper_pasos']))
 
 $etapaPill = cycsaResolverEtapaPill($oCalc);
 
-$panelMetaPartes = array_filter([
-    $cliInfNom,
-    $proyectoNom,
-    $cotCodigo,
-    ucfirst($condComAct),
-], static fn(string $v): bool => $v !== '');
-$panelMetaLine = implode(' · ', $panelMetaPartes);
+if ($esTecnicoCiego) {
+    $panelMetaLine = 'Orden técnica · Identidad confidencial (ISO/IEC 17025)';
+} else {
+    $panelMetaPartes = array_filter([
+        $cliInfNom,
+        $proyectoNom,
+        $cotCodigo,
+        ucfirst($condComAct),
+    ], static fn(string $v): bool => $v !== '');
+    $panelMetaLine = implode(' · ', $panelMetaPartes);
+}
 
 // Siguiente acción determinística para la caja .cy-next (único .btn-primary)
-if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+if ($esTecnicoCiego) {
+    $targetCapTec = $primerItemPendienteId ?? $primerItemVerId;
+    if ($matricesAprobadas < $totalItemsOS && $targetCapTec > 0) {
+        $sigAccionTipo = 'link';
+        $sigAccionTexto = 'Capturar matriz';
+        $sigAccionDetalle = $matricesLlenadas . ' de ' . $totalItemsOS . ' matrices capturadas · ' . $matricesAprobadas . ' aprobadas.';
+        $sigAccionHref = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $targetCapTec;
+        $sigAccionOnclick = '';
+    } elseif ($primerItemVerId > 0) {
+        $sigAccionTipo = 'link';
+        $sigAccionTexto = 'Ver matriz técnica';
+        $sigAccionDetalle = 'Todas las matrices técnicas han sido procesadas (' . $matricesAprobadas . ' de ' . $totalItemsOS . ' aprobadas).';
+        $sigAccionHref = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $primerItemVerId;
+        $sigAccionOnclick = '';
+    } else {
+        $sigAccionTipo = 'link';
+        $sigAccionTexto = 'Volver a Operaciones';
+        $sigAccionDetalle = 'Sin ensayos asignados para captura técnica.';
+        $sigAccionHref = '/Cycsa/publico/operaciones';
+        $sigAccionOnclick = '';
+    }
+} elseif (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Finalizado', 'Archivado', 'Cerrado'], true)) {
     $sigAccionTipo = 'button';
     $sigAccionTexto = 'Cerrar y archivar orden';
     $sigAccionDetalle = '100% técnico y comercial cumplido.';
@@ -476,6 +503,7 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                     </div>
                 </div>
 
+                <?php if (!$esTecnicoCiego): ?>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <?php if (!empty($hojasOS)): ?>
                         <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$o['id'] ?>&id_hoja=<?= (int)$hojasOS[0]['id'] ?>"
@@ -505,6 +533,7 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                         </ul>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
 
             <!-- Stepper horizontal de 5 pasos (.cy-stepper) -->
@@ -554,6 +583,7 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                         Ensayos <span class="cy-tab-count">(<?= $totalItemsOS ?>)</span>
                     </button>
                 </li>
+                <?php if (!$esTecnicoCiego): ?>
                 <li class="nav-item" role="presentation">
                     <button type="button"
                             class="nav-link btn-tab-full"
@@ -570,6 +600,7 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                         Informes y Versiones <span class="cy-tab-count">(<?= count($informes_unificados) ?>)</span>
                     </button>
                 </li>
+                <?php endif; ?>
             </ul>
 
             <div class="lims-tab-content-wrapper">
@@ -601,7 +632,9 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                         <span class="cy-pill <?= htmlspecialchars($pillEns['clase'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($pillEns['texto'], ENT_QUOTES, 'UTF-8') ?></span>
                         <span class="cy-meta"><?= $avanceX ?>/<?= $avanceY ?></span>
 
-                        <?php if ($estadoRevIt === 'aprobada'): ?>
+                        <?php if ($esTecnicoCiego): ?>
+                            <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm"><?= $estadoRevIt === 'aprobada' ? 'Ver captura' : 'Capturar' ?></a>
+                        <?php elseif ($estadoRevIt === 'aprobada'): ?>
                             <button type="button"
                                     class="btn btn-outline-secondary btn-sm"
                                     onclick="abrirModalEnviarMatriz(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $cliMailEsc ?>', '<?= $codOsEsc ?>')">Enviar al cliente</button>
@@ -619,10 +652,10 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                                     aria-label="Más acciones">⋯</button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>"><?= $tieneResIt ? 'Editar matriz' : 'Ver matriz' ?></a></li>
-                                <?php if ($tieneResIt): ?>
+                                <?php if (!$esTecnicoCiego && $tieneResIt): ?>
                                     <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDet ?>" target="_blank">Imprimir RT-FM-22</a></li>
                                 <?php endif; ?>
-                                <?php if ($idHojaVer > 0): ?>
+                                <?php if (!$esTecnicoCiego && $idHojaVer > 0): ?>
                                     <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= $idHojaVer ?>" target="_blank">Imprimir Hoja RT-FM-60</a></li>
                                     <li><a class="dropdown-item" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$o['id'] ?>&id_hoja=<?= $idHojaVer ?>" target="_blank">Imprimir RT-FM-13</a></li>
                                 <?php endif; ?>
@@ -655,6 +688,11 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                     <?php endif; ?>
 
                     <!-- Cierre bloqueado (.cy-note) al final, sin pestañas ni bandas grises anidadas -->
+                    <?php if ($esTecnicoCiego): ?>
+                    <div class="cy-note" id="tab-full-cierre">
+                        Avance técnico: <?= (int)$matricesLlenadas ?> de <?= $totalItemsOS ?> matrices capturadas · <?= (int)$matricesAprobadas ?> aprobadas por supervisión.
+                    </div>
+                    <?php else: ?>
                     <div class="cy-note" id="tab-full-cierre">
                         <?php if (in_array((string)($o['estado'] ?? ''), ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
                             Orden cerrada y archivada en histórico LIMS.
@@ -671,8 +709,10 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                             El cierre de la orden se habilita cuando las <?= $totalItemsOS ?> matrices estén aprobadas y sus informes emitidos (actualmente <?= (int)$matricesAprobadas ?> de <?= $totalItemsOS ?> aprobadas<?= empty($o['comercial_100']) ? ($esCreditoFila ? ', pendiente CxC' : ', saldo pendiente C$ ' . number_format((float)($o['saldo_os'] ?? 0), 2)) : '' ?>).
                         <?php endif; ?>
                     </div>
+                    <?php endif; ?>
                 </div>
 
+                <?php if (!$esTecnicoCiego): ?>
                 <!-- PESTAÑA 2: RECEPCIÓN Y RESUMEN -->
                 <div id="tab-full-recepcion" class="tab-pane-full" style="display: none;">
                     <div id="tab-full-resumen">
@@ -784,6 +824,7 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -904,6 +945,7 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
     </div>
 </div>
 
+<?php if (!$esTecnicoCiego): ?>
 <div id="modalEnviarMatriz" class="modal-premium" style="display: none;">
     <div class="modal-premium-content">
         <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
@@ -967,6 +1009,7 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
         </form>
     </div>
 </div>
+<?php endif; ?>
 
 <script>
     function cambiarTabFull(btn, tabId) {

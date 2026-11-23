@@ -1,8 +1,10 @@
 <?php
 // Vista principal de Operaciones LIMS — Guía de Diseño Sobrio CYCSA
 $rolSesion = (int)($_SESSION['usuario_rol'] ?? 0);
-$esSupervisor = in_array($rolSesion, [1, 2, 3], true)
-    || (function_exists('tienePermiso') && (tienePermiso('operaciones', 'aprobar') || tienePermiso('control_calidad', 'aprobar')));
+$esTecnicoCiego = function_exists('esTecnicoCiegoISO17025') ? esTecnicoCiegoISO17025() : ($rolSesion === 6);
+$esSupervisor = function_exists('esSupervisorOperacionesCYCSA')
+    ? esSupervisorOperacionesCYCSA()
+    : in_array($rolSesion, [1, 2, 3], true);
 
 $ordenes = $ordenes ?? [];
 $tabActiva = $tabActiva ?? ($_GET['tab'] ?? 'activas');
@@ -403,16 +405,19 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                class="btn <?= ($bandejaActiva === 'todas') ? 'is-active' : '' ?>"
                data-bandeja="todas"
                title="Todas las Órdenes">Todas (<?= (int)($conteoBandejas['todas'] ?? 0) ?>)</a>
+            <?php if (!$esTecnicoCiego): ?>
             <a href="/Cycsa/publico/operaciones?bandeja=recepcion<?= $tabQuery ?>"
                class="btn <?= ($bandejaActiva === 'recepcion') ? 'is-active' : '' ?>"
                data-bandeja="recepcion"
                title="① Bandeja de Recepción"
                aria-label="① Bandeja de Recepción">Recepción (<?= (int)($conteoBandejas['recepcion'] ?? 0) ?>)</a>
+            <?php endif; ?>
             <a href="/Cycsa/publico/operaciones?bandeja=tecnico<?= $tabQuery ?>"
                class="btn <?= ($bandejaActiva === 'tecnico') ? 'is-active' : '' ?>"
                data-bandeja="tecnico"
                title="② Bandeja del Técnico"
                aria-label="② Bandeja del Técnico">Técnico (<?= (int)($conteoBandejas['tecnico'] ?? 0) ?>)</a>
+            <?php if (!$esTecnicoCiego): ?>
             <a href="/Cycsa/publico/operaciones?bandeja=supervisor<?= $tabQuery ?>"
                class="btn <?= ($bandejaActiva === 'supervisor') ? 'is-active' : '' ?>"
                data-bandeja="supervisor"
@@ -423,6 +428,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                data-bandeja="informes"
                title="④ Bandeja de Informes"
                aria-label="④ Bandeja de Informes">Informes (<?= (int)($conteoBandejas['informes'] ?? 0) ?>)</a>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -448,7 +454,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
             </nav>
 
             <div>
-                <input type="text" id="lims-search" placeholder="Filtrar orden, cliente o proyecto..." class="form-control cy-op-search" aria-label="Filtrar órdenes">
+                <input type="text" id="lims-search" placeholder="<?= $esTecnicoCiego ? 'Filtrar por código de orden o ensayo...' : 'Filtrar orden, cliente o proyecto...' ?>" class="form-control cy-op-search" aria-label="Filtrar órdenes">
             </div>
         </div>
 
@@ -459,7 +465,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                     <thead>
                         <tr>
                             <th>Orden</th>
-                            <th>Cliente y proyecto</th>
+                            <th><?= $esTecnicoCiego ? 'Ensayos asignados' : 'Cliente y proyecto' ?></th>
                             <th>Etapa</th>
                             <th>Avance</th>
                             <th>Próxima acción</th>
@@ -557,13 +563,17 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                             $proyectoNom = trim((string)($o['nombre_proyecto'] ?? 'Sin proyecto'));
                             $cotCodigo = trim((string)($o['cot_codigo'] ?? ''));
 
-                            $panelMetaPartes = array_filter([
-                                $cliInfNom,
-                                $proyectoNom,
-                                $cotCodigo,
-                                ucfirst($condComAct),
-                            ], static fn(string $v): bool => $v !== '');
-                            $panelMetaLine = implode(' · ', $panelMetaPartes);
+                            if ($esTecnicoCiego) {
+                                $panelMetaLine = 'Orden técnica · Identidad confidencial (ISO/IEC 17025)';
+                            } else {
+                                $panelMetaPartes = array_filter([
+                                    $cliInfNom,
+                                    $proyectoNom,
+                                    $cotCodigo,
+                                    ucfirst($condComAct),
+                                ], static fn(string $v): bool => $v !== '');
+                                $panelMetaLine = implode(' · ', $panelMetaPartes);
+                            }
 
                             $oCalc = $o;
                             $oCalc['total_ensayos'] = $totalItemsOS;
@@ -578,16 +588,40 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                             $etapaPill = cycsaResolverEtapaPill($oCalc);
                             $pctAvance = $totalItemsOS > 0 ? (int)round(($matricesLlenadas / $totalItemsOS) * 100) : 0;
 
-                            $sigPasoTexto = (string)($o['siguiente_paso_texto'] ?? ($btnPrimario['texto'] ?? 'Ver detalle'));
-                            $sigPasoUrl = (string)($o['siguiente_paso_url'] ?? ($btnPrimario['href'] ?? ('/Cycsa/publico/operaciones/ver?id_os=' . (int)$o['id'])));
-
-                            // Subtítulo para la caja .cy-next dentro del panel
-                            if (!empty($o['puede_cerrar'])) {
-                                $sigPasoDetalle = 'Todas las matrices aprobadas y condición comercial verificada.';
-                            } elseif (($oCalc['ensayos_aprobados'] ?? 0) < $totalItemsOS) {
-                                $sigPasoDetalle = (int)$oCalc['ensayos_aprobados'] . ' de ' . $totalItemsOS . ' matrices aprobadas.';
+                            if ($esTecnicoCiego) {
+                                $idObjTec = $primerItemPendienteId ?? $primerItemId;
+                                if ($matricesAprobadas < $totalItemsOS && $idObjTec) {
+                                    $sigPasoTexto = 'Capturar matriz';
+                                    $sigPasoUrl = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . (int)$idObjTec;
+                                    $sigPasoDetalle = $matricesLlenadas . ' de ' . $totalItemsOS . ' matrices capturadas.';
+                                } elseif ($idObjTec) {
+                                    $sigPasoTexto = 'Ver matriz técnica';
+                                    $sigPasoUrl = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . (int)$idObjTec;
+                                    $sigPasoDetalle = $matricesAprobadas . ' de ' . $totalItemsOS . ' matrices aprobadas.';
+                                } else {
+                                    $sigPasoTexto = 'Ver detalle';
+                                    $sigPasoUrl = '/Cycsa/publico/operaciones/ver?id_os=' . (int)$o['id'];
+                                    $sigPasoDetalle = 'Orden técnica sin ensayos asignados.';
+                                }
                             } else {
-                                $sigPasoDetalle = $panelMetaLine;
+                                $sigPasoTexto = (string)($o['siguiente_paso_texto'] ?? ($btnPrimario['texto'] ?? 'Ver detalle'));
+                                $sigPasoUrl = (string)($o['siguiente_paso_url'] ?? ($btnPrimario['href'] ?? ('/Cycsa/publico/operaciones/ver?id_os=' . (int)$o['id'])));
+
+                                // Subtítulo para la caja .cy-next dentro del panel
+                                if (!empty($o['puede_cerrar'])) {
+                                    $sigPasoDetalle = 'Todas las matrices aprobadas y condición comercial verificada.';
+                                } elseif (($oCalc['ensayos_aprobados'] ?? 0) < $totalItemsOS) {
+                                    $sigPasoDetalle = (int)$oCalc['ensayos_aprobados'] . ' de ' . $totalItemsOS . ' matrices aprobadas.';
+                                } else {
+                                    $sigPasoDetalle = $panelMetaLine;
+                                }
+                            }
+                            $resumenEnsayosTec = implode(', ', array_slice(array_filter(array_map(
+                                static fn($itR): string => trim((string)($itR['descripcion_ensayo'] ?? '')),
+                                $o['items']
+                            )), 0, 2));
+                            if ($totalItemsOS > 2) {
+                                $resumenEnsayosTec .= ' (+' . ($totalItemsOS - 2) . ')';
                             }
                         ?>
                         <tr id="os-row-<?= (int)$o['id'] ?>"
@@ -597,14 +631,23 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                             <td>
                                 <div class="fw-semibold lims-os-code"><?= htmlspecialchars((string)$o['codigo_os'], ENT_QUOTES, 'UTF-8') ?></div>
                                 <div class="cy-meta">
-                                    <?= htmlspecialchars($cotCodigo !== '' ? $cotCodigo : 'Sin cotización', ENT_QUOTES, 'UTF-8') ?> · <?= ucfirst($condComAct) ?><?= (!$esCreditoFila && empty($o['comercial_100']) && (float)($o['saldo_os'] ?? 0) > 0) ? ' · Saldo Pendiente' : '' ?>
+                                    <?php if ($esTecnicoCiego): ?>
+                                        Modo Técnico · ISO/IEC 17025
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($cotCodigo !== '' ? $cotCodigo : 'Sin cotización', ENT_QUOTES, 'UTF-8') ?> · <?= ucfirst($condComAct) ?><?= (!$esCreditoFila && empty($o['comercial_100']) && (float)($o['saldo_os'] ?? 0) > 0) ? ' · Saldo Pendiente' : '' ?>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                             <td>
-                                <div class="fw-medium"><?= htmlspecialchars($cliInfNom, ENT_QUOTES, 'UTF-8') ?></div>
-                                <div class="cy-meta" data-col="cliente-sub">
-                                    <?= htmlspecialchars($proyectoNom, ENT_QUOTES, 'UTF-8') ?><?= ($cliFactNom !== '' && $cliFactNom !== $cliInfNom) ? ' · Facturar a: ' . htmlspecialchars($cliFactNom, ENT_QUOTES, 'UTF-8') : '' ?>
-                                </div>
+                                <?php if ($esTecnicoCiego): ?>
+                                    <div class="fw-medium"><?= htmlspecialchars($resumenEnsayosTec !== '' ? $resumenEnsayosTec : 'Ensayos de laboratorio', ENT_QUOTES, 'UTF-8') ?></div>
+                                    <div class="cy-meta" data-col="cliente-sub">Identidad confidencial (ISO/IEC 17025)</div>
+                                <?php else: ?>
+                                    <div class="fw-medium"><?= htmlspecialchars($cliInfNom, ENT_QUOTES, 'UTF-8') ?></div>
+                                    <div class="cy-meta" data-col="cliente-sub">
+                                        <?= htmlspecialchars($proyectoNom, ENT_QUOTES, 'UTF-8') ?><?= ($cliFactNom !== '' && $cliFactNom !== $cliInfNom) ? ' · Facturar a: ' . htmlspecialchars($cliFactNom, ENT_QUOTES, 'UTF-8') : '' ?>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="cy-pill <?= htmlspecialchars($etapaPill['clase'], ENT_QUOTES, 'UTF-8') ?>">
@@ -641,23 +684,25 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirDetalleOS(<?= (int)$o['id'] ?>)">Ver detalle</a></li>
                                             <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/ver?id_os=<?= (int)$o['id'] ?>">Abrir página completa</a></li>
-                                            <?php if ($tieneHojaServicio): ?>
-                                                <li><a class="dropdown-item" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$o['id'] ?>" target="_blank">Imprimir RT-FM-13</a></li>
-                                                <?php if ($idHojaPrincipal > 0): ?>
-                                                    <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= $idHojaPrincipal ?>" target="_blank">Imprimir Hoja RT-FM-60</a></li>
+                                            <?php if (!$esTecnicoCiego): ?>
+                                                <?php if ($tieneHojaServicio): ?>
+                                                    <li><a class="dropdown-item" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$o['id'] ?>" target="_blank">Imprimir RT-FM-13</a></li>
+                                                    <?php if ($idHojaPrincipal > 0): ?>
+                                                        <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= $idHojaPrincipal ?>" target="_blank">Imprimir Hoja RT-FM-60</a></li>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <li><a class="dropdown-item" href="/Cycsa/publico/ordenes-servicio?id_os=<?= (int)$o['id'] ?>">Registrar RT-FM-13</a></li>
                                                 <?php endif; ?>
-                                            <?php else: ?>
-                                                <li><a class="dropdown-item" href="/Cycsa/publico/ordenes-servicio?id_os=<?= (int)$o['id'] ?>">Registrar RT-FM-13</a></li>
-                                            <?php endif; ?>
-                                            <?php if ($requiereMuestreo): ?>
-                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirModalMuestreo(<?= (int)$o['id'] ?>, '<?= htmlspecialchars(addslashes((string)$o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')"><?= $tieneTecnico ? 'Reasignar muestreo' : 'Programar muestreo' ?></a></li>
-                                            <?php endif; ?>
-                                            <?php if (!$esSoloCompactacion && function_exists('tienePermiso') && tienePermiso('laboratorio', 'ver')): ?>
-                                                <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio?tab=kanban" target="_blank">Módulo Laboratorio (Recepción)</a></li>
-                                            <?php endif; ?>
-                                            <?php if (!empty($o['puede_cerrar']) && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirModalCerrarOS(<?= (int)$o['id'] ?>, '<?= htmlspecialchars(addslashes((string)$o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')">Cerrar y archivar orden</a></li>
+                                                <?php if ($requiereMuestreo): ?>
+                                                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirModalMuestreo(<?= (int)$o['id'] ?>, '<?= htmlspecialchars(addslashes((string)$o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')"><?= $tieneTecnico ? 'Reasignar muestreo' : 'Programar muestreo' ?></a></li>
+                                                <?php endif; ?>
+                                                <?php if (!$esSoloCompactacion && function_exists('tienePermiso') && tienePermiso('laboratorio', 'ver')): ?>
+                                                    <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio?tab=kanban" target="_blank">Módulo Laboratorio (Recepción)</a></li>
+                                                <?php endif; ?>
+                                                <?php if (!empty($o['puede_cerrar']) && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirModalCerrarOS(<?= (int)$o['id'] ?>, '<?= htmlspecialchars(addslashes((string)$o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')">Cerrar y archivar orden</a></li>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                         </ul>
                                     </div>
@@ -699,7 +744,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                             <div class="fw-semibold">Siguiente acción: <?= htmlspecialchars($sigPasoTexto, ENT_QUOTES, 'UTF-8') ?></div>
                                             <div class="cy-meta"><?= htmlspecialchars($sigPasoDetalle, ENT_QUOTES, 'UTF-8') ?></div>
                                         </div>
-                                        <?php if (!empty($o['puede_cerrar']) && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
+                                        <?php if (!$esTecnicoCiego && !empty($o['puede_cerrar']) && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
                                             <button type="button" class="btn btn-primary" onclick="abrirModalCerrarOS(<?= (int)$o['id'] ?>, '<?= htmlspecialchars(addslashes((string)$o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')">Cerrar orden</button>
                                         <?php else: ?>
                                             <a href="<?= htmlspecialchars($sigPasoUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn btn-primary"><?= htmlspecialchars($sigPasoTexto, ENT_QUOTES, 'UTF-8') ?></a>
@@ -716,6 +761,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                 Ensayos <span class="cy-tab-count">(<?= $totalItemsOS ?>)</span>
                                             </button>
                                         </li>
+                                        <?php if (!$esTecnicoCiego): ?>
                                         <li class="nav-item" role="presentation">
                                             <button type="button"
                                                     class="nav-link btn-drawer-tab"
@@ -732,6 +778,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                 Informes <span class="cy-tab-count">(<?= $matricesAprobadas ?>)</span>
                                             </button>
                                         </li>
+                                        <?php endif; ?>
                                     </ul>
 
                                     <div class="lims-drawer-tabs-content">
@@ -767,7 +814,9 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                 <span class="cy-pill <?= htmlspecialchars($pillEns['clase'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($pillEns['texto'], ENT_QUOTES, 'UTF-8') ?></span>
                                                 <span class="cy-meta"><?= $avanceX ?>/<?= $avanceY ?></span>
 
-                                                <?php if ($estadoRevIt === 'aprobada'): ?>
+                                                <?php if ($esTecnicoCiego): ?>
+                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm"><?= $estadoRevIt === 'aprobada' ? 'Ver captura' : 'Capturar' ?></a>
+                                                <?php elseif ($estadoRevIt === 'aprobada'): ?>
                                                     <button type="button"
                                                             class="btn btn-outline-secondary btn-sm"
                                                             onclick="abrirModalEnviarMatriz(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $cliMailEsc ?>', '<?= $codOsEsc ?>')">Enviar al cliente</button>
@@ -785,10 +834,10 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                             aria-label="Más acciones">⋯</button>
                                                     <ul class="dropdown-menu dropdown-menu-end">
                                                         <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>"><?= $tieneResIt ? 'Editar matriz' : 'Ver matriz' ?></a></li>
-                                                        <?php if ($tieneResIt): ?>
+                                                        <?php if (!$esTecnicoCiego && $tieneResIt): ?>
                                                             <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDet ?>" target="_blank">Imprimir RT-FM-22</a></li>
                                                         <?php endif; ?>
-                                                        <?php if ($idHojaPrincipal > 0): ?>
+                                                        <?php if (!$esTecnicoCiego && $idHojaPrincipal > 0): ?>
                                                             <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= $idHojaPrincipal ?>" target="_blank">Imprimir Hoja RT-FM-60</a></li>
                                                             <li><a class="dropdown-item" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$o['id'] ?>&id_hoja=<?= $idHojaPrincipal ?>" target="_blank">Imprimir RT-FM-13</a></li>
                                                         <?php endif; ?>
@@ -811,6 +860,11 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                             <?php endforeach; ?>
 
                                             <!-- Cierre bloqueado (.cy-note) al final, sin pestañas ni bandas grises anidadas -->
+                                            <?php if ($esTecnicoCiego): ?>
+                                            <div class="cy-note" id="tab-cierre-<?= (int)$o['id'] ?>">
+                                                Avance técnico: <?= $matricesLlenadas ?> de <?= $totalItemsOS ?> matrices capturadas · <?= (int)$oCalc['ensayos_aprobados'] ?> aprobadas por supervisión.
+                                            </div>
+                                            <?php else: ?>
                                             <div class="cy-note" id="tab-cierre-<?= (int)$o['id'] ?>">
                                                 <?php if (in_array((string)$o['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
                                                     Orden cerrada y archivada en histórico LIMS.
@@ -823,8 +877,10 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                     El cierre de la orden se habilita cuando las <?= $totalItemsOS ?> matrices estén aprobadas y sus informes emitidos (actualmente <?= (int)$oCalc['ensayos_aprobados'] ?> de <?= $totalItemsOS ?> aprobadas<?= empty($o['comercial_100']) ? ($esCreditoFila ? ', CxC pendiente' : ', saldo pendiente C$ ' . number_format((float)($o['saldo_os'] ?? 0), 2)) : '' ?>).
                                                 <?php endif; ?>
                                             </div>
+                                            <?php endif; ?>
                                         </div>
 
+                                        <?php if (!$esTecnicoCiego): ?>
                                         <!-- TAB 2: RECEPCIÓN Y DATOS DE LA ORDEN -->
                                         <div id="tab-recepcion-<?= (int)$o['id'] ?>" class="drawer-card-tab-pane" style="display: none;">
                                             <div id="tab-resumen-<?= (int)$o['id'] ?>">
@@ -905,6 +961,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                 <?php endforeach; ?>
                                             <?php endif; ?>
                                         </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
@@ -1160,6 +1217,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
 </div>
 
 <!-- MODAL ENVÍO DE INFORME PDF AL CLIENTE -->
+<?php if (!$esTecnicoCiego): ?>
 <div id="modalEnviarInformeCliente" class="modal-premium" style="display: none;">
     <div class="modal-premium-content">
         <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
@@ -1192,6 +1250,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
         </form>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- MODAL VER OBSERVACIÓN DE DEVOLUCIÓN -->
 <div id="modalVerObservacionDevolucion" class="modal-premium" style="display: none;">

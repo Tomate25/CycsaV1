@@ -264,6 +264,99 @@ class Fase2OperacionesInformesPermisosTest extends TestCase {
         $this->assertStringContainsString('Metadatos Oficiales del Encabezado del Informe', $htmlSupervisor);
     }
 
+    public function testTecnicoCiegoIso17025BloqueadoEnOperacionesYEntregaHabilitadaEnOrdenesServicio(): void {
+        // 1. Detección estricta de rol técnico ciego
+        $_SESSION['usuario_rol'] = 6;
+        $_SESSION['usuario_permisos'] = ['operaciones' => ['ver' => true, 'crear_editar' => true]];
+        $this->assertTrue(esTecnicoCiegoISO17025());
+        $this->assertFalse(esSupervisorOperacionesCYCSA());
+
+        $_SESSION['usuario_rol'] = 4; // Asistente / Atención al Cliente
+        $this->assertFalse(esTecnicoCiegoISO17025());
+
+        $_SESSION['usuario_rol'] = 3; // Supervisor
+        $this->assertFalse(esTecnicoCiegoISO17025());
+        $this->assertTrue(esSupervisorOperacionesCYCSA());
+
+        // 2. Backend bloquea impresión, PDF y envío al cliente para Técnico (rol 6)
+        $_SESSION['usuario_rol'] = 6;
+        $_SESSION['usuario_permisos'] = ['operaciones' => ['ver' => true, 'crear_editar' => true]];
+        $_GET = ['id_detalle' => 999];
+        $_POST = ['csrf_token' => $_SESSION['csrf_token'], 'id_detalle' => 999];
+        $ctrl = new OperacionesControlador();
+
+        $respImp = new TestRespuestaFase2Operaciones();
+        $ctrl->imprimirMatrizProducto(new Peticion(), $respImp);
+        $this->assertSame('/Cycsa/publico/operaciones', $respImp->urlRedirigida);
+        $this->assertStringContainsString('ISO/IEC 17025', (string)($_SESSION['error'] ?? ''));
+
+        unset($_SESSION['error']);
+        $respPdf = new TestRespuestaFase2Operaciones();
+        $ctrl->descargarMatrizPDF(new Peticion(), $respPdf);
+        $this->assertSame('/Cycsa/publico/operaciones', $respPdf->urlRedirigida);
+        $this->assertStringContainsString('ISO/IEC 17025', (string)($_SESSION['error'] ?? ''));
+
+        unset($_SESSION['error']);
+        $respEnv = new TestRespuestaFase2Operaciones();
+        $ctrl->enviarMatrizCliente(new Peticion(), $respEnv);
+        $this->assertSame('/Cycsa/publico/operaciones', $respEnv->urlRedirigida);
+        $this->assertStringContainsString('ISO/IEC 17025', (string)($_SESSION['error'] ?? ''));
+
+        // 3. Operaciones/Vistas/index.php y ver.php en modo Técnico (rol 6) ocultan cliente, proyecto, imprimir y envío
+        $ordenMock = [
+            'id' => 501,
+            'codigo_os' => 'OS-2026-0501',
+            'cot_codigo' => 'COT-2026-0501',
+            'cliente_nombre' => 'CONSTRUCTORA SECRETA S.A.',
+            'cliente_informe_nombre' => 'CONSTRUCTORA SECRETA S.A.',
+            'cliente_factura_nombre' => 'FACTURADORA SECRETA S.A.',
+            'cliente_email' => 'secreto@constructora.test',
+            'nombre_proyecto' => 'TORRE PRIVADA 99',
+            'estado' => 'En Proceso',
+            'items' => [[
+                'id' => 701,
+                'descripcion_ensayo' => 'Resistencia a la compresión de cilindros',
+                'norma_astm' => 'ASTM C39',
+                'cantidad' => 3,
+                'permitido' => 1,
+                'resultados_json' => json_encode(['filas' => [['Código laboratorio' => 'MS-0001-26', 'Carga (lb)' => '90000']], 'revision' => ['estado' => 'aprobada']]),
+            ]],
+        ];
+
+        $ordenes = [$ordenMock];
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/index.php';
+        $htmlIndexTec = (string)ob_get_clean();
+
+        $this->assertStringContainsString('OS-2026-0501', $htmlIndexTec);
+        $this->assertStringNotContainsString('CONSTRUCTORA SECRETA S.A.', $htmlIndexTec);
+        $this->assertStringNotContainsString('TORRE PRIVADA 99', $htmlIndexTec);
+        $this->assertStringNotContainsString('secreto@constructora.test', $htmlIndexTec);
+        $this->assertStringNotContainsString('Imprimir RT-FM-22', $htmlIndexTec);
+        $this->assertStringNotContainsString('Enviar al cliente', $htmlIndexTec);
+        $this->assertStringNotContainsString('Descargar PDF', $htmlIndexTec);
+
+        $o = $ordenMock;
+        $informes_unificados = [];
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/ver.php';
+        $htmlVerTec = (string)ob_get_clean();
+
+        $this->assertStringContainsString('OS-2026-0501', $htmlVerTec);
+        $this->assertStringNotContainsString('CONSTRUCTORA SECRETA S.A.', $htmlVerTec);
+        $this->assertStringNotContainsString('TORRE PRIVADA 99', $htmlVerTec);
+        $this->assertStringNotContainsString('Imprimir RT-FM-22', $htmlVerTec);
+        $this->assertStringNotContainsString('Enviar al cliente', $htmlVerTec);
+
+        // 4. Órdenes de Servicio habilita Ver / Imprimir, PDF y Enviar al Cliente para Atención al Cliente
+        $htmlOS = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/OrdenesServicio/Vistas/index.php');
+        $this->assertStringContainsString('4. Ensayos e Informes para Cliente', $htmlOS);
+        $this->assertStringContainsString('id="modalEnviarInformeOS"', $htmlOS);
+        $this->assertStringContainsString('/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=', $htmlOS);
+        $this->assertStringContainsString('/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=', $htmlOS);
+        $this->assertStringContainsString('abrirModalEnviarInformeOS(', $htmlOS);
+    }
+
     public function testAprobarMatrizPersisteRevisorAprobadorYObservacionesPendientes(): void {
         $fx = $this->crearFixtureMatrizConcreto();
         $_SESSION['usuario_rol'] = 3; // Supervisor
