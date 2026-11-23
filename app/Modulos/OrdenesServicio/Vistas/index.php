@@ -1743,7 +1743,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
                         <div style="font-size:13px; color:#334155;">
                             Complete las casillas para las <strong id="rec_total_muestras_lbl">0</strong> muestra(s) de esta hoja RT-FM-13.
-                            <span style="color:#103487; font-weight:600;">Reven. (cm) se calcula automáticamente a 0.5 cm al capturar Reven. (in).</span>
+                            <span style="color:#103487; font-weight:600;">Reven. (cm) y Edad (Días) se calculan automáticamente.</span>
                         </div>
                         <button type="button" id="rec_btn_copiar_fila1" onclick="copiarFilaUnoDatosRecepcion()" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:4px 12px; font-size:13px; font-weight:700;">
                             <i class="fa-solid fa-copy me-1"></i> Copiar Fila 1 a todas las muestras
@@ -4195,6 +4195,9 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         }
 
         const tieneRevenIn = camposTab.some(cc => ['revenin', 'revenimientoin'].includes(normalizarClaveJsRec(cc.nombre)));
+        const tieneFechaFab = camposTab.some(cc => ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado'].includes(normalizarClaveJsRec(cc.nombre)));
+        const tieneFechaEns = camposTab.some(cc => ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion'].includes(normalizarClaveJsRec(cc.nombre)));
+        const tieneAmbasFechas = tieneFechaFab && tieneFechaEns;
 
         codigosTab.forEach((cod, idx) => {
             const m = estado[cod];
@@ -4230,10 +4233,15 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 const val = dRec[c.nombre] !== undefined ? dRec[c.nombre] : '';
                 const stepAttr = c.step ? `step="${escapeHtml(c.step)}"` : '';
                 const clave = normalizarClaveJsRec(c.nombre);
-                const esAutoCalcRec = tieneRevenIn && ['revencm', 'revenimientocm'].includes(clave);
+                const esAutoCalcReven = tieneRevenIn && ['revencm', 'revenimientocm'].includes(clave);
+                const esAutoCalcEdad = tieneAmbasFechas && ['edaddias', 'edad'].includes(clave);
+                const esAutoCalcRec = esAutoCalcReven || esAutoCalcEdad;
+                const titleAuto = esAutoCalcReven
+                    ? 'Calculado automáticamente desde Reven. (in)'
+                    : 'Calculado automáticamente entre Fecha de Fabricación y Fecha de Ensayo';
                 const roAttr = recSoloLecturaActual
                     ? 'readonly disabled'
-                    : (esAutoCalcRec ? 'readonly tabindex="-1" title="Calculado automáticamente desde Reven. (in)"' : '');
+                    : (esAutoCalcRec ? `readonly tabindex="-1" title="${titleAuto}"` : '');
                 const bgInput = (recSoloLecturaActual || esAutoCalcRec) ? '#f1f5f9' : '#fff';
                 const cursorCss = esAutoCalcRec ? 'cursor:not-allowed; color:#334155; font-weight:600;' : '';
                 html += `<td style="padding:8px 8px; border-bottom:1px solid #f1f5f9;">
@@ -4248,6 +4256,12 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             });
             tr.innerHTML = html;
             tbody.appendChild(tr);
+
+            // Recalcular valores automáticos iniciales (Reven. cm y Edad Días) si ya hay datos precargados
+            const inpFabInit = tr.querySelector('.rec-campo-input[data-clave="fechadefabricacion"], .rec-campo-input[data-clave="fechafabricacion"], .rec-campo-input[data-clave="fechademoldeo"], .rec-campo-input[data-clave="fechamoldeo"]');
+            if (inpFabInit && inpFabInit.value) {
+                recalcularFilaDatosRecepcion(tr, inpFabInit);
+            }
 
             const selDestEl = tr.querySelector('.rec-destino-select');
             if (selDestEl) {
@@ -4357,22 +4371,36 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             }
         }
 
+        const parseFechaUtcMs = (str) => {
+            const s = String(str || '').trim();
+            if (!s) return null;
+            let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) return Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+            m = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+            if (m) return Date.UTC(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+            return null;
+        };
+
         const inpFab = buscarPorClaves(['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado']);
         const inpEns = buscarPorClaves(['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion']);
         const inpEdad = buscarPorClaves(['edaddias', 'edad']);
         if (inpFab && inpEns && inpEdad) {
-            if ((claveOri === inpFab.dataset.clave || claveOri === inpEns.dataset.clave) && inpFab.value && inpEns.value) {
-                const d1 = new Date(inpFab.value + 'T00:00:00');
-                const d2 = new Date(inpEns.value + 'T00:00:00');
-                const dias = Math.round((d2 - d1) / 86400000);
-                if (!isNaN(dias) && dias >= 0) {
-                    inpEdad.value = dias;
+            if (claveOri === inpFab.dataset.clave || claveOri === inpEns.dataset.clave) {
+                const ms1 = parseFechaUtcMs(inpFab.value);
+                const ms2 = parseFechaUtcMs(inpEns.value);
+                if (ms1 !== null && ms2 !== null) {
+                    const dias = Math.round((ms2 - ms1) / 86400000);
+                    inpEdad.value = dias >= 0 ? String(dias) : '';
+                } else {
+                    inpEdad.value = '';
                 }
-            } else if (claveOri === inpEdad.dataset.clave && inpFab.value && inpEdad.value !== '' && !isNaN(parseInt(inpEdad.value, 10))) {
-                const d1 = new Date(inpFab.value + 'T00:00:00');
-                d1.setDate(d1.getDate() + parseInt(inpEdad.value, 10));
-                if (!isNaN(d1.getTime())) {
-                    inpEns.value = d1.toISOString().substring(0, 10);
+            } else if (claveOri === inpEdad.dataset.clave && !inpEdad.readOnly && inpFab.value && inpEdad.value !== '' && !isNaN(parseInt(inpEdad.value, 10))) {
+                const ms1 = parseFechaUtcMs(inpFab.value);
+                if (ms1 !== null) {
+                    const dCalc = new Date(ms1 + parseInt(inpEdad.value, 10) * 86400000);
+                    if (!isNaN(dCalc.getTime())) {
+                        inpEns.value = dCalc.toISOString().substring(0, 10);
+                    }
                 }
             }
         }
@@ -4391,6 +4419,8 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     inp.value = valoresFila1[inp.dataset.campo];
                 }
             });
+            const inpFabCopy = filas[i].querySelector('.rec-campo-input[data-clave="fechadefabricacion"], .rec-campo-input[data-clave="fechafabricacion"], .rec-campo-input[data-clave="fechademoldeo"], .rec-campo-input[data-clave="fechamoldeo"]');
+            if (inpFabCopy) recalcularFilaDatosRecepcion(filas[i], inpFabCopy);
         }
         guardarEstadoTabActualEnMemoria();
         document.getElementById('rec_feedback_msg').innerHTML = '<span style="color:#0369a1;"><i class="fa-solid fa-check me-1"></i>Valores copiados de la fila 1 a las muestras de este producto (revise edades/fechas individuales si varían y guarde).</span>';

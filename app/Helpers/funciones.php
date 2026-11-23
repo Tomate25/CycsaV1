@@ -6603,7 +6603,7 @@ if (!function_exists('normalizarYCompletarDatosRecepcionMuestra')) {
             $tsFab = $fFab !== '' ? strtotime($fFab) : false;
             $tsEns = $fEns !== '' ? strtotime($fEns) : false;
 
-            if ($tsFab !== false && $tsEns !== false && $edad === '') {
+            if ($tsFab !== false && $tsEns !== false) {
                 $dias = (int)round(($tsEns - $tsFab) / 86400);
                 if ($dias >= 0) {
                     $limpio[$colEdad] = (string)$dias;
