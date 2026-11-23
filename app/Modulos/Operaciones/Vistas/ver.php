@@ -380,11 +380,9 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
 } elseif ($matricesAprobadas < $totalItemsOS && ($primerItemPendienteId ?? $primerItemVerId) > 0) {
     $targetCap = $primerItemPendienteId ?? $primerItemVerId;
     $sigAccionTipo = 'link';
-    $sigAccionTexto = ($idHojaVer > 0 && !$esSoloCompactacion) ? 'Capturar en laboratorio' : 'Capturar matriz';
+    $sigAccionTexto = 'Capturar matriz';
     $sigAccionDetalle = $matricesLlenadas . ' de ' . $totalItemsOS . ' matrices con resultados · ' . $matricesAprobadas . ' aprobadas.';
-    $sigAccionHref = ($idHojaVer > 0 && !$esSoloCompactacion)
-        ? ('/Cycsa/publico/laboratorio/ensayos-hoja?id_hoja=' . $idHojaVer)
-        : ('/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $targetCap);
+    $sigAccionHref = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $targetCap;
     $sigAccionOnclick = '';
 } elseif ($primerItemVerId > 0) {
     $sigAccionTipo = 'link';

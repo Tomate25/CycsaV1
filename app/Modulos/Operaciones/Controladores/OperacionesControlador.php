@@ -1959,36 +1959,17 @@ class OperacionesControlador extends ControladorBase {
             $pillEtapaTexto = 'Ejecución técnica';
             $etapaFlujoOS = 'en_ejecucion';
             $bandejaRol = 'tecnico';
-            if ($totalProbetas > 0 && $probetasRotas < $totalProbetas) {
-                $idHojaLab = $idHojaProbetasPendientes > 0 ? $idHojaProbetasPendientes : $idHojaPrincipal;
-                $hojaLab = ($idHojaLab > 0 && isset($mapaHojas[$idHojaLab])) ? $mapaHojas[$idHojaLab] : null;
-                $numReg = trim((string)($hojaLab['numero_registro'] ?? ''));
-                $ensayoHoja = trim((string)($hojaLab['descripcion_ensayo'] ?? ''));
-                $restantes = max(0, $totalProbetas - $probetasRotas);
-
-                $sigAccionTitulo = 'Capturar roturas' . ($numReg !== '' ? " del lote Reg. {$numReg}" : '');
-                $sigAccionSubtitulo = $ensayoHoja !== ''
-                    ? "Quedan {$restantes} probetas programadas en {$ensayoHoja} ({$probetasRotas} de {$totalProbetas} completadas)."
-                    : "Quedan {$restantes} probetas programadas por ensayar ({$probetasRotas} de {$totalProbetas} completadas).";
-                $sigAccionBotonTexto = 'Capturar roturas';
-                $sigAccionUrl = $idHojaLab > 0
-                    ? "/Cycsa/publico/laboratorio/detalle-lote?id_hoja={$idHojaLab}"
-                    : $urlVerOS;
-                $sigPasoTexto = "Capturar rotura ({$probetasRotas} de {$totalProbetas} probetas)";
-                $sigPasoUrl = $sigAccionUrl;
-            } else {
-                $targetDet = $primerDetallePendienteId ?? $primerDetalleId;
-                $sigAccionTitulo = 'Capturar resultados de matriz';
-                $sigAccionSubtitulo = $nombreEnsayoPendiente !== ''
-                    ? "Pendiente captura técnica en {$nombreEnsayoPendiente} ({$matricesCapturadas} de {$totalMatrices} matrices)."
-                    : "{$matricesCapturadas} de {$totalMatrices} matrices capturadas para esta orden.";
-                $sigAccionBotonTexto = 'Capturar matriz';
-                $sigAccionUrl = $targetDet
-                    ? "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$targetDet}"
-                    : $urlVerOS;
-                $sigPasoTexto = 'Capturar Matriz Técnica';
-                $sigPasoUrl = $sigAccionUrl;
-            }
+            $targetDet = $primerDetallePendienteId ?? $primerDetalleId;
+            $sigAccionTitulo = 'Capturar resultados de matriz';
+            $sigAccionSubtitulo = $nombreEnsayoPendiente !== ''
+                ? "Pendiente captura técnica en {$nombreEnsayoPendiente} ({$matricesCapturadas} de {$totalMatrices} matrices)."
+                : "{$matricesCapturadas} de {$totalMatrices} matrices capturadas para esta orden.";
+            $sigAccionBotonTexto = 'Capturar matriz';
+            $sigAccionUrl = $targetDet
+                ? "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$targetDet}"
+                : $urlVerOS;
+            $sigPasoTexto = 'Capturar Matriz Técnica';
+            $sigPasoUrl = $sigAccionUrl;
         } elseif (!$paso4Hecho) {
             if ($matricesEnRevision > 0) {
                 $pillEtapaClase = 'cy-pill-warn';
@@ -2848,9 +2829,9 @@ class OperacionesControlador extends ControladorBase {
                     }
                 }
 
-                // Si existen roturas reales en laboratorio para esta muestra, prevalecen como fuente única de verdad
+                // Si existen roturas reales en laboratorio para esta muestra y NO se enviaron nuevas mediciones en captura_tecnica, prevalecen como fuente única de verdad
                 $codF = strtoupper(trim((string)($filaItem['Código laboratorio'] ?? ($filaItem['Codigo laboratorio'] ?? ($filaItem['codigo_lab'] ?? '')))));
-                if ($codF !== '' && !empty($roturasPorCodigo[$codF])) {
+                if (empty($recalcTec['tiene_datos']) && $codF !== '' && !empty($roturasPorCodigo[$codF])) {
                     $idxCursor = $cursoresRotura[$codF] ?? 0;
                     $rotMatch = $roturasPorCodigo[$codF][$idxCursor] ?? end($roturasPorCodigo[$codF]);
                     $cursoresRotura[$codF] = $idxCursor + 1;
