@@ -8,7 +8,7 @@ class InformesOficialesParidadTest extends TestCase {
 
     private function extraerTextoDePdf(string $pdfBytes): string {
         $texto = $pdfBytes;
-        if (preg_match_all('/stream[\r\n]+(.*?)[\r\n]+endstream/s', $pdfBytes, $matches)) {
+        if (preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdfBytes, $matches)) {
             foreach ($matches[1] as $stream) {
                 $decompressed = @gzuncompress($stream);
                 if ($decompressed !== false) {
@@ -290,8 +290,9 @@ class InformesOficialesParidadTest extends TestCase {
         $this->assertStringContainsString('Ing. Noel Quintana Lira', $textoPdf);
         $this->assertTrue(stripos($textoPdf, 'Gerente General') !== false, 'Debe contener cargo Gerente General');
 
-        // Cláusula de confidencialidad e imparcialidad ISO/IEC 17025
-        $this->assertTrue(mb_stripos($textoPdf, 'Declaración de Conformidad e Imparcialidad', 0, 'UTF-8') !== false, 'Debe contener declaración de conformidad');
+        // Los bloques redundantes de Observaciones y Condiciones / Declaración de Conformidad e Imparcialidad fueron retirados del PDF e impresión
+        $this->assertFalse(mb_stripos($textoPdf, 'Observaciones y Condiciones del Ensayo', 0, 'UTF-8') !== false, 'No debe incluir el bloque Observaciones y Condiciones del Ensayo');
+        $this->assertFalse(mb_stripos($textoPdf, 'Declaración de Conformidad e Imparcialidad', 0, 'UTF-8') !== false, 'No debe incluir el bloque Declaración de Conformidad e Imparcialidad');
     }
 
     /**

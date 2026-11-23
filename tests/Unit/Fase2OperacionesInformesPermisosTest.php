@@ -460,6 +460,13 @@ class Fase2OperacionesInformesPermisosTest extends TestCase {
         $this->assertStringContainsString('Imprimir RT-FM-22', $htmlDoc);
         $this->assertStringContainsString('Descargar PDF', $htmlDoc);
         $this->assertStringContainsString('Enviar al cliente', $htmlDoc);
+
+        // 6. Compactación queda excluida de Captura Técnica (solo se llena en Órdenes de Servicio)
+        $ctCtrlSrc = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Controladores/CapturaTecnicaControlador.php');
+        $this->assertStringContainsString('esItemCompactacion', $ctCtrlSrc);
+        $printSrc = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php');
+        $this->assertStringNotContainsString('Observaciones y Condiciones del Ensayo', $printSrc);
+        $this->assertStringNotContainsString('Declaración de Conformidad e Imparcialidad', $printSrc);
     }
 
     public function testAprobarMatrizPersisteRevisorAprobadorYObservacionesPendientes(): void {

@@ -68,7 +68,18 @@ class CapturaTecnicaControlador extends ControladorBase {
             }
             $items = $modelo->obtenerItemsOS($idOS);
             $items = array_values(array_filter($items, static function ($it): bool {
-                return !is_array($it) || !array_key_exists('permitido', $it) || (int)$it['permitido'] === 1;
+                if (!is_array($it)) {
+                    return false;
+                }
+                if (array_key_exists('permitido', $it) && (int)$it['permitido'] !== 1) {
+                    return false;
+                }
+                // Los ensayos de compactación (Densímetro, Cono de Arena, Reemplazo de Agua)
+                // se llenan directamente en Órdenes de Servicio; no los llenan los técnicos.
+                if (function_exists('esItemCompactacion') && esItemCompactacion($it)) {
+                    return false;
+                }
+                return true;
             }));
             if (empty($items)) {
                 continue;
@@ -190,6 +201,29 @@ class CapturaTecnicaControlador extends ControladorBase {
      */
     public function llenar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarAccesoCaptura($respuesta);
+        $idDetalle = (int)($_GET['id_detalle'] ?? 0);
+        if ($idDetalle > 0) {
+            try {
+                $db = Conexion::obtenerInstancia();
+                $stmtC = $db->prepare("
+                    SELECT cd.id, cd.descripcion_ensayo, cd.norma_astm,
+                           p.formato_id, p.nombre_comercial, p.ensayo_servicio,
+                           fe.nombre AS formato_nombre, fe.archivo_markdown
+                    FROM cotizacion_detalles cd
+                    LEFT JOIN productos p ON cd.id_producto = p.id
+                    LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                    WHERE cd.id = :id LIMIT 1
+                ");
+                $stmtC->execute(['id' => $idDetalle]);
+                $detRow = $stmtC->fetch(\PDO::FETCH_ASSOC);
+                if ($detRow && function_exists('esItemCompactacion') && esItemCompactacion($detRow)) {
+                    $_SESSION['error'] = 'Los ensayos de compactación se capturan directamente en Órdenes de Servicio (Recepción), no en Captura Técnica.';
+                    $respuesta->redirigir('/Cycsa/publico/captura-tecnica');
+                    return;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
         $opCtrl = new OperacionesControlador();
         $opCtrl->capturaMatrizProducto($peticion, $respuesta, true);
     }

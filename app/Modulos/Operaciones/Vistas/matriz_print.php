@@ -894,22 +894,6 @@ if (!empty($codigoInformePersonalizado)) {
             </div>
             <?php endif; ?>
 
-            <!-- OBSERVACIONES Y NOTAS ISO 17025 -->
-            <div class="seccion-observaciones">
-                <div class="caja-obs">
-                    <div class="caja-obs-titulo">Observaciones y Condiciones del Ensayo</div>
-                    <div style="color: #1e293b; line-height: 1.25;">
-                        <?= !empty($detalle['observaciones']) ? htmlspecialchars($detalle['observaciones']) : 'Ensayos ejecutados bajo condiciones ambientales y parámetros establecidos en la norma técnica correspondiente. Equipos con calibración trazable vigente.' ?>
-                    </div>
-                </div>
-                <div class="caja-obs">
-                    <div class="caja-obs-titulo">Declaración de Conformidad e Imparcialidad (ISO/IEC 17025)</div>
-                    <div style="color: #333333; line-height: 1.25;">
-                        Los resultados expresados corresponden única y exclusivamente a los especímenes y puntos sometidos a prueba. Prohibida la reproducción parcial sin autorización escrita de CYCSA.
-                    </div>
-                </div>
-            </div>
-
             <!-- LÍNEA DE CIERRE OFICIAL (SERIE CYCSA-RT-FM-22) -->
             <div class="linea-cierre-doc">-------------------------------- Última Línea ---------------------------------</div>
 

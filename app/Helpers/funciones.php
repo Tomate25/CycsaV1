@@ -3501,19 +3501,6 @@ FIRMAS;
 
     {$obsPendientesHtml}
 
-    <table class="obs-tbl">
-        <tr>
-            <td style="width: 50%;">
-                <div style="font-weight: bold; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; margin-bottom: 3px; text-transform: uppercase;">Observaciones y Condiciones del Ensayo</div>
-                <div style="line-height: 1.25; color: #1e293b;">{$obs}</div>
-            </td>
-            <td style="width: 50%;">
-                <div style="font-weight: bold; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; margin-bottom: 3px; text-transform: uppercase;">Declaración de Conformidad e Imparcialidad (ISO/IEC 17025)</div>
-                <div style="color: #333; line-height: 1.25;">Los resultados expresados corresponden única y exclusivamente a los especímenes y puntos sometidos a prueba. Prohibida la reproducción parcial sin autorización escrita de CYCSA.</div>
-            </td>
-        </tr>
-    </table>
-
     <div class="linea-cierre-doc">-------------------------------- Última Línea ---------------------------------</div>
 
     {$firmasHtml}

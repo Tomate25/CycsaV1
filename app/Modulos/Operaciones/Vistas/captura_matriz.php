@@ -1120,12 +1120,12 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
     </style>
 
     <!-- SECCIÓN 1A: CAPTURA TÉCNICA DEL TÉCNICO DE LABORATORIO (MEDICIONES CRUDAS POR PRODUCTO) -->
-    <?php $esSoloRecepcionDensimetro = (!$esSupervisor && strtolower(trim((string)$archivoMd)) === 'compactacion_densimetro_nuclear.md'); ?>
-    <?php if ($esSoloRecepcionDensimetro): ?>
+    <?php $esSoloRecepcionCompactacion = (!$esSupervisor && (function_exists('esItemCompactacion') ? esItemCompactacion($detalle) : (strtolower(trim((string)$archivoMd)) === 'compactacion_densimetro_nuclear.md'))); ?>
+    <?php if ($esSoloRecepcionCompactacion): ?>
     <div id="seccion-captura-tecnica-lab" class="ht-lab-card">
         <div style="font-size: 13.5px; color: #334155;">
             <i class="fa-solid fa-circle-info me-1" style="color: #1F3864;"></i>
-            Los datos de <strong>Densímetro Nuclear</strong> corresponden a <strong>Recepción (Órdenes de Servicio)</strong>. No existen campos técnicos adicionales pendientes para captura de laboratorio en este formato.
+            Los ensayos de <strong>Compactación</strong> se registran directamente en <strong>Órdenes de Servicio (Recepción)</strong>. No requieren captura técnica adicional en este módulo.
         </div>
     </div>
     <?php else: ?>
