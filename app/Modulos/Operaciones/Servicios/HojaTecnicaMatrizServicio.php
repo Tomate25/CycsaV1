@@ -812,11 +812,45 @@ class HojaTecnicaMatrizServicio {
 
         if (!empty($guardada)) {
             // Enriquecer con roturas nuevas de BD si alguna fila guardada aún estaba vacía
+            $mapaGuardadaPorCod = [];
             foreach ($guardada as $idx => $gRow) {
                 if (!is_array($gRow)) continue;
                 $cod = strtoupper(trim((string)($gRow['codigo_lab'] ?? '')));
                 if ($cod !== '' && isset($roturasLabPorCod[$cod]) && empty($gRow['carga_lb']) && empty($gRow['carga_kg'])) {
                     $guardada[$idx] = self::aplicarRoturaDbEnFilaTecnica($gRow, $roturasLabPorCod[$cod]);
+                }
+                if ($cod !== '') {
+                    $mapaGuardadaPorCod[$cod] = $guardada[$idx];
+                }
+            }
+            // Si el formato es por muestra y la matriz tiene réplicas (-CR) aún no presentes en captura_tecnica, agregarlas en orden
+            if (($def['modo_filas'] ?? 'por_muestra') === 'por_muestra') {
+                $filasMatrizPrev = isset($decResultados['filas']) && is_array($decResultados['filas'])
+                    ? $decResultados['filas']
+                    : [];
+                if (!empty($filasMatrizPrev)) {
+                    $sincronizadas = [];
+                    foreach ($filasMatrizPrev as $fm) {
+                        if (!is_array($fm)) continue;
+                        $codM = trim((string)($fm['Código laboratorio'] ?? ($fm['Codigo laboratorio'] ?? ($fm['codigo_lab'] ?? ''))));
+                        $codUp = strtoupper($codM);
+                        if ($codUp !== '' && isset($mapaGuardadaPorCod[$codUp])) {
+                            $sincronizadas[] = $mapaGuardadaPorCod[$codUp];
+                        } elseif ($codM !== '') {
+                            $nuevaFila = ['codigo_lab' => $codM];
+                            if (!empty($fm['_es_replica']) || preg_match('/-CR$/i', $codM)) {
+                                $nuevaFila['_es_replica'] = true;
+                                $nuevaFila['_muestra_origen'] = (string)($fm['_muestra_origen'] ?? preg_replace('/-CR$/i', '', $codM));
+                            }
+                            foreach ($def['campos_entrada'] as $ce) {
+                                $nuevaFila[$ce['clave']] = $ce['default'] ?? '';
+                            }
+                            $sincronizadas[] = $nuevaFila;
+                        }
+                    }
+                    if (!empty($sincronizadas)) {
+                        return $sincronizadas;
+                    }
                 }
             }
             return array_values($guardada);

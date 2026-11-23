@@ -151,5 +151,46 @@ class HojaTecnicaMatrizCoberturaTest extends TestCase {
         $this->assertStringContainsString('inicializarHojaTecnica();', $vista);
         $this->assertStringContainsString('bloquearSoloLecturaEstricto', $vista);
         $this->assertStringContainsString('pointer-events: none;', $vista);
+        $this->assertStringContainsString('sincronizarHojaTecnicaConFilasMatriz', $vista);
+
+        // Verificar que la captura en línea duplicada fue retirada de Laboratorio (laboratorio_lote.php)
+        $vistaLab = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/laboratorio_lote.php');
+        $this->assertStringNotContainsString('id="seccionCapturaEnLineaLote"', $vistaLab);
+        $this->assertStringNotContainsString('Captura en Línea de Mediciones y Roturas del Lote (RT-FM-61)', $vistaLab);
+    }
+
+    public function testReplicaCrRecalculaIndependientementeDeMuestraPadre(): void {
+        $filasTec = [
+            [
+                'codigo_lab' => 'MS-0023-26',
+                'diametro_1' => '15.20',
+                'diametro_2' => '15.20',
+                'largo_1' => '30.50',
+                'largo_2' => '30.50',
+                'masa_kg' => '13.100',
+                'carga_lb' => '100000',
+            ],
+            [
+                'codigo_lab' => 'MS-0023-26-CR',
+                '_es_replica' => true,
+                '_muestra_origen' => 'MS-0023-26',
+                'diametro_1' => '15.10',
+                'diametro_2' => '15.10',
+                'largo_1' => '30.40',
+                'largo_2' => '30.40',
+                'masa_kg' => '12.900',
+                'carga_lb' => '95000',
+            ],
+        ];
+        $filasMat = [
+            ['Código laboratorio' => 'MS-0023-26'],
+            ['Código laboratorio' => 'MS-0023-26-CR', '_es_replica' => true, '_muestra_origen' => 'MS-0023-26'],
+        ];
+
+        $res = HojaTecnicaMatrizServicio::recalcularDesdeCapturaTecnica('resistencia_de_concreto.md', $filasTec, $filasMat);
+        $this->assertTrue($res['tiene_datos']);
+        $this->assertSame('100000', (string)$res['filas_matriz'][0]['Carga (lb)']);
+        $this->assertSame('95000', (string)$res['filas_matriz'][1]['Carga (lb)']);
+        $this->assertNotSame((string)$res['filas_matriz'][0]['R. Compresión (lb/in²)'], (string)$res['filas_matriz'][1]['R. Compresión (lb/in²)']);
     }
 }

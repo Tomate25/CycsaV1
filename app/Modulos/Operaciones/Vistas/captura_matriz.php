@@ -2128,6 +2128,9 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
         });
 
         renderizarFilas(nuevasFilas);
+        if (typeof sincronizarHojaTecnicaConFilasMatriz === 'function') {
+            sincronizarHojaTecnicaConFilasMatriz(nuevasFilas);
+        }
         recalculateAll();
     }
 
@@ -2792,6 +2795,71 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
         return filas;
     }
 
+    function sincronizarHojaTecnicaConFilasMatriz(filasMatriz) {
+        const cfg = HOJA_TECNICA_CONFIG || {};
+        if ((cfg.modo_filas || 'por_muestra') !== 'por_muestra') return;
+        const tbodyHt = document.getElementById('ht-tabla-body');
+        if (!tbodyHt) return;
+
+        // Preservar los valores actuales ya digitados en la tabla técnica
+        const actualesHt = (tbodyHt.querySelectorAll('tr').length > 0)
+            ? leerFilasCapturaTecnicaActual()
+            : (Array.isArray(capturaTecnicaFilas) ? capturaTecnicaFilas.slice() : []);
+
+        const mapaPorCod = new Map();
+        actualesHt.forEach(r => {
+            const cKey = String(r && r.codigo_lab ? r.codigo_lab : '').trim().toUpperCase();
+            if (cKey && !mapaPorCod.has(cKey)) {
+                mapaPorCod.set(cKey, r);
+            }
+        });
+
+        const campos = cfg.campos_entrada || [];
+        const origenLista = Array.isArray(filasMatriz) && filasMatriz.length > 0
+            ? filasMatriz
+            : leerFilasMatrizActual();
+        if (!Array.isArray(origenLista) || origenLista.length === 0) return;
+
+        const nuevasHt = origenLista.map((fMat, idx) => {
+            const cod = String(
+                (columnaCodigoReplica && fMat[columnaCodigoReplica] !== undefined ? fMat[columnaCodigoReplica] : '')
+                || fMat['Código laboratorio']
+                || fMat['Codigo laboratorio']
+                || fMat['codigo_lab']
+                || ('M-' + (idx + 1))
+            ).trim();
+            const codUp = cod.toUpperCase();
+            const esRep = fMat._es_replica === true || /-CR$/i.test(cod);
+            const origenRep = esRep ? String(fMat._muestra_origen || cod.replace(/-CR$/i, '')) : '';
+
+            if (codUp && mapaPorCod.has(codUp)) {
+                const existente = { ...mapaPorCod.get(codUp), codigo_lab: cod };
+                if (esRep) {
+                    existente._es_replica = true;
+                    existente._muestra_origen = origenRep;
+                } else {
+                    delete existente._es_replica;
+                    delete existente._muestra_origen;
+                }
+                return existente;
+            }
+
+            const nueva = { codigo_lab: cod };
+            if (esRep) {
+                nueva._es_replica = true;
+                nueva._muestra_origen = origenRep;
+            }
+            campos.forEach(c => {
+                nueva[c.clave] = c.default !== undefined ? c.default : '';
+            });
+            return nueva;
+        });
+
+        capturaTecnicaFilas = nuevasHt;
+        renderizarTablaHojaTecnica();
+        recalcularHojaTecnicaEnVivo(true);
+    }
+
     function renderizarTablaHojaTecnica() {
         const cfg = HOJA_TECNICA_CONFIG || {};
         const thead = document.getElementById('ht-tabla-header');
@@ -2831,10 +2899,22 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
         capturaTecnicaFilas.forEach((rowData, rIdx) => {
             const tr = document.createElement('tr');
             tr.dataset.htRow = rIdx;
+            const codTxt = String(rowData.codigo_lab || (`#${rIdx + 1}`));
+            const esReplicaHt = rowData._es_replica === true || /-CR$/i.test(codTxt);
+            if (esReplicaHt) {
+                tr.dataset.esReplica = '1';
+                tr.style.background = '#f0fdfa';
+            }
 
             const tdCod = document.createElement('td');
             tdCod.className = 'ht-code-cell';
-            tdCod.textContent = rowData.codigo_lab || (`#${rIdx + 1}`);
+            tdCod.textContent = codTxt;
+            if (esReplicaHt) {
+                const badgeRep = document.createElement('span');
+                badgeRep.style.cssText = 'display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#ccfbf1;color:#115e59;font-size:10.5px;font-weight:800;vertical-align:middle;';
+                badgeRep.textContent = 'RÉPLICA';
+                tdCod.appendChild(badgeRep);
+            }
             tr.appendChild(tdCod);
 
             camposIn.forEach(c => {
@@ -3582,7 +3662,11 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
     function inicializarHojaTecnica() {
         capturaTecnicaFilas = construirFilasInicialesHojaTecnica();
         renderizarTablaHojaTecnica();
-        recalcularHojaTecnicaEnVivo(false);
+        if ((HOJA_TECNICA_CONFIG && (HOJA_TECNICA_CONFIG.modo_filas || 'por_muestra') === 'por_muestra')) {
+            sincronizarHojaTecnicaConFilasMatriz(leerFilasMatrizActual());
+        } else {
+            recalcularHojaTecnicaEnVivo(false);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
