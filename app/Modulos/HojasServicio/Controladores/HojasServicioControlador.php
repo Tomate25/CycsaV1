@@ -1667,16 +1667,22 @@ class HojasServicioControlador extends ControladorBase {
             }
 
             if ($tieneColDetCotHsd && !empty($destinosPorCodigo)) {
+                // Solo asignar destino a muestras que aún no tenían producto definido en RT-FM-13 (no permitir mover las ya definidas)
                 $stmtUpdDest = $db->prepare("
                     UPDATE hojas_solicitud_detalles
                     SET id_detalle_cotizacion = :id_det_cot,
                         ensayo_id = COALESCE(NULLIF(:ens_id, 0), ensayo_id)
-                    WHERE id_hoja_solicitud = :hid AND UPPER(TRIM(codigo_muestra)) = :cod
+                    WHERE id_hoja_solicitud = :hid
+                      AND UPPER(TRIM(codigo_muestra)) = :cod
+                      AND (id_detalle_cotizacion IS NULL OR id_detalle_cotizacion = 0)
                 ");
                 foreach ($destinosPorCodigo as $codKeyD => $idDetDest) {
-                    $ensIdDest = ($idDetDest > 0 && !empty($mapaDetAProd[$idDetDest])) ? (int)$mapaDetAProd[$idDetDest] : 0;
+                    if ($idDetDest <= 0) {
+                        continue;
+                    }
+                    $ensIdDest = !empty($mapaDetAProd[$idDetDest]) ? (int)$mapaDetAProd[$idDetDest] : 0;
                     $stmtUpdDest->execute([
-                        'id_det_cot' => $idDetDest > 0 ? $idDetDest : null,
+                        'id_det_cot' => $idDetDest,
                         'ens_id' => $ensIdDest,
                         'hid' => $idHoja,
                         'cod' => $codKeyD,
@@ -1684,14 +1690,15 @@ class HojasServicioControlador extends ControladorBase {
                 }
             }
 
-            // 2. Actualizar muestras_json de la hoja conservando resto de metadatos, destino y sincronizando Nombre muestra
+            // 2. Actualizar muestras_json de la hoja conservando resto de metadatos, destino (sin sobrescribir si ya venía definido en RT-FM-13) y sincronizando Nombre muestra
             $muestrasArr = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
             foreach ($muestrasArr as $idx => $mItem) {
                 $codKey = strtoupper(trim((string)($mItem['nombre_muestra'] ?? ($mItem['codigo_muestra'] ?? ''))));
-                if ($codKey !== '' && array_key_exists($codKey, $destinosPorCodigo)) {
+                $detPrevJson = (int)($mItem['id_detalle_cotizacion'] ?? 0);
+                if ($codKey !== '' && $detPrevJson <= 0 && !empty($destinosPorCodigo[$codKey])) {
                     $idDetD = (int)$destinosPorCodigo[$codKey];
-                    $muestrasArr[$idx]['id_detalle_cotizacion'] = $idDetD > 0 ? $idDetD : null;
-                    if ($idDetD > 0 && !empty($mapaDetAProd[$idDetD])) {
+                    $muestrasArr[$idx]['id_detalle_cotizacion'] = $idDetD;
+                    if (!empty($mapaDetAProd[$idDetD])) {
                         $muestrasArr[$idx]['ensayo_id'] = (int)$mapaDetAProd[$idDetD];
                     }
                 }

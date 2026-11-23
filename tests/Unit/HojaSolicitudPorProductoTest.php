@@ -1179,6 +1179,22 @@ class HojaSolicitudPorProductoTest extends TestCase {
         $this->assertSame(['MS-8001-26', 'MS-8002-26'], array_column($muestrasConcreto, 'codigo_muestra'));
         $this->assertSame(['MS-8003-26', 'MS-8004-26'], array_column($muestrasSuelo, 'codigo_muestra'));
 
+        // Una vez definido el producto de la muestra, Datos de Recepción NO debe permitir moverla a otro producto
+        $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_hoja' => $idHojaMulti,
+            'muestras_recepcion_json' => json_encode(['MS-8001-26' => ['Nombre muestra' => 'Columna 1']], JSON_UNESCAPED_UNICODE),
+            'muestras_destino_json' => json_encode(['MS-8001-26' => $this->idDetalleSuelo], JSON_UNESCAPED_UNICODE),
+        ];
+        $respBloq = new TestRespuestaCaptura();
+        $this->controlador->guardarDatosRecepcion(new Peticion(), $respBloq);
+        unset($_SERVER['HTTP_X_REQUESTED_WITH'], $_SERVER['HTTP_ACCEPT']);
+
+        $muestrasConcretoPost = obtenerMuestrasHojaParaDetalle($this->db, $this->idOS, $this->idDetalleConcreto);
+        $this->assertSame(['MS-8001-26', 'MS-8002-26'], array_column($muestrasConcretoPost, 'codigo_muestra'), 'No debe permitir mover una muestra cuyo producto ya fue definido.');
+
         // Verificar que la vista de Órdenes de Servicio retiró la tarjeta obligatoria de 1 solo producto, el recuadro de Plantilla Predeterminada
         // y separa el modal Datos de Recepción en pestañas limpias por producto (sin mezclar columnas ni N/A)
         $vistaOs = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/OrdenesServicio/Vistas/index.php');

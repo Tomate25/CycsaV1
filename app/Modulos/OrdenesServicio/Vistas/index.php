@@ -4170,7 +4170,9 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 
         const thead = document.getElementById('rec_thead_muestras');
         const tbody = document.getElementById('rec_tbody_muestras');
-        const mostrarColDestino = productosOSRec.length > 1 || window.recProductoTabActivo === 0;
+        // Solo mostrar selector "Producto / Ensayo Destino" para muestras que quedaron SIN asignar en RT-FM-13 (tab 0).
+        // Si ya fue definido en RT-FM-13, no se permite mover ni cambiar el producto desde Datos de Recepción.
+        const mostrarColDestino = (window.recProductoTabActivo === 0);
         thead.innerHTML = `<tr>
             <th style="padding:9px 10px; border-bottom:1.5px solid #cbd5e1; text-align:center; width:42px;">#</th>
             <th style="padding:9px 10px; border-bottom:1.5px solid #cbd5e1; min-width:125px;">Código Muestra</th>
@@ -4182,7 +4184,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         tbody.innerHTML = '';
         const totalCols = (mostrarColDestino ? 4 : 3) + camposTab.length;
         if (codigosTab.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${totalCols}" style="padding:20px; text-align:center; color:#64748b;">No hay muestras asignadas a este producto todavía. Puede mover muestras desde otra pestaña cambiando su columna <strong>Producto / Ensayo Destino</strong>.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${totalCols}" style="padding:20px; text-align:center; color:#64748b;">No hay muestras asignadas a este producto todavía.</td></tr>`;
             return;
         }
 
