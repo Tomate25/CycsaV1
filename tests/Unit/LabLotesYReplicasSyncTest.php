@@ -658,4 +658,114 @@ class LabLotesYReplicasSyncTest extends TestCase
         $this->assertStringNotContainsString("abrirModalRegistrarRoturaLote(" . (int)$muestrasOrig[0]['id'] . ",", $html, 'Muestra ya capturada en matriz no debe pedir Romper de nuevo');
         $this->assertStringContainsString("abrirModalRegistrarRoturaLote(" . (int)$muestrasOrig[1]['id'] . ",", $html, 'Muestra aún pendiente de rotura sí debe permitir Romper en Laboratorio');
     }
+
+    /**
+     * Test 7 (Regresión SQLSTATE 42S22): En hojas multi-producto donde hojas_solicitud.id_detalle_cotizacion es NULL,
+     * detalleLote(), obtenerDatosMatrizPorMuestra() y sincronizarRoturasConMatriz() deben resolver id_detalle_cotizacion
+     * desde hojas_solicitud_detalles sin consultar la columna inexistente recepcion_muestras.id_detalle_cotizacion.
+     */
+    public function testHojaMultiproductoConIdDetalleHojaNullNoFallaSqlEnDetalleLoteNiSyncRoturas(): void
+    {
+        $fx = $this->crearFixtureConcretoLote();
+
+        // Simular hoja multi-producto: hojas_solicitud.id_detalle_cotizacion = NULL
+        $this->db->prepare("UPDATE hojas_solicitud SET id_detalle_cotizacion = NULL WHERE id = ?")
+                 ->execute([$fx['id_hoja']]);
+
+        $opModelo = new OperacionModelo();
+        $opModelo->registrarRecepcion([
+            'id_os' => $fx['id_os'],
+            'id_hoja' => $fx['id_hoja'],
+            'id_detalle_cotizacion' => $fx['id_detalle'],
+            'plantilla_id' => $fx['plantilla_id'],
+            'tipo_muestra' => 'Laboratorio',
+            'fecha_recepcion' => date('Y-m-d H:i:s'),
+            'recibido_por' => $fx['id_usuario'],
+            'entregado_por' => 'Cliente Test',
+            'observaciones' => 'Ingreso Multi-producto NULL id_detalle',
+            'muestras_recibidas_json' => json_encode([
+                [
+                    'id_detalle_cotizacion' => $fx['id_detalle'],
+                    'plantilla_id' => $fx['plantilla_id'],
+                    'orden_en_lote' => 1,
+                    'tipo_muestra' => 'Laboratorio',
+                    'id_cilindro' => 'MP-C1',
+                    'codigo_campo' => 'MP-C1',
+                    'nombre_lote' => 'Cilindro MP 1',
+                    'fecha_moldeo' => '2026-11-10',
+                ],
+            ]),
+        ]);
+
+        $stmtM = $this->db->prepare("SELECT id, codigo_muestra FROM recepcion_muestras WHERE id_hoja = :id_hoja ORDER BY id ASC LIMIT 1");
+        $stmtM->execute(['id_hoja' => $fx['id_hoja']]);
+        $mRow = $stmtM->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotFalse($mRow);
+        $this->idsCreados['recepcion_muestras'][] = (int)$mRow['id'];
+        $cod1 = (string)$mRow['codigo_muestra'];
+
+        // Vincular muestra al detalle en hojas_solicitud_detalles (como hace RT-FM-13 multi-producto)
+        $this->db->prepare("
+            INSERT INTO hojas_solicitud_detalles (id_hoja_solicitud, orden, codigo_muestra, descripcion_ubicacion, id_detalle_cotizacion, ensayo_id, plantilla_id)
+            VALUES (?, 1, ?, 'Cilindro MP 1', ?, ?, ?)
+        ")->execute([$fx['id_hoja'], $cod1, $fx['id_detalle'], $fx['id_producto'], $fx['plantilla_id']]);
+
+        $filasMatriz = [
+            [
+                'Código laboratorio' => $cod1,
+                'Temp. (°C)' => '24.0',
+                'Área (in²)' => '12.57',
+                'Carga (lb)' => '',
+                'R. Compresión (lb/in²)' => '',
+                'R. Compresión (kg/cm²)' => '',
+                'Fecha de Fabricación' => '2026-11-10',
+                'Fecha de Ensayo' => '2026-11-17',
+                'Edad (Días)' => '7',
+            ],
+        ];
+        $this->db->prepare("UPDATE cotizacion_detalles SET resultados_json = :rj WHERE id = :id")
+                 ->execute(['rj' => json_encode(['filas' => $filasMatriz], JSON_UNESCAPED_UNICODE), 'id' => $fx['id_detalle']]);
+
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['crear_editar' => 1, 'ver' => 1]];
+
+        // 1) detalleLote() debe renderizar sin SQLSTATE[42S22]
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_GET = ['id_hoja' => $fx['id_hoja']];
+        $ctrl = new LaboratorioControlador();
+        ob_start();
+        $ctrl->detalleLote(new Peticion(), new Respuesta());
+        $html = (string)ob_get_clean();
+        $this->assertStringContainsString($cod1, $html);
+
+        // 2) obtenerDatosMatrizPorMuestra() debe resolver sin SQLSTATE[42S22]
+        $rmRef = new \ReflectionMethod(LaboratorioControlador::class, 'obtenerDatosMatrizPorMuestra');
+        $rmRef->setAccessible(true);
+        $datosM = $rmRef->invoke($ctrl, $this->db, [
+            'muestra_id' => (int)$mRow['id'],
+            'id_hoja' => $fx['id_hoja'],
+            'id_os' => $fx['id_os'],
+            'codigo_lab' => $cod1,
+        ]);
+        $this->assertTrue($datosM['encontrada']);
+        $this->assertSame(7, $datosM['edad_dias']);
+
+        // 3) sincronizarRoturasConMatriz() con idDetalle=0 debe resolver vía hojas_solicitud_detalles sin SQLSTATE[42S22]
+        $actualizadas = sincronizarRoturasConMatriz($this->db, $fx['id_hoja'], 0, [[
+            'muestra_id' => (int)$mRow['id'],
+            'codigo_lab' => $cod1,
+            'carga' => 45000,
+            'area' => 12.57,
+            'esfuerzo_psi' => 3580,
+            'esfuerzo_kgcm2' => 252,
+            'fecha_real' => '2026-11-17',
+            'edad_calculada' => 7,
+        ]]);
+        $this->assertSame(1, $actualizadas);
+
+        $rawFinal = $this->db->query("SELECT resultados_json FROM cotizacion_detalles WHERE id = " . (int)$fx['id_detalle'])->fetchColumn();
+        $decFinal = json_decode((string)$rawFinal, true);
+        $this->assertEquals(45000, $decFinal['filas'][0]['Carga (lb)'] ?? null);
+    }
 }

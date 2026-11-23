@@ -6146,13 +6146,43 @@ function sincronizarRoturasConMatriz(PDO $db, int $idHoja, int $idDetalle, array
         $stmtHoja->execute(['id' => $idHoja]);
         $idDetalle = (int)$stmtHoja->fetchColumn();
     }
-    if ($idDetalle <= 0 && !empty($roturasEjecutadas[0]['muestra_id'])) {
-        $stmtRm = $db->prepare("SELECT id_detalle_cotizacion, id_hoja FROM recepcion_muestras WHERE id = :id");
+    $codMuestraRef = trim((string)($roturasEjecutadas[0]['codigo_lab'] ?? ''));
+    if (($idHoja <= 0 || $codMuestraRef === '') && !empty($roturasEjecutadas[0]['muestra_id'])) {
+        $stmtRm = $db->prepare("SELECT id_hoja, codigo_muestra FROM recepcion_muestras WHERE id = :id");
         $stmtRm->execute(['id' => (int)$roturasEjecutadas[0]['muestra_id']]);
         $rmR = $stmtRm->fetch(PDO::FETCH_ASSOC);
         if ($rmR) {
-            $idDetalle = (int)($rmR['id_detalle_cotizacion'] ?? 0);
             if ($idHoja <= 0) $idHoja = (int)($rmR['id_hoja'] ?? 0);
+            if ($codMuestraRef === '') $codMuestraRef = trim((string)($rmR['codigo_muestra'] ?? ''));
+        }
+    }
+    if ($idDetalle <= 0 && $idHoja > 0) {
+        try {
+            if ($codMuestraRef !== '') {
+                $codBaseRef = preg_replace('/-\d+$/', '', $codMuestraRef);
+                $stmtHsdRef = $db->prepare("
+                    SELECT id_detalle_cotizacion
+                    FROM hojas_solicitud_detalles
+                    WHERE id_hoja_solicitud = :hid
+                      AND (codigo_muestra = :cod OR codigo_muestra = :cod_base)
+                      AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0
+                    ORDER BY orden ASC, id ASC LIMIT 1
+                ");
+                $stmtHsdRef->execute(['hid' => $idHoja, 'cod' => $codMuestraRef, 'cod_base' => $codBaseRef]);
+                $idDetalle = (int)$stmtHsdRef->fetchColumn();
+            }
+            if ($idDetalle <= 0) {
+                $stmtHsdFirst = $db->prepare("
+                    SELECT id_detalle_cotizacion
+                    FROM hojas_solicitud_detalles
+                    WHERE id_hoja_solicitud = :hid
+                      AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0
+                    ORDER BY orden ASC, id ASC LIMIT 1
+                ");
+                $stmtHsdFirst->execute(['hid' => $idHoja]);
+                $idDetalle = (int)$stmtHsdFirst->fetchColumn();
+            }
+        } catch (\Throwable $e) {
         }
     }
     if ($idDetalle <= 0) {

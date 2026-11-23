@@ -1687,6 +1687,19 @@ class LaboratorioControlador extends ControladorBase {
         $idHoja = (int)($muestra['id_hoja'] ?? 0);
         $idOs = (int)($muestra['id_os'] ?? 0);
 
+        if (!empty($muestra['muestra_id']) && ($idHoja <= 0 || $idOs <= 0 || $codigoLab === '')) {
+            $stmtRm = $db->prepare("SELECT id_os, id_hoja, codigo_muestra FROM recepcion_muestras WHERE id = :id");
+            $stmtRm->execute(['id' => (int)$muestra['muestra_id']]);
+            $rmInfo = $stmtRm->fetch(PDO::FETCH_ASSOC);
+            if ($rmInfo) {
+                $idOs = $idOs ?: (int)($rmInfo['id_os'] ?? 0);
+                $idHoja = $idHoja ?: (int)($rmInfo['id_hoja'] ?? 0);
+                if ($codigoLab === '') {
+                    $codigoLab = trim((string)($rmInfo['codigo_muestra'] ?? ''));
+                }
+            }
+        }
+
         $idDetalle = 0;
         if ($idHoja > 0) {
             $stmtH = $db->prepare("SELECT id_os, id_detalle_cotizacion FROM hojas_solicitud WHERE id = :id");
@@ -1697,10 +1710,21 @@ class LaboratorioControlador extends ControladorBase {
                 $idDetalle = (int)($hRow['id_detalle_cotizacion'] ?? 0);
             }
         }
-        if ($idDetalle <= 0 && !empty($muestra['muestra_id'])) {
-            $stmtRm = $db->prepare("SELECT id_detalle_cotizacion FROM recepcion_muestras WHERE id = :id");
-            $stmtRm->execute(['id' => (int)$muestra['muestra_id']]);
-            $idDetalle = (int)$stmtRm->fetchColumn();
+        if ($idDetalle <= 0 && $idHoja > 0 && $codigoLab !== '') {
+            try {
+                $codBaseM = preg_replace('/-\d+$/', '', $codigoLab);
+                $stmtHsdM = $db->prepare("
+                    SELECT id_detalle_cotizacion
+                    FROM hojas_solicitud_detalles
+                    WHERE id_hoja_solicitud = :hid
+                      AND (codigo_muestra = :cod OR codigo_muestra = :cod_base)
+                      AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0
+                    ORDER BY orden ASC, id ASC LIMIT 1
+                ");
+                $stmtHsdM->execute(['hid' => $idHoja, 'cod' => $codigoLab, 'cod_base' => $codBaseM]);
+                $idDetalle = (int)$stmtHsdM->fetchColumn();
+            } catch (\Throwable $e) {
+            }
         }
         if ($idDetalle <= 0 && $idOs > 0) {
             $stmtCd = $db->prepare("
@@ -1782,14 +1806,10 @@ class LaboratorioControlador extends ControladorBase {
         $idOs = (int)($hoja['id_os'] ?? 0);
         $idDetalle = (int)($hoja['id_detalle_cotizacion'] ?? 0);
 
-        if ($idDetalle <= 0) {
-            $stmtRmDet = $db->prepare("SELECT id_os, id_detalle_cotizacion FROM recepcion_muestras WHERE id_hoja = :id_hoja ORDER BY id ASC LIMIT 1");
+        if ($idOs <= 0) {
+            $stmtRmDet = $db->prepare("SELECT id_os FROM recepcion_muestras WHERE id_hoja = :id_hoja ORDER BY id ASC LIMIT 1");
             $stmtRmDet->execute(['id_hoja' => $idHoja]);
-            $rmRow = $stmtRmDet->fetch(PDO::FETCH_ASSOC);
-            if ($rmRow) {
-                $idOs = $idOs ?: (int)($rmRow['id_os'] ?? 0);
-                $idDetalle = (int)($rmRow['id_detalle_cotizacion'] ?? 0);
-            }
+            $idOs = (int)$stmtRmDet->fetchColumn();
         }
 
         $detalleCotizacion = [];
@@ -1800,7 +1820,14 @@ class LaboratorioControlador extends ControladorBase {
             $detallesHojaIds[$idDetalle] = true;
         }
         try {
-            $stmtHsdMulti = $db->prepare("SELECT DISTINCT id_detalle_cotizacion FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0");
+            $stmtHsdMulti = $db->prepare("
+                SELECT id_detalle_cotizacion
+                FROM hojas_solicitud_detalles
+                WHERE id_hoja_solicitud = :hid
+                  AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0
+                GROUP BY id_detalle_cotizacion
+                ORDER BY MIN(orden) ASC, MIN(id) ASC
+            ");
             $stmtHsdMulti->execute(['hid' => $idHoja]);
             foreach ($stmtHsdMulti->fetchAll(PDO::FETCH_COLUMN) as $didMulti) {
                 if ((int)$didMulti > 0) $detallesHojaIds[(int)$didMulti] = true;
@@ -1827,9 +1854,14 @@ class LaboratorioControlador extends ControladorBase {
             ");
             $stmtDet->execute(['id' => (int)$didLote]);
             $detRow = $stmtDet->fetch(PDO::FETCH_ASSOC) ?: [];
-            if (empty($detalleCotizacion) && !empty($detRow)) {
-                $detalleCotizacion = $detRow;
-                if ($idDetalle <= 0) {
+            if (!empty($detRow)) {
+                $actualEsCompactacion = !empty($detalleCotizacion)
+                    && function_exists('esProductoCompactacionCampo')
+                    && esProductoCompactacionCampo($detalleCotizacion);
+                $nuevoEsCompactacion = function_exists('esProductoCompactacionCampo')
+                    && esProductoCompactacionCampo($detRow);
+                if (empty($detalleCotizacion) || ($actualEsCompactacion && !$nuevoEsCompactacion)) {
+                    $detalleCotizacion = $detRow;
                     $idDetalle = (int)$didLote;
                 }
             }
