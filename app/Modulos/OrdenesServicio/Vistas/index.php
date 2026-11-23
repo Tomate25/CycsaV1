@@ -1668,29 +1668,29 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 <!-- =========================================================================
      MODAL DE CAPTURA DE DATOS DE RECEPCIÓN POR RT-FM-13 Y SUS N MUESTRAS
      ========================================================================= -->
-<div id="modalDatosRecepcion" class="modal-premium" style="display:none; position:fixed; z-index:9998; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(15,23,42,0.58);">
-    <div class="modal-premium-content" style="width:94%; max-width:1180px; background:#fff; margin:2.5% auto; border-radius:14px; overflow:hidden; box-shadow:0 24px 54px rgba(15,23,42,0.32); display:flex; flex-direction:column; max-height:92vh; border:1px solid #e2e8f0;">
-        <div style="background:#ffffff; color:#0f172a; border-bottom:1px solid #e2e8f0; padding:16px 22px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+<div id="modalDatosRecepcion" class="modal-premium" style="display:none; position:fixed; z-index:9998; inset:0; width:100vw; height:100vh; overflow:hidden; background:#ffffff; padding:0;">
+    <div class="modal-premium-content" style="width:100%; max-width:none; height:100vh; max-height:100vh; background:#fff; margin:0; border-radius:0; overflow:hidden; box-shadow:none; display:flex; flex-direction:column; border:none;">
+        <div style="background:#ffffff; color:#0f172a; border-bottom:1px solid #e2e8f0; padding:16px 28px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
             <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:40px; height:40px; border-radius:10px; background:#eff6ff; color:#103487; border:1px solid #bfdbfe; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                <div style="width:42px; height:42px; border-radius:10px; background:#eff6ff; color:#103487; border:1px solid #bfdbfe; display:flex; align-items:center; justify-content:center; font-size:19px;">
                     <i class="fa-solid fa-table-list"></i>
                 </div>
                 <div>
                     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                        <h4 style="margin:0; font-size:16px; font-weight:800; color:#103487;">Datos de Recepción por Hoja RT-FM-13 (Casillas "Llena Recepción")</h4>
-                        <span id="rec_badge_etapa" style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">
+                        <h4 style="margin:0; font-size:18px; font-weight:800; color:#103487;">Datos de Recepción por Hoja RT-FM-13 (Casillas "Llena Recepción")</h4>
+                        <span id="rec_badge_etapa" style="display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:999px; font-size:12.5px; font-weight:700; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">
                             Recepción en borrador
                         </span>
                     </div>
-                    <div style="font-size:13px; color:#475569; margin-top:3px;">
+                    <div style="font-size:13.5px; color:#475569; margin-top:3px;">
                         O/S: <strong id="rec_os_codigo" style="color:#0f172a;">--</strong> · Hoja: <strong id="rec_hoja_reg" style="color:#0f172a;">--</strong> · <span id="rec_ensayo_nombre">--</span>
                     </div>
                 </div>
             </div>
-            <button type="button" onclick="cerrarModalDatosRecepcion()" style="background:#f8fafc; border:1px solid #cbd5e1; color:#475569; width:34px; height:34px; border-radius:8px; font-size:20px; cursor:pointer;">&times;</button>
+            <button type="button" onclick="cerrarModalDatosRecepcion()" style="background:#f8fafc; border:1px solid #cbd5e1; color:#475569; width:38px; height:38px; border-radius:8px; font-size:22px; cursor:pointer;">&times;</button>
         </div>
 
-        <div style="padding:18px 22px; overflow-y:auto; flex:1;">
+        <div style="padding:20px 28px; overflow-y:auto; flex:1; width:100%; box-sizing:border-box;">
             <div id="rec_loading" style="display:none; text-align:center; padding:45px 20px; color:#64748b;">
                 <i class="fa-solid fa-spinner fa-spin" style="font-size:32px; color:#103487;"></i>
                 <div style="margin-top:10px; font-weight:600; font-size:13.5px;">Cargando muestras y campos de recepción de la RT-FM-13...</div>
@@ -1750,8 +1750,8 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                         </button>
                     </div>
 
-                    <div style="overflow-x:auto; border:1px solid #cbd5e1; border-radius:10px;">
-                        <table id="rec_tabla_muestras" style="width:100%; border-collapse:collapse; font-size:13px; min-width:820px;">
+                    <div style="overflow-x:auto; border:1px solid #cbd5e1; border-radius:10px; width:100%;">
+                        <table id="rec_tabla_muestras" style="width:100%; border-collapse:collapse; font-size:14px;">
                             <thead id="rec_thead_muestras" style="background:#f8fafc; color:#0f172a; border-bottom:1.5px solid #cbd5e1;"></thead>
                             <tbody id="rec_tbody_muestras"></tbody>
                         </table>
@@ -1760,7 +1760,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             </div>
         </div>
 
-        <div style="padding:14px 22px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div style="padding:14px 28px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
             <div id="rec_feedback_msg" style="font-size:13px; font-weight:600; color:#475569;"></div>
             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                 <button type="button" onclick="cerrarModalDatosRecepcion()" class="btn-cycsa btn-cycsa-secondary" style="min-height:38px; font-size:13px;">
@@ -4230,10 +4230,10 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     : (esAutoCalcRec ? 'readonly tabindex="-1" title="Calculado automáticamente desde Reven. (in)"' : '');
                 const bgInput = (recSoloLecturaActual || esAutoCalcRec) ? '#f1f5f9' : '#fff';
                 const cursorCss = esAutoCalcRec ? 'cursor:not-allowed; color:#334155; font-weight:600;' : '';
-                html += `<td style="padding:6px 8px; border-bottom:1px solid #f1f5f9;">
+                html += `<td style="padding:8px 8px; border-bottom:1px solid #f1f5f9;">
                     <input type="${escapeHtml(c.tipo || 'text')}" ${stepAttr} ${roAttr}
                            class="rtfm13-input rec-campo-input"
-                           style="height:34px; font-size:12.5px; padding:4px 8px; background:${bgInput}; ${cursorCss}"
+                           style="height:38px; font-size:13.5px; padding:6px 10px; width:100%; min-width:110px; background:${bgInput}; ${cursorCss}"
                            data-campo="${escapeHtml(c.nombre)}"
                            data-clave="${escapeHtml(clave)}"
                            data-autocalc="${esAutoCalcRec ? '1' : '0'}"
