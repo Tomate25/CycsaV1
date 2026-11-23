@@ -1690,7 +1690,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 </div>
                 <div>
                     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                        <h4 style="margin:0; font-size:18px; font-weight:800; color:#103487;">Datos de Recepción por Hoja RT-FM-13 (Casillas "Llena Recepción")</h4>
+                        <h4 style="margin:0; font-size:18px; font-weight:800; color:#103487;">Datos de Recepción por Hoja RT-FM-13</h4>
                         <span id="rec_badge_etapa" style="display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:999px; font-size:12.5px; font-weight:700; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">
                             Recepción en borrador
                         </span>
@@ -1729,22 +1729,6 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                         </button>
                     </div>
                     <div id="rec_tabs_productos_list" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
-                </div>
-
-                <!-- Distribución Recepción vs Técnico -->
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-                    <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #103487; border-radius:9px; padding:10px 14px;">
-                        <div style="font-size:13px; font-weight:800; color:#103487; margin-bottom:4px;">
-                            <i class="fa-solid fa-inbox me-1"></i> LLENA RECEPCIÓN (En esta pantalla · por muestra de la RT-FM-13)
-                        </div>
-                        <div id="rec_lista_campos_recepcion" style="font-size:13px; color:#334155;"></div>
-                    </div>
-                    <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #0284c7; border-radius:9px; padding:10px 14px;">
-                        <div style="font-size:13px; font-weight:800; color:#0369a1; margin-bottom:4px;">
-                            <i class="fa-solid fa-microscope me-1"></i> RELLENA TÉCNICO / LABORATORIO (Operaciones y Roturas)
-                        </div>
-                        <div id="rec_lista_campos_tecnico" style="font-size:13px; color:#334155;"></div>
-                    </div>
                 </div>
 
                 <div id="rec_sin_campos_notice" style="display:none; background:#f1f5f9; border:1px dashed #94a3b8; border-radius:10px; padding:22px; text-align:center; color:#475569; font-size:13.5px;">
@@ -4152,21 +4136,6 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         const camposTecTab = prodActivo
             ? (Array.isArray(prodActivo.campos_tecnico) ? prodActivo.campos_tecnico : [])
             : (window.recProductoTabActivo === 0 ? [] : (window.recFallbackCamposTecnico || []));
-
-        // Actualizar recuadros LLENA RECEPCIÓN / RELLENA TÉCNICO según el producto activo
-        const cRecDiv = document.getElementById('rec_lista_campos_recepcion');
-        const cTecDiv = document.getElementById('rec_lista_campos_tecnico');
-        if (window.recProductoTabActivo === 0) {
-            cRecDiv.innerHTML = '<em>Primero asigne el Producto / Ensayo destino de cada muestra para ver sus casillas exactas.</em>';
-            cTecDiv.innerHTML = '<em>Se determinará según el producto asignado.</em>';
-        } else {
-            cRecDiv.innerHTML = camposTab.length > 0
-                ? camposTab.map(c => `<span style="display:inline-block; background:#eff6ff; border:1px solid #bfdbfe; color:#103487; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:12px; font-weight:700;">${escapeHtml(c.nombre)}</span>`).join('')
-                : '<em>Sin casillas adicionales de recepción para este producto.</em>';
-            cTecDiv.innerHTML = camposTecTab.length > 0
-                ? camposTecTab.map(c => `<span style="display:inline-block; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:12px; font-weight:700;">${escapeHtml(c)}</span>`).join('')
-                : '<em>Ninguno adicional (se llena completo aquí en Recepción).</em>';
-        }
 
         const sinNotice = document.getElementById('rec_sin_campos_notice');
         const tablaSec = document.getElementById('rec_tabla_section');
