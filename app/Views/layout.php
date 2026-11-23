@@ -3,36 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars((string)($titulo ?? 'Cycsa ERP'), ENT_QUOTES, 'UTF-8') ?></title>
-
+    <title><?= $titulo ?? 'Cycsa ERP' ?></title>
+    
     <link rel="shortcut icon" href="/Cycsa/publico/img/logo.png" type="image/png">
-
-    <!-- FontAwesome para íconos heredados de módulos ERP -->
+    
+    <!-- Google Fonts: Inter & Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome para íconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+    
     <!-- Bootstrap 5.3.3 CSS (Estandarización UI para todos los módulos) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-
-    <!-- Guía de Diseño Sobrio CYCSA (Operaciones y Navegación Unificada) -->
-    <link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
-
     <!-- Estilos de Pantalla Completa para Hoja RT-FM-13 (CYCSA-RT-FM-13) -->
     <link rel="stylesheet" href="/Cycsa/publico/css/rtfm13_fullscreen.css">
 
     <!-- SweetAlert2 para modales y decisiones interactivas -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+    
     <style>
         :root {
-            --cycsa-azul: var(--cy-brand, #1F3864);
-            --cycsa-azul-hover: var(--cy-brand-hover, #182C4F);
-            --fondo-app: var(--cy-bg, #F9FAFB);
-            --texto-principal: var(--cy-text, #111827);
-            --border-light: var(--cy-border, #E5E7EB);
+            /* Variables de diseño premium y corporativo */
+            --cycsa-azul: #103487;
+            --cycsa-azul-hover: #1e40af;
+            --sidebar-bg: #0f172a; /* Slate 900 */
+            --sidebar-hover: rgba(255, 255, 255, 0.04);
+            --sidebar-active: rgba(255, 255, 255, 0.07);
+            --cycsa-rojo: #ef4444;
+            --cycsa-amarillo: #f59e0b;
+            --fondo-app: #f8fafc; /* Slate 50 */
+            --texto-principal: #1e293b; /* Slate 800 */
+            --texto-sidebar: #94a3b8; /* Slate 400 */
+            --border-light: #e2e8f0; /* Slate 200 */
         }
 
-        * {
-            box-sizing: border-box;
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
         }
 
         /* TAREA-056: Desactivar flechas / spinners en inputs numéricos */
@@ -46,70 +54,197 @@
             appearance: textfield;
         }
 
-        body {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            margin: 0;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--fondo-app); 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+            color: var(--texto-principal);
         }
 
+        /* Normalización y compatibilidad de Bootstrap 5 con el diseño CYCSA */
         a {
             text-decoration: none;
         }
-
-        .cy-topbar {
-            flex-shrink: 0;
-        }
-
-        .cy-crumb {
-            min-width: 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .cy-logout-link {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--cy-muted);
-            padding-left: 12px;
-            border-left: 1px solid var(--cy-border);
+        a:hover {
             text-decoration: none;
-            transition: color 0.15s ease;
         }
-        .cy-logout-link:hover {
-            color: var(--cy-brand);
-            text-decoration: underline;
-        }
-
-        #cyModulos {
-            width: min(440px, 100vw);
-            border-right: 1px solid var(--cy-border);
-            box-shadow: none;
-        }
-
-        .main-content {
-            flex: 1;
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .content-wrapper {
-            padding: 24px;
-            overflow-y: auto;
-            flex: 1;
-            min-height: 0;
-            background: var(--cy-bg, #F9FAFB);
-        }
-
         .content-wrapper > .container-fluid {
             padding-left: 0;
             padding-right: 0;
         }
+        
+        /* BARRA LATERAL (SIDEBAR) */
+        .sidebar { 
+            width: 260px; 
+            background: var(--sidebar-bg); 
+            display: flex; 
+            flex-direction: column; 
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 10;
+            overflow-x: hidden;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .sidebar.oculto-panel {
+            display: none !important;
+        }
+        
+        /* Sidebar Colapsado */
+        .sidebar.colapsado { width: 70px; }
+        .sidebar.colapsado .menu-texto, 
+        .sidebar.colapsado .menu-categoria,
+        .sidebar.colapsado .logo-texto { display: none; }
+        .sidebar.colapsado .sidebar-menu li a { justify-content: center; padding: 14px 0; }
+        .sidebar.colapsado .sidebar-menu li a i { margin-right: 0; font-size: 18px; }
+        .sidebar.colapsado .logo-img { margin-right: 0; max-height: 32px; }
 
+        /* Cabecera del Sidebar */
+        .sidebar-header { 
+            height: 70px; 
+            display: flex; 
+            align-items: center; 
+            padding: 0 20px;
+            background: rgba(0,0,0,0.15);
+            color: white;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .sidebar-header .logo-img { max-height: 38px; margin-right: 12px; object-fit: contain; }
+        .sidebar.colapsado .sidebar-header { padding: 0; justify-content: center; }
+        
+        .logo-texto { 
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px; 
+            font-weight: 800; 
+            letter-spacing: 0.5px;
+            color: white;
+        }
+
+        /* Menú y Categorías */
+        .sidebar-menu { list-style: none; padding: 20px 0; flex: 1; overflow-y: auto; }
+        
+        .menu-categoria {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #64748b;
+            padding: 18px 20px 6px 20px;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+        }
+
+        .sidebar-menu li a { 
+            display: flex; 
+            align-items: center;
+            padding: 11px 20px; 
+            color: var(--texto-sidebar); 
+            text-decoration: none; 
+            font-weight: 500;
+            font-size: 14px;
+            border-left: 4px solid transparent;
+            transition: all 0.2s ease;
+            white-space: nowrap; 
+        }
+        
+        .sidebar-menu li a i { width: 28px; font-size: 15px; text-align: center; margin-right: 10px; opacity: 0.8; }
+        .sidebar-menu li a:hover { background: var(--sidebar-hover); color: white; }
+        
+        .sidebar-menu li a.activo { 
+            background: var(--sidebar-active); 
+            color: white; 
+            border-left: 4px solid #38bdf8; /* Azul claro brillante premium */
+            font-weight: 600;
+        }
+        .sidebar-menu li a.activo i { opacity: 1; color: #38bdf8; }
+
+        /* ÁREA PRINCIPAL */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        
+        .topbar { 
+            background: white; 
+            height: 70px;
+            padding: 0 25px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid var(--border-light);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #64748b;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 6px;
+            transition: background 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .toggle-btn:hover { background: #f1f5f9; color: var(--cycsa-azul); }
+
+        .user-info { display: flex; align-items: center; gap: 20px; }
+        
+        .user-profile-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--cycsa-azul) 0%, #1e40af 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            font-family: 'Outfit', sans-serif;
+            box-shadow: 0 2px 8px rgba(16, 52, 135, 0.2);
+            border: 2px solid white;
+        }
+
+        .user-role { 
+            font-size: 11px; 
+            background: #f1f5f9; 
+            color: #475569; 
+            padding: 3px 8px; 
+            border-radius: 4px; 
+            font-weight: 600; 
+            display: inline-block;
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-salir { 
+            color: #64748b; 
+            font-size: 18px; 
+            transition: color 0.2s, transform 0.2s; 
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-salir:hover { 
+            color: var(--cycsa-rojo); 
+            transform: scale(1.05);
+        }
+
+        .content-wrapper { 
+            padding: 30px; 
+            overflow-y: auto; 
+            flex: 1; 
+            background: #f8fafc;
+        }
+
+        /* Clases auxiliares para flexbox responsivo */
         .header-flex {
             display: flex;
             justify-content: space-between;
@@ -118,7 +253,6 @@
             flex-wrap: wrap;
             gap: 15px;
         }
-
         .actions-flex {
             display: flex;
             gap: 10px;
@@ -126,77 +260,107 @@
             flex-wrap: wrap;
         }
 
-        .modal-header-sobrio {
-            background: #FFFFFF !important;
-            color: var(--cy-text, #111827) !important;
-            border-bottom: 1px solid var(--cy-border, #E5E7EB) !important;
-        }
-
-        .badge-etapa-sobria {
-            font-size: 13px;
-            font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 999px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
+        /* ==========================================================================
+           RESPONSIVIDAD Y ADAPTACIÓN A DISPOSITIVOS MÓVILES (TELÉFONOS Y TABLETS)
+           ======================================================================        /* ==========================================================================
+           SISTEMA DE RESPONSIVIDAD PREMIUM - MULTIPLES BREAKPOINTS (MÓVILES, TABLETS, LAPTOPS)
+           ========================================================================== */
+        
+        /* 📱 1. TELÉFONOS MÓVILES (max-width: 576px) */
         @media (max-width: 576px) {
-            .cy-topbar {
-                padding: 0 12px;
-                gap: 10px;
-            }
-            .cy-user-label {
-                display: none;
-            }
-            .cy-logout-link {
-                border-left: 0;
-                padding-left: 0;
-            }
             .content-wrapper {
-                padding: 12px !important;
-                padding-bottom: 72px !important;
+                padding: 10px !important;
+                padding-bottom: 80px !important;
             }
-            .actions-flex,
-            .actions-flex form {
+            /* Ocultar nombre de usuario para ahorrar espacio en la barra superior */
+            .user-profile-badge div:last-child {
+                display: none !important;
+            }
+            .user-info {
+                gap: 12px !important;
+            }
+            /* Ajustar tamaño de cabecera/logotipo de la barra superior */
+            .topbar a img {
+                max-height: 30px !important;
+            }
+            .topbar a span[style*="font-size: 20px"] {
+                font-size: 16px !important;
+            }
+            .topbar a span[style*="font-size: 12.5px"] {
+                font-size: 10px !important;
+                padding: 3px 8px !important;
+                margin-left: 6px !important;
+            }
+            /* Formularios colapsados al 100% */
+            .form-control, input, select, textarea, button {
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            /* Botones de acción principales */
+            .actions-flex, .actions-flex form {
                 flex-direction: column !important;
                 width: 100% !important;
             }
-            .actions-flex a,
-            .actions-flex button {
+            .btn-action, button, .actions-flex a {
                 justify-content: center !important;
                 text-align: center !important;
                 width: 100% !important;
             }
         }
 
+        /* 📱 2. TABLETAS Y MÓVILES EN GENERAL (max-width: 992px) */
         @media (max-width: 992px) {
-            .info-grid, .grid-form, .form-row, .grid-2 {
+            /* 1. COMPORTAMIENTO DE SIDEBAR COMO CAJÓN DESLIZABLE (DRAWER) */
+            .sidebar {
+                position: fixed;
+                left: -260px;
+                height: 100%;
+                width: 260px;
+                z-index: 1000;
+                box-shadow: 10px 0 30px rgba(0,0,0,0.2);
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .sidebar.mostrar-movil {
+                left: 0;
+            }
+            
+            /* 2. REORDENAMIENTO DE REJILLAS Y COLUMNAS */
+            .info-grid, .grid-form, .form-row, .row, .grid-2 {
                 grid-template-columns: 1fr !important;
                 display: flex !important;
                 flex-direction: column !important;
                 gap: 15px !important;
             }
+            
+            /* Grid de 3 columnas pasa a auto-fit en tabletas */
             .grid-3 {
                 display: grid !important;
                 grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
                 gap: 15px !important;
             }
+            
             .kpi-container {
                 grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
                 gap: 15px !important;
             }
+            
             .content-wrapper {
-                padding: 16px;
-                padding-bottom: 72px;
+                padding: 20px;
+                padding-bottom: 80px; /* Espacio extra para evitar problemas de scroll en móviles */
             }
+            
+            .topbar {
+                padding: 0 15px !important;
+            }
+            
+            /* 3. ADAPTACIÓN DE FILTROS Y ENCABEZADOS */
             .catalogo-header, .doc-header, .header-flex {
                 flex-direction: column !important;
                 align-items: stretch !important;
                 gap: 15px !important;
                 text-align: left !important;
             }
+            
             .filtro-barra, .actions-flex {
                 max-width: 100% !important;
                 flex-direction: column !important;
@@ -204,18 +368,49 @@
                 gap: 10px !important;
                 width: 100% !important;
             }
+            
             .filtro-barra .search-input-wrapper, .actions-flex form {
                 width: 100% !important;
                 display: flex !important;
             }
+            
+            .actions-flex form input {
+                flex: 1 !important;
+                width: auto !important;
+            }
+            
             .filtro-barra .cat-select {
                 width: 100% !important;
             }
+            
+            .filtro-barra .btn-premium-azul, .actions-flex a {
+                width: 100% !important;
+                margin-left: 0 !important;
+                justify-content: center !important;
+                text-align: center !important;
+            }
+
+            .pildoras-container {
+                padding-bottom: 8px !important;
+                margin-bottom: 15px !important;
+            }
+
             .modal-premium-content {
                 width: 95% !important;
                 padding: 20px !important;
                 margin: 20px auto !important;
             }
+
+            .modal-search-wrapper {
+                flex-direction: column !important;
+                gap: 10px !important;
+            }
+
+            .modal-search-wrapper .form-control {
+                max-width: 100% !important;
+            }
+
+            /* Scroll para pestañas de módulos y contabilidad */
             .tabs-container {
                 overflow-x: auto !important;
                 white-space: nowrap !important;
@@ -223,27 +418,42 @@
                 flex-direction: row !important;
                 gap: 8px !important;
                 padding-bottom: 8px !important;
-                border-bottom: 1px solid var(--cy-border, #E5E7EB) !important;
+                border-bottom: 1px solid #e2e8f0 !important;
                 -webkit-overflow-scrolling: touch;
             }
             .tab-link {
                 flex-shrink: 0 !important;
                 display: inline-flex !important;
             }
-            .seccion-form, .tabla-container, .table-responsive, .modal-tabla-container {
+            
+            /* 4. PROTECCIÓN DE TABLAS CONTRA DESBORDAMIENTOS (SCROLL HORIZONTAL) */
+            .seccion-form, .tabla-container, .table-responsive, .modal-tabla-container, div[style*="overflow-x: auto"] {
                 overflow-x: auto !important;
                 -webkit-overflow-scrolling: touch;
                 width: 100%;
                 margin-bottom: 20px;
-                border: 1px solid var(--cy-border, #E5E7EB);
+                border: 1px solid #e2e8f0;
                 border-radius: 8px;
             }
+            
             .tabla-detalles, .tabla-premium, .tabla-visual, .modal-tabla, .tabla-cycsa {
-                min-width: 850px !important;
+                min-width: 850px !important; /* Forzar ancho mínimo interno para legibilidad de columnas */
+            }
+
+            /* 5. DISEÑO DE TOTALES */
+            div[style*="display: flex; justify-content: flex-end;"] {
+                justify-content: center !important;
+            }
+            div[style*="width: 300px;"] {
+                width: 100% !important;
             }
         }
 
+        /* 💻 3. PORTÁTILES Y LAPTOPS (min-width: 993px) and (max-width: 1366px) */
         @media (min-width: 993px) and (max-width: 1366px) {
+            .content-wrapper {
+                padding: 24px;
+            }
             .grid-3 {
                 grid-template-columns: repeat(3, 1fr) !important;
                 gap: 15px !important;
@@ -254,376 +464,292 @@
             }
         }
 
-        @media print {
-            body,
-            .main-content,
-            .content-wrapper {
-                height: auto !important;
-                overflow: visible !important;
-                padding: 0 !important;
-                background: #FFFFFF !important;
-            }
+        /* Sección 7 Guía Visual Sobria CYCSA: Tipografía mínima legible >= 13px y encabezados sobrios */
+        .modal-header-sobrio {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+        .badge-etapa-sobria {
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
     </style>
 </head>
 <body>
-<?php
-$uriActual = $_SERVER['REQUEST_URI'] ?? '';
-$rutaPath = rtrim((string)(parse_url($uriActual, PHP_URL_PATH) ?: ''), '/');
-$rolUsuarioLayout = (int)($_SESSION['usuario_rol'] ?? 0);
-$esAdminLayout = ($rolUsuarioLayout === 1);
-$nombreUsuarioLayout = (string)($_SESSION['usuario_nombre'] ?? 'Usuario');
-$nombreRol = function_exists('obtenerNombreRol')
-    ? obtenerNombreRol($_SESSION['usuario_rol'] ?? 0)
-    : ($esAdminLayout ? 'Administrador' : 'Usuario');
-$puedeVer = static fn(string $mod): bool => function_exists('tienePermiso') && tienePermiso($mod, 'ver');
 
-// Catálogo maestro de módulos del lanzador #cyModulos (estrictamente filtrado por RBAC)
-$modulosCatalogo = [
-    [
-        'titulo'    => 'Cajón de Aplicaciones',
-        'categoria' => 'Principal',
-        'href'      => '/Cycsa/publico/panel',
-        'visible'   => true,
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/panel') !== false && strpos($rutaPath, '/panel/bitacora') === false),
-    ],
-    [
-        'titulo'    => 'Clientes',
-        'categoria' => 'Comercial',
-        'href'      => '/Cycsa/publico/clientes',
-        'visible'   => $puedeVer('clientes'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/clientes') !== false),
-    ],
-    [
-        'titulo'    => 'Productos / Ensayos',
-        'categoria' => 'Comercial',
-        'href'      => '/Cycsa/publico/productos',
-        'visible'   => $puedeVer('productos'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/productos') !== false),
-    ],
-    [
-        'titulo'    => 'Cotizaciones',
-        'categoria' => 'Comercial',
-        'href'      => '/Cycsa/publico/cotizaciones',
-        'visible'   => $puedeVer('cotizaciones'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/cotizaciones') !== false),
-    ],
-    [
-        'titulo'    => 'Órdenes de Servicio',
-        'categoria' => 'Comercial',
-        'href'      => '/Cycsa/publico/ordenes-servicio',
-        'visible'   => $puedeVer('ordenes_servicio') || $puedeVer('recepcion'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/ordenes-servicio') !== false),
-    ],
-    [
-        'titulo'    => 'Ventas y Facturación',
-        'categoria' => 'Comercial',
-        'href'      => '/Cycsa/publico/ventas',
-        'visible'   => $puedeVer('ventas'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/ventas') !== false),
-    ],
-    [
-        'titulo'    => 'Operaciones',
-        'categoria' => 'LIMS',
-        'href'      => '/Cycsa/publico/operaciones',
-        'visible'   => $puedeVer('operaciones'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/operaciones') !== false),
-    ],
-    [
-        'titulo'    => 'Laboratorio',
-        'categoria' => 'LIMS',
-        'href'      => '/Cycsa/publico/laboratorio',
-        'visible'   => $puedeVer('laboratorio'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/laboratorio') !== false),
-    ],
-    [
-        'titulo'    => 'Control de Calidad',
-        'categoria' => 'LIMS',
-        'href'      => '/Cycsa/publico/control-calidad',
-        'visible'   => $puedeVer('control_calidad'),
-        'activo'    => ($rutaPath !== '' && (strpos($rutaPath, '/control-calidad') !== false || strpos($rutaPath, '/equipos-calibracion') !== false)),
-    ],
-    [
-        'titulo'    => 'Bodegas y Traslados',
-        'categoria' => 'LIMS',
-        'href'      => '/Cycsa/publico/equipos-bodegas',
-        'visible'   => $puedeVer('equipos_bodegas'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/equipos-bodegas') !== false),
-    ],
-    [
-        'titulo'    => 'Formatos e Informes PDF',
-        'categoria' => 'LIMS',
-        'href'      => '/Cycsa/publico/configuracion/plantillas-ensayos',
-        'visible'   => $puedeVer('plantillas'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/configuracion/plantillas-ensayos') !== false),
-    ],
-    [
-        'titulo'    => 'Plantillas ISO 17025',
-        'categoria' => 'LIMS',
-        'href'      => '/Cycsa/publico/plantillas',
-        'visible'   => $puedeVer('plantillas'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/plantillas') !== false && strpos($rutaPath, '/configuracion/plantillas-ensayos') === false),
-    ],
-    [
-        'titulo'    => 'Contabilidad',
-        'categoria' => 'ERP',
-        'href'      => '/Cycsa/publico/contabilidad/cuentas',
-        'visible'   => $puedeVer('contabilidad'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/contabilidad') !== false),
-    ],
-    [
-        'titulo'    => 'Compras y Proveedores',
-        'categoria' => 'ERP',
-        'href'      => '/Cycsa/publico/compras/proveedores',
-        'visible'   => $puedeVer('compras'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/compras') !== false),
-    ],
-    [
-        'titulo'    => 'Inventario y Kárdex',
-        'categoria' => 'ERP',
-        'href'      => '/Cycsa/publico/inventario',
-        'visible'   => $puedeVer('inventario'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/inventario') !== false),
-    ],
-    [
-        'titulo'    => 'Nómina y RRHH',
-        'categoria' => 'ERP',
-        'href'      => '/Cycsa/publico/nomina',
-        'visible'   => $puedeVer('nomina'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/nomina') !== false),
-    ],
-    [
-        'titulo'    => 'Préstamos Bancarios',
-        'categoria' => 'ERP',
-        'href'      => '/Cycsa/publico/prestamos',
-        'visible'   => $puedeVer('prestamos'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/prestamos') !== false),
-    ],
-    [
-        'titulo'    => 'Activos Fijos',
-        'categoria' => 'ERP',
-        'href'      => '/Cycsa/publico/activos-fijos',
-        'visible'   => $puedeVer('activos_fijos'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/activos-fijos') !== false),
-    ],
-    [
-        'titulo'    => 'Proyectos y Obras',
-        'categoria' => 'ERP',
-        'href'      => '/Cycsa/publico/proyectos',
-        'visible'   => $puedeVer('proyectos'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/proyectos') !== false),
-    ],
-    [
-        'titulo'    => 'Centro de Reportes',
-        'categoria' => 'ERP',
-        'href'      => '/Cycsa/publico/reportes',
-        'visible'   => $puedeVer('reportes'),
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/reportes') !== false),
-    ],
-    [
-        'titulo'    => 'Gestión de Usuarios',
-        'categoria' => 'Sistema',
-        'href'      => '/Cycsa/publico/usuarios',
-        'visible'   => $esAdminLayout,
-        'activo'    => ($rutaPath !== '' && (strpos($rutaPath, '/usuarios') !== false || strpos($rutaPath, '/roles') !== false)),
-    ],
-    [
-        'titulo'    => 'Condiciones Comerciales',
-        'categoria' => 'Sistema',
-        'href'      => '/Cycsa/publico/configuracion',
-        'visible'   => $esAdminLayout,
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/configuracion') !== false && strpos($rutaPath, '/configuracion/plantillas-ensayos') === false),
-    ],
-    [
-        'titulo'    => 'Bitácora de Auditoría',
-        'categoria' => 'Sistema',
-        'href'      => '/Cycsa/publico/panel/bitacora',
-        'visible'   => $esAdminLayout,
-        'activo'    => ($rutaPath !== '' && strpos($rutaPath, '/panel/bitacora') !== false),
-    ],
-];
+    <?php 
+    $rutaActual = $_SERVER['REQUEST_URI'] ?? ''; 
+    $esVistaGeneral = true; // Desactivar la barra lateral (sidebar) de forma global en todo el sistema
+    ?>
 
-$modulosHabilitados = array_values(array_filter($modulosCatalogo, static fn(array $m): bool => !empty($m['visible'])));
-$totalModulosHabilitados = count($modulosHabilitados);
-
-// Resolución dinámica de la miga de pan (breadcrumb) desde $uriActual y $titulo
-$codigoOsContexto = (string)($orden['codigo_os'] ?? $o['codigo_os'] ?? $os['codigo_os'] ?? $detalle['codigo_os'] ?? '');
-$mapaRutasMiga = [
-    '/configuracion/plantillas-ensayos' => ['Formatos e Informes PDF', '/Cycsa/publico/configuracion/plantillas-ensayos', ''],
-    '/configuracion'                    => ['Condiciones Comerciales', '/Cycsa/publico/configuracion', ''],
-    '/control-calidad/calibracion'      => ['Control de Calidad', '/Cycsa/publico/control-calidad', 'Calibración de Equipos'],
-    '/control-calidad/ver'              => ['Control de Calidad', '/Cycsa/publico/control-calidad', (string)($codigoInformeConsecutivo ?? 'Detalle')],
-    '/control-calidad/detalle'          => ['Control de Calidad', '/Cycsa/publico/control-calidad', (string)($codigoInformeConsecutivo ?? 'Detalle')],
-    '/control-calidad'                  => ['Control de Calidad', '/Cycsa/publico/control-calidad', ''],
-    '/equipos-calibracion'              => ['Control de Calidad', '/Cycsa/publico/control-calidad', 'Calibración de Equipos'],
-    '/operaciones/ver'                  => ['Operaciones', '/Cycsa/publico/operaciones', $codigoOsContexto !== '' ? $codigoOsContexto : 'Detalle de Orden'],
-    '/operaciones/captura-matriz'       => ['Operaciones', '/Cycsa/publico/operaciones', $codigoOsContexto !== '' ? ($codigoOsContexto . ' · Captura de Matriz') : 'Captura de Matriz'],
-    '/operaciones/recepcion'            => ['Operaciones', '/Cycsa/publico/operaciones', 'Recepción de Muestras'],
-    '/operaciones/detalle-lote'         => ['Operaciones', '/Cycsa/publico/operaciones', 'Detalle de Lote'],
-    '/operaciones/calendario'           => ['Operaciones', '/Cycsa/publico/operaciones', 'Calendario de Rupturas'],
-    '/operaciones'                      => ['Operaciones', '/Cycsa/publico/operaciones', ''],
-    '/hojas-servicio'                   => ['Recepción RT-FM-13', '/Cycsa/publico/ordenes-servicio', ''],
-    '/laboratorio/detalle-lote'         => ['Laboratorio', '/Cycsa/publico/laboratorio', 'Detalle de Lote'],
-    '/laboratorio/detalle-muestra'      => ['Laboratorio', '/Cycsa/publico/laboratorio', 'Detalle de Muestra'],
-    '/laboratorio'                      => ['Laboratorio', '/Cycsa/publico/laboratorio', ''],
-    '/equipos-bodegas/bodega'           => ['Bodegas y Traslados', '/Cycsa/publico/equipos-bodegas', (string)($bodega['nombre'] ?? 'Detalle de Bodega')],
-    '/equipos-bodegas/equipo'           => ['Bodegas y Traslados', '/Cycsa/publico/equipos-bodegas', 'Historial de Equipo'],
-    '/equipos-bodegas'                  => ['Bodegas y Traslados', '/Cycsa/publico/equipos-bodegas', ''],
-    '/cotizaciones/crear'               => ['Cotizaciones', '/Cycsa/publico/cotizaciones', 'Nueva Cotización'],
-    '/cotizaciones/editar'              => ['Cotizaciones', '/Cycsa/publico/cotizaciones', 'Editar Cotización'],
-    '/cotizaciones/detalle'             => ['Cotizaciones', '/Cycsa/publico/cotizaciones', (string)($cotizacion['codigo'] ?? 'Detalle')],
-    '/cotizaciones'                     => ['Cotizaciones', '/Cycsa/publico/cotizaciones', ''],
-    '/ordenes-servicio/crear'           => ['Órdenes de Servicio', '/Cycsa/publico/ordenes-servicio', 'Nueva Orden'],
-    '/ordenes-servicio/editar'          => ['Órdenes de Servicio', '/Cycsa/publico/ordenes-servicio', 'Editar Orden'],
-    '/ordenes-servicio/detalle'         => ['Órdenes de Servicio', '/Cycsa/publico/ordenes-servicio', $codigoOsContexto !== '' ? $codigoOsContexto : 'Detalle'],
-    '/ordenes-servicio/bitacora'        => ['Órdenes de Servicio', '/Cycsa/publico/ordenes-servicio', 'Bitácora'],
-    '/ordenes-servicio/programar-muestreo' => ['Órdenes de Servicio', '/Cycsa/publico/ordenes-servicio', 'Programar Muestreo'],
-    '/ordenes-servicio'                 => ['Órdenes de Servicio', '/Cycsa/publico/ordenes-servicio', ''],
-    '/ventas'                           => ['Ventas y Facturación', '/Cycsa/publico/ventas', ''],
-    '/compras/proveedores'              => ['Compras y Proveedores', '/Cycsa/publico/compras/proveedores', 'Proveedores'],
-    '/compras/ordenes/crear'            => ['Compras y Proveedores', '/Cycsa/publico/compras/ordenes', 'Nueva Orden de Compra'],
-    '/compras/ordenes/detalle'          => ['Compras y Proveedores', '/Cycsa/publico/compras/ordenes', 'Detalle de Orden'],
-    '/compras/ordenes'                  => ['Compras y Proveedores', '/Cycsa/publico/compras/ordenes', 'Órdenes de Compra'],
-    '/compras/recepciones/crear'        => ['Compras y Proveedores', '/Cycsa/publico/compras/recepciones', 'Nueva Recepción'],
-    '/compras/recepciones'              => ['Compras y Proveedores', '/Cycsa/publico/compras/recepciones', 'Recepciones'],
-    '/compras'                          => ['Compras y Proveedores', '/Cycsa/publico/compras/proveedores', ''],
-    '/inventario/lotes'                 => ['Inventario y Kárdex', '/Cycsa/publico/inventario', 'Lotes'],
-    '/inventario/kardex'                => ['Inventario y Kárdex', '/Cycsa/publico/inventario', 'Kárdex'],
-    '/inventario'                       => ['Inventario y Kárdex', '/Cycsa/publico/inventario', ''],
-    '/contabilidad/cuentas'             => ['Contabilidad', '/Cycsa/publico/contabilidad/cuentas', 'Catálogo de Cuentas'],
-    '/contabilidad/cxc'                 => ['Contabilidad', '/Cycsa/publico/contabilidad/cuentas', 'Cuentas por Cobrar'],
-    '/contabilidad/cxp/detalle'         => ['Contabilidad', '/Cycsa/publico/contabilidad/cxp', 'Detalle CXP'],
-    '/contabilidad/cxp'                 => ['Contabilidad', '/Cycsa/publico/contabilidad/cuentas', 'Cuentas por Pagar'],
-    '/contabilidad/bancos'              => ['Contabilidad', '/Cycsa/publico/contabilidad/cuentas', 'Bancos y Caja'],
-    '/contabilidad/diario'              => ['Contabilidad', '/Cycsa/publico/contabilidad/cuentas', 'Libro Diario'],
-    '/contabilidad/balance'             => ['Contabilidad', '/Cycsa/publico/contabilidad/cuentas', 'Balance General'],
-    '/contabilidad/resultados'          => ['Contabilidad', '/Cycsa/publico/contabilidad/cuentas', 'Estado de Resultados'],
-    '/contabilidad'                     => ['Contabilidad', '/Cycsa/publico/contabilidad/cuentas', ''],
-    '/nomina/empleados'                 => ['Nómina y RRHH', '/Cycsa/publico/nomina', 'Colaboradores'],
-    '/nomina/anticipos'                 => ['Nómina y RRHH', '/Cycsa/publico/nomina', 'Anticipos'],
-    '/nomina/crear'                     => ['Nómina y RRHH', '/Cycsa/publico/nomina', 'Nueva Nómina'],
-    '/nomina/detalle'                   => ['Nómina y RRHH', '/Cycsa/publico/nomina', 'Detalle de Nómina'],
-    '/nomina'                           => ['Nómina y RRHH', '/Cycsa/publico/nomina', ''],
-    '/prestamos/crear'                  => ['Préstamos Bancarios', '/Cycsa/publico/prestamos', 'Nuevo Préstamo'],
-    '/prestamos/detalle'                => ['Préstamos Bancarios', '/Cycsa/publico/prestamos', 'Detalle de Préstamo'],
-    '/prestamos'                        => ['Préstamos Bancarios', '/Cycsa/publico/prestamos', ''],
-    '/activos-fijos/crear'              => ['Activos Fijos', '/Cycsa/publico/activos-fijos', 'Nuevo Activo'],
-    '/activos-fijos/editar'             => ['Activos Fijos', '/Cycsa/publico/activos-fijos', 'Editar Activo'],
-    '/activos-fijos/detalle'            => ['Activos Fijos', '/Cycsa/publico/activos-fijos', 'Detalle de Activo'],
-    '/activos-fijos/depreciacion'       => ['Activos Fijos', '/Cycsa/publico/activos-fijos', 'Depreciación'],
-    '/activos-fijos'                    => ['Activos Fijos', '/Cycsa/publico/activos-fijos', ''],
-    '/proyectos/crear'                  => ['Proyectos y Obras', '/Cycsa/publico/proyectos', 'Nuevo Proyecto'],
-    '/proyectos/editar'                 => ['Proyectos y Obras', '/Cycsa/publico/proyectos', 'Editar Proyecto'],
-    '/proyectos/detalle'                => ['Proyectos y Obras', '/Cycsa/publico/proyectos', 'Detalle de Proyecto'],
-    '/proyectos'                        => ['Proyectos y Obras', '/Cycsa/publico/proyectos', ''],
-    '/reportes/ver'                     => ['Centro de Reportes', '/Cycsa/publico/reportes', 'Detalle de Reporte'],
-    '/reportes'                         => ['Centro de Reportes', '/Cycsa/publico/reportes', ''],
-    '/productos/crear'                  => ['Productos / Ensayos', '/Cycsa/publico/productos', 'Nuevo Producto / Ensayo'],
-    '/productos/editar'                 => ['Productos / Ensayos', '/Cycsa/publico/productos', 'Editar Producto / Ensayo'],
-    '/productos'                        => ['Productos / Ensayos', '/Cycsa/publico/productos', ''],
-    '/clientes/crear'                   => ['Clientes', '/Cycsa/publico/clientes', 'Nuevo Cliente'],
-    '/clientes/editar'                  => ['Clientes', '/Cycsa/publico/clientes', 'Editar Cliente'],
-    '/clientes'                         => ['Clientes', '/Cycsa/publico/clientes', ''],
-    '/usuarios/crear'                   => ['Gestión de Usuarios', '/Cycsa/publico/usuarios', 'Nuevo Usuario'],
-    '/usuarios/editar'                  => ['Gestión de Usuarios', '/Cycsa/publico/usuarios', 'Editar Usuario'],
-    '/usuarios'                         => ['Gestión de Usuarios', '/Cycsa/publico/usuarios', ''],
-    '/roles/crear'                      => ['Roles y Permisos', '/Cycsa/publico/roles', 'Nuevo Rol'],
-    '/roles/editar'                     => ['Roles y Permisos', '/Cycsa/publico/roles', 'Editar Rol'],
-    '/roles'                            => ['Roles y Permisos', '/Cycsa/publico/roles', ''],
-    '/plantillas/estudio'               => ['Plantillas ISO 17025', '/Cycsa/publico/plantillas', 'Estudio de Plantilla'],
-    '/plantillas'                       => ['Plantillas ISO 17025', '/Cycsa/publico/plantillas', ''],
-    '/panel/bitacora'                   => ['Panel de Control', '/Cycsa/publico/panel', 'Bitácora de Auditoría'],
-    '/panel'                            => ['Panel de Control', '/Cycsa/publico/panel', ''],
-];
-
-$moduloActualNombre = '';
-$moduloActualUrl = '/Cycsa/publico/panel';
-$moduloSubNombre = '';
-
-if ($rutaPath !== '') {
-    foreach ($mapaRutasMiga as $segmento => $datosMiga) {
-        if (strpos($rutaPath, $segmento) !== false) {
-            [$moduloActualNombre, $moduloActualUrl, $moduloSubNombre] = $datosMiga;
-            break;
-        }
-    }
-}
-
-if ($moduloActualNombre === '') {
-    $tituloLimpio = trim((string)preg_replace('/\s*[-·]\s*(Cycsa|CYCSA|LIMS)(\s+ERP)?\s*$/iu', '', (string)($titulo ?? 'Panel de Control')));
-    $moduloActualNombre = $tituloLimpio !== '' ? $tituloLimpio : 'Panel de Control';
-}
-if (!empty($crumbModulo)) {
-    $moduloActualNombre = (string)$crumbModulo;
-}
-if (!empty($crumbModuloUrl)) {
-    $moduloActualUrl = (string)$crumbModuloUrl;
-}
-if (isset($crumbSub) && $crumbSub !== '') {
-    $moduloSubNombre = (string)$crumbSub;
-}
-?>
-
-    <!-- Barra Superior Única (4 elementos: Marca, Botón Módulos, Miga de Pan, Usuario) -->
-    <header class="cy-topbar">
-        <a class="cy-logo" href="/Cycsa/publico/panel">CYCSA</a>
-        <button class="cy-btn-mod" type="button" data-bs-toggle="offcanvas" data-bs-target="#cyModulos" aria-controls="cyModulos">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <rect x="1" y="1" width="6" height="6" rx="1.5"/>
-                <rect x="9" y="1" width="6" height="6" rx="1.5"/>
-                <rect x="1" y="9" width="6" height="6" rx="1.5"/>
-                <rect x="9" y="9" width="6" height="6" rx="1.5"/>
-            </svg>
-            Módulos
-        </button>
-        <nav class="cy-crumb" aria-label="Ruta">
-            <span class="sep">/</span>
-            <?php if ($moduloSubNombre !== ''): ?>
-                <a href="<?= htmlspecialchars($moduloActualUrl, ENT_QUOTES, 'UTF-8') ?>" id="crumb-modulo"><?= htmlspecialchars($moduloActualNombre, ENT_QUOTES, 'UTF-8') ?></a>
-                <span class="sep" id="crumb-sep-sub">/</span>
-                <span class="cur" id="crumb-cur-sub"><?= htmlspecialchars($moduloSubNombre, ENT_QUOTES, 'UTF-8') ?></span>
-            <?php else: ?>
-                <span class="cur" id="crumb-modulo"><?= htmlspecialchars($moduloActualNombre, ENT_QUOTES, 'UTF-8') ?></span>
+    <aside class="sidebar <?= $esVistaGeneral ? 'oculto-panel' : '' ?>" id="sidebar">
+        <div class="sidebar-header">
+            <img src="/Cycsa/publico/img/logo.png" alt="Logo Cycsa" class="logo-img">
+            <span class="logo-texto">CYCSA</span>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li class="menu-categoria">Principal</li>
+            <li>
+                <a href="/Cycsa/publico/panel" class="<?= strpos($rutaActual, '/panel') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-cubes"></i>
+                    <span class="menu-texto">Cajón de Aplicaciones</span>
+                </a>
+            </li>
+            
+            <li class="menu-categoria">Módulos</li>
+            <?php if (tienePermiso('cotizaciones', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/cotizaciones" class="<?= strpos($rutaActual, '/cotizaciones') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span class="menu-texto">Cotizaciones</span>
+                </a>
+            </li>
             <?php endif; ?>
-        </nav>
-        <span class="cy-user">
-            <span class="cy-user-label"><?= htmlspecialchars($nombreUsuarioLayout, ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($nombreRol, ENT_QUOTES, 'UTF-8') ?></span>
-            <a href="/Cycsa/publico/logout" class="cy-logout-link" title="Cerrar Sesión" aria-label="Cerrar Sesión">Salir</a>
-        </span>
-    </header>
+            <?php if (tienePermiso('ordenes_servicio', 'ver') || tienePermiso('recepcion', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/ordenes-servicio" class="<?= strpos($rutaActual, '/ordenes-servicio') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-file-contract"></i>
+                    <span class="menu-texto">Órdenes de Servicio</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('operaciones', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/operaciones" class="<?= strpos($rutaActual, '/operaciones') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-gears"></i>
+                    <span class="menu-texto">Operaciones</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('laboratorio', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/laboratorio" class="<?= strpos($rutaActual, '/laboratorio') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-flask-vial"></i>
+                    <span class="menu-texto">Laboratorio</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('control_calidad', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/control-calidad" class="<?= (strpos($rutaActual, '/control-calidad') !== false || strpos($rutaActual, '/equipos-calibracion') !== false) ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <span class="menu-texto">Control de Calidad</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('ventas', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/ventas" class="<?= strpos($rutaActual, '/ventas') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-cash-register"></i>
+                    <span class="menu-texto">Ventas y Facturación</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('equipos_bodegas', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/equipos-bodegas" class="<?= strpos($rutaActual, '/equipos-bodegas') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-warehouse"></i>
+                    <span class="menu-texto">Bodegas y Traslados</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('compras', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/compras/proveedores" class="<?= strpos($rutaActual, '/compras') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span class="menu-texto">Compras y Proveedores</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('inventario', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/inventario" class="<?= strpos($rutaActual, '/inventario') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span class="menu-texto">Inventario y Kárdex</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('contabilidad', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/contabilidad/cuentas" class="<?= strpos($rutaActual, '/contabilidad') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-calculator"></i>
+                    <span class="menu-texto">Contabilidad</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('nomina', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/nomina" class="<?= strpos($rutaActual, '/nomina') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span class="menu-texto">Nómina y RRHH</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('prestamos', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/prestamos" class="<?= strpos($rutaActual, '/prestamos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-building-columns"></i>
+                    <span class="menu-texto">Préstamos Bancarios</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('activos_fijos', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/activos-fijos" class="<?= strpos($rutaActual, '/activos-fijos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span class="menu-texto">Activos Fijos</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('proyectos', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/proyectos" class="<?= strpos($rutaActual, '/proyectos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-helmet-safety"></i>
+                    <span class="menu-texto">Proyectos y Obras</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('reportes', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/reportes" class="<?= strpos($rutaActual, '/reportes') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span class="menu-texto">Centro de Reportes</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('productos', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/productos" class="<?= strpos($rutaActual, '/productos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-flask-vial"></i>
+                    <span class="menu-texto">Productos / Ensayos</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('clientes', 'ver')): ?>
+            <li>
+                <a href="/Cycsa/publico/clientes" class="<?= strpos($rutaActual, '/clientes') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-address-book"></i>
+                    <span class="menu-texto">Clientes</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (($_SESSION['usuario_rol'] ?? 0) == 1): ?>
+            <li>
+                <a href="/Cycsa/publico/usuarios" class="<?= strpos($rutaActual, '/usuarios') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-users"></i>
+                    <span class="menu-texto">Gestión de Usuarios</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            
 
-    <!-- Lanzador de Módulos (Offcanvas #cyModulos cerrado por defecto, filtrado por permisos RBAC) -->
-    <div class="offcanvas offcanvas-start" tabindex="-1" id="cyModulos" aria-labelledby="cyModulosLabel">
-        <div class="offcanvas-header">
-            <div>
-                <h2 class="offcanvas-title" id="cyModulosLabel">Módulos del Sistema</h2>
-                <div class="cy-panel-meta-line">
-                    <?= $totalModulosHabilitados ?> <?= $totalModulosHabilitados === 1 ? 'módulo habilitado' : 'módulos habilitados' ?> para <?= htmlspecialchars($nombreRol, ENT_QUOTES, 'UTF-8') ?>
-                </div>
-            </div>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
-        </div>
-        <div class="offcanvas-body">
-            <div class="cy-modulos-grid">
-                <?php foreach ($modulosHabilitados as $moduloItem): ?>
-                    <a class="cy-modulo-card<?= !empty($moduloItem['activo']) ? ' is-active' : '' ?>" href="<?= htmlspecialchars($moduloItem['href'], ENT_QUOTES, 'UTF-8') ?>">
-                        <span class="cy-modulo-title"><?= htmlspecialchars($moduloItem['titulo'], ENT_QUOTES, 'UTF-8') ?></span>
-                        <span class="cy-modulo-cat"><?= htmlspecialchars($moduloItem['categoria'], ENT_QUOTES, 'UTF-8') ?></span>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </div>
+            <?php if (tienePermiso('plantillas', 'ver')): ?>
+            <li class="menu-categoria">Plantillas & Calidad</li>
+            <li>
+                <a href="/Cycsa/publico/configuracion/plantillas-ensayos" class="<?= strpos($rutaActual, '/configuracion/plantillas-ensayos') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span class="menu-texto">Formatos e Informes PDF</span>
+                </a>
+            </li>
+            <li>
+                <a href="/Cycsa/publico/plantillas" class="<?= (strpos($rutaActual, '/plantillas') !== false && strpos($rutaActual, '/configuracion/plantillas-ensayos') === false) ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-shapes"></i>
+                    <span class="menu-texto">Plantillas ISO 17025</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (($_SESSION['usuario_rol'] ?? 0) == 1): ?>
+            <li class="menu-categoria">Ajustes</li>
+            <li>
+                <a href="/Cycsa/publico/configuracion" class="<?= strpos($rutaActual, '/configuracion') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-gears"></i>
+                    <span class="menu-texto">Condiciones Comerciales</span>
+                </a>
+            </li>
+            <?php endif; ?>
+        </ul>
+    </aside>
 
     <main class="main-content">
+        <header class="topbar">
+            <?php if (!$esVistaGeneral): ?>
+            <button class="toggle-btn" id="btn-toggle">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <?php else: ?>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <a href="/Cycsa/publico/panel" style="display: flex; align-items: center; gap: 12px; text-decoration: none; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.015)'" onmouseout="this.style.transform='scale(1)'" title="Regresar al Cajón de Aplicaciones">
+                    <img src="/Cycsa/publico/img/logo.png" alt="Logo Cycsa" style="max-height: 38px; object-fit: contain;">
+                    <span style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--cycsa-azul); letter-spacing: 0.5px;">CYCSA ERP</span>
+                    <span style="color: #475569; font-size: 12.5px; margin-left: 10px; padding: 5px 12px; border-radius: 20px; background: #e2e8f0; display: flex; align-items: center; gap: 6px; font-weight: 600; font-family: 'Inter', sans-serif; border: 1px solid rgba(203,213,225,0.5);">
+                        <i class="fa-solid fa-cubes"></i> Módulos
+                    </span>
+                </a>
+            </div>
+            <?php endif; ?>
+            
+            <div class="user-info">
+                <div class="user-profile-badge">
+                    <!-- Avatar con la inicial del usuario -->
+                    <div class="user-avatar">
+                        <?= strtoupper(substr($_SESSION['usuario_nombre'] ?? 'U', 0, 1)) ?>
+                    </div>
+                    <div style="text-align: left;">
+                        <div style="font-weight: 600; font-size: 13.5px; color: #1e293b; line-height: 1.2;">
+                            <?= htmlspecialchars($_SESSION['usuario_nombre'] ?? 'Usuario', ENT_QUOTES, 'UTF-8') ?>
+                        </div>
+                        <span class="user-role">
+                            <?= ($_SESSION['usuario_rol'] ?? 0) == 1 ? 'Administrador' : 'Vendedor' ?>
+                        </span>
+                    </div>
+                </div>
+                
+                <div style="height: 24px; width: 1px; background: var(--border-light);"></div>
+                
+                <a href="/Cycsa/publico/logout" class="btn-salir" title="Cerrar Sesión">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </a>
+            </div>
+        </header>
+
         <div class="content-wrapper">
-            <?= $contenido ?? '' ?>
+            <?= $contenido ?> 
         </div>
     </main>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Verificar cada 5 segundos si otra sesión activa cerró la nuestra en segundo plano (con cache-busting y JSON)
+            const btnToggle = document.getElementById('btn-toggle');
+            const sidebar = document.getElementById('sidebar');
+
+            if (btnToggle && sidebar) {
+                btnToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.toggle('mostrar-movil');
+                    } else {
+                        sidebar.classList.toggle('colapsado');
+                    }
+                });
+            }
+
+            // Cerrar el menú deslizante si se da clic fuera de él en dispositivos móviles
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768 && sidebar) {
+                    if (!sidebar.contains(e.target) && e.target !== btnToggle && (!btnToggle || !btnToggle.contains(e.target))) {
+                        sidebar.classList.remove('mostrar-movil');
+                    }
+                }
+            });
+
+            // 🔒 Verificar cada 5 segundos si otra sesión activa cerró la nuestra en segundo plano (con cache-busting y JSON)
             setInterval(() => {
                 fetch('<?= obtenerBaseUrl() ?>/verificar-sesion-activa?_t=' + Date.now())
                     .then(res => res.json())
@@ -632,10 +758,10 @@ if (isset($crumbSub) && $crumbSub !== '') {
                             window.location.href = '<?= obtenerBaseUrl() ?>/login';
                         }
                     })
-                    .catch(err => console.error('Error de conexión al validar sesión única:', err));
+                    .catch(err => console.error("Error de conexión al validar sesión única:", err));
             }, 5000);
 
-            // Protección universal contra doble clic / doble envío de formularios (Bancos, CXC, Diario, LIMS, etc.)
+            // 🛑 Protección universal contra doble clic / doble envío de formularios (Bancos, CXC, Diario, LIMS, etc.)
             document.addEventListener('submit', function(e) {
                 const form = e.target;
                 if (form.tagName === 'FORM') {
@@ -684,7 +810,7 @@ if (isset($crumbSub) && $crumbSub !== '') {
         });
     </script>
 
-    <!-- Bootstrap 5.3.3 JS Bundle con Popper (Modales, tooltips, tabs, offcanvas y dropdowns interactivos) -->
+    <!-- Bootstrap 5.3.3 JS Bundle con Popper (Modales, tooltips, tabs y dropdowns interactivos) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>

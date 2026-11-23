@@ -286,8 +286,9 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
     .view-switcher-group { display: none; }
 
     .cy-op-wrap {
-        max-width: 1400px;
-        margin: 0 auto;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
     }
     .cy-op-subbar {
         display: flex;
@@ -376,7 +377,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
     }
 </style>
 
-<div class="container-fluid px-4 py-4 cy-op-wrap">
+<div class="container-fluid px-0 py-0 cy-op-wrap">
     <?php if (!empty($exito)): ?>
         <div class="cy-note mb-3 d-flex align-items-center gap-2" role="status">
             <span class="cy-pill cy-pill-ok">Listo</span>

@@ -397,8 +397,9 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
 <link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
 <style>
     .cy-ver-wrap {
-        max-width: 1120px;
-        margin: 0 auto;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
     }
     .cy-ver-card-body {
         padding: 24px 28px;
@@ -437,7 +438,7 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
     }
 </style>
 
-<div class="container-fluid px-4 py-4 cy-ver-wrap">
+<div class="container-fluid px-0 py-0 cy-ver-wrap">
     <?php if (!empty($exito)): ?>
         <div class="cy-note mb-3 d-flex align-items-center gap-2" role="status">
             <span class="cy-pill cy-pill-ok">Listo</span>

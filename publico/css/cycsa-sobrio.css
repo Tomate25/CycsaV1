@@ -52,7 +52,7 @@
   --bs-box-shadow-lg: none;
 }
 
-/* 2. Tipografía y Reseteo Sobrio */
+/* 2. Tipografía y Reseteo Sobrio (100% Ancho Completo de Pantalla) */
 body {
   font-family: var(--bs-body-font-family);
   font-size: 14px;
@@ -60,6 +60,16 @@ body {
   color: var(--cy-text);
   background-color: var(--cy-bg);
   -webkit-font-smoothing: antialiased;
+}
+
+.main-content,
+.content-wrapper,
+.cy-op-wrap,
+.cy-ver-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 small,
