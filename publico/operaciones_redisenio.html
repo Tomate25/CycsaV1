@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYCSA · Operaciones (Maqueta de Referencia Sobria)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="./css/cycsa-sobrio.css" rel="stylesheet">
+</head>
+<body>
+
+  <!-- 4b. Barra Superior Única (4 elementos: Marca, Botón Módulos, Miga de Pan, Usuario) -->
+  <header class="cy-topbar">
+    <a class="cy-logo" href="/Cycsa/publico/panel">CYCSA</a>
+    <button class="cy-btn-mod" type="button" data-bs-toggle="offcanvas" data-bs-target="#cyModulos" aria-controls="cyModulos">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <rect x="1" y="1" width="6" height="6" rx="1.5"/>
+        <rect x="9" y="1" width="6" height="6" rx="1.5"/>
+        <rect x="1" y="9" width="6" height="6" rx="1.5"/>
+        <rect x="9" y="9" width="6" height="6" rx="1.5"/>
+      </svg>
+      Módulos
+    </button>
+    <nav class="cy-crumb" aria-label="Ruta">
+      <span class="sep">/</span>
+      <a href="#lista" id="crumb-operaciones">Operaciones</a>
+      <span class="sep" id="crumb-sep-os">/</span>
+      <span class="cur" id="crumb-cur-os">OS-2026-0003</span>
+    </nav>
+    <span class="cy-user">Abdias · Administrador</span>
+  </header>
+
+  <!-- Lanzador de Módulos (19 módulos según permisos, cerrado por defecto) -->
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="cyModulos" aria-labelledby="cyModulosLabel">
+    <div class="offcanvas-header">
+      <div>
+        <h2 class="offcanvas-title" id="cyModulosLabel">Módulos del Sistema</h2>
+        <div class="cy-panel-meta-line">19 módulos habilitados para Administrador</div>
+      </div>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="cy-modulos-grid">
+        <a class="cy-modulo-card" href="/Cycsa/publico/clientes"><span class="cy-modulo-title">Clientes</span><span class="cy-modulo-cat">Comercial</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/productos"><span class="cy-modulo-title">Productos y Tarifario</span><span class="cy-modulo-cat">Comercial</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/cotizaciones"><span class="cy-modulo-title">Cotizaciones</span><span class="cy-modulo-cat">Comercial</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/ordenes-servicio"><span class="cy-modulo-title">Órdenes de Servicio</span><span class="cy-modulo-cat">Comercial</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/ventas"><span class="cy-modulo-title">Ventas y Facturación</span><span class="cy-modulo-cat">Comercial</span></a>
+        <a class="cy-modulo-card is-active" href="/Cycsa/publico/operaciones"><span class="cy-modulo-title">Operaciones</span><span class="cy-modulo-cat">LIMS</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/hojas-servicio"><span class="cy-modulo-title">Recepción RT-FM-13</span><span class="cy-modulo-cat">LIMS</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/laboratorio"><span class="cy-modulo-title">Laboratorio</span><span class="cy-modulo-cat">LIMS</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/control-calidad"><span class="cy-modulo-title">Control de Calidad</span><span class="cy-modulo-cat">LIMS</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/equipos-bodegas"><span class="cy-modulo-title">Bodegas y Traslados</span><span class="cy-modulo-cat">LIMS</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/configuracion/plantillas-ensayos"><span class="cy-modulo-title">Formatos PDF RT-FM-22</span><span class="cy-modulo-cat">LIMS</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/contabilidad"><span class="cy-modulo-title">Contabilidad</span><span class="cy-modulo-cat">ERP</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/compras"><span class="cy-modulo-title">Compras y CXP</span><span class="cy-modulo-cat">ERP</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/inventario"><span class="cy-modulo-title">Inventario y Kárdex</span><span class="cy-modulo-cat">ERP</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/nomina"><span class="cy-modulo-title">Nómina y RRHH</span><span class="cy-modulo-cat">ERP</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/activos-fijos"><span class="cy-modulo-title">Activos Fijos</span><span class="cy-modulo-cat">ERP</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/prestamos"><span class="cy-modulo-title">Préstamos Bancarios</span><span class="cy-modulo-cat">ERP</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/proyectos"><span class="cy-modulo-title">Proyectos y Obras</span><span class="cy-modulo-cat">ERP</span></a>
+        <a class="cy-modulo-card" href="/Cycsa/publico/reportes"><span class="cy-modulo-title">Centro de Reportes</span><span class="cy-modulo-cat">ERP</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenido Principal: Lista de Órdenes -->
+  <main class="container-fluid px-4 py-4" style="max-width: 1400px;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+      <div>
+        <h1 class="cy-page-title">Operaciones</h1>
+      </div>
+
+      <!-- Filtro por rol como control segmentado con contadores -->
+      <div class="btn-group cy-seg" role="group" aria-label="Filtro por bandeja de rol">
+        <input type="radio" class="btn-check" name="cyRol" id="rolTodas" autocomplete="off" checked>
+        <label class="btn" for="rolTodas">Todas (3)</label>
+
+        <input type="radio" class="btn-check" name="cyRol" id="rolRecepcion" autocomplete="off">
+        <label class="btn" for="rolRecepcion">Recepción (1)</label>
+
+        <input type="radio" class="btn-check" name="cyRol" id="rolTecnico" autocomplete="off">
+        <label class="btn" for="rolTecnico">Técnico (1)</label>
+
+        <input type="radio" class="btn-check" name="cyRol" id="rolSupervisor" autocomplete="off">
+        <label class="btn" for="rolSupervisor">Supervisor (1)</label>
+
+        <input type="radio" class="btn-check" name="cyRol" id="rolInformes" autocomplete="off">
+        <label class="btn" for="rolInformes">Informes (0)</label>
+      </div>
+    </div>
+
+    <!-- Tabla Plana de Órdenes -->
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Cliente y proyecto</th>
+              <th>Etapa</th>
+              <th>Avance</th>
+              <th>Próxima acción</th>
+              <th class="text-end"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="is-selected" id="row-os-3">
+              <td>
+                <div class="fw-semibold">OS-2026-0003</div>
+                <div class="cy-meta">COT-2026-0008 · Contado</div>
+              </td>
+              <td>
+                <div class="fw-medium">Constructora del Pacífico S.A.</div>
+                <div class="cy-meta">Puente Río Grande · Managua</div>
+              </td>
+              <td>
+                <span class="cy-pill cy-pill-warn">Ejecución técnica</span>
+              </td>
+              <td>
+                <div class="cy-progress-cell">
+                  <div class="cy-bar"><i style="width: 33%;"></i></div>
+                  <span class="cy-meta">1 de 3 matrices</span>
+                </div>
+              </td>
+              <td>
+                <a href="#panel" class="cy-action-link" onclick="abrirPanelOrden(); return false;">Capturar rotura (1 de 8 probetas)</a>
+              </td>
+              <td class="text-end">
+                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="abrirPanelOrden()">Ver orden</button>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="fw-semibold">OS-2026-0002</div>
+                <div class="cy-meta">COT-2026-0005 · Crédito 30 días</div>
+              </td>
+              <td>
+                <div class="fw-medium">Inversiones Industriales Norte</div>
+                <div class="cy-meta">Bodega Logística Km 14</div>
+              </td>
+              <td>
+                <span class="cy-pill cy-pill-warn">Matriz en revisión</span>
+              </td>
+              <td>
+                <div class="cy-progress-cell">
+                  <div class="cy-bar"><i style="width: 100%;"></i></div>
+                  <span class="cy-meta">2 de 2 matrices</span>
+                </div>
+              </td>
+              <td>
+                <a href="#panel" class="cy-action-link" onclick="abrirPanelOrden(); return false;">Aprobar matriz RT-FM-22 A</a>
+              </td>
+              <td class="text-end">
+                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="abrirPanelOrden()">Ver orden</button>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="fw-semibold">OS-2026-0001</div>
+                <div class="cy-meta">COT-2026-0002 · Contado</div>
+              </td>
+              <td>
+                <div class="fw-medium">Consorcio Vial Centroamericano</div>
+                <div class="cy-meta">Tramo Carretero Tipitapa</div>
+              </td>
+              <td>
+                <span class="cy-pill cy-pill-pend">Recepción en borrador</span>
+              </td>
+              <td>
+                <div class="cy-progress-cell">
+                  <div class="cy-bar"><i style="width: 0%;"></i></div>
+                  <span class="cy-meta">0 de 2 matrices</span>
+                </div>
+              </td>
+              <td>
+                <a href="#panel" class="cy-action-link" onclick="abrirPanelOrden(); return false;">Completar datos de recepción</a>
+              </td>
+              <td class="text-end">
+                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="abrirPanelOrden()">Ver orden</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Panel Lateral de la Orden (640px, abierto por defecto salvo con #lista) -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="cyPanelOrden" aria-labelledby="cyPanelOrdenTitle">
+    <div class="offcanvas-header">
+      <div class="w-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <h2 class="cy-order-code" id="cyPanelOrdenTitle">OS-2026-0003</h2>
+          <div class="d-flex align-items-center gap-3">
+            <a href="/Cycsa/publico/operaciones/ver?id_os=3" class="cy-action-link" style="font-size: 13px;">Abrir página completa</a>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+          </div>
+        </div>
+        <!-- Una sola línea con Cliente · Proyecto · Cotización · Condición -->
+        <div class="cy-panel-meta-line">
+          Constructora del Pacífico S.A. · Puente Río Grande · COT-2026-0008 · Contado
+        </div>
+      </div>
+    </div>
+
+    <div class="offcanvas-body">
+      <!-- Stepper: 5 pasos en una sola fila unidos por una línea (Determinístico) -->
+      <ol class="cy-stepper" aria-label="Progreso de la orden">
+        <li class="cy-step is-done">
+          <div class="cy-dot">1</div>
+          <div class="cy-step-label">RT-FM-13</div>
+          <div class="cy-step-state">Emitida</div>
+        </li>
+        <li class="cy-step is-done">
+          <div class="cy-dot">2</div>
+          <div class="cy-step-label">Recepción</div>
+          <div class="cy-step-state">Completa</div>
+        </li>
+        <li class="cy-step is-current">
+          <div class="cy-dot">3</div>
+          <div class="cy-step-label">Ejecución</div>
+          <div class="cy-step-state">1 de 8 probetas</div>
+        </li>
+        <li class="cy-step">
+          <div class="cy-dot">4</div>
+          <div class="cy-step-label">Revisión</div>
+          <div class="cy-step-state">1 de 3 aprobadas</div>
+        </li>
+        <li class="cy-step">
+          <div class="cy-dot">5</div>
+          <div class="cy-step-label">Informe</div>
+          <div class="cy-step-state">Pendiente</div>
+        </li>
+      </ol>
+
+      <!-- Siguiente acción: una caja con borde y el único botón primario -->
+      <div class="cy-next">
+        <div>
+          <div class="fw-semibold">Siguiente acción: Capturar roturas del lote Reg. 03</div>
+          <div class="cy-meta">Quedan 7 probetas programadas en Resistencia a compresión de cilindros</div>
+        </div>
+        <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=3" class="btn btn-primary">Capturar roturas</a>
+      </div>
+
+      <!-- Tabs: subrayado simple, contador en gris entre paréntesis, sin íconos -->
+      <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabEnsayos" type="button" role="tab">
+            Ensayos <span class="cy-tab-count">(3)</span>
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabRecepcion" type="button" role="tab">
+            Recepción <span class="cy-tab-count">(3)</span>
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabInformes" type="button" role="tab">
+            Informes <span class="cy-tab-count">(1)</span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="tabEnsayos" role="tabpanel">
+          <!-- Ensayo 1 -->
+          <div class="cy-row">
+            <div class="flex-grow-1">
+              <div class="cy-assay-name">Resistencia a compresión de cilindros de concreto</div>
+              <div class="cy-assay-norm">ASTM C39 / C31 · 8 muestras · Reg. 03</div>
+            </div>
+            <span class="cy-pill cy-pill-warn">En ejecución</span>
+            <span class="cy-meta">1/8</span>
+            <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=3" class="btn btn-outline-secondary btn-sm">Capturar</a>
+            <div class="dropdown">
+              <button class="btn-more" type="button" data-bs-toggle="dropdown" aria-label="Más acciones">⋯</button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=101">Ver matriz RT-FM-22 A</a></li>
+                <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=3">Imprimir RT-FM-60</a></li>
+                <li><a class="dropdown-item" href="/Cycsa/publico/hojas-servicio/descargar?id_os=3&id_hoja=3">Imprimir RT-FM-13</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#devolver">Devolver</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Ensayo 2 -->
+          <div class="cy-row">
+            <div class="flex-grow-1">
+              <div class="cy-assay-name">Relación humedad-densidad (Proctor modificado)</div>
+              <div class="cy-assay-norm">ASTM D1557 · 1 muestra · Reg. 04</div>
+            </div>
+            <span class="cy-pill cy-pill-ok">Aprobado</span>
+            <span class="cy-meta">1/1</span>
+            <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=102" class="btn btn-outline-secondary btn-sm">Enviar al cliente</a>
+            <div class="dropdown">
+              <button class="btn-more" type="button" data-bs-toggle="dropdown" aria-label="Más acciones">⋯</button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=102">Ver matriz RT-FM-22 C</a></li>
+                <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=102">Descargar PDF</a></li>
+                <li><a class="dropdown-item" href="#reemitir">Reemitir (-1)</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#devolver">Devolver</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Ensayo 3 -->
+          <div class="cy-row">
+            <div class="flex-grow-1">
+              <div class="cy-assay-name">Granulometría y límites de consistencia de suelos</div>
+              <div class="cy-assay-norm">ASTM D6913 / D4318 · 2 muestras · Reg. 05</div>
+            </div>
+            <span class="cy-pill cy-pill-pend">Pendiente</span>
+            <span class="cy-meta">0/2</span>
+            <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=103" class="btn btn-outline-secondary btn-sm">Capturar</a>
+            <div class="dropdown">
+              <button class="btn-more" type="button" data-bs-toggle="dropdown" aria-label="Más acciones">⋯</button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=103">Editar matriz</a></li>
+                <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=5">Imprimir RT-FM-60</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Cierre bloqueado: una nota gris al final, sin pestañas ni bandas anidadas -->
+          <div class="cy-note">
+            El cierre de la orden se habilita cuando las 3 matrices estén aprobadas y sus informes emitidos (actualmente 1 de 3 aprobadas).
+          </div>
+        </div>
+
+        <div class="tab-pane fade" id="tabRecepcion" role="tabpanel">
+          <div class="cy-row">
+            <div class="flex-grow-1">
+              <div class="cy-assay-name">Hoja RT-FM-13 · Reg. 03 (Cilindros de concreto)</div>
+              <div class="cy-assay-norm">8 muestras (MS-0012-26 a MS-0019-26) · Recepción completada el 2026-11-22</div>
+            </div>
+            <span class="cy-pill cy-pill-ok">Completa</span>
+            <button class="btn btn-outline-secondary btn-sm" type="button">Ver datos</button>
+          </div>
+        </div>
+
+        <div class="tab-pane fade" id="tabInformes" role="tabpanel">
+          <div class="cy-row">
+            <div class="flex-grow-1">
+              <div class="cy-assay-name">CYCSA-INF-MS-0020-26 · Proctor modificado</div>
+              <div class="cy-assay-norm">RT-FM-22 C · Aprobado por Ing. Noel Quintana Lira</div>
+            </div>
+            <span class="cy-pill cy-pill-ok">Emitido</span>
+            <a href="#pdf" class="btn btn-outline-secondary btn-sm">Descargar PDF</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const panelEl = document.getElementById('cyPanelOrden');
+    const panelOffcanvas = new bootstrap.Offcanvas(panelEl);
+
+    function abrirPanelOrden() {
+      document.getElementById('crumb-sep-os').style.display = '';
+      document.getElementById('crumb-cur-os').style.display = '';
+      panelOffcanvas.show();
+    }
+
+    panelEl.addEventListener('hidden.bs.offcanvas', function () {
+      document.getElementById('crumb-sep-os').style.display = 'none';
+      document.getElementById('crumb-cur-os').style.display = 'none';
+      document.getElementById('row-os-3').classList.remove('is-selected');
+    });
+
+    panelEl.addEventListener('shown.bs.offcanvas', function () {
+      document.getElementById('row-os-3').classList.add('is-selected');
+    });
+
+    // Si NO viene con #lista, abrir el panel lateral por defecto para inspección inmediata
+    window.addEventListener('DOMContentLoaded', function () {
+      if (window.location.hash !== '#lista') {
+        abrirPanelOrden();
+      } else {
+        document.getElementById('crumb-sep-os').style.display = 'none';
+        document.getElementById('crumb-cur-os').style.display = 'none';
+        document.getElementById('row-os-3').classList.remove('is-selected');
+      }
+    });
+  </script>
+</body>
+</html>

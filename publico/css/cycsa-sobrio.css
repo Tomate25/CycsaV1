@@ -1,0 +1,657 @@
+/**
+ * CYCSA ERP + LIMS — Guía de Diseño Sobrio (Operaciones y Navegación Unificada)
+ * Archivo: publico/css/cycsa-sobrio.css
+ * Cargar SIEMPRE después de bootstrap.min.css
+ *
+ * Regla fundamental:
+ * - El color SOLO indica estado semántico (ok, warn, danger, pend).
+ * - Cero verde, amarillo o rojo en botones.
+ * - Un único color de marca: Azul Marino CYCSA (#1F3864).
+ * - Tipografía mínima absoluta: 13px (prohibido 8px-12px).
+ * - Cero íconos decorativos por ensayo, cero emojis, cero sombras en tarjetas.
+ */
+
+:root {
+  /* 1. Paleta de Tokens Oficiales */
+  --cy-brand: #1F3864;
+  --cy-brand-hover: #182C4F;
+  --cy-brand-soft: #EEF1F7;
+  --cy-text: #111827;
+  --cy-muted: #6B7280;
+  --cy-border: #E5E7EB;
+  --cy-border-strong: #D1D5DB;
+  --cy-bg: #F9FAFB;
+  --cy-surface: #FFFFFF;
+
+  /* Estados semánticos exclusivos para pills, puntos del stepper y acción Devolver */
+  --cy-ok: #15803D;
+  --cy-ok-bg: #ECFDF3;
+  --cy-warn: #B45309;
+  --cy-warn-bg: #FFF7ED;
+  --cy-danger: #B91C1C;
+  --cy-danger-bg: #FEF2F2;
+  --cy-pend: #6B7280;
+  --cy-pend-bg: #F3F4F6;
+
+  /* Variables Bootstrap 5 Sobrias */
+  --bs-body-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --bs-body-font-size: 14px;
+  --bs-body-line-height: 1.5;
+  --bs-body-color: var(--cy-text);
+  --bs-body-bg: var(--cy-bg);
+  --bs-primary: #1F3864;
+  --bs-primary-rgb: 31, 56, 100;
+  --bs-secondary-color: var(--cy-muted);
+  --bs-border-color: var(--cy-border);
+  --bs-link-color: #1F3864;
+  --bs-link-color-rgb: 31, 56, 100;
+  --bs-link-hover-color: #182C4F;
+  --bs-border-radius: 8px;
+  --bs-box-shadow: none;
+  --bs-box-shadow-sm: none;
+  --bs-box-shadow-lg: none;
+}
+
+/* 2. Tipografía y Reseteo Sobrio */
+body {
+  font-family: var(--bs-body-font-family);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--cy-text);
+  background-color: var(--cy-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+small,
+.small,
+.text-muted,
+.form-text,
+.cy-meta {
+  font-size: 13px !important;
+  color: var(--cy-muted) !important;
+  font-family: var(--bs-body-font-family) !important;
+}
+
+.cy-page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--cy-text);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.cy-order-code {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--cy-text);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.cy-assay-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cy-text);
+}
+
+.cy-assay-norm {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--cy-muted);
+  font-family: var(--bs-body-font-family) !important; /* Sin monospace */
+}
+
+/* Eliminar sombras heredadas salvo en menús desplegables */
+.shadow,
+.shadow-sm,
+.shadow-lg {
+  box-shadow: none !important;
+}
+
+/* Accesibilidad de foco sobria */
+.btn:focus-visible,
+.cy-btn-mod:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid rgba(31, 56, 100, 0.32) !important;
+  outline-offset: 1px;
+  box-shadow: none !important;
+  border-color: var(--cy-brand) !important;
+}
+
+/* 3. Barra Superior Única (4 Elementos: Marca, Botón Módulos, Miga de Pan, Usuario) */
+.cy-topbar {
+  height: 56px;
+  background: var(--cy-surface);
+  border-bottom: 1px solid var(--cy-border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+}
+
+.cy-logo {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  color: var(--cy-brand);
+  text-decoration: none;
+}
+.cy-logo:hover {
+  color: var(--cy-brand-hover);
+}
+
+.cy-btn-mod {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cy-text);
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.cy-btn-mod svg {
+  color: var(--cy-brand);
+  flex-shrink: 0;
+}
+.cy-btn-mod:hover {
+  background: #F3F4F6;
+  border-color: var(--cy-border-strong);
+}
+
+.cy-crumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  margin: 0;
+}
+.cy-crumb a {
+  color: var(--cy-muted);
+  text-decoration: none;
+}
+.cy-crumb a:hover {
+  color: var(--cy-brand);
+}
+.cy-crumb .sep {
+  color: #D1D5DB;
+  user-select: none;
+}
+.cy-crumb .cur {
+  font-weight: 600;
+  color: var(--cy-text);
+}
+
+.cy-user {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--cy-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Ocultar navegación horizontal antigua dentro de los módulos */
+.navbar-nav.cy-modulos-legacy {
+  display: none !important;
+}
+
+/* Lanzador de Módulos (Offcanvas #cyModulos con las 19 tarjetas según permisos) */
+.cy-modulos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+}
+.cy-modulo-card {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  background: var(--cy-surface);
+  color: var(--cy-text);
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.cy-modulo-card:hover,
+.cy-modulo-card.is-active {
+  background: var(--cy-brand-soft);
+  border-color: var(--cy-brand);
+  color: var(--cy-brand);
+}
+.cy-modulo-card .cy-modulo-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+.cy-modulo-card .cy-modulo-cat {
+  font-size: 13px;
+  color: var(--cy-muted);
+}
+
+/* 4. Jerarquía de Botones: Solo Primario, Secundario, Enlace y Menú ⋯ */
+.btn {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: 8px;
+  box-shadow: none !important;
+}
+.btn-sm {
+  font-size: 13px;
+  padding: 5px 12px;
+}
+.btn-primary {
+  --bs-btn-color: #FFFFFF;
+  --bs-btn-bg: #1F3864;
+  --bs-btn-border-color: #1F3864;
+  --bs-btn-hover-color: #FFFFFF;
+  --bs-btn-hover-bg: #182C4F;
+  --bs-btn-hover-border-color: #182C4F;
+  --bs-btn-active-color: #FFFFFF;
+  --bs-btn-active-bg: #182C4F;
+  --bs-btn-active-border-color: #182C4F;
+}
+.btn-outline-secondary,
+.btn-cy-secondary {
+  --bs-btn-color: var(--cy-text);
+  --bs-btn-border-color: var(--cy-border);
+  --bs-btn-bg: #FFFFFF;
+  --bs-btn-hover-bg: #F3F4F6;
+  --bs-btn-hover-color: var(--cy-text);
+  --bs-btn-hover-border-color: #D1D5DB;
+  --bs-btn-active-bg: #E5E7EB;
+  --bs-btn-active-color: var(--cy-text);
+  border: 1px solid var(--cy-border);
+  background: #FFFFFF;
+  color: var(--cy-text);
+}
+
+/* Retirar colores de botones heredados: success/warning/danger/info/dark -> secundario neutro */
+.btn-success,
+.btn-warning,
+.btn-danger,
+.btn-info,
+.btn-outline-danger,
+.btn-outline-success,
+.btn-outline-warning,
+.btn-outline-info,
+.btn-dark {
+  --bs-btn-color: var(--cy-text);
+  --bs-btn-bg: #FFFFFF;
+  --bs-btn-border-color: var(--cy-border);
+  --bs-btn-hover-bg: #F3F4F6;
+  --bs-btn-hover-color: var(--cy-text);
+  --bs-btn-hover-border-color: #D1D5DB;
+  --bs-btn-active-bg: #E5E7EB;
+  --bs-btn-active-color: var(--cy-text);
+  background-color: #FFFFFF !important;
+  color: var(--cy-text) !important;
+  border: 1px solid var(--cy-border) !important;
+}
+
+.cy-action-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cy-brand);
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.cy-action-link:hover {
+  color: var(--cy-brand-hover);
+  text-decoration: underline;
+}
+
+.btn-more {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--cy-muted);
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.btn-more:hover {
+  border-color: var(--cy-border);
+  background: #F9FAFB;
+  color: var(--cy-text);
+}
+
+.dropdown-menu {
+  font-size: 14px;
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.08) !important;
+  padding: 6px 0;
+}
+.dropdown-item {
+  padding: 7px 16px;
+  color: var(--cy-text);
+}
+.dropdown-item:hover {
+  background-color: #F3F4F6;
+  color: var(--cy-text);
+}
+.dropdown-item.text-danger {
+  color: var(--cy-danger) !important;
+}
+.dropdown-item.text-danger:hover {
+  background-color: var(--cy-danger-bg);
+}
+
+/* 5. Tarjetas y Tablas Planas (Sin sombras, sin bandas grises anidadas) */
+.card {
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  box-shadow: none !important;
+  background: var(--cy-surface);
+}
+.card-header,
+.card-footer {
+  background: var(--cy-surface);
+  border-color: var(--cy-border);
+}
+
+.table {
+  --bs-table-bg: #FFFFFF;
+  --bs-table-hover-bg: #FAFAFB;
+  font-size: 14px;
+  margin-bottom: 0;
+}
+.table > thead th {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cy-muted);
+  border-bottom: 1px solid var(--cy-border);
+  background: #FFFFFF;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.table > :not(caption) > * > * {
+  padding: 14px 20px;
+  border-color: var(--cy-border);
+  vertical-align: middle;
+}
+.table tr.is-selected > * {
+  background: var(--cy-brand-soft) !important;
+}
+
+.bg-light,
+.bg-secondary-subtle {
+  background: #FFFFFF !important;
+}
+
+/* 6. Pills de Estado (Único lugar con color semántico) */
+.cy-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 2px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.cy-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.cy-pill-ok {
+  color: var(--cy-ok);
+  background: var(--cy-ok-bg);
+}
+.cy-pill-warn {
+  color: var(--cy-warn);
+  background: var(--cy-warn-bg);
+}
+.cy-pill-danger {
+  color: var(--cy-danger);
+  background: var(--cy-danger-bg);
+}
+.cy-pill-pend {
+  color: var(--cy-pend);
+  background: var(--cy-pend-bg);
+}
+
+/* 7. Tabs Subrayadas Simples (Sin íconos, contador en gris entre paréntesis) */
+.nav-tabs {
+  border-bottom: 1px solid var(--cy-border);
+  gap: 28px;
+}
+.nav-tabs .nav-link {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 10px 0;
+  color: var(--cy-muted);
+  font-size: 14px;
+  font-weight: 500;
+  background: none;
+}
+.nav-tabs .nav-link:hover {
+  color: var(--cy-text);
+  border-color: transparent;
+}
+.nav-tabs .nav-link.active {
+  color: var(--cy-text);
+  border-bottom-color: var(--cy-brand);
+  background: none;
+  font-weight: 600;
+}
+.nav-tabs .nav-link .cy-tab-count {
+  color: var(--cy-muted);
+  font-weight: 400;
+}
+
+/* 8. Filtro Segmentado por Rol (.cy-seg con .btn-check) */
+.cy-seg {
+  display: inline-flex;
+  border-radius: 8px;
+}
+.cy-seg .btn {
+  font-size: 13px;
+  color: var(--cy-muted);
+  background: #FFFFFF;
+  border: 1px solid var(--cy-border);
+  padding: 6px 14px;
+}
+.cy-seg .btn:hover {
+  color: var(--cy-text);
+  background: #F9FAFB;
+}
+.cy-seg .btn-check:checked + .btn,
+.cy-seg .btn.is-active {
+  background: var(--cy-brand-soft) !important;
+  color: var(--cy-brand) !important;
+  font-weight: 600;
+  border-color: var(--cy-border);
+}
+
+/* 9. Barra Fina de Avance en Lista ("n/m matrices") */
+.cy-progress-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cy-bar {
+  width: 120px;
+  height: 4px;
+  background: var(--cy-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cy-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--cy-brand);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+/* 10. Panel Lateral (Offcanvas de 640px, Padding 24-28px) */
+.offcanvas.offcanvas-end {
+  width: min(640px, 100vw);
+  border-left: 1px solid var(--cy-border);
+  box-shadow: none;
+}
+.offcanvas-header {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--cy-border);
+  align-items: flex-start;
+  background: #FFFFFF;
+}
+.offcanvas-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--cy-text);
+}
+.offcanvas-body {
+  padding: 24px 28px;
+  background: #FFFFFF;
+}
+.offcanvas-backdrop.show {
+  opacity: 0.25;
+}
+
+.cy-panel-meta-line {
+  font-size: 13px;
+  color: var(--cy-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* 11. Stepper de 5 Pasos en una Sola Fila (Determinístico por Datos Reales) */
+.cy-stepper {
+  display: flex;
+  margin-bottom: 24px;
+  padding: 0;
+  list-style: none;
+}
+.cy-step {
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+.cy-step::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: -50%;
+  right: 50%;
+  height: 2px;
+  background: var(--cy-border);
+}
+.cy-step:first-child::before {
+  display: none;
+}
+.cy-step.is-done::before,
+.cy-step.is-current::before {
+  background: var(--cy-ok);
+}
+.cy-step .cy-dot {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  background: #FFFFFF;
+  border: 2px solid var(--cy-border);
+  color: var(--cy-muted);
+}
+.cy-step.is-done .cy-dot {
+  background: var(--cy-ok);
+  border-color: var(--cy-ok);
+  color: #FFFFFF;
+}
+.cy-step.is-current .cy-dot {
+  border-color: var(--cy-warn);
+  color: var(--cy-warn);
+  background: var(--cy-warn-bg);
+}
+.cy-step .cy-step-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cy-text);
+}
+.cy-step .cy-step-state {
+  font-size: 13px;
+  color: var(--cy-muted);
+}
+.cy-step.is-done .cy-step-state {
+  color: var(--cy-ok);
+}
+.cy-step.is-current .cy-step-state {
+  color: var(--cy-warn);
+}
+
+/* 12. Caja "Siguiente acción", Filas Planas de Ensayo y Nota de Cierre Bloqueado */
+.cy-next {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 28px;
+  background: #FFFFFF;
+}
+.cy-next .btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.cy-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--cy-border);
+}
+.cy-row:last-child {
+  border-bottom: 0;
+}
+
+.cy-note {
+  padding: 14px 16px;
+  background: var(--cy-pend-bg);
+  border-radius: 8px;
+  color: var(--cy-muted);
+  font-size: 13px;
+  margin-top: 20px;
+}
+
+@media print {
+  .cy-topbar,
+  .offcanvas,
+  .offcanvas-backdrop {
+    display: none !important;
+  }
+}
