@@ -1446,8 +1446,8 @@ class HojaTecnicaMatrizServicio {
                     }
                     $comp = null;
                     if ($pvsSitio !== null && $pvsMax !== null && $pvsMax > 0) {
-                        $comp = round(($pvsSitio / $pvsMax) * 100.0, 1);
-                        $calc['compactacion_pct'] = number_format($comp, 1, '.', '');
+                        $comp = (int)round(($pvsSitio / $pvsMax) * 100.0);
+                        $calc['compactacion_pct'] = (string)$comp;
                     }
                     if ($pvsSitio !== null || $hum !== null || $pvsMax !== null || $fEns !== '') {
                         $mIdx = $buscarIdxMatriz($filasMatriz, $codLab, $idx);
@@ -1456,7 +1456,7 @@ class HojaTecnicaMatrizServicio {
                         if ($pvsSitio !== null) $filasMatriz[$mIdx]['P.V.S.Sitio (kg/m³)'] = (string)(int)$pvsSitio;
                         if ($hum !== null) $filasMatriz[$mIdx]['Humedad sitio ((%) (P/P))'] = number_format($hum, 1, '.', '');
                         if ($pvhSitio !== null) $filasMatriz[$mIdx]['Humedad Sitio (kg/m³)'] = (string)(int)$pvhSitio;
-                        if ($comp !== null) $filasMatriz[$mIdx]['Compactación ((%) (P/P))'] = number_format($comp, 1, '.', '');
+                        if ($comp !== null) $filasMatriz[$mIdx]['Compactación ((%) (P/P))'] = (string)$comp;
                         if ($fEns !== '') $filasMatriz[$mIdx]['Fecha de muestreo'] = $fEns;
                     }
                     break;
@@ -1491,8 +1491,8 @@ class HojaTecnicaMatrizServicio {
                     }
                     $comp = null;
                     if ($pvsSitio !== null && $pvsMax !== null && $pvsMax > 0) {
-                        $comp = round(($pvsSitio / $pvsMax) * 100.0, 1);
-                        $calc['compactacion_pct'] = number_format($comp, 1, '.', '');
+                        $comp = (int)round(($pvsSitio / $pvsMax) * 100.0);
+                        $calc['compactacion_pct'] = (string)$comp;
                     }
                     if ($pvsSitio !== null || $hum !== null || $pvsMax !== null || $fEns !== '') {
                         $mIdx = $buscarIdxMatriz($filasMatriz, $codLab, $idx);
@@ -1501,7 +1501,7 @@ class HojaTecnicaMatrizServicio {
                         if ($pvsSitio !== null) $filasMatriz[$mIdx]['P.V.S.Sitio (kg/m³)'] = (string)(int)$pvsSitio;
                         if ($hum !== null) $filasMatriz[$mIdx]['Humedad sitio ((%) (P/P))'] = number_format($hum, 1, '.', '');
                         if ($pvhSitio !== null) $filasMatriz[$mIdx]['Humedad Sitio (kg/m³)'] = (string)(int)$pvhSitio;
-                        if ($comp !== null) $filasMatriz[$mIdx]['Compactación ((%) (P/P))'] = number_format($comp, 1, '.', '');
+                        if ($comp !== null) $filasMatriz[$mIdx]['Compactación ((%) (P/P))'] = (string)$comp;
                         if ($fEns !== '') $filasMatriz[$mIdx]['Fecha de muestreo'] = $fEns;
                     }
                     break;
@@ -1516,8 +1516,8 @@ class HojaTecnicaMatrizServicio {
                     $fEns = $fechaIso($row['fecha_ensayo'] ?? '');
                     $comp = null;
                     if ($pvsMax > 0 && $pvsSitio > 0) {
-                        $comp = round(($pvsSitio / $pvsMax) * 100.0, 1);
-                        $calc['compactacion_pct'] = number_format($comp, 1, '.', '');
+                        $comp = (int)round(($pvsSitio / $pvsMax) * 100.0);
+                        $calc['compactacion_pct'] = (string)$comp;
                         $tieneDatos = true;
                     }
                     if ($pvsSitio !== null || $pvsMax !== null || !empty($row['capa'])) {
@@ -1531,7 +1531,7 @@ class HojaTecnicaMatrizServicio {
                         if ($pvsSitio !== null) $filasMatriz[$mIdx]['P.V.S.Sitio (kg/m³)'] = (string)(int)round($pvsSitio);
                         if ($humSitPct !== null) $filasMatriz[$mIdx]['Humedad Sitio ((%) (P/P))'] = number_format($humSitPct, 1, '.', '');
                         if ($humSitKg !== null) $filasMatriz[$mIdx]['Humedad Sitio (kg/m³)'] = (string)(int)round($humSitKg);
-                        if ($comp !== null) $filasMatriz[$mIdx]['Compactación ((%) (P/P))'] = number_format($comp, 1, '.', '');
+                        if ($comp !== null) $filasMatriz[$mIdx]['Compactación ((%) (P/P))'] = (string)$comp;
                         if ($fEns !== '') $filasMatriz[$mIdx]['Fecha de muestreo'] = $fEns;
                     }
                     break;

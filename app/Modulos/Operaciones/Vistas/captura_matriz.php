@@ -2396,7 +2396,7 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                 const max = parseFloat(pvsMaxInput.value) || 0;
                 const sitio = parseFloat(pvsSitioInput.value) || 0;
                 if (max > 0 && sitio > 0) {
-                    compInput.value = ((sitio / max) * 100).toFixed(1);
+                    compInput.value = String(Math.round((sitio / max) * 100));
                 } else if (isUserEdit) {
                     compInput.value = '';
                 }
@@ -3352,23 +3352,23 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                     setCalc(tr, 'pvs_sitio', pvs);
                 } else setCalc(tr, 'pvs_sitio', '');
                 if (!isNaN(pvs) && !isNaN(pvsMax) && pvsMax > 0) {
-                    comp = (pvs / pvsMax) * 100.0;
-                    setCalc(tr, 'compactacion_pct', comp.toFixed(1));
+                    comp = Math.round((pvs / pvsMax) * 100.0);
+                    setCalc(tr, 'compactacion_pct', String(comp));
                 } else setCalc(tr, 'compactacion_pct', '');
                 if (sincronizarConMatriz && trMat && (!isNaN(pvs) || !isNaN(hum) || fEns)) {
                     if (!isNaN(pvsMax) && pvsMax > 0) htSetCeldaMatriz(trMat, ['P.V.S Max (kg/m³)', '**P.V.S Max (kg/m³)'], Math.round(pvsMax));
                     if (!isNaN(pvs)) htSetCeldaMatriz(trMat, ['P.V.S.Sitio (kg/m³)'], pvs);
                     if (!isNaN(hum)) htSetCeldaMatriz(trMat, ['Humedad sitio ((%) (P/P))', 'Humedad Sitio ((%) (P/P))'], hum.toFixed(1));
                     if (!isNaN(pvh)) htSetCeldaMatriz(trMat, ['Humedad Sitio (kg/m³)'], pvh);
-                    if (!isNaN(comp)) htSetCeldaMatriz(trMat, ['Compactación ((%) (P/P))'], comp.toFixed(1));
+                    if (!isNaN(comp)) htSetCeldaMatriz(trMat, ['Compactación ((%) (P/P))'], String(comp));
                     if (fEns) htSetCeldaMatriz(trMat, ['Fecha de muestreo'], fEns);
                 }
             } else if (motor === 'densimetro') {
                 const pMax = htParseNum(row.pvs_max), pSit = htParseNum(row.pvs_sitio);
                 let comp = NaN;
                 if (!isNaN(pMax) && pMax > 0 && !isNaN(pSit) && pSit > 0) {
-                    comp = (pSit / pMax) * 100.0;
-                    setCalc(tr, 'compactacion_pct', comp.toFixed(1));
+                    comp = Math.round((pSit / pMax) * 100.0);
+                    setCalc(tr, 'compactacion_pct', String(comp));
                 } else setCalc(tr, 'compactacion_pct', '');
                 if (sincronizarConMatriz && trMat && (!isNaN(pSit) || !isNaN(pMax) || row.capa)) {
                     if (row.capa) htSetCeldaMatriz(trMat, ['Capa (N°)'], row.capa);
@@ -3379,7 +3379,7 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                     if (!isNaN(pSit)) htSetCeldaMatriz(trMat, ['P.V.S.Sitio (kg/m³)'], Math.round(pSit));
                     if (row.humedad_sitio_pct) htSetCeldaMatriz(trMat, ['Humedad Sitio ((%) (P/P))'], row.humedad_sitio_pct);
                     if (row.humedad_sitio_kgm3) htSetCeldaMatriz(trMat, ['Humedad Sitio (kg/m³)'], row.humedad_sitio_kgm3);
-                    if (!isNaN(comp)) htSetCeldaMatriz(trMat, ['Compactación ((%) (P/P))'], comp.toFixed(1));
+                    if (!isNaN(comp)) htSetCeldaMatriz(trMat, ['Compactación ((%) (P/P))'], String(comp));
                     if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de muestreo'], htFechaIso(row.fecha_ensayo));
                 }
             } else if (motor === 'granulometria_suelo') {

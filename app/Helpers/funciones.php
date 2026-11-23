@@ -6863,7 +6863,7 @@ if (!function_exists('normalizarYCompletarDatosRecepcionMuestra')) {
             $vMaxRaw = str_replace(',', '.', trim((string)($limpio[$colPvsMax] ?? '')));
             $vSitRaw = str_replace(',', '.', trim((string)($limpio[$colPvsSitio] ?? '')));
             if ($vMaxRaw !== '' && is_numeric($vMaxRaw) && (float)$vMaxRaw > 0 && $vSitRaw !== '' && is_numeric($vSitRaw) && (float)$vSitRaw > 0) {
-                $limpio[$colComp] = number_format(((float)$vSitRaw / (float)$vMaxRaw) * 100.0, 1, '.', '');
+                $limpio[$colComp] = (string)(int)round(((float)$vSitRaw / (float)$vMaxRaw) * 100.0);
             }
         }
 
