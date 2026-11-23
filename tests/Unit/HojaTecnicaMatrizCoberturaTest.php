@@ -193,4 +193,38 @@ class HojaTecnicaMatrizCoberturaTest extends TestCase {
         $this->assertSame('95000', (string)$res['filas_matriz'][1]['Carga (lb)']);
         $this->assertNotSame((string)$res['filas_matriz'][0]['R. Compresión (lb/in²)'], (string)$res['filas_matriz'][1]['R. Compresión (lb/in²)']);
     }
+
+    public function testCompactacionMayorACienQuedaTopeadaEnCien(): void {
+        require_once dirname(__DIR__, 2) . '/app/Helpers/funciones.php';
+
+        // 1. Recepción (normalizarYCompletarDatosRecepcionMuestra): 1500 / 1440 * 100 = 104.17 -> 100
+        $colsComp = [
+            ['nombre' => 'P.V.S Max (kg/m³)'],
+            ['nombre' => 'P.V.S.Sitio (kg/m³)'],
+            ['nombre' => 'Compactación ((%) (P/P))'],
+        ];
+        $resOver = normalizarYCompletarDatosRecepcionMuestra([
+            'P.V.S Max (kg/m³)' => '1440',
+            'P.V.S.Sitio (kg/m³)' => '1500',
+        ], $colsComp);
+        $this->assertSame('100', $resOver['Compactación ((%) (P/P))']);
+
+        // Debajo de 100 mantiene redondeo al entero más cercano (99.7 -> 100, 95.2 -> 95)
+        $res95 = normalizarYCompletarDatosRecepcionMuestra([
+            'P.V.S Max (kg/m³)' => '1440',
+            'P.V.S.Sitio (kg/m³)' => '1371',
+        ], $colsComp);
+        $this->assertSame('95', $res95['Compactación ((%) (P/P))']);
+
+        // 2. Motor HojaTecnicaMatrizServicio (densímetro): 1510 / 1440 * 100 = 104.86 -> 100
+        $rDens = HojaTecnicaMatrizServicio::recalcularDesdeCapturaTecnica('formato_de_densimetro_nuclear.md', [[
+            'codigo_lab' => 'MC-0004-26',
+            'pvs_max' => '1440',
+            'pvs_sitio' => '1510',
+            'humedad_sitio_pct' => '12.5',
+            'fecha_ensayo' => '2026-11-23',
+        ]], [['Código laboratorio' => 'MC-0004-26']]);
+        $this->assertSame('100', $rDens['captura_tecnica'][0]['compactacion_pct']);
+        $this->assertSame('100', $rDens['filas_matriz'][0]['Compactación ((%) (P/P))']);
+    }
 }

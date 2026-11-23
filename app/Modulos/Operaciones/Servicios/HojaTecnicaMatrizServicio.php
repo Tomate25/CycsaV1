@@ -1446,7 +1446,7 @@ class HojaTecnicaMatrizServicio {
                     }
                     $comp = null;
                     if ($pvsSitio !== null && $pvsMax !== null && $pvsMax > 0) {
-                        $comp = (int)round(($pvsSitio / $pvsMax) * 100.0);
+                        $comp = min(100, (int)round(($pvsSitio / $pvsMax) * 100.0));
                         $calc['compactacion_pct'] = (string)$comp;
                     }
                     if ($pvsSitio !== null || $hum !== null || $pvsMax !== null || $fEns !== '') {
@@ -1491,7 +1491,7 @@ class HojaTecnicaMatrizServicio {
                     }
                     $comp = null;
                     if ($pvsSitio !== null && $pvsMax !== null && $pvsMax > 0) {
-                        $comp = (int)round(($pvsSitio / $pvsMax) * 100.0);
+                        $comp = min(100, (int)round(($pvsSitio / $pvsMax) * 100.0));
                         $calc['compactacion_pct'] = (string)$comp;
                     }
                     if ($pvsSitio !== null || $hum !== null || $pvsMax !== null || $fEns !== '') {
@@ -1516,7 +1516,7 @@ class HojaTecnicaMatrizServicio {
                     $fEns = $fechaIso($row['fecha_ensayo'] ?? '');
                     $comp = null;
                     if ($pvsMax > 0 && $pvsSitio > 0) {
-                        $comp = (int)round(($pvsSitio / $pvsMax) * 100.0);
+                        $comp = min(100, (int)round(($pvsSitio / $pvsMax) * 100.0));
                         $calc['compactacion_pct'] = (string)$comp;
                         $tieneDatos = true;
                     }

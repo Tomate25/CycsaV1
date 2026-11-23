@@ -2396,7 +2396,7 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                 const max = parseFloat(pvsMaxInput.value) || 0;
                 const sitio = parseFloat(pvsSitioInput.value) || 0;
                 if (max > 0 && sitio > 0) {
-                    compInput.value = String(Math.round((sitio / max) * 100));
+                    compInput.value = String(Math.min(100, Math.round((sitio / max) * 100)));
                 } else if (isUserEdit) {
                     compInput.value = '';
                 }
@@ -3352,7 +3352,7 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                     setCalc(tr, 'pvs_sitio', pvs);
                 } else setCalc(tr, 'pvs_sitio', '');
                 if (!isNaN(pvs) && !isNaN(pvsMax) && pvsMax > 0) {
-                    comp = Math.round((pvs / pvsMax) * 100.0);
+                    comp = Math.min(100, Math.round((pvs / pvsMax) * 100.0));
                     setCalc(tr, 'compactacion_pct', String(comp));
                 } else setCalc(tr, 'compactacion_pct', '');
                 if (sincronizarConMatriz && trMat && (!isNaN(pvs) || !isNaN(hum) || fEns)) {
@@ -3367,7 +3367,7 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                 const pMax = htParseNum(row.pvs_max), pSit = htParseNum(row.pvs_sitio);
                 let comp = NaN;
                 if (!isNaN(pMax) && pMax > 0 && !isNaN(pSit) && pSit > 0) {
-                    comp = Math.round((pSit / pMax) * 100.0);
+                    comp = Math.min(100, Math.round((pSit / pMax) * 100.0));
                     setCalc(tr, 'compactacion_pct', String(comp));
                 } else setCalc(tr, 'compactacion_pct', '');
                 if (sincronizarConMatriz && trMat && (!isNaN(pSit) || !isNaN(pMax) || row.capa)) {

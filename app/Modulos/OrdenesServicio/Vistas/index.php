@@ -4405,7 +4405,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             const pMax = parseFloat(String(inpPvsMax.value || '').replace(',', '.'));
             const pSit = parseFloat(String(inpPvsSitio.value || '').replace(',', '.'));
             if (!isNaN(pMax) && pMax > 0 && !isNaN(pSit) && pSit > 0) {
-                inpComp.value = String(Math.round((pSit / pMax) * 100));
+                inpComp.value = String(Math.min(100, Math.round((pSit / pMax) * 100)));
             } else {
                 inpComp.value = '';
             }
