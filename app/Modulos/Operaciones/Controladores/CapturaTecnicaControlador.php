@@ -99,8 +99,11 @@ class CapturaTecnicaControlador extends ControladorBase {
                 $idDet = (int)($it['id'] ?? 0);
                 $rev = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
                 $est = (string)($rev['estado'] ?? 'pendiente');
-                $tieneRes = !empty($rev['tiene_resultados']);
-                if ($tieneRes) {
+                // Solo se considera capturada por el técnico cuando ya fue enviada a revisión o aprobada.
+                // Si está en 'borrador' (p. ej. pre-poblada con datos de Recepción) sigue pendiente en Captura Técnica.
+                $estaCapturadaTec = in_array($est, ['en_revision', 'aprobada'], true);
+                $tieneRes = $estaCapturadaTec;
+                if ($estaCapturadaTec) {
                     $llenadas++;
                 }
                 if ($est === 'aprobada') {
@@ -117,7 +120,7 @@ class CapturaTecnicaControlador extends ControladorBase {
                     if ($primerItemId === null) {
                         $primerItemId = $idDet;
                     }
-                    if (!$tieneRes && $primerPendienteId === null) {
+                    if (!$estaCapturadaTec && $primerPendienteId === null) {
                         $primerPendienteId = $idDet;
                     }
                 }
