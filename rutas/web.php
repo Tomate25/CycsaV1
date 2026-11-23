@@ -264,6 +264,7 @@ $app->enrutador->get('/laboratorio', [LaboratorioControlador::class, 'index'], [
 $app->enrutador->get('/laboratorio/muestras-datos-ajax', [LaboratorioControlador::class, 'muestrasAjax'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/detalle-muestra', [LaboratorioControlador::class, 'detalleMuestra'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/detalle-lote', [LaboratorioControlador::class, 'detalleLote'], [AuthMiddleware::class]);
+$app->enrutador->get('/laboratorio/ensayos-hoja', [LaboratorioControlador::class, 'detalleLote'], [AuthMiddleware::class]);
 $app->enrutador->post('/laboratorio/reidentificar', [LaboratorioControlador::class, 'reidentificarMuestra'], [AuthMiddleware::class]);
 $app->enrutador->get('/laboratorio/etiqueta-probeta', [LaboratorioControlador::class, 'imprimirEtiqueta'], [AuthMiddleware::class]);
 

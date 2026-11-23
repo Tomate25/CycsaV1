@@ -364,6 +364,12 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
     $sigAccionDetalle = 'Registre la hoja de solicitud de servicio para habilitar la recepción y las matrices.';
     $sigAccionHref = '/Cycsa/publico/ordenes-servicio?id_os=' . (int)$o['id'];
     $sigAccionOnclick = '';
+} elseif ($tieneHojaServicio && !$esSoloCompactacion && empty($o['recepcion_completa_os']) && empty($hojaPrincipalVer['recepcion_completa']) && $etapaFlujoVer === 'recepcion_borrador' && $matricesLlenadas === 0) {
+    $sigAccionTipo = 'link';
+    $sigAccionTexto = 'Completar datos de recepción';
+    $sigAccionDetalle = 'La hoja RT-FM-13 está en borrador. Complete los datos de recepción y marque Recepción Completa.';
+    $sigAccionHref = '/Cycsa/publico/ordenes-servicio?id_os=' . (int)$o['id'] . ($idHojaVer > 0 ? '&id_hoja=' . $idHojaVer : '');
+    $sigAccionOnclick = '';
 } elseif ($matricesEnRevision > 0 && $esSupervisor && ($primerItemRevisionId ?? $primerItemVerId) > 0) {
     $targetRev = $primerItemRevisionId ?? $primerItemVerId;
     $sigAccionTipo = 'link';

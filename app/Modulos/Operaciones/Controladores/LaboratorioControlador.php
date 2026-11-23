@@ -1799,7 +1799,29 @@ class LaboratorioControlador extends ControladorBase {
         $stmtLote->execute(['id_hoja' => $idHoja]);
         $muestrasBase = $stmtLote->fetchAll(PDO::FETCH_ASSOC);
 
+        if (empty($muestrasBase) && !empty($hoja)) {
+            $etapaHojaActual = (string)($hoja['etapa_flujo'] ?? 'recepcion_borrador');
+            $recCompActual = !empty($hoja['recepcion_completa']) || in_array($etapaHojaActual, ['recepcion_completa', 'en_ejecucion', 'tecnico_completo', 'matriz_en_revision', 'informe'], true);
+            if ($recCompActual) {
+                $opModSync = new OperacionModelo();
+                $opModSync->ingresarMuestrasHojaALaboratorio($idHoja);
+                $stmtLote->execute(['id_hoja' => $idHoja]);
+                $muestrasBase = $stmtLote->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+
         if (empty($muestrasBase)) {
+            $etapaHojaActual = (string)($hoja['etapa_flujo'] ?? 'recepcion_borrador');
+            $recCompActual = !empty($hoja['recepcion_completa']) || in_array($etapaHojaActual, ['recepcion_completa', 'en_ejecucion', 'tecnico_completo', 'matriz_en_revision', 'informe'], true);
+            if (!$recCompActual && $idOs > 0) {
+                $_SESSION['error'] = 'La recepción de la hoja aún está en borrador. Complete los datos de recepción y marque "Recepción Completa" para habilitar el lote en Laboratorio.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . $idOs . '&id_hoja=' . $idHoja);
+                return;
+            }
+            if ($idDetalle > 0) {
+                $respuesta->redirigir('/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $idDetalle);
+                return;
+            }
             $_SESSION['error'] = 'No se encontraron muestras recepcionadas en laboratorio para este lote.';
             $respuesta->redirigir('/Cycsa/publico/laboratorio?tab=bandeja');
             return;
