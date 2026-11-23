@@ -65,7 +65,7 @@ class PanelControlador extends ControladorBase {
                 'nombre' => 'Captura Técnica',
                 'link' => '/Cycsa/publico/captura-tecnica',
                 'icon' => 'fa-solid fa-pen-to-square',
-                'desc' => 'Ingreso exclusivo de mediciones técnicas de laboratorio (ISO/IEC 17025, sin datos de cliente ni recepción).',
+                'desc' => 'Captura de mediciones técnicas de ensayos de laboratorio.',
                 'color' => 'linear-gradient(135deg, #1F3864, #103487)',
             ];
         }

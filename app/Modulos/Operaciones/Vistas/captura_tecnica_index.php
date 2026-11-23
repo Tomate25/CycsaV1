@@ -64,7 +64,6 @@ $resolverPillEnsayoCT = static function (string $estado): array {
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
         <div>
             <h1 class="cy-page-title">Captura Técnica</h1>
-            <div class="cy-meta">Ingreso exclusivo de mediciones técnicas de laboratorio (ISO/IEC 17025 · Sin datos de cliente ni recepción)</div>
         </div>
 
         <div class="btn-group cy-seg" role="group" aria-label="Filtro de bandeja técnica">
@@ -120,7 +119,6 @@ $resolverPillEnsayoCT = static function (string $estado): array {
                     <tr id="ct-row-<?= $idOS ?>" class="fila-ct-os" data-detail-id="ct-detail-<?= $idOS ?>">
                         <td>
                             <div class="fw-semibold lims-os-code"><?= htmlspecialchars((string)$o['codigo_os'], ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="cy-meta">Identidad confidencial · ISO/IEC 17025</div>
                         </td>
                         <td>
                             <div class="fw-medium"><?= htmlspecialchars($resumenEns, ENT_QUOTES, 'UTF-8') ?></div>
@@ -223,7 +221,7 @@ $resolverPillEnsayoCT = static function (string $estado): array {
                 <h2 class="cy-order-code" id="ct-drawer-title">Orden</h2>
                 <button type="button" class="btn-close" onclick="cerrarDrawerCapturaTecnica()" aria-label="Cerrar"></button>
             </div>
-            <div class="cy-panel-meta-line">Captura Técnica · Identidad confidencial (ISO/IEC 17025)</div>
+            <div class="cy-panel-meta-line">Captura Técnica</div>
         </div>
     </div>
     <div class="offcanvas-body" id="ct-drawer-body"></div>

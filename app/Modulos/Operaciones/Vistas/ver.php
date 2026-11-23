@@ -346,7 +346,7 @@ $stepperPasos = (!empty($o['stepper_pasos']) && is_array($o['stepper_pasos']))
 $etapaPill = cycsaResolverEtapaPill($oCalc);
 
 if ($esTecnicoCiego) {
-    $panelMetaLine = 'Orden técnica · Identidad confidencial (ISO/IEC 17025)';
+    $panelMetaLine = 'Orden técnica';
 } else {
     $panelMetaPartes = array_filter([
         $cliInfNom,

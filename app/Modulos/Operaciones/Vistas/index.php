@@ -564,7 +564,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                             $cotCodigo = trim((string)($o['cot_codigo'] ?? ''));
 
                             if ($esTecnicoCiego) {
-                                $panelMetaLine = 'Orden técnica · Identidad confidencial (ISO/IEC 17025)';
+                                $panelMetaLine = 'Orden técnica';
                             } else {
                                 $panelMetaPartes = array_filter([
                                     $cliInfNom,
@@ -641,7 +641,6 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                             <td>
                                 <?php if ($esTecnicoCiego): ?>
                                     <div class="fw-medium"><?= htmlspecialchars($resumenEnsayosTec !== '' ? $resumenEnsayosTec : 'Ensayos de laboratorio', ENT_QUOTES, 'UTF-8') ?></div>
-                                    <div class="cy-meta" data-col="cliente-sub">Identidad confidencial (ISO/IEC 17025)</div>
                                 <?php else: ?>
                                     <div class="fw-medium"><?= htmlspecialchars($cliInfNom, ENT_QUOTES, 'UTF-8') ?></div>
                                     <div class="cy-meta" data-col="cliente-sub">
