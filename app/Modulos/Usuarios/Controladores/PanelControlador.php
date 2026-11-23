@@ -58,13 +58,24 @@ class PanelControlador extends ControladorBase {
                 'color' => 'linear-gradient(135deg, #059669, #047857)',
             ];
         }
-        // 2. Operaciones LIMS (Programación y Muestras)
-        if (tienePermiso('operaciones', 'ver')) {
+        // 2. Captura Técnica (Solo llenado técnico — 100% ciego ISO/IEC 17025)
+        $esTecCiegoPanel = function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025();
+        if (tienePermiso('operaciones', 'ver') || tienePermiso('operaciones', 'crear_editar') || tienePermiso('laboratorio', 'ver') || $esTecCiegoPanel) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Captura Técnica',
+                'link' => '/Cycsa/publico/captura-tecnica',
+                'icon' => 'fa-solid fa-pen-to-square',
+                'desc' => 'Ingreso exclusivo de mediciones técnicas de laboratorio (ISO/IEC 17025, sin datos de cliente ni recepción).',
+                'color' => 'linear-gradient(135deg, #1F3864, #103487)',
+            ];
+        }
+        // 2.1 Operaciones LIMS (Visualización de documentos completos, revisión y entrega)
+        if (tienePermiso('operaciones', 'ver') && !$esTecCiegoPanel) {
             $cajon_aplicaciones[] = [
                 'nombre' => 'Operaciones LIMS',
                 'link' => '/Cycsa/publico/operaciones',
                 'icon' => 'fa-solid fa-gears',
-                'desc' => 'Órdenes de servicio, asignación técnica y captura matricial.',
+                'desc' => 'Visualización de documentos oficiales RT-FM-22 completos, revisión de supervisión y entrega al cliente.',
                 'color' => 'linear-gradient(135deg, #0284c7, #0369a1)', // Celeste
             ];
         }

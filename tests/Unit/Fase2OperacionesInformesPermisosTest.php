@@ -362,6 +362,10 @@ class Fase2OperacionesInformesPermisosTest extends TestCase {
         $this->assertStringContainsString("'/captura-tecnica/llenar'", $rutasWeb);
         $this->assertStringContainsString("'/operaciones/documento'", $rutasWeb);
 
+        $panelCtrlSrc = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Usuarios/Controladores/PanelControlador.php');
+        $this->assertStringContainsString("'/Cycsa/publico/captura-tecnica'", $panelCtrlSrc);
+        $this->assertStringContainsString("'nombre' => 'Captura Técnica'", $panelCtrlSrc);
+
         // Si un técnico (rol 6) intenta entrar a /operaciones o /operaciones/documento, es redirigido a /captura-tecnica
         $_SESSION['usuario_rol'] = 6;
         $_SESSION['usuario_permisos'] = ['operaciones' => ['ver' => true, 'crear_editar' => true]];
