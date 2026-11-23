@@ -76,7 +76,8 @@ class OrdenesServicioControlador extends ControladorBase {
             'tabActiva' => $tabSolicitada,
             'conteosTabs' => $conteosTabs,
             'filtros' => $filtros,
-            'id_os_auto' => $idOSAuto
+            'id_os_auto' => $idOSAuto,
+            'csrfToken' => (string)($_SESSION['csrf_token'] ?? '')
         ]);
     }
 
@@ -749,7 +750,7 @@ class OrdenesServicioControlador extends ControladorBase {
         }
 
         $datos = $peticion->obtenerDatos();
-        $csrfToken = (string)($datos['csrf_token'] ?? '');
+        $csrfToken = trim((string)($datos['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
         if ($csrfToken === '' || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], $csrfToken)) {
             $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido o sesión expirada.'], 403);
             return;
@@ -890,7 +891,7 @@ class OrdenesServicioControlador extends ControladorBase {
         }
 
         $datos = $peticion->obtenerDatos();
-        $csrfToken = (string)($datos['csrf_token'] ?? '');
+        $csrfToken = trim((string)($datos['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
         if ($csrfToken === '' || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], $csrfToken)) {
             $respuesta->enviarJson(['status' => 'error', 'message' => 'Token CSRF inválido o sesión expirada.'], 403);
             return;

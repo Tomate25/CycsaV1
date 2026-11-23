@@ -1,5 +1,6 @@
 <?php
 // Vista principal - Listado Unificado de Órdenes de Servicio & Hojas de Recepción (CYCSA ERP Premium Style)
+$csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 ?>
 <link rel="stylesheet" href="/Cycsa/publico/css/rtfm13_fullscreen.css">
 <style>
@@ -1864,7 +1865,7 @@
         </div>
 
         <form id="formFm40BModal" style="flex:1; overflow-y:auto; padding:20px 24px; background:#f8fafc;">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken ?? '', ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? $csrfToken), ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="id_os" id="fm40b_id_os" value="">
 
             <div id="fm40b_loader" style="display:none; text-align:center; padding:36px 20px; color:#0369a1; font-weight:600;">
@@ -2070,7 +2071,7 @@
         </div>
 
         <form id="formPeriodoContratoModal" style="padding:20px 22px; background:#f8fafc;">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken ?? '', ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? $csrfToken), ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="id_os" id="pc_id_os" value="">
 
             <div id="pc_alerta_aprobada" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; border-radius:8px; padding:10px 12px; font-size:12px; font-weight:600; margin-bottom:14px;">
@@ -4519,7 +4520,10 @@
         const fd = new FormData(form);
         fd.append('accion_muestreo', accion);
 
-        const csrfVal = form.querySelector('input[name="csrf_token"]')?.value || '';
+        const csrfVal = form.querySelector('input[name="csrf_token"]')?.value || '<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? $csrfToken), ENT_QUOTES, 'UTF-8') ?>';
+        if (csrfVal && !fd.get('csrf_token')) {
+            fd.set('csrf_token', csrfVal);
+        }
         fetch('/Cycsa/publico/ordenes-servicio/guardar-fm40b', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfVal },
@@ -4711,7 +4715,10 @@
         if (fb) fb.innerHTML = '<span style="color:#3730a3;"><i class="fa-solid fa-spinner fa-spin me-1"></i> Guardando período...</span>';
 
         const fd = new FormData(form);
-        const csrfVal = form.querySelector('input[name="csrf_token"]')?.value || '';
+        const csrfVal = form.querySelector('input[name="csrf_token"]')?.value || '<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? $csrfToken), ENT_QUOTES, 'UTF-8') ?>';
+        if (csrfVal && !fd.get('csrf_token')) {
+            fd.set('csrf_token', csrfVal);
+        }
         fetch('/Cycsa/publico/ordenes-servicio/guardar-periodo-contrato', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfVal },

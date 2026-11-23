@@ -236,4 +236,49 @@ class OrdenesServicioPeriodoContratoLargoTest extends TestCase {
 
         $this->assertSame('error', $res['status'] ?? null);
     }
+
+    public function testVistaOrdenesServicioIncluyeCsrfValidoEnModalPeriodoMensualYHeaderFallback(): void {
+        $_SESSION['csrf_token'] = 'token_prueba_mensual_xyz_999';
+        $ordenes = [];
+        $tecnicos = [];
+        $vehiculos = [];
+        $busqueda = '';
+        $tabActiva = 'activas';
+        $conteosTabs = ['activas' => 0, 'muestreo' => 0, 'historico' => 0, 'todas' => 0];
+        $filtros = ['estado' => '', 'desde' => '', 'hasta' => ''];
+        $id_os_auto = 0;
+
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/OrdenesServicio/Vistas/index.php';
+        $html = (string)ob_get_clean();
+
+        $this->assertMatchesRegularExpression(
+            '/id="formPeriodoContratoModal"[\s\S]{0,250}name="csrf_token"\s+value="token_prueba_mensual_xyz_999"/',
+            $html,
+            'El formulario modal de Período Mensual debe incluir el token CSRF real de sesión (no vacío).'
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="formFm40BModal"[\s\S]{0,250}name="csrf_token"\s+value="token_prueba_mensual_xyz_999"/',
+            $html,
+            'El formulario modal de FM-40 B debe incluir el token CSRF real de sesión (no vacío).'
+        );
+
+        // También aceptar header X-CSRF-TOKEN si el body no trae csrf_token
+        $ctrl = new OrdenesServicioControlador();
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['HTTP_X_CSRF_TOKEN'] = 'token_prueba_mensual_xyz_999';
+        $_POST = [
+            'id_os' => $this->idOSPrueba,
+            'es_multimes' => '1',
+            'duracion_meses' => '6',
+            'fecha_inicio' => '2026-11-16',
+            'periodicidad' => 'Mensual',
+        ];
+        ob_start();
+        $ctrl->guardarPeriodoContratoAjax(new Peticion(), new Respuesta());
+        $res = json_decode(ob_get_clean(), true);
+        unset($_SERVER['HTTP_X_CSRF_TOKEN']);
+
+        $this->assertSame('success', $res['status'] ?? null);
+    }
 }
