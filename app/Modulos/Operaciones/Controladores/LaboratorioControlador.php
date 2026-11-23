@@ -2106,6 +2106,8 @@ class LaboratorioControlador extends ControladorBase {
         $sinLogo = !empty($_GET['sin_logo']);
 
         $informeData = null;
+        $codigoMuestraInf = '';
+        $idOsInf = 0;
         if ($informeId > 0) {
             $stmtInf = $db->prepare("
                 SELECT ir.*, rm.id_hoja, rm.id_os, rm.codigo_muestra, rm.codigo_campo, hs.id_detalle_cotizacion,
@@ -2122,12 +2124,17 @@ class LaboratorioControlador extends ControladorBase {
             $informeData = $stmtInf->fetch(PDO::FETCH_ASSOC);
 
             if ($informeData) {
+                if ($muestraId <= 0 && !empty($informeData['muestra_id'])) {
+                    $muestraId = (int)$informeData['muestra_id'];
+                }
                 if ($idHoja <= 0 && !empty($informeData['id_hoja'])) {
                     $idHoja = (int)$informeData['id_hoja'];
                 }
                 if ($idDetalle <= 0 && !empty($informeData['id_detalle_cotizacion'])) {
                     $idDetalle = (int)$informeData['id_detalle_cotizacion'];
                 }
+                $codigoMuestraInf = trim((string)($informeData['codigo_muestra'] ?? ''));
+                $idOsInf = (int)($informeData['id_os'] ?? 0);
             }
         }
 
@@ -2143,9 +2150,9 @@ class LaboratorioControlador extends ControladorBase {
             }
         }
 
-        if ($idHoja <= 0 && $muestraId > 0) {
+        if (($idHoja <= 0 || $codigoMuestraInf === '' || $idOsInf <= 0) && $muestraId > 0) {
             $stmtM = $db->prepare("
-                SELECT rm.id_hoja, hs.id_detalle_cotizacion 
+                SELECT rm.id_hoja, rm.id_os, rm.codigo_muestra, hs.id_detalle_cotizacion
                 FROM recepcion_muestras rm
                 LEFT JOIN hojas_solicitud hs ON rm.id_hoja = hs.id
                 WHERE rm.id = :id
@@ -2153,7 +2160,15 @@ class LaboratorioControlador extends ControladorBase {
             $stmtM->execute(['id' => $muestraId]);
             $mRow = $stmtM->fetch(PDO::FETCH_ASSOC);
             if ($mRow) {
-                $idHoja = (int)($mRow['id_hoja'] ?? 0);
+                if ($idHoja <= 0) {
+                    $idHoja = (int)($mRow['id_hoja'] ?? 0);
+                }
+                if ($idOsInf <= 0) {
+                    $idOsInf = (int)($mRow['id_os'] ?? 0);
+                }
+                if ($codigoMuestraInf === '') {
+                    $codigoMuestraInf = trim((string)($mRow['codigo_muestra'] ?? ''));
+                }
                 if ($idDetalle <= 0) {
                     $idDetalle = (int)($mRow['id_detalle_cotizacion'] ?? 0);
                 }
@@ -2166,6 +2181,104 @@ class LaboratorioControlador extends ControladorBase {
             $hRow = $stmtH->fetch(PDO::FETCH_ASSOC);
             if ($hRow) {
                 $idDetalle = (int)($hRow['id_detalle_cotizacion'] ?? 0);
+                if ($idOsInf <= 0) {
+                    $idOsInf = (int)($hRow['id_os'] ?? 0);
+                }
+            }
+        }
+
+        // Soporte hojas RT-FM-13 multi-producto (hojas_solicitud.id_detalle_cotizacion = NULL):
+        // resolver id_detalle_cotizacion desde hojas_solicitud_detalles por código de muestra o primer ensayo de lab físico.
+        if ($idDetalle <= 0 && $idHoja > 0) {
+            try {
+                if ($codigoMuestraInf !== '') {
+                    $codBaseInf = preg_replace('/-\d+$/', '', $codigoMuestraInf);
+                    $codSinCrInf = preg_replace('/-CR$/i', '', $codBaseInf);
+                    $stmtHsdInf = $db->prepare("
+                        SELECT id_detalle_cotizacion
+                        FROM hojas_solicitud_detalles
+                        WHERE id_hoja_solicitud = :hid
+                          AND (codigo_muestra = :cod OR codigo_muestra = :cod_base OR codigo_muestra = :cod_sincr)
+                          AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0
+                        ORDER BY orden ASC, id ASC LIMIT 1
+                    ");
+                    $stmtHsdInf->execute([
+                        'hid' => $idHoja,
+                        'cod' => $codigoMuestraInf,
+                        'cod_base' => $codBaseInf,
+                        'cod_sincr' => $codSinCrInf,
+                    ]);
+                    $idDetalle = (int)$stmtHsdInf->fetchColumn();
+                }
+
+                if ($idDetalle <= 0) {
+                    $stmtHsdAll = $db->prepare("
+                        SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm,
+                               p.nombre_comercial, p.codigo_servicio AS prod_codigo_servicio, p.norma_astm AS prod_norma_astm
+                        FROM hojas_solicitud_detalles hsd
+                        JOIN cotizacion_detalles cd ON cd.id = hsd.id_detalle_cotizacion
+                        LEFT JOIN productos p ON p.id = cd.id_producto
+                        WHERE hsd.id_hoja_solicitud = :hid
+                          AND hsd.id_detalle_cotizacion IS NOT NULL AND hsd.id_detalle_cotizacion > 0
+                        GROUP BY cd.id
+                        ORDER BY MIN(hsd.orden) ASC, MIN(hsd.id) ASC
+                    ");
+                    $stmtHsdAll->execute(['hid' => $idHoja]);
+                    $candRows = $stmtHsdAll->fetchAll(PDO::FETCH_ASSOC);
+                    foreach ($candRows as $cand) {
+                        $esCompCand = function_exists('esProductoCompactacionCampo') && esProductoCompactacionCampo($cand);
+                        if ($idDetalle <= 0) {
+                            $idDetalle = (int)$cand['id'];
+                        }
+                        if (!$esCompCand) {
+                            $idDetalle = (int)$cand['id'];
+                            break;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if ($idDetalle <= 0 && $muestraId > 0) {
+            try {
+                $stmtEeInf = $db->prepare("
+                    SELECT ee.id_detalle_cotizacion
+                    FROM ensayo_edades ee
+                    JOIN lotes_muestras lm ON lm.id = ee.id_lote
+                    WHERE lm.id_recepcion = :mid AND ee.id_detalle_cotizacion IS NOT NULL AND ee.id_detalle_cotizacion > 0
+                    ORDER BY ee.id ASC LIMIT 1
+                ");
+                $stmtEeInf->execute(['mid' => $muestraId]);
+                $idDetalle = (int)$stmtEeInf->fetchColumn();
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if ($idDetalle <= 0 && $idOsInf > 0) {
+            try {
+                $stmtOsDetInf = $db->prepare("
+                    SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm,
+                           p.nombre_comercial, p.codigo_servicio AS prod_codigo_servicio, p.norma_astm AS prod_norma_astm
+                    FROM cotizacion_detalles cd
+                    JOIN ordenes_servicio os ON os.id_cotizacion = cd.id_cotizacion
+                    LEFT JOIN productos p ON p.id = cd.id_producto
+                    WHERE os.id = :id_os
+                    ORDER BY cd.id ASC
+                ");
+                $stmtOsDetInf->execute(['id_os' => $idOsInf]);
+                $candOsRows = $stmtOsDetInf->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($candOsRows as $candOs) {
+                    $esCompOs = function_exists('esProductoCompactacionCampo') && esProductoCompactacionCampo($candOs);
+                    if ($idDetalle <= 0) {
+                        $idDetalle = (int)$candOs['id'];
+                    }
+                    if (!$esCompOs) {
+                        $idDetalle = (int)$candOs['id'];
+                        break;
+                    }
+                }
+            } catch (\Throwable $e) {
             }
         }
 
@@ -2515,6 +2628,11 @@ class LaboratorioControlador extends ControladorBase {
 
                 $decResultados['filas'] = $filasFiltradas;
                 $detalle['resultados_json'] = json_encode($decResultados, JSON_UNESCAPED_UNICODE);
+                $muestrasSeteadas = array_values(array_filter($muestrasSeteadas, static function (array $ms) use ($codigosPermitidos): bool {
+                    $c = strtoupper(trim((string)($ms['codigo_lab'] ?? '')));
+                    $cBase = preg_replace('/-C\d+$/i', '', $c);
+                    return $c !== '' && (isset($codigosPermitidos[$c]) || isset($codigosPermitidos[$cBase]));
+                }));
             }
         }
 
@@ -2553,7 +2671,16 @@ class LaboratorioControlador extends ControladorBase {
         }
 
         try {
-            if ($idHojaResolv > 0) {
+            if ($esParcialOFiltrado) {
+                if (!empty($roturasFiltradas)) {
+                    foreach ($roturasFiltradas as $rfFec) {
+                        $fRotCand = $normalizarFechaYmd((string)($rfFec['fecha_real'] ?? ''));
+                        if ($fRotCand !== '' && ($maxFechaEjecucion === '' || $fRotCand > $maxFechaEjecucion)) {
+                            $maxFechaEjecucion = $fRotCand;
+                        }
+                    }
+                }
+            } elseif ($idHojaResolv > 0) {
                 $stmtMaxRot = $db->prepare("
                     SELECT MAX(DATE(rot.fecha_real))
                     FROM roturas rot

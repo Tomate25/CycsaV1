@@ -768,4 +768,154 @@ class LabLotesYReplicasSyncTest extends TestCase
         $decFinal = json_decode((string)$rawFinal, true);
         $this->assertEquals(45000, $decFinal['filas'][0]['Carga (lb)'] ?? null);
     }
+
+    /**
+     * Test 8 (Regresión verInforme parcial vs consolidado en hoja multi-producto):
+     * Con hojas_solicitud.id_detalle_cotizacion = NULL, verInforme(?id=parcial) resuelve la partida desde
+     * hojas_solicitud_detalles y muestra ÚNICAMENTE esa muestra; verInforme(?id=consolidado) muestra TODAS las muestras.
+     */
+    public function testVerInformeParcialSoloUnaMuestraYConsolidadoTodasEnHojaMultiproducto(): void
+    {
+        $fx = $this->crearFixtureConcretoLote();
+
+        // Hoja multi-producto: hojas_solicitud.id_detalle_cotizacion = NULL
+        $this->db->prepare("UPDATE hojas_solicitud SET id_detalle_cotizacion = NULL WHERE id = ?")
+                 ->execute([$fx['id_hoja']]);
+
+        $opModelo = new OperacionModelo();
+        $opModelo->registrarRecepcion([
+            'id_os' => $fx['id_os'],
+            'id_hoja' => $fx['id_hoja'],
+            'id_detalle_cotizacion' => $fx['id_detalle'],
+            'plantilla_id' => $fx['plantilla_id'],
+            'tipo_muestra' => 'Laboratorio',
+            'fecha_recepcion' => date('Y-m-d H:i:s'),
+            'recibido_por' => $fx['id_usuario'],
+            'entregado_por' => 'Cliente Test',
+            'observaciones' => 'Ingreso Multi-producto Parcial vs Consolidado',
+            'muestras_recibidas_json' => json_encode([
+                [
+                    'id_detalle_cotizacion' => $fx['id_detalle'],
+                    'plantilla_id' => $fx['plantilla_id'],
+                    'orden_en_lote' => 1,
+                    'tipo_muestra' => 'Laboratorio',
+                    'id_cilindro' => 'PAR-C1',
+                    'codigo_campo' => 'PAR-C1',
+                    'nombre_lote' => 'Cilindro Parcial 1',
+                    'fecha_moldeo' => '2026-11-10',
+                ],
+                [
+                    'id_detalle_cotizacion' => $fx['id_detalle'],
+                    'plantilla_id' => $fx['plantilla_id'],
+                    'orden_en_lote' => 2,
+                    'tipo_muestra' => 'Laboratorio',
+                    'id_cilindro' => 'PAR-C2',
+                    'codigo_campo' => 'PAR-C2',
+                    'nombre_lote' => 'Cilindro Parcial 2',
+                    'fecha_moldeo' => '2026-11-10',
+                ],
+            ]),
+        ]);
+
+        $stmtM = $this->db->prepare("SELECT id, codigo_muestra FROM recepcion_muestras WHERE id_hoja = :id_hoja ORDER BY id ASC");
+        $stmtM->execute(['id_hoja' => $fx['id_hoja']]);
+        $muestras = $stmtM->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertCount(2, $muestras);
+        $this->idsCreados['recepcion_muestras'] = array_map('intval', array_column($muestras, 'id'));
+        $cod1 = (string)$muestras[0]['codigo_muestra'];
+        $cod2 = (string)$muestras[1]['codigo_muestra'];
+        $mid1 = (int)$muestras[0]['id'];
+        $mid2 = (int)$muestras[1]['id'];
+
+        // Vincular ambas muestras en hojas_solicitud_detalles
+        $stmtInsHsd = $this->db->prepare("
+            INSERT INTO hojas_solicitud_detalles (id_hoja_solicitud, orden, codigo_muestra, descripcion_ubicacion, id_detalle_cotizacion, ensayo_id, plantilla_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmtInsHsd->execute([$fx['id_hoja'], 1, $cod1, 'Cilindro Parcial 1', $fx['id_detalle'], $fx['id_producto'], $fx['plantilla_id']]);
+        $stmtInsHsd->execute([$fx['id_hoja'], 2, $cod2, 'Cilindro Parcial 2', $fx['id_detalle'], $fx['id_producto'], $fx['plantilla_id']]);
+
+        $filasMatriz = [
+            [
+                'Código laboratorio' => $cod1,
+                'Nombre muestra' => 'Cilindro Parcial 1',
+                'Área (in²)' => '12.44',
+                'Carga (lb)' => '46500',
+                'R. Compresión (lb/in²)' => '3740',
+                'R. Compresión (kg/cm²)' => '263',
+                'Fecha de Fabricación' => '2026-11-10',
+                'Fecha de Ensayo' => '2026-11-17',
+                'Edad (Días)' => '7',
+            ],
+            [
+                'Código laboratorio' => $cod2,
+                'Nombre muestra' => 'Cilindro Parcial 2',
+                'Área (in²)' => '12.44',
+                'Carga (lb)' => '51800',
+                'R. Compresión (lb/in²)' => '4160',
+                'R. Compresión (kg/cm²)' => '292',
+                'Fecha de Fabricación' => '2026-11-10',
+                'Fecha de Ensayo' => '2026-11-24',
+                'Edad (Días)' => '14',
+            ],
+        ];
+        $this->db->prepare("UPDATE cotizacion_detalles SET resultados_json = :rj WHERE id = :id")
+                 ->execute(['rj' => json_encode(['filas' => $filasMatriz], JSON_UNESCAPED_UNICODE), 'id' => $fx['id_detalle']]);
+
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['crear_editar' => 1, 'ver' => 1]];
+
+        // Sincronizar roturas de ambas muestras en BD
+        sincronizarReplicasMatrizConLab($this->db, $fx['id_os'], $fx['id_hoja'], $fx['id_detalle'], $filasMatriz);
+
+        $planEdad1 = (int)$this->db->query("SELECT pre.id FROM plan_rotura_edades pre JOIN planes_rotura pr ON pre.plan_rotura_id = pr.id WHERE pr.muestra_id = {$mid1} LIMIT 1")->fetchColumn();
+        $this->assertGreaterThan(0, $planEdad1);
+
+        // Crear informe PARCIAL para muestra 1 y CONSOLIDADO para el lote
+        $uniqNum = substr(uniqid(), -5);
+        $this->db->prepare("
+            INSERT INTO informes_rotura (tipo, muestra_id, plan_edad_id, numero, version, estado)
+            VALUES ('parcial', ?, ?, ?, 1, 'en_revision')
+        ")->execute([$mid1, $planEdad1, 'INF-PAR-' . $uniqNum]);
+        $infParcialId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("
+            INSERT INTO informes_rotura (tipo, muestra_id, plan_edad_id, numero, version, estado)
+            VALUES ('consolidado', ?, NULL, ?, 1, 'aprobado')
+        ")->execute([$mid1, 'INF-CON-' . $uniqNum]);
+        $infConsolId = (int)$this->db->lastInsertId();
+
+        $ctrl = new LaboratorioControlador();
+        $respStub = new class extends Respuesta {
+            public ?string $redirectUrl = null;
+            public function redirigir(string $url): void { $this->redirectUrl = $url; }
+        };
+
+        // 1) Ver informe PARCIAL: sin error/redirect, SOLO muestra 1 (cod1), NO muestra 2 (cod2)
+        unset($_SESSION['error']);
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_GET = ['id' => $infParcialId];
+        ob_start();
+        $ctrl->verInforme(new Peticion(), $respStub);
+        $htmlParcial = (string)ob_get_clean();
+
+        $this->assertNull($respStub->redirectUrl, 'No debe redirigir con error al ver informe parcial: ' . ($_SESSION['error'] ?? ''));
+        $this->assertStringContainsString('INFORME PARCIAL DE ENSAYO', $htmlParcial);
+        $this->assertStringContainsString($cod1, $htmlParcial);
+        $this->assertStringNotContainsString($cod2, $htmlParcial, 'El informe parcial debe mostrar únicamente la muestra de ese informe parcial.');
+
+        // 2) Ver informe CONSOLIDADO: sin error/redirect, incluye TODAS las muestras (cod1 Y cod2)
+        unset($_SESSION['error']);
+        $respStub->redirectUrl = null;
+        $_GET = ['id' => $infConsolId];
+        ob_start();
+        $ctrl->verInforme(new Peticion(), $respStub);
+        $htmlConsol = (string)ob_get_clean();
+
+        $this->assertNull($respStub->redirectUrl, 'No debe redirigir con error al ver informe consolidado: ' . ($_SESSION['error'] ?? ''));
+        $this->assertStringContainsString('INFORME CONSOLIDADO DE ENSAYO', $htmlConsol);
+        $this->assertStringContainsString($cod1, $htmlConsol);
+        $this->assertStringContainsString($cod2, $htmlConsol, 'El informe consolidado debe incluir todas las muestras del lote.');
+    }
 }
