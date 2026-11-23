@@ -464,10 +464,10 @@ if (!empty($codigoInformePersonalizado)) {
             font-family: monospace;
         }
 
-        /* Disclaimer y Notas Oficiales del Formato (ISO 17025) */
+        /* Disclaimer y Notas Oficiales del Formato (ISO 17025) — debajo de la matriz */
         .bloque-normativo-formato {
-            margin-top: 3px;
-            margin-bottom: 3px;
+            margin-top: 6px;
+            margin-bottom: 4px;
             font-size: 7.2px;
             line-height: 1.25;
             color: #000000;
@@ -817,21 +817,6 @@ if (!empty($codigoInformePersonalizado)) {
     if ($notaAditivos !== '' && ($ubicacionAditivos === 'pie' || $ubicacionAditivos === 'ambos')) {
         $notasOficiales[] = 'Nota de Aditivos: ' . $notaAditivos;
     }
-                    ?>
-                    <!-- DISCLAIMER Y NOTAS OFICIALES DEL FORMATO ARRIBA DE LA TABLA (ISO/IEC 17025) -->
-                    <div class="bloque-normativo-formato">
-                        <div class="disclaimer-formato">
-                            <?= htmlspecialchars($disclaimerOficial) ?>
-                        </div>
-                        <?php if (!empty($notasOficiales)): ?>
-                            <div class="notas-formato">
-                                <?php foreach ($notasOficiales as $nota): ?>
-                                    <div class="nota-item"><?= htmlspecialchars($nota) ?></div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                    <?php
     $defaultColMethods = [
         'P.V.S Max (kg/m³)' => 'ASTM D698 / D1557',
         'P.V.S. Máx (kg/m³)' => 'ASTM D698 / D1557',
@@ -938,6 +923,20 @@ if (!empty($codigoInformePersonalizado)) {
                             <?php endif; ?>
                         </tbody>
                     </table>
+
+                    <!-- DISCLAIMER Y NOTAS OFICIALES DEL FORMATO DEBAJO DE LA TABLA (ISO/IEC 17025) -->
+                    <div class="bloque-normativo-formato">
+                        <div class="disclaimer-formato">
+                            <?= htmlspecialchars($disclaimerOficial) ?>
+                        </div>
+                        <?php if (!empty($notasOficiales)): ?>
+                            <div class="notas-formato">
+                                <?php foreach ($notasOficiales as $nota): ?>
+                                    <div class="nota-item"><?= htmlspecialchars($nota) ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 

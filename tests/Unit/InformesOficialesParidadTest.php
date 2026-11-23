@@ -470,12 +470,17 @@ class InformesOficialesParidadTest extends TestCase {
         $this->assertStringContainsString("disclaimer_personalizado", $printView);
         $this->assertStringContainsString("notas_informe_personalizadas", $printView);
 
-        // En impresión (matriz_print.php) las notas/disclaimer también van ARRIBA de la tabla y sin subtítulo/norma técnica en cabecera
+        // En impresión (matriz_print.php) y PDF (generarMatrizTecnicaPDF) las notas/disclaimer van DEBAJO de la tabla y sin subtítulo/norma técnica en cabecera
         $posBloqueNormPrint = strpos($printView, 'class="bloque-normativo-formato"');
         $posTablaPrint = strpos($printView, 'class="tabla-matriz-print"');
         $this->assertNotFalse($posBloqueNormPrint);
         $this->assertNotFalse($posTablaPrint);
-        $this->assertLessThan($posTablaPrint, $posBloqueNormPrint, 'En matriz_print.php las notas y cláusula deben aparecer ARRIBA de la tabla.');
+        $this->assertGreaterThan($posTablaPrint, $posBloqueNormPrint, 'En matriz_print.php las notas y cláusula deben aparecer DEBAJO de la tabla.');
+        $funcionesSrc = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Helpers/funciones.php');
+        $posTablaPdfHtml = strpos($funcionesSrc, '<table class="matriz-tbl">');
+        $posBloquePdfHtml = strpos($funcionesSrc, '<div class="bloque-normativo"', (int)$posTablaPdfHtml);
+        $this->assertNotFalse($posTablaPdfHtml);
+        $this->assertNotFalse($posBloquePdfHtml, 'En generarMatrizTecnicaPDF el bloque de notas/disclaimer debe aparecer DEBAJO de la tabla matriz-tbl.');
         $this->assertStringNotContainsString('Orden de Servicio: <strong', $printView);
         $this->assertStringNotContainsString('Norma técnica:', $printView);
         $this->assertStringContainsString('class="zona-firmas-pie"', $printView);

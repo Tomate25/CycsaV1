@@ -3567,15 +3567,15 @@ FIRMAS;
         {$aditivosCabeceraHtml}
     </table>
 
-    <div class="bloque-normativo">
-        <div class="disclaimer-normativo">{$disclaimerEsc}</div>
-        {$notasHtml}
-    </div>
-
     <table class="matriz-tbl">
         <thead>{$theadHtml}</thead>
         <tbody>{$tbodyTrs}</tbody>
     </table>
+
+    <div class="bloque-normativo" style="margin-top: 5px; margin-bottom: 4px;">
+        <div class="disclaimer-normativo">{$disclaimerEsc}</div>
+        {$notasHtml}
+    </div>
 
     {$obsPendientesHtml}
 
