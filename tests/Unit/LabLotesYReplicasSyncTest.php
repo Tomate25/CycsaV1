@@ -522,4 +522,140 @@ class LabLotesYReplicasSyncTest extends TestCase
         $this->assertLessThan($pos2, $pos1);
         $this->assertLessThan($pos3, $pos2);
     }
+
+    /**
+     * Test 6: Cuando Captura Técnica / Matriz ya registró D1, D2, L1, L2, Masa, Carga y Resistencia,
+     * sincronizarReplicasMatrizConLab crea/actualiza la rotura en Laboratorio automáticamente, marca el
+     * espécimen como 'ensayado' y detalleLote muestra PSI/Carga/Área/Tamaño sin mostrar botón "Romper" duplicado.
+     */
+    public function testCapturaTecnicaMatrizSincronizaRoturaAutomaticaEnLaboratorioSinDuplicarModal(): void
+    {
+        $fx = $this->crearFixtureConcretoLote();
+
+        $opModelo = new OperacionModelo();
+        $opModelo->registrarRecepcion([
+            'id_os' => $fx['id_os'],
+            'id_hoja' => $fx['id_hoja'],
+            'id_detalle_cotizacion' => $fx['id_detalle'],
+            'plantilla_id' => $fx['plantilla_id'],
+            'tipo_muestra' => 'Laboratorio',
+            'fecha_recepcion' => date('Y-m-d H:i:s'),
+            'recibido_por' => $fx['id_usuario'],
+            'entregado_por' => 'Cliente Test',
+            'observaciones' => 'Ingreso Lote C39 AutoSync',
+            'muestras_recibidas_json' => json_encode([
+                [
+                    'id_detalle_cotizacion' => $fx['id_detalle'],
+                    'plantilla_id' => $fx['plantilla_id'],
+                    'orden_en_lote' => 1,
+                    'tipo_muestra' => 'Laboratorio',
+                    'id_cilindro' => 'C39-S1',
+                    'codigo_campo' => 'C39-S1',
+                    'nombre_lote' => 'Cilindro Sync 1',
+                    'fecha_moldeo' => '2026-11-10',
+                ],
+                [
+                    'id_detalle_cotizacion' => $fx['id_detalle'],
+                    'plantilla_id' => $fx['plantilla_id'],
+                    'orden_en_lote' => 2,
+                    'tipo_muestra' => 'Laboratorio',
+                    'id_cilindro' => 'C39-S2',
+                    'codigo_campo' => 'C39-S2',
+                    'nombre_lote' => 'Cilindro Sync 2',
+                    'fecha_moldeo' => '2026-11-10',
+                ],
+            ]),
+        ]);
+
+        $stmtM = $this->db->prepare("SELECT id, codigo_muestra FROM recepcion_muestras WHERE id_hoja = :id_hoja ORDER BY id ASC");
+        $stmtM->execute(['id_hoja' => $fx['id_hoja']]);
+        $muestrasOrig = $stmtM->fetchAll(PDO::FETCH_ASSOC);
+        $this->idsCreados['recepcion_muestras'] = array_map('intval', array_column($muestrasOrig, 'id'));
+
+        $cod1 = $muestrasOrig[0]['codigo_muestra'];
+        $cod2 = $muestrasOrig[1]['codigo_muestra'];
+
+        $filasMatriz = [
+            [
+                'Código laboratorio' => $cod1,
+                'Temp. (°C)' => '25.5',
+                'Área (in²)' => '12.42',
+                'Carga (lb)' => '44840',
+                'Peso Volumétrico (kg/m³)' => '2420',
+                'R. Compresión (lb/in²)' => '3610',
+                'R. Compresión (kg/cm²)' => '254',
+                'Fecha de Fabricación' => '2026-11-10',
+                'Fecha de Ensayo' => '2026-11-17',
+                'Edad (Días)' => '7',
+            ],
+            [
+                'Código laboratorio' => $cod2,
+                'Temp. (°C)' => '25.5',
+                'Fecha de Fabricación' => '2026-11-10',
+                'Fecha de Ensayo' => '2026-11-24',
+                'Edad (Días)' => '14',
+            ],
+        ];
+        $capturaTecnica = [
+            [
+                'codigo_lab' => $cod1,
+                'diametro_1' => '10.10',
+                'diametro_2' => '10.10',
+                'largo_1' => '20.20',
+                'largo_2' => '20.20',
+                'masa_kg' => '3.920',
+                'carga_lb' => '44840',
+                'area_in2' => '12.42',
+                'esfuerzo_psi' => '3610',
+                'esfuerzo_kgcm2' => '254',
+                'tipo_falla' => 'Tipo 1 (Cono bien formado)',
+                'fecha_ensayo' => '2026-11-17T09:15',
+            ],
+        ];
+
+        $this->db->prepare("UPDATE cotizacion_detalles SET resultados_json = :rj WHERE id = :id")
+                 ->execute([
+                     'rj' => json_encode(['filas' => $filasMatriz, 'captura_tecnica' => $capturaTecnica], JSON_UNESCAPED_UNICODE),
+                     'id' => $fx['id_detalle'],
+                 ]);
+
+        $_SESSION['usuario_id'] = $fx['id_usuario'];
+        $_SESSION['usuario_rol'] = 1;
+        $_SESSION['usuario_permisos'] = ['laboratorio' => ['crear_editar' => 1, 'ver' => 1]];
+
+        sincronizarReplicasMatrizConLab($this->db, $fx['id_os'], $fx['id_hoja'], $fx['id_detalle'], $filasMatriz, $capturaTecnica);
+
+        // 1. Espécimen 1 debe quedar automáticamente en estado 'ensayado' con rotura en BD; Espécimen 2 sigue 'programado'
+        $stmtEsp1 = $this->db->prepare("SELECT estado, dimensiones FROM especimenes WHERE muestra_id = :mid LIMIT 1");
+        $stmtEsp1->execute(['mid' => (int)$muestrasOrig[0]['id']]);
+        $esp1 = $stmtEsp1->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame('ensayado', $esp1['estado'] ?? null);
+        $this->assertSame('4x8 in (10x20 cm)', $esp1['dimensiones'] ?? null);
+
+        $stmtRot1 = $this->db->prepare("SELECT carga, esfuerzo_psi, esfuerzo_kgcm2, tipo_falla FROM roturas r JOIN especimenes e ON r.especimen_id = e.id WHERE e.muestra_id = :mid LIMIT 1");
+        $stmtRot1->execute(['mid' => (int)$muestrasOrig[0]['id']]);
+        $rot1 = $stmtRot1->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotFalse($rot1);
+        $this->assertEqualsWithDelta(44840.0, (float)$rot1['carga'], 0.1);
+        $this->assertEqualsWithDelta(3610.0, (float)$rot1['esfuerzo_psi'], 1.0);
+        $this->assertStringContainsString('Tipo 1', (string)$rot1['tipo_falla']);
+
+        $stmtEsp2 = $this->db->prepare("SELECT estado FROM especimenes WHERE muestra_id = :mid LIMIT 1");
+        $stmtEsp2->execute(['mid' => (int)$muestrasOrig[1]['id']]);
+        $this->assertSame('programado', $stmtEsp2->fetchColumn());
+
+        // 2. Renderizar detalleLote: muestra 1 sale como Ensayado con 3,610 PSI y 44,840 lb; muestra 2 sí conserva botón Romper
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_GET = ['id_hoja' => $fx['id_hoja']];
+        $ctrl = new LaboratorioControlador();
+        ob_start();
+        $ctrl->detalleLote(new Peticion(), new Respuesta());
+        $html = (string)ob_get_clean();
+
+        $this->assertStringContainsString('3,610 PSI', $html);
+        $this->assertStringContainsString('44,840 lb', $html);
+        $this->assertStringContainsString('4x8 in (10x20 cm)', $html);
+        $this->assertStringNotContainsString("abrirModalRegistrarRoturaLote(" . (int)$muestrasOrig[0]['id'] . ",", $html, 'Muestra ya capturada en matriz no debe pedir Romper de nuevo');
+        $this->assertStringContainsString("abrirModalRegistrarRoturaLote(" . (int)$muestrasOrig[1]['id'] . ",", $html, 'Muestra aún pendiente de rotura sí debe permitir Romper en Laboratorio');
+    }
 }

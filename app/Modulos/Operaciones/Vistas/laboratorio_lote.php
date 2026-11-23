@@ -42,7 +42,8 @@ foreach (($muestrasLote ?? []) as $itemLote) {
     $dmRow['fecha_moldeo'] = $dmRow['fecha_fabricacion'] ?? ($mRow['fecha_moldeo'] ?? '');
 
     $esp0Check = $itemLote['especimenes'][0] ?? [];
-    $estaEnsayado = (($esp0Check['estado'] ?? '') === 'ensayado');
+    $tieneRoturaMatRow = (!empty($dmRow['carga']) && (float)$dmRow['carga'] > 0 && ((!empty($dmRow['resistencia_psi']) && (float)$dmRow['resistencia_psi'] > 0) || (!empty($dmRow['area']) && (float)$dmRow['area'] > 0)));
+    $estaEnsayado = (($esp0Check['estado'] ?? '') === 'ensayado') || $tieneRoturaMatRow;
     $d1Check = (!empty($dmRow['diametro_1']) && (float)$dmRow['diametro_1'] > 0) ? (float)$dmRow['diametro_1'] : 0.0;
     $d2Check = (!empty($dmRow['diametro_2']) && (float)$dmRow['diametro_2'] > 0) ? (float)$dmRow['diametro_2'] : 0.0;
     $areaRawStr = isset($dmRow['area']) && $dmRow['area'] !== null && $dmRow['area'] !== ''
@@ -70,7 +71,7 @@ foreach (($muestrasLote ?? []) as $itemLote) {
     $mapaMatrizJs[$mId] = $dmRow;
 
     foreach (($itemLote['especimenes'] ?? []) as $espItem) {
-        if (($espItem['estado'] ?? '') !== 'ensayado' && !empty($espItem['plan_edad_id'])) {
+        if (($espItem['estado'] ?? '') !== 'ensayado' && !$tieneRoturaMatRow && !empty($espItem['plan_edad_id'])) {
             $edadItem = (int)($espItem['edad_dias'] ?? ($dmRow['edad_dias'] ?? 0));
             $tolItem = $resolverToleranciaAstmReal($edadItem, $espItem['tolerancia_horas'] ?? null);
             $probetasPendientesLote[] = [
@@ -115,7 +116,9 @@ foreach (($muestrasLote ?? []) as $itemLote) {
     $espList = $itemLote['especimenes'] ?? [];
     $esp0 = !empty($espList[0]) ? $espList[0] : null;
     $totalProbetas++;
-    if (!empty($esp0['estado']) && $esp0['estado'] === 'ensayado') {
+    $dmKpi = $itemLote['datos_matriz'] ?? [];
+    $tieneRotMatKpi = (!empty($dmKpi['carga']) && (float)$dmKpi['carga'] > 0 && ((!empty($dmKpi['resistencia_psi']) && (float)$dmKpi['resistencia_psi'] > 0) || (!empty($dmKpi['area']) && (float)$dmKpi['area'] > 0)));
+    if ((!empty($esp0['estado']) && $esp0['estado'] === 'ensayado') || $tieneRotMatKpi) {
         $totalEnsayadas++;
     }
     if (empty($itemLote['puede_consolidar'])) {
@@ -259,7 +262,8 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                 $tempMuestra = $dm['temperatura_c'] ?? ($m['temperatura_c'] ?? null);
                 
                 $tamanoCil = $dm['tamano_cilindro'] ?? (!empty($esp['dimensiones']) ? $esp['dimensiones'] : null);
-                $ensayado = (!empty($esp['estado']) && $esp['estado'] === 'ensayado');
+                $tieneRoturaEnMatriz = (!empty($dm['carga']) && (float)$dm['carga'] > 0 && ((!empty($dm['resistencia_psi']) && (float)$dm['resistencia_psi'] > 0) || (!empty($dm['area']) && (float)$dm['area'] > 0)));
+                $ensayado = (!empty($esp['estado']) && $esp['estado'] === 'ensayado') || $tieneRoturaEnMatriz;
                 $d1Fila = (!empty($dm['diametro_1']) && (float)$dm['diametro_1'] > 0) ? (float)$dm['diametro_1'] : 0.0;
                 $d2Fila = (!empty($dm['diametro_2']) && (float)$dm['diametro_2'] > 0) ? (float)$dm['diametro_2'] : 0.0;
                 if (!$ensayado && ($d1Fila <= 0.0 || $d2Fila <= 0.0)) {
@@ -273,6 +277,16 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                 } else {
                     $areaVal = null;
                 }
+                $cargaMostrar = (!empty($esp['carga']) && (float)$esp['carga'] > 0) ? (float)$esp['carga'] : (float)($dm['carga'] ?? 0);
+                $psiMostrar = (!empty($esp['esfuerzo_psi']) && (float)$esp['esfuerzo_psi'] > 0) ? (float)$esp['esfuerzo_psi'] : (float)($dm['resistencia_psi'] ?? 0);
+                $kgcm2Mostrar = (!empty($esp['esfuerzo_kgcm2']) && (float)$esp['esfuerzo_kgcm2'] > 0) ? (float)$esp['esfuerzo_kgcm2'] : (float)($dm['resistencia_kgcm2'] ?? 0);
+                if ($psiMostrar <= 0 && $cargaMostrar > 0 && $areaVal !== null && $areaVal > 0) {
+                    $psiMostrar = round($cargaMostrar / $areaVal, 0);
+                }
+                if ($kgcm2Mostrar <= 0 && $psiMostrar > 0) {
+                    $kgcm2Mostrar = round($psiMostrar / $divisorKgCm2Lab, 1);
+                }
+                $tipoFallaMostrar = !empty($esp['tipo_falla']) ? (string)$esp['tipo_falla'] : (string)($dm['tipo_falla'] ?? '');
                 
                 $edadDias = $dm['edad_dias'] ?? (!empty($esp['edad_dias']) ? (int)$esp['edad_dias'] : null);
                 $fechaProg = $dm['fecha_rotura_programada'] ?? (!empty($esp['fecha_programada']) ? (string)$esp['fecha_programada'] : null);
@@ -358,13 +372,13 @@ foreach (($muestrasLote ?? []) as $itemLote) {
                     <?php if ($ensayado): ?>
                         <div style="line-height: 1.35;">
                             <strong style="color: #047857; font-family: monospace; font-size: 13px;">
-                                <?= number_format((float)($esp['esfuerzo_psi'] ?? 0), 0) ?> PSI
+                                <?= number_format($psiMostrar, 0) ?> PSI
                             </strong>
-                            <span style="font-size: 11px; color: #64748b;">(<?= number_format((float)($esp['esfuerzo_kgcm2'] ?? 0), 1) ?> kg/cm²)</span>
+                            <span style="font-size: 11px; color: #64748b;">(<?= number_format($kgcm2Mostrar, 1) ?> kg/cm²)</span>
                             <div style="font-size: 11px; color: #475569;">
-                                Carga: <strong><?= number_format((float)($esp['carga'] ?? 0), 0) ?> lb</strong>
-                                <?php if (!empty($esp['tipo_falla'])): ?>
-                                    &bull; <span style="font-size: 10.5px; color: #64748b;" title="<?= htmlspecialchars((string)$esp['tipo_falla'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(explode('(', (string)$esp['tipo_falla'])[0]) ?></span>
+                                Carga: <strong><?= number_format($cargaMostrar, 0) ?> lb</strong>
+                                <?php if ($tipoFallaMostrar !== ''): ?>
+                                    &bull; <span style="font-size: 10.5px; color: #64748b;" title="<?= htmlspecialchars($tipoFallaMostrar, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(explode('(', $tipoFallaMostrar)[0]) ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -973,7 +987,24 @@ function abrirModalRegistrarRoturaLote(muestraId, espId, codigoLab, planEdadId, 
 
     const dm = MAPA_MATRIZ_LOTE[muestraId] || {};
     document.getElementById('rot_fecha_moldeo').value = fechaMoldeo || dm.fecha_moldeo || '';
-    document.getElementById('rot_carga').value = '';
+    document.getElementById('rot_carga').value = (dm.carga && dm.carga > 0) ? dm.carga : '';
+
+    const fechaRealInput = document.getElementById('rot_fecha_real');
+    if (fechaRealInput) {
+        const fHoraMat = String(dm.fecha_ensayo_hora || '').trim();
+        const fDiaMat = String(dm.fecha_ensayo || fechaProg || '').trim().slice(0, 10);
+        if (fHoraMat && fHoraMat.includes('T')) {
+            fechaRealInput.value = fHoraMat.slice(0, 16);
+        } else if (fHoraMat && /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(fHoraMat)) {
+            fechaRealInput.value = fHoraMat.slice(0, 16).replace(' ', 'T');
+        } else if (fDiaMat && /^\d{4}-\d{2}-\d{2}$/.test(fDiaMat)) {
+            fechaRealInput.value = fDiaMat + 'T08:00';
+        }
+    }
+    const selFalla = document.querySelector('#modalRegistrarRotura select[name="tipo_falla"]');
+    if (selFalla && dm.tipo_falla) {
+        selFalla.value = dm.tipo_falla;
+    }
 
     document.getElementById('hc_d1').value = (dm.diametro_1 && dm.diametro_1 > 0) ? dm.diametro_1 : '';
     document.getElementById('hc_d2').value = (dm.diametro_2 && dm.diametro_2 > 0) ? dm.diametro_2 : '';

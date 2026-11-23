@@ -3101,7 +3101,7 @@ class OperacionesControlador extends ControladorBase {
                 $hojaSync = $hojaAssoc ?: resolverHojaPorDetalle($db, $idOsSync, $idDetalle);
                 $idHojaSync = $hojaSync ? (int)$hojaSync['id'] : 0;
                 if (!empty($filasDecodificadas)) {
-                    sincronizarReplicasMatrizConLab($db, $idOsSync, $idHojaSync, $idDetalle, $filasDecodificadas);
+                    sincronizarReplicasMatrizConLab($db, $idOsSync, $idHojaSync, $idDetalle, $filasDecodificadas, $capturaTecnicaFinal);
                 }
             }
 

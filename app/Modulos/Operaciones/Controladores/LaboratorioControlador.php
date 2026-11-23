@@ -1713,20 +1713,41 @@ class LaboratorioControlador extends ControladorBase {
             $idDetalle = (int)$stmtCd->fetchColumn();
         }
 
-        $filasMatriz = [];
+        $detallesIds = [];
         if ($idDetalle > 0) {
+            $detallesIds[$idDetalle] = true;
+        }
+        if ($idHoja > 0) {
+            try {
+                $stmtHsdD = $db->prepare("SELECT DISTINCT id_detalle_cotizacion FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0");
+                $stmtHsdD->execute(['hid' => $idHoja]);
+                foreach ($stmtHsdD->fetchAll(PDO::FETCH_COLUMN) as $didH) {
+                    if ((int)$didH > 0) $detallesIds[(int)$didH] = true;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        $filasMatriz = [];
+        $capturaTecnicaMatriz = [];
+        foreach (array_keys($detallesIds) as $didBusq) {
             $stmtDet = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
-            $stmtDet->execute(['id' => $idDetalle]);
+            $stmtDet->execute(['id' => (int)$didBusq]);
             $rawJson = $stmtDet->fetchColumn();
             if (!empty($rawJson)) {
                 $decoded = json_decode((string)$rawJson, true);
-                if (is_array($decoded) && !empty($decoded['filas']) && is_array($decoded['filas'])) {
-                    $filasMatriz = $decoded['filas'];
+                if (is_array($decoded)) {
+                    if (!empty($decoded['filas']) && is_array($decoded['filas'])) {
+                        $filasMatriz = array_merge($filasMatriz, $decoded['filas']);
+                    }
+                    if (!empty($decoded['captura_tecnica']) && is_array($decoded['captura_tecnica'])) {
+                        $capturaTecnicaMatriz = array_merge($capturaTecnicaMatriz, $decoded['captura_tecnica']);
+                    }
                 }
             }
         }
 
-        return obtenerDatosMuestraDesdeMatriz($filasMatriz, $codigoLab);
+        return obtenerDatosMuestraDesdeMatriz($filasMatriz, $codigoLab, $capturaTecnicaMatriz);
     }
 
     /**
@@ -1773,19 +1794,54 @@ class LaboratorioControlador extends ControladorBase {
 
         $detalleCotizacion = [];
         $filasMatriz = [];
+        $capturaTecnicaMatriz = [];
+        $detallesHojaIds = [];
         if ($idDetalle > 0) {
+            $detallesHojaIds[$idDetalle] = true;
+        }
+        try {
+            $stmtHsdMulti = $db->prepare("SELECT DISTINCT id_detalle_cotizacion FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0");
+            $stmtHsdMulti->execute(['hid' => $idHoja]);
+            foreach ($stmtHsdMulti->fetchAll(PDO::FETCH_COLUMN) as $didMulti) {
+                if ((int)$didMulti > 0) $detallesHojaIds[(int)$didMulti] = true;
+            }
+        } catch (\Throwable $e) {
+        }
+        if (empty($detallesHojaIds) && $idOs > 0) {
+            try {
+                $stmtOsDets = $db->prepare("SELECT cd.id FROM cotizacion_detalles cd JOIN ordenes_servicio os ON os.id_cotizacion = cd.id_cotizacion WHERE os.id = :id_os ORDER BY cd.id ASC");
+                $stmtOsDets->execute(['id_os' => $idOs]);
+                foreach ($stmtOsDets->fetchAll(PDO::FETCH_COLUMN) as $didOs) {
+                    if ((int)$didOs > 0) $detallesHojaIds[(int)$didOs] = true;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        foreach (array_keys($detallesHojaIds) as $didLote) {
             $stmtDet = $db->prepare("
                 SELECT cd.*, p.nombre_comercial, p.norma_astm, p.codigo_servicio
                 FROM cotizacion_detalles cd
                 LEFT JOIN productos p ON cd.id_producto = p.id
                 WHERE cd.id = :id
             ");
-            $stmtDet->execute(['id' => $idDetalle]);
-            $detalleCotizacion = $stmtDet->fetch(PDO::FETCH_ASSOC) ?: [];
-            if (!empty($detalleCotizacion['resultados_json'])) {
-                $resDecoded = json_decode((string)$detalleCotizacion['resultados_json'], true);
-                if (is_array($resDecoded) && !empty($resDecoded['filas']) && is_array($resDecoded['filas'])) {
-                    $filasMatriz = $resDecoded['filas'];
+            $stmtDet->execute(['id' => (int)$didLote]);
+            $detRow = $stmtDet->fetch(PDO::FETCH_ASSOC) ?: [];
+            if (empty($detalleCotizacion) && !empty($detRow)) {
+                $detalleCotizacion = $detRow;
+                if ($idDetalle <= 0) {
+                    $idDetalle = (int)$didLote;
+                }
+            }
+            if (!empty($detRow['resultados_json'])) {
+                $resDecoded = json_decode((string)$detRow['resultados_json'], true);
+                if (is_array($resDecoded)) {
+                    if (!empty($resDecoded['filas']) && is_array($resDecoded['filas'])) {
+                        $filasMatriz = array_merge($filasMatriz, $resDecoded['filas']);
+                    }
+                    if (!empty($resDecoded['captura_tecnica']) && is_array($resDecoded['captura_tecnica'])) {
+                        $capturaTecnicaMatriz = array_merge($capturaTecnicaMatriz, $resDecoded['captura_tecnica']);
+                    }
                 }
             }
         }
@@ -1833,7 +1889,7 @@ class LaboratorioControlador extends ControladorBase {
         foreach ($muestrasBase as $mRow) {
             $mId = (int)$mRow['muestra_id'];
             $detAnon = $roturasModelo->obtenerDetalleMuestraAnonima($mId);
-            $datosMat = obtenerDatosMuestraDesdeMatriz($filasMatriz, (string)$mRow['codigo_lab']);
+            $datosMat = obtenerDatosMuestraDesdeMatriz($filasMatriz, (string)$mRow['codigo_lab'], $capturaTecnicaMatriz);
 
             $muestrasDetalladas[] = [
                 'muestra' => $detAnon['muestra'] ?? $mRow,

@@ -910,6 +910,22 @@ function abrirModalRegistrarRotura(espId, codigoLab, planEdadId, edadDias, fecha
 
     const dm = DATOS_MATRIZ_MUESTRA || {};
     document.getElementById('rot_carga').value = (dm.carga && dm.carga > 0) ? dm.carga : '';
+    const fechaRealDet = document.getElementById('rot_fecha_real');
+    if (fechaRealDet) {
+        const fHoraMat = String(dm.fecha_ensayo_hora || '').trim();
+        const fDiaMat = String(dm.fecha_ensayo || fechaProg || '').trim().slice(0, 10);
+        if (fHoraMat && fHoraMat.includes('T')) {
+            fechaRealDet.value = fHoraMat.slice(0, 16);
+        } else if (fHoraMat && /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(fHoraMat)) {
+            fechaRealDet.value = fHoraMat.slice(0, 16).replace(' ', 'T');
+        } else if (fDiaMat && /^\d{4}-\d{2}-\d{2}$/.test(fDiaMat)) {
+            fechaRealDet.value = fDiaMat + 'T08:00';
+        }
+    }
+    const selFallaDet = document.querySelector('#modalRegistrarRotura select[name="tipo_falla"]');
+    if (selFallaDet && dm.tipo_falla) {
+        selFallaDet.value = dm.tipo_falla;
+    }
     const areaInput = document.getElementById('rot_area');
     if (dm.diametro_1 > 0 && dm.diametro_2 > 0) {
         const dProm = (parseFloat(dm.diametro_1) + parseFloat(dm.diametro_2)) / 2.0;

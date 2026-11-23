@@ -5465,7 +5465,7 @@ function verificarAutorizacionPagoEnvio(array $datosComerciales, \PDO $db): arra
  * La matriz actúa como fuente de verdad para Edad (días), Fecha de Ensayo, Fecha de Fabricación,
  * Temperatura (°C), Área Transversal (in² / cm²), Tamaño de Cilindro, Diámetros, Longitudes, Masa y Carga.
  */
-function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestra): array {
+function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestra, array $capturaTecnica = []): array {
     $codigoBuscado = strtoupper(trim($codigoMuestra));
     $resultado = [
         'encontrada' => false,
@@ -5473,6 +5473,7 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
         'edad_dias' => null,
         'fecha_fabricacion' => null,
         'fecha_ensayo' => null,
+        'fecha_ensayo_hora' => null,
         'fecha_rotura_programada' => null,
         'tamano_cilindro' => null,
         'temperatura_c' => null,
@@ -5483,15 +5484,17 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
         'largo_1' => null,
         'largo_2' => null,
         'masa_kg' => null,
+        'peso_volumetrico' => null,
         'carga' => null,
         'resistencia_psi' => null,
         'resistencia_kgcm2' => null,
+        'tipo_falla' => null,
         'es_replica' => false,
         'muestra_origen' => null,
         'fila_cruda' => []
     ];
 
-    if ($codigoBuscado === '' || empty($filasMatriz)) {
+    if ($codigoBuscado === '' || (empty($filasMatriz) && empty($capturaTecnica))) {
         return $resultado;
     }
 
@@ -5512,19 +5515,29 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
         }
     }
 
-    if (!$filaEncontrada) {
+    $filaTecnicaEncontrada = null;
+    foreach ($capturaTecnica as $ft) {
+        if (!is_array($ft)) continue;
+        $codFt = strtoupper(trim((string)($ft['codigo_lab'] ?? ($ft['codigo_muestra'] ?? ''))));
+        if ($codFt === $codigoBuscado) {
+            $filaTecnicaEncontrada = $ft;
+            break;
+        }
+    }
+
+    if (!$filaEncontrada && !$filaTecnicaEncontrada) {
         return $resultado;
     }
 
     $resultado['encontrada'] = true;
-    $resultado['fila_cruda'] = $filaEncontrada;
-    $resultado['es_replica'] = esFilaReplicaMatriz($filaEncontrada);
+    $resultado['fila_cruda'] = $filaEncontrada ?: ($filaTecnicaEncontrada ?: []);
+    $resultado['es_replica'] = $filaEncontrada ? esFilaReplicaMatriz($filaEncontrada) : str_ends_with($codigoBuscado, '-CR');
     $resultado['muestra_origen'] = $filaEncontrada['_muestra_origen'] ?? null;
 
     $fechaFabricacionStr = null;
     $fechaRupturaStr = null;
 
-    foreach ($filaEncontrada as $k => $v) {
+    foreach (($filaEncontrada ?: []) as $k => $v) {
         if ($v === null || $v === '' || str_starts_with((string)$k, '_')) {
             continue;
         }
@@ -5564,12 +5577,57 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
             if ($valNum > 0) $resultado['largo_2'] = $valNum;
         } elseif (in_array($kClean, ['masakg', 'pesokg', 'masa', 'masag'], true)) {
             if ($valNum > 0) $resultado['masa_kg'] = $valNum;
+        } elseif (str_contains($kClean, 'pesovolum') || in_array($kClean, ['pvkgm3', 'pv'], true)) {
+            if ($valNum > 0) $resultado['peso_volumetrico'] = $valNum;
         } elseif (in_array($kClean, ['cargalb', 'cargakg', 'carga', 'cargamaxima', 'lecturacargalbf'], true) || str_starts_with($kClean, 'carga')) {
             if ($valNum > 0) $resultado['carga'] = $valNum;
         } elseif (str_contains($kClean, 'compresion') && (str_contains($kClean, 'lbin') || str_contains($kClean, 'psi'))) {
             if ($valNum > 0) $resultado['resistencia_psi'] = $valNum;
         } elseif (str_contains($kClean, 'compresion') && str_contains($kClean, 'kgcm')) {
             if ($valNum > 0) $resultado['resistencia_kgcm2'] = $valNum;
+        }
+    }
+
+    // Fusionar mediciones crudas y resultados calculados desde captura_tecnica (Hoja Técnica RT-FM-61/57/36/63/38)
+    if (is_array($filaTecnicaEncontrada)) {
+        $leerNumFt = static function (array $row, array $claves): ?float {
+            foreach ($claves as $ck) {
+                if (isset($row[$ck]) && trim((string)$row[$ck]) !== '') {
+                    $v = str_replace(',', '.', trim((string)$row[$ck]));
+                    if (is_numeric($v) && (float)$v > 0) {
+                        return (float)$v;
+                    }
+                }
+            }
+            return null;
+        };
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['diametro_1', 'd1'])) !== null) $resultado['diametro_1'] = $v;
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['diametro_2', 'd2'])) !== null) $resultado['diametro_2'] = $v;
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['largo_1', 'l1', 'largo_cm'])) !== null) $resultado['largo_1'] = $v;
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['largo_2', 'l2', 'alto_cm'])) !== null) $resultado['largo_2'] = $v;
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['masa_kg', 'masa_recibida_kg'])) !== null) $resultado['masa_kg'] = $v;
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['carga_lb', 'carga'])) !== null) $resultado['carga'] = $v;
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['area_in2', 'area_neta_in2', 'area_bruta_in2'])) !== null) {
+            $resultado['area'] = $v;
+            $resultado['unidad_area'] = 'in2';
+        } elseif (($v = $leerNumFt($filaTecnicaEncontrada, ['area_cm2'])) !== null && $resultado['area'] === null) {
+            $resultado['area'] = $v;
+            $resultado['unidad_area'] = 'cm2';
+        }
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['peso_volumetrico'])) !== null) $resultado['peso_volumetrico'] = $v;
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['esfuerzo_psi'])) !== null) $resultado['resistencia_psi'] = $v;
+        if (($v = $leerNumFt($filaTecnicaEncontrada, ['esfuerzo_kgcm2', 'mr_kgcm2'])) !== null) $resultado['resistencia_kgcm2'] = $v;
+        if (!empty($filaTecnicaEncontrada['tipo_falla'])) {
+            $resultado['tipo_falla'] = trim((string)$filaTecnicaEncontrada['tipo_falla']);
+        }
+        if (!empty($filaTecnicaEncontrada['fecha_ensayo'])) {
+            $fEnsFt = trim((string)$filaTecnicaEncontrada['fecha_ensayo']);
+            if ($fEnsFt !== '') {
+                $resultado['fecha_ensayo_hora'] = $fEnsFt;
+                if (!$fechaRupturaStr) {
+                    $fechaRupturaStr = $fEnsFt;
+                }
+            }
         }
     }
 
@@ -5582,6 +5640,9 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
         }
     }
     if ($fechaRupturaStr) {
+        if ($resultado['fecha_ensayo_hora'] === null && str_contains($fechaRupturaStr, ':')) {
+            $resultado['fecha_ensayo_hora'] = $fechaRupturaStr;
+        }
         $tRup = strtotime($fechaRupturaStr);
         if ($tRup !== false) {
             $resultado['fecha_ensayo'] = date('Y-m-d', $tRup);
@@ -5614,7 +5675,7 @@ function obtenerDatosMuestraDesdeMatriz(array $filasMatriz, string $codigoMuestr
 
     // Detección de tamaño de probeta / cilindro (sin inyectar áreas nominales ficticias)
     $diam = $resultado['diametro_1'] ?? ($resultado['diametro_2'] ?? null);
-    $filaStr = json_encode($filaEncontrada);
+    $filaStr = json_encode($filaEncontrada ?: []);
     if (preg_match('/4\s*[xX*]\s*8|10\s*[xX*]\s*20/', $filaStr) || ($diam !== null && (($diam >= 9.0 && $diam <= 11.5) || ($diam >= 3.5 && $diam <= 4.5)))) {
         $resultado['tamano_cilindro'] = '4x8 in (10x20 cm)';
     } elseif (preg_match('/6\s*[xX*]\s*12|15\s*[xX*]\s*30/', $filaStr) || ($diam !== null && (($diam >= 14.0 && $diam <= 16.5) || ($diam >= 5.5 && $diam <= 6.5)))) {
@@ -5755,13 +5816,160 @@ function sincronizarEspecimenYPlanFila(PDO $db, int $muestraId, string $codigoLa
             }
         }
     }
+
+    // 4. Si en Captura Técnica / Matriz ya se registraron Carga y Área/Resistencia, sincronizar la rotura a Laboratorio
+    // automáticamente para que aparezca como "Ensayado" y no pida volver a capturar los mismos datos al romper.
+    $cargaMat = isset($datosMat['carga']) && is_numeric($datosMat['carga']) ? (float)$datosMat['carga'] : 0.0;
+    $d1Mat = isset($datosMat['diametro_1']) && is_numeric($datosMat['diametro_1']) ? (float)$datosMat['diametro_1'] : 0.0;
+    $d2Mat = isset($datosMat['diametro_2']) && is_numeric($datosMat['diametro_2']) ? (float)$datosMat['diametro_2'] : 0.0;
+    $l1Mat = isset($datosMat['largo_1']) && is_numeric($datosMat['largo_1']) ? (float)$datosMat['largo_1'] : 0.0;
+    $l2Mat = isset($datosMat['largo_2']) && is_numeric($datosMat['largo_2']) ? (float)$datosMat['largo_2'] : 0.0;
+    $masaMat = isset($datosMat['masa_kg']) && is_numeric($datosMat['masa_kg']) ? (float)$datosMat['masa_kg'] : 0.0;
+    $areaMat = 0.0;
+    if ($d1Mat > 0 && $d2Mat > 0 && class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)) {
+        $areaMat = round(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularAreaCilindroIn2($d1Mat, $d2Mat), 4);
+    } elseif (isset($datosMat['area']) && is_numeric($datosMat['area']) && (float)$datosMat['area'] > 0) {
+        $areaMat = (float)$datosMat['area'];
+        if (($datosMat['unidad_area'] ?? 'in2') === 'cm2') {
+            $areaMat = round($areaMat / 6.4516, 4);
+        }
+    }
+    $psiMat = isset($datosMat['resistencia_psi']) && is_numeric($datosMat['resistencia_psi']) ? (float)$datosMat['resistencia_psi'] : 0.0;
+    $kgcm2Mat = isset($datosMat['resistencia_kgcm2']) && is_numeric($datosMat['resistencia_kgcm2']) ? (float)$datosMat['resistencia_kgcm2'] : 0.0;
+
+    if ($espId > 0 && $cargaMat > 0 && ($areaMat > 0 || $psiMat > 0)) {
+        try {
+            if ($areaMat <= 0 && $psiMat > 0) {
+                $areaMat = round($cargaMat / $psiMat, 4);
+            }
+            if ($psiMat <= 0 && $areaMat > 0 && class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)) {
+                $calcRes = \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularResistenciaCilindro($cargaMat, $areaMat, [], $db);
+                $psiMat = (float)$calcRes['esfuerzo_psi'];
+                if ($kgcm2Mat <= 0) {
+                    $kgcm2Mat = (float)$calcRes['esfuerzo_kgcm2'];
+                }
+            } elseif ($kgcm2Mat <= 0 && $psiMat > 0) {
+                $divKg = class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+                    ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::obtenerFloat('cilindros_divisor_kgcm2', 14.2029, $db)
+                    : 14.2029;
+                $kgcm2Mat = round($psiMat / $divKg, 2);
+            }
+
+            // Garantizar que exista plan_edad_id para enlazar la rotura
+            if (empty($planEdadId) || $planEdadId <= 0) {
+                $stmtAsigEx = $db->prepare("SELECT plan_edad_id FROM plan_rotura_asignaciones WHERE especimen_id = :espid LIMIT 1");
+                $stmtAsigEx->execute(['espid' => $espId]);
+                $planEdadId = (int)$stmtAsigEx->fetchColumn();
+            }
+            if (empty($planEdadId) || $planEdadId <= 0) {
+                $edadSync = ($edadDias !== null && $edadDias > 0) ? (int)$edadDias : 28;
+                $fProgSync = !empty($fechaProg) ? $fechaProg : (!empty($datosMat['fecha_ensayo']) ? $datosMat['fecha_ensayo'] : date('Y-m-d'));
+                $tolSync = class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+                    ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::obtenerToleranciaHorasAstmC39($edadSync)
+                    : 20.0;
+                $stmtP = $db->prepare("SELECT id FROM planes_rotura WHERE muestra_id = :mid ORDER BY id DESC LIMIT 1");
+                $stmtP->execute(['mid' => $muestraId]);
+                $planIdSync = (int)$stmtP->fetchColumn();
+                if ($planIdSync <= 0) {
+                    $db->prepare("INSERT INTO planes_rotura (muestra_id, estado, creado_por) VALUES (:mid, 'activo', :usr)")
+                       ->execute(['mid' => $muestraId, 'usr' => (int)($_SESSION['usuario_id'] ?? 1)]);
+                    $planIdSync = (int)$db->lastInsertId();
+                }
+                $db->prepare("INSERT INTO plan_rotura_edades (plan_rotura_id, edad_dias, cantidad, fecha_programada, tolerancia_horas, estado) VALUES (:pid, :ed, 1, :fp, :tol, 'completado')")
+                   ->execute(['pid' => $planIdSync, 'ed' => $edadSync, 'fp' => $fProgSync, 'tol' => $tolSync]);
+                $planEdadId = (int)$db->lastInsertId();
+                $db->prepare("INSERT INTO plan_rotura_asignaciones (plan_edad_id, especimen_id) VALUES (:peid, :espid)")
+                   ->execute(['peid' => $planEdadId, 'espid' => $espId]);
+            }
+
+            $fechaRealRaw = trim((string)($datosMat['fecha_ensayo_hora'] ?? ($datosMat['fecha_ensayo'] ?? '')));
+            if ($fechaRealRaw !== '') {
+                $fechaRealRaw = str_replace('T', ' ', $fechaRealRaw);
+                $tsReal = strtotime($fechaRealRaw);
+                $fechaRealSql = $tsReal !== false
+                    ? (str_contains($fechaRealRaw, ':') ? date('Y-m-d H:i:s', $tsReal) : date('Y-m-d', $tsReal) . ' 08:00:00')
+                    : date('Y-m-d H:i:s');
+            } else {
+                $fechaRealSql = date('Y-m-d H:i:s');
+            }
+
+            $edadCalcSync = ($edadDias !== null && $edadDias > 0) ? (int)$edadDias : null;
+            if ($edadCalcSync === null && !empty($fechaMoldeo)) {
+                $tM = strtotime(substr((string)$fechaMoldeo, 0, 10));
+                $tE = strtotime(substr($fechaRealSql, 0, 10));
+                if ($tM !== false && $tE !== false && $tE >= $tM) {
+                    $edadCalcSync = (int)round(($tE - $tM) / 86400);
+                }
+            }
+
+            $pvMat = isset($datosMat['peso_volumetrico']) && is_numeric($datosMat['peso_volumetrico']) && (float)$datosMat['peso_volumetrico'] > 0
+                ? (float)$datosMat['peso_volumetrico']
+                : null;
+            if ($pvMat === null && $masaMat > 0 && $areaMat > 0 && ($l1Mat > 0 || $l2Mat > 0) && class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)) {
+                $lPromM = ($l1Mat > 0 && $l2Mat > 0) ? (($l1Mat + $l2Mat) / 2.0) : ($l1Mat > 0 ? $l1Mat : $l2Mat);
+                $pvMat = \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularPesoVolumetricoKgM3($masaMat, $areaMat, $lPromM, null, $db);
+            }
+
+            $tipoFallaSync = !empty($datosMat['tipo_falla']) ? substr(trim((string)$datosMat['tipo_falla']), 0, 50) : 'Tipo 1 (Cono bien formado)';
+            $crudosArr = array_filter([
+                'diametro_1' => $d1Mat > 0 ? (string)$d1Mat : null,
+                'diametro_2' => $d2Mat > 0 ? (string)$d2Mat : null,
+                'largo_1' => $l1Mat > 0 ? (string)$l1Mat : null,
+                'largo_2' => $l2Mat > 0 ? (string)$l2Mat : null,
+                'masa_kg' => $masaMat > 0 ? (string)$masaMat : null,
+                'origen' => 'matriz_captura_tecnica',
+            ], static fn($v) => $v !== null);
+            $crudosJson = json_encode($crudosArr, JSON_UNESCAPED_UNICODE);
+
+            $tecnicoIdSync = (int)($_SESSION['usuario_id'] ?? 1);
+            if ($tecnicoIdSync <= 0) {
+                $tecnicoIdSync = (int)$db->query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 1;
+            }
+
+            $stmtChkRot = $db->prepare("SELECT id FROM roturas WHERE especimen_id = :espid LIMIT 1");
+            $stmtChkRot->execute(['espid' => $espId]);
+            $rotExistId = (int)$stmtChkRot->fetchColumn();
+
+            if ($rotExistId > 0) {
+                $db->prepare("
+                    UPDATE roturas
+                    SET plan_edad_id = :peid, fecha_real = :fr, edad_calculada = :ec, carga = :c, area = :a,
+                        peso_volumetrico = :pv, esfuerzo_psi = :psi, esfuerzo_kgcm2 = :kg, tipo_falla = :tf,
+                        datos_crudos = :dc
+                    WHERE id = :id
+                ")->execute([
+                    'peid' => $planEdadId, 'fr' => $fechaRealSql, 'ec' => $edadCalcSync,
+                    'c' => $cargaMat, 'a' => $areaMat, 'pv' => $pvMat,
+                    'psi' => $psiMat, 'kg' => $kgcm2Mat, 'tf' => $tipoFallaSync,
+                    'dc' => $crudosJson, 'id' => $rotExistId,
+                ]);
+            } else {
+                $db->prepare("
+                    INSERT INTO roturas (especimen_id, plan_edad_id, fecha_real, edad_calculada, carga, area, peso_volumetrico, esfuerzo_psi, esfuerzo_kgcm2, tipo_falla, tecnico_id, fuera_tolerancia, datos_crudos)
+                    VALUES (:espid, :peid, :fr, :ec, :c, :a, :pv, :psi, :kg, :tf, :tid, 0, :dc)
+                ")->execute([
+                    'espid' => $espId, 'peid' => $planEdadId, 'fr' => $fechaRealSql, 'ec' => $edadCalcSync,
+                    'c' => $cargaMat, 'a' => $areaMat, 'pv' => $pvMat,
+                    'psi' => $psiMat, 'kg' => $kgcm2Mat, 'tf' => $tipoFallaSync,
+                    'tid' => $tecnicoIdSync, 'dc' => $crudosJson,
+                ]);
+            }
+
+            $db->prepare("UPDATE especimenes SET estado = 'ensayado', dimensiones = :dim WHERE id = :id")
+               ->execute(['dim' => $dimensiones, 'id' => $espId]);
+            $db->prepare("UPDATE plan_rotura_edades SET estado = 'completado' WHERE id = :id")
+               ->execute(['id' => $planEdadId]);
+        } catch (\Throwable $e) {
+            error_log('sincronizarEspecimenYPlanFila (auto-rotura desde matriz): ' . $e->getMessage());
+        }
+    }
 }
 
 /**
  * Sincroniza el orden de lote y las filas de réplica CR (-CR) de la matriz técnica hacia recepcion_muestras / lotes_muestras en Laboratorio.
  * Retorna la cantidad de réplicas nuevas insertadas en recepcion_muestras.
  */
-function sincronizarReplicasMatrizConLab(PDO $db, int $idOs, int $idHoja, int $idDetalle, array $filasMatriz): int {
+function sincronizarReplicasMatrizConLab(PDO $db, int $idOs, int $idHoja, int $idDetalle, array $filasMatriz, array $capturaTecnica = []): int {
     if ($idOs <= 0 || empty($filasMatriz)) {
         return 0;
     }
@@ -5791,7 +5999,7 @@ function sincronizarReplicasMatrizConLab(PDO $db, int $idOs, int $idHoja, int $i
         if ($codigo === '') continue;
 
         $esReplica = esFilaReplicaMatriz($fila);
-        $datosMat = obtenerDatosMuestraDesdeMatriz($filasNormalizadas, $codigo);
+        $datosMat = obtenerDatosMuestraDesdeMatriz($filasNormalizadas, $codigo, $capturaTecnica);
         $tempMat = $datosMat['temperatura_c'] ?? null;
         $fechaMoldeoMat = $datosMat['fecha_fabricacion'] ?? null;
 
