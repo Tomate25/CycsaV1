@@ -1740,7 +1740,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
                         <div style="font-size:13px; color:#334155;">
                             Complete las casillas para las <strong id="rec_total_muestras_lbl">0</strong> muestra(s) de esta hoja RT-FM-13.
-                            <span style="color:#103487; font-weight:600;">Reven. (cm) y Edad (Días) se calculan automáticamente.</span>
+                            <span style="color:#103487; font-weight:600;">Reven. (cm), Edad (Días) y Compactación (%) se calculan automáticamente.</span>
                         </div>
                         <button type="button" id="rec_btn_copiar_fila1" onclick="copiarFilaUnoDatosRecepcion()" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:4px 12px; font-size:13px; font-weight:700;">
                             <i class="fa-solid fa-copy me-1"></i> Copiar Fila 1 a todas las muestras
@@ -4180,6 +4180,9 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         const tieneFechaFab = camposTab.some(cc => ['fechadefabricacion', 'fechafabricacion', 'fechademoldeo', 'fechamoldeo', 'fechadecolado', 'fechacolado'].includes(normalizarClaveJsRec(cc.nombre)));
         const tieneFechaEns = camposTab.some(cc => ['fechadeensayo', 'fechaensayo', 'fechaderuptura', 'fecharuptura', 'fechadefinalizacion', 'fechafinalizacion'].includes(normalizarClaveJsRec(cc.nombre)));
         const tieneAmbasFechas = tieneFechaFab && tieneFechaEns;
+        const tienePvsMax = camposTab.some(cc => normalizarClaveJsRec(cc.nombre).startsWith('pvsmax'));
+        const tienePvsSitio = camposTab.some(cc => normalizarClaveJsRec(cc.nombre).startsWith('pvssitio'));
+        const tieneAmbosPvs = tienePvsMax && tienePvsSitio;
 
         codigosTab.forEach((cod, idx) => {
             const m = estado[cod];
@@ -4217,10 +4220,13 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 const clave = normalizarClaveJsRec(c.nombre);
                 const esAutoCalcReven = tieneRevenIn && ['revencm', 'revenimientocm'].includes(clave);
                 const esAutoCalcEdad = tieneAmbasFechas && ['edaddias', 'edad'].includes(clave);
-                const esAutoCalcRec = esAutoCalcReven || esAutoCalcEdad;
+                const esAutoCalcComp = tieneAmbosPvs && clave.startsWith('compactacion');
+                const esAutoCalcRec = esAutoCalcReven || esAutoCalcEdad || esAutoCalcComp;
                 const titleAuto = esAutoCalcReven
                     ? 'Calculado automáticamente desde Reven. (in)'
-                    : 'Calculado automáticamente entre Fecha de Fabricación y Fecha de Ensayo';
+                    : (esAutoCalcComp
+                        ? 'Calculado automáticamente: (P.V.S.Sitio / P.V.S Max) × 100'
+                        : 'Calculado automáticamente entre Fecha de Fabricación y Fecha de Ensayo');
                 const roAttr = recSoloLecturaActual
                     ? 'readonly disabled'
                     : (esAutoCalcRec ? `readonly tabindex="-1" title="${titleAuto}"` : '');
@@ -4239,10 +4245,14 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             tr.innerHTML = html;
             tbody.appendChild(tr);
 
-            // Recalcular valores automáticos iniciales (Reven. cm y Edad Días) si ya hay datos precargados
+            // Recalcular valores automáticos iniciales (Reven. cm, Edad Días y Compactación %) si ya hay datos precargados
             const inpFabInit = tr.querySelector('.rec-campo-input[data-clave="fechadefabricacion"], .rec-campo-input[data-clave="fechafabricacion"], .rec-campo-input[data-clave="fechademoldeo"], .rec-campo-input[data-clave="fechamoldeo"]');
             if (inpFabInit && inpFabInit.value) {
                 recalcularFilaDatosRecepcion(tr, inpFabInit);
+            }
+            const inpPvsInit = Array.from(tr.querySelectorAll('.rec-campo-input')).find(i => (i.dataset.clave || '').startsWith('pvssitio'));
+            if (inpPvsInit && inpPvsInit.value) {
+                recalcularFilaDatosRecepcion(tr, inpPvsInit);
             }
 
             const selDestEl = tr.querySelector('.rec-destino-select');
@@ -4386,6 +4396,20 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 }
             }
         }
+
+        // Cálculo automático de Compactación (%) = (P.V.S.Sitio / P.V.S Max) * 100
+        const inpPvsMax = Array.from(tr.querySelectorAll('.rec-campo-input')).find(i => (i.dataset.clave || '').startsWith('pvsmax'));
+        const inpPvsSitio = Array.from(tr.querySelectorAll('.rec-campo-input')).find(i => (i.dataset.clave || '').startsWith('pvssitio'));
+        const inpComp = Array.from(tr.querySelectorAll('.rec-campo-input')).find(i => (i.dataset.clave || '').startsWith('compactacion'));
+        if (inpPvsMax && inpPvsSitio && inpComp && (origenInp === inpPvsMax || origenInp === inpPvsSitio)) {
+            const pMax = parseFloat(String(inpPvsMax.value || '').replace(',', '.'));
+            const pSit = parseFloat(String(inpPvsSitio.value || '').replace(',', '.'));
+            if (!isNaN(pMax) && pMax > 0 && !isNaN(pSit) && pSit > 0) {
+                inpComp.value = ((pSit / pMax) * 100).toFixed(1);
+            } else {
+                inpComp.value = '';
+            }
+        }
     }
 
     function copiarFilaUnoDatosRecepcion() {
@@ -4403,6 +4427,8 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             });
             const inpFabCopy = filas[i].querySelector('.rec-campo-input[data-clave="fechadefabricacion"], .rec-campo-input[data-clave="fechafabricacion"], .rec-campo-input[data-clave="fechademoldeo"], .rec-campo-input[data-clave="fechamoldeo"]');
             if (inpFabCopy) recalcularFilaDatosRecepcion(filas[i], inpFabCopy);
+            const inpPvsCopy = Array.from(filas[i].querySelectorAll('.rec-campo-input')).find(el => (el.dataset.clave || '').startsWith('pvssitio'));
+            if (inpPvsCopy) recalcularFilaDatosRecepcion(filas[i], inpPvsCopy);
         }
         guardarEstadoTabActualEnMemoria();
         document.getElementById('rec_feedback_msg').innerHTML = '<span style="color:#0369a1;"><i class="fa-solid fa-check me-1"></i>Valores copiados de la fila 1 a las muestras de este producto (revise edades/fechas individuales si varían y guarde).</span>';

@@ -6849,6 +6849,24 @@ if (!function_exists('normalizarYCompletarDatosRecepcionMuestra')) {
             }
         }
 
+        // Cálculo automático de Compactación (%) = (P.V.S.Sitio / P.V.S Max) * 100 cuando ambos valores están presentes
+        $colPvsMax = null;
+        $colPvsSitio = null;
+        $colComp = null;
+        foreach (array_unique(array_merge($nombresPermitidos, array_keys($limpio))) as $nombre) {
+            $n = normalizarTextoClavePHP((string)$nombre);
+            if ($colPvsMax === null && str_starts_with($n, 'pvsmax')) $colPvsMax = (string)$nombre;
+            if ($colPvsSitio === null && str_starts_with($n, 'pvssitio')) $colPvsSitio = (string)$nombre;
+            if ($colComp === null && str_starts_with($n, 'compactacion')) $colComp = (string)$nombre;
+        }
+        if ($colPvsMax !== null && $colPvsSitio !== null && $colComp !== null) {
+            $vMaxRaw = str_replace(',', '.', trim((string)($limpio[$colPvsMax] ?? '')));
+            $vSitRaw = str_replace(',', '.', trim((string)($limpio[$colPvsSitio] ?? '')));
+            if ($vMaxRaw !== '' && is_numeric($vMaxRaw) && (float)$vMaxRaw > 0 && $vSitRaw !== '' && is_numeric($vSitRaw) && (float)$vSitRaw > 0) {
+                $limpio[$colComp] = number_format(((float)$vSitRaw / (float)$vMaxRaw) * 100.0, 1, '.', '');
+            }
+        }
+
         return array_filter($limpio, static fn($v) => $v !== '');
     }
 }
