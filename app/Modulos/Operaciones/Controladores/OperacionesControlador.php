@@ -2583,6 +2583,16 @@ class OperacionesControlador extends ControladorBase {
         ];
         $esEnsayoRoturaLab = in_array((string)$archivoMd, $formatosRoturaLab, true);
 
+        $hojaTecnicaConfig = \Cycsa\Modulos\Operaciones\Servicios\HojaTecnicaMatrizServicio::obtenerDefinicionPorFormato((string)$archivoMd);
+        $capturaTecnicaInicial = \Cycsa\Modulos\Operaciones\Servicios\HojaTecnicaMatrizServicio::hidratarCapturaTecnicaInicial(
+            $db,
+            (string)$archivoMd,
+            $detalle,
+            $muestrasSeteadas,
+            $decResultados,
+            $idHojaResolv
+        );
+
         $this->renderizar('operaciones/vistas/captura_matriz', [
             'titulo' => 'Captura de Matriz Técnica - ' . $detalle['descripcion_ensayo'],
             'detalle' => $detalle,
@@ -2604,6 +2614,8 @@ class OperacionesControlador extends ControladorBase {
             'etapaFlujo' => $etapaFlujo,
             'recepcionCompleta' => $recepcionCompleta,
             'esEnsayoRoturaLab' => $esEnsayoRoturaLab,
+            'hojaTecnicaConfig' => $hojaTecnicaConfig,
+            'capturaTecnicaInicial' => $capturaTecnicaInicial,
         ]);
     }
 
@@ -2664,12 +2676,27 @@ class OperacionesControlador extends ControladorBase {
                 }
             }
 
-            // Desempaquetar filas y metadatos existentes
+            // Desempaquetar filas, captura técnica del laboratorio y metadatos existentes
             $rawJsonParsed = json_decode($resultadosJson, true) ?: [];
             $filasDecodificadas = isset($rawJsonParsed['filas']) ? $rawJsonParsed['filas'] : $rawJsonParsed;
             $filasDecodificadas = normalizarReplicasMatriz(is_array($filasDecodificadas) ? $filasDecodificadas : []);
 
             $decExistente = json_decode($detalleActual['resultados_json'] ?? '', true) ?: [];
+            $capturaTecnicaFinal = (isset($decExistente['captura_tecnica']) && is_array($decExistente['captura_tecnica']))
+                ? $decExistente['captura_tecnica']
+                : [];
+            if (isset($rawJsonParsed['captura_tecnica']) && is_array($rawJsonParsed['captura_tecnica'])) {
+                $recalcTec = \Cycsa\Modulos\Operaciones\Servicios\HojaTecnicaMatrizServicio::recalcularDesdeCapturaTecnica(
+                    $archivoMdGuardar,
+                    $rawJsonParsed['captura_tecnica'],
+                    $filasDecodificadas,
+                    $db
+                );
+                $capturaTecnicaFinal = $recalcTec['captura_tecnica'];
+                if (!empty($recalcTec['tiene_datos'])) {
+                    $filasDecodificadas = normalizarReplicasMatriz($recalcTec['filas_matriz']);
+                }
+            }
             $filasPreviasExistentes = isset($decExistente['filas']) && is_array($decExistente['filas'])
                 ? $decExistente['filas']
                 : (isset($decExistente[0]) && is_array($decExistente[0]) ? $decExistente : []);
@@ -2980,6 +3007,7 @@ class OperacionesControlador extends ControladorBase {
             $payloadCompleto = [
                 'version_actual' => $versionActual,
                 'filas' => $filasDecodificadas,
+                'captura_tecnica' => $capturaTecnicaFinal,
                 'metadatos' => $metadatos,
                 'revision' => $nuevaRevision,
                 'versiones' => $versionesExistentes,

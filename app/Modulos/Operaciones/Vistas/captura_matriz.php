@@ -39,6 +39,8 @@ if (empty($datosParaCodigo) && !empty($muestrasSeteadas)) {
     $datosParaCodigo = $muestrasSeteadas;
 }
 $codigoInformeConsecutivo = generarCodigoInformeEnsayo($datosParaCodigo, $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null), $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''), $detalle['codigo_os'] ?? null);
+$hojaTecnicaConfig = $hojaTecnicaConfig ?? \Cycsa\Modulos\Operaciones\Servicios\HojaTecnicaMatrizServicio::obtenerDefinicionPorFormato($archivoMd);
+$capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
 ?>
 <style>
     :root {
@@ -988,7 +990,160 @@ $recCompletaMatrizBar = !empty($recepcionCompleta) || !empty($detalle['recepcion
         </div>
     </details>
 
-    <!-- SECCIÓN 1: GRILLA DE CAPTURA Y MEDICIONES (PRIORIDAD OPERATIVA) -->
+    <style>
+    /* SECCIÓN CAPTURA TÉCNICA EN LÍNEA DEL TÉCNICO (POR FORMATO / HOJA DE CÁLCULO) */
+    .ht-lab-card {
+        margin-bottom: 20px;
+        padding: 20px 22px;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        border-top: 4px solid #1F3864;
+        background: #ffffff;
+    }
+    .ht-lab-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .ht-lab-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: #EEF1F7;
+        color: #1F3864;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid #d1d9e6;
+    }
+    .ht-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #ffffff;
+    }
+    .ht-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+    }
+    .ht-table thead th {
+        background: #f8fafc;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        padding: 11px 10px;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+        text-align: left;
+    }
+    .ht-table thead th.ht-th-calc {
+        background: #f1f5f9;
+        color: #1F3864;
+    }
+    .ht-table tbody td {
+        padding: 10px 8px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .ht-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+    .ht-input,
+    .ht-select {
+        height: 38px;
+        padding: 6px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #111827;
+        font-size: 13.5px;
+        font-family: inherit;
+        box-sizing: border-box;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ht-input:focus,
+    .ht-select:focus {
+        outline: none;
+        border-color: #1F3864;
+        box-shadow: 0 0 0 2px rgba(31, 56, 100, 0.14);
+    }
+    .ht-input-calc {
+        height: 38px;
+        padding: 6px 10px;
+        border: 1px solid #dbe2ec;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 13.5px;
+        font-weight: 600;
+        text-align: center;
+        box-sizing: border-box;
+    }
+    .ht-input-calc.is-highlight {
+        background: #EEF1F7;
+        color: #1F3864;
+        border-color: #cbd5e1;
+        font-weight: 700;
+    }
+    .ht-code-cell {
+        font-weight: 700;
+        color: #1F3864;
+        font-size: 13px;
+        padding-left: 12px !important;
+    }
+    </style>
+
+    <!-- SECCIÓN 1A: CAPTURA TÉCNICA DEL TÉCNICO DE LABORATORIO (MEDICIONES CRUDAS POR PRODUCTO) -->
+    <div id="seccion-captura-tecnica-lab" class="ht-lab-card">
+        <div class="ht-lab-header">
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <h3 style="margin: 0; color: #111827; font-size: 16.5px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-flask" style="color: #1F3864;"></i>
+                        <?= htmlspecialchars((string)($hojaTecnicaConfig['titulo'] ?? 'Captura Técnica de Laboratorio'), ENT_QUOTES, 'UTF-8') ?>
+                    </h3>
+                    <span class="ht-lab-badge"><?= htmlspecialchars((string)($hojaTecnicaConfig['codigo_hc'] ?? 'HC'), ENT_QUOTES, 'UTF-8') ?></span>
+                    <span style="font-size: 12.5px; color: #64748b;"><?= htmlspecialchars((string)($hojaTecnicaConfig['norma'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                </div>
+                <p style="margin: 5px 0 0 0; font-size: 13px; color: #475569;">
+                    <?= htmlspecialchars((string)($hojaTecnicaConfig['subtitulo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <?php if (!empty($hojaTecnicaConfig['permite_agregar_filas']) && !$esModoHistorico): ?>
+                    <button type="button" class="btn-matriz-secondary" onclick="agregarFilaHojaTecnica()" style="background: #ffffff; color: #1F3864; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                        + Agregar <?= htmlspecialchars((string)($hojaTecnicaConfig['etiqueta_fila'] ?? 'fila'), ENT_QUOTES, 'UTF-8') ?>
+                    </button>
+                <?php endif; ?>
+                <button type="button" id="btn-toggle-ht-body" class="btn-matriz-secondary" onclick="togglePanelHojaTecnica()" style="background: #ffffff; color: #334155; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                    Ocultar captura técnica
+                </button>
+            </div>
+        </div>
+
+        <div id="ht-lab-body">
+            <div class="ht-table-wrap">
+                <table class="ht-table" id="tabla-captura-tecnica-lab" data-motor="<?= htmlspecialchars((string)($hojaTecnicaConfig['motor_calculo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" data-codigo-hc="<?= htmlspecialchars((string)($hojaTecnicaConfig['codigo_hc'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                    <thead id="ht-tabla-header"></thead>
+                    <tbody id="ht-tabla-body"></tbody>
+                </table>
+            </div>
+            <div id="ht-resumen-bar" style="display: none; margin-top: 10px; padding: 10px 14px; background: #EEF1F7; border: 1px solid #d1d9e6; border-radius: 8px; font-size: 13px; color: #1F3864; font-weight: 600;"></div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 1B: GRILLA DE CAPTURA Y MEDICIONES (INFORME OFICIAL RT-FM-22) -->
     <div class="seccion-form" style="margin-bottom: 24px; padding: 22px; border-radius: 8px; border: 1px solid #cbd5e1; border-top: 4px solid var(--cycsa-azul, #103487); background: #ffffff;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
             <h3 style="margin: 0; color: #1e293b; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
@@ -1089,6 +1244,9 @@ $recCompletaMatrizBar = !empty($recepcionCompleta) || !empty($detalle['recepcion
     const CLASIFICACION_COLUMNAS = <?= json_encode($clasificacionColumnas ?? [], JSON_UNESCAPED_UNICODE) ?>;
     const TIENE_CAMPOS_RECEPCION = <?= !empty($tieneCamposRecepcion) ? 'true' : 'false' ?>;
     const ES_ENSAYO_ROTURA_LAB = <?= !empty($esEnsayoRoturaLab) ? 'true' : 'false' ?>;
+    const HOJA_TECNICA_CONFIG = <?= json_encode($hojaTecnicaConfig ?? [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const CAPTURA_TECNICA_INICIAL = <?= json_encode($capturaTecnicaInicial ?? [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    let capturaTecnicaFilas = [];
     let permitirEdicionRecepcionMatriz = false;
     let columnasRecepcionPlegadas = true;
     let replicasHabilitadas = false;
@@ -2370,6 +2528,7 @@ $recCompletaMatrizBar = !empty($recepcionCompleta) || !empty($detalle['recepcion
 
         const payload = {
             filas: resultados,
+            captura_tecnica: leerFilasCapturaTecnicaActual(),
             metadatos: metaObj
         };
 
@@ -2503,7 +2662,906 @@ $recCompletaMatrizBar = !empty($recepcionCompleta) || !empty($detalle['recepcion
         });
     }
 
-    document.addEventListener('DOMContentLoaded', inicializarMatriz);
+    // =========================================================================
+    // MOTOR EN VIVO DE CAPTURA TÉCNICA DEL TÉCNICO (100% DE LOS 28 FORMATOS)
+    // =========================================================================
+    function togglePanelHojaTecnica() {
+        const body = document.getElementById('ht-lab-body');
+        const btn = document.getElementById('btn-toggle-ht-body');
+        if (!body) return;
+        const oculto = body.style.display === 'none';
+        body.style.display = oculto ? 'block' : 'none';
+        if (btn) btn.textContent = oculto ? 'Ocultar captura técnica' : 'Mostrar captura técnica';
+    }
+
+    function htParseNum(v) {
+        if (v === null || v === undefined) return NaN;
+        const s = String(v).replace(',', '.').trim();
+        if (s === '') return NaN;
+        return parseFloat(s);
+    }
+
+    function htFechaIso(raw) {
+        const s = String(raw || '').trim();
+        if (!s) return '';
+        const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+        return m ? m[1] : '';
+    }
+
+    function htFactorLd(ld) {
+        if (ld >= 1.75) return 1.0;
+        if (ld <= 1.00) return 0.87;
+        const pts = [[1.00, 0.87], [1.25, 0.93], [1.50, 0.96], [1.75, 0.98]];
+        for (let i = 0; i < pts.length - 1; i++) {
+            const [x0, y0] = pts[i];
+            const [x1, y1] = pts[i + 1];
+            if (ld >= x0 && ld <= x1) {
+                return y0 + ((ld - x0) / (x1 - x0)) * (y1 - y0);
+            }
+        }
+        return 1.0;
+    }
+
+    function htSetCeldaMatriz(tr, colNames, valor) {
+        if (!tr || valor === null || valor === undefined) return;
+        for (const cname of colNames) {
+            const inp = tr.querySelector(`input[data-col="${cname}"]`) || tr.querySelector(`input[data-save-col="${cname}"]`);
+            if (inp) {
+                inp.value = String(valor);
+                inp.title = String(valor);
+                return;
+            }
+        }
+    }
+
+    function htBuscarTrMatriz(codLab, idxFallback) {
+        const trs = Array.from(document.querySelectorAll('#tabla-body tr'));
+        const codUp = String(codLab || '').trim().toUpperCase();
+        if (codUp) {
+            for (const tr of trs) {
+                const inpCod = tr.querySelector('input[data-col="Código laboratorio"]') || tr.querySelector('input[data-save-col="Código laboratorio"]');
+                if (inpCod && inpCod.value.trim().toUpperCase() === codUp) {
+                    return tr;
+                }
+            }
+        }
+        return trs[idxFallback] || null;
+    }
+
+    function htDefaultDatetimeNow() {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function construirFilasInicialesHojaTecnica() {
+        const cfg = HOJA_TECNICA_CONFIG || {};
+        const campos = cfg.campos_entrada || [];
+        if (Array.isArray(CAPTURA_TECNICA_INICIAL) && CAPTURA_TECNICA_INICIAL.length > 0) {
+            return JSON.parse(JSON.stringify(CAPTURA_TECNICA_INICIAL));
+        }
+        const filas = [];
+        const modo = cfg.modo_filas || 'por_muestra';
+        if (modo === 'por_muestra') {
+            const trs = Array.from(document.querySelectorAll('#tabla-body tr'));
+            const total = Math.max(trs.length, Array.isArray(MUESTRAS_SETEADAS) ? MUESTRAS_SETEADAS.length : 0, 1);
+            for (let i = 0; i < total; i++) {
+                let cod = '';
+                if (trs[i]) {
+                    const inpC = trs[i].querySelector('input[data-col="Código laboratorio"]') || trs[i].querySelector('input[data-save-col="Código laboratorio"]');
+                    if (inpC) cod = inpC.value.trim();
+                }
+                if (!cod && MUESTRAS_SETEADAS && MUESTRAS_SETEADAS[i]) {
+                    cod = MUESTRAS_SETEADAS[i].codigo_lab || MUESTRAS_SETEADAS[i].codigo_campo || '';
+                }
+                const row = { codigo_lab: cod || ('M-' + (i + 1)) };
+                campos.forEach(c => {
+                    row[c.clave] = c.default !== undefined ? c.default : '';
+                });
+                filas.push(row);
+            }
+        } else {
+            const n = Math.max(1, parseInt(cfg.filas_default || 3, 10));
+            const etq = cfg.etiqueta_fila || 'Fila';
+            for (let i = 0; i < n; i++) {
+                const row = { codigo_lab: `${etq} ${i + 1}` };
+                campos.forEach(c => { row[c.clave] = c.default !== undefined ? c.default : ''; });
+                filas.push(row);
+            }
+        }
+        return filas;
+    }
+
+    function renderizarTablaHojaTecnica() {
+        const cfg = HOJA_TECNICA_CONFIG || {};
+        const thead = document.getElementById('ht-tabla-header');
+        const tbody = document.getElementById('ht-tabla-body');
+        if (!thead || !tbody || !cfg.campos_entrada) return;
+
+        const camposIn = cfg.campos_entrada || [];
+        const camposCalc = cfg.campos_calculados || [];
+
+        thead.innerHTML = '';
+        const trH = document.createElement('tr');
+        const thCod = document.createElement('th');
+        thCod.textContent = (cfg.modo_filas === 'por_muestra') ? 'MUESTRA / PROBETA' : (cfg.etiqueta_fila || 'ÍTEM').toUpperCase();
+        thCod.style.paddingLeft = '12px';
+        trH.appendChild(thCod);
+
+        camposIn.forEach(c => {
+            const th = document.createElement('th');
+            th.textContent = c.etiqueta;
+            trH.appendChild(th);
+        });
+        camposCalc.forEach(c => {
+            const th = document.createElement('th');
+            th.className = 'ht-th-calc';
+            th.textContent = c.etiqueta;
+            trH.appendChild(th);
+        });
+        thead.appendChild(trH);
+
+        tbody.innerHTML = '';
+        capturaTecnicaFilas.forEach((rowData, rIdx) => {
+            const tr = document.createElement('tr');
+            tr.dataset.htRow = rIdx;
+
+            const tdCod = document.createElement('td');
+            tdCod.className = 'ht-code-cell';
+            tdCod.textContent = rowData.codigo_lab || (`#${rIdx + 1}`);
+            tr.appendChild(tdCod);
+
+            camposIn.forEach(c => {
+                const td = document.createElement('td');
+                let el;
+                if (c.tipo === 'select') {
+                    el = document.createElement('select');
+                    el.className = 'ht-select';
+                    (c.opciones || []).forEach(optTxt => {
+                        const opt = document.createElement('option');
+                        opt.value = optTxt;
+                        opt.textContent = optTxt;
+                        if (String(rowData[c.clave] || c.default || '') === String(optTxt)) {
+                            opt.selected = true;
+                        }
+                        el.appendChild(opt);
+                    });
+                } else {
+                    el = document.createElement('input');
+                    el.className = 'ht-input';
+                    if (c.tipo === 'datetime') {
+                        el.type = 'datetime-local';
+                        el.value = rowData[c.clave] || '';
+                    } else if (c.tipo === 'date') {
+                        el.type = 'date';
+                        el.value = rowData[c.clave] || '';
+                    } else {
+                        el.type = 'text';
+                        if (c.tipo === 'decimal') el.setAttribute('inputmode', 'decimal');
+                        if (c.tipo === 'entero') el.setAttribute('inputmode', 'numeric');
+                        el.placeholder = c.placeholder || '';
+                        el.value = rowData[c.clave] !== undefined && rowData[c.clave] !== null ? String(rowData[c.clave]) : '';
+                    }
+                }
+                if (c.ancho) el.style.width = c.ancho + 'px';
+                el.dataset.htKey = c.clave;
+                el.dataset.htRow = rIdx;
+                if (ES_MODO_HISTORICO) {
+                    el.disabled = true;
+                    el.readOnly = true;
+                }
+                el.addEventListener('input', () => {
+                    capturaTecnicaFilas[rIdx][c.clave] = el.value;
+                    recalcularHojaTecnicaEnVivo(true);
+                });
+                el.addEventListener('change', () => {
+                    capturaTecnicaFilas[rIdx][c.clave] = el.value;
+                    recalcularHojaTecnicaEnVivo(true);
+                });
+                td.appendChild(el);
+                tr.appendChild(td);
+            });
+
+            camposCalc.forEach(c => {
+                const td = document.createElement('td');
+                const inp = document.createElement('input');
+                inp.type = 'text';
+                inp.readOnly = true;
+                inp.tabIndex = -1;
+                inp.className = 'ht-input-calc' + (c.destacado ? ' is-highlight' : '');
+                if (c.ancho) inp.style.width = c.ancho + 'px';
+                inp.placeholder = c.placeholder || '--';
+                inp.dataset.htCalcKey = c.clave;
+                inp.dataset.htRow = rIdx;
+                inp.value = rowData[c.clave] !== undefined && rowData[c.clave] !== null ? String(rowData[c.clave]) : '';
+                td.appendChild(inp);
+                tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    function agregarFilaHojaTecnica() {
+        const cfg = HOJA_TECNICA_CONFIG || {};
+        const idx = capturaTecnicaFilas.length + 1;
+        const etq = cfg.etiqueta_fila || 'Fila';
+        const row = { codigo_lab: `${etq} ${idx}` };
+        (cfg.campos_entrada || []).forEach(c => {
+            row[c.clave] = c.default !== undefined ? c.default : '';
+        });
+        capturaTecnicaFilas.push(row);
+        renderizarTablaHojaTecnica();
+        recalcularHojaTecnicaEnVivo(false);
+    }
+
+    function leerFilasCapturaTecnicaActual() {
+        const tbody = document.getElementById('ht-tabla-body');
+        if (!tbody) return [];
+        const out = [];
+        tbody.querySelectorAll('tr').forEach((tr, rIdx) => {
+            const base = capturaTecnicaFilas[rIdx] ? { ...capturaTecnicaFilas[rIdx] } : {};
+            tr.querySelectorAll('[data-ht-key]').forEach(el => {
+                base[el.dataset.htKey] = el.value;
+            });
+            tr.querySelectorAll('[data-ht-calc-key]').forEach(el => {
+                base[el.dataset.htCalcKey] = el.value;
+            });
+            out.push(base);
+        });
+        return out;
+    }
+
+    function recalcularHojaTecnicaEnVivo(sincronizarConMatriz) {
+        const cfg = HOJA_TECNICA_CONFIG || {};
+        const motor = cfg.motor_calculo || '';
+        const tbody = document.getElementById('ht-tabla-body');
+        const resumenBar = document.getElementById('ht-resumen-bar');
+        if (!tbody || !motor) return;
+
+        const setCalc = (tr, key, val) => {
+            const inp = tr.querySelector(`[data-ht-calc-key="${key}"]`);
+            if (inp) inp.value = (val !== null && val !== undefined && val !== '') ? String(val) : '';
+        };
+
+        const proctorPuntos = [];
+        const bloqueAcum = [];
+        let sanidadTotalRetOrig = 0;
+        if (motor === 'sanidad') {
+            capturaTecnicaFilas.forEach(r => {
+                const v = htParseNum(r.retenido_original_g);
+                if (!isNaN(v) && v > 0) sanidadTotalRetOrig += v;
+            });
+        }
+
+        tbody.querySelectorAll('tr').forEach((tr, rIdx) => {
+            const row = capturaTecnicaFilas[rIdx] || {};
+            const codLab = row.codigo_lab || '';
+            const trMat = htBuscarTrMatriz(codLab, rIdx);
+
+            if (motor === 'cilindro_psi') {
+                const d1 = htParseNum(row.diametro_1), d2 = htParseNum(row.diametro_2);
+                const l1 = htParseNum(row.largo_1), l2 = htParseNum(row.largo_2);
+                const masa = htParseNum(row.masa_kg), carga = htParseNum(row.carga_lb);
+                const fEns = htFechaIso(row.fecha_ensayo);
+
+                let areaIn2 = NaN, pv = NaN, psi = NaN, kgcm2 = NaN;
+                if (!isNaN(d1) && d1 > 0 && !isNaN(d2) && d2 > 0) {
+                    const dProm = (d1 + d2) / 2.0;
+                    areaIn2 = (Math.PI * Math.pow(dProm / 2.0, 2)) / 6.4516;
+                    setCalc(tr, 'area_in2', areaIn2.toFixed(2));
+                } else {
+                    setCalc(tr, 'area_in2', '');
+                }
+                if (!isNaN(areaIn2) && !isNaN(l1) && l1 > 0 && !isNaN(l2) && l2 > 0 && !isNaN(masa) && masa > 0) {
+                    const dProm = (d1 + d2) / 2.0;
+                    const lProm = (l1 + l2) / 2.0;
+                    const volM3 = (Math.PI * Math.pow(dProm / 2.0, 2) * lProm) / 1000000.0;
+                    pv = Math.round((masa / volM3) / 10.0) * 10;
+                    setCalc(tr, 'peso_volumetrico', pv);
+                } else {
+                    setCalc(tr, 'peso_volumetrico', '');
+                }
+                if (!isNaN(areaIn2) && areaIn2 > 0 && !isNaN(carga) && carga > 0) {
+                    let fLd = 1.0;
+                    if (!isNaN(l1) && l1 > 0 && !isNaN(l2) && l2 > 0) {
+                        const ld = ((l1 + l2) / 2.0) / ((d1 + d2) / 2.0);
+                        if (ld <= 1.75) fLd = htFactorLd(ld);
+                    }
+                    const psiBruto = (carga / areaIn2) * fLd;
+                    psi = LAB_REDONDEAR_PSI_10 ? (Math.round(psiBruto / 10.0) * 10) : Math.round(psiBruto);
+                    kgcm2 = Math.round(psi / LAB_DIVISOR_KGCM2);
+                    setCalc(tr, 'esfuerzo_psi', psi);
+                    setCalc(tr, 'esfuerzo_kgcm2', kgcm2);
+                } else {
+                    setCalc(tr, 'esfuerzo_psi', '');
+                    setCalc(tr, 'esfuerzo_kgcm2', '');
+                }
+                if (sincronizarConMatriz && trMat && (!isNaN(areaIn2) || !isNaN(carga) || !isNaN(pv) || fEns)) {
+                    if (!isNaN(areaIn2)) htSetCeldaMatriz(trMat, ['Área (in²)'], areaIn2.toFixed(2));
+                    if (!isNaN(carga) && carga > 0) htSetCeldaMatriz(trMat, ['Carga (lb)'], Math.round(carga));
+                    if (!isNaN(pv)) htSetCeldaMatriz(trMat, ['Peso Volumétrico (kg/m³)'], pv);
+                    if (!isNaN(psi)) htSetCeldaMatriz(trMat, ['R. Compresión (lb/in²)'], psi);
+                    if (!isNaN(kgcm2)) htSetCeldaMatriz(trMat, ['R. Compresión (kg/cm²)', 'R. Compresión. (kg/cm²)'], kgcm2);
+                    if (fEns) htSetCeldaMatriz(trMat, ['Fecha de Ensayo', 'Fecha de Ruptura'], fEns);
+                }
+            } else if (motor === 'cilindro_metrico') {
+                const d1 = htParseNum(row.diametro_1), d2 = htParseNum(row.diametro_2);
+                const l1 = htParseNum(row.largo_1), l2 = htParseNum(row.largo_2);
+                const masa = htParseNum(row.masa_kg);
+                let cargaKg = htParseNum(row.carga_kg);
+                const cargaLb = htParseNum(row.carga_lb);
+                if ((isNaN(cargaKg) || cargaKg <= 0) && !isNaN(cargaLb) && cargaLb > 0) cargaKg = cargaLb * 0.45359237;
+                const fEns = htFechaIso(row.fecha_ensayo);
+
+                let areaCm2 = NaN, pv = NaN, kgcm2 = NaN;
+                if (!isNaN(d1) && d1 > 0 && !isNaN(d2) && d2 > 0) {
+                    const dProm = (d1 + d2) / 2.0;
+                    areaCm2 = Math.PI * Math.pow(dProm / 2.0, 2);
+                    setCalc(tr, 'area_cm2', areaCm2.toFixed(2));
+                } else setCalc(tr, 'area_cm2', '');
+                if (!isNaN(areaCm2) && !isNaN(l1) && l1 > 0 && !isNaN(l2) && l2 > 0 && !isNaN(masa) && masa > 0) {
+                    pv = Math.round((masa / ((areaCm2 * ((l1 + l2) / 2.0)) / 1000000.0)) / 10.0) * 10;
+                    setCalc(tr, 'peso_volumetrico', pv);
+                } else setCalc(tr, 'peso_volumetrico', '');
+                if (!isNaN(areaCm2) && areaCm2 > 0 && !isNaN(cargaKg) && cargaKg > 0) {
+                    kgcm2 = cargaKg / areaCm2;
+                    setCalc(tr, 'esfuerzo_kgcm2', kgcm2.toFixed(1));
+                } else setCalc(tr, 'esfuerzo_kgcm2', '');
+
+                if (sincronizarConMatriz && trMat && (!isNaN(areaCm2) || !isNaN(cargaKg) || fEns)) {
+                    if (!isNaN(areaCm2)) htSetCeldaMatriz(trMat, ['Área (cm²)'], areaCm2.toFixed(2));
+                    if (!isNaN(cargaKg) && cargaKg > 0) htSetCeldaMatriz(trMat, ['Carga (kg)'], Math.round(cargaKg));
+                    if (!isNaN(pv)) htSetCeldaMatriz(trMat, ['Peso Volumétrico (kg/m³)'], pv);
+                    if (!isNaN(kgcm2)) htSetCeldaMatriz(trMat, ['R. compresión. (kg/cm²)', 'R. Compresión (kg/cm²)'], kgcm2.toFixed(1));
+                    if (fEns) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], fEns);
+                }
+            } else if (motor === 'mortero') {
+                const l = htParseNum(row.largo_cm), a = htParseNum(row.ancho_cm), h = htParseNum(row.alto_cm);
+                const m = htParseNum(row.masa_kg), c = htParseNum(row.carga_lb);
+                const fEns = htFechaIso(row.fecha_ensayo);
+                let areaIn2 = NaN, pv = NaN, psi = NaN, kgcm2 = NaN;
+                if (!isNaN(l) && l > 0 && !isNaN(a) && a > 0) {
+                    areaIn2 = (l * a) / 6.4516;
+                    setCalc(tr, 'area_in2', areaIn2.toFixed(2));
+                } else setCalc(tr, 'area_in2', '');
+                if (!isNaN(l) && l > 0 && !isNaN(a) && a > 0 && !isNaN(h) && h > 0 && !isNaN(m) && m > 0) {
+                    pv = Math.round((m / ((l * a * h) / 1000000.0)) / 10.0) * 10;
+                    setCalc(tr, 'peso_volumetrico', pv);
+                } else setCalc(tr, 'peso_volumetrico', '');
+                if (!isNaN(areaIn2) && areaIn2 > 0 && !isNaN(c) && c > 0) {
+                    psi = LAB_REDONDEAR_PSI_10 ? Math.round((c / areaIn2) / 10.0) * 10 : Math.round(c / areaIn2);
+                    kgcm2 = psi / LAB_DIVISOR_KGCM2;
+                    setCalc(tr, 'esfuerzo_psi', psi);
+                    setCalc(tr, 'esfuerzo_kgcm2', kgcm2.toFixed(1));
+                } else { setCalc(tr, 'esfuerzo_psi', ''); setCalc(tr, 'esfuerzo_kgcm2', ''); }
+                if (sincronizarConMatriz && trMat && (!isNaN(areaIn2) || !isNaN(c) || fEns)) {
+                    if (!isNaN(areaIn2)) htSetCeldaMatriz(trMat, ['Área (in²)'], areaIn2.toFixed(2));
+                    if (!isNaN(c) && c > 0) htSetCeldaMatriz(trMat, ['Carga (lb)'], Math.round(c));
+                    if (!isNaN(pv)) htSetCeldaMatriz(trMat, ['Peso Volumétrico (kg/m³)'], pv);
+                    if (!isNaN(psi)) htSetCeldaMatriz(trMat, ['R. Compresión (lb/in²)'], psi);
+                    if (!isNaN(kgcm2)) htSetCeldaMatriz(trMat, ['R. Compresión. (kg/cm²)', 'R. Compresión (kg/cm²)'], kgcm2.toFixed(1));
+                    if (fEns) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], fEns);
+                }
+            } else if (motor === 'bloque') {
+                const l = htParseNum(row.largo_cm), h = htParseNum(row.alto_cm), a = htParseNum(row.ancho_cm);
+                const eExt = htParseNum(row.esp_ext_cm), eInt = htParseNum(row.esp_int_cm);
+                const mSec = htParseNum(row.masa_seca_kg), mSum = htParseNum(row.masa_sumergida_kg), mSat = htParseNum(row.masa_saturada_kg);
+                const c = htParseNum(row.carga_lb);
+                let ab = NaN, an = NaN, dens = NaN, abs = NaN, psi = NaN, kgcm2 = NaN;
+                if (!isNaN(l) && l > 0 && !isNaN(a) && a > 0) { ab = (l * a) / 6.4516; setCalc(tr, 'area_bruta_in2', ab.toFixed(2)); } else setCalc(tr, 'area_bruta_in2', '');
+                if (!isNaN(mSat) && !isNaN(mSum) && (mSat - mSum) > 0 && !isNaN(h) && h > 0) {
+                    const volCm3 = (mSat - mSum) * 1000.0;
+                    an = (volCm3 / h) / 6.4516;
+                    setCalc(tr, 'area_neta_in2', an.toFixed(2));
+                    if (!isNaN(mSec) && mSec > 0) {
+                        dens = Math.round((mSec * 1000000.0) / volCm3);
+                        abs = ((mSat - mSec) / mSec) * 100.0;
+                        setCalc(tr, 'absorcion_pct', abs.toFixed(2));
+                    }
+                } else { setCalc(tr, 'area_neta_in2', ''); setCalc(tr, 'absorcion_pct', ''); }
+                const aEf = !isNaN(an) && an > 0 ? an : ab;
+                if (!isNaN(aEf) && aEf > 0 && !isNaN(c) && c > 0) {
+                    psi = Math.round(c / aEf);
+                    kgcm2 = psi / LAB_DIVISOR_KGCM2;
+                    setCalc(tr, 'esfuerzo_psi', psi);
+                    setCalc(tr, 'esfuerzo_kgcm2', kgcm2.toFixed(1));
+                } else { setCalc(tr, 'esfuerzo_psi', ''); setCalc(tr, 'esfuerzo_kgcm2', ''); }
+                if (!isNaN(ab) || !isNaN(c) || !isNaN(abs)) {
+                    bloqueAcum.push({ ab, an, c, l, h, a, eInt, eExt, dens, abs, psi, kgcm2 });
+                }
+            } else if (motor === 'adoquin') {
+                const l = htParseNum(row.largo_cm), a = htParseNum(row.ancho_cm), h = htParseNum(row.alto_cm), c = htParseNum(row.carga_lb);
+                const mSec = htParseNum(row.masa_seca_kg), mSum = htParseNum(row.masa_sumergida_kg), mSat = htParseNum(row.masa_saturada_kg);
+                const fEns = htFechaIso(row.fecha_ensayo);
+                let areaIn2 = NaN, pv = NaN, abs = NaN, psi = NaN, kgcm2 = NaN;
+                if (!isNaN(l) && l > 0 && !isNaN(a) && a > 0) { areaIn2 = (l * a) / 6.4516; setCalc(tr, 'area_in2', areaIn2.toFixed(2)); } else setCalc(tr, 'area_in2', '');
+                if (!isNaN(mSec) && mSec > 0 && !isNaN(mSat) && !isNaN(mSum) && (mSat - mSum) > 0) {
+                    pv = Math.round((mSec * 1000000.0) / ((mSat - mSum) * 1000.0));
+                    abs = ((mSat - mSec) / mSec) * 100.0;
+                    setCalc(tr, 'peso_volumetrico', pv);
+                    setCalc(tr, 'absorcion_pct', abs.toFixed(2));
+                } else { setCalc(tr, 'peso_volumetrico', ''); setCalc(tr, 'absorcion_pct', ''); }
+                if (!isNaN(areaIn2) && areaIn2 > 0 && !isNaN(c) && c > 0) {
+                    psi = Math.round(c / areaIn2);
+                    kgcm2 = psi / LAB_DIVISOR_KGCM2;
+                    setCalc(tr, 'esfuerzo_psi', psi);
+                    setCalc(tr, 'esfuerzo_kgcm2', kgcm2.toFixed(1));
+                } else { setCalc(tr, 'esfuerzo_psi', ''); setCalc(tr, 'esfuerzo_kgcm2', ''); }
+                if (sincronizarConMatriz && trMat && (!isNaN(areaIn2) || !isNaN(c) || fEns)) {
+                    if (!isNaN(areaIn2)) htSetCeldaMatriz(trMat, ['Área (in²)'], areaIn2.toFixed(2));
+                    if (!isNaN(c) && c > 0) htSetCeldaMatriz(trMat, ['Carga (lb)'], Math.round(c));
+                    if (!isNaN(pv)) htSetCeldaMatriz(trMat, ['Peso Volumétrico (kg/m³)'], pv);
+                    if (!isNaN(psi)) htSetCeldaMatriz(trMat, ['R. Compresión (lb/in²)'], psi);
+                    if (!isNaN(kgcm2)) htSetCeldaMatriz(trMat, ['R. Compresión. (kg/cm²)', 'R. Compresión (kg/cm²)'], kgcm2.toFixed(1));
+                    if (!isNaN(abs)) htSetCeldaMatriz(trMat, ['Absorción ((%)(P/P))'], abs.toFixed(2));
+                    if (fEns) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], fEns);
+                }
+            } else if (motor === 'flexion') {
+                const bs = [htParseNum(row.ancho_1), htParseNum(row.ancho_2), htParseNum(row.ancho_3)].filter(v => !isNaN(v) && v > 0);
+                const ds = [htParseNum(row.espesor_1), htParseNum(row.espesor_2), htParseNum(row.espesor_3)].filter(v => !isNaN(v) && v > 0);
+                const luz = htParseNum(row.luz_in), c = htParseNum(row.carga_lb), distA = htParseNum(row.dist_a_in);
+                const zona = String(row.en_tercio_medio || '');
+                const fEns = htFechaIso(row.fecha_ensayo);
+                const bProm = bs.length ? (bs.reduce((s, x) => s + x, 0) / bs.length) : NaN;
+                const dProm = ds.length ? (ds.reduce((s, x) => s + x, 0) / ds.length) : NaN;
+                setCalc(tr, 'ancho_prom', !isNaN(bProm) ? bProm.toFixed(2) : '');
+                setCalc(tr, 'espesor_prom', !isNaN(dProm) ? dProm.toFixed(2) : '');
+                let mrKg = NaN;
+                const dict = zona.includes('Descartar') ? 'DESCARTAR' : 'VÁLIDO';
+                if (!isNaN(bProm) && !isNaN(dProm) && !isNaN(luz) && luz > 0 && !isNaN(c) && c > 0) {
+                    const mrPsi = (zona.includes('<5%') && !isNaN(distA) && distA > 0)
+                        ? (3.0 * c * distA) / (bProm * dProm * dProm)
+                        : (c * luz) / (bProm * dProm * dProm);
+                    mrKg = mrPsi * 0.070307;
+                    setCalc(tr, 'mr_kgcm2', mrKg.toFixed(2));
+                    setCalc(tr, 'dictamen_falla', dict);
+                } else { setCalc(tr, 'mr_kgcm2', ''); setCalc(tr, 'dictamen_falla', ''); }
+                if (sincronizarConMatriz && trMat && (!isNaN(bProm) || !isNaN(c) || fEns)) {
+                    if (!isNaN(bProm)) htSetCeldaMatriz(trMat, ['Ancho Promedio (in)'], bProm.toFixed(2));
+                    if (!isNaN(dProm)) htSetCeldaMatriz(trMat, ['Espesor Promedio (in)'], dProm.toFixed(2));
+                    if (!isNaN(luz) && luz > 0) htSetCeldaMatriz(trMat, ['Longitud de Apoyo (in)'], luz.toFixed(2));
+                    if (!isNaN(c) && c > 0) htSetCeldaMatriz(trMat, ['Carga (lb)'], Math.round(c));
+                    if (!isNaN(mrKg)) htSetCeldaMatriz(trMat, ['Resistencia a la flexión. (kg/cm²)'], mrKg.toFixed(2));
+                    if (fEns) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], fEns);
+                }
+            } else if (motor === 'martillo_suizo') {
+                const pos = String(row.posicion || 'B').toUpperCase();
+                const vals = [];
+                for (let k = 1; k <= 10; k++) {
+                    const rv = htParseNum(row['r' + k]);
+                    if (!isNaN(rv) && rv > 0) vals.push(rv);
+                }
+                if (vals.length > 0) {
+                    const pRaw = vals.reduce((s, x) => s + x, 0) / vals.length;
+                    const filt = vals.filter(v => Math.abs(v - pRaw) <= 6.0);
+                    const prom = filt.length ? (filt.reduce((s, x) => s + x, 0) / filt.length) : pRaw;
+                    const rC = prom * 0.9708737864;
+                    const curvas = { A: [0.0085, 0.2512, 128.4, -1820], B: [0.0079, 0.2145, 118.2, -1610], C: [0.0072, 0.1910, 108.5, -1420] };
+                    const [ca, cb, cc, cd] = curvas[pos] || curvas.B;
+                    const psi = Math.round(Math.max(0, ca * rC * rC * rC + cb * rC * rC + cc * rC + cd) / 10.0) * 10;
+                    const kgcm2 = Math.round(psi / LAB_DIVISOR_KGCM2);
+                    setCalc(tr, 'rebote_promedio', prom.toFixed(1));
+                    setCalc(tr, 'esfuerzo_psi', psi);
+                    setCalc(tr, 'esfuerzo_kgcm2', kgcm2);
+                    if (sincronizarConMatriz && trMat) {
+                        htSetCeldaMatriz(trMat, ['Forma de Prueba'], 'Posición ' + pos);
+                        htSetCeldaMatriz(trMat, ['Promedio de Rebotes (N°)'], prom.toFixed(1));
+                        htSetCeldaMatriz(trMat, ['Estimación R. compresión (lb/in²)'], psi);
+                        htSetCeldaMatriz(trMat, ['Estimación R. compresión (kg/cm²)'], kgcm2);
+                    }
+                } else { setCalc(tr, 'rebote_promedio', ''); setCalc(tr, 'esfuerzo_psi', ''); setCalc(tr, 'esfuerzo_kgcm2', ''); }
+            } else if (motor === 'proctor') {
+                const mh = htParseNum(row.molde_humedo_g), mm = htParseNum(row.masa_molde_g), vol = htParseNum(row.volumen_molde_ml) || 947.26;
+                const th = htParseNum(row.tara_humedo_g), ts = htParseNum(row.tara_seco_g), tt = htParseNum(row.tara_g);
+                let hum = NaN, pvh = NaN, pvs = NaN;
+                if (!isNaN(th) && !isNaN(ts) && !isNaN(tt) && (ts - tt) > 0) {
+                    hum = ((th - ts) / (ts - tt)) * 100.0;
+                    setCalc(tr, 'humedad_pct', hum.toFixed(2));
+                } else setCalc(tr, 'humedad_pct', '');
+                if (!isNaN(mh) && !isNaN(mm) && (mh - mm) > 0 && vol > 0) {
+                    pvh = ((mh - mm) / vol) * 1000.0;
+                    setCalc(tr, 'densidad_humeda', Math.round(pvh));
+                    if (!isNaN(hum)) {
+                        pvs = pvh / (1.0 + hum / 100.0);
+                        setCalc(tr, 'densidad_seca', Math.round(pvs));
+                        proctorPuntos.push({ pvs, hum, metodo: row.metodo_proctor || 'Proctor Estándar A', fecha: htFechaIso(row.fecha_ensayo) });
+                    } else setCalc(tr, 'densidad_seca', '');
+                } else { setCalc(tr, 'densidad_humeda', ''); setCalc(tr, 'densidad_seca', ''); }
+            } else if (motor === 'cono_arena' || motor === 'reemplazo_agua') {
+                const rh = htParseNum(row.rec_humedo_g), rs = htParseNum(row.rec_seco_g), rt = htParseNum(row.rec_g);
+                const pvsMax = htParseNum(row.pvs_max);
+                const fEns = htFechaIso(row.fecha_ensayo);
+                let hum = NaN, pvh = NaN, pvs = NaN, comp = NaN;
+                if (!isNaN(rh) && !isNaN(rs) && !isNaN(rt) && (rs - rt) > 0) {
+                    hum = ((rh - rs) / (rs - rt)) * 100.0;
+                    setCalc(tr, 'humedad_pct', hum.toFixed(1));
+                } else setCalc(tr, 'humedad_pct', '');
+                if (motor === 'cono_arena') {
+                    const aEmp = htParseNum(row.arena_empleada_g), aSob = htParseNum(row.arena_sobrante_g), aCono = htParseNum(row.arena_cono_g) || 0;
+                    const pu = htParseNum(row.pu_arena) || 1250.0, exc = htParseNum(row.excavado_tara_g), tExc = htParseNum(row.tara_exc_g) || 0;
+                    if (!isNaN(aEmp) && !isNaN(aSob) && !isNaN(exc) && (aEmp - aSob - aCono) > 0 && (exc - tExc) > 0) {
+                        const volM3 = ((aEmp - aSob - aCono) / 1000.0) / pu;
+                        pvh = Math.round(((exc - tExc) / 1000.0) / volM3);
+                    }
+                } else {
+                    const agAn = htParseNum(row.agua_anillo_l) || 0, agP = htParseNum(row.agua_pozo_anillo_l), excKg = htParseNum(row.excavado_humedo_kg);
+                    if (!isNaN(agP) && (agP - agAn) > 0 && !isNaN(excKg) && excKg > 0) {
+                        pvh = Math.round(excKg / ((agP - agAn) / 1000.0));
+                    }
+                }
+                if (!isNaN(pvh) && !isNaN(hum)) {
+                    pvs = Math.round(pvh / (1.0 + hum / 100.0));
+                    setCalc(tr, 'pvs_sitio', pvs);
+                } else setCalc(tr, 'pvs_sitio', '');
+                if (!isNaN(pvs) && !isNaN(pvsMax) && pvsMax > 0) {
+                    comp = (pvs / pvsMax) * 100.0;
+                    setCalc(tr, 'compactacion_pct', comp.toFixed(1));
+                } else setCalc(tr, 'compactacion_pct', '');
+                if (sincronizarConMatriz && trMat && (!isNaN(pvs) || !isNaN(hum) || fEns)) {
+                    if (!isNaN(pvsMax) && pvsMax > 0) htSetCeldaMatriz(trMat, ['P.V.S Max (kg/m³)', '**P.V.S Max (kg/m³)'], Math.round(pvsMax));
+                    if (!isNaN(pvs)) htSetCeldaMatriz(trMat, ['P.V.S.Sitio (kg/m³)'], pvs);
+                    if (!isNaN(hum)) htSetCeldaMatriz(trMat, ['Humedad sitio ((%) (P/P))', 'Humedad Sitio ((%) (P/P))'], hum.toFixed(1));
+                    if (!isNaN(pvh)) htSetCeldaMatriz(trMat, ['Humedad Sitio (kg/m³)'], pvh);
+                    if (!isNaN(comp)) htSetCeldaMatriz(trMat, ['Compactación ((%) (P/P))'], comp.toFixed(1));
+                    if (fEns) htSetCeldaMatriz(trMat, ['Fecha de muestreo'], fEns);
+                }
+            } else if (motor === 'densimetro') {
+                const pMax = htParseNum(row.pvs_max), pSit = htParseNum(row.pvs_sitio);
+                let comp = NaN;
+                if (!isNaN(pMax) && pMax > 0 && !isNaN(pSit) && pSit > 0) {
+                    comp = (pSit / pMax) * 100.0;
+                    setCalc(tr, 'compactacion_pct', comp.toFixed(1));
+                } else setCalc(tr, 'compactacion_pct', '');
+                if (sincronizarConMatriz && trMat && (!isNaN(pSit) || !isNaN(pMax) || row.capa)) {
+                    if (row.capa) htSetCeldaMatriz(trMat, ['Capa (N°)'], row.capa);
+                    if (row.espesor_cm) htSetCeldaMatriz(trMat, ['Espesor (cm)'], row.espesor_cm);
+                    if (row.profundidad_cm) htSetCeldaMatriz(trMat, ['Profundidad (cm)'], row.profundidad_cm);
+                    if (!isNaN(pMax)) htSetCeldaMatriz(trMat, ['P.V.S Max (kg/m³)'], Math.round(pMax));
+                    if (row.humedad_optima) htSetCeldaMatriz(trMat, ['Humedad Óptima ((% )(P/P))'], row.humedad_optima);
+                    if (!isNaN(pSit)) htSetCeldaMatriz(trMat, ['P.V.S.Sitio (kg/m³)'], Math.round(pSit));
+                    if (row.humedad_sitio_pct) htSetCeldaMatriz(trMat, ['Humedad Sitio ((%) (P/P))'], row.humedad_sitio_pct);
+                    if (row.humedad_sitio_kgm3) htSetCeldaMatriz(trMat, ['Humedad Sitio (kg/m³)'], row.humedad_sitio_kgm3);
+                    if (!isNaN(comp)) htSetCeldaMatriz(trMat, ['Compactación ((%) (P/P))'], comp.toFixed(1));
+                    if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de muestreo'], htFechaIso(row.fecha_ensayo));
+                }
+            } else if (motor === 'granulometria_suelo') {
+                const tt = htParseNum(row.tara_g), th = htParseNum(row.humeda_tara_g), ts = htParseNum(row.seca_tara_g);
+                const llT = htParseNum(row.ll_tara_g), llH = htParseNum(row.ll_hum_g), llS = htParseNum(row.ll_sec_g);
+                const lpT = htParseNum(row.lp_tara_g), lpH = htParseNum(row.lp_hum_g), lpS = htParseNum(row.lp_sec_g);
+                const hum = (!isNaN(th) && !isNaN(ts) && !isNaN(tt) && (ts - tt) > 0) ? ((th - ts) / (ts - tt) * 100.0) : NaN;
+                const ll = (!isNaN(llH) && !isNaN(llS) && !isNaN(llT) && (llS - llT) > 0) ? ((llH - llS) / (llS - llT) * 100.0) : NaN;
+                const lp = (!isNaN(lpH) && !isNaN(lpS) && !isNaN(lpT) && (lpS - lpT) > 0) ? ((lpH - lpS) / (lpS - lpT) * 100.0) : NaN;
+                const ip = (!isNaN(ll) && !isNaN(lp)) ? Math.max(0, ll - lp) : NaN;
+                setCalc(tr, 'humedad_pct', !isNaN(hum) ? hum.toFixed(2) : '');
+                setCalc(tr, 'll_pct', !isNaN(ll) ? ll.toFixed(1) : '');
+                setCalc(tr, 'lp_pct', !isNaN(lp) ? lp.toFixed(1) : '');
+                setCalc(tr, 'ip_pct', !isNaN(ip) ? ip.toFixed(1) : '');
+                if (sincronizarConMatriz && (!isNaN(ll) || !isNaN(lp) || !isNaN(hum))) {
+                    document.querySelectorAll('#tabla-body tr').forEach(trM => {
+                        const dInp = trM.querySelector('input[data-col="Malla"]') || trM.querySelector('input[data-col="Descripción"]');
+                        if (!dInp) return;
+                        const dTxt = dInp.value.trim().toLowerCase();
+                        if (!isNaN(ll) && dTxt.includes('límite l')) htSetCeldaMatriz(trM, ['% que pasa la malla', 'Resultado'], ll.toFixed(1));
+                        if (!isNaN(lp) && dTxt.includes('límite pl')) htSetCeldaMatriz(trM, ['% que pasa la malla', 'Resultado'], lp.toFixed(1));
+                        if (!isNaN(ip) && (dTxt === 'i.p' || dTxt.includes('índice'))) htSetCeldaMatriz(trM, ['% que pasa la malla', 'Resultado'], ip.toFixed(1));
+                        if (!isNaN(hum) && dTxt.includes('humedad')) htSetCeldaMatriz(trM, ['Resultado', '% que pasa la malla'], hum.toFixed(2));
+                    });
+                    if (typeof recalculateGranulometria === 'function') recalculateGranulometria();
+                }
+            } else if (motor === 'granulometria_agregado') {
+                const mIni = htParseNum(row.masa_inicial_g), mLav = htParseNum(row.masa_lavada_g);
+                if (!isNaN(mIni) && mIni > 0 && !isNaN(mLav) && mLav >= 0) {
+                    const pG = Math.max(0, mIni - mLav);
+                    const pPct = (pG / mIni) * 100.0;
+                    setCalc(tr, 'perdida_lavado_g', pG.toFixed(2));
+                    setCalc(tr, 'perdida_lavado_pct', pPct.toFixed(2));
+                    if (sincronizarConMatriz) {
+                        document.querySelectorAll('#tabla-body tr').forEach(trM => {
+                            const dInp = trM.querySelector('input[data-col="Malla"]') || trM.querySelector('input[data-col="Descripción"]');
+                            if (dInp && dInp.value.toLowerCase().includes('lavado')) {
+                                htSetCeldaMatriz(trM, ['P. Retenido parcial (g)', 'Resultado'], pG.toFixed(2));
+                            }
+                        });
+                        if (typeof recalculateGranulometria === 'function') recalculateGranulometria();
+                    }
+                } else { setCalc(tr, 'perdida_lavado_g', ''); setCalc(tr, 'perdida_lavado_pct', ''); }
+            } else if (motor === 'ge_agregados') {
+                const frac = String(row.fraccion || '').toLowerCase();
+                const b = htParseNum(row.masa_sss_g), a = htParseNum(row.masa_seca_g);
+                const c = htParseNum(row.masa_frasco_agua_g), d = htParseNum(row.masa_sumergida_g);
+                if (!isNaN(a) && a > 0 && !isNaN(b) && b > 0) {
+                    const abs = ((b - a) / a) * 100.0;
+                    setCalc(tr, 'absorcion_pct', abs.toFixed(2));
+                    let gb = NaN, gs = NaN, ga = NaN;
+                    if (frac.includes('grueso') && !isNaN(d)) {
+                        const sNet = d - (isNaN(c) ? 0 : c);
+                        if ((b - sNet) > 0 && (a - sNet) > 0) { gb = a / (b - sNet); gs = b / (b - sNet); ga = a / (a - sNet); }
+                    } else if (!isNaN(c) && !isNaN(d) && (b + c - d) > 0 && (a + c - d) > 0) {
+                        gb = a / (b + c - d); gs = b / (b + c - d); ga = a / (a + c - d);
+                    }
+                    setCalc(tr, 'ge_bulk', !isNaN(gb) ? gb.toFixed(3) : '');
+                    setCalc(tr, 'ge_sss', !isNaN(gs) ? gs.toFixed(3) : '');
+                    setCalc(tr, 'ge_aparente', !isNaN(ga) ? ga.toFixed(3) : '');
+                    if (sincronizarConMatriz && trMat) {
+                        if (row.color) htSetCeldaMatriz(trMat, ['Color'], row.color);
+                        if (row.humedad_natural) htSetCeldaMatriz(trMat, ['Humedad Natural ((%) (P/P))'], row.humedad_natural);
+                        htSetCeldaMatriz(trMat, ['Absorción ((%)(P/P))'], abs.toFixed(2));
+                        if (!isNaN(gb)) htSetCeldaMatriz(trMat, ['Gravedad Específica.'], gb.toFixed(3));
+                        if (!isNaN(gs)) htSetCeldaMatriz(trMat, ['Gravedad Específica (SSS)'], gs.toFixed(3));
+                        if (!isNaN(ga)) htSetCeldaMatriz(trMat, ['Gravedad Específica Aparente'], ga.toFixed(3));
+                    }
+                } else { setCalc(tr, 'absorcion_pct', ''); setCalc(tr, 'ge_bulk', ''); setCalc(tr, 'ge_sss', ''); setCalc(tr, 'ge_aparente', ''); }
+            } else if (motor === 'cbr') {
+                const mh = htParseNum(row.molde_humedo_g), mm = htParseNum(row.masa_molde_g) || 7849, vol = htParseNum(row.volumen_molde_cm3) || 3200;
+                const th = htParseNum(row.tara_humedo_g), ts = htParseNum(row.tara_seco_g), tt = htParseNum(row.tara_g);
+                const pMax = htParseNum(row.pvs_max), l01 = htParseNum(row.lectura_01), l02 = htParseNum(row.lectura_02), kA = htParseNum(row.constante_anillo) || 10;
+                const hum = (!isNaN(th) && !isNaN(ts) && !isNaN(tt) && (ts - tt) > 0) ? ((th - ts) / (ts - tt) * 100.0) : NaN;
+                const pvh = (!isNaN(mh) && (mh - mm) > 0 && vol > 0) ? (((mh - mm) / vol) * 1000.0) : NaN;
+                const pvs = !isNaN(pvh) ? (!isNaN(hum) ? Math.round(pvh / (1.0 + hum / 100.0)) : Math.round(pvh)) : NaN;
+                const comp = (!isNaN(pvs) && !isNaN(pMax) && pMax > 0) ? (pvs / pMax) * 100.0 : NaN;
+                const c01 = (!isNaN(l01) && l01 > 0) ? (((l01 * kA) / 3.0) / 1000.0 * 100.0) : NaN;
+                const c02 = (!isNaN(l02) && l02 > 0) ? (((l02 * kA) / 3.0) / 1500.0 * 100.0) : NaN;
+                const cAd = (!isNaN(c01) || !isNaN(c02)) ? Math.max(isNaN(c01) ? 0 : c01, isNaN(c02) ? 0 : c02) : NaN;
+                setCalc(tr, 'densidad_seca', !isNaN(pvs) ? pvs : '');
+                setCalc(tr, 'compactacion_pct', !isNaN(comp) ? comp.toFixed(1) : '');
+                setCalc(tr, 'cbr_01', !isNaN(c01) ? c01.toFixed(1) : '');
+                setCalc(tr, 'cbr_02', !isNaN(c02) ? c02.toFixed(1) : '');
+                setCalc(tr, 'cbr_adoptado', !isNaN(cAd) ? cAd.toFixed(1) : '');
+                if (sincronizarConMatriz && trMat && (!isNaN(pvs) || !isNaN(cAd))) {
+                    htSetCeldaMatriz(trMat, ['Golpes/Capa'], row.golpes || '56');
+                    if (!isNaN(pvs)) htSetCeldaMatriz(trMat, ['Densidad Seca (kg/m³)'], pvs);
+                    if (!isNaN(hum)) htSetCeldaMatriz(trMat, ['Humedad Moldeo (%)'], hum.toFixed(1));
+                    if (!isNaN(comp)) htSetCeldaMatriz(trMat, ['Compactación (%)'], comp.toFixed(1));
+                    if (!isNaN(c01)) htSetCeldaMatriz(trMat, ['CBR 0.1" (%)'], c01.toFixed(1));
+                    if (!isNaN(c02)) htSetCeldaMatriz(trMat, ['CBR 0.2" (%)'], c02.toFixed(1));
+                    if (!isNaN(cAd)) htSetCeldaMatriz(trMat, ['CBR Adoptado (%)'], cAd.toFixed(1));
+                    if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], htFechaIso(row.fecha_ensayo));
+                }
+            } else if (motor === 'ge_suelos') {
+                const temp = isNaN(htParseNum(row.temperatura_c)) ? 20.0 : htParseNum(row.temperatura_c);
+                const ms = htParseNum(row.masa_suelo_seco_g), mpw = htParseNum(row.masa_picno_agua_g), mpws = htParseNum(row.masa_picno_agua_suelo_g);
+                const kF = (1.00034038 - 0.00000777 * temp - 0.00000495 * temp * temp) / 0.9982071;
+                setCalc(tr, 'factor_k', kF.toFixed(4));
+                if (!isNaN(ms) && ms > 0 && !isNaN(mpw) && !isNaN(mpws) && (ms + mpw - mpws) > 0) {
+                    const gs = (ms / (ms + mpw - mpws)) * kF;
+                    setCalc(tr, 'gs', gs.toFixed(3));
+                    if (sincronizarConMatriz && trMat) {
+                        htSetCeldaMatriz(trMat, ['Picnómetro (N°)'], row.picnometro || 'PICNO-02');
+                        htSetCeldaMatriz(trMat, ['Temperatura (°C)'], temp.toFixed(1));
+                        htSetCeldaMatriz(trMat, ['Masa Suelo Seco (g)'], ms.toFixed(2));
+                        htSetCeldaMatriz(trMat, ['Gravedad Específica (Gs)'], gs.toFixed(3));
+                        if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], htFechaIso(row.fecha_ensayo));
+                    }
+                } else setCalc(tr, 'gs', '');
+            } else if (motor === 'acero_tension') {
+                const diam = htParseNum(row.diametro_mm), peso = htParseNum(row.peso_kg), largo = htParseNum(row.largo_cm);
+                const l0 = htParseNum(row.l0_cm), lf = htParseNum(row.lf_cm), fm = htParseNum(row.fuerza_max_kn), flu = htParseNum(row.fluencia_mpa);
+                const area = (!isNaN(diam) && diam > 0) ? Math.PI * Math.pow(diam / 2.0, 2) : NaN;
+                const pUnit = (!isNaN(peso) && peso > 0 && !isNaN(largo) && largo > 0) ? (peso / (largo / 100.0)) : NaN;
+                const fluPsi = (!isNaN(flu) && flu > 0) ? Math.round(flu * 145.0377) : NaN;
+                const tensPsi = (!isNaN(fm) && fm > 0 && !isNaN(area) && area > 0) ? Math.round(((fm * 1000.0) / area) * 145.0377) : NaN;
+                const tensKg = !isNaN(tensPsi) ? Math.round(tensPsi / LAB_DIVISOR_KGCM2) : NaN;
+                const elong = (!isNaN(l0) && l0 > 0 && !isNaN(lf) && lf >= l0) ? (((lf - l0) / l0) * 100.0) : NaN;
+                setCalc(tr, 'area_mm2', !isNaN(area) ? area.toFixed(2) : '');
+                setCalc(tr, 'peso_unitario', !isNaN(pUnit) ? pUnit.toFixed(3) : '');
+                setCalc(tr, 'fluencia_psi', !isNaN(fluPsi) ? fluPsi : '');
+                setCalc(tr, 'tension_psi', !isNaN(tensPsi) ? tensPsi : '');
+                setCalc(tr, 'elongacion_pct', !isNaN(elong) ? elong.toFixed(1) : '');
+                if (sincronizarConMatriz && trMat && (!isNaN(area) || !isNaN(tensPsi) || !isNaN(fluPsi))) {
+                    if (row.varilla_num) htSetCeldaMatriz(trMat, ['Varilla (N°)'], row.varilla_num);
+                    if (!isNaN(diam)) htSetCeldaMatriz(trMat, ['Diámetro (mm)'], diam.toFixed(2));
+                    if (!isNaN(area)) htSetCeldaMatriz(trMat, ['Área (mm²)'], area.toFixed(2));
+                    if (!isNaN(pUnit)) htSetCeldaMatriz(trMat, ['Peso Unitario (kg/m)'], pUnit.toFixed(3));
+                    if (!isNaN(flu)) htSetCeldaMatriz(trMat, ['Fluencia (MPa)'], flu.toFixed(1));
+                    if (!isNaN(fluPsi)) htSetCeldaMatriz(trMat, ['Fluencia (lbf/in²)'], fluPsi);
+                    if (!isNaN(tensPsi)) htSetCeldaMatriz(trMat, ['Tensión Máx. (lbf/in²)'], tensPsi);
+                    if (!isNaN(tensKg)) htSetCeldaMatriz(trMat, ['Tensión Máx. (kg/cm²)'], tensKg);
+                    if (!isNaN(elong)) htSetCeldaMatriz(trMat, ['Elongación (%)'], elong.toFixed(1));
+                    if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], htFechaIso(row.fecha_ensayo));
+                }
+            } else if (motor === 'acero_doblado') {
+                const res = String(row.inspeccion || '').includes('Falla') ? 'Falla' : 'Cumple';
+                setCalc(tr, 'resultado', res);
+                if (sincronizarConMatriz && trMat) {
+                    if (row.varilla_num) htSetCeldaMatriz(trMat, ['Varilla (N°)'], row.varilla_num);
+                    if (row.diametro_mm) htSetCeldaMatriz(trMat, ['Diámetro Nominal (mm)'], row.diametro_mm);
+                    if (row.angulo_deg) htSetCeldaMatriz(trMat, ['Ángulo de Doblado (°)'], row.angulo_deg);
+                    if (row.mandril) htSetCeldaMatriz(trMat, ['Diámetro de Mandril'], row.mandril);
+                    htSetCeldaMatriz(trMat, ['Resultado (Cumple/Falla)'], res);
+                    if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], htFechaIso(row.fecha_ensayo));
+                }
+            } else if (motor === 'sanidad') {
+                const ro = htParseNum(row.retenido_original_g), mi = htParseNum(row.masa_inicial_g), mf = htParseNum(row.masa_final_g);
+                if (!isNaN(mi) && mi > 0 && !isNaN(mf)) {
+                    const pG = Math.max(0, mi - mf), pPct = (pG / mi) * 100.0;
+                    const gPct = (sanidadTotalRetOrig > 0 && !isNaN(ro) && ro > 0) ? (ro / sanidadTotalRetOrig * 100.0) : 0;
+                    const pond = (gPct * pPct) / 100.0;
+                    setCalc(tr, 'gradacion_pct', gPct.toFixed(2));
+                    setCalc(tr, 'perdida_g', pG.toFixed(2));
+                    setCalc(tr, 'perdida_pct', pPct.toFixed(2));
+                    setCalc(tr, 'perdida_ponderada_pct', pond.toFixed(2));
+                    if (sincronizarConMatriz && trMat) {
+                        htSetCeldaMatriz(trMat, ['Fracción'], row.fraccion || codLab);
+                        if (!isNaN(ro)) htSetCeldaMatriz(trMat, ['Retenido Original (g)'], ro.toFixed(2));
+                        htSetCeldaMatriz(trMat, ['% Gradación Original'], gPct.toFixed(2));
+                        htSetCeldaMatriz(trMat, ['Masa Inicial (g)'], mi.toFixed(2));
+                        htSetCeldaMatriz(trMat, ['Masa Final (g)'], mf.toFixed(2));
+                        htSetCeldaMatriz(trMat, ['Pérdida (g)'], pG.toFixed(2));
+                        htSetCeldaMatriz(trMat, ['% Pérdida Fracción'], pPct.toFixed(2));
+                        htSetCeldaMatriz(trMat, ['% Pérdida Ponderada'], pond.toFixed(2));
+                    }
+                } else { setCalc(tr, 'gradacion_pct', ''); setCalc(tr, 'perdida_g', ''); setCalc(tr, 'perdida_pct', ''); setCalc(tr, 'perdida_ponderada_pct', ''); }
+            } else if (motor === 'ladrillo') {
+                const l = htParseNum(row.largo_cm), a = htParseNum(row.ancho_cm), h = htParseNum(row.alto_cm), m = htParseNum(row.masa_kg);
+                let cKg = htParseNum(row.carga_kg);
+                const cLb = htParseNum(row.carga_lb);
+                if ((isNaN(cKg) || cKg <= 0) && !isNaN(cLb) && cLb > 0) cKg = cLb * 0.45359237;
+                const area = (!isNaN(l) && l > 0 && !isNaN(a) && a > 0) ? (l * a) : NaN;
+                const pv = (!isNaN(area) && !isNaN(h) && h > 0 && !isNaN(m) && m > 0) ? Math.round(m / ((area * h) / 1000000.0)) : NaN;
+                const kgcm2 = (!isNaN(area) && area > 0 && !isNaN(cKg) && cKg > 0) ? (cKg / area) : NaN;
+                setCalc(tr, 'area_cm2', !isNaN(area) ? area.toFixed(2) : '');
+                setCalc(tr, 'peso_volumetrico', !isNaN(pv) ? pv : '');
+                setCalc(tr, 'esfuerzo_kgcm2', !isNaN(kgcm2) ? kgcm2.toFixed(1) : '');
+                if (sincronizarConMatriz && trMat && (!isNaN(area) || !isNaN(cKg))) {
+                    if (!isNaN(area)) htSetCeldaMatriz(trMat, ['Área (cm²)'], area.toFixed(2));
+                    if (!isNaN(cKg) && cKg > 0) htSetCeldaMatriz(trMat, ['Carga (kg)'], Math.round(cKg));
+                    if (!isNaN(pv)) htSetCeldaMatriz(trMat, ['Peso Volumétrico (kg/m³)'], pv);
+                    if (!isNaN(kgcm2)) htSetCeldaMatriz(trMat, ['R. a la compresión (kg/cm²)'], kgcm2.toFixed(1));
+                    if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], htFechaIso(row.fecha_ensayo));
+                }
+            } else if (motor === 'roca') {
+                const d1 = htParseNum(row.diametro_1), d2 = htParseNum(row.diametro_2), h1 = htParseNum(row.largo_1), h2 = htParseNum(row.largo_2), cLb = htParseNum(row.carga_lb);
+                const dP = (!isNaN(d1) && !isNaN(d2)) ? (d1 + d2) / 2.0 : (!isNaN(d1) ? d1 : d2);
+                const hP = (!isNaN(h1) && !isNaN(h2)) ? (h1 + h2) / 2.0 : (!isNaN(h1) ? h1 : h2);
+                const ld = (!isNaN(dP) && dP > 0 && !isNaN(hP) && hP > 0) ? (hP / dP) : NaN;
+                const area = (!isNaN(dP) && dP > 0) ? Math.PI * Math.pow(dP / 2.0, 2) : NaN;
+                const psi = (!isNaN(area) && area > 0 && !isNaN(cLb) && cLb > 0) ? Math.round(cLb / (area / 6.4516)) : NaN;
+                const kgcm2 = !isNaN(psi) ? (psi / LAB_DIVISOR_KGCM2) : NaN;
+                const mpa = !isNaN(psi) ? (psi * 0.00689476) : NaN;
+                setCalc(tr, 'relacion_ld', !isNaN(ld) ? ld.toFixed(2) : '');
+                setCalc(tr, 'area_cm2', !isNaN(area) ? area.toFixed(2) : '');
+                setCalc(tr, 'esfuerzo_mpa', !isNaN(mpa) ? mpa.toFixed(2) : '');
+                setCalc(tr, 'esfuerzo_kgcm2', !isNaN(kgcm2) ? kgcm2.toFixed(1) : '');
+                setCalc(tr, 'esfuerzo_psi', !isNaN(psi) ? psi : '');
+                if (sincronizarConMatriz && trMat && (!isNaN(area) || !isNaN(psi))) {
+                    if (!isNaN(dP)) htSetCeldaMatriz(trMat, ['Diámetro (cm)'], dP.toFixed(2));
+                    if (!isNaN(hP)) htSetCeldaMatriz(trMat, ['Altura (cm)'], hP.toFixed(2));
+                    if (!isNaN(ld)) htSetCeldaMatriz(trMat, ['Relación L/D'], ld.toFixed(2));
+                    if (!isNaN(area)) htSetCeldaMatriz(trMat, ['Área (cm²)'], area.toFixed(2));
+                    if (!isNaN(cLb)) htSetCeldaMatriz(trMat, ['Carga Máx. (lb)'], Math.round(cLb));
+                    if (!isNaN(mpa)) htSetCeldaMatriz(trMat, ['Resistencia (MPa)'], mpa.toFixed(2));
+                    if (!isNaN(kgcm2)) htSetCeldaMatriz(trMat, ['Resistencia (kg/cm²)'], kgcm2.toFixed(1));
+                    if (!isNaN(psi)) htSetCeldaMatriz(trMat, ['Resistencia (lbf/in²)'], psi);
+                    if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], htFechaIso(row.fecha_ensayo));
+                }
+            } else if (motor === 'pesos_volumetricos') {
+                const volL = htParseNum(row.vol_recipiente_l), pR = htParseNum(row.peso_recipiente_kg), pS = htParseNum(row.peso_suelto_kg), pC = htParseNum(row.peso_compacto_kg);
+                const th = htParseNum(row.tara_humedo_g), ts = htParseNum(row.tara_seco_g), tt = htParseNum(row.tara_g);
+                const volM3 = (!isNaN(volL) && volL > 0) ? (volL / 1000.0) : NaN;
+                const pvss = (!isNaN(volM3) && !isNaN(pR) && !isNaN(pS) && (pS - pR) > 0) ? Math.round((pS - pR) / volM3) : NaN;
+                const pvsc = (!isNaN(volM3) && !isNaN(pR) && !isNaN(pC) && (pC - pR) > 0) ? Math.round((pC - pR) / volM3) : NaN;
+                const hum = (!isNaN(th) && !isNaN(ts) && !isNaN(tt) && (ts - tt) > 0) ? ((th - ts) / (ts - tt) * 100.0) : NaN;
+                setCalc(tr, 'pvss', !isNaN(pvss) ? pvss : '');
+                setCalc(tr, 'pvsc', !isNaN(pvsc) ? pvsc : '');
+                setCalc(tr, 'humedad_pct', !isNaN(hum) ? hum.toFixed(2) : '');
+                if (sincronizarConMatriz && trMat && (!isNaN(pvss) || !isNaN(pvsc) || !isNaN(hum))) {
+                    if (!isNaN(pvss)) htSetCeldaMatriz(trMat, ['PVSS (kg/m³)'], pvss);
+                    if (!isNaN(pvsc)) htSetCeldaMatriz(trMat, ['PVSC (kg/m³)'], pvsc);
+                    if (!isNaN(hum)) htSetCeldaMatriz(trMat, ['Humedad Natural ((%)(P/P))'], hum.toFixed(2));
+                }
+            } else if (motor === 'equivalente_arena') {
+                const vals = [];
+                for (let k = 1; k <= 3; k++) {
+                    const arc = htParseNum(row['arcilla_' + k]), are = htParseNum(row['arena_' + k]);
+                    if (!isNaN(arc) && arc > 0 && !isNaN(are) && are >= 0) vals.push(Math.ceil((are / arc) * 100.0));
+                }
+                if (vals.length > 0) {
+                    const eq = Math.ceil(vals.reduce((s, x) => s + x, 0) / vals.length);
+                    setCalc(tr, 'equiv_arena_pct', eq);
+                    if (sincronizarConMatriz && trMat) htSetCeldaMatriz(trMat, ['Equivalente de arena. ((%)(P/P))'], eq);
+                } else setCalc(tr, 'equiv_arena_pct', '');
+            } else if (motor === 'particulas_desmenuzables') {
+                const mi = htParseNum(row.masa_inicial_g), mr = htParseNum(row.masa_retenida_g);
+                if (!isNaN(mi) && mi > 0 && !isNaN(mr) && mr >= 0) {
+                    const pct = (Math.max(0, mi - mr) / mi) * 100.0;
+                    setCalc(tr, 'terrones_pct', pct.toFixed(2));
+                    if (sincronizarConMatriz && trMat) htSetCeldaMatriz(trMat, ['Terrones de arcilla. ((%)(P/P))'], pct.toFixed(2));
+                } else setCalc(tr, 'terrones_pct', '');
+            } else if (motor === 'revenimiento') {
+                const rIn = htParseNum(row.revenimiento_in), tC = htParseNum(row.temperatura_c);
+                const rCm = (!isNaN(rIn) && rIn > 0) ? (Math.round(rIn * 2.54 * 2) / 2) : NaN;
+                setCalc(tr, 'revenimiento_cm', !isNaN(rCm) ? rCm : '');
+                if (sincronizarConMatriz && trMat && (!isNaN(rIn) || !isNaN(tC))) {
+                    if (!isNaN(rIn)) htSetCeldaMatriz(trMat, ['Reven. (in)'], rIn);
+                    if (!isNaN(rCm)) htSetCeldaMatriz(trMat, ['Reven. (cm)'], rCm);
+                    if (!isNaN(tC)) htSetCeldaMatriz(trMat, ['Temp. (°C)'], tC);
+                    if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de Finalización'], htFechaIso(row.fecha_ensayo));
+                }
+            } else if (motor === 'colorimetria') {
+                const pl = String(row.placa_gardner || '');
+                const mN = pl.match(/(\d+)/);
+                const num = mN ? parseInt(mN[1], 10) : 1;
+                const res = num <= 3 ? 'Aceptable (≤ Placa 3)' : 'Rechazado (> Placa 3)';
+                setCalc(tr, 'resultado', res);
+                if (sincronizarConMatriz && trMat) {
+                    htSetCeldaMatriz(trMat, ['Color (Placa Orgánica)'], pl);
+                    htSetCeldaMatriz(trMat, ['Resultado'], res);
+                    if (htFechaIso(row.fecha_ensayo)) htSetCeldaMatriz(trMat, ['Fecha de Ensayo'], htFechaIso(row.fecha_ensayo));
+                }
+            }
+        });
+
+        // Resúmenes multi-punto (Proctor y Bloques)
+        if (motor === 'proctor' && proctorPuntos.length > 0) {
+            proctorPuntos.sort((a, b) => b.pvs - a.pvs);
+            const best = proctorPuntos[0];
+            if (resumenBar) {
+                resumenBar.style.display = 'block';
+                resumenBar.textContent = `Resumen Proctor (Máximo Medido): P.V.S. Máximo = ${Math.round(best.pvs)} kg/m³ · Humedad Óptima = ${best.hum.toFixed(1)}% · ${best.metodo}`;
+            }
+            if (sincronizarConMatriz) {
+                const tr0 = document.querySelector('#tabla-body tr');
+                if (tr0) {
+                    htSetCeldaMatriz(tr0, ['P.Vol.Seco Máximo (kg/m³)'], Math.round(best.pvs));
+                    htSetCeldaMatriz(tr0, ['Cont. Humedad Óptima ((%)(P/P))'], best.hum.toFixed(1));
+                    htSetCeldaMatriz(tr0, ['Método Ensayo'], best.metodo);
+                    if (best.fecha) htSetCeldaMatriz(tr0, ['Fecha de Ensayo'], best.fecha);
+                }
+            }
+        } else if (motor === 'bloque' && bloqueAcum.length > 0) {
+            const avgK = k => {
+                const v = bloqueAcum.map(x => x[k]).filter(x => !isNaN(x) && x > 0);
+                return v.length ? (v.reduce((s, x) => s + x, 0) / v.length) : NaN;
+            };
+            const ab = avgK('ab'), an = avgK('an'), c = avgK('c'), l = avgK('l'), h = avgK('h'), a = avgK('a');
+            const eInt = avgK('eInt'), eExt = avgK('eExt'), dens = avgK('dens'), abs = avgK('abs'), psi = avgK('psi'), kgcm2 = avgK('kgcm2');
+            if (resumenBar) {
+                resumenBar.style.display = 'block';
+                resumenBar.textContent = `Promedio (${bloqueAcum.length} bloques): A. Neta = ${isNaN(an) ? '--' : an.toFixed(2)} in² · R. Neta = ${isNaN(psi) ? '--' : Math.round(psi)} psi (${isNaN(kgcm2) ? '--' : kgcm2.toFixed(1)} kg/cm²) · Absorción = ${isNaN(abs) ? '--' : abs.toFixed(2)}%`;
+            }
+            if (sincronizarConMatriz) {
+                document.querySelectorAll('#tabla-body tr').forEach(trM => {
+                    const dInp = trM.querySelector('input[data-col="Descripción"]');
+                    const uInp = trM.querySelector('input[data-col="Unidad"]');
+                    if (!dInp) return;
+                    const d = dInp.value.trim().toLowerCase();
+                    const u = uInp ? uInp.value.trim().toLowerCase() : '';
+                    if (d.includes('área bruta') && !isNaN(ab)) htSetCeldaMatriz(trM, ['Resultado'], ab.toFixed(2));
+                    else if (d.includes('área neta') && !isNaN(an)) htSetCeldaMatriz(trM, ['Resultado'], an.toFixed(2));
+                    else if (d === 'carga' && !isNaN(c)) htSetCeldaMatriz(trM, ['Resultado'], Math.round(c));
+                    else if (d === 'largo' && !isNaN(l)) htSetCeldaMatriz(trM, ['Resultado'], l.toFixed(2));
+                    else if (d === 'alto' && !isNaN(h)) htSetCeldaMatriz(trM, ['Resultado'], h.toFixed(2));
+                    else if (d === 'ancho' && !isNaN(a)) htSetCeldaMatriz(trM, ['Resultado'], a.toFixed(2));
+                    else if (d.includes('espesor interno') && !isNaN(eInt)) htSetCeldaMatriz(trM, ['Resultado'], eInt.toFixed(2));
+                    else if (d.includes('espesor externo') && !isNaN(eExt)) htSetCeldaMatriz(trM, ['Resultado'], eExt.toFixed(2));
+                    else if ((d.includes('peso volumétrico') || d.includes('densidad')) && !isNaN(dens)) htSetCeldaMatriz(trM, ['Resultado'], Math.round(dens));
+                    else if (d.includes('absorción') && !isNaN(abs)) htSetCeldaMatriz(trM, ['Resultado'], abs.toFixed(2));
+                    else if (d.includes('r. compresión')) {
+                        if ((u.includes('lb') || u.includes('psi')) && !isNaN(psi)) htSetCeldaMatriz(trM, ['Resultado'], Math.round(psi));
+                        else if (!isNaN(kgcm2)) htSetCeldaMatriz(trM, ['Resultado'], kgcm2.toFixed(1));
+                    }
+                });
+            }
+        } else if (resumenBar) {
+            resumenBar.style.display = 'none';
+        }
+
+        if (sincronizarConMatriz && typeof recalculateEdades === 'function') {
+            recalculateEdades();
+        }
+    }
+
+    function inicializarHojaTecnica() {
+        capturaTecnicaFilas = construirFilasInicialesHojaTecnica();
+        renderizarTablaHojaTecnica();
+        recalcularHojaTecnicaEnVivo(false);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        inicializarMatriz();
+        inicializarHojaTecnica();
+    });
 </script>
 
 <?php if ($esSupervisor): ?>
