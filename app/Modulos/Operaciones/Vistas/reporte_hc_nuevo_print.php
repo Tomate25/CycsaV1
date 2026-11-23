@@ -29,12 +29,13 @@ $meta = $reporte['metadatos'] ?? [];
         .brand { font-size: 16px; font-weight: 800; color: #103487; }
         .subbrand { font-size: 10px; color: #475569; margin-top: 2px; }
         .doc-meta { text-align: right; font-size: 10.5px; }
-        .doc-title { background: #103487; color: #fff; text-align: center; font-weight: 700; padding: 7px 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; letter-spacing: 0.4px; }
-        .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; margin-bottom: 12px; }
-        table.results { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-        table.results th { background: #e2e8f0; color: #0f172a; font-weight: 700; border: 1px solid #94a3b8; padding: 6px 8px; text-align: center; font-size: 10.5px; }
-        table.results td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 10.5px; }
-        .summary-box { border: 1px solid #94a3b8; border-radius: 4px; padding: 10px 14px; background: #f1f5f9; margin-bottom: 16px; }
+        .doc-title { background: transparent; color: #103487; border: 1.5px solid #103487; text-align: center; font-weight: 700; padding: 7px 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; letter-spacing: 0.4px; }
+        .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: transparent; border: 1px solid #94a3b8; border-radius: 4px; padding: 10px; margin-bottom: 12px; }
+        table.results { width: 100%; border-collapse: collapse; margin-bottom: 14px; background: transparent; }
+        table.results th { background: transparent; color: #0f172a; font-weight: 700; border: 1px solid #94a3b8; padding: 6px 8px; text-align: center; font-size: 10.5px; }
+        table.results td { background: transparent; border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 10.5px; }
+        .summary-box { border: 1px solid #94a3b8; border-radius: 4px; padding: 10px 14px; background: transparent; margin-bottom: 16px; }
+        table, thead, tbody, tr, th, td { background: transparent !important; background-color: transparent !important; }
         .signatures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px; margin-top: 36px; text-align: center; }
         .sig-line { border-top: 1px solid #334155; padding-top: 6px; width: 70%; margin: 0 auto; font-weight: 600; }
         @media print { .no-print { display: none !important; } }

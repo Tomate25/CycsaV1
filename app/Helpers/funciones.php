@@ -879,7 +879,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
 
         $condiciones = nl2br(htmlspecialchars($det['condiciones_muestra'] ?? '', ENT_QUOTES, 'UTF-8'));
         $condHtml = !empty($condiciones) 
-            ? "<div style=\"background: #fffbeb; border: 1px solid #fef3c7; padding: 2px 4px; border-radius: 2px; color: #78350f; white-space: pre-wrap; line-height: 1.35;\">{$condiciones}</div>"
+            ? "<div style=\"background: transparent; border: 1px solid #cbd5e1; padding: 2px 4px; border-radius: 2px; color: #78350f; white-space: pre-wrap; line-height: 1.35;\">{$condiciones}</div>"
             : '<span style="color: #94a3b8; font-style: italic;">Estándar</span>';
 
         $procedimientoText = htmlspecialchars($det['procedimiento'] ?? ($det['norma_astm'] ?? 'Norma ASTM'), ENT_QUOTES, 'UTF-8');
@@ -1077,6 +1077,11 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
             table {
                 border-collapse: collapse;
                 width: 100%;
+                background: transparent !important;
+            }
+            table, thead, tbody, tr, th, td {
+                background: transparent !important;
+                background-color: transparent !important;
             }
             .tabla-items {
                 width: 100%;
@@ -1242,7 +1247,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         </div>
 
         <!-- Commercial Conditions -->
-        <div class=\"no-split\" style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 10px; margin-bottom: 8px;\">
+        <div class=\"no-split\" style=\"background-color: transparent; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; margin-bottom: 8px;\">
             <strong style=\"margin: 0 0 4px 0; color: #103487; font-size: 8.5px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; display: block;\">Condiciones Comerciales</strong>
             <table style=\"width: 100%; font-size: 8px; border-collapse: collapse;\">
                 <tr>
@@ -2173,7 +2178,7 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
     $observacionesSupervisorHtml = '';
     if (!empty($observacionesSupervisor)) {
         $observacionesSupervisorHtml = "
-        <div style=\"margin-top: 15px; padding: 8px 12px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 8.5px;\">
+        <div style=\"margin-top: 15px; padding: 8px 12px; background-color: transparent; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 8.5px;\">
             <strong style=\"color: #103487; text-transform: uppercase;\">Observaciones y Comentarios del Supervisor:</strong><br>
             <span style=\"color: #334155;\">" . nl2br(htmlspecialchars($observacionesSupervisor, ENT_QUOTES, 'UTF-8')) . "</span>
         </div>";
@@ -2195,6 +2200,10 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
                 line-height: 1.4;
                 font-size: 9.5px;
                 {$bodyStyle}
+            }
+            table, thead, tbody, tr, th, td {
+                background: transparent !important;
+                background-color: transparent !important;
             }
             .header-absolute {
                 position: absolute;
@@ -2280,17 +2289,19 @@ function generarReporteEnsayoPDF(array $cotizacion, array $detalle, array $colum
         </div>
 
         <!-- Signatures -->
-        <table style=\"width: 100%; margin-top: 35px; border-collapse: collapse;\">
+        <table style=\"width: 100%; margin-top: 22px; margin-bottom: 12mm; border-collapse: collapse; background: transparent;\">
             <tr>
-                <td style=\"width: 50%; text-align: center;\">
-                    <div style=\"border-top: 1px solid #cbd5e1; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
+                <td style=\"width: 50%; text-align: center; vertical-align: bottom;\">
+                    <div style=\"height: 28px;\"></div>
+                    <div style=\"border-top: 1px solid #334155; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
                         <strong>Ing. Noel Quintana Lira</strong><br>
                         Gerente General<br>
                         CYCSA Laboratorio
                     </div>
                 </td>
-                <td style=\"width: 50%; text-align: center;\">
-                    <div style=\"border-top: 1px solid #cbd5e1; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
+                <td style=\"width: 50%; text-align: center; vertical-align: bottom;\">
+                    <div style=\"height: 28px;\"></div>
+                    <div style=\"border-top: 1px solid #334155; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
                         <strong>Técnico / Supervisor de Calidad</strong><br>
                         Realizado / Revisado por Firma
                     </div>
@@ -3109,19 +3120,19 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
 
     // Fila 1: Encabezado superior con Métodos de Ensayo oficiales (ASTM)
     $trMetodos = '<tr class="tr-metodos">';
-    $trMetodos .= '<th rowspan="2" style="width: 18px; border: 1px solid #000; background: #ffffff; padding: 2px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . ';">#</th>';
+    $trMetodos .= '<th rowspan="2" style="width: 18px; border: 1px solid #000; background: transparent; padding: 2px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . ';">#</th>';
 
     $hasSampleCols = count($columnas) >= 2 && (stripos($columnas[0], 'código') !== false || stripos($columnas[0], 'codigo') !== false || stripos($columnas[0], 'lab') !== false);
     $startColIdx = $hasSampleCols ? 2 : 1;
     $spanMetodo = $hasSampleCols ? 2 : 1;
 
-    $trMetodos .= '<th colspan="' . $spanMetodo . '" style="border: 1px solid #000; background: #ffffff; padding: 3px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . '; white-space: nowrap;">Método de ensayo</th>';
+    $trMetodos .= '<th colspan="' . $spanMetodo . '" style="border: 1px solid #000; background: transparent; padding: 3px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . '; white-space: nowrap;">Método de ensayo</th>';
 
     for ($ci = $startColIdx; $ci < count($columnas); $ci++) {
         $cCol = $columnas[$ci];
         $cColLabel = (stripos($cCol, 'P.V.S') !== false || stripos($cCol, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $cCol) : $cCol;
         $cMetodo = $colMethods[$cCol] ?? ($colMethods[$cColLabel] ?? '');
-        $trMetodos .= '<th style="border: 1px solid #000; background: #ffffff; padding: 2px 1px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeMetodo . '; white-space: nowrap; line-height: 1.0;">' . htmlspecialchars($cMetodo, ENT_QUOTES, 'UTF-8') . '</th>';
+        $trMetodos .= '<th style="border: 1px solid #000; background: transparent; padding: 2px 1px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeMetodo . '; white-space: nowrap; line-height: 1.0;">' . htmlspecialchars($cMetodo, ENT_QUOTES, 'UTF-8') . '</th>';
     }
     $trMetodos .= '</tr>';
 
@@ -3146,7 +3157,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         } elseif (str_starts_with(trim($colLabel), '*') && !str_starts_with(trim($colLabel), '**')) {
             $tieneAsteriscoSimple = true;
         }
-        $trColumnas .= '<th style="border: 1px solid #000; background: #ffffff; padding: 3px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . '; line-height: 1.1;">' . htmlspecialchars($colLabel, ENT_QUOTES, 'UTF-8') . '</th>';
+        $trColumnas .= '<th style="border: 1px solid #000; background: transparent; padding: 3px 2px; text-align: center; vertical-align: middle; font-weight: bold; font-size: ' . $fontSizeTh . '; line-height: 1.1;">' . htmlspecialchars($colLabel, ENT_QUOTES, 'UTF-8') . '</th>';
     }
     $trColumnas .= '</tr>';
 
@@ -3269,7 +3280,7 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $obsPendientesTexto = trim((string)($metaOficial['observaciones_pendientes'] ?? ($revisionData['observaciones_pendientes'] ?? ($detalle['observaciones_pendientes'] ?? ''))));
     $obsPendientesHtml = '';
     if ($obsPendientesTexto !== '') {
-        $obsPendientesHtml = '<div style="border: 1px solid #000; padding: 3px 6px; margin-bottom: 3px; font-size: 7px; background: #fffbeb;"><strong>OBSERVACIONES PENDIENTES:</strong> ' . nl2br(htmlspecialchars($obsPendientesTexto, ENT_QUOTES, 'UTF-8')) . '</div>';
+        $obsPendientesHtml = '<div style="border: 1px solid #000; padding: 3px 6px; margin-bottom: 3px; font-size: 7px; background: transparent;"><strong>OBSERVACIONES PENDIENTES:</strong> ' . nl2br(htmlspecialchars($obsPendientesTexto, ENT_QUOTES, 'UTF-8')) . '</div>';
     }
 
     $incluirFirmaAdicional = !empty($detalle['incluir_firma_adicional']) || !empty($metaOficial['incluir_firma_adicional']);
@@ -3277,8 +3288,10 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
     $firmaAdicionalCargoRaw = trim((string)($detalle['firma_adicional_cargo'] ?? ($metaOficial['firma_adicional_cargo'] ?? '')));
     $firmaAdicionalNombrePdf = $firmaAdicionalNombreRaw !== '' ? htmlspecialchars($firmaAdicionalNombreRaw, ENT_QUOTES, 'UTF-8') : '&nbsp;';
     $firmaAdicionalCargoPdf = $firmaAdicionalCargoRaw !== '' ? htmlspecialchars($firmaAdicionalCargoRaw, ENT_QUOTES, 'UTF-8') : 'Firma';
-    $zonaFirmasBottom = ($orientacion === 'vertical') ? '27mm' : '25mm';
-    $zonaCuerpoBottomAjustado = ($orientacion === 'vertical') ? '48mm' : '46mm';
+    // La barra inferior del membrete oficial inicia en 28.7mm (horizontal) / 27.94mm (vertical);
+    // colocamos las firmas limpiamente arriba (38mm / 39mm) respetando amplio espacio de firma.
+    $zonaFirmasBottom = ($orientacion === 'vertical') ? '39mm' : '38mm';
+    $zonaCuerpoBottomAjustado = ($orientacion === 'vertical') ? '61mm' : '59mm';
 
     $numFirmas = (int)($schemaInfo['num_firmas'] ?? 1);
     if ($numFirmas === 3) {
@@ -3288,8 +3301,8 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         <tr>
             <td style="width: 33.33%; text-align: left; vertical-align: top;">
                 <div style="display: inline-block; width: 200px; text-align: center;">
-                    <div style="height: 22px;"></div>
-                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="height: 30px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 3px;">
                         <div style="font-weight: bold; font-size: 8px;">{$tecnicoNom}</div>
                         <div style="color: #444; font-size: 7px; text-transform: uppercase;">Ejecutado por (Técnico Responsable)</div>
                     </div>
@@ -3297,8 +3310,8 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             </td>
             <td style="width: 33.33%; text-align: center; vertical-align: top;">
                 <div style="display: inline-block; width: 200px; text-align: center;">
-                    <div style="height: 22px;"></div>
-                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="height: 30px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 3px;">
                         <div style="font-weight: bold; font-size: 8px;">{$revisadoMostrarPdf}</div>
                         <div style="color: #444; font-size: 7px; text-transform: uppercase;">Revisado por</div>
                     </div>
@@ -3306,8 +3319,8 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
             </td>
             <td style="width: 33.33%; text-align: right; vertical-align: top;">
                 <div style="display: inline-block; width: 200px; text-align: center;">
-                    <div style="height: 22px;"></div>
-                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="height: 30px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 3px;">
                         <div style="font-weight: bold; font-size: 8px;">{$firmanteNombre}</div>
                         <div style="color: #444; font-size: 7px; text-transform: uppercase;">{$firmanteCargo}</div>
                     </div>
@@ -3324,8 +3337,8 @@ FIRMAS;
         <tr>
             <td style="width: 50%; text-align: left; vertical-align: top; padding: 0;">
                 <div style="display: inline-block; width: 220px; text-align: center;">
-                    <div style="height: 22px;"></div>
-                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="height: 30px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 3px;">
                         <div style="font-weight: bold; font-size: 8.5px;">{$firmaAdicionalNombrePdf}</div>
                         <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">{$firmaAdicionalCargoPdf}</div>
                     </div>
@@ -3333,8 +3346,8 @@ FIRMAS;
             </td>
             <td style="width: 50%; text-align: right; vertical-align: top; padding: 0;">
                 <div style="display: inline-block; width: 220px; text-align: center;">
-                    <div style="height: 22px;"></div>
-                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="height: 30px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 3px;">
                         <div style="font-weight: bold; font-size: 8.5px;">{$firmanteNombre}</div>
                         <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">{$firmanteCargo}</div>
                     </div>
@@ -3352,8 +3365,8 @@ FIRMAS;
             <td style="width: 50%; padding: 0;">&nbsp;</td>
             <td style="width: 50%; text-align: right; vertical-align: top; padding: 0;">
                 <div style="display: inline-block; width: 220px; text-align: center;">
-                    <div style="height: 22px;"></div>
-                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                    <div style="height: 30px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 3px;">
                         <div style="font-weight: bold; font-size: 8.5px;">{$firmanteNombre}</div>
                         <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">{$firmanteCargo}</div>
                     </div>
@@ -3381,6 +3394,10 @@ FIRMAS;
         font-family: Arial, Helvetica, sans-serif;
         color: #000000;
         {$bgCss}
+    }
+    table, thead, tbody, tr, th, td {
+        background: transparent !important;
+        background-color: transparent !important;
     }
     .zona-cabecera {
         position: absolute;
@@ -3773,6 +3790,10 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
                 padding: 4px 8px;
                 font-size: 11px;
             }
+            table, thead, tbody, tr, th, td {
+                background: transparent !important;
+                background-color: transparent !important;
+            }
         </style>
     </head>
     <body>
@@ -3818,7 +3839,7 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
         <!-- Table of Items -->
         <table style=\"width: 100%; border-collapse: collapse; margin-bottom: 25px;\">
             <thead>
-                <tr style=\"background-color: #103487; color: white;\">
+                <tr style=\"background-color: transparent; color: #103487;\">
                     <th style=\"border: 1px solid #cbd5e1; padding: 8px 10px; text-align: center; font-size: 11px; text-transform: uppercase; width: 18%;\">Código</th>
                     <th style=\"border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase;\">Descripción del Ensayo / Servicio</th>
                     <th style=\"border: 1px solid #cbd5e1; padding: 8px 10px; text-align: right; font-size: 11px; text-transform: uppercase; width: 50px;\">Cant.</th>
@@ -4040,17 +4061,19 @@ function generarCotizacionCompletaPDF(array $cotizacion, array $detalles): strin
                     {$formatoNotasHtml}
                 </div>
 
-                <table style=\"width: 100%; margin-top: 40px; border-collapse: collapse;\">
+                <table style=\"width: 100%; margin-top: 24px; margin-bottom: 12mm; border-collapse: collapse;\">
                     <tr>
-                        <td style=\"width: 50%; text-align: center;\">
-                            <div style=\"border-top: 1px solid #cbd5e1; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
+                        <td style=\"width: 50%; text-align: center; vertical-align: bottom;\">
+                            <div style=\"height: 28px;\"></div>
+                            <div style=\"border-top: 1px solid #334155; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
                                 <strong>Ing. Noel Quintana Lira</strong><br>
                                 Gerente General<br>
                                 CYCSA Laboratorio
                             </div>
                         </td>
-                        <td style=\"width: 50%; text-align: center;\">
-                            <div style=\"border-top: 1px solid #cbd5e1; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
+                        <td style=\"width: 50%; text-align: center; vertical-align: bottom;\">
+                            <div style=\"height: 28px;\"></div>
+                            <div style=\"border-top: 1px solid #334155; width: 60%; margin: 0 auto; padding-top: 4px; font-size: 9px;\">
                                 <strong>Técnico de Calidad</strong><br>
                                 Realizado por / Firma
                             </div>
@@ -4166,6 +4189,11 @@ function generarHojaSolicitudPDF(array $hoja, array $os): string {
             table {
                 border-collapse: collapse;
                 width: 100%;
+                background: transparent !important;
+            }
+            table, thead, tbody, tr, th, td {
+                background: transparent !important;
+                background-color: transparent !important;
             }
             .outer-frame {
                 border: 1.5px solid #4169e1;

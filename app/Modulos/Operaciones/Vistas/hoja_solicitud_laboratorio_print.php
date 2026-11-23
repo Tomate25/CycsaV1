@@ -135,7 +135,7 @@
         }
         .tabla-metadatos .etiqueta-col {
             font-weight: 700;
-            background-color: #ffffff;
+            background-color: transparent;
             width: 30%;
         }
         .tabla-metadatos .valor-col {
@@ -144,7 +144,7 @@
 
         /* TABLA PRINCIPAL DE DESCRIPCIÓN DE ANÁLISIS */
         .tabla-analisis-titulo {
-            background-color: #ffffff;
+            background-color: transparent;
             font-weight: 800;
             text-align: center;
             text-transform: uppercase;
@@ -165,12 +165,17 @@
             padding: 8px 10px;
             text-align: center;
             font-weight: 700;
-            background-color: #ffffff;
+            background-color: transparent;
         }
         .tabla-analisis td {
             border: 1px solid #000;
             padding: 10px;
             text-align: center;
+            background-color: transparent;
+        }
+        table, thead, tbody, tr, th, td {
+            background: transparent !important;
+            background-color: transparent !important;
         }
 
         /* SECCIÓN OBSERVACIONES */

@@ -4255,6 +4255,9 @@ class OperacionesControlador extends ControladorBase {
             $detalle['codigo_os'] ?? null
         );
 
+        $authPagoDoc = verificarAutorizacionPagoEnvio($detalle, $db);
+        $pagoAutorizadoEnvio = !empty($authPagoDoc['autorizado']);
+
         $this->renderizar('operaciones/vistas/documento_terminado', [
             'titulo' => 'Documento Oficial - ' . $detalle['codigo_os'] . ' · ' . $detalle['descripcion_ensayo'],
             'detalle' => $detalle,
@@ -4265,6 +4268,7 @@ class OperacionesControlador extends ControladorBase {
             'filasDocumento' => $filasDoc,
             'versionActual' => $versionActual,
             'codigoInformeConsecutivo' => $codigoInformeConsecutivo,
+            'pagoAutorizadoEnvio' => $pagoAutorizadoEnvio,
             'exito' => $_SESSION['exito'] ?? null,
             'error' => $_SESSION['error'] ?? null,
         ]);
@@ -4438,13 +4442,9 @@ class OperacionesControlador extends ControladorBase {
             $detalle['firma_adicional_cargo'] = trim((string)($hoja['firma_adicional_cargo'] ?? ''));
         }
 
-        // Gate Único de Autorización de Pago / Despacho
+        // La impresión interna siempre se permite; el gate de pago bloquea únicamente el envío al cliente
         $authPago = verificarAutorizacionPagoEnvio($detalle, $db);
-        if (!$authPago['autorizado']) {
-            $_SESSION['error'] = 'El cliente no ha pagado; no se pueden enviar resultados';
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-            return;
-        }
+        $pagoAutorizadoEnvio = !empty($authPago['autorizado']);
 
         $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
         $detalle['archivo_markdown'] = $archivoMd;
@@ -4688,13 +4688,9 @@ class OperacionesControlador extends ControladorBase {
             $detalle['firma_adicional_cargo'] = trim((string)($hojaPdf['firma_adicional_cargo'] ?? ''));
         }
 
-        // Gate Único de Autorización de Pago / Despacho
+        // La impresión interna siempre se permite; el gate de pago bloquea únicamente el envío al cliente
         $authPago = verificarAutorizacionPagoEnvio($detalle, $db);
-        if (!$authPago['autorizado']) {
-            $_SESSION['error'] = 'El cliente no ha pagado; no se pueden enviar resultados';
-            $respuesta->redirigir('/Cycsa/publico/operaciones');
-            return;
-        }
+        $pagoAutorizadoEnvio = !empty($authPago['autorizado']);
 
         $archivoMd = !empty($detalle['archivo_markdown']) ? $detalle['archivo_markdown'] : resolverArchivoMarkdownEnsayo($detalle);
         $detalle['archivo_markdown'] = $archivoMd;

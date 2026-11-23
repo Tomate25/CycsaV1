@@ -500,4 +500,65 @@ class GatePagoResultadosTest extends TestCase {
             $db->rollBack();
         }
     }
+
+    /**
+     * Regla de negocio: Imprimir matriz interna SI se permite aunque el cliente de Contado no haya pagado,
+     * mostrando las tablas transparentes y firmas elevadas sobre la barra del membrete,
+     * mientras el botón y endpoint de envío al cliente permanecen bloqueados hasta pagar.
+     */
+    public function testImprimirMatrizPermitidoSinPagoMientrasEnvioClienteSigueBloqueado(): void {
+        $db = Conexion::obtenerInstancia();
+        $db->beginTransaction();
+
+        try {
+            $stmtCli = $db->prepare("INSERT INTO clientes (nombre_razon_social, email, telefono, direccion) VALUES ('Cliente Print Sin Pago', 'print@example.com', '88881111', 'León')");
+            $stmtCli->execute();
+            $idCli = (int)$db->lastInsertId();
+
+            $codigoCot = 'COT-PRN-' . substr(uniqid(), -5);
+            $stmtCot = $db->prepare("INSERT INTO cotizaciones (codigo, id_cliente, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto, condicion_pago, total, estado) VALUES (:cod, :cli, 1, 'Ing. Obra', 'Proyecto Impresión', 'León', 'Contado', 3200.00, 'Aprobada')");
+            $stmtCot->execute(['cod' => $codigoCot, 'cli' => $idCli]);
+            $idCot = (int)$db->lastInsertId();
+
+            $stmtOS = $db->prepare("INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, fecha_emision, estado) VALUES (:os, :cot, '2026-11-23', 'En Proceso')");
+            $stmtOS->execute(['os' => 'OS-PRN-' . substr(uniqid(), -5), 'cot' => $idCot]);
+
+            $resJson = json_encode([
+                'version_actual' => 1,
+                'filas' => [['Código laboratorio' => 'MS-9999-26', 'Nombre muestra' => 'Viga 1']],
+                'revision' => ['estado' => 'aprobada'],
+            ], JSON_UNESCAPED_UNICODE);
+            $stmtDet = $db->prepare("INSERT INTO cotizacion_detalles (id_cotizacion, descripcion_ensayo, cantidad, resultados_json) VALUES (:cot, 'Resistencia de Concreto', 1, :rj)");
+            $stmtDet->execute(['cot' => $idCot, 'rj' => $resJson]);
+            $idDetalle = (int)$db->lastInsertId();
+
+            $stmtCxC = $db->prepare("INSERT INTO cuentas_por_cobrar (factura_numero, monto, saldo, estado, fecha_emision, id_cliente) VALUES (:fn, 3200.00, 3200.00, 'Pendiente', '2026-11-23', :cli)");
+            $stmtCxC->execute(['fn' => 'FAC-' . $codigoCot, 'cli' => $idCli]);
+
+            $_SESSION['usuario_id'] = 1;
+            $_SESSION['rol_id'] = 1;
+            $_SESSION['usuario_rol'] = 1;
+            $_SERVER['REQUEST_METHOD'] = 'GET';
+            $_GET = ['id_detalle' => $idDetalle];
+            unset($_SESSION['error']);
+
+            $controlador = new OperacionesControlador();
+            ob_start();
+            $controlador->imprimirMatrizProducto(new Peticion(), new Respuesta());
+            $htmlPrint = (string)ob_get_clean();
+
+            // 1. Imprimir NO se bloquea por falta de pago
+            $this->assertNull($_SESSION['error'] ?? null, 'Imprimir matriz debe permitirse aunque el cliente no haya pagado');
+            $this->assertStringContainsString('Ing. Noel Quintana Lira', $htmlPrint);
+            $this->assertStringContainsString('bottom: 38mm;', $htmlPrint);
+            $this->assertStringContainsString('background: transparent !important;', $htmlPrint);
+            $this->assertStringContainsString('Enviar al Cliente (Pago pendiente)', $htmlPrint);
+
+            // 2. Enviar al cliente SÍ permanece estrictamente bloqueado
+            $controlador->enviarMatrizCliente(new Peticion(), new Respuesta());
+            $this->assertSame('El cliente no ha pagado; no se pueden enviar resultados', $_SESSION['error'] ?? null);
+        } finally {
+            $db->rollBack();
+        }
+    }
 }

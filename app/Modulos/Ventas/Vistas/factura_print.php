@@ -358,7 +358,7 @@ $logoBase64 = file_exists($rutaLogo) ? 'data:image/png;base64,' . base64_encode(
 
         @media print {
             body {
-                background: white;
+                background: transparent !important;
                 padding: 0;
             }
             .no-print-bar {
@@ -369,6 +369,12 @@ $logoBase64 = file_exists($rutaLogo) ? 'data:image/png;base64,' . base64_encode(
                 border: none;
                 padding: 0;
                 max-width: 100%;
+                background: transparent !important;
+            }
+            table, thead, tbody, tr, th, td, .bloque-letras-pago, .card-info {
+                background: transparent !important;
+                background-color: transparent !important;
+                color: #0f172a !important;
             }
         }
     </style>

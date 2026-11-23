@@ -98,8 +98,9 @@ if (!empty($os['contactos_json'])) {
     /* MANTENER @MEDIA PRINT 100% INTACTO PARA IMPRESIÓN Y PDF */
     @media print {
         .no-print { display: none !important; }
-        .os-wrapper { padding: 0 !important; background: white !important; min-height: auto !important; }
-        .os-container { box-shadow: none !important; padding: 0 !important; max-width: 100% !important; font-size: 11.5px !important; }
+        .os-wrapper { padding: 0 !important; background: transparent !important; min-height: auto !important; }
+        .os-container { box-shadow: none !important; padding: 0 !important; max-width: 100% !important; font-size: 11.5px !important; background: transparent !important; }
+        .os-table-border, .os-table-border th, .os-table-border td, table, thead, tbody, tr, th, td { background: transparent !important; background-color: transparent !important; }
         .os-header { margin-bottom: 15px !important; padding-bottom: 10px !important; }
         .os-meta-grid { font-size: 11.5px !important; gap: 4px 15px !important; margin-bottom: 15px !important; }
         .os-table-border { font-size: 11px !important; margin-bottom: 15px !important; }

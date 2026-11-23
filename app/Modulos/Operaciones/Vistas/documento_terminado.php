@@ -137,9 +137,15 @@ $notasTextoEditable = implode("\n", array_map(static fn($n) => trim((string)$n),
             </a>
 
             <?php if ($revisionInfo['estado'] === 'aprobada'): ?>
-                <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('modalDocEnviar').style.display='block'">
-                    <i class="fa-solid fa-paper-plane me-1"></i> Enviar al cliente
-                </button>
+                <?php if (isset($pagoAutorizadoEnvio) && !$pagoAutorizadoEnvio): ?>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled title="El cliente no ha pagado; no se pueden enviar resultados">
+                        <i class="fa-solid fa-lock me-1"></i> Enviar al cliente (Pago pendiente)
+                    </button>
+                <?php else: ?>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('modalDocEnviar').style.display='block'">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Enviar al cliente
+                    </button>
+                <?php endif; ?>
             <?php endif; ?>
 
             <?php if ($esSupervisor): ?>

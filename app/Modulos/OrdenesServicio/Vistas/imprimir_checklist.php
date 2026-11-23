@@ -24,8 +24,12 @@ if (file_exists($logoPath)) {
         }
         @media print {
             .no-print { display: none !important; }
-            body { padding: 0 !important; background: white !important; }
-            .page-container { padding: 0 !important; box-shadow: none !important; }
+            body { padding: 0 !important; background: transparent !important; }
+            .page-container { padding: 0 !important; box-shadow: none !important; background: transparent !important; }
+            table, thead, tbody, tr, th, td, .section-title, .footer-obs {
+                background: transparent !important;
+                background-color: transparent !important;
+            }
         }
         @media screen {
             body {

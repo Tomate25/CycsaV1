@@ -322,7 +322,7 @@ if (!empty($codigoInformePersonalizado)) {
         }
 
         .badge-doc-oficial {
-            background: #ffffff;
+            background: transparent;
             color: #000000;
             border: 1.5px solid #000000;
             font-weight: bold;
@@ -346,20 +346,33 @@ if (!empty($codigoInformePersonalizado)) {
             top: 40mm;
             left: 14mm;
             right: 14mm;
-            bottom: <?= $esVertical ? '48mm' : '46mm' ?>;
+            bottom: <?= $esVertical ? '61mm' : '59mm' ?>;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             box-sizing: border-box;
+            background: transparent;
         }
 
-        /* 3. ZONA DE FIRMAS AL PIE DE LA HOJA (ABAJO DERECHA POR DEFECTO + ABAJO IZQUIERDA SI RT-FM-13 ACTIVA FIRMA ADICIONAL) */
+        /* 3. ZONA DE FIRMAS AL PIE DE LA HOJA (RESPETANDO EL ESPACIO ARRIBA DE LA BARRA DEL MEMBRETE) */
         .zona-firmas-pie {
             position: absolute;
-            bottom: <?= $esVertical ? '27mm' : '25mm' ?>;
+            bottom: <?= $esVertical ? '39mm' : '38mm' ?>;
             left: 14mm;
             right: 14mm;
             box-sizing: border-box;
+            background: transparent;
+        }
+
+        /* Todas las tablas y celdas completamente transparentes para respetar el formato/membrete de fondo */
+        .pagina-hoja table,
+        .pagina-hoja thead,
+        .pagina-hoja tbody,
+        .pagina-hoja tr,
+        .pagina-hoja th,
+        .pagina-hoja td {
+            background: transparent !important;
+            background-color: transparent !important;
         }
 
         /* Metadata del Informe de Ensayo Oficial (Captura 144015) */
@@ -377,6 +390,7 @@ if (!empty($codigoInformePersonalizado)) {
             vertical-align: top;
             line-height: 1.25;
             color: #000000;
+            background: transparent;
         }
 
         .lbl-informe {
@@ -393,7 +407,7 @@ if (!empty($codigoInformePersonalizado)) {
         .contenedor-tabla-matriz {
             width: 100%;
             margin-bottom: 3px;
-            background: #ffffff;
+            background: transparent;
             flex-grow: 1;
         }
 
@@ -402,10 +416,11 @@ if (!empty($codigoInformePersonalizado)) {
             border-collapse: collapse;
             font-size: 8px;
             border: 1px solid #000000;
+            background: transparent;
         }
 
         .tabla-matriz-print th {
-            background: #f3f4f6;
+            background: transparent;
             color: #000000;
             font-weight: bold;
             text-align: center;
@@ -431,7 +446,7 @@ if (!empty($codigoInformePersonalizado)) {
             vertical-align: middle;
             color: #000000;
             font-size: 8px;
-            background: #ffffff;
+            background: transparent;
         }
 
         .td-left {
@@ -486,7 +501,7 @@ if (!empty($codigoInformePersonalizado)) {
 
         .caja-obs {
             border: 1px solid #000000;
-            background: #ffffff;
+            background: transparent;
             padding: 3px 6px;
             min-height: auto;
         }
@@ -634,9 +649,15 @@ if (!empty($codigoInformePersonalizado)) {
                 <i class="fa-solid fa-print"></i> Imprimir Matriz
             </button>
             <?php if (!empty($resultados) && empty($esLaboratorio)): ?>
-                <button type="button" onclick="abrirModalEnviarPrint()" class="btn-accion-top" style="background: #059669; color: white; box-shadow: 0 2px 8px rgba(5,150,105,0.4);">
-                    <i class="fa-solid fa-paper-plane"></i> Enviar al Cliente
-                </button>
+                <?php if (isset($pagoAutorizadoEnvio) && !$pagoAutorizadoEnvio): ?>
+                    <button type="button" disabled title="El cliente no ha pagado; no se pueden enviar resultados" class="btn-accion-top" style="background: #64748b; color: #e2e8f0; cursor: not-allowed; opacity: 0.85;">
+                        <i class="fa-solid fa-lock"></i> Enviar al Cliente (Pago pendiente)
+                    </button>
+                <?php else: ?>
+                    <button type="button" onclick="abrirModalEnviarPrint()" class="btn-accion-top" style="background: #059669; color: white; box-shadow: 0 2px 8px rgba(5,150,105,0.4);">
+                        <i class="fa-solid fa-paper-plane"></i> Enviar al Cliente
+                    </button>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
@@ -852,14 +873,14 @@ if (!empty($codigoInformePersonalizado)) {
                     <table class="tabla-matriz-print">
                         <thead>
                             <tr class="tr-metodos-normativos">
-                                <th rowspan="2" style="width: 22px; text-align: center; vertical-align: middle;">#</th>
-                                <th colspan="<?= $spanMetodo ?>" class="th-metodo-ensayo" style="text-align: center; vertical-align: middle; font-weight: bold; background: #ffffff;">Método de ensayo</th>
+                                <th rowspan="2" style="width: 22px; text-align: center; vertical-align: middle; background: transparent;">#</th>
+                                <th colspan="<?= $spanMetodo ?>" class="th-metodo-ensayo" style="text-align: center; vertical-align: middle; font-weight: bold; background: transparent;">Método de ensayo</th>
                                 <?php for ($ci = $startColIdx; $ci < count($columnas); $ci++): 
                                     $col = $columnas[$ci];
                                     $colLabel = (stripos($col, 'P.V.S') !== false || stripos($col, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $col) : $col;
                                     $metodo = $colMethods[$col] ?? ($colMethods[$colLabel] ?? '');
                                 ?>
-                                    <th class="th-metodo-item metodo-sub" style="text-align: center; vertical-align: middle; font-weight: bold; background: #ffffff;">
+                                    <th class="th-metodo-item metodo-sub" style="text-align: center; vertical-align: middle; font-weight: bold; background: transparent;">
                                         <?= htmlspecialchars($metodo) ?>
                                     </th>
                                 <?php endfor; ?>
@@ -875,7 +896,7 @@ if (!empty($codigoInformePersonalizado)) {
                                         $tieneAsteriscoSimplePrint = true;
                                     }
                                 ?>
-                                    <th style="text-align: center; vertical-align: middle; font-weight: bold; background: #ffffff;">
+                                    <th style="text-align: center; vertical-align: middle; font-weight: bold; background: transparent;">
                                         <?= htmlspecialchars($colLabel) ?>
                                     </th>
                                 <?php endforeach; ?>
@@ -921,7 +942,7 @@ if (!empty($codigoInformePersonalizado)) {
             </div>
 
             <?php if ($observacionesPendientes !== ''): ?>
-            <div class="caja-obs" style="margin-top: 3px; background: #fffbeb; font-size: 7.2px;">
+            <div class="caja-obs" style="margin-top: 3px; background: transparent; font-size: 7.2px;">
                 <div class="caja-obs-titulo">Observaciones Pendientes</div>
                 <div style="color: #1e293b; line-height: 1.25;"><?= nl2br(htmlspecialchars($observacionesPendientes)) ?></div>
             </div>
@@ -938,27 +959,27 @@ if (!empty($codigoInformePersonalizado)) {
         $firmaAdicionalNombrePrint = trim((string)($detalle['firma_adicional_nombre'] ?? ($metadatos['firma_adicional_nombre'] ?? '')));
         $firmaAdicionalCargoPrint = trim((string)($detalle['firma_adicional_cargo'] ?? ($metadatos['firma_adicional_cargo'] ?? '')));
         ?>
-        <!-- ZONA DE FIRMAS AL PIE DE LA HOJA (ABAJO A LA DERECHA POR DEFECTO; SI RT-FM-13 AGREGA FIRMA, ABAJO A LA IZQUIERDA) -->
+        <!-- ZONA DE FIRMAS AL PIE DE LA HOJA (BIEN COLOCADA SOBRE LA BARRA DEL MEMBRETE CON ESPACIO REAL PARA FIRMA) -->
         <div class="zona-firmas-pie">
             <?php if (($schemaInfo['num_firmas'] ?? 1) == 3): ?>
             <div class="bloque-firmas" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 20px;">
                 <div class="columna-firma" style="width: 210px;">
-                    <div class="espacio-para-firma" style="height: 24px;"></div>
-                    <div class="linea-firma">
+                    <div class="espacio-para-firma" style="height: 30px;"></div>
+                    <div class="linea-firma" style="padding-top: 3px;">
                         <div class="firma-nombre"><?= htmlspecialchars(!empty($detalle['tecnico_muestreo']) ? $detalle['tecnico_muestreo'] : 'Técnico de Ensayos') ?></div>
                         <div class="firma-cargo">Ejecutado por (Técnico Responsable)</div>
                     </div>
                 </div>
                 <div class="columna-firma" style="width: 210px;">
-                    <div class="espacio-para-firma" style="height: 24px;"></div>
-                    <div class="linea-firma">
+                    <div class="espacio-para-firma" style="height: 30px;"></div>
+                    <div class="linea-firma" style="padding-top: 3px;">
                         <div class="firma-nombre"><?= htmlspecialchars($revisadoMostrarHtml) ?></div>
                         <div class="firma-cargo">Revisado por</div>
                     </div>
                 </div>
                 <div class="columna-firma" style="width: 210px;">
-                    <div class="espacio-para-firma" style="height: 24px;"></div>
-                    <div class="linea-firma">
+                    <div class="espacio-para-firma" style="height: 30px;"></div>
+                    <div class="linea-firma" style="padding-top: 3px;">
                         <div class="firma-nombre"><?= htmlspecialchars($firmanteNombre) ?></div>
                         <div class="firma-cargo"><?= htmlspecialchars($firmanteCargo) ?></div>
                     </div>
@@ -967,15 +988,15 @@ if (!empty($codigoInformePersonalizado)) {
             <?php elseif ($incluirFirmaAdicionalPrint): ?>
             <div class="bloque-firmas" style="display: flex; justify-content: space-between; align-items: flex-end;">
                 <div class="columna-firma" style="width: 230px;">
-                    <div class="espacio-para-firma" style="height: 24px;"></div>
-                    <div class="linea-firma">
+                    <div class="espacio-para-firma" style="height: 30px;"></div>
+                    <div class="linea-firma" style="padding-top: 3px;">
                         <div class="firma-nombre"><?= $firmaAdicionalNombrePrint !== '' ? htmlspecialchars($firmaAdicionalNombrePrint) : '&nbsp;' ?></div>
                         <div class="firma-cargo"><?= htmlspecialchars($firmaAdicionalCargoPrint !== '' ? $firmaAdicionalCargoPrint : 'Firma') ?></div>
                     </div>
                 </div>
                 <div class="columna-firma" style="width: 230px;">
-                    <div class="espacio-para-firma" style="height: 24px;"></div>
-                    <div class="linea-firma">
+                    <div class="espacio-para-firma" style="height: 30px;"></div>
+                    <div class="linea-firma" style="padding-top: 3px;">
                         <div class="firma-nombre"><?= htmlspecialchars($firmanteNombre) ?></div>
                         <div class="firma-cargo"><?= htmlspecialchars($firmanteCargo) ?></div>
                     </div>
@@ -984,8 +1005,8 @@ if (!empty($codigoInformePersonalizado)) {
             <?php else: ?>
             <div class="bloque-firmas" style="display: flex; justify-content: flex-end; align-items: flex-end;">
                 <div class="columna-firma" style="width: 230px;">
-                    <div class="espacio-para-firma" style="height: 24px;"></div>
-                    <div class="linea-firma">
+                    <div class="espacio-para-firma" style="height: 30px;"></div>
+                    <div class="linea-firma" style="padding-top: 3px;">
                         <div class="firma-nombre"><?= htmlspecialchars($firmanteNombre) ?></div>
                         <div class="firma-cargo"><?= htmlspecialchars($firmanteCargo) ?></div>
                     </div>
