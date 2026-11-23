@@ -508,6 +508,30 @@
                 </div>
             </div>
 
+            <?php $incFirmaAdForm = !empty($hoja['incluir_firma_adicional']); ?>
+            <div style="margin-top:14px; padding:12px 14px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px;">
+                <input type="hidden" name="incluir_firma_adicional" id="hs_form_incluir_firma_adicional" value="<?= $incFirmaAdForm ? '1' : '0' ?>">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="font-size:12.5px; color:#334155;">
+                        <strong><i class="fa-solid fa-pen-nib"></i> Firma adicional en el informe oficial</strong>
+                        <div style="font-size:11.5px; color:#64748b;">Al activarla, se agregará un espacio de firma abajo a la izquierda al imprimir/PDF.</div>
+                    </div>
+                    <button type="button" id="btn_toggle_firma_adicional_form" onclick="(function(){var h=document.getElementById('hs_form_incluir_firma_adicional'),p=document.getElementById('panel_firma_adicional_form'),b=document.getElementById('btn_toggle_firma_adicional_form'),on=h.value!=='1';h.value=on?'1':'0';p.style.display=on?'grid':'none';b.textContent=on?'Firma adicional activa (quitar)':'+ Agregar espacio de firma';})()" style="padding:6px 12px; border-radius:6px; border:1px solid #103487; background:<?= $incFirmaAdForm ? '#103487' : '#fff' ?>; color:<?= $incFirmaAdForm ? '#fff' : '#103487' ?>; font-weight:600; cursor:pointer; font-size:12.5px;">
+                        <?= $incFirmaAdForm ? 'Firma adicional activa (quitar)' : '+ Agregar espacio de firma' ?>
+                    </button>
+                </div>
+                <div id="panel_firma_adicional_form" style="display:<?= $incFirmaAdForm ? 'grid' : 'none' ?>; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1;">
+                    <div class="form-group">
+                        <label>Nombre firmante adicional (abajo izquierda)</label>
+                        <input type="text" name="firma_adicional_nombre" class="form-control" value="<?= htmlspecialchars((string)($hoja['firma_adicional_nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="Opcional — dejar vacío para línea en blanco">
+                    </div>
+                    <div class="form-group">
+                        <label>Cargo / Etiqueta de la firma adicional</label>
+                        <input type="text" name="firma_adicional_cargo" class="form-control" value="<?= htmlspecialchars((string)($hoja['firma_adicional_cargo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Revisado por / Supervisor de Obra">
+                    </div>
+                </div>
+            </div>
+
             <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px;">
                 <a href="/Cycsa/publico/operaciones" class="btn-back" style="padding: 12px 24px;">Cancelar</a>
                 <button type="submit" class="btn-action btn-primary" style="padding: 12px 28px;"><i class="fa-solid fa-save"></i> Registrar y Generar CYCSA-RT-FM-13</button>

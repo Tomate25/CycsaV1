@@ -340,16 +340,25 @@ if (!empty($codigoInformePersonalizado)) {
             margin-top: 3px;
         }
 
-        /* 2. ZONA DE CONTENIDO: Inicia DEBAJO del logo (Top: 40mm) y termina ARRIBA del pie de página */
+        /* 2. ZONA DE CONTENIDO: Inicia DEBAJO del logo (Top: 40mm) y termina ARRIBA de la zona de firmas */
         .zona-cuerpo {
             position: absolute;
             top: 40mm;
             left: 14mm;
             right: 14mm;
-            bottom: <?= $esVertical ? '34mm' : '32mm' ?>;
+            bottom: <?= $esVertical ? '48mm' : '46mm' ?>;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
+            box-sizing: border-box;
+        }
+
+        /* 3. ZONA DE FIRMAS AL PIE DE LA HOJA (ABAJO DERECHA POR DEFECTO + ABAJO IZQUIERDA SI RT-FM-13 ACTIVA FIRMA ADICIONAL) */
+        .zona-firmas-pie {
+            position: absolute;
+            bottom: <?= $esVertical ? '27mm' : '25mm' ?>;
+            left: 14mm;
+            right: 14mm;
             box-sizing: border-box;
         }
 
@@ -665,8 +674,6 @@ if (!empty($codigoInformePersonalizado)) {
                         <i class="fa-solid fa-triangle-exclamation"></i> SUSTITUYE AL INFORME: <?= htmlspecialchars($sustituyeA) ?> (Motivo: <?= htmlspecialchars($motivoReemision) ?>)
                     </div>
                 <?php endif; ?>
-                <div class="subtitulo-doc" style="font-size: 9px; font-weight: 600; color: #475569; margin-top: 1px;"><?= htmlspecialchars($subtituloLaboratorio) ?> &bull; Orden de Servicio: <strong style="color: #103487; font-family: monospace;"><?= htmlspecialchars($detalle['codigo_os']) ?></strong></div>
-                <div class="subtitulo-doc" style="font-size: 8px;">Norma técnica: <?= htmlspecialchars($normaOficial) ?></div>
             </div>
             <div class="insignia-codigo-doc">
                 <div class="badge-doc-oficial"><?= htmlspecialchars($codigoFormatoOficial) ?></div>
@@ -743,6 +750,66 @@ if (!empty($codigoInformePersonalizado)) {
 
                 <!-- TABLA DE RESULTADOS DE MATRIZ TÉCNICA (SENCILLA) -->
                 <div class="contenedor-tabla-matriz">
+                    <?php
+    $tieneAsteriscoSimplePrint = false;
+    foreach ($columnas as $colPre) {
+        $colLabelPre = (stripos($colPre, 'P.V.S') !== false || stripos($colPre, 'volum') !== false) ? str_replace(['kg/cm²', 'kg/cm2'], 'kg/m³', $colPre) : $colPre;
+        $colNormPre = normalizarTextoClavePHP($colLabelPre);
+        if (isset($columnasAsteriscoNormPrint[$colNormPre]) || (str_starts_with(trim($colLabelPre), '*') && !str_starts_with(trim($colLabelPre), '**'))) {
+            $tieneAsteriscoSimplePrint = true;
+            break;
+        }
+    }
+    if (!$tieneAsteriscoSimplePrint && !empty($resultados)) {
+        foreach ($resultados as $filaPre) {
+            if (!is_array($filaPre)) continue;
+            foreach ($columnas as $colPre) {
+                $valPre = trim((string)buscarValorEnFilaPHP($filaPre, $colPre, $schemaInfo['column_aliases'][$colPre] ?? null));
+                if ($valPre !== '' && str_starts_with($valPre, '*') && !str_starts_with($valPre, '**')) {
+                    $tieneAsteriscoSimplePrint = true;
+                    break 2;
+                }
+            }
+        }
+    }
+    if (strpos($codigoFormatoOficial, 'RT-FM-22 B') !== false || strpos($archivoMd, 'compactacion') !== false || strpos($archivoMd, 'densimetro') !== false) {
+        $tieneNota1 = false;
+        foreach ($notasOficiales as $idxNota => $notaExistente) {
+            if (stripos($notaExistente, 'Nota 1') !== false || stripos($notaExistente, 'TROXLER') !== false || stripos($notaExistente, 'Muestra tomada con equipo') !== false) {
+                if (!empty($metadatos['nota_equipo_densimetro'])) {
+                    $notasOficiales[$idxNota] = $metadatos['nota_equipo_densimetro'];
+                    $tieneNota1 = true;
+                } else {
+                    unset($notasOficiales[$idxNota]);
+                }
+                break;
+            }
+        }
+        $notasOficiales = array_values($notasOficiales);
+        if (!$tieneNota1 && !empty($metadatos['nota_equipo_densimetro'])) {
+            $notasOficiales[] = $metadatos['nota_equipo_densimetro'];
+        }
+    }
+    if ($tieneAsteriscoSimplePrint) {
+        $notasOficiales[] = '* Parámetro o resultado marcado fuera del alcance de acreditación o con observación técnica.';
+    }
+    if ($notaAditivos !== '' && ($ubicacionAditivos === 'pie' || $ubicacionAditivos === 'ambos')) {
+        $notasOficiales[] = 'Nota de Aditivos: ' . $notaAditivos;
+    }
+                    ?>
+                    <!-- DISCLAIMER Y NOTAS OFICIALES DEL FORMATO ARRIBA DE LA TABLA (ISO/IEC 17025) -->
+                    <div class="bloque-normativo-formato">
+                        <div class="disclaimer-formato">
+                            <?= htmlspecialchars($disclaimerOficial) ?>
+                        </div>
+                        <?php if (!empty($notasOficiales)): ?>
+                            <div class="notas-formato">
+                                <?php foreach ($notasOficiales as $nota): ?>
+                                    <div class="nota-item"><?= htmlspecialchars($nota) ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                     <?php
     $defaultColMethods = [
         'P.V.S Max (kg/m³)' => 'ASTM D698 / D1557',
@@ -850,46 +917,6 @@ if (!empty($codigoInformePersonalizado)) {
                             <?php endif; ?>
                         </tbody>
                     </table>
-
-                    <!-- DISCLAIMER Y NOTAS OFICIALES DEL FORMATO (ISO/IEC 17025) -->
-                    <div class="bloque-normativo-formato">
-                        <div class="disclaimer-formato">
-                            <?= htmlspecialchars($disclaimerOficial) ?>
-                        </div>
-                        <?php 
-                        if (strpos($codigoFormatoOficial, 'RT-FM-22 B') !== false || strpos($archivoMd, 'compactacion') !== false || strpos($archivoMd, 'densimetro') !== false) {
-                            $tieneNota1 = false;
-                            foreach ($notasOficiales as $idxNota => $notaExistente) {
-                                if (stripos($notaExistente, 'Nota 1') !== false || stripos($notaExistente, 'TROXLER') !== false || stripos($notaExistente, 'Muestra tomada con equipo') !== false) {
-                                    if (!empty($metadatos['nota_equipo_densimetro'])) {
-                                        $notasOficiales[$idxNota] = $metadatos['nota_equipo_densimetro'];
-                                        $tieneNota1 = true;
-                                    } else {
-                                        unset($notasOficiales[$idxNota]);
-                                    }
-                                    break;
-                                }
-                            }
-                            $notasOficiales = array_values($notasOficiales);
-                            if (!$tieneNota1 && !empty($metadatos['nota_equipo_densimetro'])) {
-                                $notasOficiales[] = $metadatos['nota_equipo_densimetro'];
-                            }
-                        }
-                        if ($tieneAsteriscoSimplePrint) {
-                            $notasOficiales[] = '* Parámetro o resultado marcado fuera del alcance de acreditación o con observación técnica.';
-                        }
-                        if ($notaAditivos !== '' && ($ubicacionAditivos === 'pie' || $ubicacionAditivos === 'ambos')) {
-                            $notasOficiales[] = 'Nota de Aditivos: ' . $notaAditivos;
-                        }
-                        ?>
-                        <?php if (!empty($notasOficiales)): ?>
-                            <div class="notas-formato">
-                                <?php foreach ($notasOficiales as $nota): ?>
-                                    <div class="nota-item"><?= htmlspecialchars($nota) ?></div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
                 </div>
             </div>
 
@@ -903,56 +930,61 @@ if (!empty($codigoInformePersonalizado)) {
             <!-- LÍNEA DE CIERRE OFICIAL (SERIE CYCSA-RT-FM-22) -->
             <div class="linea-cierre-doc">-------------------------------- Última Línea ---------------------------------</div>
 
-            <?php
-            $revisadoMostrarHtml = $revisadoPorNombre !== '' ? $revisadoPorNombre : 'Supervisión de Ensayos';
-            $aprobadoMostrarHtml = $aprobadoPorNombre !== '' ? $aprobadoPorNombre : $firmanteNombre;
-            ?>
+        </div>
+
+        <?php
+        $revisadoMostrarHtml = $revisadoPorNombre !== '' ? $revisadoPorNombre : 'Supervisión de Ensayos';
+        $incluirFirmaAdicionalPrint = !empty($detalle['incluir_firma_adicional']) || !empty($metadatos['incluir_firma_adicional']);
+        $firmaAdicionalNombrePrint = trim((string)($detalle['firma_adicional_nombre'] ?? ($metadatos['firma_adicional_nombre'] ?? '')));
+        $firmaAdicionalCargoPrint = trim((string)($detalle['firma_adicional_cargo'] ?? ($metadatos['firma_adicional_cargo'] ?? '')));
+        ?>
+        <!-- ZONA DE FIRMAS AL PIE DE LA HOJA (ABAJO A LA DERECHA POR DEFECTO; SI RT-FM-13 AGREGA FIRMA, ABAJO A LA IZQUIERDA) -->
+        <div class="zona-firmas-pie">
             <?php if (($schemaInfo['num_firmas'] ?? 1) == 3): ?>
-            <!-- BLOQUE DE FIRMAS TÉCNICAS CON ESPACIO CALIBRADO -->
-            <div class="bloque-firmas">
-                <div class="columna-firma">
-                    <div class="espacio-para-firma"></div>
+            <div class="bloque-firmas" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 20px;">
+                <div class="columna-firma" style="width: 210px;">
+                    <div class="espacio-para-firma" style="height: 24px;"></div>
                     <div class="linea-firma">
                         <div class="firma-nombre"><?= htmlspecialchars(!empty($detalle['tecnico_muestreo']) ? $detalle['tecnico_muestreo'] : 'Técnico de Ensayos') ?></div>
                         <div class="firma-cargo">Ejecutado por (Técnico Responsable)</div>
                     </div>
                 </div>
-                <div class="columna-firma">
-                    <div class="espacio-para-firma"></div>
+                <div class="columna-firma" style="width: 210px;">
+                    <div class="espacio-para-firma" style="height: 24px;"></div>
                     <div class="linea-firma">
                         <div class="firma-nombre"><?= htmlspecialchars($revisadoMostrarHtml) ?></div>
                         <div class="firma-cargo">Revisado por</div>
                     </div>
                 </div>
-                <div class="columna-firma">
-                    <div class="espacio-para-firma"></div>
+                <div class="columna-firma" style="width: 210px;">
+                    <div class="espacio-para-firma" style="height: 24px;"></div>
                     <div class="linea-firma">
-                        <div class="firma-nombre"><?= htmlspecialchars($aprobadoMostrarHtml) ?></div>
-                        <div class="firma-cargo">Aprobado por (<?= htmlspecialchars($firmanteCargo) ?> / ISO 17025)</div>
+                        <div class="firma-nombre"><?= htmlspecialchars($firmanteNombre) ?></div>
+                        <div class="firma-cargo"><?= htmlspecialchars($firmanteCargo) ?></div>
                     </div>
                 </div>
             </div>
-            <?php elseif ($revisadoPorNombre !== '' || $aprobadoPorNombre !== ''): ?>
-            <div class="bloque-firmas" style="grid-template-columns: 1fr 1fr; width: 80%; margin: 2px auto 0 auto;">
-                <div class="columna-firma">
-                    <div class="espacio-para-firma"></div>
+            <?php elseif ($incluirFirmaAdicionalPrint): ?>
+            <div class="bloque-firmas" style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <div class="columna-firma" style="width: 230px;">
+                    <div class="espacio-para-firma" style="height: 24px;"></div>
                     <div class="linea-firma">
-                        <div class="firma-nombre"><?= htmlspecialchars($revisadoMostrarHtml) ?></div>
-                        <div class="firma-cargo">Revisado por</div>
+                        <div class="firma-nombre"><?= $firmaAdicionalNombrePrint !== '' ? htmlspecialchars($firmaAdicionalNombrePrint) : '&nbsp;' ?></div>
+                        <div class="firma-cargo"><?= htmlspecialchars($firmaAdicionalCargoPrint !== '' ? $firmaAdicionalCargoPrint : 'Firma') ?></div>
                     </div>
                 </div>
-                <div class="columna-firma">
-                    <div class="espacio-para-firma"></div>
+                <div class="columna-firma" style="width: 230px;">
+                    <div class="espacio-para-firma" style="height: 24px;"></div>
                     <div class="linea-firma">
-                        <div class="firma-nombre"><?= htmlspecialchars($aprobadoMostrarHtml) ?></div>
-                        <div class="firma-cargo">Aprobado por</div>
+                        <div class="firma-nombre"><?= htmlspecialchars($firmanteNombre) ?></div>
+                        <div class="firma-cargo"><?= htmlspecialchars($firmanteCargo) ?></div>
                     </div>
                 </div>
             </div>
             <?php else: ?>
-            <div class="bloque-firmas" style="display: flex; justify-content: center;">
-                <div class="columna-firma" style="width: 260px; max-width: 50%;">
-                    <div class="espacio-para-firma"></div>
+            <div class="bloque-firmas" style="display: flex; justify-content: flex-end; align-items: flex-end;">
+                <div class="columna-firma" style="width: 230px;">
+                    <div class="espacio-para-firma" style="height: 24px;"></div>
                     <div class="linea-firma">
                         <div class="firma-nombre"><?= htmlspecialchars($firmanteNombre) ?></div>
                         <div class="firma-cargo"><?= htmlspecialchars($firmanteCargo) ?></div>
@@ -960,7 +992,6 @@ if (!empty($codigoInformePersonalizado)) {
                 </div>
             </div>
             <?php endif; ?>
-
         </div>
 
         <!-- Paginación Oficial -->

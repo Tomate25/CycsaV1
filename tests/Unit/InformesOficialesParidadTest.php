@@ -469,5 +469,30 @@ class InformesOficialesParidadTest extends TestCase {
         $printView = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php');
         $this->assertStringContainsString("disclaimer_personalizado", $printView);
         $this->assertStringContainsString("notas_informe_personalizadas", $printView);
+
+        // En impresión (matriz_print.php) las notas/disclaimer también van ARRIBA de la tabla y sin subtítulo/norma técnica en cabecera
+        $posBloqueNormPrint = strpos($printView, 'class="bloque-normativo-formato"');
+        $posTablaPrint = strpos($printView, 'class="tabla-matriz-print"');
+        $this->assertNotFalse($posBloqueNormPrint);
+        $this->assertNotFalse($posTablaPrint);
+        $this->assertLessThan($posTablaPrint, $posBloqueNormPrint, 'En matriz_print.php las notas y cláusula deben aparecer ARRIBA de la tabla.');
+        $this->assertStringNotContainsString('Orden de Servicio: <strong', $printView);
+        $this->assertStringNotContainsString('Norma técnica:', $printView);
+        $this->assertStringContainsString('class="zona-firmas-pie"', $printView);
+        $this->assertStringContainsString('incluir_firma_adicional', $printView);
+
+        // En el PDF tampoco aparecen subtítulo/norma técnica en cabecera, y con firma adicional RT-FM-13 incluye firmante izquierdo + derecho
+        $this->assertStringNotContainsString('Norma técnica:', $textoPdf);
+        $this->assertStringNotContainsString('Laboratorio de Ensayos y Control de Calidad', $textoPdf);
+
+        $detalleConFirmaAdicional = $detalle;
+        $detalleConFirmaAdicional['incluir_firma_adicional'] = 1;
+        $detalleConFirmaAdicional['firma_adicional_nombre'] = 'Ing. Carlos Supervisor Obra';
+        $detalleConFirmaAdicional['firma_adicional_cargo'] = 'Revisado por Cliente';
+        $pdfConFirma = generarMatrizTecnicaPDF($detalleConFirmaAdicional);
+        $textoPdfFirma = $this->extraerTextoDePdf($pdfConFirma);
+        $this->assertStringContainsString('Ing. Carlos Supervisor Obra', $textoPdfFirma);
+        $this->assertTrue(stripos($textoPdfFirma, 'Revisado por Cliente') !== false, 'El cargo de la firma adicional debe aparecer en el PDF.');
+        $this->assertStringContainsString('Ing. Noel Quintana Lira', $textoPdfFirma);
     }
 }

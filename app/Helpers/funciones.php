@@ -3272,69 +3272,96 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         $obsPendientesHtml = '<div style="border: 1px solid #000; padding: 3px 6px; margin-bottom: 3px; font-size: 7px; background: #fffbeb;"><strong>OBSERVACIONES PENDIENTES:</strong> ' . nl2br(htmlspecialchars($obsPendientesTexto, ENT_QUOTES, 'UTF-8')) . '</div>';
     }
 
+    $incluirFirmaAdicional = !empty($detalle['incluir_firma_adicional']) || !empty($metaOficial['incluir_firma_adicional']);
+    $firmaAdicionalNombreRaw = trim((string)($detalle['firma_adicional_nombre'] ?? ($metaOficial['firma_adicional_nombre'] ?? '')));
+    $firmaAdicionalCargoRaw = trim((string)($detalle['firma_adicional_cargo'] ?? ($metaOficial['firma_adicional_cargo'] ?? '')));
+    $firmaAdicionalNombrePdf = $firmaAdicionalNombreRaw !== '' ? htmlspecialchars($firmaAdicionalNombreRaw, ENT_QUOTES, 'UTF-8') : '&nbsp;';
+    $firmaAdicionalCargoPdf = $firmaAdicionalCargoRaw !== '' ? htmlspecialchars($firmaAdicionalCargoRaw, ENT_QUOTES, 'UTF-8') : 'Firma';
+    $zonaFirmasBottom = ($orientacion === 'vertical') ? '27mm' : '25mm';
+    $zonaCuerpoBottomAjustado = ($orientacion === 'vertical') ? '48mm' : '46mm';
+
     $numFirmas = (int)($schemaInfo['num_firmas'] ?? 1);
     if ($numFirmas === 3) {
         $firmasHtml = <<<FIRMAS
+<div class="zona-firmas-pie">
     <table class="firmas-tbl">
         <tr>
-            <td style="width: 33.33%;">
-                <div style="height: 14px;"></div>
-                <div style="border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8px;">{$tecnicoNom}</div>
-                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Ejecutado por (Técnico Responsable)</div>
+            <td style="width: 33.33%; text-align: left; vertical-align: top;">
+                <div style="display: inline-block; width: 200px; text-align: center;">
+                    <div style="height: 22px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                        <div style="font-weight: bold; font-size: 8px;">{$tecnicoNom}</div>
+                        <div style="color: #444; font-size: 7px; text-transform: uppercase;">Ejecutado por (Técnico Responsable)</div>
+                    </div>
                 </div>
             </td>
-            <td style="width: 33.33%;">
-                <div style="height: 14px;"></div>
-                <div style="border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8px;">{$revisadoMostrarPdf}</div>
-                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Revisado por</div>
+            <td style="width: 33.33%; text-align: center; vertical-align: top;">
+                <div style="display: inline-block; width: 200px; text-align: center;">
+                    <div style="height: 22px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                        <div style="font-weight: bold; font-size: 8px;">{$revisadoMostrarPdf}</div>
+                        <div style="color: #444; font-size: 7px; text-transform: uppercase;">Revisado por</div>
+                    </div>
                 </div>
             </td>
-            <td style="width: 33.33%;">
-                <div style="height: 14px;"></div>
-                <div style="border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8px;">{$aprobadoMostrarPdf}</div>
-                    <div style="color: #444; font-size: 7px; text-transform: uppercase;">Aprobado por ({$firmanteCargo} / ISO 17025)</div>
+            <td style="width: 33.33%; text-align: right; vertical-align: top;">
+                <div style="display: inline-block; width: 200px; text-align: center;">
+                    <div style="height: 22px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                        <div style="font-weight: bold; font-size: 8px;">{$firmanteNombre}</div>
+                        <div style="color: #444; font-size: 7px; text-transform: uppercase;">{$firmanteCargo}</div>
+                    </div>
                 </div>
             </td>
         </tr>
     </table>
+</div>
 FIRMAS;
-    } elseif ($revisadoPorReal !== '' || $aprobadoPorReal !== '') {
+    } elseif ($incluirFirmaAdicional) {
         $firmasHtml = <<<FIRMAS
-    <table class="firmas-tbl" style="margin: 4px auto 0 auto; width: 80%;">
+<div class="zona-firmas-pie">
+    <table class="firmas-tbl">
         <tr>
-            <td style="width: 50%; text-align: center; vertical-align: top;">
-                <div style="height: 14px;"></div>
-                <div style="display: inline-block; min-width: 190px; border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8.5px;">{$revisadoMostrarPdf}</div>
-                    <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">Revisado por</div>
+            <td style="width: 50%; text-align: left; vertical-align: top; padding: 0;">
+                <div style="display: inline-block; width: 220px; text-align: center;">
+                    <div style="height: 22px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                        <div style="font-weight: bold; font-size: 8.5px;">{$firmaAdicionalNombrePdf}</div>
+                        <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">{$firmaAdicionalCargoPdf}</div>
+                    </div>
                 </div>
             </td>
-            <td style="width: 50%; text-align: center; vertical-align: top;">
-                <div style="height: 14px;"></div>
-                <div style="display: inline-block; min-width: 190px; border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8.5px;">{$aprobadoMostrarPdf}</div>
-                    <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">Aprobado por</div>
+            <td style="width: 50%; text-align: right; vertical-align: top; padding: 0;">
+                <div style="display: inline-block; width: 220px; text-align: center;">
+                    <div style="height: 22px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                        <div style="font-weight: bold; font-size: 8.5px;">{$firmanteNombre}</div>
+                        <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">{$firmanteCargo}</div>
+                    </div>
                 </div>
             </td>
         </tr>
     </table>
+</div>
 FIRMAS;
     } else {
         $firmasHtml = <<<FIRMAS
-    <table class="firmas-tbl" style="margin: 4px auto 0 auto; width: 60%;">
+<div class="zona-firmas-pie">
+    <table class="firmas-tbl">
         <tr>
-            <td style="text-align: center; vertical-align: top;">
-                <div style="height: 14px;"></div>
-                <div style="display: inline-block; min-width: 220px; border-top: 1px solid #000; padding-top: 2px;">
-                    <div style="font-weight: bold; font-size: 8.5px;">{$firmanteNombre}</div>
-                    <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">{$firmanteCargo}</div>
+            <td style="width: 50%; padding: 0;">&nbsp;</td>
+            <td style="width: 50%; text-align: right; vertical-align: top; padding: 0;">
+                <div style="display: inline-block; width: 220px; text-align: center;">
+                    <div style="height: 22px;"></div>
+                    <div style="border-top: 1px solid #000; padding-top: 2px;">
+                        <div style="font-weight: bold; font-size: 8.5px;">{$firmanteNombre}</div>
+                        <div style="color: #444; font-size: 7.5px; text-transform: uppercase;">{$firmanteCargo}</div>
+                    </div>
                 </div>
             </td>
         </tr>
     </table>
+</div>
 FIRMAS;
     }
 
@@ -3367,7 +3394,13 @@ FIRMAS;
         top: 40mm;
         left: 14mm;
         right: 14mm;
-        bottom: {$zonaCuerpoBottom};
+        bottom: {$zonaCuerpoBottomAjustado};
+    }
+    .zona-firmas-pie {
+        position: absolute;
+        bottom: {$zonaFirmasBottom};
+        left: 14mm;
+        right: 14mm;
     }
     table.meta-informe-tbl {
         width: 100%;
@@ -3459,8 +3492,6 @@ FIRMAS;
                 <div style="font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">{$tituloInforme}</div>
                 <div style="font-family: 'Courier New', Courier, monospace; font-size: 11px; font-weight: bold; color: #103487; letter-spacing: 0.5px; margin-top: 2px; margin-bottom: 2px;">{$codigoInformeConsecutivo}</div>
                 {$bannerSustituyeHtml}
-                <div style="font-size: 8.5px; font-weight: bold; color: #475569; margin-top: 1px;">{$subtituloLaboratorio} &bull; O/S: {$codigoOS}</div>
-                <div style="font-size: 7.5px; color: #475569;">Norma técnica: {$normaOficial}</div>
             </td>
             <td style="width: 50mm; text-align: right; vertical-align: middle;">
                 <div style="border: 1.5px solid #000; padding: 2px 7px; font-weight: bold; font-size: 10px; display: inline-block; font-family: monospace;">{$codigoFormatoOficial}</div>
@@ -3519,22 +3550,22 @@ FIRMAS;
         {$aditivosCabeceraHtml}
     </table>
 
-    <table class="matriz-tbl">
-        <thead>{$theadHtml}</thead>
-        <tbody>{$tbodyTrs}</tbody>
-    </table>
-
     <div class="bloque-normativo">
         <div class="disclaimer-normativo">{$disclaimerEsc}</div>
         {$notasHtml}
     </div>
 
+    <table class="matriz-tbl">
+        <thead>{$theadHtml}</thead>
+        <tbody>{$tbodyTrs}</tbody>
+    </table>
+
     {$obsPendientesHtml}
 
     <div class="linea-cierre-doc">-------------------------------- Última Línea ---------------------------------</div>
-
-    {$firmasHtml}
 </div>
+
+{$firmasHtml}
 
 </body>
 </html>

@@ -4412,6 +4412,9 @@ class OperacionesControlador extends ControladorBase {
             $detalle['observaciones'] = $hoja['observaciones'] ?? ($detalle['observaciones'] ?? '');
             $detalle['id_hoja'] = (int)$hoja['id'];
             $detalle['numero_registro'] = $hoja['numero_registro'] ?? '';
+            $detalle['incluir_firma_adicional'] = (int)($hoja['incluir_firma_adicional'] ?? 0);
+            $detalle['firma_adicional_nombre'] = trim((string)($hoja['firma_adicional_nombre'] ?? ''));
+            $detalle['firma_adicional_cargo'] = trim((string)($hoja['firma_adicional_cargo'] ?? ''));
         }
 
         // Gate Único de Autorización de Pago / Despacho
@@ -4649,6 +4652,21 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
+        $hojaPdf = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        if ($hojaPdf) {
+            $detalle['procedencia_punto_muestreo'] = $hojaPdf['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
+            $detalle['nombre_persona_entrega_muestra'] = $hojaPdf['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
+            $detalle['fecha_hora_toma_muestra'] = $hojaPdf['fecha_hora_toma_muestra'] ?? ($detalle['fecha_hora_toma_muestra'] ?? null);
+            $detalle['fecha_hora_llegada_laboratorio'] = $hojaPdf['fecha_hora_llegada_laboratorio'] ?? ($detalle['fecha_hora_llegada_laboratorio'] ?? null);
+            $detalle['naturaleza_muestra'] = $hojaPdf['naturaleza_muestra'] ?? ($detalle['naturaleza_muestra'] ?? '');
+            $detalle['observaciones'] = $hojaPdf['observaciones'] ?? ($detalle['observaciones'] ?? '');
+            $detalle['id_hoja'] = (int)$hojaPdf['id'];
+            $detalle['numero_registro'] = $hojaPdf['numero_registro'] ?? '';
+            $detalle['incluir_firma_adicional'] = (int)($hojaPdf['incluir_firma_adicional'] ?? 0);
+            $detalle['firma_adicional_nombre'] = trim((string)($hojaPdf['firma_adicional_nombre'] ?? ''));
+            $detalle['firma_adicional_cargo'] = trim((string)($hojaPdf['firma_adicional_cargo'] ?? ''));
+        }
+
         // Gate Único de Autorización de Pago / Despacho
         $authPago = verificarAutorizacionPagoEnvio($detalle, $db);
         if (!$authPago['autorizado']) {
@@ -4783,6 +4801,9 @@ class OperacionesControlador extends ControladorBase {
             $detalle['observaciones'] = $hoja['observaciones'] ?? ($detalle['observaciones'] ?? '');
             $detalle['id_hoja'] = (int)$hoja['id'];
             $detalle['numero_registro'] = $hoja['numero_registro'] ?? '';
+            $detalle['incluir_firma_adicional'] = (int)($hoja['incluir_firma_adicional'] ?? 0);
+            $detalle['firma_adicional_nombre'] = trim((string)($hoja['firma_adicional_nombre'] ?? ''));
+            $detalle['firma_adicional_cargo'] = trim((string)($hoja['firma_adicional_cargo'] ?? ''));
         }
 
         // Gate Único de Envío Oficial al Cliente / Autorización de Pago

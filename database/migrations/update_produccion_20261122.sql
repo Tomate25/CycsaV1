@@ -191,4 +191,16 @@ SET `tolerancia_horas` = CASE `edad_dias`
 END
 WHERE `tolerancia_horas` = 24.00 AND `edad_dias` IN (1, 3, 7, 14, 28, 56, 90);
 
+-- ----------------------------------------------------------------------------
+-- 9. Migración 041: Espacio de firma adicional desde RT-FM-13 hacia informe oficial
+-- ----------------------------------------------------------------------------
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'incluir_firma_adicional'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `incluir_firma_adicional` TINYINT(1) NOT NULL DEFAULT 0 AFTER `firma_cliente`'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'firma_adicional_nombre'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `firma_adicional_nombre` VARCHAR(180) NULL DEFAULT NULL AFTER `incluir_firma_adicional`'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'firma_adicional_cargo'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `firma_adicional_cargo` VARCHAR(180) NULL DEFAULT NULL AFTER `firma_adicional_nombre`'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 SELECT 'UPDATE_PRODUCCION_20261122_OK' AS resultado;

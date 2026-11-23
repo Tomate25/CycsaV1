@@ -1179,6 +1179,16 @@ class OperacionModelo extends ModeloBase {
             $nombreRecibeCycsa = trim($datos['nombre_recibe_cycsa'] ?? '');
             $firmaRecibeCycsa = (int)($datos['firma_recibe_cycsa'] ?? 0);
             $firmaCliente = (int)($datos['firma_cliente'] ?? 0);
+            $incluirFirmaAdicional = !empty($datos['incluir_firma_adicional']) ? 1 : 0;
+            $firmaAdicionalNombre = trim((string)($datos['firma_adicional_nombre'] ?? ''));
+            $firmaAdicionalCargo = trim((string)($datos['firma_adicional_cargo'] ?? ''));
+            $tieneColsFirmaAdicional = false;
+            try {
+                $chkFirmaCol = $this->db->query("SHOW COLUMNS FROM hojas_solicitud LIKE 'incluir_firma_adicional'");
+                $tieneColsFirmaAdicional = (bool)($chkFirmaCol && $chkFirmaCol->fetch(\PDO::FETCH_ASSOC));
+            } catch (\Throwable $e) {
+                $tieneColsFirmaAdicional = false;
+            }
 
             // Verificar si es edición de una hoja existente o creación de nueva hoja
             $existing = null;
@@ -1347,7 +1357,11 @@ class OperacionModelo extends ModeloBase {
                             observaciones = :obs,
                             nombre_recibe_cycsa = :n_recibe,
                             firma_recibe_cycsa = :f_recibe,
-                            firma_cliente = :f_cliente
+                            firma_cliente = :f_cliente"
+                            . ($tieneColsFirmaAdicional ? ",
+                            incluir_firma_adicional = :inc_firma_ad,
+                            firma_adicional_nombre = :f_ad_nom,
+                            firma_adicional_cargo = :f_ad_cargo" : "") . "
                         WHERE id = :id_hoja";
             } else {
                 $sql = "INSERT INTO hojas_solicitud (
@@ -1356,14 +1370,16 @@ class OperacionModelo extends ModeloBase {
                             req_resistencia_concreto, req_resistencia_adoquin, req_resistencia_bloques, req_otros_concreto,
                             req_granulometria, req_limites_atterberg, req_humedad, req_resistencia_corte, req_clasificacion_sucs_hr, req_proctor_sm, req_infiltracion, req_cbr, req_densidad, req_otros_suelo,
                             req_otros_materiales, descripcion_otros_analisis,
-                            analisis_adicionales, observaciones, nombre_recibe_cycsa, firma_recibe_cycsa, firma_cliente
+                            analisis_adicionales, observaciones, nombre_recibe_cycsa, firma_recibe_cycsa, firma_cliente"
+                            . ($tieneColsFirmaAdicional ? ", incluir_firma_adicional, firma_adicional_nombre, firma_adicional_cargo" : "") . "
                         ) VALUES (
                             :id_os, :id_det_cot, :id_prod, :ensayo_id, :f_llegada, :cod_doc, :num_reg, :n_empresa, :razon_social, :dir, :tel, :email, :p_entrega,
                             :naturaleza, :proc, :p_toma, :f_toma, :cond_m, :m_json,
                             :rc_con, :rc_ado, :rc_blo, :rc_ot,
                             :rg, :rl, :rh, :rs, :rc_sucs, :rp, :ri, :rcbr, :rd, :rs_ot,
                             :ro_mat, :ro_desc,
-                            :anal_ad, :obs, :n_recibe, :f_recibe, :f_cliente
+                            :anal_ad, :obs, :n_recibe, :f_recibe, :f_cliente"
+                            . ($tieneColsFirmaAdicional ? ", :inc_firma_ad, :f_ad_nom, :f_ad_cargo" : "") . "
                         )";
             }
             
@@ -1408,6 +1424,11 @@ class OperacionModelo extends ModeloBase {
                 'f_recibe' => $firmaRecibeCycsa,
                 'f_cliente' => $firmaCliente
             ];
+            if ($tieneColsFirmaAdicional) {
+                $params['inc_firma_ad'] = $incluirFirmaAdicional;
+                $params['f_ad_nom'] = $firmaAdicionalNombre !== '' ? $firmaAdicionalNombre : null;
+                $params['f_ad_cargo'] = $firmaAdicionalCargo !== '' ? $firmaAdicionalCargo : null;
+            }
 
             if ($existing) {
                 $params['id_hoja'] = $existing['id'];

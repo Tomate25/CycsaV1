@@ -868,6 +868,30 @@
                 </div>
             </div>
 
+            <!-- ESPACIO DE FIRMA ADICIONAL VINCULADO AL INFORME OFICIAL (ABAJO IZQUIERDA) -->
+            <div style="margin-bottom:15px; padding:12px 14px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px;">
+                <input type="hidden" name="incluir_firma_adicional" id="hs_incluir_firma_adicional" value="0">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="font-size:12.5px; color:#334155;">
+                        <strong><i class="fa-solid fa-pen-nib me-1 text-primary"></i> Firma adicional en el informe oficial</strong>
+                        <div style="font-size:11.5px; color:#64748b;">Si la activa, al imprimir/PDF se agregará un espacio de firma abajo a la izquierda junto a la firma oficial (abajo a la derecha).</div>
+                    </div>
+                    <button type="button" id="btn_toggle_firma_adicional_hs" onclick="toggleFirmaAdicionalHS()" class="btn btn-outline-primary btn-sm" style="font-weight:600;">
+                        <i class="fa-solid fa-plus me-1"></i> Agregar espacio de firma
+                    </button>
+                </div>
+                <div id="panel_firma_adicional_hs" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div class="form-group">
+                        <label>Nombre firmante adicional (abajo izquierda)</label>
+                        <input type="text" name="firma_adicional_nombre" id="hs_firma_adicional_nombre" class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="Opcional — dejar vacío para línea en blanco">
+                    </div>
+                    <div class="form-group">
+                        <label>Cargo / Etiqueta de la firma adicional</label>
+                        <input type="text" name="firma_adicional_cargo" id="hs_firma_adicional_cargo" class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="Ej. Revisado por / Supervisor de Obra">
+                    </div>
+                </div>
+            </div>
+
             <!-- CONTROL DE RECEPCIÓN FÍSICA Y CONGELAMIENTO ISO 17025 -->
             <div style="background:#fef3c7; border:1.5px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
@@ -1512,6 +1536,13 @@
                 if (elFirmaRecibe) elFirmaRecibe.checked = parseInt(hoja.firma_recibe_cycsa) === 1;
                 const elFirmaCli = document.getElementById('hs_firma_cliente');
                 if (elFirmaCli) elFirmaCli.checked = parseInt(hoja.firma_cliente) === 1;
+                const elFirmaAdNom = document.getElementById('hs_firma_adicional_nombre');
+                if (elFirmaAdNom) elFirmaAdNom.value = hoja.firma_adicional_nombre || '';
+                const elFirmaAdCargo = document.getElementById('hs_firma_adicional_cargo');
+                if (elFirmaAdCargo) elFirmaAdCargo.value = hoja.firma_adicional_cargo || '';
+                if (typeof toggleFirmaAdicionalHS === 'function') {
+                    toggleFirmaAdicionalHS(parseInt(hoja.incluir_firma_adicional || 0, 10) === 1);
+                }
 
                 // Establecer variables globales de cliente y ensayos
                 window.clienteIdActualHoja = data.cliente_id || null;
@@ -2230,6 +2261,26 @@
 
     function ejecutarAprobacionOS() {
         document.getElementById('form-revision-os').submit();
+    }
+
+    function toggleFirmaAdicionalHS(forzarEstado) {
+        const hiddenEl = document.getElementById('hs_incluir_firma_adicional');
+        const panelEl = document.getElementById('panel_firma_adicional_hs');
+        const btnEl = document.getElementById('btn_toggle_firma_adicional_hs');
+        if (!hiddenEl || !panelEl || !btnEl) return;
+        const actual = hiddenEl.value === '1';
+        const activar = (typeof forzarEstado === 'boolean') ? forzarEstado : !actual;
+        hiddenEl.value = activar ? '1' : '0';
+        panelEl.style.display = activar ? 'grid' : 'none';
+        if (activar) {
+            btnEl.classList.remove('btn-outline-primary');
+            btnEl.classList.add('btn-primary');
+            btnEl.innerHTML = '<i class="fa-solid fa-check me-1"></i> Firma adicional activa (quitar)';
+        } else {
+            btnEl.classList.remove('btn-primary');
+            btnEl.classList.add('btn-outline-primary');
+            btnEl.innerHTML = '<i class="fa-solid fa-plus me-1"></i> Agregar espacio de firma';
+        }
     }
 
     <?php if (!empty($id_os_auto)): ?>

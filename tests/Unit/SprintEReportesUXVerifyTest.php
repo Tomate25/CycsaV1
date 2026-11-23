@@ -26,9 +26,9 @@ class SprintEReportesUXVerifyTest extends TestCase {
         $this->assertSame('AASHTO T 310 / ASTM D6938', $meta2['norma_tecnica']);
         $this->assertSame('AASHTO T 310', $meta2['metodo_muestreo']);
 
-        // Caso C: verificar presencia en la vista matriz_print.php
+        // Caso C: verificar que la línea redundante "Norma técnica:" fue retirada del encabezado de impresión (solicitado por usuario)
         $printContent = file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php');
-        $this->assertStringContainsString('Norma técnica: <?= htmlspecialchars($normaOficial) ?>', $printContent);
+        $this->assertStringNotContainsString('Norma técnica: <?= htmlspecialchars($normaOficial) ?>', $printContent);
     }
 
     /**

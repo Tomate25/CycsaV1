@@ -536,24 +536,37 @@ class Fase2OperacionesInformesPermisosTest extends TestCase {
             ], JSON_UNESCAPED_UNICODE),
         ];
 
-        // 1. Renderizar vista HTML con sin_logo=1 y sin_logo_acreditacion=1
+        // 1a. Sin firma adicional RT-FM-13: solo firma oficial abajo a la derecha (sin bitácora interna)
         $sinLogo = true;
         $sinLogoAcreditacion = true;
         $columnas = ['Código laboratorio', 'Nombre muestra', 'Área (in²)', 'Carga (lb)', 'Peso Volumétrico (kg/m³)', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)'];
         $muestrasSeteadas = [];
         ob_start();
         include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php';
+        $htmlSinExtra = ob_get_clean();
+
+        $this->assertStringContainsString('zona-firmas-pie', $htmlSinExtra);
+        $this->assertStringContainsString('Ing. Noel Quintana Lira', $htmlSinExtra);
+        $this->assertStringContainsString('Pendiente verificación de equipo calibrado', $htmlSinExtra);
+        $this->assertStringContainsString('Aditivo superplastificante 0.8% dosis', $htmlSinExtra);
+        $this->assertStringContainsString('Peso Volumétrico (kg/m³) *', $htmlSinExtra);
+        $this->assertStringContainsString('Parámetro o resultado marcado fuera del alcance de acreditación', $htmlSinExtra);
+        $this->assertStringContainsString('background-image: none;', $htmlSinExtra);
+        $this->assertStringNotContainsString('logo-acreditacion-print', $htmlSinExtra);
+        $this->assertStringNotContainsString('BITACORA_INTERNA_SECRETA_NO_IMPRIMIR', $htmlSinExtra);
+
+        // 1b. Con botón firma adicional activo desde RT-FM-13: firma adicional abajo a la izquierda + firma oficial abajo a la derecha
+        $detalle['incluir_firma_adicional'] = 1;
+        $detalle['firma_adicional_nombre'] = 'Ing. Ana Revisora';
+        $detalle['firma_adicional_cargo'] = 'Revisado por';
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php';
         $html = ob_get_clean();
 
         $this->assertStringContainsString('Ing. Ana Revisora', $html);
-        $this->assertStringContainsString('Ing. Carlos Aprobador', $html);
-        $this->assertStringContainsString('Pendiente verificación de equipo calibrado', $html);
-        $this->assertStringContainsString('Aditivo superplastificante 0.8% dosis', $html);
-        $this->assertStringContainsString('Peso Volumétrico (kg/m³) *', $html);
-        $this->assertStringContainsString('Parámetro o resultado marcado fuera del alcance de acreditación', $html);
-        $this->assertStringContainsString('background-image: none;', $html);
-        $this->assertStringNotContainsString('logo-acreditacion-print', $html);
-        $this->assertStringNotContainsString('BITACORA_INTERNA_SECRETA_NO_IMPRIMIR', $html);
+        $this->assertStringContainsString('Revisado por', $html);
+        $this->assertStringContainsString('Ing. Noel Quintana Lira', $html);
+        $this->assertLessThan(strpos($html, 'Ing. Noel Quintana Lira'), strpos($html, 'Ing. Ana Revisora'), 'La firma adicional RT-FM-13 debe renderizarse a la izquierda y la oficial a la derecha.');
 
         // 2. Generar PDF con sin_logo y sin_logo_acreditacion
         $pdfNormal = generarMatrizTecnicaPDF($detalle, [], $columnas, '', []);

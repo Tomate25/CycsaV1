@@ -1657,6 +1657,32 @@
                         </div>
                     </div>
 
+                    <!-- ESPACIO DE FIRMA ADICIONAL VINCULADO AL INFORME OFICIAL (ABAJO IZQUIERDA) -->
+                    <div style="margin-top:12px; padding:12px 14px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px;">
+                        <input type="hidden" name="incluir_firma_adicional" id="hs_incluir_firma_adicional" value="0">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <div style="font-size:12.5px; color:#334155;">
+                                <strong><i class="fa-solid fa-pen-nib me-1 text-primary"></i> Firma adicional en el informe oficial</strong>
+                                <div style="font-size:11.5px; color:#64748b;">Si la activa, al imprimir/PDF se agregará un espacio de firma abajo a la izquierda junto a la firma oficial (abajo a la derecha).</div>
+                            </div>
+                            <button type="button" id="btn_toggle_firma_adicional_rtfm13" onclick="toggleFirmaAdicionalRTFM13()" class="btn btn-outline-primary btn-sm" style="font-weight:600;">
+                                <i class="fa-solid fa-plus me-1"></i> Agregar espacio de firma
+                            </button>
+                        </div>
+                        <div id="panel_firma_adicional_rtfm13" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1;">
+                            <div class="rtfm13-grid-2">
+                                <div class="rtfm13-form-group">
+                                    <label>Nombre firmante adicional (abajo izquierda)</label>
+                                    <input type="text" name="firma_adicional_nombre" id="hs_firma_adicional_nombre" class="rtfm13-input" placeholder="Opcional — dejar vacío para línea en blanco">
+                                </div>
+                                <div class="rtfm13-form-group">
+                                    <label>Cargo / Etiqueta de la firma adicional</label>
+                                    <input type="text" name="firma_adicional_cargo" id="hs_firma_adicional_cargo" class="rtfm13-input" placeholder="Ej. Revisado por / Supervisor de Obra">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; margin-top:12px; margin-bottom:15px; font-size:12px; color:#1e40af; line-height:1.45;">
                         <strong>*.- Con este documento doy fe</strong>, que todo lo escrito lo he revisado y que he quedado de mutuo acuerdo de los servicios que me ofrecerá CYCSA en la muestra. Cualquier cambio deberá ser notificado previo a CYCSA de cualquier forma escrita para su debido registro.
                     </div>
@@ -3165,9 +3191,36 @@
         if (elFirmaRecibe) elFirmaRecibe.checked = (parseInt(h.firma_recibe_cycsa) === 1);
         const elFirmaCli = document.getElementById('hs_firma_cliente');
         if (elFirmaCli) elFirmaCli.checked = (parseInt(h.firma_cliente) === 1);
+        const elFirmaAdNom = document.getElementById('hs_firma_adicional_nombre');
+        if (elFirmaAdNom) elFirmaAdNom.value = h.firma_adicional_nombre || '';
+        const elFirmaAdCargo = document.getElementById('hs_firma_adicional_cargo');
+        if (elFirmaAdCargo) elFirmaAdCargo.value = h.firma_adicional_cargo || '';
+        if (typeof toggleFirmaAdicionalRTFM13 === 'function') {
+            toggleFirmaAdicionalRTFM13(parseInt(h.incluir_firma_adicional || 0, 10) === 1);
+        }
 
         actualizarInfoProductoSeleccionado();
         actualizarContadorEspecimenes();
+    }
+
+    function toggleFirmaAdicionalRTFM13(forzarEstado) {
+        const hiddenEl = document.getElementById('hs_incluir_firma_adicional');
+        const panelEl = document.getElementById('panel_firma_adicional_rtfm13');
+        const btnEl = document.getElementById('btn_toggle_firma_adicional_rtfm13');
+        if (!hiddenEl || !panelEl || !btnEl) return;
+        const actual = hiddenEl.value === '1';
+        const activar = (typeof forzarEstado === 'boolean') ? forzarEstado : !actual;
+        hiddenEl.value = activar ? '1' : '0';
+        panelEl.style.display = activar ? 'block' : 'none';
+        if (activar) {
+            btnEl.classList.remove('btn-outline-primary');
+            btnEl.classList.add('btn-primary');
+            btnEl.innerHTML = '<i class="fa-solid fa-check me-1"></i> Firma adicional activa (quitar)';
+        } else {
+            btnEl.classList.remove('btn-primary');
+            btnEl.classList.add('btn-outline-primary');
+            btnEl.innerHTML = '<i class="fa-solid fa-plus me-1"></i> Agregar espacio de firma';
+        }
     }
 
     function escapeHtml(str) {
