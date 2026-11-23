@@ -495,18 +495,14 @@ class PropuestaFlujoOperacionesLaboratorioTest extends TestCase {
         $this->assertStringContainsString('5. Informe PDF', $htmlIndex);
         $this->assertStringContainsString('Siguiente paso:', $htmlIndex);
 
-        // Espacio de Trabajo en 3 Secciones y Controles de Solo Lectura en captura_matriz.php y ver.php
-        $this->assertStringContainsString('① Recepción', $htmlCaptura);
-        $this->assertStringContainsString('② Ejecución Técnica (Laboratorio)', $htmlCaptura);
-        $this->assertStringContainsString('③ Matriz RT-FM-22 (Auto-llenada / Solo lectura) y Aprobación', $htmlCaptura);
+        // Captura técnica integrada directamente en captura_matriz.php (sin barra de salto a Laboratorio)
+        $this->assertStringContainsString('id="seccion-captura-tecnica-lab"', $htmlCaptura);
+        $this->assertStringContainsString('id="tabla-captura-tecnica-lab"', $htmlCaptura);
         $this->assertStringContainsString('Calculado · Solo lectura', $htmlCaptura);
-        $this->assertStringContainsString('Viene del laboratorio', $htmlCaptura);
-        $this->assertStringContainsString('Ir a Captura en Línea del Lote (Laboratorio)', $htmlCaptura);
         $this->assertStringContainsString('Enviar a Revisión del Supervisor', $htmlCaptura);
         $this->assertStringContainsString('Plegar columnas de recepción', $htmlCaptura);
-
-        $this->assertStringContainsString('① Recepción', $htmlVer);
-        $this->assertStringContainsString('② Ejecución Técnica (Laboratorio)', $htmlVer);
-        $this->assertStringContainsString('③ Matriz RT-FM-22 (Auto-llenada / Solo lectura) y Aprobación', $htmlVer);
+        $this->assertStringNotContainsString('Ir a Captura en Línea del Lote (Laboratorio)', $htmlCaptura);
+        $this->assertStringNotContainsString('② Ejecución Técnica (Laboratorio)', $htmlCaptura);
+        $this->assertStringNotContainsString('② Ejecución Técnica (Laboratorio)', $htmlVer);
     }
 }

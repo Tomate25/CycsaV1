@@ -715,17 +715,6 @@ if (!empty($o['puede_cerrar']) && !in_array((string)($o['estado'] ?? ''), ['Fina
                             </div>
                         </div>
 
-                        <div class="cy-row">
-                            <div class="flex-grow-1">
-                                <div class="cy-assay-name">Etapas del flujo operativo</div>
-                                <div class="cy-assay-norm">Acceso directo a recepción, captura en línea y matriz de resultados</div>
-                            </div>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <a href="/Cycsa/publico/ordenes-servicio?id_os=<?= (int)$o['id'] ?><?= $idHojaVer > 0 ? '&id_hoja=' . $idHojaVer : '' ?>" class="btn btn-outline-secondary btn-sm">① Recepción</a>
-                                <a href="<?= $idHojaVer > 0 ? '/Cycsa/publico/laboratorio/ensayos-hoja?id_hoja=' . $idHojaVer : '/Cycsa/publico/laboratorio' ?>" class="btn btn-outline-secondary btn-sm">② Ejecución Técnica (Laboratorio)</a>
-                                <a href="<?= $primerItemVerId > 0 ? '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $primerItemVerId : '#tab-full-ensayos' ?>" class="btn btn-outline-secondary btn-sm">③ Matriz RT-FM-22 (Auto-llenada / Solo lectura) y Aprobación</a>
-                            </div>
-                        </div>
                     </div>
                 </div>
 

@@ -477,11 +477,6 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                 <i class="fa-solid fa-pen-to-square"></i> Ir a Versión Actual (v<?= $versionActualNum ?>) para Modificar
             </a>
         <?php else: ?>
-            <?php if (!empty($esEnsayoRoturaLab) && !empty($detalle['id_hoja'])): ?>
-                <a href="/Cycsa/publico/laboratorio/ensayos-hoja?id_hoja=<?= (int)$detalle['id_hoja'] ?>" class="btn-matriz-secondary" style="background:#f8fafc; color:#103487; border:1.5px solid #103487; font-weight:700; text-decoration:none; height: 38px; padding: 0 16px; display:inline-flex; align-items:center; gap:6px; border-radius: 6px;" title="Abrir Captura en Línea del Lote en Laboratorio">
-                    <i class="fa-solid fa-flask"></i> Ir a Captura en Línea del Lote (Laboratorio)
-                </a>
-            <?php endif; ?>
             <button type="button" onclick="guardarMatrizFullSubmit()" class="btn-matriz-primary" style="height: 38px; padding: 0 20px; font-size: 13.5px; border-radius: 6px;">
                 <i class="fa-solid fa-floppy-disk"></i> Guardar Matriz del Producto
             </button>
@@ -497,46 +492,6 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
         </a>
     </div>
 </div>
-
-<!-- BARRA DE ESPACIO DE TRABAJO EN 3 SECCIONES (REDISEÑO FLUJO OPERACIONES Y LABORATORIO) -->
-<?php
-$idHojaMatrizBar = (int)($detalle['id_hoja'] ?? 0);
-$idOsMatrizBar = (int)($detalle['id_os'] ?? 0);
-$etapaFlujoMatrizBar = (string)($etapaFlujo ?? ($detalle['etapa_flujo'] ?? 'recepcion_borrador'));
-$recCompletaMatrizBar = !empty($recepcionCompleta) || !empty($detalle['recepcion_completa']) || in_array($etapaFlujoMatrizBar, ['recepcion_completa', 'en_ejecucion', 'tecnico_completo', 'matriz_en_revision', 'informe'], true);
-?>
-<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-    <a href="/Cycsa/publico/ordenes-servicio?id_os=<?= $idOsMatrizBar ?><?= $idHojaMatrizBar > 0 ? '&id_hoja=' . $idHojaMatrizBar : '' ?>" style="text-decoration: none; padding: 10px 14px; border-radius: 6px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #0f172a; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div>
-            <div style="font-size: 13px; font-weight: 800; color: #103487;">① Recepción</div>
-            <div style="font-size: 12px; color: #475569;">Hoja RT-FM-13 y datos del cliente</div>
-        </div>
-        <span style="background: <?= $recCompletaMatrizBar ? '#059669' : '#64748b' ?>; color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 12px;">
-            <?= $recCompletaMatrizBar ? 'Completa' : 'En Borrador' ?>
-        </span>
-    </a>
-
-    <a href="<?= $idHojaMatrizBar > 0 ? '/Cycsa/publico/laboratorio/ensayos-hoja?id_hoja=' . $idHojaMatrizBar : '/Cycsa/publico/laboratorio' ?>" style="text-decoration: none; padding: 10px 14px; border-radius: 6px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #0f172a; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div>
-            <div style="font-size: 13px; font-weight: 800; color: #103487;">② Ejecución Técnica (Laboratorio)</div>
-            <div style="font-size: 12px; color: #475569;">Captura en línea del lote y roturas</div>
-        </div>
-        <span style="background: #103487; color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 12px;">
-            Captura en Línea
-        </span>
-    </a>
-
-    <div style="padding: 10px 14px; border-radius: 6px; border: 1.5px solid #103487; background: #eff6ff; color: #0f172a; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div>
-            <div style="font-size: 13px; font-weight: 800; color: #103487;">③ Matriz RT-FM-22 (Auto-llenada / Solo lectura) y Aprobación</div>
-            <div style="font-size: 12px; color: #475569;">Consolidado automático y aprobación única</div>
-        </div>
-        <span style="background: #103487; color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 12px;">
-            Activa
-        </span>
-    </div>
-</div>
-
 
 <!-- BARRA SUPERIOR DE HISTORIAL Y CONTROL DE VERSIONES (ISO/IEC 17025) -->
 <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
