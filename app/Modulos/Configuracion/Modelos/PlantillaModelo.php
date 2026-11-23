@@ -708,14 +708,28 @@ class PlantillaModelo {
         try {
             $muestrasJsonArray = [];
 
-            // Conservar datos_recepcion_json previos por código de muestra si existían antes de reconstruir
+            // Conservar datos_recepcion_json y id_detalle_cotizacion previos por código de muestra si existían antes de reconstruir
+            $tieneColDetalleCot = false;
+            try {
+                $chkColDet = $this->db->query("SHOW COLUMNS FROM hojas_solicitud_detalles LIKE 'id_detalle_cotizacion'");
+                $tieneColDetalleCot = (bool)($chkColDet && $chkColDet->fetch(PDO::FETCH_ASSOC));
+            } catch (\Throwable $e) {
+                $tieneColDetalleCot = false;
+            }
             $recepcionPreviaPorCodigo = [];
-            $stmtPrevRec = $this->db->prepare("SELECT codigo_muestra, datos_recepcion_json FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid");
+            $detallePrevioPorCodigo = [];
+            $sqlPrev = $tieneColDetalleCot
+                ? "SELECT codigo_muestra, datos_recepcion_json, id_detalle_cotizacion FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid"
+                : "SELECT codigo_muestra, datos_recepcion_json FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid";
+            $stmtPrevRec = $this->db->prepare($sqlPrev);
             $stmtPrevRec->execute(['hid' => $idHoja]);
             foreach ($stmtPrevRec->fetchAll(PDO::FETCH_ASSOC) as $prRow) {
                 $codKey = strtoupper(trim((string)($prRow['codigo_muestra'] ?? '')));
                 if ($codKey !== '' && !empty($prRow['datos_recepcion_json'])) {
                     $recepcionPreviaPorCodigo[$codKey] = (string)$prRow['datos_recepcion_json'];
+                }
+                if ($tieneColDetalleCot && $codKey !== '' && !empty($prRow['id_detalle_cotizacion'])) {
+                    $detallePrevioPorCodigo[$codKey] = (int)$prRow['id_detalle_cotizacion'];
                 }
             }
 
@@ -723,15 +737,26 @@ class PlantillaModelo {
             if (!$estaBloqueada) {
                 $this->db->prepare("DELETE FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid")->execute(['hid' => $idHoja]);
 
-                $stmtIns = $this->db->prepare("
-                    INSERT INTO hojas_solicitud_detalles (
-                        id_hoja_solicitud, orden, codigo_muestra, descripcion_ubicacion, observacion_edad, datos_recepcion_json,
-                        ensayo_id, plantilla_id, plantilla_version_id, seleccion_manual, motivo_cambio, bloqueado_recepcion
-                    ) VALUES (
-                        :hid, :ord, :cod, :desc, :obs, :drec,
-                        :eid, :pid, :vid, :man, :motivo, 0
-                    )
-                ");
+                $stmtIns = $this->db->prepare($tieneColDetalleCot
+                    ? "
+                        INSERT INTO hojas_solicitud_detalles (
+                            id_hoja_solicitud, id_detalle_cotizacion, orden, codigo_muestra, descripcion_ubicacion, observacion_edad, datos_recepcion_json,
+                            ensayo_id, plantilla_id, plantilla_version_id, seleccion_manual, motivo_cambio, bloqueado_recepcion
+                        ) VALUES (
+                            :hid, :id_det_cot, :ord, :cod, :desc, :obs, :drec,
+                            :eid, :pid, :vid, :man, :motivo, 0
+                        )
+                    "
+                    : "
+                        INSERT INTO hojas_solicitud_detalles (
+                            id_hoja_solicitud, orden, codigo_muestra, descripcion_ubicacion, observacion_edad, datos_recepcion_json,
+                            ensayo_id, plantilla_id, plantilla_version_id, seleccion_manual, motivo_cambio, bloqueado_recepcion
+                        ) VALUES (
+                            :hid, :ord, :cod, :desc, :obs, :drec,
+                            :eid, :pid, :vid, :man, :motivo, 0
+                        )
+                    "
+                );
 
                 $orden = 1;
                 foreach ($filas as $f) {
@@ -742,7 +767,13 @@ class PlantillaModelo {
                     $dRecJson = !empty($f['datos_recepcion']) && is_array($f['datos_recepcion'])
                         ? json_encode($f['datos_recepcion'], JSON_UNESCAPED_UNICODE)
                         : ($recepcionPreviaPorCodigo[$codKey] ?? null);
+                    $idDetCotFila = array_key_exists('id_detalle_cotizacion', $f)
+                        ? ((int)$f['id_detalle_cotizacion'] > 0 ? (int)$f['id_detalle_cotizacion'] : null)
+                        : ($detallePrevioPorCodigo[$codKey] ?? null);
                     $eid = (int)($f['ensayo_id'] ?? 1);
+                    if ($eid <= 0) {
+                        $eid = 1;
+                    }
                     $pid = (int)($f['plantilla_id'] ?? 0);
                     $man = !empty($f['seleccion_manual']) ? 1 : 0;
                     $motivo = !empty($f['motivo_cambio']) ? trim($f['motivo_cambio']) : null;
@@ -764,7 +795,7 @@ class PlantillaModelo {
                         $vid = $stV->fetchColumn() ?: null;
                     }
 
-                    $stmtIns->execute([
+                    $paramsIns = [
                         'hid' => $idHoja,
                         'ord' => $orden,
                         'cod' => $cod,
@@ -776,12 +807,17 @@ class PlantillaModelo {
                         'vid' => $vid,
                         'man' => $man,
                         'motivo' => $motivo
-                    ]);
+                    ];
+                    if ($tieneColDetalleCot) {
+                        $paramsIns['id_det_cot'] = $idDetCotFila;
+                    }
+                    $stmtIns->execute($paramsIns);
 
                     $itemJson = [
                         'nombre_muestra' => $cod,
                         'descripcion' => $desc,
                         'info_importante' => $obs,
+                        'id_detalle_cotizacion' => $idDetCotFila,
                         'ensayo_id' => $eid,
                         'plantilla_id' => $pidDb,
                         'plantilla_version_id' => $vid

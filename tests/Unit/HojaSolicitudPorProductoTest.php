@@ -452,27 +452,13 @@ class HojaSolicitudPorProductoTest extends TestCase {
 
         $this->controlador->guardarHojaSolicitud($peticion, $respuesta);
 
-
-
-        // Debe registrar error en sesión
-
-        $this->assertNotEmpty($_SESSION['error'] ?? null);
-
-        $this->assertEquals(
-
-            'Debe seleccionar el producto o ensayo de la Orden de Servicio al que corresponde esta Hoja de Solicitud (CYCSA-RT-FM-13).',
-
-            $_SESSION['error']
-
-        );
-
-
-
-        // Ninguna hoja debe haberse insertado
+        // Multi-producto RT-FM-13: ahora se permite guardar una hoja SIN forzar un único id_detalle_cotizacion en cabecera,
+        // para luego asignar cada muestra al producto/ensayo que corresponda en Datos de Recepción.
+        $this->assertEmpty($_SESSION['error'] ?? null, 'Debe permitir guardar Hoja RT-FM-13 sin bloquear a un solo producto en cabecera.');
 
         $hojas = $this->opModelo->obtenerHojasSolicitudPorOS($this->idOS);
-
-        $this->assertCount(0, $hojas);
+        $this->assertCount(1, $hojas);
+        $this->assertNull($hojas[0]['id_detalle_cotizacion']);
 
     }
 
@@ -1127,6 +1113,78 @@ class HojaSolicitudPorProductoTest extends TestCase {
 
         $this->assertNotEmpty($prodConcreto['codigo_servicio']);
 
+    }
+
+    public function testHojaMultiMuestraAsignaMuestrasADistintosProductosEnDatosRecepcion(): void {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_os' => $this->idOS,
+            'id_hoja' => 0,
+            'id_detalle_cotizacion' => '',
+            'numero_registro' => '9901',
+            'fecha_hora_llegada_laboratorio' => date('Y-m-d\TH:i'),
+            'nombre_empresa_o_cliente' => 'Cliente Multi Producto',
+            'direccion_proyecto' => 'Proyecto Multi',
+            'nombre_persona_entrega_muestra' => 'Entrega Test',
+            'procedencia_punto_muestreo' => 'Obra Central',
+            'nombre_persona_toma_muestra' => 'Tecnico Campo',
+            'fecha_hora_toma_muestra' => date('Y-m-d H:i'),
+            'nombre_recibe_cycsa' => 'Atencion Cliente',
+            'm_nombre' => ['MS-8001-26', 'MS-8002-26', 'MS-8003-26', 'MS-8004-26'],
+            'm_desc' => ['Columna 1', 'Columna 2', 'Suelo A', 'Suelo B'],
+            'm_info' => ['7d', '14d', 'Terreno 1', 'Terreno 2'],
+            'm_detalle_cotizacion' => ['', '', '', ''],
+        ];
+
+        $respGuardar = new TestRespuestaCaptura();
+        $this->controlador->guardarHojaSolicitud(new Peticion(), $respGuardar);
+        $this->assertEmpty($_SESSION['error'] ?? null);
+
+        $hojas = $this->opModelo->obtenerHojasSolicitudPorOS($this->idOS);
+        $this->assertCount(1, $hojas);
+        $idHojaMulti = (int)$hojas[0]['id'];
+        $this->assertNull($hojas[0]['id_detalle_cotizacion']);
+
+        // Ahora Atención al Cliente asigna en Datos de Recepción: 2 muestras a Concreto y 2 a Suelo
+        $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_hoja' => $idHojaMulti,
+            'muestras_recepcion_json' => json_encode([
+                'MS-8001-26' => ['Nombre muestra' => 'Columna 1', 'Reven. (in)' => '4'],
+                'MS-8002-26' => ['Nombre muestra' => 'Columna 2', 'Reven. (in)' => '4.5'],
+                'MS-8003-26' => ['Nombre muestra' => 'Suelo A'],
+                'MS-8004-26' => ['Nombre muestra' => 'Suelo B'],
+            ], JSON_UNESCAPED_UNICODE),
+            'muestras_destino_json' => json_encode([
+                'MS-8001-26' => $this->idDetalleConcreto,
+                'MS-8002-26' => $this->idDetalleConcreto,
+                'MS-8003-26' => $this->idDetalleSuelo,
+                'MS-8004-26' => $this->idDetalleSuelo,
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $respRec = new TestRespuestaCaptura();
+        $this->controlador->guardarDatosRecepcion(new Peticion(), $respRec);
+        unset($_SERVER['HTTP_X_REQUESTED_WITH'], $_SERVER['HTTP_ACCEPT']);
+
+        $this->assertSame('success', $respRec->jsonRespuesta['status'] ?? null);
+
+        // Verificar que cada producto recibe ESTRICTAMENTE sus muestras asignadas
+        $muestrasConcreto = obtenerMuestrasHojaParaDetalle($this->db, $this->idOS, $this->idDetalleConcreto);
+        $muestrasSuelo = obtenerMuestrasHojaParaDetalle($this->db, $this->idOS, $this->idDetalleSuelo);
+
+        $this->assertSame(['MS-8001-26', 'MS-8002-26'], array_column($muestrasConcreto, 'codigo_muestra'));
+        $this->assertSame(['MS-8003-26', 'MS-8004-26'], array_column($muestrasSuelo, 'codigo_muestra'));
+
+        // Verificar que la vista de Órdenes de Servicio retiró la tarjeta obligatoria de 1 solo producto y el recuadro de Plantilla Predeterminada
+        $vistaOs = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/OrdenesServicio/Vistas/index.php');
+        $this->assertStringNotContainsString('Cada Hoja CYCSA-RT-FM-13 ampara un producto o ensayo específico', $vistaOs);
+        $this->assertStringNotContainsString('Plantilla de Ensayo Predeterminada:', $vistaOs);
+        $this->assertStringContainsString('name="m_detalle_cotizacion[]"', $vistaOs);
+        $this->assertStringContainsString('rec-destino-select', $vistaOs);
     }
 
 }

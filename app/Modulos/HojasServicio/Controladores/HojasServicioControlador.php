@@ -197,10 +197,13 @@ class HojasServicioControlador extends ControladorBase {
         $proximoNumeroRegistro = $modelo->obtenerSiguienteNumeroRegistroGlobal();
 
         if (!$hoja || $esNueva) {
+            $idDetalleCabeceraNueva = isset($_GET['id_detalle_cotizacion']) && (int)$_GET['id_detalle_cotizacion'] > 0
+                ? (int)$_GET['id_detalle_cotizacion']
+                : 0;
             $hoja = array_merge([
                 'id' => 0,
                 'id_os' => $idOS,
-                'id_detalle_cotizacion' => $idDetalleParam,
+                'id_detalle_cotizacion' => $idDetalleCabeceraNueva,
                 'id_producto' => (int)($detalleSeleccionado['id_producto'] ?? 0),
                 'ensayo_id' => (int)($detalleSeleccionado['id_producto'] ?? 0),
                 'descripcion_ensayo' => $detalleSeleccionado['descripcion_ensayo'] ?? ($detalleSeleccionado['nombre_ensayo'] ?? ''),
@@ -448,45 +451,112 @@ class HojasServicioControlador extends ControladorBase {
                 return;
             }
 
-            // Exigir obligatorio $datos['id_detalle_cotizacion']. Si está vacío o es <= 0, rechazar
+            // Multi-producto RT-FM-13: id_detalle_cotizacion en cabecera es OPCIONAL.
+            // Cada muestra puede definir su propio producto/ensayo (m_detalle_cotizacion[]) aquí o después en Datos de Recepción.
+            $db = Conexion::obtenerInstancia();
             $idDetalleCotizacion = (int)($datos['id_detalle_cotizacion'] ?? 0);
             if ($idDetalleCotizacion <= 0 && $idHoja > 0) {
                 $hojaExistente = $modelo->obtenerHojaSolicitudPorId($idHoja);
                 if ($hojaExistente && !empty($hojaExistente['id_detalle_cotizacion'])) {
                     $idDetalleCotizacion = (int)$hojaExistente['id_detalle_cotizacion'];
-                    $datos['id_detalle_cotizacion'] = $idDetalleCotizacion;
                 }
             }
 
-            if ($idDetalleCotizacion <= 0) {
-                $_SESSION['error'] = 'Debe seleccionar el producto o ensayo de la Orden de Servicio al que corresponde esta Hoja de Solicitud (CYCSA-RT-FM-13).';
-                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
-                return;
+            // Cargar mapa de productos/ensayos válidos de esta Orden de Servicio
+            $stmtDetsOs = $db->prepare("
+                SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre
+                FROM cotizacion_detalles cd
+                LEFT JOIN productos p ON cd.id_producto = p.id
+                LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                WHERE cd.id_cotizacion = :id_cot
+                ORDER BY cd.id ASC
+            ");
+            $stmtDetsOs->execute(['id_cot' => (int)($os['id_cotizacion'] ?? 0)]);
+            $detallesOSLista = $stmtDetsOs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $mapaDetallesOS = [];
+            foreach ($detallesOSLista as $dOs) {
+                $mapaDetallesOS[(int)$dOs['id']] = $dOs;
             }
 
-            // Obtener id_producto y ensayo_id correspondientes a ese detalle cotizado desde cotizacion_detalles
-            $db = Conexion::obtenerInstancia();
-            $stmtDet = $db->prepare("SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
-                                     FROM cotizacion_detalles cd
-                                     LEFT JOIN productos p ON cd.id_producto = p.id
-                                     LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
-                                     WHERE cd.id = :id");
-            $stmtDet->execute(['id' => $idDetalleCotizacion]);
-            $detalle = $stmtDet->fetch(PDO::FETCH_ASSOC);
+            // Whitelist de la O/S
+            $osModelo = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
+            $idsPermitidos = $osModelo->obtenerIdsPermitidos($idOS);
 
-            if (!$detalle) {
-                $_SESSION['error'] = 'El producto o ensayo seleccionado no existe.';
-                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
-                return;
+            $mDetalles = $datos['m_detalle_cotizacion'] ?? [];
+            $detallesPorFila = [];
+            $detallesUnicosMuestras = [];
+            if (is_array($mDetalles)) {
+                foreach ($mDetalles as $idxMd => $valMd) {
+                    $detIdFila = (int)$valMd;
+                    if ($detIdFila > 0) {
+                        if (!isset($mapaDetallesOS[$detIdFila])) {
+                            $_SESSION['error'] = 'Uno de los productos/ensayos asignados a las muestras no pertenece a esta Orden de Servicio.';
+                            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                            return;
+                        }
+                        if ($idsPermitidos !== null && !in_array($detIdFila, $idsPermitidos, true)) {
+                            $_SESSION['error'] = 'Uno de los ensayos asignados no está habilitado en la whitelist de esta Orden de Servicio.';
+                            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                            return;
+                        }
+                        $detallesPorFila[$idxMd] = $detIdFila;
+                        $detallesUnicosMuestras[$detIdFila] = true;
+                    }
+                }
             }
 
-            $idProducto = (int)($detalle['id_producto'] ?? 0);
+            $detalle = null;
+            if ($idDetalleCotizacion > 0) {
+                if (!isset($mapaDetallesOS[$idDetalleCotizacion])) {
+                    $stmtDet = $db->prepare("SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre 
+                                             FROM cotizacion_detalles cd
+                                             LEFT JOIN productos p ON cd.id_producto = p.id
+                                             LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                                             WHERE cd.id = :id");
+                    $stmtDet->execute(['id' => $idDetalleCotizacion]);
+                    $detalle = $stmtDet->fetch(PDO::FETCH_ASSOC) ?: null;
+                } else {
+                    $detalle = $mapaDetallesOS[$idDetalleCotizacion];
+                }
+                if (!$detalle) {
+                    $_SESSION['error'] = 'El producto o ensayo seleccionado no existe.';
+                    $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                    return;
+                }
+                if ($idsPermitidos !== null && !in_array($idDetalleCotizacion, $idsPermitidos, true)) {
+                    $_SESSION['error'] = 'El ensayo seleccionado no está habilitado en la whitelist de esta Orden de Servicio.';
+                    $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+                    return;
+                }
+            }
+
+            // Si hay varios productos distintos en las muestras, la hoja es multi-producto (id_detalle_cotizacion = null en cabecera)
+            if (count($detallesUnicosMuestras) > 1) {
+                $idDetalleCotizacion = 0;
+                $datos['id_detalle_cotizacion'] = null;
+            } elseif ($idDetalleCotizacion <= 0) {
+                $datos['id_detalle_cotizacion'] = null;
+            } else {
+                $datos['id_detalle_cotizacion'] = $idDetalleCotizacion;
+            }
+
+            // Producto de referencia para prefills y defaults cuando la hoja es multi-producto o sin asignar todavía
+            $detalleRef = $detalle;
+            if (!$detalleRef && !empty($detallesUnicosMuestras)) {
+                $primerDetM = (int)array_key_first($detallesUnicosMuestras);
+                $detalleRef = $mapaDetallesOS[$primerDetM] ?? null;
+            }
+            if (!$detalleRef && !empty($detallesOSLista)) {
+                $detalleRef = $detallesOSLista[0];
+            }
+
+            $idProducto = (int)($detalleRef['id_producto'] ?? 0);
             $ensayoId = $idProducto > 0 ? $idProducto : 1;
-            $datos['id_producto'] = $idProducto;
+            $datos['id_producto'] = ($idDetalleCotizacion > 0 && $idProducto > 0) ? $idProducto : null;
             $datos['ensayo_id'] = $ensayoId;
 
-            // Prefill de flags y naturaleza en base a ESE producto específico
-            $resFlags = $this->detectarParametrosYNaturaleza([$detalle]);
+            // Prefill de flags y naturaleza en base al detalle seleccionado o los ensayos de la O/S
+            $resFlags = $this->detectarParametrosYNaturaleza($detalle ? [$detalle] : $detallesOSLista);
             $flagsProducto = $resFlags['flags'] ?? [];
 
             if (empty($datos['naturaleza_muestra'])) {
@@ -514,7 +584,6 @@ class HojasServicioControlador extends ControladorBase {
             $plantillaGlobalId = (int)($datos['plantilla_global_id'] ?? 0);
             if ($plantillaGlobalId <= 0) {
                 $pltMod = new \Cycsa\Modulos\Configuracion\Modelos\PlantillaModelo();
-                // Usar estrictamente el producto/ensayo específico de esta hoja, nunca ensayosOS[0]
                 $sug = $pltMod->obtenerPlantillaSugerida($ensayoId, (int)($os['id_cliente'] ?? 0));
                 if (!empty($sug['id'])) {
                     $plantillaGlobalId = (int)$sug['id'];
@@ -549,24 +618,21 @@ class HojasServicioControlador extends ControladorBase {
             for ($i = 0; $i < count($mNombres); $i++) {
                 $nom = trim($mNombres[$i]);
                 if (empty($nom)) continue;
+                $detIdMuestra = !empty($detallesPorFila[$i]) ? (int)$detallesPorFila[$i] : ($idDetalleCotizacion > 0 ? $idDetalleCotizacion : null);
+                $ensIdMuestra = !empty($mEnsayos[$i]) && (int)$mEnsayos[$i] > 0 ? (int)$mEnsayos[$i] : $ensayoId;
+                if ($detIdMuestra && isset($mapaDetallesOS[$detIdMuestra]) && !empty($mapaDetallesOS[$detIdMuestra]['id_producto'])) {
+                    $ensIdMuestra = (int)$mapaDetallesOS[$detIdMuestra]['id_producto'];
+                }
                 $identMuestras[] = [
                     'nombre_muestra' => $nom,
                     'descripcion' => trim($mDescripciones[$i] ?? ''),
                     'info_importante' => trim($mInfos[$i] ?? ''),
-                    'ensayo_id' => !empty($mEnsayos[$i]) && (int)$mEnsayos[$i] > 0 ? (int)$mEnsayos[$i] : $ensayoId,
+                    'id_detalle_cotizacion' => $detIdMuestra,
+                    'ensayo_id' => $ensIdMuestra,
                     'plantilla_id' => (int)($mPlantillas[$i] ?? 0)
                 ];
             }
             $datos['identificacion_muestras_json'] = json_encode($identMuestras);
-
-            // Whitelist de la O/S: verificar que el producto seleccionado esté habilitado
-            $osModelo = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
-            $idsPermitidos = $osModelo->obtenerIdsPermitidos($idOS);
-            if ($idsPermitidos !== null && !in_array($idDetalleCotizacion, $idsPermitidos, true)) {
-                $_SESSION['error'] = 'El ensayo seleccionado no está habilitado en la whitelist de esta Orden de Servicio.';
-                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
-                return;
-            }
 
             $idHojaGuardada = 0;
             if ($modelo->guardarHojaSolicitud($datos, $idHojaGuardada)) {
@@ -581,11 +647,17 @@ class HojasServicioControlador extends ControladorBase {
                         ? trim($muestrasSaneadas[$i]['nombre_muestra'])
                         : trim($mNombres[$i] ?? '');
                     if (empty($nom)) continue;
+                    $detIdMuestra = !empty($detallesPorFila[$i]) ? (int)$detallesPorFila[$i] : ($idDetalleCotizacion > 0 ? $idDetalleCotizacion : null);
+                    $ensIdMuestra = !empty($mEnsayos[$i]) && (int)$mEnsayos[$i] > 0 ? (int)$mEnsayos[$i] : $ensayoId;
+                    if ($detIdMuestra && isset($mapaDetallesOS[$detIdMuestra]) && !empty($mapaDetallesOS[$detIdMuestra]['id_producto'])) {
+                        $ensIdMuestra = (int)$mapaDetallesOS[$detIdMuestra]['id_producto'];
+                    }
                     $filasDetalles[] = [
                         'codigo_muestra' => $nom,
                         'descripcion_ubicacion' => trim($mDescripciones[$i] ?? ''),
                         'observacion_edad' => trim($mInfos[$i] ?? ''),
-                        'ensayo_id' => !empty($mEnsayos[$i]) && (int)$mEnsayos[$i] > 0 ? (int)$mEnsayos[$i] : $ensayoId,
+                        'id_detalle_cotizacion' => $detIdMuestra,
+                        'ensayo_id' => $ensIdMuestra,
                         'plantilla_id' => (int)($mPlantillas[$i] ?? 0),
                         'seleccion_manual' => !empty($mManuales[$i]) ? 1 : 0,
                         'motivo_cambio' => trim($mMotivos[$i] ?? '')
@@ -1216,6 +1288,50 @@ class HojasServicioControlador extends ControladorBase {
             ];
         }
 
+        // Cargar todos los productos/ensayos habilitados de esta O/S para asignación por muestra en Atención al Cliente
+        $osModeloRec = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
+        $idsPermitidosRec = $osModeloRec->obtenerIdsPermitidos($idOS);
+        $stmtProdsOs = $db->prepare("
+            SELECT cd.id, cd.id_producto, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.cantidad, cd.resultados_json
+            FROM cotizacion_detalles cd
+            WHERE cd.id_cotizacion = :id_cot
+            ORDER BY cd.id ASC
+        ");
+        $stmtProdsOs->execute(['id_cot' => (int)($os['id_cotizacion'] ?? 0)]);
+        $prodsOsRaw = $stmtProdsOs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $productosOS = [];
+        $camposPorDetalle = [];
+        $mapaDesdeMatriz = [];
+        foreach ($prodsOsRaw as $prOs) {
+            $pidDet = (int)$prOs['id'];
+            if ($idsPermitidosRec !== null && !in_array($pidDet, $idsPermitidosRec, true)) {
+                continue;
+            }
+            $infoPr = obtenerCamposRecepcionParaDetalle($db, $pidDet, !empty($prOs['id_producto']) ? (int)$prOs['id_producto'] : null);
+            $camposPrEnriq = $this->enriquecerCamposRecepcionHoja($infoPr, $hoja);
+            $camposPorDetalle[$pidDet] = $camposPrEnriq;
+            $productosOS[] = [
+                'id_detalle_cotizacion' => $pidDet,
+                'id_producto' => (int)($prOs['id_producto'] ?? 0),
+                'codigo_servicio' => (string)($prOs['codigo_servicio'] ?? ''),
+                'descripcion_ensayo' => (string)($prOs['descripcion_ensayo'] ?? ($infoPr['formato_nombre'] ?: 'Ensayo')),
+                'formato_nombre' => (string)($infoPr['formato_nombre'] ?? ''),
+                'codigo_formato' => (string)($infoPr['codigo_formato'] ?? ''),
+                'cantidad' => (float)($prOs['cantidad'] ?? 1),
+                'campos_recepcion' => $camposPrEnriq,
+                'campos_tecnico' => $infoPr['campos_tecnico'] ?? [],
+            ];
+            $decMat = is_string($prOs['resultados_json'] ?? null) ? (json_decode((string)$prOs['resultados_json'], true) ?: []) : [];
+            $filasMat = isset($decMat['filas']) && is_array($decMat['filas']) ? $decMat['filas'] : (isset($decMat[0]) && is_array($decMat[0]) ? $decMat : []);
+            foreach ($filasMat as $fm) {
+                if (!is_array($fm)) continue;
+                $codF = strtoupper(trim((string)($fm['Código laboratorio'] ?? ($fm['Codigo laboratorio'] ?? ($fm['codigo_lab'] ?? '')))));
+                if ($codF !== '' && !isset($mapaDesdeMatriz[$codF])) {
+                    $mapaDesdeMatriz[$codF] = $fm;
+                }
+            }
+        }
+
         $infoFormato = obtenerCamposRecepcionParaDetalle(
             $db,
             !empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : null,
@@ -1224,25 +1340,53 @@ class HojasServicioControlador extends ControladorBase {
         $camposRecepcion = $this->enriquecerCamposRecepcionHoja($infoFormato, $hoja);
         $camposTecnico = $infoFormato['campos_tecnico'];
 
-        // Precargar mapa de recepción existente + fallback desde cotizacion_detalles si ya tenía valores
-        $mapaRecepcion = construirMapaDatosRecepcionPorHoja($db, $idHoja);
-        $mapaDesdeMatriz = [];
-        if (!empty($hoja['id_detalle_cotizacion'])) {
-            $stmtMat = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
-            $stmtMat->execute(['id' => (int)$hoja['id_detalle_cotizacion']]);
-            $resJson = $stmtMat->fetchColumn();
-            $decMat = is_string($resJson) ? (json_decode($resJson, true) ?: []) : [];
-            $filasMat = isset($decMat['filas']) && is_array($decMat['filas']) ? $decMat['filas'] : (isset($decMat[0]) && is_array($decMat[0]) ? $decMat : []);
-            foreach ($filasMat as $fm) {
-                if (!is_array($fm)) continue;
-                $codF = strtoupper(trim((string)($fm['Código laboratorio'] ?? ($fm['Codigo laboratorio'] ?? ($fm['codigo_lab'] ?? '')))));
-                if ($codF !== '') {
-                    $mapaDesdeMatriz[$codF] = $fm;
+        // Si la hoja es multi-producto o sin producto fijo en cabecera, construir la unión de campos de los productos de la O/S
+        $detalles = $pltModelo->obtenerDetallesPorHoja($idHoja);
+        $detallesAsignadosEnHoja = [];
+        foreach ($detalles as $dCheck) {
+            $idDetAsig = (int)($dCheck['id_detalle_cotizacion'] ?? 0);
+            if ($idDetAsig > 0) {
+                $detallesAsignadosEnHoja[$idDetAsig] = true;
+            }
+        }
+        if (empty($hoja['id_detalle_cotizacion']) || count($detallesAsignadosEnHoja) > 1 || (!empty($detallesAsignadosEnHoja) && !isset($detallesAsignadosEnHoja[(int)($hoja['id_detalle_cotizacion'] ?? 0)]))) {
+            $fuentesUnion = !empty($detallesAsignadosEnHoja) ? array_keys($detallesAsignadosEnHoja) : array_keys($camposPorDetalle);
+            $unionRec = [];
+            $vistosRec = [];
+            foreach ($fuentesUnion as $detIdU) {
+                foreach (($camposPorDetalle[$detIdU] ?? []) as $cU) {
+                    $kU = normalizarTextoClavePHP((string)($cU['nombre'] ?? ''));
+                    if ($kU !== '' && !isset($vistosRec[$kU])) {
+                        $vistosRec[$kU] = true;
+                        $unionRec[] = $cU;
+                    }
                 }
+            }
+            if (!empty($unionRec)) {
+                $camposRecepcion = $unionRec;
+            }
+            $unionTec = [];
+            $vistosTec = [];
+            foreach ($productosOS as $pOsU) {
+                if (!empty($detallesAsignadosEnHoja) && !isset($detallesAsignadosEnHoja[$pOsU['id_detalle_cotizacion']])) {
+                    continue;
+                }
+                foreach (($pOsU['campos_tecnico'] ?? []) as $tU) {
+                    $ktU = normalizarTextoClavePHP((string)$tU);
+                    if ($ktU !== '' && !isset($vistosTec[$ktU])) {
+                        $vistosTec[$ktU] = true;
+                        $unionTec[] = $tU;
+                    }
+                }
+            }
+            if (!empty($unionTec)) {
+                $camposTecnico = $unionTec;
             }
         }
 
-        $detalles = $pltModelo->obtenerDetallesPorHoja($idHoja);
+        // Precargar mapa de recepción existente
+        $mapaRecepcion = construirMapaDatosRecepcionPorHoja($db, $idHoja);
+
         $muestrasSalida = [];
         if (!empty($detalles)) {
             foreach ($detalles as $d) {
@@ -1266,10 +1410,15 @@ class HojasServicioControlador extends ControladorBase {
                         $datosGuardados['Nombre muestra'] = $nomFallback;
                     }
                 }
+                $idDetMuestraOut = (int)($d['id_detalle_cotizacion'] ?? 0);
+                if ($idDetMuestraOut <= 0 && !empty($hoja['id_detalle_cotizacion'])) {
+                    $idDetMuestraOut = (int)$hoja['id_detalle_cotizacion'];
+                }
                 $muestrasSalida[] = [
                     'codigo_muestra' => $cod,
                     'descripcion_ubicacion' => (string)($d['descripcion_ubicacion'] ?? ''),
                     'observacion_edad' => (string)($d['observacion_edad'] ?? ''),
+                    'id_detalle_cotizacion' => $idDetMuestraOut,
                     'datos_recepcion' => $datosGuardados,
                 ];
             }
@@ -1299,10 +1448,15 @@ class HojasServicioControlador extends ControladorBase {
                         $datosGuardados['Nombre muestra'] = $nomFallback;
                     }
                 }
+                $idDetMuestraOut = (int)($m['id_detalle_cotizacion'] ?? 0);
+                if ($idDetMuestraOut <= 0 && !empty($hoja['id_detalle_cotizacion'])) {
+                    $idDetMuestraOut = (int)$hoja['id_detalle_cotizacion'];
+                }
                 $muestrasSalida[] = [
                     'codigo_muestra' => $cod,
                     'descripcion_ubicacion' => (string)($m['descripcion'] ?? ''),
                     'observacion_edad' => (string)($m['info_importante'] ?? ''),
+                    'id_detalle_cotizacion' => $idDetMuestraOut,
                     'datos_recepcion' => $datosGuardados,
                 ];
             }
@@ -1319,7 +1473,7 @@ class HojasServicioControlador extends ControladorBase {
             'hoja' => [
                 'id' => $idHoja,
                 'numero_registro' => $hoja['numero_registro'] ?? ('#' . $idHoja),
-                'descripcion_ensayo' => $hoja['descripcion_ensayo'] ?? ($infoFormato['formato_nombre'] ?: 'Ensayo'),
+                'descripcion_ensayo' => $hoja['descripcion_ensayo'] ?? (!empty($hoja['id_detalle_cotizacion']) ? ($infoFormato['formato_nombre'] ?: 'Ensayo') : 'Multi-producto / Por asignar'),
                 'formato_nombre' => $infoFormato['formato_nombre'] ?? '',
                 'codigo_formato' => $infoFormato['codigo_formato'] ?? '',
                 'etapa_flujo' => $hoja['etapa_flujo'] ?? 'recepcion_borrador',
@@ -1328,6 +1482,7 @@ class HojasServicioControlador extends ControladorBase {
                 'motivo_reapertura_recepcion' => $hoja['motivo_reapertura_recepcion'] ?? null,
                 'autorizacion_urgente_supervisor' => (int)($hoja['autorizacion_urgente_supervisor'] ?? 0),
             ],
+            'productos_os' => $productosOS,
             'campos_recepcion' => $camposRecepcion,
             'campos_tecnico' => $camposTecnico,
             'muestras' => $muestrasSalida,
@@ -1394,6 +1549,32 @@ class HojasServicioControlador extends ControladorBase {
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
         \Cycsa\Modulos\Configuracion\Servicios\MigradorServicio::asegurarTablas($db);
 
+        // Cargar productos válidos de la O/S para validar y resolver asignación por muestra
+        $stmtProdsVal = $db->prepare("SELECT id, id_producto FROM cotizacion_detalles WHERE id_cotizacion = :id_cot");
+        $stmtProdsVal->execute(['id_cot' => (int)($os['id_cotizacion'] ?? 0)]);
+        $mapaDetAProd = [];
+        foreach ($stmtProdsVal->fetchAll(PDO::FETCH_ASSOC) as $pv) {
+            $mapaDetAProd[(int)$pv['id']] = (int)($pv['id_producto'] ?? 0);
+        }
+
+        // Destino de producto/ensayo por código de muestra (Atención al Cliente)
+        $destinosPorCodigo = [];
+        if (!empty($datos['muestras_destino_json']) && is_string($datos['muestras_destino_json'])) {
+            $decDest = json_decode($datos['muestras_destino_json'], true);
+            if (is_array($decDest)) {
+                foreach ($decDest as $codD => $idDetVal) {
+                    $codKeyD = strtoupper(trim((string)$codD));
+                    $idDetInt = (int)$idDetVal;
+                    if ($codKeyD === '') continue;
+                    if ($idDetInt > 0 && isset($mapaDetAProd[$idDetInt])) {
+                        $destinosPorCodigo[$codKeyD] = $idDetInt;
+                    } elseif ($idDetInt <= 0) {
+                        $destinosPorCodigo[$codKeyD] = 0;
+                    }
+                }
+            }
+        }
+
         $infoFormato = obtenerCamposRecepcionParaDetalle(
             $db,
             !empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : null,
@@ -1411,12 +1592,33 @@ class HojasServicioControlador extends ControladorBase {
             $entradaMuestras = $datos['recepcion'];
         }
 
+        // Si hay destinos por muestra, normalizar cada muestra contra los campos de SU producto asignado
+        $cacheCamposDet = [];
         $datosPorCodigo = [];
         foreach ($entradaMuestras as $codMuestra => $valoresMuestra) {
             if (!is_array($valoresMuestra)) continue;
             $codKey = strtoupper(trim((string)$codMuestra));
             if ($codKey === '') continue;
-            $datosPorCodigo[$codKey] = normalizarYCompletarDatosRecepcionMuestra($valoresMuestra, $camposRecepcion);
+            $camposM = $camposRecepcion;
+            if (!empty($destinosPorCodigo[$codKey])) {
+                $detIdM = (int)$destinosPorCodigo[$codKey];
+                if (!isset($cacheCamposDet[$detIdM])) {
+                    $infoM = obtenerCamposRecepcionParaDetalle($db, $detIdM, $mapaDetAProd[$detIdM] ?? null);
+                    $cacheCamposDet[$detIdM] = $this->enriquecerCamposRecepcionHoja($infoM, $hoja);
+                }
+                if (!empty($cacheCamposDet[$detIdM])) {
+                    $camposM = $cacheCamposDet[$detIdM];
+                }
+            }
+            $datosPorCodigo[$codKey] = normalizarYCompletarDatosRecepcionMuestra($valoresMuestra, $camposM);
+        }
+
+        $tieneColDetCotHsd = false;
+        try {
+            $chkColHsd = $db->query("SHOW COLUMNS FROM hojas_solicitud_detalles LIKE 'id_detalle_cotizacion'");
+            $tieneColDetCotHsd = (bool)($chkColHsd && $chkColHsd->fetch(PDO::FETCH_ASSOC));
+        } catch (\Throwable $e) {
+            $tieneColDetCotHsd = false;
         }
 
         $transaccionPropia = !$db->inTransaction();
@@ -1424,7 +1626,7 @@ class HojasServicioControlador extends ControladorBase {
             $db->beginTransaction();
         }
         try {
-            // 1. Actualizar hojas_solicitud_detalles por código de muestra (incluyendo Nombre muestra en descripcion_ubicacion)
+            // 1. Actualizar hojas_solicitud_detalles por código de muestra (datos de recepción + producto destino)
             $stmtUpdDet = $db->prepare("
                 UPDATE hojas_solicitud_detalles
                 SET datos_recepcion_json = :drec,
@@ -1441,10 +1643,35 @@ class HojasServicioControlador extends ControladorBase {
                 ]);
             }
 
-            // 2. Actualizar muestras_json de la hoja conservando resto de metadatos y sincronizando Nombre muestra
+            if ($tieneColDetCotHsd && !empty($destinosPorCodigo)) {
+                $stmtUpdDest = $db->prepare("
+                    UPDATE hojas_solicitud_detalles
+                    SET id_detalle_cotizacion = :id_det_cot,
+                        ensayo_id = COALESCE(NULLIF(:ens_id, 0), ensayo_id)
+                    WHERE id_hoja_solicitud = :hid AND UPPER(TRIM(codigo_muestra)) = :cod
+                ");
+                foreach ($destinosPorCodigo as $codKeyD => $idDetDest) {
+                    $ensIdDest = ($idDetDest > 0 && !empty($mapaDetAProd[$idDetDest])) ? (int)$mapaDetAProd[$idDetDest] : 0;
+                    $stmtUpdDest->execute([
+                        'id_det_cot' => $idDetDest > 0 ? $idDetDest : null,
+                        'ens_id' => $ensIdDest,
+                        'hid' => $idHoja,
+                        'cod' => $codKeyD,
+                    ]);
+                }
+            }
+
+            // 2. Actualizar muestras_json de la hoja conservando resto de metadatos, destino y sincronizando Nombre muestra
             $muestrasArr = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
             foreach ($muestrasArr as $idx => $mItem) {
                 $codKey = strtoupper(trim((string)($mItem['nombre_muestra'] ?? ($mItem['codigo_muestra'] ?? ''))));
+                if ($codKey !== '' && array_key_exists($codKey, $destinosPorCodigo)) {
+                    $idDetD = (int)$destinosPorCodigo[$codKey];
+                    $muestrasArr[$idx]['id_detalle_cotizacion'] = $idDetD > 0 ? $idDetD : null;
+                    if ($idDetD > 0 && !empty($mapaDetAProd[$idDetD])) {
+                        $muestrasArr[$idx]['ensayo_id'] = (int)$mapaDetAProd[$idDetD];
+                    }
+                }
                 if ($codKey !== '' && array_key_exists($codKey, $datosPorCodigo)) {
                     if (!empty($datosPorCodigo[$codKey])) {
                         $muestrasArr[$idx]['datos_recepcion'] = $datosPorCodigo[$codKey];
@@ -1460,14 +1687,22 @@ class HojasServicioControlador extends ControladorBase {
             $db->prepare("UPDATE hojas_solicitud SET muestras_json = :mjson WHERE id = :hid")
                ->execute(['mjson' => json_encode($muestrasArr, JSON_UNESCAPED_UNICODE), 'hid' => $idHoja]);
 
-            // 3. Sincronizar con matriz técnica en Operaciones / Laboratorio si ya existe
+            // 3. Sincronizar con matrices técnicas en Operaciones / Laboratorio (soporta multi-producto)
             sincronizarDatosRecepcionEnMatriz($db, $idHoja, $datosPorCodigo);
 
-            // 3b. Sincronizar 'Nombre muestra' (y campos de compactación adicionales) hacia filas ya creadas de cotizacion_detalles.resultados_json
-            $idDetalleSync = (int)($hoja['id_detalle_cotizacion'] ?? 0);
-            if ($idDetalleSync > 0) {
+            // 3b. Sincronizar 'Nombre muestra' (y campos adicionales) hacia todos los cotizacion_detalles destino
+            $detallesParaSync = [];
+            if (!empty($hoja['id_detalle_cotizacion'])) {
+                $detallesParaSync[(int)$hoja['id_detalle_cotizacion']] = true;
+            }
+            foreach ($destinosPorCodigo as $idDetDestSync) {
+                if ((int)$idDetDestSync > 0) {
+                    $detallesParaSync[(int)$idDetDestSync] = true;
+                }
+            }
+            foreach (array_keys($detallesParaSync) as $idDetalleSync) {
                 $stmtMatSync = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
-                $stmtMatSync->execute(['id' => $idDetalleSync]);
+                $stmtMatSync->execute(['id' => (int)$idDetalleSync]);
                 $resJsonSync = $stmtMatSync->fetchColumn();
                 $decSync = is_string($resJsonSync) ? (json_decode($resJsonSync, true) ?: []) : [];
                 $filasSync = isset($decSync['filas']) && is_array($decSync['filas']) ? $decSync['filas'] : [];
@@ -1492,7 +1727,7 @@ class HojasServicioControlador extends ControladorBase {
                     if ($cambiosMat) {
                         $decSync['filas'] = $filasSync;
                         $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
-                           ->execute(['json' => json_encode($decSync, JSON_UNESCAPED_UNICODE), 'id' => $idDetalleSync]);
+                           ->execute(['json' => json_encode($decSync, JSON_UNESCAPED_UNICODE), 'id' => (int)$idDetalleSync]);
                     }
                 }
             }
@@ -1562,7 +1797,7 @@ class HojasServicioControlador extends ControladorBase {
         }
 
         $datos = $peticion->obtenerDatos();
-        if (!empty($datos['muestras_recepcion_json']) || !empty($datos['recepcion'])) {
+        if (!empty($datos['muestras_recepcion_json']) || !empty($datos['recepcion']) || !empty($datos['muestras_destino_json'])) {
             $_POST['marcar_recepcion_completa'] = 1;
             $this->guardarDatosRecepcion($peticion, $respuesta);
             return;

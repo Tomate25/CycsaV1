@@ -1344,34 +1344,17 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id_os" id="hs_id_os">
                 <input type="hidden" name="id_hoja" id="hs_id_hoja" value="0">
+                <input type="hidden" name="id_detalle_cotizacion" id="id_detalle_cotizacion_modal" value="">
 
-                <!-- SELECTOR OBLIGATORIO DE PRODUCTO / ENSAYO DE LA O/S (EPIC 3 - AGY-RT13) -->
-                <div class="rtfm13-ensayo-selector-card">
-                    <div class="rtfm13-ensayo-header">
-                        <div class="rtfm13-ensayo-title">
-                            <i class="fa-solid fa-flask-vial"></i>
-                            <div class="rtfm13-ensayo-title-text">
-                                <strong>Producto / Ensayo Cotizado de la Orden de Servicio <span class="text-danger" style="color:#dc2626;">*</span></strong>
-                                <span>Cada Hoja CYCSA-RT-FM-13 ampara un producto o ensayo específico de la cotización aprobada</span>
-                            </div>
-                        </div>
-                        <div class="rtfm13-ensayo-pills-row">
-                            <span id="hs_ensayo_cant_pill" class="rtfm13-ensayo-pill highlight">
-                                <i class="fa-solid fa-file-invoice text-primary"></i> <span id="hs_ensayo_info_text">Ítem O/S Vinculado</span>
-                            </span>
-                            <span id="hs_ensayo_muestras_count_pill" class="rtfm13-ensayo-pill">
-                                <i class="fa-solid fa-vials text-primary"></i> <span id="hs_cnt_especimenes_label">0 especímenes</span>
-                            </span>
-                        </div>
+                <!-- RESUMEN COMPACTO DE MUESTRAS (SIN FORZAR 1 SOLO PRODUCTO POR HOJA) -->
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:10px 14px; margin-bottom:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px;">
+                    <div style="font-size:12.5px; color:#334155;">
+                        <i class="fa-solid fa-layer-group text-primary me-1"></i>
+                        <strong>Hoja multi-muestra:</strong> Registre todas las muestras aquí y defina a qué producto/ensayo de la O/S va cada muestra por fila o después en <strong>Datos de Recepción</strong>.
                     </div>
-                    <div style="position:relative; width:100%;">
-                        <select name="id_detalle_cotizacion" id="id_detalle_cotizacion_modal" class="rtfm13-select-ensayo" required onchange="alCambiarProductoModalRTFM13(this.value)">
-                            <option value="">-- Seleccione el Producto / Ensayo de la O/S --</option>
-                        </select>
-                    </div>
-                    <div style="font-size:11.5px; color:#64748b; margin-top:2px;">
-                        Seleccione el ítem técnico contratado en la cotización para sincronizar la plantilla recomendada y el control de especímenes.
-                    </div>
+                    <span id="hs_ensayo_muestras_count_pill" class="rtfm13-ensayo-pill">
+                        <i class="fa-solid fa-vials text-primary"></i> <span id="hs_cnt_especimenes_label">0 especímenes</span>
+                    </span>
                 </div>
 
                 <!-- 1. METADATOS Y CONTROL INTERNO -->
@@ -1492,69 +1475,17 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                         </div>
                     </div>
 
-                    <!-- BARRA DE ASIGNACIÓN GENERAL DE PLANTILLA (SELECTOR INTERACTIVO AJAX AMPLIADO) -->
-                    <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:12px 16px; margin-bottom:15px; position:relative;">
-                        <input type="hidden" id="select_plantilla_global" name="plantilla_global_id" value="">
-                        
-                        <!-- Fila Superior: Encabezado y Acciones -->
-                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <i class="fa-solid fa-layer-group text-success" style="font-size:18px;"></i>
-                                <span style="font-size:13px; font-weight:700; color:#166534;">Plantilla de Ensayo Predeterminada:</span>
-                                <span style="font-size:11.5px; color:#15803d; font-weight:500;">(Se asigna automáticamente a especímenes nuevos)</span>
-                            </div>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <button type="button" class="btn-cycsa btn-cycsa-success" onclick="aplicarPlantillaATodasLasMuestras()" style="padding:6px 14px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-                                    <i class="fa-solid fa-check-double"></i> Aplicar a todas las muestras
-                                </button>
-                                <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="abrirPreviewPlantillaGlobal()" style="padding:6px 12px; font-size:12px;" title="Ver maqueta de la plantilla seleccionada">
-                                    <i class="fa-solid fa-eye"></i> Vista Previa
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Fila Principal: Desplegable AJAX Full-Width -->
-                        <div style="position:relative; width:100%;">
-                            <div id="trigger_plantilla_global" onclick="toggleDropdownPlantillasGlobal()" style="background:white; border:1.5px solid #86efac; border-radius:8px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; min-height:42px; transition:all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.boxShadow='0 3px 8px rgba(22,163,74,0.12)';" onmouseout="this.style.borderColor='#86efac'; this.style.boxShadow='none';">
-                                <div id="texto_plantilla_seleccionada" style="display:flex; align-items:center; gap:10px; font-size:12.5px; color:#334155; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                    <i class="fa-solid fa-file-waveform text-success" style="font-size:15px;"></i>
-                                    <span style="font-weight:600;">-- Seleccionar Plantilla General --</span>
-                                </div>
-                                <i class="fa-solid fa-chevron-down" style="color:#64748b; font-size:12px; margin-left:8px;"></i>
-                            </div>
-
-                            <!-- Panel Flotante Desplegable AJAX Espacioso -->
-                            <div id="dropdown_plantillas_panel" style="display:none; position:absolute; top:calc(100% + 6px); left:0; width:100%; background:white; border:1.5px solid #cbd5e1; border-radius:10px; box-shadow:0 16px 36px rgba(0,0,0,0.2); z-index:99999; padding:14px; box-sizing:border-box;">
-                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-                                    <div style="position:relative; flex:1;">
-                                        <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
-                                        <input type="text" id="input_buscar_plantilla_ajax" placeholder="Buscar por código (ej: FM-22, FM-61, FM-35), nombre o norma técnica..." oninput="filtrarPlantillasAjax(this.value)" style="width:100%; padding:8px 12px 8px 34px; font-size:13px; border:1.5px solid #cbd5e1; border-radius:6px; box-sizing:border-box; outline:none;" autocomplete="off">
-                                    </div>
-                                    <button type="button" onclick="cerrarDropdownPlantillasGlobal()" class="btn btn-sm btn-outline-secondary" style="padding:6px 10px; font-size:14px; line-height:1; cursor:pointer;" title="Cerrar">&times;</button>
-                                </div>
-
-                                <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
-                                    <button type="button" class="btn-filtro-plt active" onclick="filtrarCategoriaPlantilla('todos', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #0284c7; background:#0284c7; color:white; cursor:pointer;">Todas (<span id="cnt_plt_todas">0</span>)</button>
-                                    <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('cliente', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">⭐ Del Cliente (<span id="cnt_plt_cliente">0</span>)</button>
-                                    <button type="button" class="btn-filtro-plt" onclick="filtrarCategoriaPlantilla('servicio', this)" style="padding:4px 12px; font-size:11.5px; font-weight:600; border-radius:14px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; cursor:pointer;">🎯 Recomendadas (<span id="cnt_plt_servicio">0</span>)</button>
-                                </div>
-
-                                <div id="lista_resultados_plantillas_ajax" style="max-height:280px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:6px;">
-                                    <!-- Inyectado dinámicamente por AJAX -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="hidden" id="select_plantilla_global" name="plantilla_global_id" value="">
 
                     <div class="rtfm13-table-wrap">
                         <table class="rtfm13-table-muestras" id="hs-tabla-muestras">
                             <thead>
                                 <tr>
-                                    <th style="width:22%;"><i class="fa-solid fa-barcode me-1 text-primary"></i> # Muestra / Código</th>
-                                    <th style="width:32%;"><i class="fa-solid fa-location-dot me-1 text-primary"></i> Ubicación / Identificación</th>
-                                    <th style="width:20%;"><i class="fa-solid fa-calendar-days me-1 text-primary"></i> Observaciones / Edad</th>
-                                    <th style="width:18%;"><i class="fa-solid fa-file-waveform me-1 text-primary"></i> Plantilla Técnica</th>
-                                    <th style="width:8%; text-align:center;"><i class="fa-solid fa-trash me-1"></i> Acción</th>
+                                    <th style="width:20%;"><i class="fa-solid fa-barcode me-1 text-primary"></i> # Muestra / Código</th>
+                                    <th style="width:27%;"><i class="fa-solid fa-location-dot me-1 text-primary"></i> Ubicación / Identificación</th>
+                                    <th style="width:18%;"><i class="fa-solid fa-calendar-days me-1 text-primary"></i> Observaciones / Edad</th>
+                                    <th style="width:28%;"><i class="fa-solid fa-flask-vial me-1 text-primary"></i> Producto / Ensayo Destino</th>
+                                    <th style="width:7%; text-align:center;"><i class="fa-solid fa-trash me-1"></i></th>
                                 </tr>
                             </thead>
                             <tbody id="hs-tbody-muestras">
@@ -2921,36 +2852,12 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             elIdHoja.value = data.es_nueva ? 0 : (h.id || 0);
         }
 
-        // Poblar Selector de Producto / Ensayo de la O/S
+        // Guardar lista de productos de la O/S para asignar por muestra (en RT-FM-13 o después en Datos de Recepción)
+        window.productosPermitidosActuales = data.productos_permitidos_os || data.productos_permitidos || [];
         const selProd = document.getElementById('id_detalle_cotizacion_modal');
         if (selProd) {
-            selProd.innerHTML = '<option value="">-- Seleccione el Producto / Ensayo de la O/S --</option>';
-            const productos = data.productos_permitidos_os || data.productos_permitidos || [];
-            const idActualProd = h.id_detalle_cotizacion || 0;
-            
-            productos.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id_detalle_cotizacion;
-                let label = (p.codigo_servicio ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo');
-                if (p.tiene_hoja && (!idActualProd || p.id_detalle_cotizacion != idActualProd)) {
-                    label += ' (Ya tiene Hoja #' + (p.id_hoja_creada || '') + ')';
-                }
-                opt.textContent = label;
-                if (idActualProd && p.id_detalle_cotizacion == idActualProd) {
-                    opt.selected = true;
-                }
-                selProd.appendChild(opt);
-            });
-
-            if (idActualProd) {
-                selProd.value = idActualProd;
-            } else if (data.es_nueva && productos.length > 0) {
-                // Seleccionar automáticamente el primer producto sin hoja o el primero
-                const prodSinHoja = productos.find(p => !p.tiene_hoja) || productos[0];
-                if (prodSinHoja) {
-                    selProd.value = prodSinHoja.id_detalle_cotizacion;
-                }
-            }
+            const idActualProd = parseInt(h.id_detalle_cotizacion || 0, 10) || 0;
+            selProd.value = (!data.es_nueva && idActualProd > 0) ? String(idActualProd) : '';
         }
 
         // Renderizado del Selector de Hojas / Entregas
@@ -3119,7 +3026,8 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     det.motivo_cambio || '',
                     parseInt(det.bloqueado_recepcion || 0),
                     det.plantilla_codigo || '',
-                    det.plantilla_nombre || ''
+                    det.plantilla_nombre || '',
+                    parseInt(det.id_detalle_cotizacion || h.id_detalle_cotizacion || 0, 10) || 0
                 );
             });
         } else if (Array.isArray(muestrasArr) && muestrasArr.length > 0) {
@@ -3137,7 +3045,8 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     m.motivo_cambio || '',
                     parseInt(m.bloqueado || 0),
                     m.plantilla_codigo || '',
-                    m.plantilla_nombre || ''
+                    m.plantilla_nombre || '',
+                    parseInt(m.id_detalle_cotizacion || h.id_detalle_cotizacion || 0, 10) || 0
                 );
             });
         } else {
@@ -3265,7 +3174,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         actualizarContadorEspecimenes();
     }
 
-    function agregarFilaMuestraModal(tipo = null, nom = '', desc = '', info = '', ensayoId = null, plantillaId = null, seleccionManual = 0, motivoCambio = '', bloqueado = 0, codigoPlantillaPrevia = '', nombrePlantillaPrevia = '') {
+    function agregarFilaMuestraModal(tipo = null, nom = '', desc = '', info = '', ensayoId = null, plantillaId = null, seleccionManual = 0, motivoCambio = '', bloqueado = 0, codigoPlantillaPrevia = '', nombrePlantillaPrevia = '', idDetalleCot = 0) {
         const tbody = document.getElementById('hs-tbody-muestras');
         if (!tbody) return;
 
@@ -3312,6 +3221,15 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         }
 
         const ensayoFinal = ensayoId || window.productoHojaIdActual || 1;
+        const productosOS = Array.isArray(window.productosPermitidosActuales) ? window.productosPermitidosActuales : [];
+        const idDetSel = parseInt(idDetalleCot || 0, 10) || 0;
+        let optsProdHtml = '<option value="">-- Definir después --</option>';
+        productosOS.forEach(p => {
+            const pId = parseInt(p.id_detalle_cotizacion || 0, 10);
+            const pLbl = (p.codigo_servicio ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo');
+            const selAttr = (idDetSel > 0 && pId === idDetSel) ? ' selected' : '';
+            optsProdHtml += `<option value="${pId}" data-prod-id="${parseInt(p.id_producto || 0, 10)}"${selAttr}>${escapeHtml(pLbl)}</option>`;
+        });
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -3320,7 +3238,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     <span class="badge ${prefijo === 'MS' ? 'bg-secondary' : 'bg-primary'}" style="font-size:10.5px; font-weight:700; padding:4px 6px; border-radius:4px;">${escapeHtml(prefijo)}</span>
                     <input type="text" name="m_nombre[]" value="${nom}" readonly required class="rtfm13-input rtfm13-input-mono" style="padding:6px 10px; font-size:12px; height:36px; color:var(--rtfm13-azul); background:#f8fafc; cursor:not-allowed;" title="Código consecutivo oficial asignado por el sistema">
                 </div>
-                <input type="hidden" name="m_ensayo_id[]" value="${ensayoFinal}">
+                <input type="hidden" name="m_ensayo_id[]" value="${ensayoFinal}" class="input-ensayo-muestra">
                 <input type="hidden" name="m_plantilla_id[]" value="${plantillaId || ''}" class="input-plantilla-muestra">
                 <input type="hidden" name="m_seleccion_manual[]" value="${seleccionManual}">
                 <input type="hidden" name="m_motivo_cambio[]" value="${escapeHtml(motivoCambio)}">
@@ -3334,11 +3252,9 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 <input type="text" name="m_info[]" value="${escapeHtml(info)}" class="rtfm13-input" style="height:36px; font-size:12.5px;" placeholder="Edad / Estado (ej: 7 días, húmeda)">
             </td>
             <td style="vertical-align:middle;">
-                <div class="col-plantilla-badge" style="display:flex; align-items:center; gap:6px;">
-                    <span class="badge badge-plt-display" style="background:${plantillaId ? '#e0f2fe' : '#f8fafc'}; color:${plantillaId ? '#0369a1' : '#64748b'}; border:1px solid ${plantillaId ? '#bae6fd' : '#cbd5e1'}; font-size:11px; padding:6px 10px; border-radius:6px; max-width:210px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block;" title="${escapeHtml(etiquetaPlantilla)}">
-                        <i class="fa-solid fa-file-waveform me-1"></i>${escapeHtml(codigoPlantilla ? codigoPlantilla : etiquetaPlantilla)}
-                    </span>
-                </div>
+                <select name="m_detalle_cotizacion[]" class="rtfm13-input select-destino-muestra" style="height:36px; font-size:12px; padding:4px 8px;" ${bloqueado ? 'disabled' : ''} onchange="(function(sel){ const opt = sel.options[sel.selectedIndex]; const prodId = opt ? parseInt(opt.getAttribute('data-prod-id') || '0', 10) : 0; const inpEns = sel.closest('tr')?.querySelector('.input-ensayo-muestra'); if (inpEns && prodId > 0) inpEns.value = String(prodId); })(this)">
+                    ${optsProdHtml}
+                </select>
             </td>
             <td style="text-align:center; vertical-align:middle;">
                 ${bloqueado ? 
@@ -4050,7 +3966,16 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         const sinNotice = document.getElementById('rec_sin_campos_notice');
         const tablaSec = document.getElementById('rec_tabla_section');
         const btnGuardar = document.getElementById('rec_btn_guardar');
-        if (recCamposActuales.length === 0) {
+        const productosOSRec = Array.isArray(data.productos_os) ? data.productos_os : [];
+        window.recProductosOsActuales = productosOSRec;
+        const mapaCamposPorDet = {};
+        productosOSRec.forEach(p => {
+            const setC = new Set();
+            (p.campos_recepcion || []).forEach(c => setC.add(normalizarClaveJsRec(c.nombre)));
+            mapaCamposPorDet[parseInt(p.id_detalle_cotizacion, 10)] = setC;
+        });
+
+        if (recCamposActuales.length === 0 && productosOSRec.length === 0) {
             sinNotice.style.display = 'block';
             tablaSec.style.display = 'none';
             btnGuardar.style.display = 'none';
@@ -4067,25 +3992,62 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         const tbody = document.getElementById('rec_tbody_muestras');
         thead.innerHTML = `<tr>
             <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; text-align:center; width:42px;">#</th>
-            <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:130px;">Código Muestra</th>
-            <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:140px;">Identificación / Ubicación</th>
+            <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:125px;">Código Muestra</th>
+            <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:210px;">Producto / Ensayo Destino</th>
+            <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:130px;">Identificación / Ubicación</th>
             ${recCamposActuales.map(c => `<th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:125px;">${escapeHtml(c.nombre)}</th>`).join('')}
         </tr>`;
 
         tbody.innerHTML = '';
         if (muestras.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${3 + recCamposActuales.length}" style="padding:18px; text-align:center; color:#64748b;">Esta hoja RT-FM-13 no tiene muestras registradas todavía.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${4 + recCamposActuales.length}" style="padding:18px; text-align:center; color:#64748b;">Esta hoja RT-FM-13 no tiene muestras registradas todavía.</td></tr>`;
             return;
         }
+
+        const actualizarVisibilidadCamposFilaRec = (trRow) => {
+            const selD = trRow.querySelector('.rec-destino-select');
+            const idDetElegido = selD ? (parseInt(selD.value || '0', 10) || 0) : 0;
+            const setPermitidos = idDetElegido > 0 ? mapaCamposPorDet[idDetElegido] : null;
+            trRow.querySelectorAll('.rec-campo-input').forEach(inp => {
+                const clave = inp.dataset.clave || '';
+                const aplica = !setPermitidos || setPermitidos.size === 0 || setPermitidos.has(clave);
+                const esAuto = inp.dataset.autocalc === '1';
+                if (!aplica) {
+                    inp.disabled = true;
+                    inp.style.opacity = '0.4';
+                    inp.style.background = '#f1f5f9';
+                    inp.placeholder = 'N/A';
+                } else {
+                    inp.disabled = recSoloLecturaActual;
+                    inp.style.opacity = '1';
+                    inp.style.background = (recSoloLecturaActual || esAuto) ? '#f1f5f9' : '#fff';
+                    inp.placeholder = '';
+                }
+            });
+        };
 
         muestras.forEach((m, idx) => {
             const tr = document.createElement('tr');
             tr.dataset.codigo = m.codigo_muestra || '';
             tr.style.background = (idx % 2 === 0) ? '#ffffff' : '#fffaf5';
 
+            const idDetActualM = parseInt(m.id_detalle_cotizacion || 0, 10) || (productosOSRec.length === 1 ? parseInt(productosOSRec[0].id_detalle_cotizacion, 10) : 0);
+            let optsDestRec = '<option value="0">-- Sin asignar (definir producto) --</option>';
+            productosOSRec.forEach(p => {
+                const pId = parseInt(p.id_detalle_cotizacion, 10);
+                const pNom = (p.codigo_servicio ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo');
+                const selAttr = (pId === idDetActualM) ? ' selected' : '';
+                optsDestRec += `<option value="${pId}"${selAttr}>${escapeHtml(pNom)}</option>`;
+            });
+
             let html = `
                 <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center; font-weight:700; color:#64748b;">${idx + 1}</td>
                 <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; font-family:monospace; font-weight:700; color:#103487;">${escapeHtml(m.codigo_muestra || '')}</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #f1f5f9;">
+                    <select class="rtfm13-input rec-destino-select" style="height:34px; font-size:12px; padding:4px 8px; background:${recSoloLecturaActual ? '#f1f5f9' : '#fff'};" ${recSoloLecturaActual ? 'disabled' : ''}>
+                        ${optsDestRec}
+                    </select>
+                </td>
                 <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; color:#334155; font-size:12px;">${escapeHtml(m.descripcion_ubicacion || m.observacion_edad || '—')}</td>
             `;
 
@@ -4107,11 +4069,18 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                            style="height:34px; font-size:12.5px; padding:4px 8px; background:${bgInput}; ${cursorCss}"
                            data-campo="${escapeHtml(c.nombre)}"
                            data-clave="${escapeHtml(clave)}"
+                           data-autocalc="${esAutoCalcRec ? '1' : '0'}"
                            value="${escapeHtml(val)}">
                 </td>`;
             });
             tr.innerHTML = html;
             tbody.appendChild(tr);
+
+            const selDestEl = tr.querySelector('.rec-destino-select');
+            if (selDestEl) {
+                selDestEl.addEventListener('change', () => actualizarVisibilidadCamposFilaRec(tr));
+            }
+            actualizarVisibilidadCamposFilaRec(tr);
 
             // Auto-cálculo Reven. in <-> Reven. cm y Fechas <-> Edad (Días)
             tr.querySelectorAll('.rec-campo-input').forEach(inp => {
@@ -4181,13 +4150,20 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
     function guardarDatosRecepcionModal(marcarCompleta = false) {
         if (recHojaActualId <= 0 || recSoloLecturaActual) return;
         const payloadMuestras = {};
+        const payloadDestinos = {};
         document.querySelectorAll('#rec_tbody_muestras tr').forEach(tr => {
             const cod = tr.dataset.codigo || '';
             if (!cod) return;
             payloadMuestras[cod] = {};
             tr.querySelectorAll('.rec-campo-input').forEach(inp => {
-                payloadMuestras[cod][inp.dataset.campo] = inp.value.trim();
+                if (!inp.disabled) {
+                    payloadMuestras[cod][inp.dataset.campo] = inp.value.trim();
+                }
             });
+            const selDest = tr.querySelector('.rec-destino-select');
+            if (selDest) {
+                payloadDestinos[cod] = parseInt(selDest.value || '0', 10) || 0;
+            }
         });
 
         const btn = marcarCompleta ? (document.getElementById('rec_btn_completar') || document.getElementById('rec_btn_guardar')) : document.getElementById('rec_btn_guardar');
@@ -4202,6 +4178,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         formData.append('csrf_token', csrfInput ? csrfInput.value : '');
         formData.append('id_hoja', String(recHojaActualId));
         formData.append('muestras_recepcion_json', JSON.stringify(payloadMuestras));
+        formData.append('muestras_destino_json', JSON.stringify(payloadDestinos));
         if (marcarCompleta) {
             formData.append('marcar_recepcion_completa', '1');
         }

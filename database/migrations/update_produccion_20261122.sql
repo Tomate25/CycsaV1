@@ -203,4 +203,17 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud' AND COLUMN_NAME = 'firma_adicional_cargo'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud` ADD COLUMN `firma_adicional_cargo` VARCHAR(180) NULL DEFAULT NULL AFTER `firma_adicional_nombre`'));
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- ----------------------------------------------------------------------------
+-- 10. Migración 042: Asignación de producto/ensayo por muestra en RT-FM-13
+-- ----------------------------------------------------------------------------
+SET @sql = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'hojas_solicitud_detalles' AND COLUMN_NAME = 'id_detalle_cotizacion'), 'SELECT 1', 'ALTER TABLE `hojas_solicitud_detalles` ADD COLUMN `id_detalle_cotizacion` INT(11) NULL DEFAULT NULL AFTER `id_hoja_solicitud`, ADD INDEX `idx_hsd_detalle_cot` (`id_detalle_cotizacion`)'));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+UPDATE `hojas_solicitud_detalles` hsd
+INNER JOIN `hojas_solicitud` hs ON hs.id = hsd.id_hoja_solicitud
+SET hsd.id_detalle_cotizacion = hs.id_detalle_cotizacion
+WHERE hsd.id_detalle_cotizacion IS NULL
+  AND hs.id_detalle_cotizacion IS NOT NULL
+  AND hs.id_detalle_cotizacion > 0;
+
 SELECT 'UPDATE_PRODUCCION_20261122_OK' AS resultado;

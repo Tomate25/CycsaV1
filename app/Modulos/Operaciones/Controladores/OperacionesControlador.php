@@ -2379,11 +2379,9 @@ class OperacionesControlador extends ControladorBase {
         $muestrasSeteadas = [];
 
         if ($esCompactacion) {
-            // Regla de Visita CYCSA 2026-11-02: Ensayos de compactación in situ NO pasan por recepción de laboratorio.
-            // Las muestras/puntos se obtienen exclusivamente de la Hoja RT-FM-13 vinculada a este producto.
-            $stmtHsd = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion, observacion_edad FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :id_hoja ORDER BY orden ASC, id ASC");
-            $stmtHsd->execute(['id_hoja' => $idHojaResolv]);
-            $filasHsd = $stmtHsd->fetchAll(PDO::FETCH_ASSOC);
+            // Regla de Visita CYCSA 2026-11-02 + Multi-producto RT-FM-13:
+            // Las muestras/puntos se obtienen filtradas para este producto específico.
+            $filasHsd = obtenerMuestrasHojaParaDetalle($db, (int)$detalle['id_os'], $idDetalle, $hoja);
 
             if (!empty($filasHsd)) {
                 foreach ($filasHsd as $idx => $fh) {
@@ -2397,26 +2395,26 @@ class OperacionesControlador extends ControladorBase {
                         'nombre_muestra' => !empty($fh['descripcion_ubicacion']) ? $fh['descripcion_ubicacion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
                     ];
                 }
-            } else {
-                $mList = json_decode($hoja['muestras_json'] ?? '[]', true) ?: [];
-                foreach ($mList as $idx => $md) {
-                    $codLab = !empty($md['nombre_muestra']) ? trim($md['nombre_muestra']) : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
-                    $muestrasSeteadas[] = [
-                        'codigo_lab' => $codLab,
-                        'codigo_campo' => $codLab,
-                        'nombre_muestra' => !empty($md['descripcion']) ? trim($md['descripcion']) : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
-                    ];
-                }
             }
 
             if (empty($muestrasSeteadas)) {
-                $_SESSION['error'] = 'Para ensayos in situ de la Orden de Servicio ' . ($detalle['codigo_os'] ?? 'O/S') . ', la Hoja de Solicitud (CYCSA-RT-FM-13) debe incluir las muestras o puntos de muestreo registrados antes de capturar la matriz técnica.';
+                $_SESSION['error'] = 'Para ensayos in situ de la Orden de Servicio ' . ($detalle['codigo_os'] ?? 'O/S') . ', la Hoja de Solicitud (CYCSA-RT-FM-13) debe incluir las muestras o puntos de muestreo asignados a este producto antes de capturar la matriz técnica.';
                 $respuesta->redirigir('/Cycsa/publico/ordenes-servicio?id_os=' . (int)$detalle['id_os']);
                 return;
             }
         } else {
+            // Muestras asignadas explícitamente a este producto desde RT-FM-13 (multi-producto o 1-a-1)
+            $filasAsignadasDet = obtenerMuestrasHojaParaDetalle($db, (int)$detalle['id_os'], $idDetalle, $hoja);
+            $codigosPermitidosDet = [];
+            foreach ($filasAsignadasDet as $fa) {
+                $ck = strtoupper(trim((string)($fa['codigo_muestra'] ?? '')));
+                if ($ck !== '') {
+                    $codigosPermitidosDet[$ck] = true;
+                }
+            }
+
             // Ensayos convencionales de laboratorio (concreto, suelo físico):
-            // Muestras aceptadas formalmente en Laboratorio, filtradas ESTRICTAMENTE por la hoja correspondiente.
+            // Muestras aceptadas formalmente en Laboratorio, filtradas por hoja y por asignación de producto.
             $stmtMuestrasLab = $db->prepare("
                 SELECT rm.codigo_muestra, rm.codigo_campo, lm.nombre_lote
                 FROM recepcion_muestras rm
@@ -2434,21 +2432,21 @@ class OperacionesControlador extends ControladorBase {
 
             if (!empty($muestrasLabList)) {
                 foreach ($muestrasLabList as $idx => $ml) {
+                    $ckLab = strtoupper(trim((string)($ml['codigo_muestra'] ?? '')));
+                    if (!empty($codigosPermitidosDet) && $ckLab !== '' && !isset($codigosPermitidosDet[$ckLab])) {
+                        continue;
+                    }
                     $muestrasSeteadas[] = [
                         'codigo_lab' => $ml['codigo_muestra'],
                         'codigo_campo' => $ml['codigo_campo'],
                         'nombre_muestra' => !empty($ml['nombre_lote']) ? $ml['nombre_lote'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
                     ];
                 }
-            } else {
-                // Flujo Directo RT-FM-13 (Abdia): Operaciones puede llenar y guardar la matriz técnica
-                // con las muestras declaradas en la hoja RT-FM-13 sin requerir aceptación previa en Laboratorio.
-                $stmtHsd = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion, observacion_edad FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :id_hoja ORDER BY orden ASC, id ASC");
-                $stmtHsd->execute(['id_hoja' => $idHojaResolv]);
-                $filasHsd = $stmtHsd->fetchAll(PDO::FETCH_ASSOC);
-
-                if (!empty($filasHsd)) {
-                    foreach ($filasHsd as $idx => $fh) {
+            }
+            if (empty($muestrasSeteadas)) {
+                if (!empty($filasAsignadasDet)) {
+                    // Flujo Directo RT-FM-13 (Abdia): Operaciones / Captura Técnica carga las muestras asignadas a este producto.
+                    foreach ($filasAsignadasDet as $idx => $fh) {
                         $codLab = trim((string)($fh['codigo_muestra'] ?? ''));
                         if (empty($codLab)) {
                             $codLab = sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
@@ -2457,16 +2455,6 @@ class OperacionesControlador extends ControladorBase {
                             'codigo_lab' => $codLab,
                             'codigo_campo' => $codLab,
                             'nombre_muestra' => !empty($fh['descripcion_ubicacion']) ? $fh['descripcion_ubicacion'] : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
-                        ];
-                    }
-                } elseif ($hoja && !empty($hoja['muestras_json'])) {
-                    $mList = json_decode($hoja['muestras_json'], true) ?: [];
-                    foreach ($mList as $idx => $md) {
-                        $codLab = !empty($md['nombre_muestra']) ? trim((string)$md['nombre_muestra']) : sprintf("{$prefijoMuestraOS}-%04d-%02d", $idx + 1, date('y'));
-                        $muestrasSeteadas[] = [
-                            'codigo_lab' => $codLab,
-                            'codigo_campo' => $codLab,
-                            'nombre_muestra' => !empty($md['descripcion']) ? trim((string)$md['descripcion']) : ($detalle['descripcion_ensayo'] . ' - Muestra ' . ($idx + 1))
                         ];
                     }
                 } else {
