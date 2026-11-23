@@ -6739,12 +6739,13 @@ if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
             return;
         }
 
-        $stmtHoja = $db->prepare("SELECT id_detalle_cotizacion, id_producto FROM hojas_solicitud WHERE id = :hid LIMIT 1");
+        $stmtHoja = $db->prepare("SELECT id, id_os, id_detalle_cotizacion, id_producto, muestras_json FROM hojas_solicitud WHERE id = :hid LIMIT 1");
         $stmtHoja->execute(['hid' => $idHoja]);
         $hoja = $stmtHoja->fetch(PDO::FETCH_ASSOC);
         if (!$hoja) {
             return;
         }
+        $idOsHoja = (int)($hoja['id_os'] ?? 0);
 
         $detallesDestino = [];
         $idDetalleHoja = (int)($hoja['id_detalle_cotizacion'] ?? 0);
@@ -6764,35 +6765,115 @@ if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
         }
 
         foreach (array_keys($detallesDestino) as $idDetalle) {
-            $infoCampos = obtenerCamposRecepcionParaDetalle($db, (int)$idDetalle, !empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null);
-            $columnasFormato = $infoCampos['columnas'] ?? [];
-
-            $stmtDet = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+            $stmtDet = $db->prepare("
+                SELECT cd.id, cd.id_producto, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json,
+                       fe.archivo_markdown, fe.nombre AS formato_nombre, fe.codigo_formato AS codigo_documento
+                FROM cotizacion_detalles cd
+                LEFT JOIN productos p ON cd.id_producto = p.id
+                LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                WHERE cd.id = :id LIMIT 1
+            ");
             $stmtDet->execute(['id' => (int)$idDetalle]);
-            $resJson = $stmtDet->fetchColumn();
+            $detRow = $stmtDet->fetch(PDO::FETCH_ASSOC);
+            if (!$detRow) {
+                continue;
+            }
+
+            $infoCampos = obtenerCamposRecepcionParaDetalle($db, (int)$idDetalle, !empty($detRow['id_producto']) ? (int)$detRow['id_producto'] : (!empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null));
+            $columnasFormato = $infoCampos['columnas'] ?? [];
+            $archivoMdDet = (string)($infoCampos['archivo_markdown'] ?? ($detRow['archivo_markdown'] ?? ''));
+
+            $resJson = $detRow['resultados_json'] ?? null;
             $dec = is_string($resJson) ? (json_decode($resJson, true) ?: []) : [];
             $filas = isset($dec['filas']) && is_array($dec['filas']) ? $dec['filas'] : (isset($dec[0]) && is_array($dec[0]) ? $dec : []);
 
-            if (!empty($filas)) {
-                $huboCambios = false;
-                foreach ($filas as $idx => $fila) {
-                    if (!is_array($fila)) continue;
-                    $codFila = strtoupper(trim((string)($fila['Código laboratorio'] ?? ($fila['Codigo laboratorio'] ?? ($fila['codigo_lab'] ?? '')))));
-                    $recMuestra = $codFila !== '' && isset($datosPorCodigo[$codFila]) ? $datosPorCodigo[$codFila] : null;
-                    if ($recMuestra !== null) {
-                        $filas[$idx] = fusionarDatosRecepcionEnFilaMatriz($fila, $recMuestra, $columnasFormato, true, (string)($infoCampos['archivo_markdown'] ?? ''));
-                        $huboCambios = true;
+            // Mapear filas existentes en resultados_json por código de muestra
+            $indicePorCodigo = [];
+            foreach ($filas as $idxF => $fExist) {
+                if (!is_array($fExist)) continue;
+                $codF = strtoupper(trim((string)($fExist['Código laboratorio'] ?? ($fExist['Codigo laboratorio'] ?? ($fExist['codigo_lab'] ?? '')))));
+                if ($codF !== '') {
+                    $indicePorCodigo[$codF] = $idxF;
+                }
+            }
+
+            // Obtener las muestras asignadas específicamente a este producto/detalle
+            $muestrasAsignadas = $idOsHoja > 0
+                ? obtenerMuestrasHojaParaDetalle($db, $idOsHoja, (int)$idDetalle, $hoja)
+                : [];
+
+            $huboCambios = false;
+            // 1. Actualizar filas existentes con datos de recepción recientes
+            foreach ($filas as $idx => $fila) {
+                if (!is_array($fila)) continue;
+                $codFila = strtoupper(trim((string)($fila['Código laboratorio'] ?? ($fila['Codigo laboratorio'] ?? ($fila['codigo_lab'] ?? '')))));
+                $recMuestra = $codFila !== '' && isset($datosPorCodigo[$codFila]) ? $datosPorCodigo[$codFila] : null;
+                if ($recMuestra !== null) {
+                    $filas[$idx] = fusionarDatosRecepcionEnFilaMatriz($fila, $recMuestra, $columnasFormato, true, $archivoMdDet);
+                    if (!empty($recMuestra['Nombre muestra'])) {
+                        $filas[$idx]['Nombre muestra'] = (string)$recMuestra['Nombre muestra'];
+                    }
+                    $huboCambios = true;
+                }
+            }
+
+            // 2. Crear automáticamente filas en la matriz para muestras asignadas que aún no existían en resultados_json
+            foreach ($muestrasAsignadas as $mAsig) {
+                $codOrig = trim((string)($mAsig['codigo_muestra'] ?? ''));
+                $codKey = strtoupper($codOrig);
+                if ($codKey === '' || isset($indicePorCodigo[$codKey])) {
+                    continue;
+                }
+                $recMuestra = $datosPorCodigo[$codKey] ?? null;
+                if ($recMuestra === null && !empty($mAsig['datos_recepcion_json'])) {
+                    $decM = json_decode((string)$mAsig['datos_recepcion_json'], true);
+                    if (is_array($decM) && !empty($decM)) {
+                        $recMuestra = $decM;
                     }
                 }
-                if ($huboCambios) {
-                    if (isset($dec['filas'])) {
-                        $dec['filas'] = $filas;
-                    } else {
-                        $dec = ['version_actual' => 1, 'filas' => $filas];
-                    }
-                    $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
-                       ->execute(['json' => json_encode($dec, JSON_UNESCAPED_UNICODE), 'id' => (int)$idDetalle]);
+                if (empty($recMuestra)) {
+                    continue;
                 }
+
+                $nuevaFila = [];
+                foreach ($columnasFormato as $colF) {
+                    $nuevaFila[(string)$colF] = '';
+                }
+                $colCod = in_array('Código laboratorio', $columnasFormato, true) ? 'Código laboratorio' : (in_array('Codigo Lab', $columnasFormato, true) ? 'Codigo Lab' : 'Código laboratorio');
+                $nuevaFila[$colCod] = $codOrig;
+                $nomMuestraNuevo = trim((string)($recMuestra['Nombre muestra'] ?? ($mAsig['descripcion_ubicacion'] ?? '')));
+                if ($nomMuestraNuevo !== '') {
+                    $nuevaFila['Nombre muestra'] = $nomMuestraNuevo;
+                }
+                $nuevaFila = fusionarDatosRecepcionEnFilaMatriz($nuevaFila, $recMuestra, $columnasFormato, true, $archivoMdDet);
+                $filas[] = $nuevaFila;
+                $indicePorCodigo[$codKey] = count($filas) - 1;
+                $huboCambios = true;
+            }
+
+            if ($huboCambios) {
+                if (!isset($dec['filas']) || !is_array($dec)) {
+                    $dec = ['version_actual' => 1, 'filas' => $filas];
+                } else {
+                    $dec['filas'] = $filas;
+                    if (!isset($dec['version_actual'])) {
+                        $dec['version_actual'] = 1;
+                    }
+                }
+                // Si la matriz aún no tenía estado de revisión:
+                // - Compactación (se llena 100% en Recepción) pasa a 'en_revision' lista para aprobar en Operaciones.
+                // - Otros ensayos (Concreto, Suelos) quedan en 'borrador' para que Captura Técnica complete mediciones.
+                if (empty($dec['revision']) || !is_array($dec['revision']) || empty($dec['revision']['estado'])) {
+                    $esCompDet = function_exists('esItemCompactacion') ? esItemCompactacion($detRow) : false;
+                    $dec['revision'] = [
+                        'estado' => $esCompDet ? 'en_revision' : 'borrador',
+                        'fecha_envio' => date('Y-m-d H:i:s'),
+                        'usuario_envio' => $_SESSION['usuario_nombre'] ?? 'Recepción / Atención al Cliente',
+                        'historial' => [],
+                    ];
+                }
+                $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
+                   ->execute(['json' => json_encode($dec, JSON_UNESCAPED_UNICODE), 'id' => (int)$idDetalle]);
             }
         }
 

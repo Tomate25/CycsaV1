@@ -4201,14 +4201,47 @@ class OperacionesControlador extends ControladorBase {
         // Fusionar respaldo de datos de Recepción desde RT-FM-13 para garantizar el documento 100% completo
         $hojaRes = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
         $idHojaRes = (int)($hojaRes['id'] ?? ($detalle['id_hoja_asociada'] ?? 0));
-        if ($idHojaRes > 0) {
-            $mapaRecDoc = construirMapaDatosRecepcionPorHoja($db, $idHojaRes);
-            if (!empty($mapaRecDoc)) {
-                foreach ($filasDoc as $idxD => $fD) {
-                    if (!is_array($fD)) continue;
-                    $codD = strtoupper(trim((string)($fD['Código laboratorio'] ?? ($fD['Codigo laboratorio'] ?? ($fD['codigo_lab'] ?? '')))));
-                    if ($codD !== '' && isset($mapaRecDoc[$codD])) {
-                        $filasDoc[$idxD] = fusionarDatosRecepcionEnFilaMatriz($fD, $mapaRecDoc[$codD], $columnas, false, (string)$archivoMd);
+        $muestrasAsigDoc = obtenerMuestrasHojaParaDetalle($db, (int)$detalle['id_os'], $idDetalle, $hojaRes);
+        $mapaRecDoc = $idHojaRes > 0 ? construirMapaDatosRecepcionPorHoja($db, $idHojaRes) : [];
+        foreach ($muestrasAsigDoc as $mAd) {
+            $codM = strtoupper(trim((string)($mAd['codigo_muestra'] ?? '')));
+            if ($codM !== '' && !empty($mAd['datos_recepcion_json'])) {
+                $decM = json_decode((string)$mAd['datos_recepcion_json'], true);
+                if (is_array($decM) && !empty($decM)) {
+                    $mapaRecDoc[$codM] = array_merge($mapaRecDoc[$codM] ?? [], $decM);
+                }
+            }
+        }
+
+        // Si aún no hay filas guardadas en resultados_json pero ya existen muestras/datos de Recepción, poblarlas en vivo
+        if (empty($filasDoc) && !empty($muestrasAsigDoc)) {
+            $colCodDoc = in_array('Código laboratorio', $columnas, true) ? 'Código laboratorio' : (in_array('Codigo Lab', $columnas, true) ? 'Codigo Lab' : 'Código laboratorio');
+            foreach ($muestrasAsigDoc as $mAd) {
+                $codOrig = trim((string)($mAd['codigo_muestra'] ?? ''));
+                $codKey = strtoupper($codOrig);
+                if ($codKey === '') continue;
+                $filaNueva = [];
+                foreach ($columnas as $colItem) {
+                    $filaNueva[(string)$colItem] = '';
+                }
+                $filaNueva[$colCodDoc] = $codOrig;
+                $nomBase = trim((string)($mapaRecDoc[$codKey]['Nombre muestra'] ?? ($mAd['descripcion_ubicacion'] ?? '')));
+                if ($nomBase !== '') {
+                    $filaNueva['Nombre muestra'] = $nomBase;
+                }
+                if (!empty($mapaRecDoc[$codKey])) {
+                    $filaNueva = fusionarDatosRecepcionEnFilaMatriz($filaNueva, $mapaRecDoc[$codKey], $columnas, true, (string)$archivoMd);
+                }
+                $filasDoc[] = $filaNueva;
+            }
+        } elseif (!empty($mapaRecDoc)) {
+            foreach ($filasDoc as $idxD => $fD) {
+                if (!is_array($fD)) continue;
+                $codD = strtoupper(trim((string)($fD['Código laboratorio'] ?? ($fD['Codigo laboratorio'] ?? ($fD['codigo_lab'] ?? '')))));
+                if ($codD !== '' && isset($mapaRecDoc[$codD])) {
+                    $filasDoc[$idxD] = fusionarDatosRecepcionEnFilaMatriz($fD, $mapaRecDoc[$codD], $columnas, true, (string)$archivoMd);
+                    if (!empty($mapaRecDoc[$codD]['Nombre muestra'])) {
+                        $filasDoc[$idxD]['Nombre muestra'] = (string)$mapaRecDoc[$codD]['Nombre muestra'];
                     }
                 }
             }

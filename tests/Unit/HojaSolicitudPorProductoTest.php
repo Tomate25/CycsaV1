@@ -1179,6 +1179,16 @@ class HojaSolicitudPorProductoTest extends TestCase {
         $this->assertSame(['MS-8001-26', 'MS-8002-26'], array_column($muestrasConcreto, 'codigo_muestra'));
         $this->assertSame(['MS-8003-26', 'MS-8004-26'], array_column($muestrasSuelo, 'codigo_muestra'));
 
+        // Verificar que los datos de Recepción guardados aparecen de inmediato en la matriz de Operaciones (cotizacion_detalles.resultados_json)
+        $rawMatConcreto = $this->db->query("SELECT resultados_json FROM cotizacion_detalles WHERE id = {$this->idDetalleConcreto}")->fetchColumn();
+        $decMatConcreto = json_decode((string)$rawMatConcreto, true);
+        $this->assertIsArray($decMatConcreto);
+        $this->assertCount(2, $decMatConcreto['filas'] ?? [], 'La matriz de Concreto en Operaciones debe poblarse inmediatamente con sus 2 muestras guardadas en Recepción.');
+        $this->assertSame('MS-8001-26', $decMatConcreto['filas'][0]['Código laboratorio'] ?? null);
+        $this->assertSame('Columna 1', $decMatConcreto['filas'][0]['Nombre muestra'] ?? null);
+        $this->assertSame('4', (string)($decMatConcreto['filas'][0]['Reven. (in)'] ?? ''));
+        $this->assertSame('borrador', $decMatConcreto['revision']['estado'] ?? null);
+
         // Una vez definido el producto de la muestra, Datos de Recepción NO debe permitir moverla a otro producto
         $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
         $_SERVER['HTTP_ACCEPT'] = 'application/json';

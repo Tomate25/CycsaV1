@@ -396,12 +396,19 @@ class FlujoRecepcionVsTecnicoRtfm13Test extends TestCase {
         $this->assertSame('2026-12-03', $mapa2[$k21]['Fecha de Ensayo']);
         $this->assertArrayNotHasKey($k20, $mapa1);
 
-        // CRÍTICO: No debe pre-marcar cotizacion_detalles.resultados_json como "en_revision" antes de Operaciones
+        // CRÍTICO: Los datos de Recepción deben aparecer inmediatamente en la matriz (resultados_json)
+        // en estado 'borrador' (EN CAPTURA / EJECUCIÓN), NUNCA pre-marcados como "en_revision" ni aprobables antes de Operaciones
         $resDet1 = $this->db->query("SELECT resultados_json FROM cotizacion_detalles WHERE id = {$this->idDetalleConcreto1}")->fetchColumn();
-        $this->assertEmpty($resDet1);
+        $this->assertNotEmpty($resDet1);
+        $decDet1 = json_decode((string)$resDet1, true);
+        $this->assertCount(3, $decDet1['filas'] ?? []);
+        $this->assertSame('3500', $decDet1['filas'][0]['Diseño de concreto (lb/in²)'] ?? null);
+        $this->assertSame('10', $decDet1['filas'][0]['Reven. (cm)'] ?? null);
+        $this->assertSame('7', $decDet1['filas'][0]['Edad (Días)'] ?? null);
         $revInfo = obtenerEstadoRevisionMatriz($resDet1 ?: null);
-        $this->assertSame('pendiente', $revInfo['estado']);
-        $this->assertFalse($revInfo['tiene_resultados']);
+        $this->assertSame('borrador', $revInfo['estado']);
+        $this->assertFalse($revInfo['puede_aprobar']);
+        $this->assertFalse($revInfo['puede_enviar_cliente']);
 
         // Verificar que re-guardar detalles con PlantillaModelo conserva datos_recepcion_json
         $plantillaModelo = new PlantillaModelo();

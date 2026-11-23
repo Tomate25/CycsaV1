@@ -112,7 +112,7 @@ $notasTextoEditable = implode("\n", array_map(static fn($n) => trim((string)$n),
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <?php if ($esSupervisor && $revisionInfo['tiene_resultados'] && $revisionInfo['estado'] !== 'aprobada'): ?>
+            <?php if ($esSupervisor && !empty($revisionInfo['puede_aprobar']) && $revisionInfo['estado'] !== 'aprobada'): ?>
                 <?php if ($ccMatrizInfo['tiene_replicas'] && !$ccMatrizInfo['puede_aprobar']): ?>
                     <button type="button" class="btn btn-outline-secondary btn-sm" disabled title="<?= htmlspecialchars((string)$ccMatrizInfo['motivo_bloqueo'], ENT_QUOTES, 'UTF-8') ?>">
                         <i class="fa-solid fa-lock me-1"></i> Aprobar (CC pendiente)
