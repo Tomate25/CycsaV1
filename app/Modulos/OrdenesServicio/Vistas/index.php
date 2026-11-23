@@ -1705,6 +1705,19 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     <div id="rec_tabs_hojas_list" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
                 </div>
 
+                <!-- Pestañas SEPARADAS por Producto / Ensayo (llenado ordenado 1 producto a la vez, sin columnas N/A) -->
+                <div id="rec_tabs_productos_wrap" style="margin-bottom:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 14px; display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                        <div style="font-size:13px; font-weight:700; color:#1e3a8a;">
+                            <i class="fa-solid fa-flask-vial me-1"></i> Productos / Ensayos de la O/S (llene un producto y pase al siguiente):
+                        </div>
+                        <button type="button" id="rec_btn_siguiente_producto" onclick="irAlSiguienteProductoRecepcion()" class="btn-cycsa btn-cycsa-secondary" style="min-height:30px; padding:3px 11px; font-size:12px; font-weight:700; display:none;">
+                            Siguiente producto <i class="fa-solid fa-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                    <div id="rec_tabs_productos_list" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+                </div>
+
                 <!-- Distribución Recepción vs Técnico -->
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
                     <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #103487; border-radius:9px; padding:10px 14px;">
@@ -3953,29 +3966,193 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             tabsWrap.style.display = 'none';
         }
 
+        const productosOSRec = Array.isArray(data.productos_os) ? data.productos_os : [];
+        const muestras = Array.isArray(data.muestras) ? data.muestras : [];
+
+        window.recProductosOsActuales = productosOSRec;
+        window.recFallbackCamposRecepcion = recCamposActuales;
+        window.recFallbackCamposTecnico = Array.isArray(data.campos_tecnico) ? data.campos_tecnico : [];
+        window.recEstadoMuestras = {};
+        window.recOrdenMuestras = [];
+
+        muestras.forEach(m => {
+            const cod = m.codigo_muestra || '';
+            if (!cod) return;
+            window.recOrdenMuestras.push(cod);
+            const idDetInit = parseInt(m.id_detalle_cotizacion || 0, 10) || (productosOSRec.length === 1 ? parseInt(productosOSRec[0].id_detalle_cotizacion, 10) : 0);
+            window.recEstadoMuestras[cod] = {
+                codigo_muestra: cod,
+                descripcion_ubicacion: m.descripcion_ubicacion || '',
+                observacion_edad: m.observacion_edad || '',
+                id_detalle_cotizacion: idDetInit,
+                datos_recepcion: Object.assign({}, m.datos_recepcion || {}),
+            };
+        });
+
+        // Elegir pestaña inicial: primer producto que tenga muestras asignadas; si ninguna está asignada, pestaña "Sin asignar" (0); si no hay muestras, primer producto
+        let tabInicial = 0;
+        if (productosOSRec.length > 0) {
+            const prodConMuestras = productosOSRec.find(p =>
+                window.recOrdenMuestras.some(cod => window.recEstadoMuestras[cod].id_detalle_cotizacion === parseInt(p.id_detalle_cotizacion, 10))
+            );
+            const haySinAsignar = window.recOrdenMuestras.some(cod => !window.recEstadoMuestras[cod].id_detalle_cotizacion);
+            if (prodConMuestras) {
+                tabInicial = parseInt(prodConMuestras.id_detalle_cotizacion, 10);
+            } else if (haySinAsignar) {
+                tabInicial = 0;
+            } else {
+                tabInicial = parseInt(productosOSRec[0].id_detalle_cotizacion, 10);
+            }
+        }
+        window.recProductoTabActivo = tabInicial;
+        renderizarPestanaActivaRecepcion();
+    }
+
+    function guardarEstadoTabActualEnMemoria() {
+        const estado = window.recEstadoMuestras || {};
+        document.querySelectorAll('#rec_tbody_muestras tr').forEach(tr => {
+            const cod = tr.dataset.codigo || '';
+            if (!cod || !estado[cod]) return;
+            const selDest = tr.querySelector('.rec-destino-select');
+            if (selDest) {
+                estado[cod].id_detalle_cotizacion = parseInt(selDest.value || '0', 10) || 0;
+            }
+            tr.querySelectorAll('.rec-campo-input').forEach(inp => {
+                if (!inp.disabled && inp.dataset.campo) {
+                    estado[cod].datos_recepcion[inp.dataset.campo] = inp.value.trim();
+                }
+            });
+        });
+    }
+
+    function seleccionarTabProductoRecepcion(idDetTab) {
+        guardarEstadoTabActualEnMemoria();
+        window.recProductoTabActivo = parseInt(idDetTab || 0, 10) || 0;
+        renderizarPestanaActivaRecepcion();
+    }
+
+    function irAlSiguienteProductoRecepcion() {
+        guardarEstadoTabActualEnMemoria();
+        const tabsDisponibles = obtenerListaTabsProductosRecepcion();
+        if (tabsDisponibles.length < 2) return;
+        const idxActual = tabsDisponibles.findIndex(t => t.id === window.recProductoTabActivo);
+        const nextIdx = (idxActual >= 0 && idxActual + 1 < tabsDisponibles.length) ? idxActual + 1 : 0;
+        window.recProductoTabActivo = tabsDisponibles[nextIdx].id;
+        renderizarPestanaActivaRecepcion();
+    }
+
+    function obtenerListaTabsProductosRecepcion() {
+        const productosOSRec = Array.isArray(window.recProductosOsActuales) ? window.recProductosOsActuales : [];
+        const orden = Array.isArray(window.recOrdenMuestras) ? window.recOrdenMuestras : [];
+        const estado = window.recEstadoMuestras || {};
+        const tabs = [];
+
+        productosOSRec.forEach((p, idxP) => {
+            const pId = parseInt(p.id_detalle_cotizacion, 10);
+            const codigosP = orden.filter(c => (estado[c]?.id_detalle_cotizacion || 0) === pId);
+            const camposP = Array.isArray(p.campos_recepcion) ? p.campos_recepcion : [];
+            const camposNoNombre = camposP.filter(cc => normalizarClaveJsRec(cc.nombre) !== 'nombremuestra');
+            let llenasP = 0;
+            codigosP.forEach(c => {
+                const dr = estado[c]?.datos_recepcion || {};
+                const tieneAlguno = camposNoNombre.length > 0
+                    ? camposNoNombre.some(cc => String(dr[cc.nombre] ?? '').trim() !== '')
+                    : Object.values(dr).some(v => String(v ?? '').trim() !== '');
+                if (tieneAlguno) llenasP++;
+            });
+            tabs.push({
+                id: pId,
+                orden: idxP + 1,
+                label: (p.codigo_servicio ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo'),
+                producto: p,
+                total: codigosP.length,
+                llenas: llenasP,
+            });
+        });
+
+        const sinAsig = orden.filter(c => !(estado[c]?.id_detalle_cotizacion > 0));
+        if (sinAsig.length > 0) {
+            tabs.push({
+                id: 0,
+                orden: tabs.length + 1,
+                label: 'Sin producto asignado',
+                producto: null,
+                total: sinAsig.length,
+                llenas: 0,
+            });
+        }
+        return tabs;
+    }
+
+    function renderizarPestanaActivaRecepcion() {
+        const productosOSRec = Array.isArray(window.recProductosOsActuales) ? window.recProductosOsActuales : [];
+        const orden = Array.isArray(window.recOrdenMuestras) ? window.recOrdenMuestras : [];
+        const estado = window.recEstadoMuestras || {};
+        const tabs = obtenerListaTabsProductosRecepcion();
+
+        // Si el tab activo era 0 ("Sin asignar") y ya se asignaron todas las muestras, saltar al primer producto con muestras
+        if (window.recProductoTabActivo === 0 && !tabs.some(t => t.id === 0) && tabs.length > 0) {
+            const conM = tabs.find(t => t.total > 0) || tabs[0];
+            window.recProductoTabActivo = conM.id;
+        }
+
+        // Renderizar barra de pestañas por producto
+        const wrapProd = document.getElementById('rec_tabs_productos_wrap');
+        const listProd = document.getElementById('rec_tabs_productos_list');
+        const btnSig = document.getElementById('rec_btn_siguiente_producto');
+        if (wrapProd && listProd) {
+            if (tabs.length > 0) {
+                wrapProd.style.display = 'block';
+                if (btnSig) btnSig.style.display = tabs.length > 1 ? 'inline-flex' : 'none';
+                listProd.innerHTML = tabs.map(t => {
+                    const activo = t.id === window.recProductoTabActivo;
+                    const completo = t.id > 0 && t.total > 0 && t.llenas >= t.total;
+                    const bg = activo ? '#103487' : (t.id === 0 ? '#fffbeb' : '#ffffff');
+                    const fg = activo ? '#ffffff' : (t.id === 0 ? '#92400e' : '#0f172a');
+                    const br = activo ? '#103487' : (t.id === 0 ? '#fcd34d' : '#cbd5e1');
+                    const pillBg = activo ? 'rgba(255,255,255,0.22)' : (completo ? '#dcfce7' : '#f1f5f9');
+                    const pillFg = activo ? '#ffffff' : (completo ? '#166534' : '#475569');
+                    const checkHtml = completo ? ' ✓' : '';
+                    const lblCorto = t.label.length > 46 ? t.label.substring(0, 46) + '…' : t.label;
+                    return `<button type="button" class="rec-tab-producto-btn" data-id-detalle="${t.id}" onclick="seleccionarTabProductoRecepcion(${t.id})" style="border:1.5px solid ${br}; background:${bg}; color:${fg}; padding:7px 12px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="${escapeHtml(t.label)}">
+                        <span>${t.id > 0 ? (t.orden + '. ') : ''}${escapeHtml(lblCorto)}</span>
+                        <span style="padding:1px 7px; border-radius:999px; font-size:11px; background:${pillBg}; color:${pillFg};">${t.id > 0 ? (t.llenas + '/' + t.total + checkHtml) : (t.total + ' pend.')}</span>
+                    </button>`;
+                }).join('');
+            } else {
+                wrapProd.style.display = 'none';
+            }
+        }
+
+        // Determinar columnas y muestras del producto activo
+        const tabObj = tabs.find(t => t.id === window.recProductoTabActivo) || null;
+        const prodActivo = tabObj ? tabObj.producto : null;
+        const camposTab = prodActivo
+            ? (Array.isArray(prodActivo.campos_recepcion) ? prodActivo.campos_recepcion : [])
+            : (window.recProductoTabActivo === 0 ? [] : (window.recFallbackCamposRecepcion || []));
+        const camposTecTab = prodActivo
+            ? (Array.isArray(prodActivo.campos_tecnico) ? prodActivo.campos_tecnico : [])
+            : (window.recProductoTabActivo === 0 ? [] : (window.recFallbackCamposTecnico || []));
+
+        // Actualizar recuadros LLENA RECEPCIÓN / RELLENA TÉCNICO según el producto activo
         const cRecDiv = document.getElementById('rec_lista_campos_recepcion');
         const cTecDiv = document.getElementById('rec_lista_campos_tecnico');
-        cRecDiv.innerHTML = recCamposActuales.length > 0
-            ? recCamposActuales.map(c => `<span style="display:inline-block; background:#eff6ff; border:1px solid #bfdbfe; color:#103487; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:12px; font-weight:700;">${escapeHtml(c.nombre)}</span>`).join('')
-            : '<em>Sin casillas adicionales de recepción para este formato.</em>';
-        const camposTec = Array.isArray(data.campos_tecnico) ? data.campos_tecnico : [];
-        cTecDiv.innerHTML = camposTec.length > 0
-            ? camposTec.map(c => `<span style="display:inline-block; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:12px; font-weight:700;">${escapeHtml(c)}</span>`).join('')
-            : '<em>Ninguno adicional.</em>';
+        if (window.recProductoTabActivo === 0) {
+            cRecDiv.innerHTML = '<em>Primero asigne el Producto / Ensayo destino de cada muestra para ver sus casillas exactas.</em>';
+            cTecDiv.innerHTML = '<em>Se determinará según el producto asignado.</em>';
+        } else {
+            cRecDiv.innerHTML = camposTab.length > 0
+                ? camposTab.map(c => `<span style="display:inline-block; background:#eff6ff; border:1px solid #bfdbfe; color:#103487; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:12px; font-weight:700;">${escapeHtml(c.nombre)}</span>`).join('')
+                : '<em>Sin casillas adicionales de recepción para este producto.</em>';
+            cTecDiv.innerHTML = camposTecTab.length > 0
+                ? camposTecTab.map(c => `<span style="display:inline-block; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; font-size:12px; font-weight:700;">${escapeHtml(c)}</span>`).join('')
+                : '<em>Ninguno adicional (se llena completo aquí en Recepción).</em>';
+        }
 
         const sinNotice = document.getElementById('rec_sin_campos_notice');
         const tablaSec = document.getElementById('rec_tabla_section');
         const btnGuardar = document.getElementById('rec_btn_guardar');
-        const productosOSRec = Array.isArray(data.productos_os) ? data.productos_os : [];
-        window.recProductosOsActuales = productosOSRec;
-        const mapaCamposPorDet = {};
-        productosOSRec.forEach(p => {
-            const setC = new Set();
-            (p.campos_recepcion || []).forEach(c => setC.add(normalizarClaveJsRec(c.nombre)));
-            mapaCamposPorDet[parseInt(p.id_detalle_cotizacion, 10)] = setC;
-        });
-
-        if (recCamposActuales.length === 0 && productosOSRec.length === 0) {
+        if (camposTab.length === 0 && productosOSRec.length === 0) {
             sinNotice.style.display = 'block';
             tablaSec.style.display = 'none';
             btnGuardar.style.display = 'none';
@@ -3985,75 +4162,63 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         tablaSec.style.display = 'block';
         btnGuardar.style.display = recSoloLecturaActual ? 'none' : 'inline-flex';
 
-        const muestras = Array.isArray(data.muestras) ? data.muestras : [];
-        document.getElementById('rec_total_muestras_lbl').textContent = muestras.length;
+        const codigosTab = productosOSRec.length > 0
+            ? orden.filter(c => (estado[c]?.id_detalle_cotizacion || 0) === window.recProductoTabActivo)
+            : orden.slice();
+
+        document.getElementById('rec_total_muestras_lbl').textContent = codigosTab.length;
 
         const thead = document.getElementById('rec_thead_muestras');
         const tbody = document.getElementById('rec_tbody_muestras');
+        const mostrarColDestino = productosOSRec.length > 1 || window.recProductoTabActivo === 0;
         thead.innerHTML = `<tr>
-            <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; text-align:center; width:42px;">#</th>
-            <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:125px;">Código Muestra</th>
-            <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:210px;">Producto / Ensayo Destino</th>
-            <th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:130px;">Identificación / Ubicación</th>
-            ${recCamposActuales.map(c => `<th style="padding:9px 10px; border-bottom:1.5px solid #fdba74; min-width:125px;">${escapeHtml(c.nombre)}</th>`).join('')}
+            <th style="padding:9px 10px; border-bottom:1.5px solid #cbd5e1; text-align:center; width:42px;">#</th>
+            <th style="padding:9px 10px; border-bottom:1.5px solid #cbd5e1; min-width:125px;">Código Muestra</th>
+            ${mostrarColDestino ? '<th style="padding:9px 10px; border-bottom:1.5px solid #cbd5e1; min-width:210px;">Producto / Ensayo Destino</th>' : ''}
+            <th style="padding:9px 10px; border-bottom:1.5px solid #cbd5e1; min-width:130px;">Identificación / Ubicación</th>
+            ${camposTab.map(c => `<th style="padding:9px 10px; border-bottom:1.5px solid #cbd5e1; min-width:125px;">${escapeHtml(c.nombre)}</th>`).join('')}
         </tr>`;
 
         tbody.innerHTML = '';
-        if (muestras.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${4 + recCamposActuales.length}" style="padding:18px; text-align:center; color:#64748b;">Esta hoja RT-FM-13 no tiene muestras registradas todavía.</td></tr>`;
+        const totalCols = (mostrarColDestino ? 4 : 3) + camposTab.length;
+        if (codigosTab.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${totalCols}" style="padding:20px; text-align:center; color:#64748b;">No hay muestras asignadas a este producto todavía. Puede mover muestras desde otra pestaña cambiando su columna <strong>Producto / Ensayo Destino</strong>.</td></tr>`;
             return;
         }
 
-        const actualizarVisibilidadCamposFilaRec = (trRow) => {
-            const selD = trRow.querySelector('.rec-destino-select');
-            const idDetElegido = selD ? (parseInt(selD.value || '0', 10) || 0) : 0;
-            const setPermitidos = idDetElegido > 0 ? mapaCamposPorDet[idDetElegido] : null;
-            trRow.querySelectorAll('.rec-campo-input').forEach(inp => {
-                const clave = inp.dataset.clave || '';
-                const aplica = !setPermitidos || setPermitidos.size === 0 || setPermitidos.has(clave);
-                const esAuto = inp.dataset.autocalc === '1';
-                if (!aplica) {
-                    inp.disabled = true;
-                    inp.style.opacity = '0.4';
-                    inp.style.background = '#f1f5f9';
-                    inp.placeholder = 'N/A';
-                } else {
-                    inp.disabled = recSoloLecturaActual;
-                    inp.style.opacity = '1';
-                    inp.style.background = (recSoloLecturaActual || esAuto) ? '#f1f5f9' : '#fff';
-                    inp.placeholder = '';
-                }
-            });
-        };
+        const tieneRevenIn = camposTab.some(cc => ['revenin', 'revenimientoin'].includes(normalizarClaveJsRec(cc.nombre)));
 
-        muestras.forEach((m, idx) => {
+        codigosTab.forEach((cod, idx) => {
+            const m = estado[cod];
             const tr = document.createElement('tr');
-            tr.dataset.codigo = m.codigo_muestra || '';
-            tr.style.background = (idx % 2 === 0) ? '#ffffff' : '#fffaf5';
+            tr.dataset.codigo = cod;
+            tr.style.background = (idx % 2 === 0) ? '#ffffff' : '#f8fafc';
 
-            const idDetActualM = parseInt(m.id_detalle_cotizacion || 0, 10) || (productosOSRec.length === 1 ? parseInt(productosOSRec[0].id_detalle_cotizacion, 10) : 0);
-            let optsDestRec = '<option value="0">-- Sin asignar (definir producto) --</option>';
-            productosOSRec.forEach(p => {
-                const pId = parseInt(p.id_detalle_cotizacion, 10);
-                const pNom = (p.codigo_servicio ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo');
-                const selAttr = (pId === idDetActualM) ? ' selected' : '';
-                optsDestRec += `<option value="${pId}"${selAttr}>${escapeHtml(pNom)}</option>`;
-            });
-
-            let html = `
-                <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center; font-weight:700; color:#64748b;">${idx + 1}</td>
-                <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; font-family:monospace; font-weight:700; color:#103487;">${escapeHtml(m.codigo_muestra || '')}</td>
-                <td style="padding:6px 8px; border-bottom:1px solid #f1f5f9;">
+            let colDestHtml = '';
+            if (mostrarColDestino) {
+                let optsDestRec = '<option value="0">-- Sin asignar (definir producto) --</option>';
+                productosOSRec.forEach(p => {
+                    const pId = parseInt(p.id_detalle_cotizacion, 10);
+                    const pNom = (p.codigo_servicio ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo');
+                    const selAttr = (pId === (m.id_detalle_cotizacion || 0)) ? ' selected' : '';
+                    optsDestRec += `<option value="${pId}"${selAttr}>${escapeHtml(pNom)}</option>`;
+                });
+                colDestHtml = `<td style="padding:6px 8px; border-bottom:1px solid #f1f5f9;">
                     <select class="rtfm13-input rec-destino-select" style="height:34px; font-size:12px; padding:4px 8px; background:${recSoloLecturaActual ? '#f1f5f9' : '#fff'};" ${recSoloLecturaActual ? 'disabled' : ''}>
                         ${optsDestRec}
                     </select>
-                </td>
+                </td>`;
+            }
+
+            let html = `
+                <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center; font-weight:700; color:#64748b;">${idx + 1}</td>
+                <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; font-family:monospace; font-weight:700; color:#103487;">${escapeHtml(cod)}</td>
+                ${colDestHtml}
                 <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; color:#334155; font-size:12px;">${escapeHtml(m.descripcion_ubicacion || m.observacion_edad || '—')}</td>
             `;
 
             const dRec = m.datos_recepcion || {};
-            const tieneRevenIn = recCamposActuales.some(cc => ['revenin', 'revenimientoin'].includes(normalizarClaveJsRec(cc.nombre)));
-            recCamposActuales.forEach(c => {
+            camposTab.forEach(c => {
                 const val = dRec[c.nombre] !== undefined ? dRec[c.nombre] : '';
                 const stepAttr = c.step ? `step="${escapeHtml(c.step)}"` : '';
                 const clave = normalizarClaveJsRec(c.nombre);
@@ -4078,14 +4243,22 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 
             const selDestEl = tr.querySelector('.rec-destino-select');
             if (selDestEl) {
-                selDestEl.addEventListener('change', () => actualizarVisibilidadCamposFilaRec(tr));
+                selDestEl.addEventListener('change', () => {
+                    guardarEstadoTabActualEnMemoria();
+                    renderizarPestanaActivaRecepcion();
+                });
             }
-            actualizarVisibilidadCamposFilaRec(tr);
 
-            // Auto-cálculo Reven. in <-> Reven. cm y Fechas <-> Edad (Días)
+            // Auto-cálculo Reven. in <-> Reven. cm y Fechas <-> Edad (Días) + sincronización en memoria
             tr.querySelectorAll('.rec-campo-input').forEach(inp => {
-                inp.addEventListener('input', () => recalcularFilaDatosRecepcion(tr, inp));
-                inp.addEventListener('change', () => recalcularFilaDatosRecepcion(tr, inp));
+                inp.addEventListener('input', () => {
+                    recalcularFilaDatosRecepcion(tr, inp);
+                    guardarEstadoTabActualEnMemoria();
+                });
+                inp.addEventListener('change', () => {
+                    recalcularFilaDatosRecepcion(tr, inp);
+                    guardarEstadoTabActualEnMemoria();
+                });
             });
         });
     }
@@ -4144,26 +4317,21 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 }
             });
         }
-        document.getElementById('rec_feedback_msg').innerHTML = '<span style="color:#0369a1;"><i class="fa-solid fa-check me-1"></i>Valores copiados de la fila 1 a todas las muestras (revise edades/fechas individuales si varían y guarde).</span>';
+        guardarEstadoTabActualEnMemoria();
+        document.getElementById('rec_feedback_msg').innerHTML = '<span style="color:#0369a1;"><i class="fa-solid fa-check me-1"></i>Valores copiados de la fila 1 a las muestras de este producto (revise edades/fechas individuales si varían y guarde).</span>';
     }
 
     function guardarDatosRecepcionModal(marcarCompleta = false) {
         if (recHojaActualId <= 0 || recSoloLecturaActual) return;
+        guardarEstadoTabActualEnMemoria();
         const payloadMuestras = {};
         const payloadDestinos = {};
-        document.querySelectorAll('#rec_tbody_muestras tr').forEach(tr => {
-            const cod = tr.dataset.codigo || '';
-            if (!cod) return;
-            payloadMuestras[cod] = {};
-            tr.querySelectorAll('.rec-campo-input').forEach(inp => {
-                if (!inp.disabled) {
-                    payloadMuestras[cod][inp.dataset.campo] = inp.value.trim();
-                }
-            });
-            const selDest = tr.querySelector('.rec-destino-select');
-            if (selDest) {
-                payloadDestinos[cod] = parseInt(selDest.value || '0', 10) || 0;
-            }
+        const orden = Array.isArray(window.recOrdenMuestras) ? window.recOrdenMuestras : [];
+        const estado = window.recEstadoMuestras || {};
+        orden.forEach(cod => {
+            if (!cod || !estado[cod]) return;
+            payloadMuestras[cod] = Object.assign({}, estado[cod].datos_recepcion || {});
+            payloadDestinos[cod] = parseInt(estado[cod].id_detalle_cotizacion || 0, 10) || 0;
         });
 
         const btn = marcarCompleta ? (document.getElementById('rec_btn_completar') || document.getElementById('rec_btn_guardar')) : document.getElementById('rec_btn_guardar');

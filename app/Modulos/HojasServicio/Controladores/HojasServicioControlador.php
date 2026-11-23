@@ -1158,15 +1158,21 @@ class HojasServicioControlador extends ControladorBase {
         }
 
         // 2. Detectar formatos de compactación / densímetro / cono de arena / reemplazo de agua
+        // Evaluar estrictamente sobre $infoFormato (del producto específico) para no mezclar con otros productos de una hoja multi-muestra
         $textoFormato = mb_strtolower(
             (string)($infoFormato['archivo_markdown'] ?? '') . ' ' .
             (string)($infoFormato['formato_nombre'] ?? '') . ' ' .
-            (string)($infoFormato['codigo_formato'] ?? '') . ' ' .
-            (string)($hoja['descripcion_ensayo'] ?? '') . ' ' .
-            (string)($hoja['codigo_servicio'] ?? '') . ' ' .
-            (string)($hoja['nombre_comercial'] ?? ''),
+            (string)($infoFormato['codigo_formato'] ?? ''),
             'UTF-8'
         );
+        if (trim($textoFormato) === '') {
+            $textoFormato = mb_strtolower(
+                (string)($hoja['descripcion_ensayo'] ?? '') . ' ' .
+                (string)($hoja['codigo_servicio'] ?? '') . ' ' .
+                (string)($hoja['nombre_comercial'] ?? ''),
+                'UTF-8'
+            );
+        }
 
         $esCompactacion = false;
         foreach (['compactacion', 'compactación', 'densimetro', 'densímetro', 'cono_de_arena', 'cono de arena', 'reemplazo_de_agua', 'reemplazo de agua', 'd6938', 'd1556', 'd2167', 'rt-fm-22 b', 'rt-fm-22 c'] as $kw) {
@@ -1177,20 +1183,37 @@ class HojasServicioControlador extends ControladorBase {
         }
 
         if ($esCompactacion) {
+            // Solo completar columnas de compactación faltantes si el esquema del formato no las trae ya
+            // (evita duplicados como 'Humedad Óptima' vs 'Humedad Óptima ((% )(P/P))' o 'Compactación' vs 'Compactación ((%) (P/P))')
+            $yaExisteSemantica = static function (string $claveObjetivo, array $claves): bool {
+                if (isset($claves[$claveObjetivo])) {
+                    return true;
+                }
+                foreach (array_keys($claves) as $kExist) {
+                    if (str_starts_with($kExist, $claveObjetivo) || str_contains($kExist, $claveObjetivo)) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            $tieneMatrizCompactacionCompleta = count($base) >= 4;
             $columnasCompactacion = [
-                ['nombre' => 'Capa (N°)', 'tipo' => 'text', 'step' => ''],
-                ['nombre' => 'Espesor (cm)', 'tipo' => 'number', 'step' => '0.01'],
-                ['nombre' => 'Profundidad (cm)', 'tipo' => 'number', 'step' => '0.01'],
-                ['nombre' => 'P.V.S Max (kg/m³)', 'tipo' => 'number', 'step' => '0.01'],
-                ['nombre' => 'Humedad Óptima', 'tipo' => 'number', 'step' => '0.01'],
-                ['nombre' => 'P.V.S.Sitio (kg/m³)', 'tipo' => 'number', 'step' => '0.01'],
-                ['nombre' => 'Humedad sitio', 'tipo' => 'number', 'step' => '0.01'],
-                ['nombre' => 'Compactación', 'tipo' => 'number', 'step' => '0.01'],
-                ['nombre' => 'Fecha de muestreo', 'tipo' => 'date', 'step' => ''],
+                ['nombre' => 'Capa (N°)', 'clave_sem' => 'capa', 'tipo' => 'text', 'step' => ''],
+                ['nombre' => 'Espesor (cm)', 'clave_sem' => 'espesor', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'Profundidad (cm)', 'clave_sem' => 'profundidad', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'P.V.S Max (kg/m³)', 'clave_sem' => 'pvsmax', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'Humedad Óptima', 'clave_sem' => 'humedadoptima', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'P.V.S.Sitio (kg/m³)', 'clave_sem' => 'pvssitio', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'Humedad sitio', 'clave_sem' => 'humedadsitio', 'tipo' => 'number', 'step' => '0.01'],
+                ['nombre' => 'Compactación', 'clave_sem' => 'compactacion', 'tipo' => 'number', 'step' => '0.01'],
             ];
+            if (!$tieneMatrizCompactacionCompleta) {
+                $columnasCompactacion[] = ['nombre' => 'Fecha de muestreo', 'clave_sem' => 'fechademuestreo', 'tipo' => 'date', 'step' => ''];
+            }
             foreach ($columnasCompactacion as $colC) {
                 $kNorm = normalizarTextoClavePHP($colC['nombre']);
-                if (!isset($clavesExistentes[$kNorm])) {
+                if (!$yaExisteSemantica($colC['clave_sem'], $clavesExistentes) && !isset($clavesExistentes[$kNorm])) {
                     $campos[] = [
                         'nombre' => $colC['nombre'],
                         'clave' => $kNorm,

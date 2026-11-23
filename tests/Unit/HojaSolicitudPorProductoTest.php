@@ -1179,12 +1179,16 @@ class HojaSolicitudPorProductoTest extends TestCase {
         $this->assertSame(['MS-8001-26', 'MS-8002-26'], array_column($muestrasConcreto, 'codigo_muestra'));
         $this->assertSame(['MS-8003-26', 'MS-8004-26'], array_column($muestrasSuelo, 'codigo_muestra'));
 
-        // Verificar que la vista de Órdenes de Servicio retiró la tarjeta obligatoria de 1 solo producto y el recuadro de Plantilla Predeterminada
+        // Verificar que la vista de Órdenes de Servicio retiró la tarjeta obligatoria de 1 solo producto, el recuadro de Plantilla Predeterminada
+        // y separa el modal Datos de Recepción en pestañas limpias por producto (sin mezclar columnas ni N/A)
         $vistaOs = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/OrdenesServicio/Vistas/index.php');
         $this->assertStringNotContainsString('Cada Hoja CYCSA-RT-FM-13 ampara un producto o ensayo específico', $vistaOs);
         $this->assertStringNotContainsString('Plantilla de Ensayo Predeterminada:', $vistaOs);
         $this->assertStringContainsString('name="m_detalle_cotizacion[]"', $vistaOs);
         $this->assertStringContainsString('rec-destino-select', $vistaOs);
+        $this->assertStringContainsString('id="rec_tabs_productos_wrap"', $vistaOs);
+        $this->assertStringContainsString('seleccionarTabProductoRecepcion', $vistaOs);
+        $this->assertStringContainsString('irAlSiguienteProductoRecepcion', $vistaOs);
     }
 
 }
