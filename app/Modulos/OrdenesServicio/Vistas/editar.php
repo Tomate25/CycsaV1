@@ -1,6 +1,9 @@
 <?php
 // Vista para editar Orden de Servicio CYCSA-RG-FM-39 V1 (CYCSA ERP Premium Style)
 $esAprobada = esOrdenServicioAprobada($os['estado'] ?? null);
+$puedeAprobarOS = in_array((int)($_SESSION['usuario_rol'] ?? 0), [1, 3], true) || tienePermiso('ordenes_servicio', 'aprobar');
+$mostrarAprobacionEnEdicion = (!$esAprobada && $puedeAprobarOS);
+$ensayosPermitidosSet = array_flip(array_map('intval', $ensayosPermitidosActuales ?? []));
 $esMultimes = !empty($os['es_multimes']);
 $idClienteFacturaActual = (int)($os['id_cliente_factura'] ?? $os['id_cliente'] ?? 0);
 $idClienteInformeActual = (int)($os['id_cliente_informe'] ?? $os['id_cliente'] ?? 0);
@@ -218,15 +221,23 @@ $listaClientes = $clientes ?? [];
             <?php endif; ?>
         </div>
 
-        <!-- TABLA DE ENSAYOS INCLUIDOS (REFERENCIA) -->
+        <!-- TABLA DE ENSAYOS INCLUIDOS (REFERENCIA Y HABILITACIÓN PARA APROBAR) -->
         <div class="cycsa-card">
-            <div class="cycsa-card-title">
-                <i class="fa-solid fa-vial"></i> 2. Ensayos y Servicios Contratados (Heredados de Cotización)
+            <div class="cycsa-card-title" style="justify-content: space-between;">
+                <span><i class="fa-solid fa-vial"></i> 2. Ensayos y Servicios Contratados (Heredados de Cotización)</span>
+                <?php if ($mostrarAprobacionEnEdicion): ?>
+                    <span style="font-size: 12px; font-weight: 600; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 6px;">
+                        <i class="fa-solid fa-check-double"></i> Marque los ensayos a habilitar al aprobar
+                    </span>
+                <?php endif; ?>
             </div>
             
             <table class="tabla-cycsa">
                 <thead>
                     <tr>
+                        <?php if ($mostrarAprobacionEnEdicion): ?>
+                            <th style="width: 75px; text-align: center;">Habilitar</th>
+                        <?php endif; ?>
                         <th style="width: 70px; text-align: center;">Línea</th>
                         <th>Código y Descripción del Ensayo / Servicio</th>
                         <th style="width: 120px; text-align: center;">Cantidad</th>
@@ -234,8 +245,16 @@ $listaClientes = $clientes ?? [];
                 </thead>
                 <tbody>
                     <?php if (!empty($detalles)): ?>
-                        <?php foreach ($detalles as $index => $det): ?>
+                        <?php foreach ($detalles as $index => $det):
+                            $idDetRow = (int)($det['id'] ?? 0);
+                            $marcadoDet = empty($ensayosPermitidosSet) || isset($ensayosPermitidosSet[$idDetRow]);
+                        ?>
                             <tr>
+                                <?php if ($mostrarAprobacionEnEdicion): ?>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" name="ensayos_permitidos[]" value="<?= $idDetRow ?>" <?= $marcadoDet ? 'checked' : '' ?> style="width: 18px; height: 18px; accent-color: #059669; cursor: pointer;">
+                                    </td>
+                                <?php endif; ?>
                                 <td style="text-align: center; font-weight: 700; color: #64748b;"><?= $index + 1 ?></td>
                                 <td>
                                     <?= htmlspecialchars($det['descripcion_ensayo'] ?? $det['nombre_ensayo'] ?? '') ?>
@@ -250,20 +269,25 @@ $listaClientes = $clientes ?? [];
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="3" style="text-align: center; color: #64748b; padding: 20px;">No hay ensayos registrados en la cotización.</td>
+                            <td colspan="<?= $mostrarAprobacionEnEdicion ? '4' : '3' ?>" style="text-align: center; color: #64748b; padding: 20px;">No hay ensayos registrados en la cotización.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 12px;">
-            <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary">
+        <div style="display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
+            <a href="/Cycsa/publico/ordenes-servicio" class="btn-cycsa btn-cycsa-secondary">
                 Cancelar
             </a>
-            <button type="submit" class="btn-cycsa btn-cycsa-primary" style="padding: 12px 28px; font-size: 15px;">
+            <button type="submit" class="btn-cycsa <?= $mostrarAprobacionEnEdicion ? 'btn-cycsa-secondary' : 'btn-cycsa-primary' ?>" style="padding: 12px 24px; font-size: 14.5px;">
                 <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
             </button>
+            <?php if ($mostrarAprobacionEnEdicion): ?>
+                <button type="submit" name="aprobar_al_guardar" value="1" class="btn-cycsa btn-cycsa-primary" style="background: #059669; border-color: #059669; padding: 12px 28px; font-size: 15px; font-weight: 700;">
+                    <i class="fa-solid fa-check-double"></i> Guardar y Aprobar O/S
+                </button>
+            <?php endif; ?>
         </div>
     </form>
 </div>

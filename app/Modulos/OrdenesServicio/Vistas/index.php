@@ -603,16 +603,20 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                                             </a>
                                         <?php endif; ?>
                                     <?php elseif (!$esOSAprobada): ?>
-                                        <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3])): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-primary" style="background:#059669; border-color:#059669; min-height:38px; font-weight:700;" 
-                                                    data-ensayos="<?= $ensayosAprobarJson ?>"
-                                                    onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>', this)">
-                                                <i class="fa-solid fa-check-double"></i> Aprobar O/S
-                                            </button>
+                                        <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3]) || tienePermiso('ordenes_servicio', 'aprobar')): ?>
+                                            <a href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= $os['id'] ?>"
+                                               class="btn-cycsa btn-cycsa-primary"
+                                               style="background:#059669; border-color:#059669; min-height:38px; font-weight:700;"
+                                               title="Revisar y editar toda la Orden de Servicio antes de aprobarla">
+                                                <i class="fa-solid fa-pen-to-square"></i> Editar y Aprobar
+                                            </a>
                                         <?php else: ?>
-                                            <span class="btn-cycsa btn-cycsa-secondary" style="opacity:0.75; cursor:not-allowed; min-height:38px;" title="Pendiente de aprobación formal por supervisor">
-                                                <i class="fa-solid fa-lock"></i> Por Aprobar
-                                            </span>
+                                            <a href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= $os['id'] ?>"
+                                               class="btn-cycsa btn-cycsa-secondary"
+                                               style="min-height:38px; font-weight:600;"
+                                               title="Revisar o editar antes de la aprobación de supervisión">
+                                                <i class="fa-solid fa-pen-to-square"></i> Editar O/S
+                                            </a>
                                         <?php endif; ?>
                                     <?php else: ?>
                                         <?php if ($cantHojas === 0): ?>
@@ -637,6 +641,15 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm os-acciones-menu" aria-labelledby="dropdownMenuOS<?= $os['id'] ?>">
                                             <?php if (!in_array($os['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
+                                                <?php if (!$esOSAprobada && (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3]) || tienePermiso('ordenes_servicio', 'aprobar'))): ?>
+                                                <li>
+                                                    <button type="button" class="dropdown-item py-2 text-success fw-semibold"
+                                                            data-ensayos="<?= $ensayosAprobarJson ?>"
+                                                            onclick="abrirModalAprobarOS(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', '<?= htmlspecialchars(addslashes($os['cliente_nombre'])) ?>', '<?= htmlspecialchars(addslashes($os['nombre_proyecto'] ?? '')) ?>', this)">
+                                                        <i class="fa-solid fa-check-double me-2"></i> Aprobación rápida
+                                                    </button>
+                                                </li>
+                                                <?php endif; ?>
                                                 <li>
                                                     <a class="dropdown-item py-2" href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= $os['id'] ?>">
                                                         <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Editar Orden de Servicio

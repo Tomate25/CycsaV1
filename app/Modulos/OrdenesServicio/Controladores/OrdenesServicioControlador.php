@@ -254,12 +254,20 @@ class OrdenesServicioControlador extends ControladorBase {
             ->query("SELECT id, nombre_razon_social, numero_ruc FROM clientes ORDER BY nombre_razon_social ASC")
             ->fetchAll(\PDO::FETCH_ASSOC);
 
+        $ensayosPermitidosActuales = [];
+        try {
+            $ensayosPermitidosActuales = $osModelo->obtenerIdsPermitidos($idOS) ?? [];
+        } catch (\Throwable $e) {
+            $ensayosPermitidosActuales = [];
+        }
+
         $this->renderizar('OrdenesServicio/Vistas/editar', [
             'titulo' => 'Editar Orden de Servicio - ' . ($os['codigo_os'] ?? ''),
             'os' => $os,
             'cotizacion' => $cotizacion ?: ['codigo' => 'N/A', 'version' => 1, 'cliente_nombre' => $os['cliente_nombre'] ?? ''],
             'detalles' => $detalles,
-            'clientes' => $clientes
+            'clientes' => $clientes,
+            'ensayosPermitidosActuales' => $ensayosPermitidosActuales,
         ]);
     }
 
@@ -368,6 +376,59 @@ class OrdenesServicioControlador extends ControladorBase {
         ];
 
         $actualizado = $osModelo->actualizar($idOS, $datosActualizar);
+
+        // Si el supervisor eligió "Guardar y Aprobar O/S" desde la pantalla de edición completa:
+        $solicitaAprobarAlGuardar = !empty($datos['aprobar_al_guardar']);
+        if ($actualizado && $solicitaAprobarAlGuardar) {
+            $rolAct = (int)($_SESSION['usuario_rol'] ?? 0);
+            if (!in_array($rolAct, [1, 3], true) && !tienePermiso('ordenes_servicio', 'aprobar')) {
+                $_SESSION['error'] = 'Los cambios fueron guardados, pero no tiene permisos de supervisor para aprobar la Orden de Servicio.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/editar?id_os=' . $idOS);
+                return;
+            }
+
+            $idsPermitidos = $this->normalizarIdsEnsayosPermitidos($datos['ensayos_permitidos'] ?? []);
+            if ($idsPermitidos === []) {
+                $_SESSION['error'] = 'Los cambios fueron guardados, pero debe habilitar al menos un ensayo de la cotización para aprobar la Orden de Servicio.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/editar?id_os=' . $idOS);
+                return;
+            }
+            if (!$osModelo->ensayosPertenecenACotizacion((int)$os['id_cotizacion'], $idsPermitidos)) {
+                $_SESSION['error'] = 'Uno o más ensayos seleccionados no pertenecen a la cotización de esta Orden de Servicio.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/editar?id_os=' . $idOS);
+                return;
+            }
+
+            $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            $osModelo->asegurarTablaEnsayosPermitidos();
+            try {
+                $db->beginTransaction();
+                $stmtApr = $db->prepare("UPDATE ordenes_servicio SET estado = 'Aprobada', motivo_observacion = NULL WHERE id = :id");
+                $stmtApr->execute(['id' => $idOS]);
+                $osModelo->guardarEnsayosPermitidos($idOS, $idsPermitidos, (int)($_SESSION['usuario_id'] ?? 0));
+                $db->commit();
+            } catch (\Throwable $e) {
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+                error_log('Error al aprobar O/S desde editar ' . $idOS . ': ' . $e->getMessage());
+                $_SESSION['error'] = 'Los cambios se guardaron, pero ocurrió un error al aprobar la Orden de Servicio.';
+                $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/editar?id_os=' . $idOS);
+                return;
+            }
+
+            $listaIds = implode(', ', $idsPermitidos);
+            registrarEventoOS(
+                'ordenes_servicio',
+                'aprobar',
+                'Orden de Servicio ' . $os['codigo_os'] . ' revisada, actualizada y aprobada formalmente por ' . ($_SESSION['usuario_nombre'] ?? 'Supervisor') . '. Ensayos habilitados (IDs): ' . $listaIds,
+                $idOS,
+                ['datos' => ['ensayos_permitidos' => $idsPermitidos, 'origen' => 'editar_y_aprobar']]
+            );
+            $_SESSION['exito'] = 'Orden de Servicio ' . ($os['codigo_os'] ?? '') . ' guardada y aprobada con éxito. Ya puede registrar Hojas de Solicitud CYCSA-RT-FM-13.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio');
+            return;
+        }
 
         if ($actualizado) {
             if ($requiereReaprobacion) {
