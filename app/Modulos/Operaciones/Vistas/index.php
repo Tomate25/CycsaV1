@@ -468,7 +468,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                             <th><?= $esTecnicoCiego ? 'Ensayos asignados' : 'Cliente y proyecto' ?></th>
                             <th>Etapa</th>
                             <th>Avance</th>
-                            <th>Próxima acción</th>
+                            <th>Documentos</th>
                             <th class="text-end"></th>
                         </tr>
                     </thead>
@@ -661,8 +661,15 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                 </div>
                             </td>
                             <td>
-                                <a href="<?= htmlspecialchars($sigPasoUrl, ENT_QUOTES, 'UTF-8') ?>" class="cy-action-link">
-                                    Siguiente paso: <?= htmlspecialchars($sigPasoTexto, ENT_QUOTES, 'UTF-8') ?>
+                                <?php
+                                $idDocCol = $primerItemAprobadoId ?? $primerItemRevisionId ?? $primerItemId;
+                                $urlDocCol = $idDocCol ? ('/Cycsa/publico/operaciones/documento?id_detalle=' . (int)$idDocCol) : $sigPasoUrl;
+                                $lblDocCol = ($matricesAprobadas > 0)
+                                    ? ('Ver documento listo (' . $matricesAprobadas . '/' . $totalItemsOS . ')')
+                                    : (($matricesLlenadas > 0) ? 'Revisar documento' : 'Ver documento');
+                                ?>
+                                <a href="<?= htmlspecialchars($urlDocCol, ENT_QUOTES, 'UTF-8') ?>" class="cy-action-link">
+                                    <?= htmlspecialchars($lblDocCol, ENT_QUOTES, 'UTF-8') ?>
                                 </a>
                             </td>
                             <td class="text-end" style="white-space: nowrap;">
@@ -738,16 +745,31 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                         <?php endforeach; ?>
                                     </ol>
 
-                                    <!-- Caja "Siguiente acción" (.cy-next) con el ÚNICO .btn-primary del panel -->
+                                    <!-- Caja de documentos listos (.cy-next) con el ÚNICO .btn-primary del panel -->
                                     <div class="cy-next">
                                         <div>
-                                            <div class="fw-semibold">Siguiente acción: <?= htmlspecialchars($sigPasoTexto, ENT_QUOTES, 'UTF-8') ?></div>
-                                            <div class="cy-meta"><?= htmlspecialchars($sigPasoDetalle, ENT_QUOTES, 'UTF-8') ?></div>
+                                            <?php if ($matricesAprobadas >= $totalItemsOS && $totalItemsOS > 0): ?>
+                                                <div class="fw-semibold">Documentos listos para ver (<?= $matricesAprobadas ?> de <?= $totalItemsOS ?>)</div>
+                                                <div class="cy-meta">Todos los documentos están completos y aprobados para visualizar, imprimir o enviar.</div>
+                                            <?php elseif ($matricesAprobadas > 0): ?>
+                                                <div class="fw-semibold">Documentos listos para ver (<?= $matricesAprobadas ?> de <?= $totalItemsOS ?> aprobados)</div>
+                                                <div class="cy-meta"><?= $matricesLlenadas ?> de <?= $totalItemsOS ?> ensayos con datos técnicos registrados.</div>
+                                            <?php elseif ($matricesLlenadas > 0): ?>
+                                                <div class="fw-semibold">Documentos con resultados para revisión (<?= $matricesLlenadas ?> de <?= $totalItemsOS ?>)</div>
+                                                <div class="cy-meta">Datos de Recepción y Captura Técnica listos para revisar y aprobar.</div>
+                                            <?php else: ?>
+                                                <div class="fw-semibold">Documentos del expediente (<?= $totalItemsOS ?> <?= $totalItemsOS === 1 ? 'ensayo' : 'ensayos' ?>)</div>
+                                                <div class="cy-meta">En espera de datos técnicos desde el módulo Captura Técnica.</div>
+                                            <?php endif; ?>
                                         </div>
                                         <?php if (!$esTecnicoCiego && !empty($o['puede_cerrar']) && !in_array($o['estado'], ['Finalizado', 'Archivado', 'Cerrado'], true)): ?>
                                             <button type="button" class="btn btn-primary" onclick="abrirModalCerrarOS(<?= (int)$o['id'] ?>, '<?= htmlspecialchars(addslashes((string)$o['codigo_os']), ENT_QUOTES, 'UTF-8') ?>')">Cerrar orden</button>
-                                        <?php else: ?>
-                                            <a href="<?= htmlspecialchars($sigPasoUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn btn-primary"><?= htmlspecialchars($sigPasoTexto, ENT_QUOTES, 'UTF-8') ?></a>
+                                        <?php else:
+                                            $idDocNext = $primerItemAprobadoId ?? $primerItemRevisionId ?? $primerItemId;
+                                            $urlDocNext = $idDocNext ? ('/Cycsa/publico/operaciones/documento?id_detalle=' . (int)$idDocNext) : $sigPasoUrl;
+                                            $lblDocNext = ($matricesAprobadas > 0) ? 'Ver documento listo' : (($matricesLlenadas > 0) ? 'Revisar documento' : 'Ver documento');
+                                        ?>
+                                            <a href="<?= htmlspecialchars($urlDocNext, ENT_QUOTES, 'UTF-8') ?>" class="btn btn-primary"><?= htmlspecialchars($lblDocNext, ENT_QUOTES, 'UTF-8') ?></a>
                                         <?php endif; ?>
                                     </div>
 

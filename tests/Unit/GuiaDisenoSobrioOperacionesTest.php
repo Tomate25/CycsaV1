@@ -286,7 +286,8 @@ class GuiaDisenoSobrioOperacionesTest extends TestCase {
         $this->assertStringContainsString('<h1 class="cy-page-title">Operaciones</h1>', $htmlIndex);
         $this->assertStringContainsString('OS-2026-0055', $htmlIndex);
         $this->assertStringContainsString('2 de 3 matrices', $htmlIndex);
-        $this->assertStringContainsString('Siguiente paso: Capturar Lote en Lab', $htmlIndex);
+        $this->assertStringContainsString('Ver documento listo (1/3)', $htmlIndex);
+        $this->assertStringContainsString('Documentos listos para ver', $htmlIndex);
         $this->assertStringContainsString('Ver Matrices (2/3)', $htmlIndex);
         $this->assertStringContainsString('class="cy-step "', $htmlIndex);
         $this->assertStringContainsString('dropdown-item text-danger', $htmlIndex);

@@ -1975,73 +1975,73 @@ class OperacionesControlador extends ControladorBase {
             $sigPasoUrl = $sigAccionUrl;
         } elseif (!$paso3Hecho) {
             $pillEtapaClase = 'cy-pill-warn';
-            $pillEtapaTexto = 'Ejecución técnica';
+            $pillEtapaTexto = 'En captura técnica';
             $etapaFlujoOS = 'en_ejecucion';
             $bandejaRol = 'tecnico';
             $targetDet = $primerDetallePendienteId ?? $primerDetalleId;
-            $sigAccionTitulo = 'Capturar resultados de matriz';
+            $sigAccionTitulo = 'Documento en captura técnica';
             $sigAccionSubtitulo = $nombreEnsayoPendiente !== ''
-                ? "Pendiente captura técnica en {$nombreEnsayoPendiente} ({$matricesCapturadas} de {$totalMatrices} matrices)."
-                : "{$matricesCapturadas} de {$totalMatrices} matrices capturadas para esta orden.";
-            $sigAccionBotonTexto = 'Capturar matriz';
+                ? "En espera de datos técnicos para {$nombreEnsayoPendiente} ({$matricesCapturadas} de {$totalMatrices} documentos con captura)."
+                : "{$matricesCapturadas} de {$totalMatrices} documentos con datos técnicos registrados.";
+            $sigAccionBotonTexto = 'Ver documento';
             $sigAccionUrl = $targetDet
-                ? "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$targetDet}"
+                ? "/Cycsa/publico/operaciones/documento?id_detalle={$targetDet}"
                 : $urlVerOS;
-            $sigPasoTexto = 'Capturar Matriz Técnica';
+            $sigPasoTexto = 'Ver documento';
             $sigPasoUrl = $sigAccionUrl;
         } elseif (!$paso4Hecho) {
             if ($matricesEnRevision > 0) {
                 $pillEtapaClase = 'cy-pill-warn';
-                $pillEtapaTexto = 'Matriz en revisión';
+                $pillEtapaTexto = 'Documento en revisión';
                 $etapaFlujoOS = 'matriz_en_revision';
                 $bandejaRol = 'supervisor';
                 $targetDet = $primerDetalleRevisionId ?? $primerDetalleId;
                 $sigAccionTitulo = $nombreEnsayoRevision !== ''
-                    ? "Aprobar matriz de {$nombreEnsayoRevision}"
-                    : 'Aprobar matriz pendiente';
-                $sigAccionSubtitulo = "{$matricesAprobadas} de {$totalMatrices} matrices aprobadas ({$matricesEnRevision} en revisión).";
-                $sigAccionBotonTexto = 'Aprobar matriz';
+                    ? "Documento listo para revisión: {$nombreEnsayoRevision}"
+                    : 'Documento listo para revisión';
+                $sigAccionSubtitulo = "{$matricesAprobadas} de {$totalMatrices} documentos aprobados ({$matricesEnRevision} listo para revisar).";
+                $sigAccionBotonTexto = 'Revisar documento';
                 $sigAccionUrl = $targetDet
-                    ? "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$targetDet}"
+                    ? "/Cycsa/publico/operaciones/documento?id_detalle={$targetDet}"
                     : $urlVerOS;
-                $sigPasoTexto = 'Aprobar Matriz';
+                $sigPasoTexto = 'Revisar documento';
                 $sigPasoUrl = $sigAccionUrl;
             } else {
                 $pillEtapaClase = 'cy-pill-warn';
-                $pillEtapaTexto = 'Ejecución técnica';
+                $pillEtapaTexto = 'En captura técnica';
                 $etapaFlujoOS = ($matricesCapturadas >= $totalMatrices && $totalMatrices > 0) ? 'tecnico_completo' : 'en_ejecucion';
                 $bandejaRol = 'tecnico';
                 $targetDet = $primerDetallePendienteId ?? $primerDetalleId;
-                $sigAccionTitulo = 'Enviar matriz a revisión';
-                $sigAccionSubtitulo = "Ensayos ejecutados; falta completar y enviar matrices a supervisión ({$matricesAprobadas} de {$totalMatrices} aprobadas).";
-                $sigAccionBotonTexto = 'Capturar / Enviar';
+                $sigAccionTitulo = 'Documento en proceso técnico';
+                $sigAccionSubtitulo = "{$matricesCapturadas} de {$totalMatrices} documentos con captura ({$matricesAprobadas} aprobados).";
+                $sigAccionBotonTexto = 'Ver documento';
                 $sigAccionUrl = $targetDet
-                    ? "/Cycsa/publico/operaciones/captura-matriz?id_detalle={$targetDet}"
+                    ? "/Cycsa/publico/operaciones/documento?id_detalle={$targetDet}"
                     : $urlVerOS;
-                $sigPasoTexto = 'Enviar Matriz a Revisión';
+                $sigPasoTexto = 'Ver documento';
                 $sigPasoUrl = $sigAccionUrl;
             }
         } else {
             $pillEtapaClase = 'cy-pill-ok';
-            $pillEtapaTexto = 'Aprobado';
+            $pillEtapaTexto = 'Documento listo';
             $etapaFlujoOS = 'informe';
             $bandejaRol = 'informes';
             $urlInforme = $primerDetalleId
-                ? "/Cycsa/publico/operaciones/imprimir-matriz?id_detalle={$primerDetalleId}"
+                ? "/Cycsa/publico/operaciones/documento?id_detalle={$primerDetalleId}"
                 : $urlVerOS;
             if ($paso5Hecho) {
                 $sigAccionTitulo = $cierreEmitido && in_array(trim((string)($os['estado'] ?? '')), ['Finalizado', 'Archivado', 'Cerrado'], true)
                     ? 'Orden finalizada y archivada'
-                    : 'Informe oficial emitido';
-                $sigAccionSubtitulo = "Las {$totalMatrices} matrices están aprobadas y el informe fue emitido.";
-                $sigAccionBotonTexto = 'Ver Informe PDF';
+                    : 'Documentos listos para ver';
+                $sigAccionSubtitulo = "Los {$totalMatrices} documentos están aprobados y completos con todos los datos.";
+                $sigAccionBotonTexto = 'Ver documento';
             } else {
-                $sigAccionTitulo = 'Emitir y enviar informe oficial';
-                $sigAccionSubtitulo = "Las {$totalMatrices} matrices están aprobadas; pendiente emitir o enviar el informe PDF al cliente.";
-                $sigAccionBotonTexto = 'Enviar al cliente';
+                $sigAccionTitulo = 'Documentos listos para ver y entregar';
+                $sigAccionSubtitulo = "Los {$totalMatrices} documentos están aprobados y listos para imprimir o enviar al cliente.";
+                $sigAccionBotonTexto = 'Ver documento';
             }
             $sigAccionUrl = $urlInforme;
-            $sigPasoTexto = 'Ver Informe PDF';
+            $sigPasoTexto = 'Ver documento';
             $sigPasoUrl = $urlInforme;
         }
 

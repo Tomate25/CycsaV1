@@ -487,7 +487,8 @@ class PropuestaFlujoOperacionesLaboratorioTest extends TestCase {
         $this->assertStringContainsString('3. Ejecución Lab', $htmlIndex);
         $this->assertStringContainsString('4. Revisión Supervisor', $htmlIndex);
         $this->assertStringContainsString('5. Informe PDF', $htmlIndex);
-        $this->assertStringContainsString('Siguiente paso:', $htmlIndex);
+        $this->assertStringContainsString('Documentos listos para ver', $htmlIndex);
+        $this->assertStringContainsString('/Cycsa/publico/operaciones/documento?id_detalle=', $htmlIndex);
 
         // Captura técnica integrada directamente en captura_matriz.php (sin barra de salto a Laboratorio)
         $this->assertStringContainsString('id="seccion-captura-tecnica-lab"', $htmlCaptura);
