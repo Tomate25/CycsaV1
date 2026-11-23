@@ -400,22 +400,22 @@ if ($esTecnicoCiego) {
 } elseif ($matricesEnRevision > 0 && $esSupervisor && ($primerItemRevisionId ?? $primerItemVerId) > 0) {
     $targetRev = $primerItemRevisionId ?? $primerItemVerId;
     $sigAccionTipo = 'link';
-    $sigAccionTexto = 'Revisar matriz';
+    $sigAccionTexto = 'Revisar documento';
     $sigAccionDetalle = $matricesAprobadas . ' de ' . $totalItemsOS . ' matrices aprobadas · ' . $matricesEnRevision . ' pendiente de revisión.';
-    $sigAccionHref = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $targetRev;
+    $sigAccionHref = '/Cycsa/publico/operaciones/documento?id_detalle=' . $targetRev;
     $sigAccionOnclick = '';
 } elseif ($matricesAprobadas < $totalItemsOS && ($primerItemPendienteId ?? $primerItemVerId) > 0) {
     $targetCap = $primerItemPendienteId ?? $primerItemVerId;
     $sigAccionTipo = 'link';
-    $sigAccionTexto = 'Capturar matriz';
+    $sigAccionTexto = 'Ver documento';
     $sigAccionDetalle = $matricesLlenadas . ' de ' . $totalItemsOS . ' matrices con resultados · ' . $matricesAprobadas . ' aprobadas.';
-    $sigAccionHref = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' . $targetCap;
+    $sigAccionHref = '/Cycsa/publico/operaciones/documento?id_detalle=' . $targetCap;
     $sigAccionOnclick = '';
 } elseif ($primerItemVerId > 0) {
     $sigAccionTipo = 'link';
-    $sigAccionTexto = 'Ver informe PDF';
+    $sigAccionTexto = 'Ver documento terminado';
     $sigAccionDetalle = 'Todas las matrices aprobadas (' . $matricesAprobadas . ' de ' . $totalItemsOS . ').';
-    $sigAccionHref = '/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=' . $primerItemVerId;
+    $sigAccionHref = '/Cycsa/publico/operaciones/documento?id_detalle=' . $primerItemVerId;
     $sigAccionOnclick = '';
 } else {
     $sigAccionTipo = 'link';
@@ -633,15 +633,13 @@ if ($esTecnicoCiego) {
                         <span class="cy-meta"><?= $avanceX ?>/<?= $avanceY ?></span>
 
                         <?php if ($esTecnicoCiego): ?>
-                            <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm"><?= $estadoRevIt === 'aprobada' ? 'Ver captura' : 'Capturar' ?></a>
+                            <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm"><?= $estadoRevIt === 'aprobada' ? 'Ver captura' : 'Llenar datos' ?></a>
                         <?php elseif ($estadoRevIt === 'aprobada'): ?>
-                            <button type="button"
-                                    class="btn btn-outline-secondary btn-sm"
-                                    onclick="abrirModalEnviarMatriz(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $cliMailEsc ?>', '<?= $codOsEsc ?>')">Enviar al cliente</button>
+                            <a href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm">Ver documento</a>
                         <?php elseif (!$tieneHojaServicio && !$tieneResIt && !$esSoloCompactacion): ?>
                             <a href="/Cycsa/publico/ordenes-servicio?id_os=<?= (int)$o['id'] ?>" class="btn btn-outline-secondary btn-sm">Registrar RT-FM-13</a>
                         <?php else: ?>
-                            <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm">Capturar</a>
+                            <a href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm">Ver documento</a>
                         <?php endif; ?>
 
                         <div class="dropdown">
@@ -651,7 +649,13 @@ if ($esTecnicoCiego) {
                                     aria-expanded="false"
                                     aria-label="Más acciones">⋯</button>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>"><?= $tieneResIt ? 'Editar matriz' : 'Ver matriz' ?></a></li>
+                                <?php if (!$esTecnicoCiego): ?>
+                                    <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?>">Ver documento completo</a></li>
+                                <?php endif; ?>
+                                <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>"><?= $esTecnicoCiego ? 'Llenar datos técnicos' : 'Editar encabezado / matriz' ?></a></li>
+                                <?php if (!$esTecnicoCiego && $estadoRevIt === 'aprobada'): ?>
+                                    <li><button type="button" class="dropdown-item" onclick="abrirModalEnviarMatriz(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $cliMailEsc ?>', '<?= $codOsEsc ?>')">Enviar al cliente</button></li>
+                                <?php endif; ?>
                                 <?php if (!$esTecnicoCiego && $tieneResIt): ?>
                                     <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDet ?>" target="_blank">Imprimir RT-FM-22</a></li>
                                 <?php endif; ?>

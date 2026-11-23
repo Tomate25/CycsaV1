@@ -10,6 +10,7 @@ use Cycsa\Modulos\Clientes\Controladores\ClientesControlador;
 use Cycsa\Modulos\Productos\Controladores\ProductosControlador;
 use Cycsa\Modulos\Contabilidad\Controladores\ContabilidadControlador;
 use Cycsa\Modulos\Operaciones\Controladores\OperacionesControlador;
+use Cycsa\Modulos\Operaciones\Controladores\CapturaTecnicaControlador;
 use Cycsa\Modulos\Operaciones\Controladores\LaboratorioControlador;
 use Cycsa\Modulos\HojasServicio\Controladores\HojasServicioControlador;
 use Cycsa\Modulos\OrdenesServicio\Controladores\OrdenesServicioControlador;
@@ -195,9 +196,14 @@ $app->enrutador->post('/contabilidad/sincronizar-diario', [ContabilidadControlad
 $app->enrutador->get('/contabilidad/balance', [ContabilidadControlador::class, 'balance'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 $app->enrutador->get('/contabilidad/resultados', [ContabilidadControlador::class, 'resultados'], [AuthMiddleware::class, ContabilidadMiddleware::class]);
 
-// 🔒 RUTAS DEL MÓDULO DE OPERACIONES (REQUERIDO: SESIÓN ACTIVA)
+// 🔒 RUTAS DEL MÓDULO DE CAPTURA TÉCNICA (SOLO LLENADO TÉCNICO — 100% CIEGO ISO/IEC 17025)
+$app->enrutador->get('/captura-tecnica', [CapturaTecnicaControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/captura-tecnica/llenar', [CapturaTecnicaControlador::class, 'llenar'], [AuthMiddleware::class]);
+
+// 🔒 RUTAS DEL MÓDULO DE OPERACIONES (VISUALIZACIÓN DE DOCUMENTO TERMINADO Y REVISIÓN)
 $app->enrutador->get('/operaciones', [OperacionesControlador::class, 'index'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/ver', [OperacionesControlador::class, 'ver'], [AuthMiddleware::class]);
+$app->enrutador->get('/operaciones/documento', [OperacionesControlador::class, 'verDocumentoTerminado'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/crear-os', [OperacionesControlador::class, 'crearOS'], [AuthMiddleware::class]);
 $app->enrutador->get('/operaciones/recepcion', [OperacionesControlador::class, 'recepcionForm'], [AuthMiddleware::class]);
 $app->enrutador->post('/operaciones/guardar-recepcion', [OperacionesControlador::class, 'guardarRecepcion'], [AuthMiddleware::class]);

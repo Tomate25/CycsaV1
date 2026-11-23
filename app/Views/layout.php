@@ -541,7 +541,15 @@
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (tienePermiso('operaciones', 'ver')): ?>
+            <?php if (tienePermiso('operaciones', 'ver') || tienePermiso('operaciones', 'crear_editar') || tienePermiso('laboratorio', 'ver') || (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025())): ?>
+            <li>
+                <a href="/Cycsa/publico/captura-tecnica" class="<?= strpos($rutaActual, '/captura-tecnica') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span class="menu-texto">Captura Técnica</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (tienePermiso('operaciones', 'ver') && !(function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025())): ?>
             <li>
                 <a href="/Cycsa/publico/operaciones" class="<?= strpos($rutaActual, '/operaciones') !== false ? 'activo' : '' ?>">
                     <i class="fa-solid fa-gears"></i>

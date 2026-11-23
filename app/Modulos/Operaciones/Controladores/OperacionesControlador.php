@@ -32,9 +32,10 @@ class OperacionesControlador extends ControladorBase {
      */
     public function index(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
-        
-
-
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $respuesta->redirigir('/Cycsa/publico/captura-tecnica');
+            return;
+        }
         $this->verificarPermiso($respuesta, 'ver');
 
         $modelo = new OperacionModelo();
@@ -1548,7 +1549,10 @@ class OperacionesControlador extends ControladorBase {
 
     public function ver(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
-
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $respuesta->redirigir('/Cycsa/publico/captura-tecnica');
+            return;
+        }
         $this->verificarPermiso($respuesta, 'ver');
 
         $idOS = (int)($_GET['id_os'] ?? ($_GET['id'] ?? 0));
@@ -2272,9 +2276,11 @@ class OperacionesControlador extends ControladorBase {
         return $filas;
     }
 
-    public function capturaMatrizProducto(Peticion $peticion, Respuesta $respuesta): void {
+    public function capturaMatrizProducto(Peticion $peticion, Respuesta $respuesta, bool $modoSoloCapturaTecnica = false): void {
         $this->verificarSesion($respuesta);
+        $modoSoloCapturaTecnica = $modoSoloCapturaTecnica || (($_GET['modo'] ?? '') === 'captura_tecnica');
         $tienePermisoVerMatriz = tienePermiso('operaciones', 'ver')
+            || tienePermiso('operaciones', 'crear_editar')
             || tienePermiso('laboratorio', 'ver')
             || tienePermiso('recepcion', 'ver')
             || (!isset($_SESSION['usuario_permisos']) && in_array((int)($_SESSION['usuario_rol'] ?? 0), [1, 2, 3, 6], true));
@@ -2602,7 +2608,7 @@ class OperacionesControlador extends ControladorBase {
         );
         $esSupervisorVista = in_array($rolVistaMatriz, [1, 2, 3], true) || ($rolVistaMatriz !== 6 && $tieneAprobarExplicitoCtrl);
 
-        if (!$esSupervisorVista) {
+        if (!$esSupervisorVista || $modoSoloCapturaTecnica) {
             foreach ($muestrasSeteadas as &$mSetTec) {
                 $mSetTec['datos_recepcion'] = [];
                 $mSetTec['nombre_muestra'] = '';
@@ -2665,6 +2671,7 @@ class OperacionesControlador extends ControladorBase {
             'esEnsayoRoturaLab' => $esEnsayoRoturaLab,
             'hojaTecnicaConfig' => $hojaTecnicaConfig,
             'capturaTecnicaInicial' => $capturaTecnicaInicial,
+            'modoSoloCapturaTecnica' => $modoSoloCapturaTecnica,
         ]);
     }
 
@@ -2771,11 +2778,13 @@ class OperacionesControlador extends ControladorBase {
                 }
             }
 
-            // 2.4 Protección estricta servidor: técnico (rol no supervisor/admin) NUNCA puede modificar casillas de Recepción, Nombre muestra ni equipo densímetro
+            // 2.4 Protección estricta servidor: técnico (o guardado desde módulo Captura Técnica) NUNCA puede modificar casillas de Recepción, Nombre muestra ni equipo densímetro
             $rolSesionGuardar = (int)($_SESSION['usuario_rol'] ?? 0);
             $esSupervisorGuardar = in_array($rolSesionGuardar, [1, 2, 3], true);
+            $esSoloCapturaPost = !empty($datos['modo_solo_captura']);
+            $protegerRecepcionYMeta = (!$esSupervisorGuardar || $esSoloCapturaPost);
 
-            if (!$esSupervisorGuardar) {
+            if ($protegerRecepcionYMeta) {
                 $mapaFilasPrevias = [];
                 foreach ($filasPreviasExistentes as $idxPrev => $fPrev) {
                     if (!is_array($fPrev)) continue;
@@ -2954,8 +2963,8 @@ class OperacionesControlador extends ControladorBase {
                 }
             }
 
-            // 2.4 Si no es supervisor/admin, restaurar metadatos de cliente/recepción y equipo densímetro desde BD previa (el técnico no los edita ni ve)
-            if (!$esSupervisorGuardar) {
+            // 2.4 Si no es supervisor/admin o se guarda desde Captura Técnica, restaurar metadatos de cliente/recepción y equipo densímetro desde BD previa
+            if ($protegerRecepcionYMeta) {
                 $clavesSoloSupervisor = [
                     'cliente_nombre', 'cliente_direccion', 'proyecto',
                     'fecha_ingreso', 'tipo_muestra', 'procedimiento_muestreo',
@@ -4096,6 +4105,131 @@ class OperacionesControlador extends ControladorBase {
             $redir = !empty($datos['redirect_to']) ? $datos['redirect_to'] : '/Cycsa/publico/operaciones?tab=historico';
             $respuesta->redirigir($redir);
         }
+    }
+
+    /**
+     * Visualización del documento oficial RT-FM-22 ya terminado con TODOS los datos
+     * (Encabezado + Recepción + Resultados Técnicos) dentro del módulo Operaciones.
+     */
+    public function verDocumentoTerminado(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $respuesta->redirigir('/Cycsa/publico/captura-tecnica');
+            return;
+        }
+        $puedeVerDoc = tienePermiso('operaciones', 'ver')
+            || tienePermiso('ordenes_servicio', 'ver')
+            || tienePermiso('recepcion', 'ver')
+            || tienePermiso('control_calidad', 'ver');
+        if (!$puedeVerDoc) {
+            $_SESSION['error'] = 'No tiene permiso para visualizar el documento de ensayo.';
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            return;
+        }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        $idDetalle = (int)($_GET['id_detalle'] ?? ($_GET['id'] ?? 0));
+        if ($idDetalle <= 0) {
+            $_SESSION['error'] = 'ID de ensayo no especificado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmt = $db->prepare("
+            SELECT cd.id, cd.descripcion_ensayo, cd.codigo_servicio, cd.norma_astm, cd.resultados_json, cd.cantidad, cd.procedimiento, cd.condiciones_muestra,
+                   os.id AS id_os, os.codigo_os, os.tecnico_muestreo, os.requiere_muestreo, os.fecha_muestreo, os.hora_muestreo, os.fecha_emision AS os_fecha_emision, os.fecha_registro_campo, os.created_at AS os_created_at,
+                   os.forma_pago, COALESCE(os.condicion_comercial, cot.condicion_comercial, 'contado') AS condicion_comercial,
+                   cot.id AS id_cotizacion, cot.codigo AS cot_codigo, cot.condicion_pago, cot.nombre_proyecto, cot.direccion_proyecto, cot.atencion_a,
+                   COALESCE(cli_inf.id, cli.id) AS id_cliente,
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_nombre,
+                   COALESCE(cli_inf.nombre_razon_social, cli.nombre_razon_social) AS cliente_informe_nombre,
+                   cli_fact.nombre_razon_social AS cliente_factura_nombre,
+                   COALESCE(cli_inf.direccion, cli.direccion) AS cliente_direccion,
+                   COALESCE(cli_inf.email, cli.email) AS cliente_email,
+                   COALESCE(cli_inf.telefono, cli.telefono) AS cliente_telefono,
+                   p.formato_id, p.nombre_comercial, p.ensayo_servicio, p.tipo_muestra AS prod_tipo_muestra, p.procedimiento_muestreo AS prod_procedimiento, p.norma_astm AS prod_norma_astm,
+                   fe.nombre AS formato_nombre, fe.archivo_markdown, fe.codigo_formato AS codigo_documento, fe.procedimientos AS formato_procedimiento,
+                   hs.id AS id_hoja_asociada, hs.procedencia_punto_muestreo, hs.nombre_persona_entrega_muestra, hs.fecha_hora_toma_muestra, hs.fecha_hora_llegada_laboratorio, hs.naturaleza_muestra, hs.observaciones,
+                   rm.fecha_recepcion,
+                   pm.fecha_ida AS pm_fecha_ida, pm.lugar_muestreo AS pm_lugar_muestreo
+            FROM cotizacion_detalles cd
+            JOIN ordenes_servicio os ON cd.id_cotizacion = os.id_cotizacion
+            JOIN cotizaciones cot ON os.id_cotizacion = cot.id
+            JOIN clientes cli ON cot.id_cliente = cli.id
+            LEFT JOIN clientes cli_inf ON cli_inf.id = COALESCE(os.id_cliente_informe, cot.id_cliente_informe, cot.id_cliente)
+            LEFT JOIN clientes cli_fact ON cli_fact.id = COALESCE(os.id_cliente_factura, cot.id_cliente_factura, cot.id_cliente)
+            LEFT JOIN productos p ON cd.id_producto = p.id
+            LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+            LEFT JOIN hojas_solicitud hs ON hs.id_os = os.id
+            LEFT JOIN (SELECT id_os, MIN(fecha_recepcion) AS fecha_recepcion FROM recepcion_muestras GROUP BY id_os) rm ON rm.id_os = os.id
+            LEFT JOIN (SELECT id_orden_servicio, MIN(fecha_ida) AS fecha_ida, MIN(lugar_muestreo) AS lugar_muestreo FROM programacion_muestreo GROUP BY id_orden_servicio) pm ON pm.id_orden_servicio = os.id
+            WHERE cd.id = :id
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $idDetalle]);
+        $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$detalle) {
+            $_SESSION['error'] = 'Ensayo o documento no encontrado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+        $detalle['id'] = (int)$idDetalle;
+        $archivoMd = resolverArchivoMarkdownEnsayo($detalle);
+        $detalle['archivo_markdown'] = $archivoMd;
+        $schemaInfo = obtenerEsquemaPlantillaEnsayo($archivoMd, isset($detalle['formato_id']) ? (int)$detalle['formato_id'] : null);
+        $columnas = !empty($schemaInfo['columns']) && is_array($schemaInfo['columns'])
+            ? $schemaInfo['columns']
+            : ($this->obtenerColumnasFormato($archivoMd) ?: ['Código laboratorio', 'Nombre muestra', 'Área (in²)', 'Carga (lb)', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)']);
+
+        $dec = json_decode((string)($detalle['resultados_json'] ?? ''), true) ?: [];
+        $filasDoc = isset($dec['filas']) && is_array($dec['filas'])
+            ? $dec['filas']
+            : (isset($dec[0]) && is_array($dec[0]) ? $dec : []);
+        $filasDoc = filtrarFilasPublicasMatriz($filasDoc);
+        $metadatosGuardados = isset($dec['metadatos']) && is_array($dec['metadatos']) ? $dec['metadatos'] : [];
+        $versionActual = (int)($dec['version_actual'] ?? 1);
+
+        // Fusionar respaldo de datos de Recepción desde RT-FM-13 para garantizar el documento 100% completo
+        $hojaRes = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        $idHojaRes = (int)($hojaRes['id'] ?? ($detalle['id_hoja_asociada'] ?? 0));
+        if ($idHojaRes > 0) {
+            $mapaRecDoc = construirMapaDatosRecepcionPorHoja($db, $idHojaRes);
+            if (!empty($mapaRecDoc)) {
+                foreach ($filasDoc as $idxD => $fD) {
+                    if (!is_array($fD)) continue;
+                    $codD = strtoupper(trim((string)($fD['Código laboratorio'] ?? ($fD['Codigo laboratorio'] ?? ($fD['codigo_lab'] ?? '')))));
+                    if ($codD !== '' && isset($mapaRecDoc[$codD])) {
+                        $filasDoc[$idxD] = fusionarDatosRecepcionEnFilaMatriz($fD, $mapaRecDoc[$codD], $columnas, false, (string)$archivoMd);
+                    }
+                }
+            }
+        }
+
+        $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
+        $codigoInformeConsecutivo = generarCodigoInformeEnsayo(
+            $filasDoc,
+            $metadatos['fecha_muestreo'] ?? ($metadatos['fecha_ingreso'] ?? null),
+            $metadatos['tipo_muestra'] ?? ($detalle['descripcion_ensayo'] ?? ''),
+            $detalle['codigo_os'] ?? null
+        );
+
+        $this->renderizar('operaciones/vistas/documento_terminado', [
+            'titulo' => 'Documento Oficial - ' . $detalle['codigo_os'] . ' · ' . $detalle['descripcion_ensayo'],
+            'detalle' => $detalle,
+            'idDetalle' => $idDetalle,
+            'schemaInfo' => $schemaInfo,
+            'metadatos' => $metadatos,
+            'columnasDocumento' => $columnas,
+            'filasDocumento' => $filasDoc,
+            'versionActual' => $versionActual,
+            'codigoInformeConsecutivo' => $codigoInformeConsecutivo,
+            'exito' => $_SESSION['exito'] ?? null,
+            'error' => $_SESSION['error'] ?? null,
+        ]);
+        unset($_SESSION['exito'], $_SESSION['error']);
     }
 
     /**

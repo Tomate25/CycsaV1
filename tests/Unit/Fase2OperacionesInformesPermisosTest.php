@@ -355,6 +355,107 @@ class Fase2OperacionesInformesPermisosTest extends TestCase {
         $this->assertStringContainsString('/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=', $htmlOS);
         $this->assertStringContainsString('/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=', $htmlOS);
         $this->assertStringContainsString('abrirModalEnviarInformeOS(', $htmlOS);
+
+        // 5. Nuevo módulo independiente Captura Técnica (/captura-tecnica) y Operaciones Documento Terminado (/operaciones/documento)
+        $rutasWeb = (string)file_get_contents(dirname(__DIR__, 2) . '/rutas/web.php');
+        $this->assertStringContainsString("'/captura-tecnica'", $rutasWeb);
+        $this->assertStringContainsString("'/captura-tecnica/llenar'", $rutasWeb);
+        $this->assertStringContainsString("'/operaciones/documento'", $rutasWeb);
+
+        // Si un técnico (rol 6) intenta entrar a /operaciones o /operaciones/documento, es redirigido a /captura-tecnica
+        $_SESSION['usuario_rol'] = 6;
+        $_SESSION['usuario_permisos'] = ['operaciones' => ['ver' => true, 'crear_editar' => true]];
+        $respOpIdx = new TestRespuestaFase2Operaciones();
+        $ctrl->index(new Peticion(), $respOpIdx);
+        $this->assertSame('/Cycsa/publico/captura-tecnica', $respOpIdx->urlRedirigida);
+
+        $respDoc = new TestRespuestaFase2Operaciones();
+        $ctrl->verDocumentoTerminado(new Peticion(), $respDoc);
+        $this->assertSame('/Cycsa/publico/captura-tecnica', $respDoc->urlRedirigida);
+
+        // Renderizar la vista del nuevo módulo Captura Técnica (100% ciega) y la vista del Documento Terminado (todos los datos)
+        $ordenes = [[
+            'id' => 501,
+            'codigo_os' => 'OS-2026-0501',
+            'items' => [[
+                'id' => 701,
+                'descripcion_ensayo' => 'Resistencia a la compresión de cilindros',
+                'norma_astm' => 'ASTM C39',
+                'cantidad' => 3,
+                'estado' => 'pendiente',
+                'tiene_resultados' => false,
+                'motivo_devolucion' => '',
+                'usuario_revisor' => '',
+                'fecha_revision' => '',
+            ]],
+            'total_ensayos' => 1,
+            'llenadas' => 0,
+            'aprobadas' => 0,
+            'devueltas' => 0,
+            'en_revision' => 0,
+            'solo_en_revision' => false,
+            'id_accion_principal' => 701,
+        ]];
+        $filtroActivo = 'pendientes';
+        $conteos = ['pendientes' => 1, 'devueltas' => 0, 'en_revision' => 0, 'todas' => 1];
+        $busqueda = '';
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_tecnica_index.php';
+        $htmlCT = (string)ob_get_clean();
+
+        $this->assertStringContainsString('Captura Técnica', $htmlCT);
+        $this->assertStringContainsString('/Cycsa/publico/captura-tecnica/llenar?id_detalle=701', $htmlCT);
+        $this->assertStringNotContainsString('Imprimir RT-FM-22', $htmlCT);
+        $this->assertStringNotContainsString('Enviar al cliente', $htmlCT);
+
+        // Renderizar Documento Terminado en Operaciones (Supervisor) con Recepción + Técnico unidos
+        $_SESSION['usuario_rol'] = 1;
+        unset($_SESSION['usuario_permisos']);
+        $detalle = [
+            'id' => 701,
+            'id_os' => 501,
+            'codigo_os' => 'OS-2026-0501',
+            'descripcion_ensayo' => 'Resistencia a la compresión de cilindros',
+            'norma_astm' => 'ASTM C39',
+            'archivo_markdown' => 'resistencia_de_concreto.md',
+            'cliente_nombre' => 'CLIENTE FINAL S.A.',
+            'cliente_email' => 'cliente@final.test',
+            'resultados_json' => json_encode(['filas' => [[
+                'Código laboratorio' => 'MS-16798-26',
+                'Nombre muestra' => 'Columna C1',
+                'Reven. (in)' => '7.5',
+                'Reven. (cm)' => '19',
+                'Carga (lb)' => '79204',
+                'R. Compresión (lb/in²)' => '6300',
+            ]], 'revision' => ['estado' => 'aprobada']], JSON_UNESCAPED_UNICODE),
+        ];
+        $schemaInfo = obtenerEsquemaPlantillaEnsayo('resistencia_de_concreto.md');
+        $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, ['cliente_nombre' => 'CLIENTE FINAL S.A.', 'proyecto' => 'EDIFICIO NORTE']);
+        $columnasDocumento = ['Código laboratorio', 'Nombre muestra', 'Reven. (in)', 'Reven. (cm)', 'Carga (lb)', 'R. Compresión (lb/in²)'];
+        $filasDocumento = [[
+            'Código laboratorio' => 'MS-16798-26',
+            'Nombre muestra' => 'Columna C1',
+            'Reven. (in)' => '7.5',
+            'Reven. (cm)' => '19',
+            'Carga (lb)' => '79204',
+            'R. Compresión (lb/in²)' => '6300',
+        ]];
+        $versionActual = 1;
+        $codigoInformeConsecutivo = 'IC-0001-26';
+        ob_start();
+        include dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/documento_terminado.php';
+        $htmlDoc = (string)ob_get_clean();
+
+        $this->assertStringContainsString('id="documento-oficial-terminado"', $htmlDoc);
+        $this->assertStringContainsString('CLIENTE FINAL S.A.', $htmlDoc);
+        $this->assertStringContainsString('EDIFICIO NORTE', $htmlDoc);
+        $this->assertStringContainsString('MS-16798-26', $htmlDoc);
+        $this->assertStringContainsString('Columna C1', $htmlDoc);
+        $this->assertStringContainsString('79204', $htmlDoc);
+        $this->assertStringContainsString('6300', $htmlDoc);
+        $this->assertStringContainsString('Imprimir RT-FM-22', $htmlDoc);
+        $this->assertStringContainsString('Descargar PDF', $htmlDoc);
+        $this->assertStringContainsString('Enviar al cliente', $htmlDoc);
     }
 
     public function testAprobarMatrizPersisteRevisorAprobadorYObservacionesPendientes(): void {

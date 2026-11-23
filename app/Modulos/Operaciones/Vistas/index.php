@@ -815,15 +815,13 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                 <span class="cy-meta"><?= $avanceX ?>/<?= $avanceY ?></span>
 
                                                 <?php if ($esTecnicoCiego): ?>
-                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm"><?= $estadoRevIt === 'aprobada' ? 'Ver captura' : 'Capturar' ?></a>
+                                                    <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm"><?= $estadoRevIt === 'aprobada' ? 'Ver captura' : 'Llenar datos' ?></a>
                                                 <?php elseif ($estadoRevIt === 'aprobada'): ?>
-                                                    <button type="button"
-                                                            class="btn btn-outline-secondary btn-sm"
-                                                            onclick="abrirModalEnviarMatriz(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $cliMailEsc ?>', '<?= $codOsEsc ?>')">Enviar al cliente</button>
+                                                    <a href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm">Ver documento</a>
                                                 <?php elseif (!$tieneHojaServicio && !$tieneResIt && !$esSoloCompactacion): ?>
                                                     <a href="/Cycsa/publico/ordenes-servicio?id_os=<?= (int)$o['id'] ?>" class="btn btn-outline-secondary btn-sm">Registrar RT-FM-13</a>
                                                 <?php else: ?>
-                                                    <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm">Capturar</a>
+                                                    <a href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm">Ver documento</a>
                                                 <?php endif; ?>
 
                                                 <div class="dropdown">
@@ -833,7 +831,13 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                             aria-expanded="false"
                                                             aria-label="Más acciones">⋯</button>
                                                     <ul class="dropdown-menu dropdown-menu-end">
-                                                        <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>"><?= $tieneResIt ? 'Editar matriz' : 'Ver matriz' ?></a></li>
+                                                        <?php if (!$esTecnicoCiego): ?>
+                                                            <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?>">Ver documento completo</a></li>
+                                                        <?php endif; ?>
+                                                        <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>"><?= $esTecnicoCiego ? 'Llenar datos técnicos' : 'Editar encabezado / matriz' ?></a></li>
+                                                        <?php if (!$esTecnicoCiego && $estadoRevIt === 'aprobada'): ?>
+                                                            <li><button type="button" class="dropdown-item" onclick="abrirModalEnviarMatriz(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $cliMailEsc ?>', '<?= $codOsEsc ?>')">Enviar al cliente</button></li>
+                                                        <?php endif; ?>
                                                         <?php if (!$esTecnicoCiego && $tieneResIt): ?>
                                                             <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDet ?>" target="_blank">Imprimir RT-FM-22</a></li>
                                                         <?php endif; ?>

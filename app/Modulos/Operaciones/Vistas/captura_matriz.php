@@ -2,6 +2,7 @@
 // Vista de Captura de Matriz Técnica - Dinámica y Específica para los 21 Formatos CYCSA
 $rolUsuario = (int)($_SESSION['usuario_rol'] ?? 0);
 $esLaboratorista = ($rolUsuario === 6);
+$modoSoloCapturaTecnica = !empty($modoSoloCapturaTecnica);
 $permisosSesionVista = $_SESSION['usuario_permisos'] ?? [];
 if (is_string($permisosSesionVista)) {
     $permisosSesionVista = json_decode($permisosSesionVista, true) ?: [];
@@ -10,7 +11,9 @@ $tieneAprobarExplicitoVista = is_array($permisosSesionVista) && (
     !empty($permisosSesionVista['operaciones']['aprobar'])
     || !empty($permisosSesionVista['control_calidad']['aprobar'])
 );
-$esSupervisor = in_array($rolUsuario, [1, 2, 3], true) || (!$esLaboratorista && $tieneAprobarExplicitoVista);
+$esSupervisor = !$modoSoloCapturaTecnica && (in_array($rolUsuario, [1, 2, 3], true) || (!$esLaboratorista && $tieneAprobarExplicitoVista));
+$urlVolverCaptura = $modoSoloCapturaTecnica ? '/Cycsa/publico/captura-tecnica' : '/Cycsa/publico/operaciones';
+$textoVolverCaptura = $modoSoloCapturaTecnica ? 'Volver a Captura Técnica' : 'Volver a Operaciones';
 $idDetalleActivo = (int)(!empty($idDetalle) ? $idDetalle : (!empty($detalle['id']) ? $detalle['id'] : ($_GET['id_detalle'] ?? $_GET['id'] ?? 0)));
 $idDetalle = $idDetalleActivo;
 $detalle['id'] = $idDetalleActivo;
@@ -410,8 +413,8 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
 <!-- TOP BAR STICKY (OPERACIONES LIMS - REDISEÑO PROFESIONAL) -->
 <div class="matriz-top-bar" style="position: sticky; top: 0; z-index: 1020; background: #ffffff; padding: 14px 20px; margin: -10px -20px 20px -20px; border-bottom: 2px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
     <div>
-        <a href="/Cycsa/publico/operaciones" style="color: #64748b; text-decoration: none; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-arrow-left"></i> Volver a Operaciones
+        <a href="<?= htmlspecialchars($urlVolverCaptura, ENT_QUOTES, 'UTF-8') ?>" style="color: #64748b; text-decoration: none; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-arrow-left"></i> <?= htmlspecialchars($textoVolverCaptura, ENT_QUOTES, 'UTF-8') ?>
         </a>
         <div style="display: flex; align-items: center; gap: 10px; margin-top: 2px; flex-wrap: wrap;">
             <h2 style="margin: 0; color: #1e293b; font-size: 17px; font-weight: 800; display: flex; align-items: center; gap: 8px;" title="<?= htmlspecialchars($ensayoTituloOficial, ENT_QUOTES, 'UTF-8') ?>">
@@ -495,9 +498,11 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
             <?php endif; ?>
         <?php endif; ?>
 
+        <?php if ($esSupervisor): ?>
         <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $detalle['id'] ?><?= $esModoHistorico ? '&version=' . $versionSeleccionadaNum : '' ?>" target="_blank" class="btn-matriz-secondary" style="background:#f8fafc; color:#103487; border:1.5px solid #bfdbfe; font-weight:700; text-decoration:none; height: 38px; padding: 0 16px; display:inline-flex; align-items:center; gap:8px; border-radius: 6px;" title="Ver e imprimir formato técnico horizontal oficial con membrete CYCSA">
             <i class="fa-solid fa-print" style="color:#103487;"></i> Imprimir Matriz <?= $esModoHistorico ? "v{$versionSeleccionadaNum}" : "(Horizontal)" ?>
         </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -660,6 +665,10 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
     <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
     <input type="hidden" name="resultados_json" id="input_resultados_json" value="">
+    <?php if ($modoSoloCapturaTecnica): ?>
+    <input type="hidden" name="modo_solo_captura" value="1">
+    <input type="hidden" name="redirect_to" value="/Cycsa/publico/captura-tecnica">
+    <?php endif; ?>
 
     <!-- SECCIÓN 2: CABECERA DEL INFORME Y METADATOS OFICIALES (SOLO SUPERVISIÓN / ADMINISTRACIÓN) -->
     <?php if ($esSupervisor): ?>
@@ -1234,8 +1243,8 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                     <i class="fa-solid fa-shield-halved"></i> Formato técnico oficial sincronizado con <?= htmlspecialchars($detalle['archivo_markdown'] ?: 'ISO 17025') ?>
                 </span>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <a href="/Cycsa/publico/operaciones" class="btn-matriz-back" style="height: 38px; padding: 0 16px; display: inline-flex; align-items: center;">
-                        <i class="fa-solid fa-arrow-left me-1"></i> Regresar a Operaciones
+                    <a href="<?= htmlspecialchars($urlVolverCaptura, ENT_QUOTES, 'UTF-8') ?>" class="btn-matriz-back" style="height: 38px; padding: 0 16px; display: inline-flex; align-items: center;">
+                        <i class="fa-solid fa-arrow-left me-1"></i> <?= htmlspecialchars($textoVolverCaptura, ENT_QUOTES, 'UTF-8') ?>
                     </a>
 
                 </div>
