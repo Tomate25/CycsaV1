@@ -22,8 +22,15 @@ $cliMail = (string)($detalle['cliente_email'] ?? '');
 $codOS = (string)($detalle['codigo_os'] ?? '');
 $descEns = (string)($detalle['descripcion_ensayo'] ?? '');
 $versionActualNum = (int)($versionActual ?? 1);
-$notasOficiales = (isset($schemaInfo['notas']) && is_array($schemaInfo['notas'])) ? $schemaInfo['notas'] : [];
-$disclaimerOficial = (string)($schemaInfo['disclaimer'] ?? 'Consultoría y Construcción SA. CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo.');
+$disclaimerDefault = (string)($schemaInfo['disclaimer'] ?? 'Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente');
+$disclaimerOficial = (array_key_exists('disclaimer_personalizado', $metadatos) && $metadatos['disclaimer_personalizado'] !== null)
+    ? (string)$metadatos['disclaimer_personalizado']
+    : $disclaimerDefault;
+$notasDefault = (isset($schemaInfo['notas']) && is_array($schemaInfo['notas'])) ? $schemaInfo['notas'] : [];
+$notasOficiales = !empty($metadatos['notas_informe_personalizadas'])
+    ? (is_array($metadatos['notas_informe'] ?? null) ? $metadatos['notas_informe'] : [])
+    : $notasDefault;
+$notasTextoEditable = implode("\n", array_map(static fn($n) => trim((string)$n), $notasOficiales));
 ?>
 <link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
 <style>
@@ -194,6 +201,50 @@ $disclaimerOficial = (string)($schemaInfo['disclaimer'] ?? 'Consultoría y Const
             <div class="doc-meta-item"><span class="doc-meta-label">Ensayado por:</span><span class="doc-meta-val"><?= htmlspecialchars((string)($metadatos['ensayado_por'] ?? 'Personal Técnico de Laboratorio'), ENT_QUOTES, 'UTF-8') ?></span></div>
         </div>
 
+        <!-- Apartado Editable de Cláusula y Notas del Informe (Arriba de la Tabla) -->
+        <div id="panel-notas-documento-arriba" style="margin-bottom: 18px; padding: 14px 18px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+            <form method="POST" action="/Cycsa/publico/operaciones/guardar-notas-documento">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
+                <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDetalleActivo ?>">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                    <div style="font-size: 13.5px; font-weight: 700; color: #1F3864;">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> Notas y Cláusula del Informe (Editable)
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Guardar notas
+                    </button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-12 col-lg-7">
+                        <label for="doc_disclaimer_personalizado" class="form-label mb-1" style="font-size: 12.5px; font-weight: 600; color: #334155;">Cláusula oficial / Responsabilidad</label>
+                        <textarea id="doc_disclaimer_personalizado" name="disclaimer_personalizado" rows="2" class="form-control form-control-sm" style="font-size: 12.5px;"><?= htmlspecialchars($disclaimerOficial, ENT_QUOTES, 'UTF-8') ?></textarea>
+                    </div>
+                    <div class="col-12 col-lg-5">
+                        <label for="doc_notas_informe" class="form-label mb-1" style="font-size: 12.5px; font-weight: 600; color: #334155;">Notas del ensayo (una por línea)</label>
+                        <textarea id="doc_notas_informe" name="notas_informe" rows="2" class="form-control form-control-sm" style="font-size: 12.5px;" placeholder='Ej. Nota: Ensayos realizados in Situ: Ensayo "CYCSA-PE-09" "CYCSA-PE-27"'><?= htmlspecialchars($notasTextoEditable, ENT_QUOTES, 'UTF-8') ?></textarea>
+                    </div>
+                </div>
+                <?php if (!empty($metadatos['equipo_marca']) || !empty($metadatos['equipo_modelo']) || !empty($metadatos['nota_aditivos']) || !empty($metadatos['observaciones_pendientes'])): ?>
+                    <div class="mt-2 pt-2 border-top" style="font-size: 12.5px; color: #475569; line-height: 1.5;">
+                        <?php if (!empty($metadatos['equipo_marca']) || !empty($metadatos['equipo_modelo'])): ?>
+                            <div>
+                                <strong>Nota 1:</strong> Muestra tomada con equipo <?= htmlspecialchars((string)($metadatos['equipo_marca'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
+                                Modelo: <?= htmlspecialchars((string)($metadatos['equipo_modelo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
+                                N/S: <?= htmlspecialchars((string)($metadatos['equipo_serie'] ?? ''), ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars((string)($metadatos['equipo_codigo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>.
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($metadatos['nota_aditivos'])): ?>
+                            <div><strong>Aditivos:</strong> <?= htmlspecialchars((string)$metadatos['nota_aditivos'], ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($metadatos['observaciones_pendientes'])): ?>
+                            <div><strong>Observaciones:</strong> <?= htmlspecialchars((string)$metadatos['observaciones_pendientes'], ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </form>
+        </div>
+
         <!-- Tabla Oficial Completa con TODOS los datos unidos (Recepción + Técnico) -->
         <div class="doc-table-wrap">
             <table class="doc-table" id="tabla-documento-terminado">
@@ -252,26 +303,9 @@ $disclaimerOficial = (string)($schemaInfo['disclaimer'] ?? 'Consultoría y Const
             </table>
         </div>
 
-        <!-- Notas, Equipo, Aditivos y Firmante -->
+        <!-- Firmante y Revisión -->
         <div class="doc-footer-notes">
-            <?php if (!empty($metadatos['equipo_marca']) || !empty($metadatos['equipo_modelo'])): ?>
-                <div class="mb-1">
-                    <strong>Nota 1:</strong> Muestra tomada con equipo <?= htmlspecialchars((string)($metadatos['equipo_marca'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
-                    Modelo: <?= htmlspecialchars((string)($metadatos['equipo_modelo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
-                    N/S: <?= htmlspecialchars((string)($metadatos['equipo_serie'] ?? ''), ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars((string)($metadatos['equipo_codigo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>.
-                </div>
-            <?php endif; ?>
-            <?php if (!empty($metadatos['nota_aditivos'])): ?>
-                <div class="mb-1"><strong>Aditivos:</strong> <?= htmlspecialchars((string)$metadatos['nota_aditivos'], ENT_QUOTES, 'UTF-8') ?></div>
-            <?php endif; ?>
-            <?php if (!empty($metadatos['observaciones_pendientes'])): ?>
-                <div class="mb-1"><strong>Observaciones:</strong> <?= htmlspecialchars((string)$metadatos['observaciones_pendientes'], ENT_QUOTES, 'UTF-8') ?></div>
-            <?php endif; ?>
-            <div class="mt-2"><strong><?= htmlspecialchars($disclaimerOficial, ENT_QUOTES, 'UTF-8') ?></strong></div>
-            <?php foreach ($notasOficiales as $nota): ?>
-                <div><?= htmlspecialchars((string)$nota, ENT_QUOTES, 'UTF-8') ?></div>
-            <?php endforeach; ?>
-            <div class="mt-3 pt-2 border-top d-flex justify-content-between flex-wrap gap-2">
+            <div class="d-flex justify-content-between flex-wrap gap-2">
                 <span>Firmante oficial: <strong><?= htmlspecialchars((string)($schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira'), ENT_QUOTES, 'UTF-8') ?></strong> — <?= htmlspecialchars((string)($schemaInfo['firmante_cargo'] ?? 'Gerente General'), ENT_QUOTES, 'UTF-8') ?></span>
                 <?php if (!empty($revisionInfo['usuario_revisor'])): ?>
                     <span>Revisado por: <strong><?= htmlspecialchars((string)$revisionInfo['usuario_revisor'], ENT_QUOTES, 'UTF-8') ?></strong> (<?= htmlspecialchars((string)($revisionInfo['fecha_revision'] ?? ''), ENT_QUOTES, 'UTF-8') ?>)</span>

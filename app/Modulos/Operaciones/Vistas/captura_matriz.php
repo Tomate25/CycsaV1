@@ -1216,6 +1216,34 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                 </button>
                 <?php endif; ?>
             </div>
+            <?php if ($esSupervisor):
+                $disclaimerDefaultCap = (string)($schemaInfo['disclaimer'] ?? 'Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados realizados en las muestras recibidas y tomadas en campo. No se debe de reproducir este informe de ensayo sin la aprobación formal de Consultoría y Construcción SA. CYCSA. ** Información Proporcionada por el cliente');
+                $disclaimerActualCap = (array_key_exists('disclaimer_personalizado', $metadatos) && $metadatos['disclaimer_personalizado'] !== null)
+                    ? (string)$metadatos['disclaimer_personalizado']
+                    : $disclaimerDefaultCap;
+                $notasDefaultCap = (isset($schemaInfo['notas']) && is_array($schemaInfo['notas'])) ? $schemaInfo['notas'] : [];
+                $notasActualesCap = !empty($metadatos['notas_informe_personalizadas'])
+                    ? (is_array($metadatos['notas_informe'] ?? null) ? $metadatos['notas_informe'] : [])
+                    : $notasDefaultCap;
+                $notasTextoCap = implode("\n", array_map(static fn($n) => trim((string)$n), $notasActualesCap));
+            ?>
+            <div id="panel-notas-matriz-arriba" style="margin: 0 0 14px; padding: 13px 15px; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 9px;">
+                <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-pen-to-square" style="color: #103487;"></i>
+                    <span>Notas y Cláusula del Informe (Editable)</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+                    <div>
+                        <label for="meta_disclaimer_personalizado" style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Cláusula oficial / Responsabilidad:</label>
+                        <textarea name="metadatos[disclaimer_personalizado]" id="meta_disclaimer_personalizado" rows="2" class="meta-input-web" style="resize: vertical;"><?= htmlspecialchars($disclaimerActualCap, ENT_QUOTES, 'UTF-8') ?></textarea>
+                    </div>
+                    <div>
+                        <label for="meta_notas_informe" style="font-size: 11.5px; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Notas del ensayo (una por línea):</label>
+                        <textarea name="metadatos[notas_informe]" id="meta_notas_informe" rows="2" class="meta-input-web" style="resize: vertical;" placeholder='Ej. Nota: Ensayos realizados in Situ: Ensayo "CYCSA-PE-09" "CYCSA-PE-27"'><?= htmlspecialchars($notasTextoCap, ENT_QUOTES, 'UTF-8') ?></textarea>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
             <div class="tabla-matriz-wrapper">
                 <table class="tabla-matriz" id="tabla-captura-matriz">
                     <thead id="tabla-header">
@@ -1226,13 +1254,11 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
                     </tbody>
                 </table>
             </div>
-            <div style="margin-top: 14px; color: #475569; font-size: 12px;">
-                <strong><?= htmlspecialchars($schemaInfo['disclaimer'] ?? '') ?></strong>
-                <?php foreach (($schemaInfo['notas'] ?? []) as $nota): ?>
-                    <div><?= htmlspecialchars($nota) ?></div>
-                <?php endforeach; ?>
-                <div style="margin-top: 8px;">Firmante oficial: <?= htmlspecialchars($schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira') ?> — <?= htmlspecialchars($schemaInfo['firmante_cargo'] ?? 'Gerente General') ?></div>
+            <?php if ($esSupervisor): ?>
+            <div style="margin-top: 12px; color: #475569; font-size: 12px;">
+                <div>Firmante oficial: <?= htmlspecialchars($schemaInfo['firmante_nombre'] ?? 'Ing. Noel Quintana Lira') ?> — <?= htmlspecialchars($schemaInfo['firmante_cargo'] ?? 'Gerente General') ?></div>
             </div>
+            <?php endif; ?>
 
             <!-- ALERTA DE PÉRDIDA POR LAVADO -->
             <div id="alerta-lavado-norma" style="display:none; margin-top:15px; padding:12px 16px; border-radius:8px; font-size:13px; font-weight:600;"></div>
@@ -2556,6 +2582,13 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
             metaObj.equipo_modelo = document.getElementById('meta_equipo_modelo') ? document.getElementById('meta_equipo_modelo').value : '';
             metaObj.equipo_serie = document.getElementById('meta_equipo_serie') ? document.getElementById('meta_equipo_serie').value : '';
             metaObj.equipo_codigo = document.getElementById('meta_equipo_codigo') ? document.getElementById('meta_equipo_codigo').value : '';
+            if (document.getElementById('meta_disclaimer_personalizado')) {
+                metaObj.disclaimer_personalizado = document.getElementById('meta_disclaimer_personalizado').value;
+            }
+            if (document.getElementById('meta_notas_informe')) {
+                metaObj.notas_informe = document.getElementById('meta_notas_informe').value;
+                metaObj.notas_informe_personalizadas = true;
+            }
         }
 
         const payload = {

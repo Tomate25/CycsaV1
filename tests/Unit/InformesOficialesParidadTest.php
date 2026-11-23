@@ -421,4 +421,53 @@ class InformesOficialesParidadTest extends TestCase {
         ]);
         $this->assertNotEmpty($metaCbr['codigo_formato']);
     }
+
+    /**
+     * B.12: Cláusula y Notas editables por matriz ubicadas arriba de la tabla en Operaciones y propagadas al PDF/Impresión
+     */
+    public function testB12NotasYDisclaimerEditablesPropaganAPdfEImpresionYEstanArribaDeTabla(): void {
+        $detalle = $this->getDetallePruebaConcreto();
+        $dec = json_decode($detalle['resultados_json'], true);
+        $dec['metadatos']['disclaimer_personalizado'] = 'Cláusula editada CYCSA prueba de exactitud en muestras de campo.';
+        $dec['metadatos']['notas_informe'] = [
+            'Nota: Ensayos realizados in Situ: Ensayo "CYCSA-PE-09" "CYCSA-PE-27"',
+            'Nota personalizada: Verificación especial solicitada por obra.'
+        ];
+        $dec['metadatos']['notas_informe_personalizadas'] = true;
+        $detalle['resultados_json'] = json_encode($dec, JSON_UNESCAPED_UNICODE);
+
+        $schema = obtenerEsquemaPlantillaEnsayo('resistencia_de_concreto.md');
+        $meta = resolverMetadatosEnsayo($detalle, $schema, $dec['metadatos']);
+        $this->assertSame('Cláusula editada CYCSA prueba de exactitud en muestras de campo.', $meta['disclaimer_personalizado']);
+        $this->assertTrue($meta['notas_informe_personalizadas']);
+        $this->assertCount(2, $meta['notas_informe']);
+
+        // Verificar propagación al PDF
+        $pdfBytes = generarMatrizTecnicaPDF($detalle);
+        $textoPdf = $this->extraerTextoDePdf($pdfBytes);
+        $this->assertStringContainsString('CYCSA-PE-09', $textoPdf);
+        $this->assertStringContainsString('CYCSA-PE-27', $textoPdf);
+        $this->assertStringContainsString('Verificación especial solicitada por obra.', $textoPdf);
+        $this->assertStringContainsString('Cláusula editada CYCSA prueba', $textoPdf);
+
+        // Verificar posición ARRIBA de la tabla en documento_terminado.php y captura_matriz.php
+        $docView = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/documento_terminado.php');
+        $posPanelDoc = strpos($docView, 'id="panel-notas-documento-arriba"');
+        $posTablaDoc = strpos($docView, 'id="tabla-documento-terminado"');
+        $this->assertNotFalse($posPanelDoc);
+        $this->assertNotFalse($posTablaDoc);
+        $this->assertLessThan($posTablaDoc, $posPanelDoc, 'El bloque editable de notas debe aparecer ARRIBA de la tabla en documento_terminado.php.');
+
+        $capView = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/captura_matriz.php');
+        $posPanelCap = strpos($capView, 'id="panel-notas-matriz-arriba"');
+        $posTablaCap = strpos($capView, 'id="tabla-captura-matriz"');
+        $this->assertNotFalse($posPanelCap);
+        $this->assertNotFalse($posTablaCap);
+        $this->assertLessThan($posTablaCap, $posPanelCap, 'El bloque editable de notas debe aparecer ARRIBA de la tabla en captura_matriz.php.');
+
+        // Verificar propagación en matriz_print.php
+        $printView = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/Operaciones/Vistas/matriz_print.php');
+        $this->assertStringContainsString("disclaimer_personalizado", $printView);
+        $this->assertStringContainsString("notas_informe_personalizadas", $printView);
+    }
 }

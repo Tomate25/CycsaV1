@@ -2658,6 +2658,26 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
     $logoAcreditacion = !empty($metadatosGuardados['logo_acreditacion']) ? $metadatosGuardados['logo_acreditacion'] : (!empty($detalle['logo_acreditacion']) ? $detalle['logo_acreditacion'] : '');
     $notaAditivos = trim((string)($metadatosGuardados['nota_aditivos'] ?? ($detalle['nota_aditivos'] ?? '')));
     $observacionesPendientes = trim((string)($metadatosGuardados['observaciones_pendientes'] ?? ($detalle['observaciones_pendientes'] ?? '')));
+    $disclaimerPersonalizado = array_key_exists('disclaimer_personalizado', $metadatosGuardados)
+        ? trim((string)$metadatosGuardados['disclaimer_personalizado'])
+        : null;
+    $notasPersonalizadasFlag = !empty($metadatosGuardados['notas_informe_personalizadas'])
+        || array_key_exists('notas_informe', $metadatosGuardados);
+    $notasInformeGuardadas = [];
+    if (array_key_exists('notas_informe', $metadatosGuardados)) {
+        $rawNotas = $metadatosGuardados['notas_informe'];
+        if (is_string($rawNotas)) {
+            $rawNotas = preg_split('/\r\n|\r|\n/', $rawNotas) ?: [];
+        }
+        if (is_array($rawNotas)) {
+            foreach ($rawNotas as $nLine) {
+                $nTrim = trim((string)$nLine);
+                if ($nTrim !== '') {
+                    $notasInformeGuardadas[] = $nTrim;
+                }
+            }
+        }
+    }
 
     $rawColsAst = $metadatosGuardados['columnas_asterisco'] ?? ($detalle['columnas_asterisco'] ?? []);
     $columnasAsterisco = [];
@@ -2703,6 +2723,9 @@ function resolverMetadatosEnsayo(array $detalle, array $schemaInfo = [], array $
         'nota_aditivos' => $notaAditivos,
         'observaciones_pendientes' => $observacionesPendientes,
         'columnas_asterisco' => $columnasAsterisco,
+        'disclaimer_personalizado' => $disclaimerPersonalizado,
+        'notas_informe' => $notasInformeGuardadas,
+        'notas_informe_personalizadas' => $notasPersonalizadasFlag,
     ];
 }
 
@@ -2976,6 +2999,13 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
 
     $resultados = filtrarFilasPublicasMatriz($resultados);
     $metaOficial = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
+
+    if (array_key_exists('disclaimer_personalizado', $metaOficial) && $metaOficial['disclaimer_personalizado'] !== null) {
+        $disclaimerOficial = (string)$metaOficial['disclaimer_personalizado'];
+    }
+    if (!empty($metaOficial['notas_informe_personalizadas'])) {
+        $notasOficiales = is_array($metaOficial['notas_informe'] ?? null) ? $metaOficial['notas_informe'] : [];
+    }
 
     $codigoFormatoOficial = $metaOficial['codigo_formato'];
     $codigoFormatoOficial = htmlspecialchars($codigoFormatoOficial, ENT_QUOTES, 'UTF-8');

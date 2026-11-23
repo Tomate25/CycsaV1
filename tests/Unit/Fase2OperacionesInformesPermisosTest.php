@@ -627,4 +627,47 @@ class Fase2OperacionesInformesPermisosTest extends TestCase {
         $this->assertSame('2026-11-29', $fila0['Fecha de Ensayo']);
         $this->assertEquals(28, $fila0['Edad (Días)']);
     }
+
+    public function testGuardarNotasDocumentoPOSTPersisteSinAlterarFilasYBloqueaTecnico(): void {
+        $fx = $this->crearFixtureMatrizConcreto();
+        $ctrl = new OperacionesControlador();
+
+        // 1. Técnico ciego (Rol 6) bloqueado
+        $_SESSION['usuario_rol'] = 6;
+        $_SESSION['usuario_permisos'] = ['operaciones' => ['ver' => true, 'crear_editar' => true]];
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_detalle' => $fx['id_detalle'],
+            'disclaimer_personalizado' => 'Intento no autorizado',
+            'notas_informe' => 'Nota bloqueada',
+        ];
+        $respTec = new TestRespuestaFase2Operaciones();
+        $ctrl->guardarNotasDocumentoPOST(new Peticion(), $respTec);
+        $this->assertSame('/Cycsa/publico/captura-tecnica', $respTec->urlRedirigida);
+
+        // 2. Supervisor / Admin (Rol 1) guarda notas y cláusula sin alterar las filas existentes
+        $_SESSION['usuario_rol'] = 1;
+        unset($_SESSION['usuario_permisos']);
+        $_POST = [
+            'csrf_token' => $_SESSION['csrf_token'],
+            'id_detalle' => $fx['id_detalle'],
+            'disclaimer_personalizado' => 'Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados.',
+            'notas_informe' => "Nota: Ensayos realizados in Situ: Ensayo \"CYCSA-PE-09\" \"CYCSA-PE-27\"\nNota 2: Ajuste específico del proyecto.",
+            'redirect_to' => '/Cycsa/publico/operaciones/documento?id_detalle=' . $fx['id_detalle'],
+        ];
+        $respSup = new TestRespuestaFase2Operaciones();
+        $ctrl->guardarNotasDocumentoPOST(new Peticion(), $respSup);
+        $this->assertSame('/Cycsa/publico/operaciones/documento?id_detalle=' . $fx['id_detalle'], $respSup->urlRedirigida);
+
+        $raw = $this->db->query("SELECT resultados_json FROM cotizacion_detalles WHERE id = {$fx['id_detalle']}")->fetchColumn();
+        $dec = json_decode((string)$raw, true);
+        $this->assertSame('MC-9001-26', $dec['filas'][0]['Código laboratorio'], 'Las filas originales deben permanecer intactas.');
+        $this->assertSame('Consultoría y Construcción SA.CYCSA es responsable únicamente de la exactitud de los resultados.', $dec['metadatos']['disclaimer_personalizado']);
+        $this->assertTrue($dec['metadatos']['notas_informe_personalizadas']);
+        $this->assertSame([
+            'Nota: Ensayos realizados in Situ: Ensayo "CYCSA-PE-09" "CYCSA-PE-27"',
+            'Nota 2: Ajuste específico del proyecto.',
+        ], $dec['metadatos']['notas_informe']);
+    }
 }

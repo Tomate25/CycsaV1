@@ -2947,13 +2947,30 @@ class OperacionesControlador extends ControladorBase {
             $metaPrev = !empty($decExistente['metadatos']) && is_array($decExistente['metadatos']) ? $decExistente['metadatos'] : [];
             $metadatos = array_merge($metaPrev, $metaRawJson, $metaPost);
 
-            // Persistir explícitamente nota_aditivos, observaciones_pendientes y columnas_asterisco
-            foreach (['nota_aditivos', 'observaciones_pendientes'] as $campoMetaTexto) {
+            // Persistir explícitamente nota_aditivos, observaciones_pendientes, disclaimer_personalizado, notas_informe y columnas_asterisco
+            foreach (['nota_aditivos', 'observaciones_pendientes', 'disclaimer_personalizado'] as $campoMetaTexto) {
                 if (array_key_exists($campoMetaTexto, $metaPost)) {
                     $metadatos[$campoMetaTexto] = trim((string)$metaPost[$campoMetaTexto]);
                 } elseif (array_key_exists($campoMetaTexto, $metaRawJson)) {
                     $metadatos[$campoMetaTexto] = trim((string)$metaRawJson[$campoMetaTexto]);
                 }
+            }
+            if (array_key_exists('notas_informe', $metaPost) || array_key_exists('notas_informe', $metaRawJson)) {
+                $rawNotasMeta = array_key_exists('notas_informe', $metaPost) ? $metaPost['notas_informe'] : $metaRawJson['notas_informe'];
+                if (is_string($rawNotasMeta)) {
+                    $rawNotasMeta = preg_split('/\r\n|\r|\n/', $rawNotasMeta) ?: [];
+                }
+                $notasLimpiasMeta = [];
+                if (is_array($rawNotasMeta)) {
+                    foreach ($rawNotasMeta as $nLinea) {
+                        $nLineaTrim = trim((string)$nLinea);
+                        if ($nLineaTrim !== '') {
+                            $notasLimpiasMeta[] = $nLineaTrim;
+                        }
+                    }
+                }
+                $metadatos['notas_informe'] = $notasLimpiasMeta;
+                $metadatos['notas_informe_personalizadas'] = true;
             }
             if (array_key_exists('columnas_asterisco', $metadatos)) {
                 if (is_string($metadatos['columnas_asterisco'])) {
@@ -2963,7 +2980,7 @@ class OperacionesControlador extends ControladorBase {
                 }
             }
 
-            // 2.4 Si no es supervisor/admin o se guarda desde Captura Técnica, restaurar metadatos de cliente/recepción y equipo densímetro desde BD previa
+            // 2.4 Si no es supervisor/admin o se guarda desde Captura Técnica, restaurar metadatos de cliente/recepción, notas oficiales y equipo densímetro desde BD previa
             if ($protegerRecepcionYMeta) {
                 $clavesSoloSupervisor = [
                     'cliente_nombre', 'cliente_direccion', 'proyecto',
@@ -2973,6 +2990,7 @@ class OperacionesControlador extends ControladorBase {
                     'equipo_marca', 'equipo_modelo', 'equipo_serie', 'equipo_codigo',
                     'densimetro_marca', 'densimetro_modelo', 'densimetro_serie', 'densimetro_codigo',
                     'muestra_tomada_con_equipo',
+                    'disclaimer_personalizado', 'notas_informe', 'notas_informe_personalizadas',
                 ];
                 foreach ($clavesSoloSupervisor as $ce) {
                     if (array_key_exists($ce, $metaPrev)) {
@@ -4230,6 +4248,95 @@ class OperacionesControlador extends ControladorBase {
             'error' => $_SESSION['error'] ?? null,
         ]);
         unset($_SESSION['exito'], $_SESSION['error']);
+    }
+
+    /**
+     * Guarda exclusivamente la cláusula (disclaimer) y notas editables de una matriz/documento
+     * en Operaciones sin alterar filas de resultados, captura técnica ni estado de revisión.
+     */
+    public function guardarNotasDocumentoPOST(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025()) {
+            $_SESSION['error'] = 'Acceso restringido (ISO/IEC 17025): el perfil técnico no puede editar notas del informe oficial.';
+            $respuesta->redirigir('/Cycsa/publico/captura-tecnica');
+            return;
+        }
+        $puedeEditarNotas = tienePermiso('operaciones', 'ver')
+            || tienePermiso('operaciones', 'crear_editar')
+            || tienePermiso('ordenes_servicio', 'ver')
+            || tienePermiso('recepcion', 'ver')
+            || tienePermiso('control_calidad', 'ver');
+        if (!$puedeEditarNotas) {
+            $_SESSION['error'] = 'No tiene permiso para editar las notas del documento.';
+            $respuesta->redirigir('/Cycsa/publico/panel');
+            return;
+        }
+
+        $datos = $peticion->obtenerDatos();
+        $idDetalle = (int)($datos['id_detalle'] ?? 0);
+        $redirectTo = trim((string)($datos['redirect_to'] ?? ''));
+        $destinoSeguro = ($redirectTo !== '' && strpos($redirectTo, '/Cycsa/publico/') === 0)
+            ? $redirectTo
+            : ($idDetalle > 0 ? '/Cycsa/publico/operaciones/documento?id_detalle=' . $idDetalle : '/Cycsa/publico/operaciones');
+
+        $csrfRecibido = (string)($datos['csrf_token'] ?? '');
+        $csrfSesion = (string)($_SESSION['csrf_token'] ?? '');
+        if ($csrfSesion !== '' && !hash_equals($csrfSesion, $csrfRecibido)) {
+            $_SESSION['error'] = 'Token de seguridad inválido. Recargue la página e intente nuevamente.';
+            $respuesta->redirigir($destinoSeguro);
+            return;
+        }
+
+        if ($idDetalle <= 0) {
+            $_SESSION['error'] = 'Ensayo no especificado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $stmt = $db->prepare("SELECT id, resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $idDetalle]);
+        $filaDetalle = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$filaDetalle) {
+            $_SESSION['error'] = 'Ensayo no encontrado.';
+            $respuesta->redirigir('/Cycsa/publico/operaciones');
+            return;
+        }
+
+        $dec = json_decode((string)($filaDetalle['resultados_json'] ?? ''), true);
+        if (!is_array($dec)) {
+            $dec = ['filas' => [], 'metadatos' => []];
+        } elseif (!isset($dec['filas']) && !isset($dec['metadatos'])) {
+            $dec = ['filas' => array_values($dec), 'metadatos' => []];
+        }
+        if (!isset($dec['metadatos']) || !is_array($dec['metadatos'])) {
+            $dec['metadatos'] = [];
+        }
+
+        $disclaimerPersonalizado = trim((string)($datos['disclaimer_personalizado'] ?? ''));
+        $notasRaw = (string)($datos['notas_informe'] ?? '');
+        $lineasNotas = preg_split('/\r\n|\r|\n/', $notasRaw) ?: [];
+        $notasLimpias = [];
+        foreach ($lineasNotas as $linea) {
+            $lineaTrim = trim((string)$linea);
+            if ($lineaTrim !== '') {
+                $notasLimpias[] = $lineaTrim;
+            }
+        }
+
+        $dec['metadatos']['disclaimer_personalizado'] = $disclaimerPersonalizado;
+        $dec['metadatos']['notas_informe'] = $notasLimpias;
+        $dec['metadatos']['notas_informe_personalizadas'] = true;
+
+        $jsonFinal = json_encode($dec, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $stmtUpd = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+        $stmtUpd->execute([
+            'json' => $jsonFinal,
+            'id' => $idDetalle,
+        ]);
+
+        $_SESSION['exito'] = 'Notas y cláusula del informe guardadas correctamente.';
+        $respuesta->redirigir($destinoSeguro);
     }
 
     /**

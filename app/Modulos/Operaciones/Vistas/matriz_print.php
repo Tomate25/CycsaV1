@@ -103,6 +103,12 @@ $resultados = filtrarFilasPublicasMatriz($resultados);
 if (empty($metadatos)) {
     $metadatos = resolverMetadatosEnsayo($detalle, $schemaInfo, $metadatosGuardados);
 }
+if (array_key_exists('disclaimer_personalizado', $metadatos) && $metadatos['disclaimer_personalizado'] !== null) {
+    $disclaimerOficial = (string)$metadatos['disclaimer_personalizado'];
+}
+if (!empty($metadatos['notas_informe_personalizadas'])) {
+    $notasOficiales = is_array($metadatos['notas_informe'] ?? null) ? $metadatos['notas_informe'] : [];
+}
 
 $revisionDatosPrint = isset($dec['revision']) && is_array($dec['revision']) ? $dec['revision'] : [];
 $revisadoPorNombre = isset($revisadoPorNombre) && trim((string)$revisadoPorNombre) !== ''
