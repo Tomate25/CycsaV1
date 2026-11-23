@@ -8,8 +8,8 @@ if (!empty($os['contactos_json'])) {
 <style>
     .os-wrapper { background: #f1f5f9; padding: 18px 20px 40px 20px; min-height: 100vh; }
     .os-container { 
-        max-width: 960px; 
-        margin: 0 auto; 
+        width: 100%; max-width: 100%; 
+        margin: 0; 
         background: white; 
         padding: 30px 42px; 
         border-radius: 8px; 
@@ -70,8 +70,8 @@ if (!empty($os['contactos_json'])) {
     .os-footer-line { border-top: 2.5px solid #103487; margin-top: 24px; padding-top: 10px; display: flex; justify-content: space-between; font-size: 11px; color: #103487; font-weight: 600; line-height: 1.4; }
 
     .btn-action-bar { 
-        max-width: 960px; 
-        margin: 0 auto 14px auto; 
+        width: 100%; max-width: 100%; 
+        margin: 0 0 14px 0; 
         display: flex; 
         justify-content: space-between; 
         align-items: center; 
@@ -154,7 +154,7 @@ if (!empty($os['contactos_json'])) {
     if (!empty($alertaAlcanceDet['tiene_alerta'])):
         $esDangerAlc = ($alertaAlcanceDet['nivel'] ?? 'warning') === 'danger';
     ?>
-    <div class="no-print" style="max-width: 960px; margin: 0 auto 14px auto; background: <?= $esDangerAlc ? '#fef2f2' : '#fffbeb' ?>; border: 1.5px solid <?= $esDangerAlc ? '#fca5a5' : '#fcd34d' ?>; color: <?= $esDangerAlc ? '#991b1b' : '#92400e' ?>; border-radius: 8px; padding: 12px 16px; font-size: 13px;">
+    <div class="no-print" style="width: 100%; max-width: 100%; margin: 0 0 14px 0; background: <?= $esDangerAlc ? '#fef2f2' : '#fffbeb' ?>; border: 1.5px solid <?= $esDangerAlc ? '#fca5a5' : '#fcd34d' ?>; color: <?= $esDangerAlc ? '#991b1b' : '#92400e' ?>; border-radius: 8px; padding: 12px 16px; font-size: 13px;">
         <div style="font-weight: 700; margin-bottom: 4px;">
             <i class="fa-solid fa-triangle-exclamation"></i> Alerta de Alcance / Vigencia Mensual de la O/S
         </div>
@@ -430,7 +430,7 @@ if (!empty($os['contactos_json'])) {
     </div>
 </div>
 <?php if (!empty($os['hojas_servicio'])): ?>
-<div class="no-print" style="max-width: 960px; margin: 16px auto 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);">
+<div class="no-print" style="width: 100%; max-width: 100%; margin: 16px 0 0 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);">
     <h3 style="margin: 0 0 12px 0; font-size: 15px; color: #103487; font-weight: 700;">
         <i class="fa-solid fa-file-signature"></i> Hojas de Servicio (RT-FM-13) y Solicitudes a Laboratorio (RT-FM-60)
     </h3>
@@ -464,7 +464,7 @@ if (!empty($os['contactos_json'])) {
 
 <!-- HISTORIAL DE VERSIONES DE LA O/S (2.5) -->
 <?php $historialVersionesOs = $os['historial_versiones'] ?? []; ?>
-<div class="no-print" style="max-width: 960px; margin: 16px auto 16px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);">
+<div class="no-print" style="width: 100%; max-width: 100%; margin: 16px 0 16px 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h3 style="margin: 0; font-size: 15px; color: #103487; font-weight: 700;">
             <i class="fa-solid fa-code-branch"></i> Historial de Versiones de la O/S
@@ -512,7 +512,7 @@ if (!empty($os['contactos_json'])) {
     <?php endif; ?>
 </div>
 <?php if (!empty($mostrar_bitacora)): ?>
-<div class="no-print" style="max-width: 960px; margin: 8px auto 40px auto;">
+<div class="no-print" style="width: 100%; max-width: 100%; margin: 8px 0 40px 0;">
 <?php
 $bitacora_modulo_nombre = $bitacora_modulo_nombre ?? ('Orden de Servicio ' . ($os['codigo_os'] ?? ''));
 $bitacora_limite = $bitacora_limite ?? 200;

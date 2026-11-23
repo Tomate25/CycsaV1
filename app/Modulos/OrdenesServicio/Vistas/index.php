@@ -83,10 +83,11 @@
         z-index: 1065 !important;
     }
 
-    /* MÓDULO O/S: TOKENS DE DISEÑO Y TIPOGRAFÍA */
+    /* MÓDULO O/S: TOKENS DE DISEÑO Y TIPOGRAFÍA (100% ANCHO DE PANTALLA) */
     .os-modulo-container {
-        max-width: 1440px;
-        margin: 0 auto;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
         background: white;
         padding: 28px;
         border-radius: 14px;

@@ -42,7 +42,7 @@ $listaClientes = $clientes ?? [];
     }
 </style>
 
-<div style="max-width: 1050px; margin: 0 auto; padding-bottom: 40px;">
+<div style="width: 100%; max-width: 100%; margin: 0; padding-bottom: 40px;">
     
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <div>

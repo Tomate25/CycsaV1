@@ -238,10 +238,31 @@
         }
 
         .content-wrapper { 
-            padding: 30px; 
+            padding: 20px 24px; 
             overflow-y: auto; 
             flex: 1; 
             background: #f8fafc;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        /* Adaptación global 100% ancho de pantalla para contenedores de módulos */
+        .content-wrapper > .container,
+        .content-wrapper > .container-fluid,
+        .os-modulo-container,
+        .cy-op-wrap,
+        .cy-ver-wrap,
+        .qc-page,
+        .qc-detail-page,
+        .plantillas-wrap,
+        .rep-hub-wrap,
+        .rep-view-wrap,
+        .ventas-wrap,
+        .os-bitacora-wrap {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
         }
 
         /* Clases auxiliares para flexbox responsivo */

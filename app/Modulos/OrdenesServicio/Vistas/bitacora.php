@@ -11,7 +11,7 @@ $idOS = (int)($os['id'] ?? 0);
 $codigo = (string)($os['codigo_os'] ?? '');
 ?>
 <style>
-    .os-bitacora-wrap { max-width: 980px; margin: 0 auto 40px auto; }
+    .os-bitacora-wrap { width: 100%; max-width: 100%; margin: 0 0 40px 0; }
     .os-bitacora-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
     .os-bitacora-head h1 { margin: 0; font-size: 22px; color: #0f172a; }
     .os-bitacora-head p { margin: 4px 0 0 0; color: #64748b; font-size: 13.5px; }

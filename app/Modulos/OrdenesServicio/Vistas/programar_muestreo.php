@@ -61,7 +61,7 @@ if (!is_array($chk)) {
     }
 </style>
 
-<div style="max-width: 1150px; margin: 0 auto; padding-bottom: 50px;">
+<div style="width: 100%; max-width: 100%; margin: 0; padding-bottom: 50px;">
     
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
         <div>
