@@ -2431,21 +2431,29 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
     }
 
     function recalculateEdades() {
+        const parseUtcMs = (str) => {
+            const s = String(str || '').trim();
+            if (!s) return null;
+            let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) return Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+            m = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+            if (m) return Date.UTC(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+            return null;
+        };
         const rows = document.querySelectorAll('#tabla-body tr');
         rows.forEach(tr => {
-            const fFabInput = tr.querySelector('input[data-col="Fecha de Fabricación"]');
+            const fFabInput = tr.querySelector('input[data-col="Fecha de Fabricación"]') || tr.querySelector('input[data-col="Fecha de Moldeo"]');
             const fEnsInput = tr.querySelector('input[data-col="Fecha de Ensayo"]') || tr.querySelector('input[data-col="Fecha de Ruptura"]') || tr.querySelector('input[data-col="Fecha de Finalización"]');
             const edadInput = tr.querySelector('input[data-col="Edad (Días)"]');
 
-            if (fFabInput && fEnsInput && edadInput && fFabInput.value && fEnsInput.value) {
-                const dFab = new Date(fFabInput.value);
-                const dEns = new Date(fEnsInput.value);
-                if (!isNaN(dFab) && !isNaN(dEns)) {
-                    const diffTime = dEns - dFab;
-                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays >= 0) {
-                        edadInput.value = diffDays;
-                    }
+            if (fFabInput && fEnsInput && edadInput) {
+                const msFab = parseUtcMs(fFabInput.value);
+                const msEns = parseUtcMs(fEnsInput.value);
+                if (msFab !== null && msEns !== null) {
+                    const diffDays = Math.round((msEns - msFab) / 86400000);
+                    edadInput.value = diffDays >= 0 ? String(diffDays) : '';
+                } else {
+                    edadInput.value = '';
                 }
             }
         });
@@ -3890,7 +3898,7 @@ window.addEventListener('click', function(e) {
         if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) return;
         const actual = e.target;
         if (!actual || !['INPUT', 'SELECT'].includes(actual.tagName)) return;
-        const tbody = actual.closest('#tbody-captura-tecnica-lab, #tabla-body');
+        const tbody = actual.closest('#ht-tabla-body, #tbody-captura-tecnica-lab, #tabla-body');
         if (!tbody) return;
         const trActual = actual.closest('tr');
         if (!trActual) return;
@@ -3936,7 +3944,7 @@ window.addEventListener('click', function(e) {
             return;
         }
         if (key === 'ArrowRight' || key === 'ArrowLeft') {
-            if (tipo === 'date' && !e.ctrlKey && !e.altKey) return;
+            if ((tipo === 'date' || tipo === 'datetime-local') && !e.ctrlKey && !e.altKey) return;
             if (tipo === 'text' && !e.ctrlKey && !e.altKey && typeof actual.selectionStart === 'number') {
                 const len = (actual.value || '').length;
                 const todoSel = (actual.selectionStart === 0 && actual.selectionEnd === len);
