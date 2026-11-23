@@ -6542,13 +6542,16 @@ if (!function_exists('validarCamposObligatoriosRecepcionHoja')) {
             return ['completo' => false, 'faltantes' => ['Hoja RT-FM-13 no encontrada'], 'total_muestras' => 0];
         }
 
-        $infoCampos = obtenerCamposRecepcionParaDetalle(
+        $infoCamposDefault = obtenerCamposRecepcionParaDetalle(
             $db,
             !empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : null,
             !empty($hoja['id_producto']) ? (int)$hoja['id_producto'] : null
         );
-        $archivoMd = mb_strtolower((string)($infoCampos['archivo_markdown'] ?? ''), 'UTF-8');
-        $esConcretoCilindros = str_contains($archivoMd, 'resistencia_de_concreto');
+        $archivoMdDefault = mb_strtolower((string)($infoCamposDefault['archivo_markdown'] ?? ''), 'UTF-8');
+        $cacheArchivoPorDetalle = [];
+        if (!empty($hoja['id_detalle_cotizacion'])) {
+            $cacheArchivoPorDetalle[(int)$hoja['id_detalle_cotizacion']] = $archivoMdDefault;
+        }
 
         $mapaActual = construirMapaDatosRecepcionPorHoja($db, $idHoja);
         foreach ($datosPorCodigo as $codK => $valsK) {
@@ -6560,11 +6563,17 @@ if (!function_exists('validarCamposObligatoriosRecepcionHoja')) {
 
         $muestrasLista = [];
         try {
-            $stmtDet = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion, datos_recepcion_json FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid ORDER BY orden ASC, id ASC");
+            $stmtDet = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion, datos_recepcion_json, id_detalle_cotizacion FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid ORDER BY orden ASC, id ASC");
             $stmtDet->execute(['hid' => $idHoja]);
             $muestrasLista = $stmtDet->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (\Throwable $e) {
-            $muestrasLista = [];
+            try {
+                $stmtDet = $db->prepare("SELECT codigo_muestra, descripcion_ubicacion, datos_recepcion_json FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid ORDER BY orden ASC, id ASC");
+                $stmtDet->execute(['hid' => $idHoja]);
+                $muestrasLista = $stmtDet->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            } catch (\Throwable $e2) {
+                $muestrasLista = [];
+            }
         }
 
         if (empty($muestrasLista)) {
@@ -6573,6 +6582,7 @@ if (!function_exists('validarCamposObligatoriosRecepcionHoja')) {
                 $muestrasLista[] = [
                     'codigo_muestra' => (string)($m['nombre_muestra'] ?? ($m['codigo_muestra'] ?? '')),
                     'descripcion_ubicacion' => (string)($m['descripcion'] ?? ($m['nombre_muestra_cliente'] ?? '')),
+                    'id_detalle_cotizacion' => !empty($m['id_detalle_cotizacion']) ? (int)$m['id_detalle_cotizacion'] : null,
                 ];
             }
         }
@@ -6588,12 +6598,27 @@ if (!function_exists('validarCamposObligatoriosRecepcionHoja')) {
             $codKey = strtoupper($cod);
             $datosM = $mapaActual[$codKey] ?? [];
 
+            $idDetMuestra = !empty($mRow['id_detalle_cotizacion'])
+                ? (int)$mRow['id_detalle_cotizacion']
+                : (!empty($hoja['id_detalle_cotizacion']) ? (int)$hoja['id_detalle_cotizacion'] : 0);
+
+            if ($idDetMuestra > 0) {
+                if (!isset($cacheArchivoPorDetalle[$idDetMuestra])) {
+                    $infoDetM = obtenerCamposRecepcionParaDetalle($db, $idDetMuestra, null);
+                    $cacheArchivoPorDetalle[$idDetMuestra] = mb_strtolower((string)($infoDetM['archivo_markdown'] ?? ''), 'UTF-8');
+                }
+                $archivoMdMuestra = $cacheArchivoPorDetalle[$idDetMuestra];
+            } else {
+                $archivoMdMuestra = $archivoMdDefault;
+            }
+            $esConcretoMuestra = str_contains($archivoMdMuestra, 'resistencia_de_concreto') && !str_contains($archivoMdMuestra, 'compactacion');
+
             $nomMuestra = trim((string)(buscarValorEnFilaPHP($datosM, 'Nombre muestra') ?: ($mRow['descripcion_ubicacion'] ?? '')));
             if ($nomMuestra === '') {
                 $faltantes[] = "{$cod}: Nombre muestra";
             }
 
-            if ($esConcretoCilindros) {
+            if ($esConcretoMuestra) {
                 $fFab = trim((string)buscarValorEnFilaPHP($datosM, 'Fecha de Fabricación'));
                 if ($fFab === '') {
                     $faltantes[] = "{$cod}: Fecha de Fabricación";

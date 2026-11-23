@@ -1205,6 +1205,16 @@ class HojaSolicitudPorProductoTest extends TestCase {
         $muestrasConcretoPost = obtenerMuestrasHojaParaDetalle($this->db, $this->idOS, $this->idDetalleConcreto);
         $this->assertSame(['MS-8001-26', 'MS-8002-26'], array_column($muestrasConcretoPost, 'codigo_muestra'), 'No debe permitir mover una muestra cuyo producto ya fue definido.');
 
+        // Validar recepción completa por producto: NO debe exigir 'Fecha de Fabricación' a muestras de Suelo/Compactación
+        $valMixta = validarCamposObligatoriosRecepcionHoja($this->db, $idHojaMulti, [
+            'MS-8001-26' => ['Nombre muestra' => 'Columna 1', 'Fecha de Fabricación' => '2026-11-20'],
+            'MS-8002-26' => ['Nombre muestra' => 'Columna 2', 'Fecha de Fabricación' => '2026-11-20'],
+            'MS-8003-26' => ['Nombre muestra' => 'Estrato 1'],
+            'MS-8004-26' => ['Nombre muestra' => 'Estrato 2'],
+        ]);
+        $this->assertTrue($valMixta['completo'], 'No debe exigir Fecha de Fabricación a muestras de otro producto: ' . implode(', ', $valMixta['faltantes']));
+        $this->assertSame([], $valMixta['faltantes']);
+
         // Verificar que la vista de Órdenes de Servicio retiró la tarjeta obligatoria de 1 solo producto, el recuadro de Plantilla Predeterminada
         // y separa el modal Datos de Recepción en pestañas limpias por producto (sin mezclar columnas ni N/A)
         $vistaOs = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Modulos/OrdenesServicio/Vistas/index.php');

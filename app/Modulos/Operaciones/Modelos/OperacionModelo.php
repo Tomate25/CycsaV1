@@ -1957,27 +1957,89 @@ class OperacionModelo extends ModeloBase {
             }
         }
 
+        // Mapa por código de muestra -> id_detalle_cotizacion + datos_recepcion_json desde hojas_solicitud_detalles (soporte multi-producto)
+        $mapaHsdPorCodigo = [];
+        if ($actualHojaId > 0) {
+            try {
+                $stmtHsdMap = $this->db->prepare("SELECT codigo_muestra, id_detalle_cotizacion, plantilla_id, datos_recepcion_json FROM hojas_solicitud_detalles WHERE id_hoja_solicitud = :hid");
+                $stmtHsdMap->execute(['hid' => $actualHojaId]);
+                foreach ($stmtHsdMap->fetchAll(PDO::FETCH_ASSOC) as $rHsd) {
+                    $cKey = strtoupper(trim((string)($rHsd['codigo_muestra'] ?? '')));
+                    if ($cKey !== '') {
+                        $mapaHsdPorCodigo[$cKey] = $rHsd;
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+        $cacheEsCompactacionDet = [];
+        $esDetalleCompactacion = function (int $detId) use (&$cacheEsCompactacionDet): bool {
+            if ($detId <= 0 || !function_exists('esItemCompactacion')) return false;
+            if (!array_key_exists($detId, $cacheEsCompactacionDet)) {
+                $stC = $this->db->prepare("
+                    SELECT cd.*, p.codigo_servicio, p.norma_astm, p.nombre_comercial, fe.archivo_markdown, fe.nombre AS formato_nombre
+                    FROM cotizacion_detalles cd
+                    LEFT JOIN productos p ON cd.id_producto = p.id
+                    LEFT JOIN formatos_ensayos fe ON p.formato_id = fe.id
+                    WHERE cd.id = :id LIMIT 1
+                ");
+                $stC->execute(['id' => $detId]);
+                $rowC = $stC->fetch(PDO::FETCH_ASSOC);
+                $cacheEsCompactacionDet[$detId] = $rowC ? esItemCompactacion($rowC) : false;
+            }
+            return $cacheEsCompactacionDet[$detId];
+        };
+
         $muestrasPayload = [];
+        $omitidasCompactacion = 0;
         if (!empty($muestrasDeclaradasRT)) {
+            $ordenLab = 1;
             foreach ($muestrasDeclaradasRT as $idx => $mDecl) {
                 $nombreCampo = trim((string)($mDecl['nombre_muestra'] ?? ('M-' . ($idx + 1))));
+                $codKeyDecl = strtoupper($nombreCampo);
+                $hsdInfo = $mapaHsdPorCodigo[$codKeyDecl] ?? [];
+                $detIdMuestra = !empty($hsdInfo['id_detalle_cotizacion'])
+                    ? (int)$hsdInfo['id_detalle_cotizacion']
+                    : (!empty($mDecl['id_detalle_cotizacion']) ? (int)$mDecl['id_detalle_cotizacion'] : $idDetalleCotizacion);
+
+                // Omitir muestras de compactación in situ al ingresar al laboratorio físico
+                if ($esDetalleCompactacion($detIdMuestra)) {
+                    $omitidasCompactacion++;
+                    continue;
+                }
+
                 $descLote = trim((string)($mDecl['descripcion'] ?? $nombreCampo));
-                $plMuestra = !empty($mDecl['plantilla_id']) ? (int)$mDecl['plantilla_id'] : $plantillaIdHoja;
+                $plMuestra = !empty($hsdInfo['plantilla_id'])
+                    ? (int)$hsdInfo['plantilla_id']
+                    : (!empty($mDecl['plantilla_id']) ? (int)$mDecl['plantilla_id'] : $plantillaIdHoja);
+
+                $recDec = !empty($hsdInfo['datos_recepcion_json']) ? (json_decode((string)$hsdInfo['datos_recepcion_json'], true) ?: []) : [];
+                $fMoldeoM = !empty($recDec['Fecha de Fabricación'])
+                    ? date('Y-m-d', strtotime((string)$recDec['Fecha de Fabricación']))
+                    : (!empty($hoja['fecha_hora_toma_muestra']) ? date('Y-m-d', strtotime((string)$hoja['fecha_hora_toma_muestra'])) : date('Y-m-d'));
+                $disenoM = trim((string)($recDec['Diseño de concreto (lb/in²)'] ?? ''));
 
                 $muestrasPayload[] = [
-                    'id_detalle_cotizacion' => $idDetalleCotizacion,
+                    'id_detalle_cotizacion' => $detIdMuestra,
                     'plantilla_id' => $plMuestra,
-                    'orden_en_lote' => $idx + 1,
+                    'orden_en_lote' => $ordenLab++,
                     'tipo_muestra' => $tipoMuestraCalculado,
                     'id_cilindro' => $nombreCampo,
                     'codigo_campo' => $nombreCampo,
                     'is_qa_qc' => 0,
                     'nombre_lote' => $descLote,
-                    'fecha_moldeo' => !empty($hoja['fecha_hora_toma_muestra']) ? date('Y-m-d', strtotime((string)$hoja['fecha_hora_toma_muestra'])) : date('Y-m-d'),
-                    'diseno_resistencia' => '',
+                    'fecha_moldeo' => $fMoldeoM,
+                    'diseno_resistencia' => $disenoM,
                     'procedimiento_muestreo' => trim((string)($opciones['procedimiento_muestreo'] ?? 'ASTM / ISO 17025')),
                     'edades_dias' => [],
                     'edades_identificadores' => [],
+                ];
+            }
+            if (empty($muestrasPayload) && $omitidasCompactacion > 0) {
+                return [
+                    'ok' => false,
+                    'compactacion' => true,
+                    'mensaje' => 'Los ensayos de compactación in situ no requieren recepción ni custodia física en laboratorio.',
                 ];
             }
         } else {
