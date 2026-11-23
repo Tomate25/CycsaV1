@@ -3278,6 +3278,12 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             </td>
         `;
         tbody.appendChild(tr);
+        tr.querySelectorAll('input[name="m_desc[]"], input[name="m_info[]"], select[name="m_detalle_cotizacion[]"]').forEach(el => {
+            el.addEventListener('keydown', (e) => {
+                if (el.tagName === 'SELECT' && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.ctrlKey && !e.altKey) return;
+                manejarNavegacionFlechasTabla(e, tbody, 'input[name="m_desc[]"], input[name="m_info[]"], select[name="m_detalle_cotizacion[]"]');
+            });
+        });
         actualizarContadorEspecimenes();
     }
 
@@ -4251,7 +4257,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 });
             }
 
-            // Auto-cálculo Reven. in <-> Reven. cm y Fechas <-> Edad (Días) + sincronización en memoria
+            // Auto-cálculo Reven. in <-> Reven. cm y Fechas <-> Edad (Días) + sincronización en memoria + navegación tipo Excel con flechas
             tr.querySelectorAll('.rec-campo-input').forEach(inp => {
                 inp.addEventListener('input', () => {
                     recalcularFilaDatosRecepcion(tr, inp);
@@ -4261,8 +4267,75 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     recalcularFilaDatosRecepcion(tr, inp);
                     guardarEstadoTabActualEnMemoria();
                 });
+                inp.addEventListener('keydown', (e) => manejarNavegacionFlechasTabla(e, tbody, '.rec-campo-input'));
             });
         });
+    }
+
+    function manejarNavegacionFlechasTabla(e, tbody, selectorCampos) {
+        const key = e.key;
+        if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) return;
+        const actual = e.target;
+        if (!actual) return;
+        const trActual = actual.closest('tr');
+        if (!trActual || !tbody) return;
+
+        const esEditable = (el) => el && !el.disabled && !el.readOnly && el.offsetParent !== null;
+        const filas = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector(selectorCampos));
+        const rowIdx = filas.indexOf(trActual);
+        if (rowIdx < 0) return;
+
+        const camposFila = Array.from(trActual.querySelectorAll(selectorCampos));
+        const colIdx = camposFila.indexOf(actual);
+        if (colIdx < 0) return;
+
+        const tipo = (actual.type || 'text').toLowerCase();
+        const enfocarCelda = (el) => {
+            if (!el) return;
+            el.focus();
+            if (typeof el.select === 'function' && (el.type === 'text' || el.type === 'number' || el.type === 'search')) {
+                try { el.select(); } catch (_) {}
+            }
+            if (typeof el.scrollIntoView === 'function') {
+                el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+        };
+
+        if (key === 'ArrowDown' || key === 'Enter') {
+            e.preventDefault();
+            for (let r = rowIdx + 1; r < filas.length; r++) {
+                const cand = filas[r].querySelectorAll(selectorCampos)[colIdx];
+                if (esEditable(cand)) { enfocarCelda(cand); return; }
+            }
+            return;
+        }
+        if (key === 'ArrowUp') {
+            e.preventDefault();
+            for (let r = rowIdx - 1; r >= 0; r--) {
+                const cand = filas[r].querySelectorAll(selectorCampos)[colIdx];
+                if (esEditable(cand)) { enfocarCelda(cand); return; }
+            }
+            return;
+        }
+        if (key === 'ArrowRight' || key === 'ArrowLeft') {
+            // En campos date, dejar que el navegador mueva entre día/mes/año salvo con Ctrl/Alt
+            if (tipo === 'date' && !e.ctrlKey && !e.altKey) return;
+            // En campos text, solo saltar de casilla si el cursor está al borde o todo está seleccionado
+            if (tipo === 'text' && !e.ctrlKey && !e.altKey && typeof actual.selectionStart === 'number') {
+                const len = (actual.value || '').length;
+                const todoSel = (actual.selectionStart === 0 && actual.selectionEnd === len);
+                if (key === 'ArrowRight' && !todoSel && actual.selectionEnd < len) return;
+                if (key === 'ArrowLeft' && !todoSel && actual.selectionStart > 0) return;
+            }
+            const paso = (key === 'ArrowRight') ? 1 : -1;
+            for (let c = colIdx + paso; c >= 0 && c < camposFila.length; c += paso) {
+                if (esEditable(camposFila[c])) {
+                    e.preventDefault();
+                    enfocarCelda(camposFila[c]);
+                    return;
+                }
+            }
+        }
     }
 
     function recalcularFilaDatosRecepcion(tr, origenInp) {

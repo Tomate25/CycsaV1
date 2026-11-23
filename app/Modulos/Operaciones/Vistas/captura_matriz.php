@@ -3882,3 +3882,77 @@ window.addEventListener('click', function(e) {
 </script>
 
 <?php endif; ?>
+
+<script>
+(function habilitarNavegacionFlechasMatrices() {
+    const manejarTabla = (e) => {
+        const key = e.key;
+        if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) return;
+        const actual = e.target;
+        if (!actual || !['INPUT', 'SELECT'].includes(actual.tagName)) return;
+        const tbody = actual.closest('#tbody-captura-tecnica-lab, #tabla-body');
+        if (!tbody) return;
+        const trActual = actual.closest('tr');
+        if (!trActual) return;
+
+        const selector = 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select';
+        const esEditable = (el) => el && !el.disabled && !el.readOnly && el.offsetParent !== null;
+        const filas = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector(selector));
+        const rowIdx = filas.indexOf(trActual);
+        if (rowIdx < 0) return;
+
+        const camposFila = Array.from(trActual.querySelectorAll(selector));
+        const colIdx = camposFila.indexOf(actual);
+        if (colIdx < 0) return;
+
+        const tipo = (actual.type || 'text').toLowerCase();
+        const enfocar = (el) => {
+            if (!el) return;
+            el.focus();
+            if (typeof el.select === 'function' && (el.type === 'text' || el.type === 'number')) {
+                try { el.select(); } catch (_) {}
+            }
+            if (typeof el.scrollIntoView === 'function') {
+                el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+        };
+
+        if (key === 'ArrowDown' || key === 'Enter') {
+            if (actual.tagName === 'SELECT' && key === 'ArrowDown' && !e.ctrlKey && !e.altKey) return;
+            e.preventDefault();
+            for (let r = rowIdx + 1; r < filas.length; r++) {
+                const cand = filas[r].querySelectorAll(selector)[colIdx];
+                if (esEditable(cand)) { enfocar(cand); return; }
+            }
+            return;
+        }
+        if (key === 'ArrowUp') {
+            if (actual.tagName === 'SELECT' && !e.ctrlKey && !e.altKey) return;
+            e.preventDefault();
+            for (let r = rowIdx - 1; r >= 0; r--) {
+                const cand = filas[r].querySelectorAll(selector)[colIdx];
+                if (esEditable(cand)) { enfocar(cand); return; }
+            }
+            return;
+        }
+        if (key === 'ArrowRight' || key === 'ArrowLeft') {
+            if (tipo === 'date' && !e.ctrlKey && !e.altKey) return;
+            if (tipo === 'text' && !e.ctrlKey && !e.altKey && typeof actual.selectionStart === 'number') {
+                const len = (actual.value || '').length;
+                const todoSel = (actual.selectionStart === 0 && actual.selectionEnd === len);
+                if (key === 'ArrowRight' && !todoSel && actual.selectionEnd < len) return;
+                if (key === 'ArrowLeft' && !todoSel && actual.selectionStart > 0) return;
+            }
+            const paso = (key === 'ArrowRight') ? 1 : -1;
+            for (let c = colIdx + paso; c >= 0 && c < camposFila.length; c += paso) {
+                if (esEditable(camposFila[c])) {
+                    e.preventDefault();
+                    enfocar(camposFila[c]);
+                    return;
+                }
+            }
+        }
+    };
+    document.addEventListener('keydown', manejarTabla);
+})();
+</script>
