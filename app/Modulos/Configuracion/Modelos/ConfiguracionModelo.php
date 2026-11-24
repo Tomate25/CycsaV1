@@ -261,16 +261,33 @@ class ConfiguracionModelo extends ModeloBase {
     }
 
     /**
-     * Inserta un nuevo valor de configuración comercial.
+     * Obtiene un registro de configuración comercial por su ID.
      */
-    public function agregar(string $tipo, string $valor): int {
+    public function obtenerPorId(int $id) {
+        $sql = "SELECT * FROM configuracion_comercial WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Guarda un nuevo valor de configuración comercial.
+     */
+    public function guardar(string $tipo, string $valor): bool {
         $sql = "INSERT INTO configuracion_comercial (tipo, valor, fecha_creacion) 
                 VALUES (:tipo, :valor, NOW())";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([
+        return $stmt->execute([
             'tipo' => $tipo,
-            'valor' => $valor
+            'valor' => trim($valor)
         ]);
+    }
+
+    /**
+     * Inserta un nuevo valor de configuración comercial y retorna su ID.
+     */
+    public function agregar(string $tipo, string $valor): int {
+        $this->guardar($tipo, $valor);
         return (int)$this->db->lastInsertId();
     }
 
@@ -284,7 +301,7 @@ class ConfiguracionModelo extends ModeloBase {
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
             'id' => $id,
-            'valor' => $valor
+            'valor' => trim($valor)
         ]);
     }
 
@@ -297,53 +314,59 @@ class ConfiguracionModelo extends ModeloBase {
         return $stmt->execute(['id' => $id]);
     }
 
-    /**
-     * Obtiene todos los vehículos de muestreo.
-     */
-    public function obtenerVehiculos(): array {
-        $sql = "SELECT * FROM vehiculos_muestreo ORDER BY placa ASC";
-        $stmt = $this->db->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // --- Gestión de Técnicos ---
+    public function obtenerTecnicos(): array {
+        $sql = "SELECT id, nombre, activo, fecha_registro FROM tecnicos ORDER BY nombre ASC";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Agrega un nuevo vehículo de muestreo.
-     */
-    public function agregarVehiculo(array $datos): int {
-        $sql = "INSERT INTO vehiculos_muestreo (placa, modelo, anio, rendimiento_km_galon, fecha_creacion)
-                VALUES (:placa, :modelo, :anio, :rendimiento, NOW())";
+    public function agregarTecnico(string $nombre): bool {
+        $sql = "INSERT INTO tecnicos (nombre) VALUES (:nombre)";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            'placa' => $datos['placa'],
-            'modelo' => $datos['modelo'],
-            'anio' => $datos['anio'],
-            'rendimiento' => $datos['rendimiento_km_galon']
-        ]);
-        return (int)$this->db->lastInsertId();
+        return $stmt->execute(['nombre' => trim($nombre)]);
     }
 
-    /**
-     * Actualiza un vehículo existente.
-     */
-    public function actualizarVehiculo(int $id, array $datos): bool {
-        $sql = "UPDATE vehiculos_muestreo 
-                SET placa = :placa, modelo = :modelo, anio = :anio, rendimiento_km_galon = :rendimiento
-                WHERE id = :id";
+    public function actualizarTecnico(int $id, string $nombre): bool {
+        $sql = "UPDATE tecnicos SET nombre = :nombre WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['nombre' => trim($nombre), 'id' => $id]);
+    }
+
+    public function eliminarTecnico(int $id): bool {
+        $sql = "DELETE FROM tecnicos WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['id' => $id]);
+    }
+
+    // --- Gestión de Vehículos ---
+    public function obtenerVehiculos(): array {
+        $sql = "SELECT id, placa, marca, modelo, activo, fecha_registro FROM vehiculos ORDER BY placa ASC";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function agregarVehiculo(string $placa, string $marca = '', string $modelo = ''): bool {
+        $sql = "INSERT INTO vehiculos (placa, marca, modelo) VALUES (:placa, :marca, :modelo)";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
-            'id' => $id,
-            'placa' => $datos['placa'],
-            'modelo' => $datos['modelo'],
-            'anio' => $datos['anio'],
-            'rendimiento' => $datos['rendimiento_km_galon']
+            'placa' => strtoupper(trim($placa)),
+            'marca' => trim($marca),
+            'modelo' => trim($modelo)
         ]);
     }
 
-    /**
-     * Elimina un vehículo por su ID.
-     */
+    public function actualizarVehiculo(int $id, string $placa, string $marca = '', string $modelo = ''): bool {
+        $sql = "UPDATE vehiculos SET placa = :placa, marca = :marca, modelo = :modelo WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'placa' => strtoupper(trim($placa)),
+            'marca' => trim($marca),
+            'modelo' => trim($modelo),
+            'id' => $id
+        ]);
+    }
+
     public function eliminarVehiculo(int $id): bool {
-        $sql = "DELETE FROM vehiculos_muestreo WHERE id = :id";
+        $sql = "DELETE FROM vehiculos WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute(['id' => $id]);
     }
