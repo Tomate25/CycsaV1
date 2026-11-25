@@ -482,6 +482,212 @@
         color: var(--cycsa-azul);
         transform: translateX(4px);
     }
+
+    /* CARPETA / CAJÓN DE APLICACIONES RESTANTES (> 5 módulos) */
+    .app-folder-trigger {
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        font-family: inherit;
+        border: 1.5px dashed rgba(16, 52, 135, 0.28);
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    }
+    .app-folder-trigger:hover {
+        border-style: solid;
+        border-color: rgba(16, 52, 135, 0.45);
+        background: #ffffff;
+    }
+    .app-folder-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        padding: 7px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 5px;
+        flex-shrink: 0;
+        transition: transform 0.3s ease, background 0.3s ease;
+    }
+    .app-folder-trigger:hover .app-folder-icon {
+        transform: scale(1.06);
+        background: #eef2ff;
+        border-color: #c7d2fe;
+    }
+    .app-folder-mini-tile {
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-size: 9px;
+        box-shadow: 0 2px 4px rgba(15, 23, 42, 0.12);
+    }
+    .app-folder-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: var(--cycsa-azul);
+        border: 1px solid #bfdbfe;
+        font-size: 11.5px;
+        font-weight: 700;
+        font-family: 'Inter', sans-serif;
+        margin-left: 6px;
+        vertical-align: middle;
+    }
+
+    /* MODAL CAJÓN DE APLICACIONES */
+    .cajon-modal-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1080;
+        background: rgba(15, 23, 42, 0.48);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .cajon-modal-backdrop.abierto {
+        display: flex;
+        animation: fadeInBackdrop 0.2s ease;
+    }
+    @keyframes fadeInBackdrop {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .cajon-modal-dialog {
+        width: min(1140px, 96vw);
+        max-height: 86vh;
+        background: #ffffff;
+        border-radius: 22px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.3);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: popInCajon 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes popInCajon {
+        from { opacity: 0; transform: scale(0.96) translateY(10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .cajon-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+        padding: 18px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+    .cajon-modal-title-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .cajon-modal-title-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #103487, #1e40af);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+    }
+    .cajon-modal-title {
+        margin: 0;
+        font-family: 'Outfit', sans-serif;
+        font-size: 19px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .cajon-modal-sub {
+        font-size: 12.5px;
+        color: #64748b;
+        margin: 0;
+    }
+    .cajon-modal-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .cajon-search-wrap {
+        position: relative;
+        width: 260px;
+        max-width: 100%;
+    }
+    .cajon-search-wrap i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 13px;
+        pointer-events: none;
+    }
+    .cajon-search-input {
+        width: 100%;
+        padding: 8px 12px 8px 34px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        font-size: 13.5px;
+        color: #1e293b;
+        background: #ffffff;
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .cajon-search-input:focus {
+        border-color: var(--cycsa-azul);
+        box-shadow: 0 0 0 3px rgba(16, 52, 135, 0.12);
+    }
+    .cajon-close-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #475569;
+        font-size: 18px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+    }
+    .cajon-close-btn:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+    .cajon-modal-body {
+        padding: 22px 24px 26px;
+        overflow-y: auto;
+        flex: 1;
+        background: #ffffff;
+    }
+    .cajon-modal-body .app-grid {
+        margin-top: 0;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+    .cajon-empty-search {
+        display: none;
+        text-align: center;
+        padding: 40px 20px;
+        color: #64748b;
+        font-size: 14px;
+    }
+    @media (max-width: 640px) {
+        .cajon-search-wrap { width: 100%; }
+        .cajon-modal-controls { width: 100%; }
+    }
 </style>
 
 <div class="dashboard-container">
@@ -511,9 +717,19 @@
     <?php endif; ?>
 
     <!-- 📱 APP DRAWER SECTION -->
+    <?php
+        $totalAppsCajon = count($cajon_aplicaciones);
+        $tieneCajonExtra = ($totalAppsCajon > 5);
+        $appsPrincipales = $tieneCajonExtra ? array_slice($cajon_aplicaciones, 0, 5) : $cajon_aplicaciones;
+        $appsRestantes = $tieneCajonExtra ? array_slice($cajon_aplicaciones, 5) : [];
+        $previewRestantesNombres = $tieneCajonExtra
+            ? implode(', ', array_slice(array_map(static fn($a) => (string)$a['nombre'], $appsRestantes), 0, 3))
+              . (count($appsRestantes) > 3 ? '...' : '')
+            : '';
+    ?>
     <div id="app-drawer-section" class="app-drawer-section">
         <div class="app-grid">
-            <?php foreach ($cajon_aplicaciones as $app): ?>
+            <?php foreach ($appsPrincipales as $app): ?>
                 <a href="<?= $app['link'] ?>" class="app-card" style="--app-color: <?= $app['color'] ?>;">
                     <div class="app-icon-container">
                         <i class="<?= $app['icon'] ?>"></i>
@@ -527,8 +743,83 @@
                     </div>
                 </a>
             <?php endforeach; ?>
+
+            <?php if ($tieneCajonExtra): ?>
+                <button type="button" id="btnAbrirCajonApps" class="app-card app-folder-trigger" style="--app-color: linear-gradient(135deg, #103487, #2563eb);" aria-haspopup="dialog" aria-controls="modalCajonApps">
+                    <div class="app-folder-icon" aria-hidden="true">
+                        <?php foreach (array_slice($appsRestantes, 0, 4) as $miniApp): ?>
+                            <span class="app-folder-mini-tile" style="background: <?= $miniApp['color'] ?>;">
+                                <i class="<?= $miniApp['icon'] ?>"></i>
+                            </span>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="app-details">
+                        <span class="app-name-title">
+                            Más Aplicaciones
+                            <span class="app-folder-badge">+<?= count($appsRestantes) ?></span>
+                        </span>
+                        <p class="app-desc"><?= htmlspecialchars($previewRestantesNombres, ENT_QUOTES, 'UTF-8') ?></p>
+                    </div>
+                    <div class="app-arrow">
+                        <i class="fa-solid fa-grip"></i>
+                    </div>
+                </button>
+            <?php endif; ?>
         </div>
     </div>
+
+    <?php if ($tieneCajonExtra): ?>
+    <!-- 🗂️ CAJÓN DE APLICACIONES RESTANTES (MODAL) -->
+    <div id="modalCajonApps" class="cajon-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="tituloCajonApps">
+        <div class="cajon-modal-dialog">
+            <div class="cajon-modal-header">
+                <div class="cajon-modal-title-group">
+                    <div class="cajon-modal-title-icon">
+                        <i class="fa-solid fa-grip"></i>
+                    </div>
+                    <div>
+                        <h3 id="tituloCajonApps" class="cajon-modal-title">Cajón de Aplicaciones</h3>
+                        <p class="cajon-modal-sub"><?= count($appsRestantes) ?> módulos adicionales disponibles</p>
+                    </div>
+                </div>
+                <div class="cajon-modal-controls">
+                    <div class="cajon-search-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="buscarModuloCajon" class="cajon-search-input" placeholder="Buscar módulo..." autocomplete="off">
+                    </div>
+                    <button type="button" id="btnCerrarCajonApps" class="cajon-close-btn" aria-label="Cerrar cajón de aplicaciones">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="cajon-modal-body">
+                <div class="app-grid" id="gridAppsRestantes">
+                    <?php foreach ($appsRestantes as $app): ?>
+                        <a href="<?= $app['link'] ?>"
+                           class="app-card cajon-app-item"
+                           data-search="<?= htmlspecialchars(mb_strtolower($app['nombre'] . ' ' . $app['desc'], 'UTF-8'), ENT_QUOTES, 'UTF-8') ?>"
+                           style="--app-color: <?= $app['color'] ?>;">
+                            <div class="app-icon-container">
+                                <i class="<?= $app['icon'] ?>"></i>
+                            </div>
+                            <div class="app-details">
+                                <span class="app-name-title"><?= htmlspecialchars($app['nombre'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <p class="app-desc"><?= htmlspecialchars($app['desc'], ENT_QUOTES, 'UTF-8') ?></p>
+                            </div>
+                            <div class="app-arrow">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+                <div id="cajonSinResultados" class="cajon-empty-search">
+                    <i class="fa-solid fa-magnifying-glass" style="font-size: 24px; opacity: 0.35; display: block; margin-bottom: 8px;"></i>
+                    No se encontraron módulos con ese criterio.
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- 📊 ANALYTICS SECTION (Admin Only) -->
     <?php if ($esAdmin): ?>
@@ -751,6 +1042,65 @@
 <!-- ApexCharts Setup Script -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+    // 🗂️ CAJÓN DE APLICACIONES RESTANTES (> 5 módulos)
+    const btnAbrirCajon = document.getElementById('btnAbrirCajonApps');
+    const modalCajon = document.getElementById('modalCajonApps');
+    const btnCerrarCajon = document.getElementById('btnCerrarCajonApps');
+    const inputBuscarCajon = document.getElementById('buscarModuloCajon');
+    const itemsCajon = modalCajon ? Array.from(modalCajon.querySelectorAll('.cajon-app-item')) : [];
+    const emptyCajon = document.getElementById('cajonSinResultados');
+
+    const normalizarTexto = (txt) => String(txt || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    function abrirCajonApps() {
+        if (!modalCajon) return;
+        modalCajon.classList.add('abierto');
+        document.body.style.overflow = 'hidden';
+        if (inputBuscarCajon) {
+            inputBuscarCajon.value = '';
+            filtrarCajonApps('');
+            setTimeout(() => inputBuscarCajon.focus(), 60);
+        }
+    }
+
+    function cerrarCajonApps() {
+        if (!modalCajon) return;
+        modalCajon.classList.remove('abierto');
+        document.body.style.overflow = '';
+    }
+
+    function filtrarCajonApps(query) {
+        const q = normalizarTexto(query).trim();
+        let visibles = 0;
+        itemsCajon.forEach(item => {
+            const hay = normalizarTexto(item.getAttribute('data-search') || item.textContent);
+            const match = (!q || hay.includes(q));
+            item.style.display = match ? '' : 'none';
+            if (match) visibles++;
+        });
+        if (emptyCajon) {
+            emptyCajon.style.display = (visibles === 0) ? 'block' : 'none';
+        }
+    }
+
+    if (btnAbrirCajon && modalCajon) {
+        btnAbrirCajon.addEventListener('click', abrirCajonApps);
+        if (btnCerrarCajon) {
+            btnCerrarCajon.addEventListener('click', cerrarCajonApps);
+        }
+        modalCajon.addEventListener('click', (e) => {
+            if (e.target === modalCajon) cerrarCajonApps();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modalCajon.classList.contains('abierto')) {
+                cerrarCajonApps();
+            }
+        });
+        if (inputBuscarCajon) {
+            inputBuscarCajon.addEventListener('input', (e) => filtrarCajonApps(e.target.value));
+        }
+    }
+
     // 🔀 LOGICA DE CAMBIO DE PESTAÑAS (Solo Administradores)
     <?php if ($esAdmin): ?>
     const tabButtons = document.querySelectorAll('.panel-tab-btn');
