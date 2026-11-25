@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/cotizaciones-sobrio.css">
 <style>
     .seccion-form { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 20px; border-top: 4px solid var(--cycsa-azul); }
     .seccion-titulo { margin: 0 0 20px 0; color: #333; font-size: 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -127,9 +129,14 @@
     #btn-cambiar-cliente:hover { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
 </style>
 
-<div style="margin-bottom: 20px;">
-    <a href="/Cycsa/publico/cotizaciones" style="color: #6c757d; text-decoration: none; font-size: 14px;"><i class="fa-solid fa-arrow-left"></i> Volver a la lista</a>
-</div>
+<div class="container-fluid px-0 py-0 cy-cot-wrap">
+    <a href="/Cycsa/publico/cotizaciones" class="cy-back-link"><i class="fa-solid fa-arrow-left"></i> Volver a Cotizaciones</a>
+    <div class="cy-cot-header">
+        <div class="cy-cot-header-left">
+            <h1 class="cy-page-title">Nueva Cotización</h1>
+            <div class="cy-meta">Completa los datos del cliente, condiciones comerciales y ensayos solicitados.</div>
+        </div>
+    </div>
 
 <form action="/Cycsa/publico/cotizaciones/crear" method="POST" id="form-cotizacion" autocomplete="off" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
@@ -332,12 +339,14 @@
             <?php endforeach; ?>
         </datalist>
 
-        <button type="button" onclick="abrirModalCatalogo()" style="background: var(--cycsa-azul); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; transition: all 0.2s; box-shadow: 0 4px 6px rgba(16, 52, 135, 0.15); display: inline-flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-magnifying-glass"></i> Buscar en Catálogo
-        </button>
-        <button type="button" onclick="agregarFilaPersonalizada()" style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; color: #475569; font-family: 'Inter', sans-serif; transition: all 0.2s; margin-left: 10px; display: inline-flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-pen-fancy"></i> + Ensayo Personalizado (Campo Libre)
-        </button>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" onclick="abrirModalCatalogo()" class="btn btn-primary btn-sm">
+                Buscar en Catálogo
+            </button>
+            <button type="button" onclick="agregarFilaPersonalizada()" class="btn btn-outline-secondary btn-sm">
+                + Ensayo Personalizado (Campo Libre)
+            </button>
+        </div>
 
         <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
             <input type="hidden" name="tipo_moneda" id="input-tipo-moneda" value="1">
@@ -508,43 +517,43 @@
         </div>
 
         <!-- Datos Bancarios Oficiales -->
-        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px 18px; margin-top: 15px; font-size: 13px; color: #1e3a8a;">
-            <strong style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13.5px; color: #103487;">
+        <div class="cy-note mt-3">
+            <strong style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13.5px; color: var(--cy-brand);">
                 <i class="fa-solid fa-building-columns"></i> Cuentas Bancarias Oficiales para Pago (Impresas en la Cotización y PDF):
             </strong>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; font-size: 12.5px; line-height: 1.4; color: #1e293b;">
-                <div><strong style="color:#0f172a;">BANPRO:</strong> C$ 10010207085164 / $ 10010210874512</div>
-                <div><strong style="color:#0f172a;">BAC:</strong> C$ 357-02445-4 / $ 363259490</div>
-                <div><strong style="color:#0f172a;">LAFISE:</strong> C$ 550-2000-11</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; font-size: 13px; line-height: 1.45; color: var(--cy-text);">
+                <div><strong>BANPRO:</strong> C$ 10010207085164 / $ 10010210874512</div>
+                <div><strong>BAC:</strong> C$ 357-02445-4 / $ 363259490</div>
+                <div><strong>LAFISE:</strong> C$ 550-2000-11</div>
             </div>
-            <div style="margin-top: 8px; font-size: 12px; color: #2563eb; border-top: 1px dashed #bfdbfe; padding-top: 6px;">
+            <div style="margin-top: 8px; font-size: 13px; color: var(--cy-muted); border-top: 1px solid var(--cy-border); padding-top: 8px;">
                 Pago a nombre de <strong>CYC.S.A</strong> &bull; RUC: <strong>J0310000073465</strong> &bull; Validez de oferta: <strong>30 días</strong>.
             </div>
         </div>
 
         <div style="margin-top: 15px;">
-            <label class="form-label" style="font-weight: 600; margin-bottom: 6px; display: block;"><i class="fa-solid fa-address-book"></i> Contactos del Proyecto (Se mostrarán en el PDF)</label>
-            <textarea name="contactos" class="form-control" rows="5" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; font-family: inherit; font-size: 13px; resize: vertical;" placeholder="Nombre, Teléfono, Correo..."></textarea>
+            <label class="form-label"><i class="fa-solid fa-address-book"></i> Contactos del Proyecto (Se mostrarán en el PDF)</label>
+            <textarea name="contactos" class="form-control" rows="4" style="resize: vertical;" placeholder="Nombre, Teléfono, Correo..."></textarea>
         </div>
     </div>
 
     <!-- SECCIÓN DOCUMENTOS ADJUNTOS / ARCHIVO COMPLEMENTARIO -->
-    <div class="seccion-form" style="border: 1px solid #cbd5e1; border-top: 4px solid #103487; background: #ffffff;">
-        <h3 class="seccion-titulo" style="margin-bottom: 6px;"><i class="fa-solid fa-paperclip"></i> Documentos Adjuntos / Archivo Complementario</h3>
-        <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+    <div class="seccion-form">
+        <h3 class="seccion-titulo"><i class="fa-solid fa-paperclip"></i> Documentos Adjuntos / Archivo Complementario</h3>
+        <p class="cy-meta mb-3">
             Permite asociar y archivar un documento complementario (especificaciones, términos o anexos del cliente) a la cotización.
         </p>
         <div>
-            <label class="form-label" style="font-weight: 600; margin-bottom: 6px; display: block;"><i class="fa-solid fa-file-arrow-up"></i> Adjuntar Archivo Digital (Opcional - PDF, DOCX, XLSX, Imágenes)</label>
-            <input type="file" name="archivo_adjunto" id="archivo_adjunto" class="form-control" style="padding: 8px; border: 1px solid #cbd5e1; background: white; font-size: 13px;" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg">
-            <span style="font-size: 11.5px; color: #64748b; margin-top: 4px; display: block;">Formatos aceptados: PDF, DOCX, XLSX, PNG, JPG (Máx. 10MB).</span>
+            <label class="form-label"><i class="fa-solid fa-file-arrow-up"></i> Adjuntar Archivo Digital (Opcional - PDF, DOCX, XLSX, Imágenes)</label>
+            <input type="file" name="archivo_adjunto" id="archivo_adjunto" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg">
+            <span class="cy-meta mt-1 d-block">Formatos aceptados: PDF, DOCX, XLSX, PNG, JPG (Máx. 10MB).</span>
         </div>
     </div>
 
-    <div style="display: flex; gap: 15px; justify-content: flex-end; margin-bottom: 50px;">
-        <a href="/Cycsa/publico/cotizaciones" style="padding: 12px 25px; border-radius: 4px; text-decoration: none; color: #6c757d; font-weight: 500; background: #f8f9fa; border: 1px solid #ddd;">Cancelar</a>
-        <button type="submit" style="background: var(--cycsa-azul); color: white; border: none; padding: 12px 25px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; font-size: 15px; box-shadow: 0 4px 6px rgba(16, 52, 135, 0.2);">
-            <i class="fa-solid fa-save"></i> Guardar Cotización
+    <div class="cy-cot-form-footer">
+        <a href="/Cycsa/publico/cotizaciones" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">
+            Guardar Cotización
         </button>
     </div>
 </form>
@@ -1787,9 +1796,10 @@
         </div>
 
         <div class="modal-footer" style="margin-top: 10px;">
-            <button type="button" class="form-control" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px 20px; border-radius: 6px; color: #475569; font-size: 13.5px; font-weight: 600; width: auto; cursor: pointer;" onclick="cerrarModalCondiciones()">Cancelar</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cerrarModalCondiciones()">Cancelar</button>
         </div>
     </div>
+</div>
 </div>
 
 <script>

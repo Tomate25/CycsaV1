@@ -17,87 +17,87 @@ $hayFiltrosAvanzados = !empty($filtros['fecha_desde'])
     || !empty($filtros['fecha_hasta'])
     || !empty($filtros['id_cliente'])
     || !empty($filtros['estado']);
-?>
-<style>
-    .tabla-cycsa { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-    .tabla-cycsa th { background-color: #f8f9fa; color: #6c757d; padding: 12px 15px; text-align: left; font-weight: 600; border-bottom: 2px solid #dee2e6; text-transform: uppercase; font-size: 12px; }
-    .tabla-cycsa td { padding: 15px; border-bottom: 1px solid #e9ecef; vertical-align: middle; color: #333; }
-    .tabla-cycsa tbody tr:hover { background-color: #f8f9fa; }
-    
-    /* Colores dinámicos para la máquina de estados */
-    .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; text-align: center;}
-    .bg-borrador { background-color: #e2e8f0; color: #475569; }
-    .bg-revision { background-color: #fef3c7; color: #b45309; }
-    .bg-observada { background-color: #fee2e2; color: #b91c1c; }
-    .bg-aprobada-int { background-color: #dbeafe; color: #1d4ed8; }
-    .bg-enviada { background-color: #f3e8ff; color: #7e22ce; }
-    .bg-aprobada-cli { background-color: #dcfce7; color: #15803d; }
-    .bg-rechazada-cli { background-color: #fca5a5; color: #7f1d1d; }
-    
-    .btn-accion { border: none; background: none; cursor: pointer; padding: 5px 10px; font-size: 16px; transition: color 0.2s; text-decoration: none; display: inline-block;}
-    .btn-ver { color: #103487; }
-    .btn-ver:hover { color: #0a225c; }
-    
-    /* Navigation Tabs */
-    .tabs-container { display: flex; border-bottom: 1px solid #dee2e6; margin-bottom: 20px; gap: 5px; }
-    .tab-link { padding: 10px 15px; text-decoration: none; color: #64748b; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.2s; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-    .tab-link:hover { color: var(--cycsa-azul); }
-    .tab-link.active { color: var(--cycsa-azul); border-bottom-color: var(--cycsa-azul); font-weight: 600; }
-    .filtros-avanzados { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)) auto; gap: 12px; align-items: end; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 18px 0; }
-    .filtro-campo { display: flex; flex-direction: column; gap: 5px; }
-    .filtro-campo label { color: #475569; font-size: 12px; font-weight: 700; }
-    .filtro-control { min-height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; background: white; color: #1e293b; font-family: 'Inter', sans-serif; font-size: 13px; }
-    .filtro-control:focus { outline: none; border-color: var(--cycsa-azul); box-shadow: 0 0 0 2px rgba(16, 52, 135, 0.1); }
-    @media (max-width: 1050px) { .filtros-avanzados { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
-    @media (max-width: 620px) { .filtros-avanzados { grid-template-columns: 1fr; } }
-</style>
 
-<div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
-    
+$resolverPillCotizacion = static function (string $estado): array {
+    return match ($estado) {
+        'Aprobada por Cliente', 'Aprobada Internamente' => ['clase' => 'cy-pill-ok', 'texto' => $estado],
+        'En Revision', 'Enviada al Cliente' => ['clase' => 'cy-pill-warn', 'texto' => $estado],
+        'Observada', 'Rechazada por Cliente' => ['clase' => 'cy-pill-danger', 'texto' => $estado],
+        default => ['clase' => 'cy-pill-pend', 'texto' => $estado !== '' ? $estado : 'Borrador'],
+    };
+};
+?>
+<link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/cotizaciones-sobrio.css">
+
+<div class="container-fluid px-0 py-0 cy-cot-wrap">
     <?php if (isset($_SESSION['exito'])): ?>
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <i class="fa-solid fa-circle-check" style="color: #16a34a; font-size: 18px;"></i>
-            <span><?= htmlspecialchars($_SESSION['exito'], ENT_QUOTES, 'UTF-8') ?></span>
+        <div class="cy-note mb-3 d-flex align-items-center gap-2" role="status">
+            <span class="cy-pill cy-pill-ok">Listo</span>
+            <span style="color: var(--cy-text);"><?= htmlspecialchars($_SESSION['exito'], ENT_QUOTES, 'UTF-8') ?></span>
         </div>
         <?php unset($_SESSION['exito']); ?>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['error'])): ?>
-        <div style="background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <i class="fa-solid fa-triangle-exclamation" style="color: #dc2626; font-size: 18px;"></i>
-            <span><?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?></span>
+        <div class="cy-note mb-3 d-flex align-items-center gap-2" role="alert">
+            <span class="cy-pill cy-pill-danger">Aviso</span>
+            <span style="color: var(--cy-text);"><?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?></span>
         </div>
         <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
-    <div class="header-flex">
-        <div>
-            <h2 style="margin: 0; color: #333; font-size: 20px;">Gestión de Cotizaciones</h2>
-            <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">Administra el ciclo de vida de las propuestas económicas.</p>
+    <!-- Encabezado sobrio + filtro segmentado (.cy-seg) idéntico a Captura Técnica -->
+    <div class="cy-cot-header">
+        <div class="cy-cot-header-left">
+            <h1 class="cy-page-title">Cotizaciones</h1>
         </div>
-        
-        <div class="actions-flex">
-            <form method="GET" action="/Cycsa/publico/cotizaciones" style="display: flex;">
+
+        <div class="btn-group cy-seg" role="group" aria-label="Filtro de cotizaciones">
+            <a href="<?= htmlspecialchars($urlListado(['tab' => 'todas']), ENT_QUOTES, 'UTF-8') ?>" class="btn <?= ($tabActual ?? 'todas') === 'todas' ? 'is-active' : '' ?>">
+                Todas
+            </a>
+            <a href="<?= htmlspecialchars($urlListado(['tab' => 'borradores']), ENT_QUOTES, 'UTF-8') ?>" class="btn <?= ($tabActual ?? '') === 'borradores' ? 'is-active' : '' ?>">
+                Borradores
+            </a>
+            <a href="<?= htmlspecialchars($urlListado(['tab' => 'revision']), ENT_QUOTES, 'UTF-8') ?>" class="btn <?= ($tabActual ?? '') === 'revision' ? 'is-active' : '' ?>">
+                En Revisión
+            </a>
+            <a href="<?= htmlspecialchars($urlListado(['tab' => 'observadas']), ENT_QUOTES, 'UTF-8') ?>" class="btn <?= ($tabActual ?? '') === 'observadas' ? 'is-active' : '' ?>">
+                Observadas
+            </a>
+            <a href="<?= htmlspecialchars($urlListado(['tab' => 'aprobadas']), ENT_QUOTES, 'UTF-8') ?>" class="btn <?= ($tabActual ?? '') === 'aprobadas' ? 'is-active' : '' ?>">
+                Aprobadas / Enviadas
+            </a>
+        </div>
+    </div>
+
+    <!-- Subbarra: descripción, búsqueda rápida y acción primaria -->
+    <div class="cy-cot-subbar">
+        <div class="cy-meta">Administra el ciclo de vida de las propuestas económicas y su envío al cliente.</div>
+        <div class="cy-cot-header-actions">
+            <form method="GET" action="/Cycsa/publico/cotizaciones" class="cy-cot-search-form">
                 <input type="hidden" name="tab" value="<?= htmlspecialchars($tabActual ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="fecha_desde" value="<?= htmlspecialchars($filtros['fecha_desde'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="fecha_hasta" value="<?= htmlspecialchars($filtros['fecha_hasta'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="id_cliente" value="<?= (int)($filtros['id_cliente'] ?? 0) ?>">
                 <input type="hidden" name="estado" value="<?= htmlspecialchars($filtros['estado'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                <input type="text" name="q" placeholder="Buscar por código, cliente..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" style="padding: 8px 15px; border: 1px solid #ced4da; border-radius: 4px 0 0 4px; font-family: 'Inter', sans-serif; width: 260px; outline: none;">
-                <button type="submit" style="background: #e9ecef; border: 1px solid #ced4da; border-left: none; padding: 8px 15px; border-radius: 0 4px 4px 0; cursor: pointer; color: #495057;"><i class="fa-solid fa-magnifying-glass"></i></button>
-                <?php if(!empty($busqueda)): ?>
-                    <a href="<?= htmlspecialchars($urlListado(['q' => '', 'tab' => $tabActual ?? 'todas']), ENT_QUOTES, 'UTF-8') ?>" style="margin-left: 10px; color: #e31837; text-decoration: none; padding-top: 8px;" title="Limpiar búsqueda"><i class="fa-solid fa-xmark"></i></a>
+                <input type="text" name="q" placeholder="Buscar por código o cliente..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" class="cy-cot-search-input" aria-label="Buscar cotizaciones">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Buscar</button>
+                <?php if (!empty($busqueda)): ?>
+                    <a href="<?= htmlspecialchars($urlListado(['q' => '', 'tab' => $tabActual ?? 'todas']), ENT_QUOTES, 'UTF-8') ?>" class="cy-action-link" title="Limpiar búsqueda">Limpiar</a>
                 <?php endif; ?>
             </form>
 
             <?php if (tienePermiso('cotizaciones', 'crear_editar')): ?>
-            <a href="/Cycsa/publico/cotizaciones/crear" style="background: var(--cycsa-azul); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: 'Inter', sans-serif; text-decoration: none; display: inline-block; transition: background 0.3s; margin-left: 10px;">
-                <i class="fa-solid fa-plus"></i> Nueva Cotización
-            </a>
+                <a href="/Cycsa/publico/cotizaciones/crear" class="btn btn-primary btn-sm">
+                    Nueva Cotización
+                </a>
             <?php endif; ?>
         </div>
     </div>
 
+    <!-- Filtros avanzados en tarjeta plana -->
     <form method="GET" action="/Cycsa/publico/cotizaciones" class="filtros-avanzados">
         <input type="hidden" name="tab" value="<?= htmlspecialchars($tabActual ?? 'todas', ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="q" value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>">
@@ -131,92 +131,81 @@ $hayFiltrosAvanzados = !empty($filtros['fecha_desde'])
                 <option value="borradores" <?= ($filtros['estado'] ?? '') === 'borradores' ? 'selected' : '' ?>>Borradores</option>
             </select>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <button type="submit" style="min-height: 38px; background: var(--cycsa-azul); color: white; border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-weight: 600; white-space: nowrap;">
-                <i class="fa-solid fa-filter"></i> Aplicar
-            </button>
+        <div class="d-flex align-items-center gap-2">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" style="min-height: 38px;">Aplicar</button>
             <?php if ($hayFiltrosAvanzados): ?>
-                <a href="<?= htmlspecialchars($urlListado(['fecha_desde' => '', 'fecha_hasta' => '', 'id_cliente' => 0, 'estado' => '', 'tab' => $tabActual ?? 'todas']), ENT_QUOTES, 'UTF-8') ?>" style="color: #b91c1c; text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap;" title="Limpiar filtros avanzados">
-                    <i class="fa-solid fa-xmark"></i> Limpiar
-                </a>
+                <a href="<?= htmlspecialchars($urlListado(['fecha_desde' => '', 'fecha_hasta' => '', 'id_cliente' => 0, 'estado' => '', 'tab' => $tabActual ?? 'todas']), ENT_QUOTES, 'UTF-8') ?>" class="cy-action-link" title="Limpiar filtros avanzados">Limpiar</a>
             <?php endif; ?>
         </div>
     </form>
 
-    <!-- Pestañas Filtros del Ciclo de Vida de Cotizaciones -->
-    <div class="tabs-container">
-        <a href="<?= htmlspecialchars($urlListado(['tab' => 'todas']), ENT_QUOTES, 'UTF-8') ?>" class="tab-link <?= $tabActual === 'todas' ? 'active' : '' ?>">
-            <i class="fa-solid fa-list"></i> Todas
-        </a>
-        <a href="<?= htmlspecialchars($urlListado(['tab' => 'borradores']), ENT_QUOTES, 'UTF-8') ?>" class="tab-link <?= $tabActual === 'borradores' ? 'active' : '' ?>">
-            <i class="fa-solid fa-file-signature"></i> Borradores
-        </a>
-        <a href="<?= htmlspecialchars($urlListado(['tab' => 'revision']), ENT_QUOTES, 'UTF-8') ?>" class="tab-link <?= $tabActual === 'revision' ? 'active' : '' ?>">
-            <i class="fa-solid fa-clock-rotate-left"></i> En Revisión
-        </a>
-        <a href="<?= htmlspecialchars($urlListado(['tab' => 'observadas']), ENT_QUOTES, 'UTF-8') ?>" class="tab-link <?= $tabActual === 'observadas' ? 'active' : '' ?>">
-            <i class="fa-solid fa-triangle-exclamation"></i> Observadas
-        </a>
-        <a href="<?= htmlspecialchars($urlListado(['tab' => 'aprobadas']), ENT_QUOTES, 'UTF-8') ?>" class="tab-link <?= $tabActual === 'aprobadas' ? 'active' : '' ?>">
-            <i class="fa-solid fa-circle-check"></i> Aprobadas / Enviadas
-        </a>
-    </div>
-
-    <div style="overflow-x: auto;">
-        <table class="tabla-cycsa">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Cliente</th>
-                    <th>Total</th>
-                    <th>Estado</th>
-                    <th>Fecha</th>
-                    <th style="text-align: right;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($cotizaciones as $cot): ?>
-                <tr>
-                    <td style="font-weight: 700; color: #103487;"><?= htmlspecialchars($cot['codigo'], ENT_QUOTES, 'UTF-8') ?> <span style="font-size: 11px; color: #888;">(v<?= $cot['version'] ?>)</span></td>
-                    <td style="font-weight: 500;"><?= htmlspecialchars($cot['cliente'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td style="font-weight: 600;">C$ <?= number_format($cot['total'], 2, '.', ',') ?></td>
-                    <td>
-                        <?php 
-                            // Asignar color según la máquina de estados
-                            $claseBadge = 'bg-borrador';
-                            if($cot['estado'] == 'En Revision') $claseBadge = 'bg-revision';
-                            if($cot['estado'] == 'Observada') $claseBadge = 'bg-observada';
-                            if($cot['estado'] == 'Aprobada Internamente') $claseBadge = 'bg-aprobada-int';
-                            if($cot['estado'] == 'Enviada al Cliente') $claseBadge = 'bg-enviada';
-                            if($cot['estado'] == 'Aprobada por Cliente') $claseBadge = 'bg-aprobada-cli';
-                            if($cot['estado'] == 'Rechazada por Cliente') $claseBadge = 'bg-rechazada-cli';
-                        ?>
-                        <span class="badge <?= $claseBadge ?>"><?= htmlspecialchars($cot['estado'], ENT_QUOTES, 'UTF-8') ?></span>
-                    </td>
-                    <td style="color: #6c757d; font-size: 13px;"><?= date('d/m/Y', strtotime($cot['fecha_creacion'])) ?></td>
-                    <td style="text-align: right;">
-                        <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cot['id']) ?>" class="btn-accion btn-ver" title="Ver Detalle"><i class="fa-solid fa-eye"></i></a>
-                        <?php if (tienePermiso('cotizaciones', 'crear_editar')): ?>
-                            <a href="/Cycsa/publico/cotizaciones/duplicar?id=<?= codificarId($cot['id']) ?>" 
-                               class="btn-accion btn-ver" 
-                               style="color: #0d9488;" 
-                               title="Duplicar Cotización (Genera nueva con número correlativo copiando todos los datos)"
-                               onclick="return confirm('¿Desea duplicar la cotización <?= htmlspecialchars($cot['codigo'], ENT_QUOTES, 'UTF-8') ?>?\n\nSe creará una nueva cotización con el siguiente número consecutivo conservando cliente, proyecto, notas, opciones e ítems cotizados.');">
-                                <i class="fa-solid fa-copy"></i>
+    <!-- Tabla plana de cotizaciones -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table" id="tabla-cotizaciones">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Cliente</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($cotizaciones as $cot):
+                        $pillCot = $resolverPillCotizacion((string)($cot['estado'] ?? 'Borrador'));
+                        $simbMon = ((int)($cot['tipo_moneda'] ?? 1) === 2) ? '$' : 'C$';
+                    ?>
+                    <tr>
+                        <td>
+                            <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cot['id']) ?>" class="fw-semibold" style="color: var(--cy-brand); text-decoration: none;">
+                                <?= htmlspecialchars($cot['codigo'], ENT_QUOTES, 'UTF-8') ?>
                             </a>
-                        <?php endif; ?>
-                        <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cot['id']) ?>&t=<?= time() ?>" target="_blank" class="btn-accion btn-ver" style="color: #e31837;" title="Imprimir PDF"><i class="fa-solid fa-file-pdf"></i></a>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-                
-                <?php if(empty($cotizaciones)): ?>
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 30px; color: #6c757d;">No hay cotizaciones generadas.</td>
-                </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                            <span class="cy-meta ms-1">v<?= max(1, (int)($cot['version'] ?? 1)) ?></span>
+                        </td>
+                        <td>
+                            <div class="fw-medium"><?= htmlspecialchars($cot['cliente'], ENT_QUOTES, 'UTF-8') ?></div>
+                        </td>
+                        <td class="fw-semibold">
+                            <?= $simbMon ?> <?= number_format((float)$cot['total'], 2, '.', ',') ?>
+                        </td>
+                        <td>
+                            <span class="cy-pill <?= htmlspecialchars($pillCot['clase'], ENT_QUOTES, 'UTF-8') ?>">
+                                <?= htmlspecialchars($pillCot['texto'], ENT_QUOTES, 'UTF-8') ?>
+                            </span>
+                        </td>
+                        <td>
+                            <span class="cy-meta"><?= date('d/m/Y', strtotime($cot['fecha_creacion'])) ?></span>
+                        </td>
+                        <td class="text-end" style="white-space: nowrap;">
+                            <div class="cy-cot-row-actions">
+                                <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cot['id']) ?>" class="btn btn-outline-secondary btn-sm">Ver detalle</a>
+                                <?php if (tienePermiso('cotizaciones', 'crear_editar')): ?>
+                                    <a href="/Cycsa/publico/cotizaciones/duplicar?id=<?= codificarId($cot['id']) ?>"
+                                       class="btn btn-outline-secondary btn-sm"
+                                       title="Duplicar Cotización (Genera nueva con número correlativo copiando todos los datos)"
+                                       onclick="return confirm('¿Desea duplicar la cotización <?= htmlspecialchars($cot['codigo'], ENT_QUOTES, 'UTF-8') ?>?\n\nSe creará una nueva cotización con el siguiente número consecutivo conservando cliente, proyecto, notas, opciones e ítems cotizados.');">
+                                        Duplicar
+                                    </a>
+                                <?php endif; ?>
+                                <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cot['id']) ?>&t=<?= time() ?>" target="_blank" class="btn btn-outline-secondary btn-sm" title="Imprimir PDF">PDF</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+
+                    <?php if (empty($cotizaciones)): ?>
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <span class="cy-meta">No hay cotizaciones registradas con los filtros actuales.</span>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 <?php

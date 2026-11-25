@@ -1,0 +1,562 @@
+/**
+ * CYCSA ERP + LIMS — Diseño Sobrio para el Módulo de Cotizaciones
+ * Archivo: publico/css/cotizaciones-sobrio.css
+ * Cargar SIEMPRE después de publico/css/cycsa-sobrio.css
+ *
+ * Hereda los tokens de Captura Técnica / Operaciones:
+ * --cy-brand (#1F3864), --cy-surface (#FFFFFF), --cy-bg (#F9FAFB),
+ * --cy-border (#E5E7EB), --cy-text (#111827), --cy-muted (#6B7280).
+ */
+
+.cy-cot-wrap {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  color: var(--cy-text);
+  font-family: var(--bs-body-font-family);
+}
+
+/* Cabecera sobria de página */
+.cy-cot-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.cy-cot-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cy-cot-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cy-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cy-muted);
+  text-decoration: none;
+  margin-bottom: 10px;
+  transition: color 0.15s ease;
+}
+.cy-back-link:hover {
+  color: var(--cy-brand);
+}
+
+/* Subbarra de búsqueda y acciones rápidas (idéntica a Captura Técnica) */
+.cy-cot-subbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cy-cot-search-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cy-cot-search-input {
+  width: 300px;
+  max-width: 100%;
+  font-size: 14px;
+  padding: 7px 12px;
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  background: var(--cy-surface);
+  color: var(--cy-text);
+}
+.cy-cot-search-input:focus {
+  outline: none;
+  border-color: var(--cy-brand);
+}
+
+/* Barra de filtros avanzados en listado */
+.cy-cot-wrap .filtros-avanzados {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.cy-cot-wrap .filtro-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cy-cot-wrap .filtro-campo label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cy-muted);
+  margin: 0;
+}
+.cy-cot-wrap .filtro-control {
+  min-height: 38px;
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  background: var(--cy-surface);
+  color: var(--cy-text);
+  font-family: var(--bs-body-font-family);
+  font-size: 14px;
+}
+.cy-cot-wrap .filtro-control:focus {
+  outline: none;
+  border-color: var(--cy-brand);
+}
+@media (max-width: 1050px) {
+  .cy-cot-wrap .filtros-avanzados {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .cy-cot-wrap .filtros-avanzados {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tarjetas de sección en formularios (crear.php / editar.php / detalle.php) */
+.cy-cot-wrap .seccion-form,
+.cy-cot-wrap .doc-container {
+  background: var(--cy-surface) !important;
+  border: 1px solid var(--cy-border) !important;
+  border-top: 1px solid var(--cy-border) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  padding: 22px 24px !important;
+  margin-bottom: 18px;
+  max-width: 100% !important;
+  width: 100%;
+}
+
+.cy-cot-wrap .doc-container {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 0;
+}
+
+.cy-cot-card {
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.cy-cot-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--cy-surface);
+  border-bottom: 1px solid var(--cy-border);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cy-text);
+}
+.cy-cot-card-head i {
+  color: var(--cy-brand);
+  font-size: 14px;
+}
+
+.cy-cot-card-body {
+  padding: 18px 20px;
+}
+
+.cy-cot-wrap .seccion-titulo {
+  margin: 0 0 18px 0 !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid var(--cy-border) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: var(--cy-text) !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cy-cot-wrap .seccion-titulo i {
+  color: var(--cy-brand);
+  font-size: 15px;
+}
+
+/* Campos de formulario sobrios */
+.cy-cot-wrap .form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #374151;
+  font-weight: 500;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.cy-cot-wrap .form-control,
+.cy-cot-wrap select.form-control,
+.cy-cot-wrap textarea.form-control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  font-family: var(--bs-body-font-family);
+  font-size: 14px;
+  color: var(--cy-text);
+  background: var(--cy-surface);
+  transition: border-color 0.15s ease;
+  box-shadow: none;
+}
+.cy-cot-wrap .form-control:focus {
+  outline: none;
+  border-color: var(--cy-brand);
+  box-shadow: 0 0 0 2px rgba(31, 56, 100, 0.14);
+}
+
+.cy-cot-wrap .grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.cy-cot-wrap .grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+@media (max-width: 900px) {
+  .cy-cot-wrap .grid-2,
+  .cy-cot-wrap .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablas sobrias en formularios y detalle */
+.cy-cot-wrap .tabla-detalles,
+.cy-cot-wrap .tabla-visual {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.cy-cot-wrap .tabla-detalles th,
+.cy-cot-wrap .tabla-visual th {
+  background: var(--cy-surface) !important;
+  color: var(--cy-muted) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  padding: 12px 14px !important;
+  border-bottom: 1px solid var(--cy-border) !important;
+}
+.cy-cot-wrap .tabla-detalles td,
+.cy-cot-wrap .tabla-visual td {
+  padding: 12px 14px !important;
+  border-bottom: 1px solid var(--cy-border) !important;
+  vertical-align: top;
+  color: var(--cy-text);
+  font-size: 14px;
+}
+.cy-cot-wrap .tabla-visual tbody tr:last-child td {
+  border-bottom: 0 !important;
+}
+.cy-cot-wrap .tabla-visual tbody tr:hover td {
+  background: #FAFAFB;
+}
+
+/* Tabla de metadatos en detalle.php */
+.cy-meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.cy-meta-table tr {
+  border-bottom: 1px solid var(--cy-border);
+}
+.cy-meta-table tr:last-child {
+  border-bottom: 0;
+}
+.cy-meta-table td {
+  padding: 11px 16px;
+  vertical-align: middle;
+}
+.cy-meta-table td.cy-meta-k {
+  width: 17%;
+  background: #F9FAFB;
+  color: var(--cy-muted);
+  font-weight: 500;
+  font-size: 13px;
+  border-right: 1px solid var(--cy-border);
+}
+.cy-meta-table td.cy-meta-v {
+  width: 33%;
+  color: var(--cy-text);
+  font-weight: 500;
+}
+.cy-meta-table td.cy-meta-v.sep-col {
+  border-right: 1px solid var(--cy-border);
+}
+
+/* Totales sobrios */
+.cy-cot-wrap .caja-totales {
+  background: var(--cy-surface) !important;
+  border: 1px solid var(--cy-border) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  padding: 20px 22px !important;
+  width: 340px;
+  max-width: 100%;
+  margin-left: auto;
+}
+.cy-cot-wrap .fila-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: var(--cy-text);
+}
+.cy-cot-wrap .fila-total.gran-total {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--cy-brand);
+  border-top: 1px solid var(--cy-border);
+  padding-top: 12px;
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+/* Checkboxes de Leyendas / Notas */
+.cy-cot-wrap .leyenda-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  background: var(--cy-bg);
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--cy-border);
+  transition: border-color 0.15s ease;
+}
+.cy-cot-wrap .leyenda-item:hover {
+  border-color: var(--cy-border-strong);
+}
+.cy-cot-wrap .leyenda-item input[type="checkbox"] {
+  accent-color: var(--cy-brand);
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+}
+.cy-cot-wrap .leyenda-titulo {
+  font-weight: 600;
+  color: var(--cy-text);
+  font-size: 13.5px;
+  display: block;
+  margin-bottom: 2px;
+}
+.cy-cot-wrap .leyenda-texto {
+  font-size: 13px;
+  color: var(--cy-muted);
+  line-height: 1.45;
+}
+
+/* Tarjeta cliente seleccionado */
+.cy-cot-wrap #cliente-seleccionado-card {
+  background: var(--cy-bg) !important;
+  border: 1px solid var(--cy-border) !important;
+  border-left: 3px solid var(--cy-brand) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+.cy-cot-wrap #cliente-card-avatar {
+  background: var(--cy-brand) !important;
+}
+
+/* Switch toggle en azul marino CYCSA */
+.cy-cot-wrap .switch-toggle input:checked + .slider-toggle {
+  background-color: var(--cy-brand);
+}
+
+/* Botón destructivo sobrio (para Devolver / Rechazar) */
+.btn-cy-danger-outline {
+  background: #FFFFFF !important;
+  color: var(--cy-danger) !important;
+  border: 1px solid #FECACA !important;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.btn-cy-danger-outline:hover {
+  background: var(--cy-danger-bg) !important;
+  border-color: #FCA5A5 !important;
+}
+
+/* Botón remover fila */
+.cy-cot-wrap .btn-remover {
+  color: var(--cy-muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.cy-cot-wrap .btn-remover:hover:not(:disabled) {
+  color: var(--cy-danger);
+  background: var(--cy-danger-bg);
+  border-color: #FECACA;
+}
+.cy-cot-wrap .btn-remover:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Paneles de flujo/estado en detalle.php */
+.cy-cot-workflow-box {
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  padding: 20px 22px;
+  margin-top: 18px;
+}
+.cy-cot-workflow-box.is-warn {
+  border-left: 3px solid var(--cy-warn);
+}
+.cy-cot-workflow-box.is-danger {
+  border-left: 3px solid var(--cy-danger);
+}
+.cy-cot-workflow-box.is-ok {
+  border-left: 3px solid var(--cy-ok);
+}
+.cy-cot-workflow-box.is-brand {
+  border-left: 3px solid var(--cy-brand);
+}
+
+/* Modales sobrios (Clientes, Catálogo, Condiciones, Confirmación) */
+.cy-cot-wrap .modal-premium-bg,
+.cy-cot-wrap .modal-premium {
+  background-color: rgba(17, 24, 39, 0.38) !important;
+  backdrop-filter: blur(2px);
+}
+.cy-cot-wrap .modal-premium-content {
+  background: var(--cy-surface) !important;
+  border: 1px solid var(--cy-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.14) !important;
+}
+.cy-cot-wrap .modal-header {
+  border-bottom: 1px solid var(--cy-border) !important;
+}
+.cy-cot-wrap .modal-title {
+  font-size: 17px !important;
+  font-weight: 600 !important;
+  color: var(--cy-text) !important;
+}
+.cy-cot-wrap .modal-tabla th {
+  background: var(--cy-surface) !important;
+  color: var(--cy-muted) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  border-bottom: 1px solid var(--cy-border) !important;
+}
+.cy-cot-wrap .modal-tabla td {
+  font-size: 13.5px;
+  color: var(--cy-text);
+  border-bottom: 1px solid var(--cy-border) !important;
+}
+.cy-cot-wrap .modal-tabla tr.selected-row {
+  background-color: var(--cy-brand-soft) !important;
+}
+.cy-cot-wrap .modal-footer {
+  border-top: 1px solid var(--cy-border) !important;
+}
+
+/* Footer de acciones del formulario */
+.cy-cot-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px;
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  margin-bottom: 32px;
+}
+
+/* Acciones en tabla de listado */
+.cy-cot-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Botón primario heredado en modales (Catálogo / Condiciones) */
+.cy-cot-wrap .btn-premium-azul {
+  background: var(--cy-brand) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--cy-brand) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.cy-cot-wrap .btn-premium-azul:hover {
+  background: var(--cy-brand-hover) !important;
+  border-color: var(--cy-brand-hover) !important;
+}
+
+/* Tarjetas de versiones en detalle */
+.cy-version-card {
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--cy-surface);
+}
+.cy-version-card.is-current {
+  border-color: #CBD5E1;
+}
+.cy-version-head {
+  background: var(--cy-bg);
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid var(--cy-border);
+}
+.cy-version-card.is-current .cy-version-head {
+  background: var(--cy-brand-soft);
+}

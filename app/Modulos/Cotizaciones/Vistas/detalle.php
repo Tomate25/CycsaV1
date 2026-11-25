@@ -1,7 +1,16 @@
 <?php
 $rutaSchema = dirname(__DIR__, 3) . '/database/ensayos/formatos_schema.json';
 $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) : '{}';
+$estCotDet = (string)($cotizacion['estado'] ?? 'Borrador');
+$pillCotDetClase = match ($estCotDet) {
+    'Aprobada por Cliente', 'Aprobada Internamente' => 'cy-pill-ok',
+    'En Revision', 'Enviada al Cliente' => 'cy-pill-warn',
+    'Observada', 'Rechazada por Cliente' => 'cy-pill-danger',
+    default => 'cy-pill-pend',
+};
 ?>
+<link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/cotizaciones-sobrio.css">
 <style>
     .doc-container { max-width: 1250px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
     .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--cycsa-azul); padding-bottom: 20px; margin-bottom: 20px; }
@@ -34,108 +43,110 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         .form-control:focus { border-color: var(--cycsa-azul); }
     </style>
 
+<div class="container-fluid px-0 py-0 cy-cot-wrap">
 <div class="doc-container">
-    <div style="margin-bottom: 20px;">
-        <a href="/Cycsa/publico/cotizaciones" style="color: #6c757d; text-decoration: none; font-size: 14px;"><i class="fa-solid fa-arrow-left"></i> Volver a la lista</a>
-    </div>
+    <a href="/Cycsa/publico/cotizaciones" class="cy-back-link"><i class="fa-solid fa-arrow-left"></i> Volver a Cotizaciones</a>
 
     <?php if (isset($_SESSION['envio_exitoso'])): ?>
-        <div style="background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px;">
-            <i class="fa-solid fa-circle-check"></i> <?= htmlspecialchars($_SESSION['envio_exitoso'], ENT_QUOTES, 'UTF-8') ?>
+        <div class="cy-note mb-3 d-flex align-items-center gap-2" role="status">
+            <span class="cy-pill cy-pill-ok">Enviado</span>
+            <span style="color: var(--cy-text);"><?= htmlspecialchars($_SESSION['envio_exitoso'], ENT_QUOTES, 'UTF-8') ?></span>
         </div>
         <?php unset($_SESSION['envio_exitoso']); ?>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['error'])): ?>
-        <div style="background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px;">
-            <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?>
+        <div class="cy-note mb-3 d-flex align-items-center gap-2" role="alert">
+            <span class="cy-pill cy-pill-danger">Aviso</span>
+            <span style="color: var(--cy-text);"><?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?></span>
         </div>
         <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['exito'])): ?>
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; font-size: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-circle-check" style="color: #16a34a; font-size: 18px;"></i> 
-                <span><?= htmlspecialchars($_SESSION['exito'], ENT_QUOTES, 'UTF-8') ?></span>
+        <div class="cy-note mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2" role="status">
+            <div class="d-flex align-items-center gap-2">
+                <span class="cy-pill cy-pill-ok">Listo</span>
+                <span style="color: var(--cy-text);"><?= htmlspecialchars($_SESSION['exito'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             <?php if (($cotizacion['estado'] ?? '') === 'Borrador' && tienePermiso('cotizaciones', 'crear_editar')): ?>
-                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" style="background: #0d9488; color: white; padding: 7px 15px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; font-family: 'Inter', sans-serif;">
-                    <i class="fa-solid fa-pen-to-square"></i> Modificar Datos Ahora
+                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" class="btn btn-outline-secondary btn-sm">
+                    Modificar Datos Ahora
                 </a>
             <?php endif; ?>
         </div>
         <?php unset($_SESSION['exito']); ?>
     <?php endif; ?>
 
-    <div class="doc-header">
-        <div>
-            <h2 style="margin: 0; color: var(--cycsa-azul); font-size: 24px;">Cotización <?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?></h2>
-            <p style="margin: 5px 0 0 0; color: #6c757d;">Cód. Doc CYCSA-RG-FM-31 V2R1 &bull; Versión <?= max(1, (int)($cotizacion['version'] ?? 1)) ?> | Generada el <?= date('d/m/Y', strtotime($cotizacion['fecha_creacion'])) ?></p>
+    <div class="cy-cot-header">
+        <div class="cy-cot-header-left">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <h1 class="cy-page-title">Cotización <?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?></h1>
+                <span class="cy-pill <?= $pillCotDetClase ?>"><?= htmlspecialchars($estCotDet, ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <div class="cy-meta">Cód. Doc CYCSA-RG-FM-31 V2R1 · Versión <?= max(1, (int)($cotizacion['version'] ?? 1)) ?> · Generada el <?= date('d/m/Y', strtotime($cotizacion['fecha_creacion'])) ?></div>
         </div>
-        <div style="text-align: right; display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
+        <div class="cy-cot-header-actions">
             <?php if (tienePermiso('cotizaciones', 'crear_editar')): ?>
-                <a href="/Cycsa/publico/cotizaciones/duplicar?id=<?= codificarId($cotizacion['id']) ?>" 
-                   style="background-color: #0d9488; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2); transition: background 0.2s;"
-                   onmouseover="this.style.backgroundColor='#0f766e'" onmouseout="this.style.backgroundColor='#0d9488'"
+                <a href="/Cycsa/publico/cotizaciones/duplicar?id=<?= codificarId($cotizacion['id']) ?>"
+                   class="btn btn-outline-secondary btn-sm"
                    title="Duplicar esta cotización con un nuevo número consecutivo conservando todos los datos"
                    onclick="return confirm('¿Desea duplicar la cotización <?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?>?\n\nSe generará una nueva cotización con el siguiente número consecutivo conservando toda la información, ítems cotizados, notas y opciones seleccionadas.');">
-                    <i class="fa-solid fa-copy"></i> Duplicar Cotización
+                    Duplicar Cotización
                 </a>
             <?php endif; ?>
-            <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&t=<?= time() ?>" target="_blank" style="background-color: #e31837; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-family: 'Inter', sans-serif; box-shadow: 0 2px 4px rgba(227, 24, 55, 0.2);">
-                <i class="fa-solid fa-file-pdf"></i> Imprimir PDF
+            <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&t=<?= time() ?>" target="_blank" class="btn btn-primary btn-sm">
+                Imprimir PDF
             </a>
-            <span class="badge" style="background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1;"><?= htmlspecialchars($cotizacion['estado'], ENT_QUOTES, 'UTF-8') ?></span>
         </div>
     </div>
 
     <!-- METADATOS OFICIALES DE LA COTIZACIÓN (FORMATO OFICIAL CYCSA-RG-FM-31 V2R1) -->
-    <div style=\"margin-bottom: 25px; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.04);\">
-        <table style=\"width: 100%; border-collapse: collapse; font-size: 13px;\">
-            <tr style=\"border-bottom: 1px solid #e2e8f0;\">
-                <td style=\"width: 16%; font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Elaborado por:</td>
-                <td style=\"width: 34%; color: #1F4E79; font-weight: 700; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;\"><?= htmlspecialchars($cotizacion['creador_nombre'] ?? 'Asesor Comercial', ENT_QUOTES, 'UTF-8') ?></td>
-                <td style=\"width: 16%; font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Doc. Número:</td>
-                <td style=\"width: 34%; color: #0f172a; font-weight: 700; padding: 9px 12px;\"><?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?> <span style=\"font-size: 12px; color: #64748b; font-weight: normal;\">(v<?= max(1, (int)($cotizacion['version'] ?? 1)) ?>)</span></td>
-            </tr>
-            <tr style=\"border-bottom: 1px solid #e2e8f0;\">
-                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Cliente:</td>
-                <td style=\"color: #0f172a; font-weight: 700; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;\"><?= htmlspecialchars($cotizacion['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?></td>
-                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Fecha:</td>
-                <td style=\"color: #0f172a; padding: 9px 12px;\"><?= date('Y-m-d', strtotime($cotizacion['fecha_creacion'])) ?></td>
-            </tr>
-            <tr style=\"border-bottom: 1px solid #e2e8f0;\">
-                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Atención a:</td>
-                <td style=\"color: #0f172a; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;\"><?= htmlspecialchars($cotizacion['atencion_a'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
-                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Cédula/RUC:</td>
-                <td style=\"color: #0f172a; padding: 9px 12px;\"><?= htmlspecialchars($cotizacion['cliente_ruc'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
-            </tr>
-            <tr style=\"border-bottom: 1px solid #e2e8f0;\">
-                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Proyecto:</td>
-                <td style=\"color: #0f172a; font-weight: 600; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;\"><?= htmlspecialchars($cotizacion['nombre_proyecto'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
-                <td style=\"font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;\">Forma de pago:</td>
-                <td style=\"color: #0f172a; padding: 9px 12px;\"><?= htmlspecialchars($cotizacion['condicion_pago'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+    <div class="cy-cot-card">
+        <table class="cy-meta-table">
+            <tr>
+                <td class="cy-meta-k">Elaborado por</td>
+                <td class="cy-meta-v sep-col" style="color: var(--cy-brand); font-weight: 600;"><?= htmlspecialchars($cotizacion['creador_nombre'] ?? 'Asesor Comercial', ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="cy-meta-k">Doc. Número</td>
+                <td class="cy-meta-v" style="font-weight: 600;"><?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?> <span class="cy-meta">(v<?= max(1, (int)($cotizacion['version'] ?? 1)) ?>)</span></td>
             </tr>
             <tr>
-                <td style="font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;">Correo electrónico:</td>
-                <td style="color: #0f172a; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;"><?= htmlspecialchars(!empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : ($cotizacion['email'] ?? 'admon@cycsanic.com'), ENT_QUOTES, 'UTF-8') ?></td>
-                <td style="font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;">Teléfono:</td>
-                <td style="color: #0f172a; padding: 9px 12px;"><?= htmlspecialchars(!empty($cotizacion['cliente_tel']) ? $cotizacion['cliente_tel'] : ($cotizacion['telefono'] ?? '(505) 8209-6275'), ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="cy-meta-k">Cliente</td>
+                <td class="cy-meta-v sep-col" style="font-weight: 600;"><?= htmlspecialchars($cotizacion['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="cy-meta-k">Fecha</td>
+                <td class="cy-meta-v"><?= date('Y-m-d', strtotime($cotizacion['fecha_creacion'])) ?></td>
+            </tr>
+            <tr>
+                <td class="cy-meta-k">Atención a</td>
+                <td class="cy-meta-v sep-col"><?= htmlspecialchars($cotizacion['atencion_a'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="cy-meta-k">Cédula/RUC</td>
+                <td class="cy-meta-v"><?= htmlspecialchars($cotizacion['cliente_ruc'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr>
+                <td class="cy-meta-k">Proyecto</td>
+                <td class="cy-meta-v sep-col" style="font-weight: 600;"><?= htmlspecialchars($cotizacion['nombre_proyecto'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="cy-meta-k">Forma de pago</td>
+                <td class="cy-meta-v"><?= htmlspecialchars($cotizacion['condicion_pago'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr>
+                <td class="cy-meta-k">Correo electrónico</td>
+                <td class="cy-meta-v sep-col"><?= htmlspecialchars(!empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : ($cotizacion['email'] ?? 'admon@cycsanic.com'), ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="cy-meta-k">Teléfono</td>
+                <td class="cy-meta-v"><?= htmlspecialchars(!empty($cotizacion['cliente_tel']) ? $cotizacion['cliente_tel'] : ($cotizacion['telefono'] ?? '(505) 8209-6275'), ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <?php if (!empty($cotizacion['responsable_interno_nombre']) || !empty($cotizacion['aprobacion_interna_por'])): ?>
-            <tr style="border-top: 1px solid #e2e8f0;">
-                <td style="font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;">Responsable Interno:</td>
-                <td style="color: #0f172a; padding: 9px 12px; border-right: 1.5px solid #cbd5e1;"><?= htmlspecialchars($cotizacion['responsable_interno_nombre'] ?: 'Gerencia / Autorizado', ENT_QUOTES, 'UTF-8') ?></td>
-                <td style="font-weight: 700; color: #475569; background: #f8fafc; padding: 9px 12px; border-right: 1px solid #e2e8f0;">Aprobación Interna:</td>
-                <td style="color: #1e40af; font-weight: 600; padding: 9px 12px;">
+            <tr>
+                <td class="cy-meta-k">Responsable Interno</td>
+                <td class="cy-meta-v sep-col"><?= htmlspecialchars($cotizacion['responsable_interno_nombre'] ?: 'Gerencia / Autorizado', ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="cy-meta-k">Aprobación Interna</td>
+                <td class="cy-meta-v">
                     <?php if (!empty($cotizacion['aprobacion_interna_por'])): ?>
-                        <i class="fa-solid fa-stamp"></i> <?= htmlspecialchars($cotizacion['aprobacion_interna_nombre'] ?: ('Usuario #' . (int)$cotizacion['aprobacion_interna_por']), ENT_QUOTES, 'UTF-8') ?>
+                        <span class="cy-pill cy-pill-ok"><?= htmlspecialchars($cotizacion['aprobacion_interna_nombre'] ?: ('Usuario #' . (int)$cotizacion['aprobacion_interna_por']), ENT_QUOTES, 'UTF-8') ?></span>
                         <?php if (!empty($cotizacion['fecha_aprobacion_interna'])): ?>
-                            <span style="font-weight: normal; color: #64748b; font-size: 11.5px;">(<?= date('d/m/Y H:i', strtotime($cotizacion['fecha_aprobacion_interna'])) ?>)</span>
+                            <span class="cy-meta ms-1">(<?= date('d/m/Y H:i', strtotime($cotizacion['fecha_aprobacion_interna'])) ?>)</span>
                         <?php endif; ?>
                     <?php else: ?>
-                        <span style="color: #94a3b8; font-weight: normal;">Pendiente</span>
+                        <span class="cy-pill cy-pill-pend">Pendiente</span>
                     <?php endif; ?>
                 </td>
             </tr>
@@ -190,11 +201,13 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     $autorizadorHtml = htmlspecialchars($autorizadorDesc, ENT_QUOTES, 'UTF-8');
     ?>
 
-    <!-- BANNER: DETALLE DE SERVICIOS COTIZADOS (#1F4E79) -->
-    <div style="background-color: #1F4E79; color: #ffffff; padding: 10px 16px; font-weight: 700; font-size: 13.5px; text-transform: uppercase; border-radius: 6px 6px 0 0; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-        <i class="fa-solid fa-flask"></i> Detalle de servicios cotizados
-    </div>
-    <div style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; margin-bottom: 25px; border: 1.5px solid #cbd5e1; border-top: none; border-radius: 0 0 6px 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); background: white;">
+    <!-- TABLA: DETALLE DE SERVICIOS COTIZADOS -->
+    <div class="cy-cot-card">
+        <div class="cy-cot-card-head">
+            <span><i class="fa-solid fa-flask me-1"></i> Detalle de servicios cotizados</span>
+            <span class="cy-meta"><?= count($detalles) ?> <?= count($detalles) === 1 ? 'ítem' : 'ítems' ?></span>
+        </div>
+        <div style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
         <table class="tabla-visual" style="margin-bottom: 0; min-width: 950px; width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="background: #f8fafc; border-bottom: 1.5px solid #cbd5e1;">
@@ -257,42 +270,45 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
     </div>
 
-    <!-- TOTALES (FORMATO 1:1 EXCEL CYCSA) -->
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
-        <table style="width: 360px; border-collapse: collapse; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); font-size: 13px;">
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 8px 14px; color: #475569; font-weight: 600; text-align: right;">Total Bruto:</td>
-                <td style="padding: 8px 14px; font-weight: 700; color: #0f172a; text-align: right; width: 140px;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['subtotal'], 2, '.', ',') ?></td>
+    <!-- TOTALES -->
+    <div class="d-flex justify-content-end mb-4">
+        <div class="cy-cot-card mb-0" style="width: 360px; max-width: 100%;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr style="border-bottom: 1px solid var(--cy-border);">
+                <td style="padding: 10px 16px; color: var(--cy-muted); font-weight: 500; text-align: right;">Total Bruto</td>
+                <td style="padding: 10px 16px; font-weight: 600; color: var(--cy-text); text-align: right; width: 145px;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['subtotal'], 2, '.', ',') ?></td>
             </tr>
             <?php if ($descuentoVal > 0): ?>
-                <tr style="border-bottom: 1px solid #e2e8f0; color: #dc2626;">
-                    <td style="padding: 8px 14px; font-weight: 600; text-align: right;">
-                        Descuento:
-                        <div style="font-size: 11px; color: #0369a1; font-weight: 500; margin-top: 2px;"><i class="fa-solid fa-stamp"></i> Autorizado: <?= $autorizadorHtml ?></div>
+                <tr style="border-bottom: 1px solid var(--cy-border); color: var(--cy-danger);">
+                    <td style="padding: 10px 16px; font-weight: 500; text-align: right;">
+                        Descuento
+                        <div class="cy-meta">Autorizado: <?= $autorizadorHtml ?></div>
                     </td>
-                    <td style="padding: 8px 14px; font-weight: 700; text-align: right;">-<?= $monedaSimbolo ?> <?= number_format($descuentoVal, 2, '.', ',') ?></td>
+                    <td style="padding: 10px 16px; font-weight: 600; text-align: right;">-<?= $monedaSimbolo ?> <?= number_format($descuentoVal, 2, '.', ',') ?></td>
                 </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 8px 14px; color: #475569; font-weight: 600; text-align: right;">Sub-total:</td>
-                    <td style="padding: 8px 14px; font-weight: 700; color: #0f172a; text-align: right;"><?= $monedaSimbolo ?> <?= number_format($subtotalNeto, 2, '.', ',') ?></td>
+                <tr style="border-bottom: 1px solid var(--cy-border);">
+                    <td style="padding: 10px 16px; color: var(--cy-muted); font-weight: 500; text-align: right;">Sub-total</td>
+                    <td style="padding: 10px 16px; font-weight: 600; color: var(--cy-text); text-align: right;"><?= $monedaSimbolo ?> <?= number_format($subtotalNeto, 2, '.', ',') ?></td>
                 </tr>
             <?php endif; ?>
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 8px 14px; color: #475569; font-weight: 600; text-align: right;">
-                    Impuesto (15%):
+            <tr style="border-bottom: 1px solid var(--cy-border);">
+                <td style="padding: 10px 16px; color: var(--cy-muted); font-weight: 500; text-align: right;">
+                    Impuesto (15%)
                     <?php if ((int)($cotizacion['exonerado'] ?? 0)): ?>
-                        <span style="font-size: 11px; color: #16a34a; font-weight: 600; display: block;">(Exonerado<?= !empty($cotizacion['exoneracion_no']) ? ' - Aval: ' . htmlspecialchars($cotizacion['exoneracion_no'], ENT_QUOTES, 'UTF-8') : '' ?>)</span>
+                        <span class="cy-pill cy-pill-ok mt-1">Exonerado<?= !empty($cotizacion['exoneracion_no']) ? ' · Aval ' . htmlspecialchars($cotizacion['exoneracion_no'], ENT_QUOTES, 'UTF-8') : '' ?></span>
                     <?php endif; ?>
                 </td>
-                <td style="padding: 8px 14px; font-weight: 700; color: #0f172a; text-align: right;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['impuesto'], 2, '.', ',') ?></td>
+                <td style="padding: 10px 16px; font-weight: 600; color: var(--cy-text); text-align: right;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['impuesto'], 2, '.', ',') ?></td>
             </tr>
-            <tr style="background: #e6eefc; border-top: 1.5px solid #cbd5e1;">
-                <td style="padding: 10px 14px; font-size: 14.5px; font-weight: 800; color: #1F4E79; text-align: right;">Total:</td>
-                <td style="padding: 10px 14px; font-size: 15.5px; font-weight: 800; color: #1F4E79; text-align: right;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['total'], 2, '.', ',') ?></td>
+            <tr style="background: var(--cy-brand-soft);">
+                <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: var(--cy-brand); text-align: right;">Total</td>
+                <td style="padding: 12px 16px; font-size: 16px; font-weight: 700; color: var(--cy-brand); text-align: right;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['total'], 2, '.', ',') ?></td>
             </tr>
         </table>
+        </div>
     </div>
 
     <?php
@@ -321,15 +337,14 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     $anexoContenido = trim($cotizacion['anexo_tecnico'] ?? '');
     ?>
 
-    <!-- NOTAS Y CONDICIONES / DATOS DE PAGO (FORMATO OFICIAL CYCSA #1F4E79) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 15px; margin-bottom: 25px;">
-        <!-- Notas y Condiciones de la Cotización -->
-        <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-            <div style="background-color: #1F4E79; color: #ffffff; padding: 10px 16px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-clipboard-list"></i> Notas y condiciones de la cotización
+    <!-- NOTAS Y CONDICIONES / DATOS DE PAGO -->
+    <div class="grid-2 mb-4">
+        <div class="cy-cot-card mb-0">
+            <div class="cy-cot-card-head">
+                <span><i class="fa-solid fa-clipboard-list me-1"></i> Notas y condiciones de la cotización</span>
             </div>
-            <div style="padding: 16px 18px;">
-                <ul style="margin: 0; padding-left: 18px; font-size: 12.5px; color: #475569; line-height: 1.55;">
+            <div class="cy-cot-card-body">
+                <ul style="margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--cy-text); line-height: 1.55;">
                     <?php foreach ($configNotas as $clave => $seleccionada): ?>
                         <?php if ($seleccionada && isset($notasDisponibles[$clave])): ?>
                             <li style="margin-bottom: 7px;"><?= $notasDisponibles[$clave] ?></li>
@@ -338,34 +353,33 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                 </ul>
 
                 <?php if (!empty($cotizacion['contactos'])): ?>
-                    <div style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-                        <strong style="font-size: 12px; color: #1F4E79; text-transform: uppercase; display: block; margin-bottom: 5px;"><i class="fa-solid fa-address-book"></i> Contactos de Seguimiento:</strong>
-                        <div style="font-size: 12.5px; color: #475569; line-height: 1.45;"><?= nl2br(htmlspecialchars($cotizacion['contactos'], ENT_QUOTES, 'UTF-8')) ?></div>
+                    <div style="margin-top: 14px; border-top: 1px solid var(--cy-border); padding-top: 12px;">
+                        <div class="fw-semibold mb-1" style="font-size: 13px; color: var(--cy-brand);">Contactos de seguimiento</div>
+                        <div style="font-size: 13.5px; color: var(--cy-text); line-height: 1.5;"><?= nl2br(htmlspecialchars($cotizacion['contactos'], ENT_QUOTES, 'UTF-8')) ?></div>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
 
-        <!-- Datos de Pago y Condiciones Comerciales -->
-        <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-            <div style="background-color: #1F4E79; color: #ffffff; padding: 10px 16px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-credit-card"></i> Datos de pago
+        <div class="cy-cot-card mb-0">
+            <div class="cy-cot-card-head">
+                <span><i class="fa-solid fa-credit-card me-1"></i> Datos de pago</span>
             </div>
-            <div style="padding: 16px 18px;">
-                <div style="font-size: 12.5px; color: #334155; line-height: 1.6; margin-bottom: 14px;">
-                    <p style="margin: 0 0 6px 0; font-weight: 700; color: #0f172a;">Pago a nombre de CYC.S.A y/o depositar en las siguientes cuentas:</p>
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; font-family: monospace; font-size: 12px; color: #1e293b;">
+            <div class="cy-cot-card-body">
+                <div style="font-size: 13.5px; color: var(--cy-text); line-height: 1.6; margin-bottom: 14px;">
+                    <p style="margin: 0 0 8px 0; font-weight: 600;">Pago a nombre de CYC.S.A y/o depositar en las siguientes cuentas:</p>
+                    <div class="cy-note mt-0" style="color: var(--cy-text);">
                         <div><strong>BANPRO:</strong> C$ 10010207085164 / $ 10010210874512</div>
                         <div><strong>BAC:</strong> C$ 357-02445-4 / $ 363259490</div>
                         <div><strong>LAFISE:</strong> C$ 550-2000-11</div>
-                        <div style="margin-top: 4px; color: #64748b; font-family: sans-serif; font-size: 11.5px;"><strong>RUC:</strong> J0310000073465 &bull; Cotización válida por 30 días.</div>
+                        <div class="cy-meta mt-1"><strong>RUC:</strong> J0310000073465 · Cotización válida por 30 días.</div>
                     </div>
                 </div>
 
-                <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 12.5px; color: #334155; line-height: 1.6;">
-                    <div><span style="color: #64748b;">Condición de Pago:</span> <strong><?= htmlspecialchars($cotizacion['condicion_pago'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
-                    <div><span style="color: #64748b;">Tiempo de Entrega:</span> <strong><?= htmlspecialchars($cotizacion['tiempo_entrega'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
-                    <div><span style="color: #64748b;">Vigencia de Oferta:</span> <strong><?= htmlspecialchars($cotizacion['vigencia_oferta'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+                <div style="border-top: 1px solid var(--cy-border); padding-top: 12px; font-size: 13.5px; color: var(--cy-text); line-height: 1.65;">
+                    <div><span class="cy-meta">Condición de Pago:</span> <strong><?= htmlspecialchars($cotizacion['condicion_pago'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+                    <div><span class="cy-meta">Tiempo de Entrega:</span> <strong><?= htmlspecialchars($cotizacion['tiempo_entrega'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
+                    <div><span class="cy-meta">Vigencia de Oferta:</span> <strong><?= htmlspecialchars($cotizacion['vigencia_oferta'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
                 </div>
             </div>
         </div>
@@ -373,48 +387,44 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
 
     <!-- DOCUMENTO DIGITAL ADJUNTO (SI EXISTE) -->
     <?php if (!empty($cotizacion['archivo_adjunto'])): ?>
-        <div style="background: white; border: 1px solid #cbd5e1; border-top: 4px solid #16a34a; border-radius: 8px; padding: 18px 22px; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="font-size: 13.5px; color: #166534;">
-                    <i class="fa-solid fa-paperclip"></i> <strong>Documento Digital Adjunto:</strong> <?= htmlspecialchars(basename($cotizacion['archivo_adjunto']), ENT_QUOTES, 'UTF-8') ?>
-                </div>
-                <a href="/Cycsa/publico/<?= htmlspecialchars($cotizacion['archivo_adjunto'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="background: #16a34a; color: white; padding: 7px 16px; border-radius: 4px; text-decoration: none; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fa-solid fa-download"></i> Descargar Adjunto
-                </a>
+        <div class="cy-next mb-4">
+            <div>
+                <div class="fw-semibold">Documento digital adjunto</div>
+                <div class="cy-meta"><?= htmlspecialchars(basename($cotizacion['archivo_adjunto']), ENT_QUOTES, 'UTF-8') ?></div>
             </div>
+            <a href="/Cycsa/publico/<?= htmlspecialchars($cotizacion['archivo_adjunto'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
+                Descargar Adjunto
+            </a>
         </div>
     <?php endif; ?>
 
     <!-- ANEXO TÉCNICO OFICIAL (SI ESTÁ INCLUIDO) -->
     <?php if ($incluirAnexo): ?>
-        <div style="background: white; border: 1px solid #cbd5e1; border-top: 4px solid #103487; border-radius: 8px; padding: 22px; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #103487; font-size: 15px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-file-shield"></i> Anexo Técnico Oficial Incluido
-                </h3>
-                <span class="badge" style="background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-size: 12px; padding: 4px 10px; font-weight: 600;">
-                    Compilado en PDF
-                </span>
+        <div class="cy-cot-card">
+            <div class="cy-cot-card-head">
+                <span><i class="fa-solid fa-file-shield me-1"></i> Anexo Técnico Oficial Incluido</span>
+                <span class="cy-pill cy-pill-ok">Compilado en PDF</span>
             </div>
-
-            <div style="font-size: 13px; color: #1e293b; line-height: 1.55; background: #fafbfc; padding: 15px 20px; border-radius: 6px; border: 1px solid #f1f5f9;">
-                <?= $anexoContenido ?>
+            <div class="cy-cot-card-body">
+                <div style="font-size: 13.5px; color: var(--cy-text); line-height: 1.55;">
+                    <?= $anexoContenido ?>
+                </div>
             </div>
         </div>
     <?php endif; ?>
 
     <?php if (tienePermiso('cotizaciones', 'crear_editar') && $cotizacion['estado'] == 'Borrador' && (($_SESSION['usuario_id'] ?? 0) == ($cotizacion['id_usuario_creador'] ?? 0) || ($_SESSION['usuario_rol'] ?? 0) == 1)): ?>
-        <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; margin-top: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div class="cy-cot-workflow-box is-brand d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h3 style="margin: 0 0 5px 0; color: #475569;"><i class="fa-solid fa-file-lines"></i> Cotización en Borrador</h3>
-                <p style="margin: 0; font-size: 14px; color: #64748b;">Esta cotización se encuentra en borrador. Envíala a revisión para que la gerencia pueda revisarla y aprobarla.</p>
+                <div class="fw-semibold mb-1" style="font-size: 15px;">Cotización en Borrador</div>
+                <div class="cy-meta">Esta cotización se encuentra en borrador. Envíala a revisión para que la gerencia pueda revisarla y aprobarla.</div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" style="background: #0284c7; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-weight: 600; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; gap: 8px;"><i class="fa-solid fa-pen-to-square"></i> Editar</a>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" class="btn btn-outline-secondary btn-sm">Editar</a>
                 <form action="/Cycsa/publico/cotizaciones/enviar-revision" method="POST" style="margin: 0;">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
-                    <button type="submit" style="background: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; gap: 8px;"><i class="fa-solid fa-paper-plane"></i> Enviar a Revisión</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Enviar a Revisión</button>
                 </form>
             </div>
         </div>
@@ -426,14 +436,17 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         : \Cycsa\Modulos\Cotizaciones\Controladores\CotizacionesControlador::puedeAprobarInternamente($cotizacion);
     ?>
     <?php if ($puedeAprobarInterno && ($cotizacion['estado'] == 'Borrador' || $cotizacion['estado'] == 'En Revision')): ?>
-        <div class="panel-aprobacion" style="background: #eef2ff; border: 1.5px solid #a5b4fc;">
-            <h3 style="margin: 0 0 15px 0; color: #3730a3;"><i class="fa-solid fa-stamp"></i> Revisión y Aprobación Interna</h3>
-            <p style="font-size: 14px; color: #312e81; margin-bottom: 20px;">Valida los datos comerciales antes de enviarla al cliente. La <strong>Aprobación Interna</strong> autoriza el despacho sin cerrar la decisión del cliente; si hay correcciones, devuélvela con observaciones (sin incrementar la versión PDF).</p>
+        <div class="cy-cot-workflow-box is-brand">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="fw-semibold" style="font-size: 15px;">Revisión y Aprobación Interna</span>
+                <span class="cy-pill cy-pill-warn">Pendiente</span>
+            </div>
+            <p class="cy-meta mb-3">Valida los datos comerciales antes de enviarla al cliente. La <strong>Aprobación Interna</strong> autoriza el despacho sin cerrar la decisión del cliente; si hay correcciones, devuélvela con observaciones (sin incrementar la versión PDF).</p>
             
             <?php if (!empty($cotizacion['motivo_rechazo_cliente'])): ?>
-                <div style="background: #fff5f5; border: 1px solid #feb2b2; padding: 15px; border-radius: 6px; margin-bottom: 20px; color: #9b2c2c; font-size: 13.5px; border-left: 4px solid #ef4444; text-align: left;">
-                    <strong><i class="fa-solid fa-circle-exclamation"></i> Devuelta por el Cliente (Lo que no le parece):</strong><br>
-                    <span style="display: block; margin-top: 5px; color: #4a5568; font-style: italic;">"<?= htmlspecialchars($cotizacion['motivo_rechazo_cliente'], ENT_QUOTES, 'UTF-8') ?>"</span>
+                <div class="cy-note mt-0 mb-3" style="border-left: 3px solid var(--cy-danger);">
+                    <strong style="color: var(--cy-danger);">Devuelta por el Cliente:</strong>
+                    <div style="margin-top: 4px; color: var(--cy-text); font-style: italic;">"<?= htmlspecialchars($cotizacion['motivo_rechazo_cliente'], ENT_QUOTES, 'UTF-8') ?>"</div>
                 </div>
             <?php endif; ?>
             
@@ -442,11 +455,11 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                 <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
                 <input type="hidden" name="accion" id="input-accion" value="">
 
-                <textarea name="motivo_observacion" id="txt-motivo" placeholder="Escribe el motivo del rechazo u observación aquí..." style="width: 100%; padding: 10px; border: 1px solid #a5b4fc; border-radius: 4px; font-family: 'Inter', sans-serif; display: none; margin-bottom: 15px;" rows="3"></textarea>
+                <textarea name="motivo_observacion" id="txt-motivo" placeholder="Escribe el motivo del rechazo u observación aquí..." class="form-control mb-3" style="display: none;" rows="3"></textarea>
 
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button type="button" class="btn-aprobar" style="background: #4f46e5; border: 1px solid #4338ca;" onclick="enviarRevision('aprobar')"><i class="fa-solid fa-stamp"></i> Aprobación Interna</button>
-                    <button type="button" class="btn-observar" onclick="mostrarCajaObservacion()"><i class="fa-solid fa-xmark"></i> Devolver con Observación</button>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="enviarRevision('aprobar')">Aprobación Interna</button>
+                    <button type="button" class="btn-cy-danger-outline" onclick="mostrarCajaObservacion()">Devolver con Observación</button>
                 </div>
             </form>
         </div>
@@ -454,87 +467,91 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
 
     <?php if (tienePermiso('cotizaciones', 'crear_editar') && $cotizacion['estado'] == 'Aprobada Internamente'): ?>
         <?php $tieneEmail = !empty($cotizacion['cliente_email']); ?>
-        <div style="background: <?= $tieneEmail ? '#ecfdf5' : '#fffbeb' ?>; border: 1px solid <?= $tieneEmail ? '#6ee7b7' : '#fde68a' ?>; padding: 20px; border-radius: 8px; margin-top: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div class="cy-cot-workflow-box <?= $tieneEmail ? 'is-ok' : 'is-warn' ?> d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h3 style="margin: 0 0 5px 0; color: <?= $tieneEmail ? '#047857' : '#b45309' ?>;"><i class="fa-solid <?= $tieneEmail ? 'fa-circle-check' : 'fa-triangle-exclamation' ?>"></i> <?= $tieneEmail ? 'Cotización Aprobada' : 'Cliente sin Correo Registrado' ?></h3>
-                <p style="margin: 0; font-size: 14px; color: <?= $tieneEmail ? '#065f46' : '#78350f' ?>;">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="fw-semibold" style="font-size: 15px;"><?= $tieneEmail ? 'Cotización Aprobada' : 'Cliente sin Correo Registrado' ?></span>
+                    <span class="cy-pill <?= $tieneEmail ? 'cy-pill-ok' : 'cy-pill-warn' ?>"><?= $tieneEmail ? 'Lista para envío' : 'Envío manual' ?></span>
+                </div>
+                <div class="cy-meta">
                     <?php if ($tieneEmail): ?>
                         Lista para ser enviada de manera formal al correo del cliente (<?= htmlspecialchars($cotizacion['cliente_email'], ENT_QUOTES, 'UTF-8') ?>).
                     <?php else: ?>
                         Esta cotización puede ser entregada en físico. Al continuar, se registrará el envío manual en el sistema.
                     <?php endif; ?>
-                </p>
+                </div>
             </div>
             <form action="/Cycsa/publico/cotizaciones/enviar" method="POST" style="margin: 0;">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
-                <?php if ($tieneEmail): ?>
-                    <button type="submit" style="background: #059669; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-paper-plane"></i> Enviar al Cliente</button>
-                <?php else: ?>
-                    <button type="submit" style="background: #d97706; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-hand-holding-hand"></i> Registrar Envío Manual</button>
-                <?php endif; ?>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <?= $tieneEmail ? 'Enviar al Cliente' : 'Registrar Envío Manual' ?>
+                </button>
             </form>
         </div>
     <?php endif; ?>
 
     <?php if (tienePermiso('cotizaciones', 'crear_editar') && in_array($cotizacion['estado'], ['Enviada al Cliente', 'Aprobada por Cliente'])): ?>
         <?php $tieneEmail = !empty($cotizacion['cliente_email']); ?>
-        <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin-top: 30px; display: flex; flex-direction: column; gap: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; width: 100%;">
+        <div class="cy-cot-workflow-box is-brand">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                 <div>
-                    <h3 style="margin: 0 0 5px 0; color: #1e3a8a;"><i class="fa-solid fa-paper-plane"></i> Cotización Enviada</h3>
-                    <p style="margin: 0; font-size: 14px; color: #1e40af;">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="fw-semibold" style="font-size: 15px;">Cotización Enviada</span>
+                        <span class="cy-pill cy-pill-ok">Despachada</span>
+                    </div>
+                    <div class="cy-meta">
                         <?php if ($tieneEmail): ?>
                             Esta cotización ya fue enviada formalmente al cliente (<?= htmlspecialchars($cotizacion['cliente_email'], ENT_QUOTES, 'UTF-8') ?>).
                         <?php else: ?>
                             Esta cotización fue registrada como enviada de forma física/manual (El cliente no tiene correo registrado).
                         <?php endif; ?>
-                    </p>
+                    </div>
                 </div>
                 <?php if ($tieneEmail): ?>
                     <form action="/Cycsa/publico/cotizaciones/enviar" method="POST" style="margin: 0;" onsubmit="return confirm('¿Deseas volver a enviar el correo al cliente?');">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
-                        <button type="submit" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;"><i class="fa-solid fa-arrows-rotate"></i> Re-enviar Correo</button>
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Re-enviar Correo</button>
                     </form>
                 <?php endif; ?>
             </div>
             
             <?php if ($cotizacion['estado'] == 'Enviada al Cliente'): ?>
-                <div style="border-top: 1px solid #bfdbfe; padding-top: 15px; margin-top: 5px;">
-                    <h4 style="margin: 0 0 10px 0; color: #1e3a8a; font-size: 14px;"><i class="fa-solid fa-user-tie"></i> Acciones Administrativas (En nombre del cliente)</h4>
-                    <p style="font-size: 13px; color: #4b5563; margin-bottom: 15px;">Si el cliente no puede aceptar/rechazar en línea por su cuenta, puedes registrar la decisión por él desde aquí.</p>
+                <div style="border-top: 1px solid var(--cy-border); padding-top: 16px; margin-top: 16px;">
+                    <div class="fw-semibold mb-1" style="font-size: 14px;">Acciones Administrativas (En nombre del cliente)</div>
+                    <p class="cy-meta mb-3">Si el cliente no puede aceptar/rechazar en línea por su cuenta, puedes registrar la decisión por él desde aquí.</p>
                     
-                    <form action="/Cycsa/publico/cotizaciones/decision-administrativa" method="POST" id="form-admin-decision" style="display: flex; flex-direction: column; gap: 10px; max-width: 550px; margin: 0;">
+                    <form action="/Cycsa/publico/cotizaciones/decision-administrativa" method="POST" id="form-admin-decision" style="display: flex; flex-direction: column; gap: 10px; max-width: 560px; margin: 0;">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
                         <input type="hidden" name="accion" id="admin-accion" value="">
                         
-                        <div id="admin-motivo-container" style="display: none; margin-bottom: 10px; width: 100%;">
-                            <label style="font-size: 12px; font-weight: 600; color: #b91c1c; display: block; margin-bottom: 5px;">Motivo del Rechazo:</label>
-                            <textarea name="motivo_rechazo" id="admin-motivo" placeholder="Escriba el motivo por el cual el cliente rechaza la cotización..." style="width: 100%; padding: 8px; border: 1px solid #fda4af; border-radius: 4px; font-family: 'Inter', sans-serif;" rows="2"></textarea>
+                        <div id="admin-motivo-container" style="display: none; width: 100%;">
+                            <label class="form-label" style="color: var(--cy-danger);">Motivo del Rechazo</label>
+                            <textarea name="motivo_rechazo" id="admin-motivo" placeholder="Escriba el motivo por el cual el cliente rechaza la cotización..." class="form-control" rows="2"></textarea>
                         </div>
                         
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button type="button" onclick="confirmarDecisionAdmin('aceptar')" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;"><i class="fa-solid fa-circle-check"></i> Aprobar Cotización (Cliente)</button>
-                            <button type="button" id="btn-admin-rechazar-init" onclick="mostrarRechazoAdmin()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;"><i class="fa-solid fa-circle-xmark"></i> Rechazar Cotización</button>
-                            <button type="button" id="btn-admin-rechazar-confirm" onclick="confirmarDecisionAdmin('rechazar')" style="background: #b91c1c; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; display: none;"><i class="fa-solid fa-circle-check"></i> Confirmar Rechazo</button>
-                            <button type="button" id="btn-admin-cancelar" onclick="cancelarRechazoAdmin()" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; display: none;">Cancelar</button>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" onclick="confirmarDecisionAdmin('aceptar')" class="btn btn-primary btn-sm">Aprobar Cotización (Cliente)</button>
+                            <button type="button" id="btn-admin-rechazar-init" onclick="mostrarRechazoAdmin()" class="btn-cy-danger-outline">Rechazar Cotización</button>
+                            <button type="button" id="btn-admin-rechazar-confirm" onclick="confirmarDecisionAdmin('rechazar')" class="btn-cy-danger-outline" style="display: none;">Confirmar Rechazo</button>
+                            <button type="button" id="btn-admin-cancelar" onclick="cancelarRechazoAdmin()" class="btn btn-outline-secondary btn-sm" style="display: none;">Cancelar</button>
                         </div>
 
                         <!-- MODAL DE CONFIRMACIÓN ADMINISTRATIVO -->
                         <div id="modalAdminAprobar" class="modal-premium">
                             <div class="modal-premium-content" style="width: 450px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                                    <h3 style="margin: 0; color: #0f172a; font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;">Confirmar Aprobación</h3>
+                                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                    <h3 style="margin: 0; font-size: 17px; font-weight: 600;">Confirmar Aprobación</h3>
                                     <button type="button" onclick="cerrarAdminAprobarModal()" class="btn-cerrar">&times;</button>
                                 </div>
                                 
-                                <p style="color: #64748b; font-size: 13.5px; margin-bottom: 25px;">¿Está seguro de que desea aprobar esta cotización? Al confirmar, se creará la Orden de Servicio automáticamente y comenzará el flujo operativo en el laboratorio.</p>
+                                <p class="cy-meta mb-4">¿Está seguro de que desea aprobar esta cotización? Al confirmar, se creará la Orden de Servicio automáticamente y comenzará el flujo operativo en el laboratorio.</p>
                                 
-                                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
-                                    <button type="button" onclick="cerrarAdminAprobarModal()" class="form-control" style="cursor: pointer; background: #fff; border: 1px solid #cbd5e1; font-weight: 600; color: #64748b; width: auto; padding: 8px 16px; margin: 0;">Cancelar</button>
-                                    <button type="button" onclick="enviarAprobacionAdminDirecta()" class="form-control" style="cursor: pointer; background: #10b981; border: 1px solid #10b981; color: white; font-weight: 600; width: auto; padding: 8px 20px; margin: 0;">Confirmar y Aprobar</button>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" onclick="cerrarAdminAprobarModal()" class="btn btn-outline-secondary btn-sm">Cancelar</button>
+                                    <button type="button" onclick="enviarAprobacionAdminDirecta()" class="btn btn-primary btn-sm">Confirmar y Aprobar</button>
                                 </div>
                             </div>
                         </div>
@@ -547,36 +564,42 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     $mostrarCajaAlerta = false;
     $tituloAlerta = '';
     $motivoAlerta = '';
-    $claseAlerta = '';
+    $claseAlertaBox = 'is-warn';
+    $clasePillAlerta = 'cy-pill-warn';
     
     if (tienePermiso('cotizaciones', 'crear_editar') && ($_SESSION['usuario_id'] == ($cotizacion['id_usuario_creador'] ?? 0) || ($_SESSION['usuario_rol'] ?? 0) == 1)) {
         if ($cotizacion['estado'] === 'Observada') {
             $mostrarCajaAlerta = true;
-            $tituloAlerta = '⚠️ Cotización Observada (Interna)';
+            $tituloAlerta = 'Cotización Observada (Interna)';
             $motivoAlerta = $cotizacion['motivo_observacion'];
-            $claseAlerta = 'background: #fffbeb; border: 1px solid #fcd34d; color: #b45309;';
+            $claseAlertaBox = 'is-warn';
+            $clasePillAlerta = 'cy-pill-warn';
         } elseif ($cotizacion['estado'] === 'Rechazada por Cliente') {
             $mostrarCajaAlerta = true;
-            $tituloAlerta = '⚠️ Cotización Devuelta / Rechazada por el Cliente';
+            $tituloAlerta = 'Cotización Devuelta / Rechazada por el Cliente';
             $motivoAlerta = $cotizacion['motivo_rechazo_cliente'];
-            $claseAlerta = 'background: #fff1f2; border: 1px solid #fda4af; color: #9f1239;';
+            $claseAlertaBox = 'is-danger';
+            $clasePillAlerta = 'cy-pill-danger';
         }
     }
     
     if ($mostrarCajaAlerta): ?>
-        <div style="padding: 20px; border-radius: 8px; margin-top: 30px; <?= $claseAlerta ?>">
-            <h3 style="margin-top: 0; font-size: 16px; font-weight: 700;"><?= $tituloAlerta ?></h3>
-            <p style="margin-bottom: 0; font-size: 14px;"><strong>Motivo indicado:</strong> <?= htmlspecialchars($motivoAlerta ?? 'No especificado', ENT_QUOTES, 'UTF-8') ?></p>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 15px;">
-                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" class="btn-aprobar" style="background: #e11d48; display: inline-block; text-decoration: none; font-family: 'Inter', sans-serif; margin-top: 0;">
-                    <i class="fa-solid fa-pen-to-square"></i> Corregir y Re-enviar
+        <div class="cy-cot-workflow-box <?= $claseAlertaBox ?>">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="fw-semibold" style="font-size: 15px;"><?= $tituloAlerta ?></span>
+                <span class="cy-pill <?= $clasePillAlerta ?>">Requiere atención</span>
+            </div>
+            <p class="mb-3" style="font-size: 14px; color: var(--cy-text);"><strong>Motivo indicado:</strong> <?= htmlspecialchars($motivoAlerta ?? 'No especificado', ENT_QUOTES, 'UTF-8') ?></p>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <a href="/Cycsa/publico/cotizaciones/editar?id=<?= codificarId($cotizacion['id']) ?>" class="btn btn-primary btn-sm">
+                    Corregir y Re-enviar
                 </a>
                 <?php if ($cotizacion['estado'] === 'Rechazada por Cliente'): ?>
                     <form action="/Cycsa/publico/cotizaciones/enviar" method="POST" style="margin: 0;" onsubmit="return confirm('¿Deseas volver a enviar esta cotización al cliente sin realizar cambios? Se archivará la versión actual V<?= $cotizacion['version'] ?> y se generará una nueva versión V<?= ($cotizacion['version'] + 1) ?>.');">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="id" value="<?= codificarId($cotizacion['id']) ?>">
-                        <button type="submit" class="btn-aprobar" style="background: #2563eb; cursor: pointer; border: none; font-family: 'Inter', sans-serif;">
-                            <i class="fa-solid fa-paper-plane"></i> Volver a Enviar (Nueva Versión)
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            Volver a Enviar (Nueva Versión)
                         </button>
                     </form>
                 <?php endif; ?>
@@ -584,53 +607,48 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
         </div>
     <?php endif; ?>
 
-    <!-- 📄 CONTROL Y DESGLOSE DE VERSIONES DE LA COTIZACIÓN -->
+    <!-- CONTROL Y DESGLOSE DE VERSIONES DE LA COTIZACIÓN -->
     <?php 
     $versionActualNum = max(1, (int)($cotizacion['version'] ?? 1));
     $tieneVersionesPrevias = !empty($versiones) && count($versiones) > 0;
     $simboloMonedaCot = ((int)($cotizacion['tipo_moneda'] ?? 1) === 2) ? '$' : 'C$';
     $totalVersionesRegistradas = count($versiones) + 1;
     ?>
-    <div style="margin-top: 40px; border-top: 2px solid #e2e8f0; padding-top: 30px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+    <div style="margin-top: 28px; border-top: 1px solid var(--cy-border); padding-top: 24px;">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <div>
-                <h3 style="font-size: 18px; margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-code-branch" style="color: var(--cycsa-azul);"></i> Control y Desglose de Versiones de la Cotización
+                <h3 style="font-size: 17px; font-weight: 600; margin: 0; color: var(--cy-text);">
+                    Control y Desglose de Versiones de la Cotización
                 </h3>
-                <p style="margin: 4px 0 0 0; font-size: 12.5px; color: #64748b;">
+                <div class="cy-meta">
                     Registro y trazabilidad de revisiones emitidas. Cada versión puede desglosarse e imprimirse de forma independiente en PDF oficial.
-                </p>
+                </div>
             </div>
-            <span style="font-size: 12px; font-weight: 700; color: #103487; background: #eff6ff; border: 1px solid #bfdbfe; padding: 5px 12px; border-radius: 20px;">
-                <i class="fa-solid fa-layer-group"></i> Total de Versiones: <?= $totalVersionesRegistradas ?>
+            <span class="cy-pill cy-pill-pend">
+                Total de Versiones: <?= $totalVersionesRegistradas ?>
             </span>
         </div>
         
-        <div style="display: flex; flex-direction: column; gap: 18px;">
+        <div class="d-flex flex-column gap-3">
             <!-- VERSIÓN ACTUAL (VIGENTE) -->
-            <div style="border: 2px solid #bfdbfe; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 2px 6px rgba(16,52,135,0.06);">
-                <div style="background: #f0f7ff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #bfdbfe;">
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <span style="background: #103487; color: white; padding: 4px 10px; border-radius: 4px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                            <i class="fa-solid fa-circle-check"></i> v<?= $versionActualNum ?>
-                        </span>
-                        <span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
-                            ACTUAL / VIGENTE
-                        </span>
-                        <strong style="font-size: 14px; color: #1e293b;">Propuesta Vigente en el Sistema (<?= htmlspecialchars($cotizacion['estado'], ENT_QUOTES, 'UTF-8') ?>)</strong>
-                        <span style="font-size: 12px; color: #64748b;">
-                            &bull; <?= date('d/m/Y h:i A', strtotime($cotizacion['fecha_actualizacion'] ?? $cotizacion['fecha_creacion'])) ?>
+            <div class="cy-version-card is-current">
+                <div class="cy-version-head">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="cy-pill cy-pill-ok">v<?= $versionActualNum ?> · ACTUAL / VIGENTE</span>
+                        <strong style="font-size: 14px; color: var(--cy-text);">Propuesta Vigente en el Sistema (<?= htmlspecialchars($cotizacion['estado'], ENT_QUOTES, 'UTF-8') ?>)</strong>
+                        <span class="cy-meta">
+                            · <?= date('d/m/Y h:i A', strtotime($cotizacion['fecha_actualizacion'] ?? $cotizacion['fecha_creacion'])) ?>
                         </span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                        <span style="font-weight: 800; color: #103487; font-size: 15px;">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="fw-semibold me-1" style="color: var(--cy-brand); font-size: 14px;">
                             Total: <?= $simboloMonedaCot ?> <?= number_format($cotizacion['total'], 2, '.', ',') ?>
                         </span>
-                        <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&version=<?= $versionActualNum ?>" target="_blank" style="background: #103487; color: white; padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(16,52,135,0.25);" title="Ver e imprimir PDF de la Versión Actual">
-                            <i class="fa-solid fa-print"></i> Imprimir Versión Actual (v<?= $versionActualNum ?>)
+                        <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&version=<?= $versionActualNum ?>" target="_blank" class="btn btn-primary btn-sm" title="Ver e imprimir PDF de la Versión Actual">
+                            Imprimir Versión Actual (v<?= $versionActualNum ?>)
                         </a>
-                        <button type="button" onclick="toggleVersion('actual')" style="background: white; border: 1px solid #cbd5e1; color: #334155; padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fa-solid fa-list-check"></i> Ver Desglose <i class="fa-solid fa-chevron-down" id="icon-version-actual" style="transition: transform 0.2s;"></i>
+                        <button type="button" onclick="toggleVersion('actual')" class="btn btn-outline-secondary btn-sm">
+                            Ver Desglose <i class="fa-solid fa-chevron-down ms-1" id="icon-version-actual" style="transition: transform 0.2s;"></i>
                         </button>
                     </div>
                 </div>
@@ -740,28 +758,23 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                     $vNum = (int)$v['version'];
                     $vMoneda = ((int)($datos['tipo_moneda'] ?? $cotizacion['tipo_moneda'] ?? 1) === 2) ? '$' : 'C$';
                 ?>
-                    <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div class="cy-version-card">
                         <!-- Cabecera de la versión histórica -->
-                        <div style="background: #f8fafc; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #e2e8f0;">
-                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                <span style="background: #64748b; color: white; padding: 4px 10px; border-radius: 4px; font-weight: 800; font-size: 12px; text-transform: uppercase;">
-                                    <i class="fa-solid fa-clock-rotate-left"></i> v<?= $vNum ?>
-                                </span>
-                                <span style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; text-transform: uppercase;">
-                                    HISTÓRICA
-                                </span>
-                                <strong style="font-size: 14px; color: #334155;"><?= htmlspecialchars($v['motivo_cambio'] ?: 'Cambio registrado', ENT_QUOTES, 'UTF-8') ?></strong>
-                                <span style="font-size: 12px; color: #64748b;">&bull; <?= $fecha ?></span>
+                        <div class="cy-version-head">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="cy-pill cy-pill-pend">v<?= $vNum ?> · HISTÓRICA</span>
+                                <strong style="font-size: 14px; color: var(--cy-text);"><?= htmlspecialchars($v['motivo_cambio'] ?: 'Cambio registrado', ENT_QUOTES, 'UTF-8') ?></strong>
+                                <span class="cy-meta">· <?= $fecha ?></span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                                <span style="font-weight: 700; color: #0f172a; font-size: 14.5px;">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="fw-semibold me-1" style="color: var(--cy-text); font-size: 14px;">
                                     Total: <?= $vMoneda ?> <?= number_format($datos['total'] ?? 0, 2, '.', ',') ?>
                                 </span>
-                                <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&version=<?= $vNum ?>" target="_blank" style="background: #e31837; color: white; padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(227,24,55,0.2);" title="Ver e imprimir PDF oficial de esta versión histórica">
-                                    <i class="fa-solid fa-file-pdf"></i> Imprimir Versión <?= $vNum ?>
+                                <a href="/Cycsa/publico/cotizaciones/imprimir?id=<?= codificarId($cotizacion['id']) ?>&version=<?= $vNum ?>" target="_blank" class="btn btn-outline-secondary btn-sm" title="Ver e imprimir PDF oficial de esta versión histórica">
+                                    Imprimir Versión <?= $vNum ?>
                                 </a>
-                                <button type="button" onclick="toggleVersion(<?= $v['id'] ?>)" style="background: white; border: 1px solid #cbd5e1; color: #334155; padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fa-solid fa-list-check"></i> Ver Desglose <i class="fa-solid fa-chevron-down" id="icon-version-<?= $v['id'] ?>" style="transition: transform 0.2s;"></i>
+                                <button type="button" onclick="toggleVersion(<?= $v['id'] ?>)" class="btn btn-outline-secondary btn-sm">
+                                    Ver Desglose <i class="fa-solid fa-chevron-down ms-1" id="icon-version-<?= $v['id'] ?>" style="transition: transform 0.2s;"></i>
                                 </button>
                             </div>
                         </div>
@@ -1016,9 +1029,9 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
                 <textarea name="notas_operativas" rows="3" placeholder="Instrucciones para despacho o ruta..." class="form-control"><?= htmlspecialchars($cotizacion['notas_operativas'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 15px;">
-                <button type="button" onclick="cerrarProgramacionCotizacion()" class="form-control" style="cursor: pointer; background: #fff; border: 1px solid #cbd5e1; font-weight: 600; color: #64748b;">Cancelar</button>
-                <button type="submit" class="form-control" style="cursor: pointer; background: var(--cycsa-azul); border: 1px solid var(--cycsa-azul); color: white; font-weight: 600; padding: 10px 24px;">Guardar</button>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" onclick="cerrarProgramacionCotizacion()" class="btn btn-outline-secondary btn-sm">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
             </div>
         </form>
     </div>
@@ -1046,3 +1059,4 @@ $formatosSchemaJson = file_exists($rutaSchema) ? file_get_contents($rutaSchema) 
     });
 </script>
 <?php endif; ?>
+</div>
