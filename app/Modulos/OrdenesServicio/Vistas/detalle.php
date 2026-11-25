@@ -1,13 +1,89 @@
 <?php
 // Vista oficial del documento ORDEN DE SERVICIO (CYCSA-RG-FM-39 V1)
+$esModoPdfRgFm39 = !empty($esModoPdfRgFm39);
 $contactos = [];
 if (!empty($os['contactos_json'])) {
     $contactos = is_array($os['contactos_json']) ? $os['contactos_json'] : (json_decode($os['contactos_json'], true) ?: []);
 }
+
+// Resolver logo oficial en base64 para garantizar fidelidad 100% en Dompdf y pantalla
+$logoSrcRgFm39 = '/Cycsa/publico/img/logo.png';
+if ($esModoPdfRgFm39) {
+    $candidatosLogo = [
+        dirname(__DIR__, 4) . '/publico/img/logo.png',
+        dirname(__DIR__, 4) . '/publico/img/logo_cycsa_rt_fm_13.png',
+        dirname(__DIR__, 4) . '/publico/img/logo_cycsa.jpg',
+    ];
+    foreach ($candidatosLogo as $rutaLogo) {
+        if (is_file($rutaLogo) && is_readable($rutaLogo)) {
+            $extLogo = strtolower(pathinfo($rutaLogo, PATHINFO_EXTENSION));
+            $mimeLogo = $extLogo === 'jpg' || $extLogo === 'jpeg' ? 'image/jpeg' : 'image/png';
+            $bytesLogo = @file_get_contents($rutaLogo);
+            if ($bytesLogo !== false && $bytesLogo !== '') {
+                $logoSrcRgFm39 = 'data:' . $mimeLogo . ';base64,' . base64_encode($bytesLogo);
+                break;
+            }
+        }
+    }
+}
+
+// Preparar filas de metadatos emparejadas en 2 columnas (100% compatible con navegador y Dompdf)
+$metaItemsRgFm39 = [
+    ['label' => 'Elaborado por:', 'value' => htmlspecialchars($os['elaborado_por'] ?: (($os['cotizacion_creador_nombre'] ?? '') ?: 'Personal Autorizado'), ENT_QUOTES, 'UTF-8')],
+    ['label' => 'Doc. Número:', 'value' => htmlspecialchars((string)($os['codigo_os'] ?? ''), ENT_QUOTES, 'UTF-8')],
+    ['label' => 'Cliente (Informe):', 'value' => htmlspecialchars((string)($os['cliente_informe_nombre'] ?: ($os['cliente_nombre'] ?? '')), ENT_QUOTES, 'UTF-8')],
+    ['label' => 'Fecha:', 'value' => !empty($os['fecha_emision']) ? date('Y-m-d', strtotime($os['fecha_emision'])) : date('Y-m-d')],
+];
+if (!empty($os['cliente_factura_nombre']) && $os['cliente_factura_nombre'] !== ($os['cliente_informe_nombre'] ?: $os['cliente_nombre'])) {
+    $metaItemsRgFm39[] = [
+        'label' => 'Cliente (Pagador):',
+        'value' => '<span style="color:#103487; font-weight:700;">' . htmlspecialchars((string)$os['cliente_factura_nombre'], ENT_QUOTES, 'UTF-8') . '</span>',
+        'raw' => true,
+    ];
+}
+$metaItemsRgFm39[] = ['label' => 'Atención a:', 'value' => htmlspecialchars((string)($os['atencion_a'] ?: 'N/A'), ENT_QUOTES, 'UTF-8')];
+$metaItemsRgFm39[] = ['label' => 'Cédula/RUC:', 'value' => htmlspecialchars((string)($os['cliente_rfc'] ?: 'N/A'), ENT_QUOTES, 'UTF-8')];
+$metaItemsRgFm39[] = ['label' => 'Proyecto:', 'value' => htmlspecialchars((string)($os['nombre_proyecto'] ?? ''), ENT_QUOTES, 'UTF-8')];
+$metaItemsRgFm39[] = ['label' => 'Forma de pago:', 'value' => htmlspecialchars((string)($os['forma_pago'] ?: 'Pago contra entrega.'), ENT_QUOTES, 'UTF-8')];
+$metaItemsRgFm39[] = ['label' => 'Correo electrónico:', 'value' => htmlspecialchars((string)($os['cliente_email'] ?: 'admon@cycsanic.com'), ENT_QUOTES, 'UTF-8')];
+$metaItemsRgFm39[] = ['label' => 'Teléfono:', 'value' => htmlspecialchars((string)($os['cliente_telefono'] ?: '(505) 8209-6275'), ENT_QUOTES, 'UTF-8')];
+if (!empty($os['es_multimes']) || !empty($os['vigencia_contrato']['es_contrato_largo'])) {
+    $txtMod = 'Contrato Largo (' . htmlspecialchars((string)($os['periodicidad'] ?? 'Mensual'), ENT_QUOTES, 'UTF-8')
+        . (!empty($os['vigencia_contrato']['duracion_meses']) ? ' · ' . (int)$os['vigencia_contrato']['duracion_meses'] . ' meses' : '') . ')';
+    $txtFechasMod = (!empty($os['fecha_inicio']) && !empty($os['fecha_fin']))
+        ? ' <span style="font-size:11px; color:#64748b;">(' . date('d/m/Y', strtotime($os['fecha_inicio'])) . ' &mdash; ' . date('d/m/Y', strtotime($os['fecha_fin'])) . ')</span>'
+        : '';
+    $metaItemsRgFm39[] = [
+        'label' => 'Modalidad:',
+        'value' => '<span style="background:#e0e7ff; color:#3730a3; padding:1px 7px; border-radius:4px; font-weight:700; font-size:11px; border:1px solid #c7d2fe;">' . $txtMod . '</span>' . $txtFechasMod,
+        'raw' => true,
+    ];
+}
+$metaFilasPares = array_chunk($metaItemsRgFm39, 2);
 ?>
+<?php if ($esModoPdfRgFm39): ?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Orden de Servicio <?= htmlspecialchars((string)($os['codigo_os'] ?? ''), ENT_QUOTES, 'UTF-8') ?></title>
+<?php else: ?>
 <link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
 <link rel="stylesheet" href="/Cycsa/publico/css/ordenes-servicio-sobrio.css">
+<?php endif; ?>
 <style>
+    @page { margin: 12mm 14mm; }
+    <?php if ($esModoPdfRgFm39): ?>
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'DejaVu Sans', Helvetica, Arial, sans-serif;
+        color: #111111;
+        font-size: 11px;
+        line-height: 1.4;
+        background: #ffffff;
+    }
+    <?php endif; ?>
     .os-wrapper { background: #f1f5f9; padding: 18px 20px 40px 20px; min-height: 100vh; }
     .os-container { 
         width: 100%; max-width: 100%; 
@@ -21,55 +97,96 @@ if (!empty($os['contactos_json'])) {
         position: relative;
         line-height: 1.45;
         font-size: 13.5px;
+        box-sizing: border-box;
     }
     
-    .os-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #103487; padding-bottom: 14px; }
-    .os-logo-box { display: flex; align-items: center; gap: 14px; }
-    .os-logo-box img { max-height: 60px; object-fit: contain; }
-    
+    /* Encabezado basado en tabla (100% fiel en pantalla, impresión y Dompdf) */
+    .os-header-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 18px;
+        border-bottom: 2px solid #103487;
+    }
+    .os-header-table td {
+        padding: 0 0 12px 0;
+        vertical-align: middle;
+        border: 0;
+    }
+    .os-logo-img {
+        height: 58px;
+        width: auto;
+        display: block;
+    }
     .os-header-right { text-align: right; }
     .os-main-title { font-size: 22px; font-weight: 800; color: #103487; letter-spacing: 0.5px; margin: 0; }
-    .os-doc-code { font-size: 13px; font-weight: 700; color: #333; margin-top: 3px; }
+    .os-doc-code { font-size: 12.5px; font-weight: 700; color: #333; margin-top: 3px; }
+    .os-ver-pill { display: inline-block; margin-left: 6px; background: #e0e7ff; color: #1e40af; border: 1px solid #93c5fd; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
     
-    /* Rejilla de Información de la O/S (Escala 100% Nítida y Densificada) */
-    .os-meta-grid { 
-        display: grid; 
-        grid-template-columns: 1fr 1fr; 
-        gap: 6px 24px; 
-        font-size: 13px; 
-        margin-bottom: 20px; 
+    /* Rejilla de Metadatos en 2 columnas mediante tabla (100% fiel en Dompdf) */
+    .os-meta-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 18px;
+        font-size: 13px;
     }
-    .os-meta-row { display: flex; gap: 8px; }
-    .os-meta-label { font-weight: 700; color: #000; min-width: 125px; }
-    .os-meta-value { color: #1e293b; font-weight: 400; flex: 1; }
+    .os-meta-table td {
+        width: 50%;
+        padding: 3.5px 14px 3.5px 0;
+        vertical-align: top;
+        border: 0;
+    }
+    .os-meta-label { font-weight: 700; color: #000; }
+    .os-meta-value { color: #1e293b; font-weight: 400; }
 
     /* Tabla de Ensayos CYCSA-RG-FM-39 V1 */
-    .os-table-border { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; border: 1.5px solid #000; }
-    .os-table-border th { background: #ffffff; color: #000; font-weight: 700; text-align: center; padding: 7px 10px; border: 1px solid #000; font-size: 12.5px; text-transform: uppercase; }
+    .os-table-border { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 13px; border: 1.5px solid #000; }
+    .os-table-border th { background: #ffffff; color: #000; font-weight: 700; text-align: center; padding: 7px 10px; border: 1px solid #000; font-size: 12px; text-transform: uppercase; }
     .os-table-border td { padding: 7px 10px; border: 1px solid #000; font-size: 12.5px; }
 
     /* Notas y Contactos */
     .os-section-notes { font-size: 12.5px; color: #111; line-height: 1.5; margin-bottom: 22px; }
-    .os-section-notes p { margin: 0 0 4px 0; }
+    .os-section-notes p { margin: 0 0 5px 0; }
     
-    .os-contacts-list { margin-top: 8px; margin-bottom: 12px; font-size: 12.5px; }
+    .os-contacts-list { margin-top: 8px; margin-bottom: 10px; font-size: 12.5px; }
     .os-contacts-list div { margin-bottom: 3px; }
 
-    /* Firmas Oficiales de la O/S */
-    .os-signatures-grid { 
-        display: grid; 
-        grid-template-columns: repeat(4, 1fr); 
-        gap: 16px; 
-        margin-top: 35px; 
-        margin-bottom: 20px;
-        text-align: center; 
-        font-size: 11.5px; 
-        color: #111; 
+    /* Firmas Oficiales en 4 columnas mediante tabla (100% fiel en Dompdf) */
+    .os-signatures-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 14px 0;
+        margin: 42px -14px 18px -14px;
+        table-layout: fixed;
     }
-    .os-sig-col { border-top: 1.5px solid #000; padding-top: 6px; font-weight: 600; min-height: 55px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .os-signatures-table td {
+        width: 25%;
+        border-top: 1.5px solid #000;
+        padding: 6px 4px 0 4px;
+        text-align: center;
+        vertical-align: top;
+        font-size: 11px;
+        font-weight: 600;
+        color: #111;
+        line-height: 1.35;
+    }
 
-    /* Pie de página Oficial */
-    .os-footer-line { border-top: 2.5px solid #103487; margin-top: 24px; padding-top: 10px; display: flex; justify-content: space-between; font-size: 11px; color: #103487; font-weight: 600; line-height: 1.4; }
+    /* Pie de página Oficial en 3 columnas mediante tabla (100% fiel en 1 sola página en Dompdf) */
+    .os-footer-table {
+        width: 100%;
+        border-collapse: collapse;
+        border-top: 2.5px solid #103487;
+        margin-top: 22px;
+        table-layout: fixed;
+    }
+    .os-footer-table td {
+        padding: 9px 4px 0 4px;
+        vertical-align: top;
+        font-size: 10.5px;
+        color: #103487;
+        font-weight: 600;
+        line-height: 1.4;
+        border: 0;
+    }
 
     .btn-action-bar { 
         width: 100%; max-width: 100%; 
@@ -101,19 +218,31 @@ if (!empty($os['contactos_json'])) {
     @media print {
         .no-print { display: none !important; }
         .os-wrapper { padding: 0 !important; background: transparent !important; min-height: auto !important; }
-        .os-container { box-shadow: none !important; padding: 0 !important; max-width: 100% !important; font-size: 11.5px !important; background: transparent !important; }
-        .os-table-border, .os-table-border th, .os-table-border td, table, thead, tbody, tr, th, td { background: transparent !important; background-color: transparent !important; }
-        .os-header { margin-bottom: 15px !important; padding-bottom: 10px !important; }
-        .os-meta-grid { font-size: 11.5px !important; gap: 4px 15px !important; margin-bottom: 15px !important; }
-        .os-table-border { font-size: 11px !important; margin-bottom: 15px !important; }
-        .os-table-border th, .os-table-border td { font-size: 11px !important; padding: 5px 8px !important; }
-        .os-section-notes { font-size: 10.5px !important; margin-bottom: 20px !important; }
-        .os-signatures-grid { font-size: 10px !important; margin-top: 35px !important; margin-bottom: 15px !important; gap: 10px !important; }
-        .os-footer-line { font-size: 9.5px !important; margin-top: 20px !important; }
-        @page { margin: 12mm 15mm; }
+        .os-container { box-shadow: none !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; max-width: 100% !important; font-size: 11px !important; background: transparent !important; }
+        .os-header-table { margin-bottom: 14px !important; }
+        .os-header-table td { padding-bottom: 9px !important; }
+        .os-logo-img { height: 52px !important; }
+        .os-main-title { font-size: 20px !important; }
+        .os-doc-code { font-size: 11.5px !important; }
+        .os-meta-table { font-size: 11px !important; margin-bottom: 14px !important; }
+        .os-meta-table td { padding: 2.5px 10px 2.5px 0 !important; }
+        .os-table-border { font-size: 10.5px !important; margin-bottom: 14px !important; }
+        .os-table-border th, .os-table-border td { font-size: 10.5px !important; padding: 5px 8px !important; }
+        .os-section-notes { font-size: 10.5px !important; margin-bottom: 16px !important; }
+        .os-contacts-list { font-size: 10.5px !important; }
+        .os-signatures-table { margin: 38px -10px 14px -10px !important; border-spacing: 10px 0 !important; }
+        .os-signatures-table td { font-size: 9.5px !important; }
+        .os-footer-table { margin-top: 18px !important; }
+        .os-footer-table td { font-size: 9px !important; padding-top: 7px !important; }
+        @page { margin: 12mm 14mm; }
     }
 </style>
+<?php if ($esModoPdfRgFm39): ?>
+</head>
+<body>
+<?php endif; ?>
 
+<?php if (!$esModoPdfRgFm39): ?>
 <div class="container-fluid px-0 py-0 cy-os-wrap">
 <div class="os-wrapper">
     <!-- BARRA SUPERIOR DE ACCIONES -->
@@ -169,86 +298,38 @@ if (!empty($os['contactos_json'])) {
         </ul>
     </div>
     <?php endif; ?>
+<?php endif; ?>
     <div class="os-container">
-        <!-- ENCABEZADO -->
-        <div class="os-header">
-            <div class="os-logo-box">
-                <img src="/Cycsa/publico/img/logo.png" alt="CYCSA" onerror="this.src='/Cycsa/publico/img/logo_cycsa.png'; this.onerror=null;">
-            </div>
-            <div class="os-header-right">
-                <h1 class="os-main-title">ORDEN DE SERVICIO</h1>
-                <div class="os-doc-code">Cód. Doc CYCSA-RG-FM-39 V1 <span style="display:inline-block; margin-left:6px; background:#e0e7ff; color:#1e40af; border:1px solid #93c5fd; padding:1px 8px; border-radius:10px; font-size:11.5px; font-weight:700;">v<?= (int)($os['version'] ?? 1) ?></span></div>
-            </div>
-        </div>
+        <!-- ENCABEZADO OFICIAL -->
+        <table class="os-header-table">
+            <tr>
+                <td style="width: 45%; text-align: left;">
+                    <img src="<?= htmlspecialchars($logoSrcRgFm39, ENT_QUOTES, 'UTF-8') ?>" alt="CYCSA" class="os-logo-img"<?= !$esModoPdfRgFm39 ? ' onerror="this.src=\'/Cycsa/publico/img/logo_cycsa_rt_fm_13.png\'; this.onerror=null;"' : '' ?>>
+                </td>
+                <td style="width: 55%;" class="os-header-right">
+                    <h1 class="os-main-title">ORDEN DE SERVICIO</h1>
+                    <div class="os-doc-code">Cód. Doc CYCSA-RG-FM-39 V1 <span class="os-ver-pill">v<?= (int)($os['version'] ?? 1) ?></span></div>
+                </td>
+            </tr>
+        </table>
 
-        <!-- METADATOS DE LA ORDEN DE SERVICIO -->
-        <div class="os-meta-grid">
-            <div class="os-meta-row">
-                <span class="os-meta-label">Elaborado por:</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['elaborado_por'] ?: (($os['cotizacion_creador_nombre'] ?? '') ?: 'Personal Autorizado'), ENT_QUOTES, 'UTF-8') ?></span>
-            </div>
-            <div class="os-meta-row">
-                <span class="os-meta-label">Doc. Número:</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['codigo_os']) ?></span>
-            </div>
-
-            <div class="os-meta-row">
-                <span class="os-meta-label">Cliente (Informe):</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['cliente_informe_nombre'] ?: $os['cliente_nombre']) ?></span>
-            </div>
-            <?php if (!empty($os['cliente_factura_nombre']) && $os['cliente_factura_nombre'] !== ($os['cliente_informe_nombre'] ?: $os['cliente_nombre'])): ?>
-            <div class="os-meta-row">
-                <span class="os-meta-label">Cliente (Pagador):</span>
-                <span class="os-meta-value" style="color: #103487; font-weight: 700;"><?= htmlspecialchars($os['cliente_factura_nombre']) ?></span>
-            </div>
-            <?php endif; ?>
-            <div class="os-meta-row">
-                <span class="os-meta-label">Fecha:</span>
-                <span class="os-meta-value"><?= date('Y-m-d', strtotime($os['fecha_emision'])) ?></span>
-            </div>
-
-            <div class="os-meta-row">
-                <span class="os-meta-label">Atención a :</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['atencion_a'] ?: 'N/A') ?></span>
-            </div>
-            <div class="os-meta-row">
-                <span class="os-meta-label">Cédula/RUC:</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['cliente_rfc'] ?: 'N/A') ?></span>
-            </div>
-
-            <div class="os-meta-row">
-                <span class="os-meta-label">Proyecto:</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['nombre_proyecto']) ?></span>
-            </div>
-            <div class="os-meta-row">
-                <span class="os-meta-label">Forma de pago:</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['forma_pago'] ?: 'Pago contra entrega.') ?></span>
-            </div>
-
-            <div class="os-meta-row">
-                <span class="os-meta-label">Correo electrónico:</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['cliente_email'] ?: 'admon@cycsanic.com') ?></span>
-            </div>
-            <div class="os-meta-row">
-                <span class="os-meta-label">Teléfono:</span>
-                <span class="os-meta-value"><?= htmlspecialchars($os['cliente_telefono'] ?: '(505) 8209-6275') ?></span>
-            </div>
-                    <?php if (!empty($os['es_multimes']) || !empty($os['vigencia_contrato']['es_contrato_largo'])): ?>
-            <div class="os-meta-row">
-                <span class="os-meta-label">Modalidad:</span>
-                <span class="os-meta-value">
-                    <span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11.5px; border: 1px solid #c7d2fe;">
-                        <i class="fa-solid fa-repeat"></i> Contrato Largo (<?= htmlspecialchars($os['periodicidad'] ?? 'Mensual') ?><?= !empty($os['vigencia_contrato']['duracion_meses']) ? ' · ' . (int)$os['vigencia_contrato']['duracion_meses'] . ' meses' : '' ?>)
-                    </span>
-                    <?php if (!empty($os['fecha_inicio']) && !empty($os['fecha_fin'])): ?>
-                        <span style="font-size: 11.5px; color: #64748b; margin-left: 6px;">
-                            (<?= date('d/m/Y', strtotime($os['fecha_inicio'])) ?> &mdash; <?= date('d/m/Y', strtotime($os['fecha_fin'])) ?>)
-                        </span>
+        <!-- METADATOS DE LA ORDEN DE SERVICIO (2 COLUMNAS) -->
+        <table class="os-meta-table">
+            <?php foreach ($metaFilasPares as $parMeta): ?>
+            <tr>
+                <td>
+                    <span class="os-meta-label"><?= $parMeta[0]['label'] ?></span>
+                    <span class="os-meta-value"><?= !empty($parMeta[0]['raw']) ? $parMeta[0]['value'] : $parMeta[0]['value'] ?></span>
+                </td>
+                <td>
+                    <?php if (isset($parMeta[1])): ?>
+                        <span class="os-meta-label"><?= $parMeta[1]['label'] ?></span>
+                        <span class="os-meta-value"><?= !empty($parMeta[1]['raw']) ? $parMeta[1]['value'] : $parMeta[1]['value'] ?></span>
                     <?php endif; ?>
-                </span>
-            </div>
-            <?php endif; ?>
-        </div>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
 
         <!-- TABLA DE ENSAYOS / SERVICIOS -->
         <table class="os-table-border">
@@ -360,38 +441,38 @@ if (!empty($os['contactos_json'])) {
             <p style="margin-top: 10px;">Cotización origen #<?= htmlspecialchars((string)($os['cotizacion_codigo'] ?? ''), ENT_QUOTES, 'UTF-8') ?><?php if (isset($os['cotizacion_version']) && $os['cotizacion_version'] !== '' && $os['cotizacion_version'] !== null): ?> · Versión <?= htmlspecialchars((string)$os['cotizacion_version'], ENT_QUOTES, 'UTF-8') ?><?php endif; ?></p>
         </div>
 
-        <!-- FIRMAS -->
-        <div class="os-signatures-grid">
-            <div class="os-sig-col">
-                Aprobado por Administración<br>Fecha:
-            </div>
-            <div class="os-sig-col">
-                Recibido Por Recepción<br>Fecha:
-            </div>
-            <div class="os-sig-col">
-                Entrega orden de servicio realizada<br>Recepción<br>Fecha:
-            </div>
-            <div class="os-sig-col">
-                Recibe orden de servicio realizada<br>Administración<br>Fecha:
-            </div>
-        </div>
+        <!-- FIRMAS (4 COLUMNAS COMPATIBLES CON DOMPDF Y PANTALLA) -->
+        <table class="os-signatures-table">
+            <tr>
+                <td>Aprobado por Administración<br>Fecha:</td>
+                <td>Recibido Por Recepción<br>Fecha:</td>
+                <td>Entrega orden de servicio realizada<br>Recepción<br>Fecha:</td>
+                <td>Recibe orden de servicio realizada<br>Administración<br>Fecha:</td>
+            </tr>
+        </table>
 
-        <!-- PIE DE PÁGINA -->
-        <div class="os-footer-line">
-            <div>
-                <strong>Consultoría y Construcción S.A (CYCSA)</strong><br>
-                <i class="fa-solid fa-location-dot"></i> Km. 83 1/2 Carretera León - Managua, León, Nicaragua
-            </div>
-            <div>
-                (505) 2310-3988 / (505) 8851-6377<br>
-                gerencia@cycsanic.com | admon@cycsanic.com | calidad@cycsanic.com
-            </div>
-            <div style="text-align: right;">
-                Lic. MTI No. 6693<br>
-                www.cycsanic.com
-            </div>
-        </div>
+        <!-- PIE DE PÁGINA (3 COLUMNAS EN UNA SOLA LÍNEA) -->
+        <table class="os-footer-table">
+            <tr>
+                <td style="width: 39%; text-align: left;">
+                    <strong>Consultoría y Construcción S.A (CYCSA)</strong><br>
+                    Km. 83 1/2 Carretera León - Managua, León, Nicaragua
+                </td>
+                <td style="width: 41%; text-align: center;">
+                    (505) 2310-3988 / (505) 8851-6377<br>
+                    gerencia@cycsanic.com | admon@cycsanic.com | calidad@cycsanic.com
+                </td>
+                <td style="width: 20%; text-align: right;">
+                    Lic. MTI No. 6693<br>
+                    www.cycsanic.com
+                </td>
+            </tr>
+        </table>
     </div>
+<?php if ($esModoPdfRgFm39): ?>
+</body>
+</html>
+<?php else: ?>
 </div>
 
 <!-- HISTORIAL DE VERSIONES DE LA O/S (2.5) -->
@@ -455,3 +536,4 @@ require dirname(__DIR__, 3) . '/Views/parciales/bitacora_modulo.php';
 <?php endif; ?>
 
 </div>
+<?php endif; ?>

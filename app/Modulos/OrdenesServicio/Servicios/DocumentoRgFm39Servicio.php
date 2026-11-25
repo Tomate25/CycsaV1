@@ -12,6 +12,7 @@ use Dompdf\Options;
 class DocumentoRgFm39Servicio {
 
     public static function html(array $os): string {
+        $esModoPdfRgFm39 = true;
         ob_start();
         require dirname(__DIR__) . '/Vistas/detalle.php';
         return (string)ob_get_clean();
@@ -24,6 +25,7 @@ class DocumentoRgFm39Servicio {
         $options->set('isRemoteEnabled', false);
         $options->set('defaultMediaType', 'print');
         $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('dpi', 96);
 
         $cache = dirname(__DIR__, 4) . '/storage/cache';
         if (!is_dir($cache)) {
@@ -34,7 +36,7 @@ class DocumentoRgFm39Servicio {
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->setPaper('letter', 'portrait');
         $dompdf->render();
         return $dompdf->output();
     }

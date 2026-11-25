@@ -114,6 +114,11 @@ class OrdenServicioRgFm39MsMcTest extends TestCase {
 
         $this->assertCount(2, $os['informes_vinculados']);
         $this->assertStringNotContainsString('Abrir PDF', $html);
+        $this->assertStringContainsString('data:image/', $html, 'El PDF RG-FM-39 debe incrustar el logo CYCSA en base64');
+        $this->assertStringContainsString('os-header-table', $html);
+        $this->assertStringContainsString('os-meta-table', $html);
+        $this->assertStringContainsString('os-signatures-table', $html);
+        $this->assertStringContainsString('os-footer-table', $html);
     }
 
     public function testOrdenLegadaSinWhitelistMuestraTodosLosEnsayosYSinRecepcionNoInventaCodigos(): void {
