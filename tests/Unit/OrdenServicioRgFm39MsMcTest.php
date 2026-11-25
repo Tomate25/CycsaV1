@@ -98,13 +98,12 @@ class OrdenServicioRgFm39MsMcTest extends TestCase {
         $textoPdf = $this->extraerTextoPdf($pdf);
 
         foreach ([$html, $textoPdf] as $salida) {
-            $this->assertStringContainsString($codigoMs, $salida);
-            $this->assertStringContainsString($codigoMc, $salida);
             $this->assertStringContainsString($ensayoOk, $salida);
             $this->assertStringNotContainsString($ensayoNo, $salida);
             $this->assertStringContainsString($cotCodigo, $salida);
             $this->assertStringContainsString('Versión 9', $salida);
             $this->assertStringContainsString('Cotización origen', $salida);
+            $this->assertStringNotContainsString('Código laboratorio', $salida);
             $this->assertStringNotContainsString('Informe vinculado', $salida);
             $this->assertStringNotContainsString('Sin informes vinculados.', $salida);
             $this->assertStringContainsString('(505) 2310-3988', $salida);

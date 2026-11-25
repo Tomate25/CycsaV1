@@ -55,5 +55,6 @@ class OrdenesServicioDisenoSobrioTest extends TestCase
         $this->assertStringNotContainsString('Hojas de Servicio (RT-FM-13) y Solicitudes a Laboratorio (RT-FM-60)', $detSrc);
         $this->assertStringNotContainsString('Informe vinculado', $detSrc);
         $this->assertStringNotContainsString('Sin informes vinculados.', $detSrc);
+        $this->assertStringNotContainsString('Código laboratorio', $detSrc);
     }
 }
