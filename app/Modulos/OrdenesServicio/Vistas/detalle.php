@@ -325,46 +325,6 @@ if (!empty($os['contactos_json'])) {
             </tbody>
         </table>
 
-        <?php $informesVinculados = $os['informes_vinculados'] ?? []; ?>
-        <table class="os-table-border">
-            <thead>
-                <tr>
-                    <th>Informe vinculado</th>
-                    <th style="width: 140px;">Estado</th>
-                    <th style="width: 140px;">Documento</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (!empty($informesVinculados)): ?>
-                    <?php foreach ($informesVinculados as $informe): ?>
-                        <?php
-                        $informeAprobado = (int)($informe['aprobado'] ?? 0) === 1;
-                        $urlInforme = $informeAprobado ? trim((string)($informe['url_pdf'] ?? '')) : '';
-                        ?>
-                        <tr>
-                            <td style="font-family: monospace; font-weight: 700;">
-                                <?= htmlspecialchars((string)($informe['codigo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
-                            </td>
-                            <td style="text-align: center;">
-                                <?= htmlspecialchars((string)($informe['estado'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
-                            </td>
-                            <td style="text-align: center;">
-                                <?php if ($urlInforme !== ''): ?>
-                                    <a href="<?= htmlspecialchars($urlInforme, ENT_QUOTES, 'UTF-8') ?>">Abrir PDF</a>
-                                <?php else: ?>
-                                    —
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="3">Sin informes vinculados.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-
         <!-- NOTAS Y CONDICIONES -->
         <div class="os-section-notes">
             <p><strong>Nota:</strong></p>

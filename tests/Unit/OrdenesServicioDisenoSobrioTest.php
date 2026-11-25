@@ -49,9 +49,11 @@ class OrdenesServicioDisenoSobrioTest extends TestCase
         $cssOsSrc = (string)file_get_contents($root . '/publico/css/ordenes-servicio-sobrio.css');
         $this->assertStringContainsString('min-height: 0 !important;', $cssOsSrc);
 
-        // Verificar que detalle.php conserva intacto el bloque @media print y oculta la tabla extra de Hojas RT-FM-13/RT-FM-60
+        // Verificar que detalle.php conserva intacto el bloque @media print y oculta tablas extra
         $detSrc = (string)file_get_contents($vistas['detalle.php']);
         $this->assertStringContainsString('@media print', $detSrc);
         $this->assertStringNotContainsString('Hojas de Servicio (RT-FM-13) y Solicitudes a Laboratorio (RT-FM-60)', $detSrc);
+        $this->assertStringNotContainsString('Informe vinculado', $detSrc);
+        $this->assertStringNotContainsString('Sin informes vinculados.', $detSrc);
     }
 }

@@ -105,19 +105,15 @@ class OrdenServicioRgFm39MsMcTest extends TestCase {
             $this->assertStringContainsString($cotCodigo, $salida);
             $this->assertStringContainsString('Versión 9', $salida);
             $this->assertStringContainsString('Cotización origen', $salida);
-            $this->assertStringContainsString($infOk, $salida);
-            $this->assertStringContainsString($infPend, $salida);
-            $this->assertStringContainsString('Aprobado', $salida);
-            $this->assertStringContainsString('Pendiente', $salida);
+            $this->assertStringNotContainsString('Informe vinculado', $salida);
+            $this->assertStringNotContainsString('Sin informes vinculados.', $salida);
             $this->assertStringContainsString('(505) 2310-3988', $salida);
             $this->assertStringContainsString('gerencia@cycsanic.com', $salida);
             $this->assertStringContainsString('Lic. MTI No. 6693', $salida);
         }
 
-        $this->assertStringContainsString('/Cycsa/publico/informes/descargar?id=' . $idAprobado, $html);
-        $this->assertStringNotContainsString('/Cycsa/publico/informes/descargar?id=' . $idPendiente, $html);
-        $this->assertSame(1, substr_count($html, 'Abrir PDF'));
-        $this->assertStringContainsString('Abrir PDF', $textoPdf);
+        $this->assertCount(2, $os['informes_vinculados']);
+        $this->assertStringNotContainsString('Abrir PDF', $html);
     }
 
     public function testOrdenLegadaSinWhitelistMuestraTodosLosEnsayosYSinRecepcionNoInventaCodigos(): void {
@@ -136,7 +132,8 @@ class OrdenServicioRgFm39MsMcTest extends TestCase {
         $this->assertStringContainsString($ensayoB, $html);
         $this->assertStringNotContainsString('MS-', $html);
         $this->assertStringNotContainsString('MC-', $html);
-        $this->assertStringContainsString('Sin informes vinculados.', $html);
+        $this->assertStringNotContainsString('Informe vinculado', $html);
+        $this->assertStringNotContainsString('Sin informes vinculados.', $html);
         $this->assertStringNotContainsString('Abrir PDF', $html);
     }
 
