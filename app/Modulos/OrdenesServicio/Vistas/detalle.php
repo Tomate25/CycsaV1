@@ -433,38 +433,6 @@ if (!empty($os['contactos_json'])) {
         </div>
     </div>
 </div>
-<?php if (!empty($os['hojas_servicio'])): ?>
-<div class="no-print" style="width: 100%; max-width: 100%; margin: 16px 0 0 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);">
-    <h3 style="margin: 0 0 12px 0; font-size: 15px; color: #103487; font-weight: 700;">
-        <i class="fa-solid fa-file-signature"></i> Hojas de Servicio (RT-FM-13) y Solicitudes a Laboratorio (RT-FM-60)
-    </h3>
-    <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
-        <thead>
-            <tr style="background:#f8fafc; border-bottom:1.5px solid #cbd5e1;">
-                <th style="padding:8px 10px; text-align:left;">Registro</th>
-                <th style="padding:8px 10px; text-align:left;">Ensayo / Servicio</th>
-                <th style="padding:8px 10px; text-align:right;">Documentos</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($os['hojas_servicio'] as $hDet): ?>
-            <tr style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:8px 10px; font-family:monospace; font-weight:700;"><?= htmlspecialchars($hDet['numero_registro'] ?: ('#' . $hDet['id']), ENT_QUOTES, 'UTF-8') ?></td>
-                <td style="padding:8px 10px;"><?= htmlspecialchars($hDet['descripcion_ensayo'] ?: ($hDet['codigo_documento'] ?? 'CYCSA-RT-FM-13'), ENT_QUOTES, 'UTF-8') ?></td>
-                <td style="padding:8px 10px; text-align:right; white-space:nowrap;">
-                    <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$os['id'] ?>&id_hoja=<?= (int)$hDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:4px 10px; font-size:11.5px;">
-                        <i class="fa-solid fa-file-pdf" style="color:#dc2626;"></i> RT-FM-13 PDF
-                    </a>
-                    <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$hDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:4px 10px; font-size:11.5px;">
-                        <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
-                    </a>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-</div>
-<?php endif; ?>
 
 <!-- HISTORIAL DE VERSIONES DE LA O/S (2.5) -->
 <?php $historialVersionesOs = $os['historial_versiones'] ?? []; ?>
