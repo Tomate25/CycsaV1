@@ -73,7 +73,6 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
     }
     .os-table-container {
         overflow-x: auto;
-        min-height: 340px;
     }
     .os-acciones-menu {
         font-size: 13px;
@@ -385,6 +384,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 </tr>
             </thead>
             <tbody>
+                <?php $osPanelTemplates = []; ?>
                 <?php if (!empty($ordenes)): ?>
                     <?php foreach ($ordenes as $os): 
                         $esFinalizadaOArchivo = in_array($os['estado'] ?? '', ['Finalizado', 'Archivado', 'Cerrado'], true);
@@ -459,50 +459,45 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                         );
                         ?>
                         <!-- FILA PRINCIPAL -->
-                        <tr class="fila-principal" id="fila-os-<?= $os['id'] ?>" onclick="toggleFilaDesplegable(<?= $os['id'] ?>, event)">
+                        <tr class="fila-principal" id="fila-os-<?= $os['id'] ?>">
                             
                             <!-- COLUMNA 1: CÓDIGO O/S Y COTIZACIÓN -->
                             <td>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: var(--cycsa-azul); flex-shrink: 0;" title="Clic para expandir detalles">
-                                        <i class="fa-solid fa-chevron-right chevron-icon" id="icon-chevron-<?= $os['id'] ?>"></i>
-                                    </span>
-                                    <div>
-                                        <strong style="font-family: monospace; font-size: 14.5px; color: var(--cycsa-azul); display: block; letter-spacing: 0.3px;">
-                                            <?= htmlspecialchars($os['codigo_os']) ?>
-                                            <span style="background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 10px; margin-left: 4px; vertical-align: middle;">v<?= (int)($os['version'] ?? 1) ?></span>
-                                        </strong>
-                                        <span style="font-family: monospace; font-size: 11.5px; color: #475569; background: #f8fafc; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0; display: inline-block; margin-top: 3px;">
-                                            <i class="fa-solid fa-file-invoice" style="font-size: 10.5px; color:#64748b;"></i> <?= htmlspecialchars($os['cotizacion_codigo'] ?? 'N/A') ?>
-                                        </span>
-                                        <?php
-                                        $vigOS = $os['vigencia_contrato'] ?? [];
-                                        $esLargoOS = !empty($os['es_multimes']) || !empty($vigOS['es_contrato_largo']);
-                                        if ($esLargoOS):
-                                            $estVig = $vigOS['estado_vigencia'] ?? 'vigente';
-                                            $bgVig = $estVig === 'vencido' ? '#fee2e2' : ($estVig === 'por_vencer' ? '#fef3c7' : '#e0e7ff');
-                                            $colVig = $estVig === 'vencido' ? '#991b1b' : ($estVig === 'por_vencer' ? '#92400e' : '#3730a3');
-                                            $brdVig = $estVig === 'vencido' ? '#fecaca' : ($estVig === 'por_vencer' ? '#fde68a' : '#c7d2fe');
-                                            $txtPlazo = !empty($vigOS['duracion_meses']) ? ((int)$vigOS['duracion_meses'] . 'm') : ($os['periodicidad'] ?? 'Mensual');
-                                            $txtFinCorto = !empty($vigOS['fecha_fin']) ? date('d/m/y', strtotime($vigOS['fecha_fin'])) : '';
-                                            $diasRest = $vigOS['dias_restantes'] ?? null;
-                                        ?>
-                                            <button type="button"
-                                                    onclick="event.stopPropagation(); abrirModalPeriodoContrato(<?= $os['id'] ?>)"
-                                                    class="badge-premium"
-                                                    style="background: <?= $bgVig ?>; color: <?= $colVig ?>; border: 1px solid <?= $brdVig ?>; font-size: 10.5px; padding: 2px 7px; margin-top: 3px; display: inline-flex; cursor: pointer;"
-                                                    title="<?= htmlspecialchars(($vigOS['etiqueta_corta'] ?? 'Contrato Largo') . ($diasRest !== null ? " ({$diasRest} días restantes)" : '')) ?>">
-                                                <i class="fa-solid fa-repeat"></i> Contrato <?= htmlspecialchars($txtPlazo) ?><?= $txtFinCorto !== '' ? ' · Fin ' . $txtFinCorto : '' ?>
-                                            </button>
-                                        <?php elseif (!$esFinalizadaOArchivo): ?>
-                                            <button type="button"
-                                                    onclick="event.stopPropagation(); abrirModalPeriodoContrato(<?= $os['id'] ?>)"
-                                                    style="background: #f8fafc; color: #475569; border: 1px dashed #cbd5e1; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; margin-top: 3px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;"
-                                                    title="Definir período mensual / contrato largo">
-                                                <i class="fa-regular fa-calendar-plus"></i> Período
-                                            </button>
-                                        <?php endif; ?>
+                                <div>
+                                    <button type="button" class="cy-os-code-btn" onclick="abrirModalOpcionesOS(<?= (int)$os['id'] ?>)" title="Abrir ventana de detalles y opciones de la Orden de Servicio">
+                                        <span><?= htmlspecialchars($os['codigo_os']) ?></span>
+                                        <span class="cy-meta" style="font-weight: 500;">v<?= (int)($os['version'] ?? 1) ?></span>
+                                    </button>
+                                    <div class="cy-meta mt-1">
+                                        Cot. <?= htmlspecialchars($os['cotizacion_codigo'] ?? 'N/A') ?>
                                     </div>
+                                    <?php
+                                    $vigOS = $os['vigencia_contrato'] ?? [];
+                                    $esLargoOS = !empty($os['es_multimes']) || !empty($vigOS['es_contrato_largo']);
+                                    if ($esLargoOS):
+                                        $estVig = $vigOS['estado_vigencia'] ?? 'vigente';
+                                        $bgVig = $estVig === 'vencido' ? '#fee2e2' : ($estVig === 'por_vencer' ? '#fef3c7' : '#e0e7ff');
+                                        $colVig = $estVig === 'vencido' ? '#991b1b' : ($estVig === 'por_vencer' ? '#92400e' : '#3730a3');
+                                        $brdVig = $estVig === 'vencido' ? '#fecaca' : ($estVig === 'por_vencer' ? '#fde68a' : '#c7d2fe');
+                                        $txtPlazo = !empty($vigOS['duracion_meses']) ? ((int)$vigOS['duracion_meses'] . 'm') : ($os['periodicidad'] ?? 'Mensual');
+                                        $txtFinCorto = !empty($vigOS['fecha_fin']) ? date('d/m/y', strtotime($vigOS['fecha_fin'])) : '';
+                                        $diasRest = $vigOS['dias_restantes'] ?? null;
+                                    ?>
+                                        <button type="button"
+                                                onclick="abrirModalPeriodoContrato(<?= $os['id'] ?>)"
+                                                class="badge-premium"
+                                                style="background: <?= $bgVig ?>; color: <?= $colVig ?>; border: 1px solid <?= $brdVig ?>; font-size: 11px; padding: 2px 8px; margin-top: 4px; display: inline-flex; cursor: pointer;"
+                                                title="<?= htmlspecialchars(($vigOS['etiqueta_corta'] ?? 'Contrato Largo') . ($diasRest !== null ? " ({$diasRest} días restantes)" : '')) ?>">
+                                            <i class="fa-solid fa-repeat"></i> Contrato <?= htmlspecialchars($txtPlazo) ?><?= $txtFinCorto !== '' ? ' · Fin ' . $txtFinCorto : '' ?>
+                                        </button>
+                                    <?php elseif (!$esFinalizadaOArchivo): ?>
+                                        <button type="button"
+                                                onclick="abrirModalPeriodoContrato(<?= $os['id'] ?>)"
+                                                style="background: #F9FAFB; color: #6B7280; border: 1px dashed #D1D5DB; font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 6px; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;"
+                                                title="Definir período mensual / contrato largo">
+                                            <i class="fa-regular fa-calendar-plus"></i> Período
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
 
@@ -588,21 +583,15 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                                 </div>
                             </td>
 
-                            <!-- COLUMNA 5: ACCIÓN PRIMARIA + MENÚ DESPLEGABLE MÁS -->
-                            <td style="text-align: right;" onclick="event.stopPropagation();">
-                                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                            <!-- COLUMNA 5: ACCIÓN PRIMARIA + BOTÓN ABRIR VENTANA + MENÚ MÁS -->
+                            <td style="text-align: right; white-space: nowrap;">
+                                <div style="display: inline-flex; gap: 6px; justify-content: flex-end; align-items: center;">
                                     
                                     <!-- BOTÓN PRIMARIO SEGÚN EL SIGUIENTE PASO LÓGICO -->
                                     <?php if ($esFinalizadaOArchivo): ?>
-                                        <?php if ($cantHojas > 0): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height:38px; font-weight:600; border-color:#cbd5e1;" onclick="toggleFilaDesplegable(<?= $os['id'] ?>, event)" title="Ver Hojas RT-FM-13 registradas">
-                                                <i class="fa-solid fa-layer-group" style="color:var(--cycsa-azul);"></i> Ver Hojas (<?= $cantHojas ?>)
-                                            </button>
-                                        <?php else: ?>
-                                            <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary" style="min-height:38px; font-weight:600; border-color:#cbd5e1;">
-                                                <i class="fa-solid fa-file-lines" style="color:var(--cycsa-azul);"></i> Ver O/S
-                                            </a>
-                                        <?php endif; ?>
+                                        <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="abrirModalOpcionesOS(<?= (int)$os['id'] ?>)" title="Abrir ventana con detalles, hojas y opciones de esta Orden de Servicio">
+                                            Abrir<?= $cantHojas > 0 ? ' (' . $cantHojas . ')' : '' ?>
+                                        </button>
                                     <?php elseif (!$esOSAprobada): ?>
                                         <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3]) || tienePermiso('ordenes_servicio', 'aprobar')): ?>
                                             <a href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= $os['id'] ?>"
@@ -613,23 +602,28 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                                         <?php else: ?>
                                             <a href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= $os['id'] ?>"
                                                class="btn-cycsa btn-cycsa-secondary"
-                                               style="min-height:38px; font-weight:600;"
                                                title="Revisar o editar antes de la aprobación de supervisión">
-                                                <i class="fa-solid fa-pen-to-square"></i> Editar O/S
+                                                Editar O/S
                                             </a>
                                         <?php endif; ?>
+                                        <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="abrirModalOpcionesOS(<?= (int)$os['id'] ?>)" title="Abrir ventana con detalles y otras opciones">
+                                            Abrir
+                                        </button>
                                     <?php else: ?>
                                         <?php if ($cantHojas === 0): ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-success" style="min-height:38px; font-weight:700;"
+                                            <button type="button" class="btn-cycsa btn-cycsa-primary"
                                                     data-id-os="<?= $os['id'] ?>"
                                                     data-codigo-os="<?= htmlspecialchars($os['codigo_os']) ?>"
                                                     data-estado-muestreo="<?= $estadoMuestreo ?>"
                                                     onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars(addslashes($os['codigo_os'])) ?>', 0, true)">
-                                                <i class="fa-solid fa-file-signature"></i> Registrar Hoja
+                                                Registrar Hoja
+                                            </button>
+                                            <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="abrirModalOpcionesOS(<?= (int)$os['id'] ?>)" title="Abrir ventana con detalles y otras opciones">
+                                                Abrir
                                             </button>
                                         <?php else: ?>
-                                            <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height:38px; font-weight:600; border-color:#cbd5e1;" onclick="toggleFilaDesplegable(<?= $os['id'] ?>, event)" title="Ver Hojas RT-FM-13 registradas">
-                                                <i class="fa-solid fa-layer-group" style="color:var(--cycsa-azul);"></i> Ver Hojas (<?= $cantHojas ?>)
+                                            <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="abrirModalOpcionesOS(<?= (int)$os['id'] ?>)" title="Abrir ventana con detalles, hojas RT-FM-13 y otras opciones">
+                                                Abrir (<?= $cantHojas ?>)
                                             </button>
                                         <?php endif; ?>
                                     <?php endif; ?>
@@ -747,11 +741,19 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                             </td>
                         </tr>
 
-                        <!-- FILA DESPLEGABLE CON DETALLES COMPLETOS (ACORDEÓN RESPONSIVO EN 2 COLUMNAS) -->
-                        <tr class="fila-desplegable" id="desplegable-os-<?= $os['id'] ?>">
-                            <td colspan="5" style="padding: 0;">
-                                <div class="acordeon-contenido">
-                                    <div class="grid-info-os">
+                        <!-- CONTENIDO DE LA VENTANA DE OPCIONES (CAPTURADO FUERA DEL TBODY PARA MANTENER TABLA LIMPIA) -->
+                        <?php ob_start(); ?>
+                        <template id="os-panel-tpl-<?= (int)$os['id'] ?>"
+                                  data-codigo="<?= htmlspecialchars((string)$os['codigo_os'], ENT_QUOTES, 'UTF-8') ?>"
+                                  data-version="v<?= (int)($os['version'] ?? 1) ?>"
+                                  data-cliente="<?= htmlspecialchars((string)$os['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?>"
+                                  data-proyecto="<?= htmlspecialchars((string)($os['nombre_proyecto'] ?? 'Sin nombre de proyecto'), ENT_QUOTES, 'UTF-8') ?>"
+                                  data-estado="<?= htmlspecialchars((string)$os['estado'], ENT_QUOTES, 'UTF-8') ?>"
+                                  data-url-detalle="/Cycsa/publico/ordenes-servicio/detalle?id=<?= (int)$os['id'] ?>"
+                                  data-url-pdf="/Cycsa/publico/ordenes-servicio/descargar-pdf?id=<?= (int)$os['id'] ?>"
+                                  data-url-editar="<?= !$esFinalizadaOArchivo ? ('/Cycsa/publico/ordenes-servicio/editar?id_os=' . (int)$os['id']) : '' ?>"
+                                  data-url-operaciones="/Cycsa/publico/operaciones/ver?id_os=<?= (int)$os['id'] ?>">
+                            <div class="grid-info-os">
                                         
                                         <!-- COLUMNA IZQUIERDA: COMERCIAL Y LOGÍSTICA DE MUESTREO -->
                                         <div style="display: flex; flex-direction: column; gap: 20px;">
@@ -1055,33 +1057,33 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                                                                 </div>
                                                                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
                                                                     <?php if ($reqDatosRecH): ?>
-                                                                        <button type="button" class="btn-cycsa <?= $recAlDiaH ? 'btn-cycsa-secondary' : 'btn-cycsa-warning' ?>" style="min-height:34px; padding:4px 10px; font-size:11.5px; font-weight:700; <?= $recAlDiaH ? '' : 'background:#ea580c; border-color:#ea580c; color:#fff;' ?>"
+                                                                        <button type="button" class="btn-cycsa <?= $recAlDiaH ? 'btn-cycsa-secondary' : 'btn-cycsa-primary' ?>" style="min-height:32px; padding:4px 10px; font-size:12px;"
                                                                                 onclick="abrirModalDatosRecepcion(<?= $os['id'] ?>, '<?= htmlspecialchars(addslashes($os['codigo_os'])) ?>', <?= $hItem['id'] ?>)"
                                                                                 title="Llenar / revisar casillas de Recepción de esta RT-FM-13">
                                                                             <i class="fa-solid fa-table-list"></i> Datos Recepción
                                                                         </button>
                                                                     <?php endif; ?>
                                                                     <?php if (!$esFinalizadaOArchivo): ?>
-                                                                        <button type="button" class="btn-cycsa <?= $fm40bH ? 'btn-cycsa-secondary' : 'btn-cycsa-primary' ?>" style="min-height:34px; padding:4px 10px; font-size:11.5px; font-weight:700; <?= $fm40bH ? 'border-color:#0284c7; color:#0369a1; background:#e0f2fe;' : 'background:#0284c7; border-color:#0284c7;' ?>"
+                                                                        <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height:32px; padding:4px 10px; font-size:12px;"
                                                                                 onclick="abrirModalFm40B(<?= $os['id'] ?>, '<?= htmlspecialchars(addslashes($os['codigo_os'])) ?>', <?= $hItem['id'] ?>)"
                                                                                 title="<?= $fm40bH ? 'Editar o cerrar documento CYCSA-RT-FM-40 B asociado' : 'Crear documento CYCSA-RT-FM-40 B para esta RT-FM-13' ?>">
                                                                             <i class="fa-solid fa-truck-pickup"></i> <?= $fm40bH ? '40 B' : '+ 40 B' ?>
                                                                         </button>
                                                                     <?php endif; ?>
                                                                     <?php if ($fm40bH): ?>
-                                                                        <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>&id_hoja=<?= $hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:4px 10px; font-size:11.5px;" title="Imprimir CYCSA-RT-FM-40 B">
-                                                                            <i class="fa-solid fa-print" style="color:#0284c7;"></i>
+                                                                        <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>&id_hoja=<?= $hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:32px; padding:4px 10px; font-size:12px;" title="Imprimir CYCSA-RT-FM-40 B">
+                                                                            <i class="fa-solid fa-print"></i>
                                                                         </a>
                                                                     <?php endif; ?>
-                                                                    <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:4px 10px; font-size:12px;"
+                                                                    <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height:32px; padding:4px 10px; font-size:12px;"
                                                                             onclick="abrirModalHojaSolicitud(<?= $os['id'] ?>, '<?= htmlspecialchars($os['codigo_os']) ?>', <?= $hItem['id'] ?>, false)"
                                                                             title="Editar Hoja RT-FM-13">
                                                                         <i class="fa-solid fa-pen"></i>
                                                                     </button>
-                                                                    <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>&id_hoja=<?= $hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-primary" style="min-height:34px; padding:4px 10px; font-size:12px;" title="Descargar PDF Oficial RT-FM-13">
-                                                                        <i class="fa-solid fa-file-pdf"></i>
+                                                                    <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= $os['id'] ?>&id_hoja=<?= $hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:32px; padding:4px 10px; font-size:12px;" title="Descargar PDF Oficial RT-FM-13">
+                                                                        <i class="fa-solid fa-file-pdf text-danger"></i> PDF
                                                                     </a>
-                                                                    <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:4px 10px; font-size:11.5px; border-color:#7c3aed; color:#6d28d9; background:#f5f3ff; font-weight:700;" title="Ver / Imprimir Hoja RT-FM-60 (Solicitud de Ensayo a Laboratorio)">
+                                                                    <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$hItem['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:32px; padding:4px 10px; font-size:12px;" title="Ver / Imprimir Hoja RT-FM-60 (Solicitud de Ensayo a Laboratorio)">
                                                                         <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
                                                                     </a>
                                                                 </div>
@@ -1206,39 +1208,63 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 
                                         </div>
 
-                                    </div>
-
-                                    <!-- BARRA INFORMATIVA INFERIOR DE ESTADO TÉCNICO -->
-                                    <div style="margin-top: 18px; padding: 12px 18px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                                        <div style="font-size: 13px; color: #475569;">
-                                            <i class="fa-solid fa-circle-info" style="color:var(--cycsa-azul);"></i> Estado técnico del flujo: <strong style="color:#0f172a;"><?= htmlspecialchars($os['estado']) ?></strong>
-                                        </div>
-                                        <div style="font-size: 12.5px; color: #64748b; font-family: monospace;">
-                                            Orden Ref: <?= htmlspecialchars($os['codigo_os']) ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </template>
+                        <?php $osPanelTemplates[] = ob_get_clean(); ?>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #64748b; padding: 45px 20px;">
-                            <div style="font-size: 38px; color: #cbd5e1; margin-bottom: 12px;"><i class="fa-solid fa-folder-open"></i></div>
-                            <div style="font-size: 16px; font-weight: 700; color: #334155; margin-bottom: 6px;">
-                                <?= ($tabActiva === 'historico') ? 'Histórico de Órdenes Vacío' : (($tabActiva === 'muestreo') ? 'No hay órdenes pendientes de muestreo' : 'No se encontraron Órdenes de Servicio activas') ?>
-                            </div>
-                            <p style="font-size: 13.5px; color: #64748b; margin-bottom: 14px;">
-                                <?= !empty($busqueda) ? 'No hay resultados que coincidan con la búsqueda actual.' : 'Explore las demás pestañas o genere una nueva Orden de Servicio desde Cotizaciones.' ?>
-                            </p>
+                        <td colspan="5" class="text-center py-5">
+                            <span class="cy-meta">
+                                <?= ($tabActiva === 'historico')
+                                    ? 'No hay órdenes de servicio finalizadas o archivadas con los filtros actuales.'
+                                    : (($tabActiva === 'muestreo')
+                                        ? 'No hay órdenes de servicio pendientes de muestreo.'
+                                        : 'No hay órdenes de servicio registradas con los filtros actuales.') ?>
+                            </span>
                             <?php if ($tabActiva !== 'todas'): ?>
-                                <a href="/Cycsa/publico/ordenes-servicio?tab=todas" class="btn-cycsa btn-cycsa-secondary" style="font-size: 12.5px;"><i class="fa-solid fa-list-ul"></i> Ver Todas las Órdenes</a>
+                                <div class="mt-2">
+                                    <a href="/Cycsa/publico/ordenes-servicio?tab=todas" class="cy-action-link">Ver todas las órdenes</a>
+                                </div>
                             <?php endif; ?>
                         </td>
                     </tr>
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+
+    <!-- PLANTILLAS DE PANELES POR O/S (SE CARGAN EN LA VENTANA MODAL AL PULSAR "ABRIR") -->
+    <?php foreach ($osPanelTemplates as $tplHtml): ?>
+        <?= $tplHtml ?>
+    <?php endforeach; ?>
+
+    <!-- VENTANA MODAL SOBRIA DE DETALLES Y OPCIONES DE LA ORDEN DE SERVICIO -->
+    <div id="modalOpcionesOS" class="cy-os-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalOpcionesOSTitulo" onclick="if (event.target === this) cerrarModalOpcionesOS()">
+        <div class="cy-os-modal-dialog">
+            <div class="cy-os-modal-head">
+                <div>
+                    <div class="cy-os-modal-title-row">
+                        <h2 class="cy-os-modal-title" id="modalOpcionesOSTitulo">Orden de Servicio</h2>
+                        <span class="cy-meta" id="modalOpcionesOSVersion"></span>
+                        <span class="cy-pill cy-pill-pend" id="modalOpcionesOSEstado"></span>
+                    </div>
+                    <div class="cy-os-modal-sub" id="modalOpcionesOSSubtitulo"></div>
+                </div>
+                <div class="cy-os-modal-head-right">
+                    <a href="#" id="modalOpcionesOSBtnDetalle" class="btn-cycsa btn-cycsa-secondary">Ver FM-39</a>
+                    <a href="#" id="modalOpcionesOSBtnPdf" target="_blank" class="btn-cycsa btn-cycsa-secondary">PDF</a>
+                    <a href="#" id="modalOpcionesOSBtnEditar" class="btn-cycsa btn-cycsa-secondary">Editar O/S</a>
+                    <a href="#" id="modalOpcionesOSBtnOps" class="btn-cycsa btn-cycsa-secondary">Operaciones</a>
+                    <button type="button" class="cy-os-modal-close" onclick="cerrarModalOpcionesOS()" aria-label="Cerrar ventana">&times;</button>
+                </div>
+            </div>
+            <div class="cy-os-modal-body" id="modalOpcionesOSBody"></div>
+            <div class="cy-os-modal-foot">
+                <div class="cy-meta" id="modalOpcionesOSFootInfo"></div>
+                <button type="button" class="btn-cycsa btn-cycsa-secondary" onclick="cerrarModalOpcionesOS()">Cerrar</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -2432,25 +2458,90 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
     }
 
     // =========================================================================
-    // 1. DESPLIEGUE INTELIGENTE DE FILAS (ACORDEÓN)
+    // 1. VENTANA MODAL DE DETALLES Y OPCIONES DE LA ORDEN DE SERVICIO
     // =========================================================================
-    function toggleFilaDesplegable(idOS, e) {
-        const filaPrincipal = document.getElementById('fila-os-' + idOS);
-        const filaDesplegable = document.getElementById('desplegable-os-' + idOS);
-        
-        if (!filaDesplegable) return;
+    function abrirModalOpcionesOS(idOS) {
+        const tpl = document.getElementById('os-panel-tpl-' + idOS);
+        const modal = document.getElementById('modalOpcionesOS');
+        const body = document.getElementById('modalOpcionesOSBody');
+        if (!tpl || !modal || !body) return;
 
-        const estaAbierta = filaDesplegable.classList.contains('mostrar');
+        const codigo = tpl.getAttribute('data-codigo') || ('O/S #' + idOS);
+        const version = tpl.getAttribute('data-version') || 'v1';
+        const cliente = tpl.getAttribute('data-cliente') || '';
+        const proyecto = tpl.getAttribute('data-proyecto') || '';
+        const estado = tpl.getAttribute('data-estado') || '';
 
-        // Cerrar todas las demás filas para mantener la tabla limpia
-        document.querySelectorAll('.fila-desplegable').forEach(el => el.classList.remove('mostrar'));
-        document.querySelectorAll('.fila-principal').forEach(el => el.classList.remove('expandida'));
+        const elTitulo = document.getElementById('modalOpcionesOSTitulo');
+        const elVer = document.getElementById('modalOpcionesOSVersion');
+        const elEst = document.getElementById('modalOpcionesOSEstado');
+        const elSub = document.getElementById('modalOpcionesOSSubtitulo');
+        const elFoot = document.getElementById('modalOpcionesOSFootInfo');
 
-        if (!estaAbierta) {
-            filaDesplegable.classList.add('mostrar');
-            filaPrincipal.classList.add('expandida');
+        if (elTitulo) elTitulo.textContent = codigo;
+        if (elVer) elVer.textContent = version;
+        if (elEst) {
+            elEst.textContent = estado || 'Activa';
+            elEst.className = 'cy-pill ' + (
+                /finaliz|aprob|cerrad/i.test(estado) ? 'cy-pill-ok' :
+                (/observ|rechaz/i.test(estado) ? 'cy-pill-danger' :
+                (/pend|revis|proceso/i.test(estado) ? 'cy-pill-warn' : 'cy-pill-pend'))
+            );
         }
+        if (elSub) elSub.textContent = [cliente, proyecto].filter(Boolean).join(' · ');
+        if (elFoot) elFoot.textContent = 'Estado técnico del flujo: ' + (estado || '—') + ' · Ref: ' + codigo;
+
+        const btnDet = document.getElementById('modalOpcionesOSBtnDetalle');
+        const btnPdf = document.getElementById('modalOpcionesOSBtnPdf');
+        const btnEd = document.getElementById('modalOpcionesOSBtnEditar');
+        const btnOps = document.getElementById('modalOpcionesOSBtnOps');
+
+        if (btnDet) btnDet.href = tpl.getAttribute('data-url-detalle') || '#';
+        if (btnPdf) btnPdf.href = tpl.getAttribute('data-url-pdf') || '#';
+        const urlEditar = tpl.getAttribute('data-url-editar') || '';
+        if (btnEd) {
+            if (urlEditar) {
+                btnEd.href = urlEditar;
+                btnEd.style.display = 'inline-flex';
+            } else {
+                btnEd.style.display = 'none';
+            }
+        }
+        if (btnOps) btnOps.href = tpl.getAttribute('data-url-operaciones') || '#';
+
+        body.innerHTML = '';
+        body.appendChild(tpl.content.cloneNode(true));
+
+        document.querySelectorAll('.fila-principal').forEach(el => el.classList.remove('expandida'));
+        const fila = document.getElementById('fila-os-' + idOS);
+        if (fila) fila.classList.add('expandida');
+
+        modal.classList.add('is-open');
     }
+
+    function cerrarModalOpcionesOS() {
+        const modal = document.getElementById('modalOpcionesOS');
+        if (modal) modal.classList.remove('is-open');
+        document.querySelectorAll('.fila-principal').forEach(el => el.classList.remove('expandida'));
+    }
+
+    function toggleFilaDesplegable(idOS, e) {
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        abrirModalOpcionesOS(idOS);
+    }
+
+    document.addEventListener('keydown', function(ev) {
+        if (ev.key !== 'Escape') return;
+        const modal = document.getElementById('modalOpcionesOS');
+        if (!modal || !modal.classList.contains('is-open')) return;
+        // Solo cerrar si no hay otro submodal visible encima
+        const subModales = ['modalHojaSolicitud', 'modalDatosRecepcion', 'modalFm40B', 'modalPeriodoContrato', 'modalAprobarOS', 'modalRevision', 'modalDecisionMuestreoGlobal', 'modalEnviarInformeOS', 'modalMotivoCambioPlantilla', 'modalVerPlantillaReadOnly'];
+        const algunoArriba = subModales.some(function(id) {
+            const el = document.getElementById(id);
+            return el && el.style.display && el.style.display !== 'none';
+        });
+        if (!algunoArriba) cerrarModalOpcionesOS();
+    });
 
     // =========================================================================
     // 2. APERTURA DIRECTA DE "REGISTRAR HOJA RT-FM-13" (Sin diálogo previo)
@@ -5015,12 +5106,12 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
     ?>
     document.addEventListener("DOMContentLoaded", function() {
         const idAuto = <?= (int)$id_os_auto ?>;
-        const filaDesplegable = document.getElementById('desplegable-os-' + idAuto);
         const filaPrincipal = document.getElementById('fila-os-' + idAuto);
-        if (filaDesplegable && filaPrincipal) {
-            filaDesplegable.classList.add('mostrar');
-            filaPrincipal.classList.add('expandida');
+        if (filaPrincipal) {
             filaPrincipal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        if (typeof abrirModalOpcionesOS === 'function') {
+            abrirModalOpcionesOS(idAuto);
         }
         <?php if (!empty($_GET['abrir_hoja'])): ?>
         if (typeof abrirModalHojaSolicitud === 'function') {

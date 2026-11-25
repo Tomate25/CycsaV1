@@ -39,6 +39,15 @@ class OrdenesServicioDisenoSobrioTest extends TestCase
         $this->assertStringNotContainsString('background:linear-gradient(135deg, #0f172a', $indexSrc, 'El modal FM-40B debe usar cabecera sobria blanca');
         $this->assertStringNotContainsString('background:linear-gradient(135deg, #1e1b4b', $indexSrc, 'El modal de Período debe usar cabecera sobria blanca');
 
+        // Verificar que la tabla crece naturalmente como Cotizaciones (sin cajón vacío ni acordeón en fila)
+        $this->assertStringNotContainsString('min-height: 340px', $indexSrc, 'La tabla de O/S no debe tener cajón vacío min-height: 340px');
+        $this->assertStringNotContainsString('<tr class="fila-desplegable"', $indexSrc, 'Las opciones de O/S deben abrirse en ventana modal, no en acordeón en fila');
+        $this->assertStringContainsString('id="modalOpcionesOS"', $indexSrc, 'Debe existir la ventana modal #modalOpcionesOS');
+        $this->assertStringContainsString('abrirModalOpcionesOS(', $indexSrc, 'Debe existir el botón/función abrirModalOpcionesOS');
+
+        $cssOsSrc = (string)file_get_contents($root . '/publico/css/ordenes-servicio-sobrio.css');
+        $this->assertStringContainsString('min-height: 0 !important;', $cssOsSrc);
+
         // Verificar que detalle.php conserva intacto el bloque @media print
         $detSrc = (string)file_get_contents($vistas['detalle.php']);
         $this->assertStringContainsString('@media print', $detSrc);
