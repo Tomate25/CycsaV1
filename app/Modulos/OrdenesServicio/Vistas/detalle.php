@@ -5,6 +5,8 @@ if (!empty($os['contactos_json'])) {
     $contactos = is_array($os['contactos_json']) ? $os['contactos_json'] : (json_decode($os['contactos_json'], true) ?: []);
 }
 ?>
+<link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/ordenes-servicio-sobrio.css">
 <style>
     .os-wrapper { background: #f1f5f9; padding: 18px 20px 40px 20px; min-height: 100vh; }
     .os-container { 
@@ -112,6 +114,7 @@ if (!empty($os['contactos_json'])) {
     }
 </style>
 
+<div class="container-fluid px-0 py-0 cy-os-wrap">
 <div class="os-wrapper">
     <!-- BARRA SUPERIOR DE ACCIONES -->
     <div class="btn-action-bar no-print">
@@ -121,7 +124,7 @@ if (!empty($os['contactos_json'])) {
         <div class="os-btn-group-secondary">
             <?php if (!empty($os['hojas_servicio'])): ?>
                 <?php $primeraHojaDet = $os['hojas_servicio'][0]; ?>
-                <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$primeraHojaDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="border-color:#7c3aed; color:#6d28d9; background:#f5f3ff;" title="Imprimir Hoja RT-FM-60 de Laboratorio">
+                <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$primeraHojaDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" title="Imprimir Hoja RT-FM-60 de Laboratorio">
                     <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
                 </a>
             <?php endif; ?>
@@ -452,7 +455,7 @@ if (!empty($os['contactos_json'])) {
                     <a href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$os['id'] ?>&id_hoja=<?= (int)$hDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:4px 10px; font-size:11.5px;">
                         <i class="fa-solid fa-file-pdf" style="color:#dc2626;"></i> RT-FM-13 PDF
                     </a>
-                    <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$hDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:4px 10px; font-size:11.5px; border-color:#7c3aed; color:#6d28d9; background:#f5f3ff;">
+                    <a href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= (int)$hDet['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" style="min-height:28px; padding:4px 10px; font-size:11.5px;">
                         <i class="fa-solid fa-flask"></i> Hoja RT-FM-60
                     </a>
                 </td>
@@ -522,3 +525,5 @@ require dirname(__DIR__, 3) . '/Views/parciales/bitacora_modulo.php';
 ?>
 </div>
 <?php endif; ?>
+
+</div>

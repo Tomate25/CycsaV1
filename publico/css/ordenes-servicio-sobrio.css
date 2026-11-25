@@ -1,0 +1,425 @@
+/**
+ * CYCSA ERP + LIMS — Diseño Sobrio para Órdenes de Servicio (todas las pantallas y modales)
+ * Archivo: publico/css/ordenes-servicio-sobrio.css
+ * Cargar SIEMPRE después de publico/css/cycsa-sobrio.css
+ */
+
+.cy-os-wrap {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  color: var(--cy-text);
+  font-family: var(--bs-body-font-family);
+}
+
+.cy-os-wrap .os-modulo-container {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin-bottom: 24px;
+}
+
+/* Cabecera y enlaces de regreso */
+.cy-os-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.cy-os-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cy-os-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cy-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cy-muted);
+  text-decoration: none;
+  margin-bottom: 10px;
+  transition: color 0.15s ease;
+}
+.cy-back-link:hover {
+  color: var(--cy-brand);
+}
+
+/* Pestañas rápidas estilo .cy-seg (conserva clases lims-toolbar-top / lims-quick-tabs / quick-tab-link) */
+.cy-os-wrap .lims-toolbar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 0 !important;
+  border-bottom: 0 !important;
+}
+
+.cy-os-wrap .lims-quick-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 !important;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--cy-border);
+  background: var(--cy-surface);
+}
+
+.cy-os-wrap .quick-tab-link {
+  padding: 7px 14px !important;
+  min-height: 36px;
+  border-radius: 0 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--cy-muted) !important;
+  background: var(--cy-surface) !important;
+  border: 0 !important;
+  border-right: 1px solid var(--cy-border) !important;
+  box-shadow: none !important;
+  gap: 6px;
+}
+.cy-os-wrap .quick-tab-link:last-child {
+  border-right: 0 !important;
+}
+.cy-os-wrap .quick-tab-link:hover {
+  background: #F9FAFB !important;
+  color: var(--cy-text) !important;
+}
+.cy-os-wrap .quick-tab-link.active {
+  background: var(--cy-brand-soft) !important;
+  color: var(--cy-brand) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+.cy-os-wrap .quick-tab-badge {
+  background: rgba(17, 24, 39, 0.06) !important;
+  color: var(--cy-muted) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  min-width: 22px;
+  height: 20px;
+  border-radius: 999px;
+}
+.cy-os-wrap .quick-tab-link.active .quick-tab-badge {
+  background: rgba(31, 56, 100, 0.14) !important;
+  color: var(--cy-brand) !important;
+}
+
+/* Barra de búsqueda y filtros en tarjeta plana */
+.cy-os-wrap .search-bar-premium,
+.cy-os-wrap .os-bitacora-filtros {
+  background: var(--cy-surface) !important;
+  border: 1px solid var(--cy-border) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  padding: 16px 20px !important;
+  margin-bottom: 16px !important;
+}
+
+/* Tarjetas planas sobrias */
+.cy-os-wrap .cycsa-card,
+.cy-os-wrap .tarjeta-detalle-os,
+.cy-os-wrap .bifurcacion-box {
+  background: var(--cy-surface) !important;
+  border: 1px solid var(--cy-border) !important;
+  border-top: 1px solid var(--cy-border) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  padding: 20px 24px !important;
+  margin-bottom: 18px !important;
+}
+
+.cy-os-wrap .cycsa-card-title,
+.cy-os-wrap .tarjeta-detalle-titulo {
+  font-family: var(--bs-body-font-family) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: var(--cy-text) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  border-bottom: 1px solid var(--cy-border) !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 16px !important;
+}
+.cy-os-wrap .cycsa-card-title i,
+.cy-os-wrap .tarjeta-detalle-titulo i {
+  color: var(--cy-brand) !important;
+}
+
+/* Campos de formulario */
+.cy-os-wrap .form-group-cycsa label,
+.cy-os-wrap .os-bitacora-filtros label {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #374151 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  margin-bottom: 6px;
+}
+
+.cy-os-wrap .form-control-cycsa,
+.cy-os-wrap .os-bitacora-filtros input,
+.cy-os-wrap .os-bitacora-filtros select {
+  border: 1px solid var(--cy-border) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  font-family: var(--bs-body-font-family) !important;
+  font-size: 14px !important;
+  color: var(--cy-text) !important;
+  background: var(--cy-surface);
+  box-shadow: none !important;
+}
+.cy-os-wrap .form-control-cycsa:focus,
+.cy-os-wrap .os-bitacora-filtros input:focus,
+.cy-os-wrap .os-bitacora-filtros select:focus {
+  outline: none !important;
+  border-color: var(--cy-brand) !important;
+  box-shadow: 0 0 0 2px rgba(31, 56, 100, 0.14) !important;
+}
+.cy-os-wrap .form-control-readonly {
+  background-color: var(--cy-bg) !important;
+  color: var(--cy-text) !important;
+  font-weight: 500 !important;
+}
+
+/* Tablas planas (listado, ensayos, checklist) */
+.cy-os-wrap .os-table-container {
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.cy-os-wrap .tabla-cycsa {
+  margin-top: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  font-size: 14px !important;
+}
+.cy-os-wrap .cycsa-card .tabla-cycsa {
+  border: 1px solid var(--cy-border) !important;
+  border-radius: 8px !important;
+}
+.cy-os-wrap .tabla-cycsa th,
+.cy-os-wrap .chk-table th {
+  background: var(--cy-surface) !important;
+  color: var(--cy-muted) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--cy-border) !important;
+}
+.cy-os-wrap .tabla-cycsa td,
+.cy-os-wrap .chk-table td {
+  padding: 14px 16px !important;
+  border-bottom: 1px solid var(--cy-border) !important;
+  color: var(--cy-text) !important;
+  font-size: 14px !important;
+}
+.cy-os-wrap .fila-principal:hover {
+  background-color: #FAFAFB !important;
+}
+.cy-os-wrap .fila-principal.expandida {
+  background-color: var(--cy-brand-soft) !important;
+}
+.cy-os-wrap .fila-desplegable {
+  background-color: var(--cy-bg) !important;
+}
+.cy-os-wrap .acordeon-contenido {
+  padding: 20px 24px !important;
+  border-bottom: 1px solid var(--cy-border) !important;
+}
+
+/* Jerarquía sobria de botones (.btn-cycsa-*) */
+.cy-os-wrap .btn-cycsa {
+  font-family: var(--bs-body-font-family) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  min-height: 36px;
+  padding: 7px 14px !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.cy-os-wrap .btn-cycsa-primary,
+.cy-os-wrap .btn-cycsa-success {
+  background: var(--cy-brand) !important;
+  border-color: var(--cy-brand) !important;
+  color: #FFFFFF !important;
+}
+.cy-os-wrap .btn-cycsa-primary:hover,
+.cy-os-wrap .btn-cycsa-success:hover {
+  background: var(--cy-brand-hover) !important;
+  border-color: var(--cy-brand-hover) !important;
+  color: #FFFFFF !important;
+  transform: none !important;
+}
+
+.cy-os-wrap .btn-cycsa-secondary,
+.cy-os-wrap .btn-cycsa-warning {
+  background: #FFFFFF !important;
+  color: var(--cy-text) !important;
+  border: 1px solid var(--cy-border) !important;
+}
+.cy-os-wrap .btn-cycsa-secondary:hover,
+.cy-os-wrap .btn-cycsa-warning:hover {
+  background: #F3F4F6 !important;
+  border-color: var(--cy-border-strong) !important;
+  color: var(--cy-text) !important;
+}
+
+.cy-os-wrap .btn-cycsa-danger {
+  background: #FFFFFF !important;
+  color: var(--cy-danger) !important;
+  border: 1px solid #FECACA !important;
+}
+.cy-os-wrap .btn-cycsa-danger:hover {
+  background: var(--cy-danger-bg) !important;
+  border-color: #FCA5A5 !important;
+  color: var(--cy-danger) !important;
+}
+
+.cy-os-wrap .dropdown-btn-mas {
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  border: 1px solid var(--cy-border) !important;
+  border-radius: 8px !important;
+  background: #FFFFFF !important;
+  color: var(--cy-muted) !important;
+}
+.cy-os-wrap .dropdown-btn-mas:hover {
+  background: #F3F4F6 !important;
+  color: var(--cy-text) !important;
+  border-color: var(--cy-border-strong) !important;
+}
+
+/* Badges semánticos tipo .cy-pill */
+.cy-os-wrap .badge-premium,
+.cy-os-wrap .badge-status {
+  border-radius: 999px !important;
+  padding: 3px 10px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border: 0 !important;
+}
+.cy-os-wrap .badge-muestreo-fin,
+.cy-os-wrap .badge-hoja-aprobada {
+  background: var(--cy-ok-bg) !important;
+  color: var(--cy-ok) !important;
+}
+.cy-os-wrap .badge-hoja-borrador,
+.cy-os-wrap .badge-muestreo-si,
+.cy-os-wrap .badge-hoja-revision,
+.cy-os-wrap .badge-status {
+  background: var(--cy-warn-bg) !important;
+  color: var(--cy-warn) !important;
+}
+.cy-os-wrap .badge-hoja-observada {
+  background: var(--cy-danger-bg) !important;
+  color: var(--cy-danger) !important;
+}
+.cy-os-wrap .badge-muestreo-no,
+.cy-os-wrap .badge-hoja-sin {
+  background: var(--cy-pend-bg) !important;
+  color: var(--cy-pend) !important;
+}
+
+/* Radio cards en crear.php (Bifurcación) */
+.cy-os-wrap .radio-option-card {
+  border: 1px solid var(--cy-border) !important;
+  border-radius: 10px !important;
+  background: var(--cy-surface) !important;
+  color: var(--cy-text) !important;
+  font-weight: 600 !important;
+}
+.cy-os-wrap .radio-option-card.selected-no,
+.cy-os-wrap .radio-option-card.selected-si {
+  border: 1.5px solid var(--cy-brand) !important;
+  background: var(--cy-brand-soft) !important;
+  color: var(--cy-brand) !important;
+}
+
+/* Avisos sobrios */
+.cy-os-wrap .aviso-reaprobacion {
+  background: var(--cy-surface) !important;
+  border: 1px solid var(--cy-border) !important;
+  border-left: 3px solid var(--cy-warn) !important;
+  border-radius: 10px !important;
+  color: var(--cy-text) !important;
+}
+
+/* Barra de acciones en detalle.php y programar_muestreo.php */
+.cy-os-wrap .btn-action-bar,
+.cy-os-wrap .sticky-bar-muestreo {
+  background: var(--cy-surface) !important;
+  border: 1px solid var(--cy-border) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+/* Footer de formularios */
+.cy-os-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 24px;
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+}
+
+/* Modales interactivos sobrios (RT-FM-13, Datos Recepción, FM-40B, Período, Aprobar O/S, Revisión, Decisión, Envío) */
+.cy-os-wrap .modal-premium,
+.cy-os-wrap .modal-overlay {
+  background-color: rgba(17, 24, 39, 0.38) !important;
+  backdrop-filter: blur(2px);
+}
+.cy-os-wrap .modal-premium-content {
+  border: 1px solid var(--cy-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.14) !important;
+}
+.cy-os-wrap #modalDatosRecepcion .modal-premium-content {
+  border-radius: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.cy-os-wrap .rtfm13-header-sticky {
+  background: var(--cy-surface) !important;
+  border-bottom: 1px solid var(--cy-border) !important;
+}
+
+/* Detalle en pantalla (conservando @media print intacto) */
+@media screen {
+  .cy-os-wrap .os-wrapper {
+    background: transparent !important;
+    padding: 0 0 32px 0 !important;
+    min-height: auto !important;
+  }
+  .cy-os-wrap .os-container {
+    border: 1px solid var(--cy-border) !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+  }
+}

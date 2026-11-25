@@ -9,6 +9,8 @@ if (!is_array($chk)) {
     $chk = [];
 }
 ?>
+<link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/ordenes-servicio-sobrio.css">
 <style>
     .cycsa-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 25px; margin-bottom: 25px; }
     .cycsa-card-title { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--cycsa-azul); border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
@@ -61,25 +63,21 @@ if (!is_array($chk)) {
     }
 </style>
 
-<div style="width: 100%; max-width: 100%; margin: 0; padding-bottom: 50px;">
-    
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-        <div>
-            <h2 style="margin: 0; color: #0f172a; font-size: 22px; font-family: 'Outfit', sans-serif; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                <i class="fa-solid fa-truck-pickup" style="color: var(--cycsa-azul);"></i> Programación y Lista de Chequeo de Campo
-            </h2>
-            <p style="color: #64748b; margin-top: 4px; font-size: 13.5px; margin-bottom: 0;">
-                Orden de Servicio: <strong style="color: var(--cycsa-azul); font-family:monospace; font-size:15px;"><?= htmlspecialchars($os['codigo_os']) ?></strong>
-                &nbsp;|&nbsp; 
-                Formato Oficial de Muestreo: <strong style="color:#0284c7;">CYCSA-RT-FM-40 B (Rev. 2)</strong>
-            </p>
+<div class="container-fluid px-0 py-0 cy-os-wrap" style="padding-bottom: 40px;">
+    <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="cy-back-link"><i class="fa-solid fa-arrow-left"></i> Volver a O/S</a>
+    <div class="cy-os-header">
+        <div class="cy-os-header-left">
+            <h1 class="cy-page-title">Programación y Lista de Chequeo de Campo</h1>
+            <div class="cy-meta">
+                Orden de Servicio: <strong><?= htmlspecialchars($os['codigo_os']) ?></strong> · Formato Oficial de Muestreo: <strong>CYCSA-RT-FM-40 B (Rev. 2)</strong>
+            </div>
         </div>
-        <div style="display: flex; gap: 10px;">
+        <div class="cy-os-header-actions">
             <a href="/Cycsa/publico/ordenes-servicio/imprimir-checklist?id=<?= $os['id'] ?>" target="_blank" class="btn-cycsa btn-cycsa-secondary" title="Imprimir formato físico oficial">
-                <i class="fa-solid fa-print"></i> Imprimir CYCSA-RT-FM-40 B
+                Imprimir CYCSA-RT-FM-40 B
             </a>
             <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary">
-                <i class="fa-solid fa-eye"></i> Ver O/S
+                Ver O/S
             </a>
         </div>
     </div>
@@ -450,16 +448,16 @@ if (!is_array($chk)) {
         </div>
 
         <!-- CARD 3: FINALIZACIÓN DE MUESTREO (RETORNO AL LAB PARA LLENAR CYCSA-RT-FM-13) -->
-        <div class="cycsa-card" style="border-top: 4px solid #10b981; text-align: center; padding: 30px;">
-            <h3 style="margin: 0 0 10px 0; font-family: 'Outfit', sans-serif; font-size: 18px; color: #065f46; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Finalización de Muestreo en Campo
+        <div class="cycsa-card text-center">
+            <h3 style="margin: 0 0 8px 0; font-size: 17px; font-weight: 600; color: var(--cy-text);">
+                Finalización de Muestreo en Campo
             </h3>
-            <p style="color: #475569; font-size: 13.5px; max-width: 650px; margin: 0 auto 20px auto; line-height: 1.5;">
+            <p class="cy-meta" style="max-width: 650px; margin: 0 auto 18px auto;">
                 Al hacer clic en <strong>"Finalizar Muestreo y Abrir Hoja RT-FM-13"</strong>, el sistema guardará todos los datos registrados en esta pantalla, registrará el retorno del técnico al laboratorio y lo redirigirá inmediatamente a la <strong>Hoja de Solicitud de Ensayos (CYCSA-RT-FM-13)</strong> con los datos de esta orden y el técnico precargados.
             </p>
 
-            <button type="submit" name="accion_muestreo" value="finalizar" onclick="return confirm('¿Confirma que el muestreo en campo ha finalizado con éxito y desea registrar los especímenes en la Hoja RT-FM-13?');" class="btn-cycsa btn-cycsa-success" style="padding: 14px 32px; font-size: 15px; font-weight: 700; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer;">
-                <i class="fa-solid fa-file-circle-check"></i> Finalizar Muestreo y Abrir Hoja RT-FM-13 <i class="fa-solid fa-arrow-right"></i>
+            <button type="submit" name="accion_muestreo" value="finalizar" onclick="return confirm('¿Confirma que el muestreo en campo ha finalizado con éxito y desea registrar los especímenes en la Hoja RT-FM-13?');" class="btn-cycsa btn-cycsa-primary">
+                Finalizar Muestreo y Abrir Hoja RT-FM-13
             </button>
         </div>
     </form>

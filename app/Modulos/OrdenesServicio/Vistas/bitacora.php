@@ -10,26 +10,22 @@ $filtros = $filtros ?? [];
 $idOS = (int)($os['id'] ?? 0);
 $codigo = (string)($os['codigo_os'] ?? '');
 ?>
+<link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/ordenes-servicio-sobrio.css">
 <style>
     .os-bitacora-wrap { width: 100%; max-width: 100%; margin: 0 0 40px 0; }
-    .os-bitacora-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-    .os-bitacora-head h1 { margin: 0; font-size: 22px; color: #0f172a; }
-    .os-bitacora-head p { margin: 4px 0 0 0; color: #64748b; font-size: 13.5px; }
-    .os-bitacora-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 8px; }
-    .os-bitacora-filtros label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .04em; }
-    .os-bitacora-filtros input, .os-bitacora-filtros select { min-width: 140px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
-    .os-bitacora-filtros button, .os-bitacora-filtros a.btn-limpiar { height: 36px; padding: 0 14px; border-radius: 6px; font-weight: 700; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
-    .os-bitacora-filtros button { background: #103487; color: #fff; border: none; cursor: pointer; }
-    .os-bitacora-filtros a.btn-limpiar { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+    .os-bitacora-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .os-bitacora-filtros label { display: flex; flex-direction: column; gap: 4px; }
+    .os-bitacora-filtros input, .os-bitacora-filtros select { min-width: 140px; }
 </style>
 
-<div class="os-bitacora-wrap">
-    <div class="os-bitacora-head">
-        <div>
-            <h1><i class="fa-solid fa-clock-rotate-left" style="color:#103487;"></i> Bitácora <?= htmlspecialchars($codigo, ENT_QUOTES, 'UTF-8') ?></h1>
-            <p>Quién hizo qué, cuándo y sobre qué entidad. Los registros no se editan ni se borran desde la aplicación.</p>
+<div class="container-fluid px-0 py-0 cy-os-wrap os-bitacora-wrap">
+    <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $idOS ?>" class="cy-back-link"><i class="fa-solid fa-arrow-left"></i> Volver a la orden</a>
+    <div class="cy-os-header">
+        <div class="cy-os-header-left">
+            <h1 class="cy-page-title">Bitácora <?= htmlspecialchars($codigo, ENT_QUOTES, 'UTF-8') ?></h1>
+            <div class="cy-meta">Quién hizo qué, cuándo y sobre qué entidad. Los registros no se editan ni se borran desde la aplicación.</div>
         </div>
-        <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $idOS ?>" style="color:#103487; font-weight:700; text-decoration:none;">Volver a la orden</a>
     </div>
 
     <form method="get" action="/Cycsa/publico/ordenes-servicio/bitacora" class="os-bitacora-filtros">
@@ -57,8 +53,8 @@ $codigo = (string)($os['codigo_os'] ?? '');
         <label>Hasta
             <input type="date" name="hasta" value="<?= htmlspecialchars((string)($filtros['hasta'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
         </label>
-        <button type="submit">Filtrar</button>
-        <a class="btn-limpiar" href="/Cycsa/publico/ordenes-servicio/bitacora?id=<?= $idOS ?>">Limpiar</a>
+        <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+        <a class="btn btn-outline-secondary btn-sm btn-limpiar" href="/Cycsa/publico/ordenes-servicio/bitacora?id=<?= $idOS ?>">Limpiar</a>
     </form>
 
 <?php

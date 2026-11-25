@@ -2,6 +2,8 @@
 // Vista principal - Listado Unificado de Órdenes de Servicio & Hojas de Recepción (CYCSA ERP Premium Style)
 $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 ?>
+<link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/ordenes-servicio-sobrio.css">
 <link rel="stylesheet" href="/Cycsa/publico/css/rtfm13_fullscreen.css">
 <style>
     :root {
@@ -277,58 +279,57 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
     .modal-premium-content { width: 96%; max-width: 1540px; max-height: 92vh; overflow-y: auto; padding: 22px 28px; background: white; margin: 1.5% auto; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
 </style>
 
+<div class="container-fluid px-0 py-0 cy-os-wrap">
 <div class="os-modulo-container">
     
     <?php if (!empty($_SESSION['exito'])): ?>
-        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert" style="border-radius:10px; font-size:14px; font-weight:600; box-shadow:0 2px 6px rgba(16,185,129,0.15);">
-            <i class="fa-solid fa-circle-check me-2"></i> <?= $_SESSION['exito'] ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="cy-note mb-3 d-flex align-items-center justify-content-between gap-2" role="status">
+            <div class="d-flex align-items-center gap-2">
+                <span class="cy-pill cy-pill-ok">Listo</span>
+                <span style="color: var(--cy-text);"><?= $_SESSION['exito'] ?></span>
+            </div>
         </div>
         <?php unset($_SESSION['exito']); ?>
     <?php endif; ?>
     <?php if (!empty($_SESSION['error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert" style="border-radius:10px; font-size:14px; font-weight:600; box-shadow:0 2px 6px rgba(239,68,68,0.15);">
-            <i class="fa-solid fa-triangle-exclamation me-2"></i> <?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="cy-note mb-3 d-flex align-items-center justify-content-between gap-2" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <span class="cy-pill cy-pill-danger">Aviso</span>
+                <span style="color: var(--cy-text);"><?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
         </div>
         <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
-    <!-- CABECERA -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 15px;">
-        <div>
-            <h2 style="margin: 0; color: #0f172a; font-size: 24px; font-family: 'Outfit', sans-serif; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                <i class="fa-solid fa-file-contract" style="color: var(--cycsa-azul);"></i> Órdenes de Servicio & Hojas de Recepción
-            </h2>
-            <p style="color: #64748b; margin-top: 5px; font-size: 14px; margin-bottom: 0;">
-                Gestión integral del formato oficial <strong>CYCSA-RG-FM-39 V1</strong>, logística de muestreo en campo y registro de especímenes <strong>CYCSA-RT-FM-13</strong>.
-            </p>
+    <!-- CABECERA SOBRIA + PESTAÑAS SEGMENTADAS (ESTILO CAPTURA TÉCNICA) -->
+    <div class="cy-os-header lims-toolbar-top">
+        <div class="cy-os-header-left">
+            <h1 class="cy-page-title">Órdenes de Servicio</h1>
+            <div class="cy-meta">
+                Gestión integral CYCSA-RG-FM-39 V1, muestreo en campo y hojas de recepción CYCSA-RT-FM-13.
+            </div>
         </div>
-        <div style="display: flex; gap: 10px;">
+        <div class="cy-os-header-actions">
+            <div class="lims-quick-tabs">
+                <a href="/Cycsa/publico/ordenes-servicio?tab=activas<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'activas') ? 'active' : '' ?>">
+                    Órdenes Activas
+                    <span class="quick-tab-badge"><?= $conteosTabs['activas'] ?? 0 ?></span>
+                </a>
+                <a href="/Cycsa/publico/ordenes-servicio?tab=muestreo<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'muestreo') ? 'active' : '' ?>">
+                    Requiere Muestreo
+                    <span class="quick-tab-badge"><?= $conteosTabs['muestreo'] ?? 0 ?></span>
+                </a>
+                <a href="/Cycsa/publico/ordenes-servicio?tab=historico<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'historico') ? 'active' : '' ?>">
+                    Histórico / Finalizadas
+                    <span class="quick-tab-badge"><?= $conteosTabs['historico'] ?? 0 ?></span>
+                </a>
+                <a href="/Cycsa/publico/ordenes-servicio?tab=todas<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'todas') ? 'active' : '' ?>">
+                    Todas
+                    <span class="quick-tab-badge"><?= $conteosTabs['todas'] ?? 0 ?></span>
+                </a>
+            </div>
             <a href="/Cycsa/publico/cotizaciones" class="btn-cycsa btn-cycsa-secondary">
-                <i class="fa-solid fa-arrow-left"></i> Ir a Cotizaciones
-            </a>
-        </div>
-    </div>
-
-    <!-- PESTAÑAS DE ESTADO (QUICK TABS SPRINT F) -->
-    <div class="lims-toolbar-top">
-        <div class="lims-quick-tabs">
-            <a href="/Cycsa/publico/ordenes-servicio?tab=activas<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'activas') ? 'active' : '' ?>">
-                <i class="fa-solid fa-bolt"></i> Órdenes Activas
-                <span class="quick-tab-badge"><?= $conteosTabs['activas'] ?? 0 ?></span>
-            </a>
-            <a href="/Cycsa/publico/ordenes-servicio?tab=muestreo<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'muestreo') ? 'active' : '' ?>">
-                <i class="fa-solid fa-truck-pickup"></i> Requiere Muestreo
-                <span class="quick-tab-badge"><?= $conteosTabs['muestreo'] ?? 0 ?></span>
-            </a>
-            <a href="/Cycsa/publico/ordenes-servicio?tab=historico<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'historico') ? 'active' : '' ?>">
-                <i class="fa-solid fa-box-archive"></i> Histórico / Finalizadas
-                <span class="quick-tab-badge"><?= $conteosTabs['historico'] ?? 0 ?></span>
-            </a>
-            <a href="/Cycsa/publico/ordenes-servicio?tab=todas<?= !empty($busqueda) ? '&q=' . urlencode($busqueda) : '' ?>" class="quick-tab-link <?= ($tabActiva === 'todas') ? 'active' : '' ?>">
-                <i class="fa-solid fa-list-ul"></i> Todas
-                <span class="quick-tab-badge"><?= $conteosTabs['todas'] ?? 0 ?></span>
+                Ir a Cotizaciones
             </a>
         </div>
     </div>
@@ -606,9 +607,8 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                                         <?php if (in_array($_SESSION['usuario_rol'] ?? 0, [1, 3]) || tienePermiso('ordenes_servicio', 'aprobar')): ?>
                                             <a href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= $os['id'] ?>"
                                                class="btn-cycsa btn-cycsa-primary"
-                                               style="background:#059669; border-color:#059669; min-height:38px; font-weight:700;"
                                                title="Revisar y editar toda la Orden de Servicio antes de aprobarla">
-                                                <i class="fa-solid fa-pen-to-square"></i> Editar y Aprobar
+                                                Editar y Aprobar
                                             </a>
                                         <?php else: ?>
                                             <a href="/Cycsa/publico/ordenes-servicio/editar?id_os=<?= $os['id'] ?>"
@@ -1781,25 +1781,25 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 <!-- MODAL CYCSA-RT-FM-40 B EN LÍNEA ASOCIADO A RT-FM-13 -->
 <div id="modalFm40B" class="modal-overlay" style="display:none; z-index:1060; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.72); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#fff; width:100%; max-width:1100px; max-height:92vh; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
-        <div style="background:linear-gradient(135deg, #0f172a 0%, #0369a1 100%); color:#fff; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="background:#ffffff; color:#111827; border-bottom:1px solid #E5E7EB; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:12px;">
-                <span style="width:40px; height:40px; border-radius:10px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; font-size:18px;">
+                <span style="width:38px; height:38px; border-radius:8px; background:#EEF1F7; color:#1F3864; display:flex; align-items:center; justify-content:center; font-size:16px;">
                     <i class="fa-solid fa-clipboard-check"></i>
                 </span>
                 <div>
-                    <div style="font-size:16px; font-weight:800; letter-spacing:-0.2px;">
+                    <div style="font-size:16px; font-weight:600; color:#111827;">
                         CYCSA-RT-FM-40 B · Lista de Chequeo de Muestreo
                     </div>
-                    <div id="fm40b_subtitulo" style="font-size:12px; color:#bae6fd; font-weight:500;">
+                    <div id="fm40b_subtitulo" style="font-size:13px; color:#6B7280; font-weight:400;">
                         Asociado a hoja RT-FM-13 dentro de la Orden de Servicio
                     </div>
                 </div>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
-                <span id="fm40b_badge_estado" style="padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:700; background:rgba(255,255,255,0.18); color:#fff;">
+                <span id="fm40b_badge_estado" class="cy-pill cy-pill-warn">
                     Pendiente
                 </span>
-                <button type="button" onclick="cerrarModalFm40B()" style="background:rgba(255,255,255,0.15); border:none; color:#fff; width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:16px;">
+                <button type="button" onclick="cerrarModalFm40B()" style="background:#FFFFFF; border:1px solid #E5E7EB; color:#6B7280; width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:15px;">
                     <i class="fa-solid fa-times"></i>
                 </button>
             </div>
@@ -1996,17 +1996,17 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 <!-- MODAL PERÍODO MENSUAL / CONTRATO LARGO EN LÍNEA (Sin perder aprobación) -->
 <div id="modalPeriodoContrato" class="modal-overlay" style="display:none; z-index:1065; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.72); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#fff; width:100%; max-width:640px; border-radius:14px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
-        <div style="background:linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%); color:#fff; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="background:#ffffff; color:#111827; border-bottom:1px solid #E5E7EB; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:12px;">
-                <span style="width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; font-size:17px;">
+                <span style="width:38px; height:38px; border-radius:8px; background:#EEF1F7; color:#1F3864; display:flex; align-items:center; justify-content:center; font-size:16px;">
                     <i class="fa-solid fa-calendar-days"></i>
                 </span>
                 <div>
-                    <div style="font-size:16px; font-weight:800;">Período Mensual / Contrato Largo</div>
-                    <div id="pc_subtitulo" style="font-size:12px; color:#c7d2fe;">Determinar duración y fecha de cierre de la O/S</div>
+                    <div style="font-size:16px; font-weight:600; color:#111827;">Período Mensual / Contrato Largo</div>
+                    <div id="pc_subtitulo" style="font-size:13px; color:#6B7280;">Determinar duración y fecha de cierre de la O/S</div>
                 </div>
             </div>
-            <button type="button" onclick="cerrarModalPeriodoContrato()" style="background:rgba(255,255,255,0.15); border:none; color:#fff; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:15px;">
+            <button type="button" onclick="cerrarModalPeriodoContrato()" style="background:#FFFFFF; border:1px solid #E5E7EB; color:#6B7280; width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:15px;">
                 <i class="fa-solid fa-times"></i>
             </button>
         </div>
@@ -5098,11 +5098,12 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 </a>
                 <div style="display:flex; gap:8px;">
                     <button type="button" onclick="cerrarModalEnviarInformeOS()" class="btn-cycsa btn-cycsa-secondary" style="min-height:34px; padding:5px 12px; font-size:12.5px;">Cancelar</button>
-                    <button type="submit" class="btn-cycsa btn-cycsa-primary" style="min-height:34px; padding:5px 14px; font-size:12.5px;">
-                        <i class="fa-solid fa-paper-plane"></i> Enviar por Correo
+                    <button type="submit" class="btn-cycsa btn-cycsa-primary" style="min-height:34px; padding:5px 14px; font-size:13px;">
+                        Enviar por Correo
                     </button>
                 </div>
             </div>
         </form>
     </div>
+</div>
 </div>

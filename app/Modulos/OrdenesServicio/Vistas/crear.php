@@ -1,6 +1,8 @@
 <?php
 // Vista para crear Orden de Servicio CYCSA-RG-FM-39 V1 (CYCSA ERP Premium Style)
 ?>
+<link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/ordenes-servicio-sobrio.css">
 <style>
     .cycsa-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 25px; margin-bottom: 25px; }
     .cycsa-card-title { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--cycsa-azul); border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
@@ -31,20 +33,13 @@
     .radio-option-card.selected-si { border-color: #10b981; background: #f0fdf4; color: #065f46; }
 </style>
 
-<div style="width: 100%; max-width: 100%; margin: 0; padding-bottom: 40px;">
-    
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div>
-            <h2 style="margin: 0; color: #0f172a; font-size: 22px; font-family: 'Outfit', sans-serif; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                <i class="fa-solid fa-file-contract" style="color: var(--cycsa-azul);"></i> Generar Orden de Servicio
-            </h2>
-            <p style="color: #64748b; margin-top: 4px; font-size: 13.5px; margin-bottom: 0;">
-                Formato Oficial <strong>CYCSA-RG-FM-39 V1</strong>
-            </p>
+<div class="container-fluid px-0 py-0 cy-os-wrap" style="padding-bottom: 32px;">
+    <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cotizacion['id']) ?>" class="cy-back-link"><i class="fa-solid fa-arrow-left"></i> Volver a Cotización</a>
+    <div class="cy-os-header">
+        <div class="cy-os-header-left">
+            <h1 class="cy-page-title">Generar Orden de Servicio</h1>
+            <div class="cy-meta">Formato Oficial CYCSA-RG-FM-39 V1</div>
         </div>
-        <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cotizacion['id']) ?>" class="btn-cycsa btn-cycsa-secondary">
-            <i class="fa-solid fa-arrow-left"></i> Volver a Cotización
-        </a>
     </div>
 
     <form action="/Cycsa/publico/ordenes-servicio/guardar" method="POST">
@@ -249,12 +244,12 @@
             </div>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <div class="cy-os-form-footer">
             <a href="/Cycsa/publico/cotizaciones/detalle?id=<?= codificarId($cotizacion['id']) ?>" class="btn-cycsa btn-cycsa-secondary">
                 Cancelar
             </a>
-            <button type="submit" class="btn-cycsa btn-cycsa-primary" style="padding: 12px 28px; font-size: 15px;">
-                <i class="fa-solid fa-floppy-disk"></i> Guardar Orden de Servicio y Continuar
+            <button type="submit" class="btn-cycsa btn-cycsa-primary">
+                Guardar Orden de Servicio y Continuar
             </button>
         </div>
     </form>

@@ -9,6 +9,8 @@ $idClienteFacturaActual = (int)($os['id_cliente_factura'] ?? $os['id_cliente'] ?
 $idClienteInformeActual = (int)($os['id_cliente_informe'] ?? $os['id_cliente'] ?? 0);
 $listaClientes = $clientes ?? [];
 ?>
+<link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/ordenes-servicio-sobrio.css">
 <style>
     .cycsa-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 25px; margin-bottom: 25px; }
     .cycsa-card-title { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--cycsa-azul); border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
@@ -45,22 +47,18 @@ $listaClientes = $clientes ?? [];
     }
 </style>
 
-<div style="width: 100%; max-width: 100%; margin: 0; padding-bottom: 40px;">
-    
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div>
-            <h2 style="margin: 0; color: #0f172a; font-size: 22px; font-family: 'Outfit', sans-serif; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                <i class="fa-solid fa-pen-to-square" style="color: var(--cycsa-azul);"></i> Editar Orden de Servicio
-            </h2>
-            <p style="color: #64748b; margin-top: 4px; font-size: 13.5px; margin-bottom: 0;">
-                Documento <strong><?= htmlspecialchars($os['codigo_os']) ?></strong>
-                <span style="background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; padding: 1px 7px; border-radius: 10px; font-size: 11.5px; font-weight: 700; margin-left: 4px;">v<?= (int)($os['version'] ?? 1) ?></span>
-                &bull; Estado actual: <strong><?= htmlspecialchars($os['estado']) ?></strong>
-            </p>
+<div class="container-fluid px-0 py-0 cy-os-wrap" style="padding-bottom: 32px;">
+    <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="cy-back-link"><i class="fa-solid fa-arrow-left"></i> Volver a O/S</a>
+    <div class="cy-os-header">
+        <div class="cy-os-header-left">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <h1 class="cy-page-title">Editar Orden de Servicio <?= htmlspecialchars($os['codigo_os']) ?></h1>
+                <span class="cy-pill <?= $esAprobada ? 'cy-pill-ok' : 'cy-pill-warn' ?>"><?= htmlspecialchars($os['estado']) ?></span>
+            </div>
+            <div class="cy-meta">
+                Documento <strong><?= htmlspecialchars($os['codigo_os']) ?></strong> · v<?= (int)($os['version'] ?? 1) ?> · Estado actual: <?= htmlspecialchars($os['estado']) ?>
+            </div>
         </div>
-        <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= $os['id'] ?>" class="btn-cycsa btn-cycsa-secondary">
-            <i class="fa-solid fa-arrow-left"></i> Volver a O/S
-        </a>
     </div>
 
     <?php if ($esAprobada): ?>
@@ -276,16 +274,16 @@ $listaClientes = $clientes ?? [];
             </table>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
+        <div class="cy-os-form-footer">
             <a href="/Cycsa/publico/ordenes-servicio" class="btn-cycsa btn-cycsa-secondary">
                 Cancelar
             </a>
-            <button type="submit" class="btn-cycsa <?= $mostrarAprobacionEnEdicion ? 'btn-cycsa-secondary' : 'btn-cycsa-primary' ?>" style="padding: 12px 24px; font-size: 14.5px;">
-                <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+            <button type="submit" class="btn-cycsa <?= $mostrarAprobacionEnEdicion ? 'btn-cycsa-secondary' : 'btn-cycsa-primary' ?>">
+                Guardar Cambios
             </button>
             <?php if ($mostrarAprobacionEnEdicion): ?>
-                <button type="submit" name="aprobar_al_guardar" value="1" class="btn-cycsa btn-cycsa-primary" style="background: #059669; border-color: #059669; padding: 12px 28px; font-size: 15px; font-weight: 700;">
-                    <i class="fa-solid fa-check-double"></i> Guardar y Aprobar O/S
+                <button type="submit" name="aprobar_al_guardar" value="1" class="btn-cycsa btn-cycsa-primary">
+                    Guardar y Aprobar O/S
                 </button>
             <?php endif; ?>
         </div>
