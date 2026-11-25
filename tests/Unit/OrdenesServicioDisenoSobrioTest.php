@@ -44,6 +44,7 @@ class OrdenesServicioDisenoSobrioTest extends TestCase
         $this->assertStringNotContainsString('<tr class="fila-desplegable"', $indexSrc, 'Las opciones de O/S deben abrirse en ventana modal, no en acordeón en fila');
         $this->assertStringContainsString('id="modalOpcionesOS"', $indexSrc, 'Debe existir la ventana modal #modalOpcionesOS');
         $this->assertStringContainsString('abrirModalOpcionesOS(', $indexSrc, 'Debe existir el botón/función abrirModalOpcionesOS');
+        $this->assertStringNotContainsString('fa-magnifying-glass" style="position: absolute', $indexSrc, 'No debe haber lupa flotante superpuesta al texto del buscador');
 
         $cssOsSrc = (string)file_get_contents($root . '/publico/css/ordenes-servicio-sobrio.css');
         $this->assertStringContainsString('min-height: 0 !important;', $cssOsSrc);

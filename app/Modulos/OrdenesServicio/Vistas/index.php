@@ -336,15 +336,14 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
     <!-- BUSCADOR Y FILTROS -->
     <form method="GET" action="/Cycsa/publico/ordenes-servicio" class="search-bar-premium" style="display:flex; flex-direction:column; gap:12px;">
         <input type="hidden" name="tab" value="<?= htmlspecialchars($tabActiva ?? 'activas', ENT_QUOTES, 'UTF-8') ?>">
-        <div style="display: flex; gap: 12px; width: 100%; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 280px; position: relative;">
-                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;"></i>
-                <input type="text" name="q" placeholder="Buscar por código O/S, cotización, cliente o proyecto..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control-cycsa" style="padding-left: 38px; min-height: 40px;">
+        <div style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 1; min-width: 260px;">
+                <input type="text" name="q" placeholder="Buscar por código O/S, cotización, cliente o proyecto..." value="<?= htmlspecialchars($busqueda ?? '', ENT_QUOTES, 'UTF-8') ?>" class="form-control-cycsa" style="min-height: 38px;" aria-label="Buscar órdenes de servicio">
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button type="submit" class="btn-cycsa btn-cycsa-primary" style="min-height: 40px; padding: 8px 18px;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="submit" class="btn-cycsa btn-cycsa-primary" style="min-height: 38px;">Buscar</button>
                 <?php if(!empty($busqueda) || !empty($filtros['estado']) || !empty($filtros['desde']) || !empty($filtros['hasta'])): ?>
-                    <a href="/Cycsa/publico/ordenes-servicio?tab=<?= urlencode($tabActiva ?? 'activas') ?>" class="btn-cycsa btn-cycsa-secondary" style="min-height: 40px; padding: 8px 16px;"><i class="fa-solid fa-xmark"></i> Limpiar</a>
+                    <a href="/Cycsa/publico/ordenes-servicio?tab=<?= urlencode($tabActiva ?? 'activas') ?>" class="btn-cycsa btn-cycsa-secondary" style="min-height: 38px;">Limpiar</a>
                 <?php endif; ?>
             </div>
         </div>
