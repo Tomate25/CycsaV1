@@ -101,62 +101,29 @@ $pillCotDetClase = match ($estCotDet) {
         </div>
     </div>
 
-    <!-- METADATOS OFICIALES DE LA COTIZACIÓN (FORMATO OFICIAL CYCSA-RG-FM-31 V2R1) -->
-    <div class="cy-cot-card">
-        <table class="cy-meta-table">
-            <tr>
-                <td class="cy-meta-k">Elaborado por</td>
-                <td class="cy-meta-v sep-col" style="color: var(--cy-brand); font-weight: 600;"><?= htmlspecialchars($cotizacion['creador_nombre'] ?? 'Asesor Comercial', ENT_QUOTES, 'UTF-8') ?></td>
-                <td class="cy-meta-k">Doc. Número</td>
-                <td class="cy-meta-v" style="font-weight: 600;"><?= htmlspecialchars($cotizacion['codigo'], ENT_QUOTES, 'UTF-8') ?> <span class="cy-meta">(v<?= max(1, (int)($cotizacion['version'] ?? 1)) ?>)</span></td>
-            </tr>
-            <tr>
-                <td class="cy-meta-k">Cliente</td>
-                <td class="cy-meta-v sep-col" style="font-weight: 600;"><?= htmlspecialchars($cotizacion['cliente_nombre'], ENT_QUOTES, 'UTF-8') ?></td>
-                <td class="cy-meta-k">Fecha</td>
-                <td class="cy-meta-v"><?= date('Y-m-d', strtotime($cotizacion['fecha_creacion'])) ?></td>
-            </tr>
-            <tr>
-                <td class="cy-meta-k">Atención a</td>
-                <td class="cy-meta-v sep-col"><?= htmlspecialchars($cotizacion['atencion_a'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
-                <td class="cy-meta-k">Cédula/RUC</td>
-                <td class="cy-meta-v"><?= htmlspecialchars($cotizacion['cliente_ruc'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
-            </tr>
-            <tr>
-                <td class="cy-meta-k">Proyecto</td>
-                <td class="cy-meta-v sep-col" style="font-weight: 600;"><?= htmlspecialchars($cotizacion['nombre_proyecto'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
-                <td class="cy-meta-k">Forma de pago</td>
-                <td class="cy-meta-v"><?= htmlspecialchars($cotizacion['condicion_pago'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></td>
-            </tr>
-            <tr>
-                <td class="cy-meta-k">Correo electrónico</td>
-                <td class="cy-meta-v sep-col"><?= htmlspecialchars(!empty($cotizacion['cliente_email']) ? $cotizacion['cliente_email'] : ($cotizacion['email'] ?? 'admon@cycsanic.com'), ENT_QUOTES, 'UTF-8') ?></td>
-                <td class="cy-meta-k">Teléfono</td>
-                <td class="cy-meta-v"><?= htmlspecialchars(!empty($cotizacion['cliente_tel']) ? $cotizacion['cliente_tel'] : ($cotizacion['telefono'] ?? '(505) 8209-6275'), ENT_QUOTES, 'UTF-8') ?></td>
-            </tr>
-            <?php if (!empty($cotizacion['responsable_interno_nombre']) || !empty($cotizacion['aprobacion_interna_por'])): ?>
-            <tr>
-                <td class="cy-meta-k">Responsable Interno</td>
-                <td class="cy-meta-v sep-col"><?= htmlspecialchars($cotizacion['responsable_interno_nombre'] ?: 'Gerencia / Autorizado', ENT_QUOTES, 'UTF-8') ?></td>
-                <td class="cy-meta-k">Aprobación Interna</td>
-                <td class="cy-meta-v">
-                    <?php if (!empty($cotizacion['aprobacion_interna_por'])): ?>
-                        <span class="cy-pill cy-pill-ok"><?= htmlspecialchars($cotizacion['aprobacion_interna_nombre'] ?: ('Usuario #' . (int)$cotizacion['aprobacion_interna_por']), ENT_QUOTES, 'UTF-8') ?></span>
-                        <?php if (!empty($cotizacion['fecha_aprobacion_interna'])): ?>
-                            <span class="cy-meta ms-1">(<?= date('d/m/Y H:i', strtotime($cotizacion['fecha_aprobacion_interna'])) ?>)</span>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <span class="cy-pill cy-pill-pend">Pendiente</span>
+    <?php if (!empty($cotizacion['responsable_interno_nombre']) || !empty($cotizacion['aprobacion_interna_por'])): ?>
+        <div class="cy-note mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="cy-meta">Responsable Interno:</span>
+                <strong><?= htmlspecialchars($cotizacion['responsable_interno_nombre'] ?: 'Gerencia / Autorizado', ENT_QUOTES, 'UTF-8') ?></strong>
+            </div>
+            <div>
+                <span class="cy-meta">Aprobación Interna:</span>
+                <?php if (!empty($cotizacion['aprobacion_interna_por'])): ?>
+                    <span class="cy-pill cy-pill-ok"><?= htmlspecialchars($cotizacion['aprobacion_interna_nombre'] ?: ('Usuario #' . (int)$cotizacion['aprobacion_interna_por']), ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php if (!empty($cotizacion['fecha_aprobacion_interna'])): ?>
+                        <span class="cy-meta ms-1">(<?= date('d/m/Y H:i', strtotime($cotizacion['fecha_aprobacion_interna'])) ?>)</span>
                     <?php endif; ?>
-                </td>
-            </tr>
-            <?php endif; ?>
-        </table>
-    </div>
+                <?php else: ?>
+                    <span class="cy-pill cy-pill-pend">Pendiente</span>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <?php if ($cotizacion['estado'] === 'Aprobada por Cliente'): ?>
-        <div class="info-box" style="grid-column: span 2; background-color: #f8fafc; border: 1px solid #cbd5e1; margin-bottom: 30px; padding: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+        <div class="info-box" style="grid-column: span 2; background-color: #f8fafc; border: 1px solid #cbd5e1; margin-bottom: 24px; padding: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
                 <span class="info-label" style="font-size: 12px; font-weight: 700; color: var(--cycsa-azul); margin: 0; display: flex; align-items: center; gap: 8px; text-transform: uppercase;">
                     <i class="fa-solid fa-gears"></i> Estado del Servicio
                 </span>
@@ -173,217 +140,26 @@ $pillCotDetClase = match ($estCotDet) {
         </div>
     <?php endif; ?>
 
-    <?php 
-    $monedaSimbolo = ((int)($cotizacion['tipo_moneda'] ?? 1) === 2) ? '$' : 'C$';
-    $descuentoVal = (float)($cotizacion['descuento'] ?? 0);
-    $subtotalNeto = (float)$cotizacion['subtotal'] - $descuentoVal;
-    $configNotas = json_decode($cotizacion['configuracion_notas'] ?? '', true) ?: [];
-
-    // Resolver autorizador del descuento para la Política de Descuentos (Inciso 6.7 e)
-    $autorizadorDesc = !empty($configNotas['descuento_autorizado_por']) 
-        ? trim((string)$configNotas['descuento_autorizado_por']) 
-        : '';
-    if (empty($autorizadorDesc)) {
-        $montoDescVal = (float)($cotizacion['descuento'] ?? 0);
-        $subtotalVal = (float)($cotizacion['subtotal'] ?? 0);
-        $pctVal = ($subtotalVal > 0) ? ($montoDescVal / $subtotalVal) * 100 : 0;
-        if ($pctVal > 10) {
-            $autorizadorDesc = 'Gerencia General';
-        } elseif ($pctVal > 5) {
-            $autorizadorDesc = 'Gerencia Administrativa';
-        } else {
-            $autorizadorDesc = 'Política Comercial (Automático)';
+    <!-- DOCUMENTO OFICIAL UNIFICADO CYCSA-RG-FM-31 V2R1 (IDÉNTICO AL PDF) -->
+    <style>
+        <?= \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::renderEstilos(false) ?>
+        .rgfm31-screen-card {
+            background: #ffffff;
+            border: 1px solid var(--cy-border, #cbd5e1);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            overflow-x: auto;
         }
-    }
-    if ($autorizadorDesc === 'Otro' && !empty($configNotas['descuento_autorizado_otro'])) {
-        $autorizadorDesc = trim((string)$configNotas['descuento_autorizado_otro']);
-    }
-    $autorizadorHtml = htmlspecialchars($autorizadorDesc, ENT_QUOTES, 'UTF-8');
-    ?>
-
-    <!-- TABLA: DETALLE DE SERVICIOS COTIZADOS -->
-    <div class="cy-cot-card">
-        <div class="cy-cot-card-head">
-            <span><i class="fa-solid fa-flask me-1"></i> Detalle de servicios cotizados</span>
-            <span class="cy-meta"><?= count($detalles) ?> <?= count($detalles) === 1 ? 'ítem' : 'ítems' ?></span>
-        </div>
-        <div style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-        <table class="tabla-visual" style="margin-bottom: 0; min-width: 950px; width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="background: #f8fafc; border-bottom: 1.5px solid #cbd5e1;">
-                    <th style="width: 45px; text-align: center; padding: 10px 8px; font-weight: 700; color: #334155;">Línea</th>
-                    <th style="width: 25%; padding: 10px 12px; font-weight: 700; color: #334155;">Descripción (Nombre comercial)</th>
-                    <th style="width: 23%; padding: 10px 12px; font-weight: 700; color: #334155;">Condiciones de muestra</th>
-                    <th style="width: 14%; padding: 10px 12px; font-weight: 700; color: #334155;">Procedimiento</th>
-                    <th style="width: 10%; padding: 10px 10px; text-align: center; font-weight: 700; color: #334155;">Unidad de medida</th>
-                    <th style="width: 7%; padding: 10px 8px; text-align: center; font-weight: 700; color: #334155;">Cantidad</th>
-                    <th style="width: 9%; padding: 10px 10px; text-align: right; font-weight: 700; color: #334155;">Costo (<?= $monedaSimbolo ?>)</th>
-                    <th style="width: 11%; padding: 10px 12px; text-align: right; font-weight: 700; color: #334155;">Monto (<?= $monedaSimbolo ?>)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($detalles as $idx => $detalle): ?>
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="text-align: center; font-weight: 700; color: #0f172a; vertical-align: top; padding: 12px 8px;">
-                        <?= $idx + 1 ?>
-                    </td>
-                    <td style="vertical-align: top; padding: 12px; white-space: normal; word-wrap: break-word; overflow-wrap: anywhere;">
-                        <strong style="color: #0f172a; font-size: 13.5px; display: block; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;"><?= nl2br(htmlspecialchars((string)($detalle['descripcion_ensayo'] ?? ''), ENT_QUOTES, 'UTF-8')) ?></strong>
-                        <?php if (!empty($detalle['descripcion_adicional'])): ?>
-                            <div style="font-size: 12px; color: #64748b; margin-top: 4px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;">
-                                <?= nl2br(htmlspecialchars($detalle['descripcion_adicional'], ENT_QUOTES, 'UTF-8')) ?>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (!empty($detalle['codigo_servicio'])): ?>
-                            <span style="font-size: 10.5px; font-family: monospace; color: #64748b; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; display: inline-block; margin-top: 4px;">
-                                <?= htmlspecialchars($detalle['codigo_servicio'], ENT_QUOTES, 'UTF-8') ?>
-                            </span>
-                        <?php endif; ?>
-                    </td>
-                    <td style="vertical-align: top; padding: 12px; font-size: 12px; color: #78350f;">
-                        <?php if (!empty($detalle['condiciones_muestra'])): ?>
-                            <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 6px 10px; border-radius: 4px; white-space: pre-wrap; line-height: 1.4;">
-                                <?= nl2br(htmlspecialchars($detalle['condiciones_muestra'], ENT_QUOTES, 'UTF-8')) ?>
-                            </div>
-                        <?php else: ?>
-                            <span style="color: #94a3b8; font-style: italic;">Sin condición especial</span>
-                        <?php endif; ?>
-                    </td>
-                    <td style="vertical-align: top; padding: 12px; font-family: monospace; font-size: 12px; color: #1e40af; font-weight: 600;">
-                        <?= !empty($detalle['procedimiento']) ? htmlspecialchars($detalle['procedimiento'], ENT_QUOTES, 'UTF-8') : (!empty($detalle['norma_astm']) ? htmlspecialchars($detalle['norma_astm'], ENT_QUOTES, 'UTF-8') : '<span style="color:#94a3b8; font-weight: normal;">N/A</span>') ?>
-                    </td>
-                    <td style="vertical-align: top; padding: 12px 10px; text-align: center; font-size: 12px; color: #334155;">
-                        <span style="background: #f1f5f9; padding: 3px 8px; border-radius: 4px; font-weight: 500;">
-                            <?= htmlspecialchars($detalle['unidad_medida'] ?? 'Unidad', ENT_QUOTES, 'UTF-8') ?>
-                        </span>
-                    </td>
-                    <td style="vertical-align: top; padding: 12px 8px; text-align: center; font-weight: 600; color: #0f172a;">
-                        <?= $detalle['cantidad'] ?>
-                    </td>
-                    <td style="vertical-align: top; padding: 12px 10px; text-align: right; color: #334155;">
-                        <?= $monedaSimbolo ?> <?= number_format($detalle['precio_unitario'], 2, '.', ',') ?>
-                    </td>
-                    <td style="vertical-align: top; padding: 12px; text-align: right; font-weight: 700; color: #0f172a;">
-                        <?= $monedaSimbolo ?> <?= number_format($detalle['subtotal'], 2, '.', ',') ?>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-        </div>
-    </div>
-
-    <!-- TOTALES -->
-    <div class="d-flex justify-content-end mb-4">
-        <div class="cy-cot-card mb-0" style="width: 360px; max-width: 100%;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-            <tr style="border-bottom: 1px solid var(--cy-border);">
-                <td style="padding: 10px 16px; color: var(--cy-muted); font-weight: 500; text-align: right;">Total Bruto</td>
-                <td style="padding: 10px 16px; font-weight: 600; color: var(--cy-text); text-align: right; width: 145px;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['subtotal'], 2, '.', ',') ?></td>
-            </tr>
-            <?php if ($descuentoVal > 0): ?>
-                <tr style="border-bottom: 1px solid var(--cy-border); color: var(--cy-danger);">
-                    <td style="padding: 10px 16px; font-weight: 500; text-align: right;">
-                        Descuento
-                        <div class="cy-meta">Autorizado: <?= $autorizadorHtml ?></div>
-                    </td>
-                    <td style="padding: 10px 16px; font-weight: 600; text-align: right;">-<?= $monedaSimbolo ?> <?= number_format($descuentoVal, 2, '.', ',') ?></td>
-                </tr>
-                <tr style="border-bottom: 1px solid var(--cy-border);">
-                    <td style="padding: 10px 16px; color: var(--cy-muted); font-weight: 500; text-align: right;">Sub-total</td>
-                    <td style="padding: 10px 16px; font-weight: 600; color: var(--cy-text); text-align: right;"><?= $monedaSimbolo ?> <?= number_format($subtotalNeto, 2, '.', ',') ?></td>
-                </tr>
-            <?php endif; ?>
-            <tr style="border-bottom: 1px solid var(--cy-border);">
-                <td style="padding: 10px 16px; color: var(--cy-muted); font-weight: 500; text-align: right;">
-                    Impuesto (15%)
-                    <?php if ((int)($cotizacion['exonerado'] ?? 0)): ?>
-                        <span class="cy-pill cy-pill-ok mt-1">Exonerado<?= !empty($cotizacion['exoneracion_no']) ? ' · Aval ' . htmlspecialchars($cotizacion['exoneracion_no'], ENT_QUOTES, 'UTF-8') : '' ?></span>
-                    <?php endif; ?>
-                </td>
-                <td style="padding: 10px 16px; font-weight: 600; color: var(--cy-text); text-align: right;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['impuesto'], 2, '.', ',') ?></td>
-            </tr>
-            <tr style="background: var(--cy-brand-soft);">
-                <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: var(--cy-brand); text-align: right;">Total</td>
-                <td style="padding: 12px 16px; font-size: 16px; font-weight: 700; color: var(--cy-brand); text-align: right;"><?= $monedaSimbolo ?> <?= number_format($cotizacion['total'], 2, '.', ',') ?></td>
-            </tr>
-        </table>
-        </div>
+    </style>
+    <div class="rgfm31-screen-card">
+        <?= \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::renderCuerpo($cotizacion, $detalles, false) ?>
     </div>
 
     <?php
-    $notasDisponibles = [
-        'digital_pdf' => '<strong>Informes Digitales en PDF:</strong> Los informes de ensayo se entregan únicamente en formato digital (.PDF). Serán enviados al correo del contacto designado por el cliente.',
-        'no_movilizacion' => '<strong>Sin Movilización:</strong> No incluye movilización por traslado de muestras.',
-        'entrega_laboratorio' => '<strong>Lugar de Entrega:</strong> Cliente toma las muestras y las entrega en Laboratorio CYCSA ubicado Km 83.5 Carretera León Managua.',
-        'politica_descuento' => '<strong>Política de Descuento (Inciso 6.7 e):</strong> El descuento aplicado cuenta con la debida aprobación y ha sido formalmente autorizado por: <strong>' . $autorizadorHtml . '</strong>.',
-        'concreto' => '<strong>Muestreo de Concreto (Cilindros):</strong> El cliente deberá entregar los cilindros de concreto debidamente identificados (Nombre, Ubicación, Resistencia, Revenimiento) y de dimensiones estándar CYCSA-PE-07 (4"x8" o 6"x12").',
-        'laboratorio_lleno' => '<strong>Condición de Tiempos:</strong> Los tiempos de entrega aplican a partir del ingreso de las muestras. La disponibilidad deberá ser consultada al momento de la entrega debido a variaciones en la carga del laboratorio.',
-        'trae_muestra' => '<strong>Entrega de Muestras:</strong> El cliente traerá las muestras a las instalaciones del Laboratorio CYCSA Km 83.5 Carretera León-Managua.',
-        'minimo_muestreo' => '<strong>Programación de Muestreo:</strong> Se requiere un cargo mínimo de C$ 4,400.00 más movilización para programar muestreos. Programación con un mínimo de 2 días hábiles de anticipación.'
-    ];
-
-    if (!empty($configNotas['politica_descuento']) || ((float)($cotizacion['descuento'] ?? 0) > 0 && (!isset($configNotas['politica_descuento']) || (string)$configNotas['politica_descuento'] === '1'))) {
-        $configNotas['politica_descuento'] = 1;
-    }
-
-    if (empty($configNotas) || (count($configNotas) === 1 && isset($configNotas['politica_descuento']))) {
-        $configNotas['digital_pdf'] = 1;
-        $configNotas['no_movilizacion'] = 1;
-        $configNotas['entrega_laboratorio'] = 1;
-    }
-
-    $incluirAnexo = !empty($cotizacion['incluir_anexo_tecnico']) && !empty(trim($cotizacion['anexo_tecnico'] ?? ''));
-    $anexoContenido = trim($cotizacion['anexo_tecnico'] ?? '');
+    $incluirAnexo = !empty($cotizacion['incluir_anexo_tecnico']) && !empty(trim((string)($cotizacion['anexo_tecnico'] ?? '')));
+    $anexoContenido = trim((string)($cotizacion['anexo_tecnico'] ?? ''));
     ?>
-
-    <!-- NOTAS Y CONDICIONES / DATOS DE PAGO -->
-    <div class="grid-2 mb-4">
-        <div class="cy-cot-card mb-0">
-            <div class="cy-cot-card-head">
-                <span><i class="fa-solid fa-clipboard-list me-1"></i> Notas y condiciones de la cotización</span>
-            </div>
-            <div class="cy-cot-card-body">
-                <ul style="margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--cy-text); line-height: 1.55;">
-                    <?php foreach ($configNotas as $clave => $seleccionada): ?>
-                        <?php if ($seleccionada && isset($notasDisponibles[$clave])): ?>
-                            <li style="margin-bottom: 7px;"><?= $notasDisponibles[$clave] ?></li>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                </ul>
-
-                <?php if (!empty($cotizacion['contactos'])): ?>
-                    <div style="margin-top: 14px; border-top: 1px solid var(--cy-border); padding-top: 12px;">
-                        <div class="fw-semibold mb-1" style="font-size: 13px; color: var(--cy-brand);">Contactos de seguimiento</div>
-                        <div style="font-size: 13.5px; color: var(--cy-text); line-height: 1.5;"><?= nl2br(htmlspecialchars($cotizacion['contactos'], ENT_QUOTES, 'UTF-8')) ?></div>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <div class="cy-cot-card mb-0">
-            <div class="cy-cot-card-head">
-                <span><i class="fa-solid fa-credit-card me-1"></i> Datos de pago</span>
-            </div>
-            <div class="cy-cot-card-body">
-                <div style="font-size: 13.5px; color: var(--cy-text); line-height: 1.6; margin-bottom: 14px;">
-                    <p style="margin: 0 0 8px 0; font-weight: 600;">Pago a nombre de CYC.S.A y/o depositar en las siguientes cuentas:</p>
-                    <div class="cy-note mt-0" style="color: var(--cy-text);">
-                        <div><strong>BANPRO:</strong> C$ 10010207085164 / $ 10010210874512</div>
-                        <div><strong>BAC:</strong> C$ 357-02445-4 / $ 363259490</div>
-                        <div><strong>LAFISE:</strong> C$ 550-2000-11</div>
-                        <div class="cy-meta mt-1"><strong>RUC:</strong> J0310000073465 · Cotización válida por 30 días.</div>
-                    </div>
-                </div>
-
-                <div style="border-top: 1px solid var(--cy-border); padding-top: 12px; font-size: 13.5px; color: var(--cy-text); line-height: 1.65;">
-                    <div><span class="cy-meta">Condición de Pago:</span> <strong><?= htmlspecialchars($cotizacion['condicion_pago'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
-                    <div><span class="cy-meta">Tiempo de Entrega:</span> <strong><?= htmlspecialchars($cotizacion['tiempo_entrega'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
-                    <div><span class="cy-meta">Vigencia de Oferta:</span> <strong><?= htmlspecialchars($cotizacion['vigencia_oferta'] ?: 'N/A', ENT_QUOTES, 'UTF-8') ?></strong></div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- DOCUMENTO DIGITAL ADJUNTO (SI EXISTE) -->
     <?php if (!empty($cotizacion['archivo_adjunto'])): ?>

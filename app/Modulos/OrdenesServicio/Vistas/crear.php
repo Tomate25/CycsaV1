@@ -165,24 +165,109 @@
                     </div>
                 </div>
             </div>
-<div class="form-group-cycsa">
+            <div class="form-grid-2">
+                <div class="form-group-cycsa">
+                    <label>Dirección del Cliente:</label>
+                    <input type="text" name="direccion_cliente" class="form-control-cycsa" value="<?= htmlspecialchars((string)($cotizacion['direccion_cliente'] ?? ($cotizacion['cliente_direccion'] ?? '')), ENT_QUOTES, 'UTF-8') ?>" placeholder="Dirección fiscal o domicilio del cliente">
+                </div>
+                <div class="form-group-cycsa">
+                    <label>Ubicación del Proyecto:</label>
+                    <input type="text" name="ubicacion_proyecto" class="form-control-cycsa" value="<?= htmlspecialchars((string)($cotizacion['direccion_proyecto'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Corinto, Managua, León...">
+                </div>
+            </div>
+
+            <div class="form-group-cycsa">
                 <label>Proyecto:</label>
                 <textarea name="nombre_proyecto" class="form-control-cycsa" rows="2" required><?= htmlspecialchars($cotizacion['nombre_proyecto'] ?? '') ?></textarea>
             </div>
+
+            <div class="form-grid-2">
+                <div class="form-group-cycsa" style="margin-bottom: 0;">
+                    <label>Solicitud / Autorización del Cliente (Ref.):</label>
+                    <input type="text" name="doc_solicitud_cliente" class="form-control-cycsa" placeholder="Ej. Correo de aprobación / OC del cliente">
+                </div>
+                <div class="form-group-cycsa" style="margin-bottom: 0;">
+                    <label>Otros Anexos / Registros Técnicos:</label>
+                    <input type="text" name="doc_otros_anexos" class="form-control-cycsa" placeholder="Ej. Planos, especificaciones, anexo técnico">
+                </div>
+            </div>
+        </div>
+
+        <?php
+        $contactosInitOs = [];
+        if (!empty($cotizacion['contactos'])) {
+            $decC = json_decode((string)$cotizacion['contactos'], true);
+            if (is_array($decC)) {
+                foreach ($decC as $cc) {
+                    if (is_array($cc)) {
+                        $contactosInitOs[] = [
+                            'nombre' => (string)($cc['nombre'] ?? ''),
+                            'telefono' => (string)($cc['telefono'] ?? ''),
+                            'correo' => (string)($cc['correo'] ?? ($cc['email'] ?? '')),
+                        ];
+                    } elseif (is_string($cc) && trim($cc) !== '') {
+                        $contactosInitOs[] = ['nombre' => trim($cc), 'telefono' => '', 'correo' => ''];
+                    }
+                }
+            } else {
+                foreach (array_filter(array_map('trim', preg_split('/\r?\n/', (string)$cotizacion['contactos']) ?: [])) as $lnC) {
+                    $pC = array_map('trim', explode('|', $lnC));
+                    $contactosInitOs[] = ['nombre' => $pC[0] ?? $lnC, 'telefono' => $pC[1] ?? '', 'correo' => $pC[2] ?? ''];
+                }
+            }
+        }
+        if (empty($contactosInitOs)) {
+            $contactosInitOs[] = [
+                'nombre' => (string)($cotizacion['atencion_a'] ?? ''),
+                'telefono' => (string)($cotizacion['cliente_tel'] ?? ''),
+                'correo' => (string)($cotizacion['cliente_email'] ?? ''),
+            ];
+        }
+        ?>
+        <!-- CONTACTOS DEL CLIENTE -->
+        <div class="cycsa-card">
+            <div class="cycsa-card-title" style="justify-content: space-between;">
+                <span><i class="fa-solid fa-address-book"></i> Contactos del Cliente</span>
+                <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height: 32px; padding: 4px 12px; font-size: 12.5px;" onclick="agregarContactoOs()">
+                    + Agregar contacto
+                </button>
+            </div>
+            <table class="tabla-cycsa" id="tabla-contactos-os">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th style="width: 24%;">Teléfono</th>
+                        <th style="width: 34%;">Correo electrónico</th>
+                        <th style="width: 60px; text-align: center;"></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-contactos-os">
+                    <?php foreach ($contactosInitOs as $cRow): ?>
+                    <tr>
+                        <td><input type="text" name="contacto_nombre[]" class="form-control-cycsa" value="<?= htmlspecialchars($cRow['nombre'], ENT_QUOTES, 'UTF-8') ?>" placeholder="Nombre completo"></td>
+                        <td><input type="text" name="contacto_telefono[]" class="form-control-cycsa" value="<?= htmlspecialchars($cRow['telefono'], ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. 8888-8888"></td>
+                        <td><input type="email" name="contacto_correo[]" class="form-control-cycsa" value="<?= htmlspecialchars($cRow['correo'], ENT_QUOTES, 'UTF-8') ?>" placeholder="correo@empresa.com"></td>
+                        <td style="text-align: center;"><button type="button" class="btn-cycsa btn-cycsa-danger" style="min-height: 32px; padding: 4px 10px;" onclick="this.closest('tr').remove()" title="Quitar">&times;</button></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
 
         <!-- TABLA DE ENSAYOS INCLUIDOS -->
         <div class="cycsa-card">
             <div class="cycsa-card-title">
-                <i class="fa-solid fa-vial"></i> 2. Ensayos y Servicios Contratados
+                <i class="fa-solid fa-vial"></i> 2. Detalle de Servicios Contratados
             </div>
             
             <table class="tabla-cycsa">
                 <thead>
                     <tr>
-                        <th style="width: 70px; text-align: center;">Línea</th>
-                        <th>Código y Descripción del Ensayo / Servicio</th>
-                        <th style="width: 120px; text-align: center;">Cantidad</th>
+                        <th style="width: 65px; text-align: center;">Línea</th>
+                        <th>Descripción del servicio</th>
+                        <th style="width: 180px;">Método de ensayo</th>
+                        <th style="width: 120px; text-align: center;">Unidad de medida</th>
+                        <th style="width: 90px; text-align: center;">Cant.</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -190,20 +275,15 @@
                         <?php foreach ($detalles as $index => $det): ?>
                             <tr>
                                 <td style="text-align: center; font-weight: 700; color: #64748b;"><?= $index + 1 ?></td>
-                                <td>
-                                    <?= htmlspecialchars($det['descripcion_ensayo'] ?? $det['nombre_ensayo'] ?? '') ?>
-                                    <?php if (!empty($det['norma_astm'])): ?>
-                                        <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-left: 8px; border: 1px solid #7dd3fc;"><?= htmlspecialchars($det['norma_astm']) ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td style="text-align: center; font-weight: 700; color: #0f172a;">
-                                    <?= number_format($det['cantidad'], 1) ?>
-                                </td>
+                                <td><?= htmlspecialchars($det['descripcion_ensayo'] ?? $det['nombre_ensayo'] ?? '') ?></td>
+                                <td style="font-size: 12.5px; color: #334155;"><?= htmlspecialchars((string)(!empty($det['procedimiento']) ? $det['procedimiento'] : (!empty($det['norma_astm']) ? $det['norma_astm'] : 'Pendiente de verificar'))) ?></td>
+                                <td style="text-align: center; font-size: 12.5px;"><?= htmlspecialchars((string)($det['unidad_medida'] ?? 'Unidad')) ?></td>
+                                <td style="text-align: center; font-weight: 700; color: #0f172a;"><?= number_format((float)$det['cantidad'], 1) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="3" style="text-align: center; color: #64748b; padding: 20px;">No hay ensayos registrados en la cotización.</td>
+                            <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">No hay ensayos registrados en la cotización.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -279,6 +359,17 @@
             contenedor.style.display = 'none';
             if (badge) badge.style.display = 'none';
         }
+    }
+
+    function agregarContactoOs() {
+        const tbody = document.getElementById('tbody-contactos-os');
+        if (!tbody) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><input type="text" name="contacto_nombre[]" class="form-control-cycsa" placeholder="Nombre completo"></td>'
+            + '<td><input type="text" name="contacto_telefono[]" class="form-control-cycsa" placeholder="Ej. 8888-8888"></td>'
+            + '<td><input type="email" name="contacto_correo[]" class="form-control-cycsa" placeholder="correo@empresa.com"></td>'
+            + '<td style="text-align:center;"><button type="button" class="btn-cycsa btn-cycsa-danger" style="min-height:32px; padding:4px 10px;" onclick="this.closest(\'tr\').remove()" title="Quitar">&times;</button></td>';
+        tbody.appendChild(tr);
     }
 
     function actualizarBifurcacion(val) {

@@ -121,6 +121,65 @@ class OrdenesServicioControlador extends ControladorBase {
         ]);
     }
 
+    private function extraerContactosDesdePost(array $datos, $fallback = []): array {
+        $nombres = $datos['contacto_nombre'] ?? null;
+        $telefonos = $datos['contacto_telefono'] ?? [];
+        $correos = $datos['contacto_correo'] ?? [];
+        if (is_array($nombres)) {
+            $lista = [];
+            foreach ($nombres as $idx => $nom) {
+                $n = trim((string)$nom);
+                $t = trim((string)($telefonos[$idx] ?? ''));
+                $c = trim((string)($correos[$idx] ?? ''));
+                if ($n !== '' || $t !== '' || $c !== '') {
+                    $lista[] = ['nombre' => $n, 'telefono' => $t, 'correo' => $c];
+                }
+            }
+            return $lista;
+        }
+        if (isset($datos['contactos']) && is_array($datos['contactos'])) {
+            return $datos['contactos'];
+        }
+        if (!empty($datos['contactos_json'])) {
+            if (is_array($datos['contactos_json'])) {
+                return $datos['contactos_json'];
+            }
+            $dec = json_decode((string)$datos['contactos_json'], true);
+            if (is_array($dec)) {
+                return $dec;
+            }
+        }
+        if (is_string($fallback) && trim($fallback) !== '') {
+            $decFb = json_decode($fallback, true);
+            if (is_array($decFb)) {
+                return $decFb;
+            }
+            $lineas = array_filter(array_map('trim', preg_split('/\r?\n/', $fallback) ?: []));
+            $lista = [];
+            foreach ($lineas as $ln) {
+                $partes = array_map('trim', explode('|', $ln));
+                $lista[] = [
+                    'nombre' => $partes[0] ?? $ln,
+                    'telefono' => $partes[1] ?? '',
+                    'correo' => $partes[2] ?? '',
+                ];
+            }
+            return $lista;
+        }
+        return is_array($fallback) ? $fallback : [];
+    }
+
+    private function extraerDocumentosVinculadosDesdePost(array $datos, $fallback = []): array {
+        $base = is_array($fallback) ? $fallback : (is_string($fallback) ? (json_decode($fallback, true) ?: []) : []);
+        if (array_key_exists('doc_solicitud_cliente', $datos) || array_key_exists('doc_otros_anexos', $datos)) {
+            return [
+                'solicitud_cliente' => trim((string)($datos['doc_solicitud_cliente'] ?? ($base['solicitud_cliente'] ?? ''))),
+                'otros_anexos' => trim((string)($datos['doc_otros_anexos'] ?? ($base['otros_anexos'] ?? ''))),
+            ];
+        }
+        return $base;
+    }
+
     /**
      * Procesar la creación de la Orden de Servicio y ejecutar la bifurcación (Paso 2)
      */
@@ -172,6 +231,9 @@ class OrdenesServicioControlador extends ControladorBase {
         $fechaFin = !empty($datos['fecha_fin']) ? trim($datos['fecha_fin']) : null;
         $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
 
+        $contactosOS = $this->extraerContactosDesdePost($datos, $cotizacion['contactos'] ?? []);
+        $docsVinculadosOS = $this->extraerDocumentosVinculadosDesdePost($datos, []);
+
         $idOS = $osModelo->crear([
             'codigo_os' => $codigoOS,
             'id_cotizacion' => $idCotizacion,
@@ -183,10 +245,13 @@ class OrdenesServicioControlador extends ControladorBase {
             'elaborado_por' => $_SESSION['usuario_nombre'] ?? 'Administración',
             'fecha_emision' => $datos['fecha_emision'] ?? date('Y-m-d'),
             'atencion_a' => trim($datos['atencion_a'] ?? ($cotizacion['atencion_a'] ?? '')),
+            'direccion_cliente' => trim($datos['direccion_cliente'] ?? ($cotizacion['direccion_cliente'] ?? ($cotizacion['cliente_direccion'] ?? ''))),
             'nombre_proyecto' => trim($datos['nombre_proyecto'] ?? ($cotizacion['nombre_proyecto'] ?? '')),
+            'ubicacion_proyecto' => trim($datos['ubicacion_proyecto'] ?? ($cotizacion['direccion_proyecto'] ?? '')),
             'forma_pago' => $formaPago,
             'notas_condiciones' => trim($datos['notas_condiciones'] ?? ''),
-            'contactos_json' => $datos['contactos'] ?? [],
+            'contactos_json' => $contactosOS,
+            'documentos_vinculados_json' => $docsVinculadosOS,
             'requiere_muestreo' => $requiereMuestreo ? 1 : 0,
             'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : ($esMultimes ? 'Marco' : 'Puntual'),
             'es_multimes' => $esMultimes,
@@ -355,15 +420,21 @@ class OrdenesServicioControlador extends ControladorBase {
             }
         }
 
+        $contactosActualizados = $this->extraerContactosDesdePost($datos, $os['contactos_json'] ?? []);
+        $docsActualizados = $this->extraerDocumentosVinculadosDesdePost($datos, $os['documentos_vinculados_json'] ?? []);
+
         $datosActualizar = [
             'atencion_a' => $nuevoAtencionA,
+            'direccion_cliente' => array_key_exists('direccion_cliente', $datos) ? trim((string)$datos['direccion_cliente']) : ($os['direccion_cliente'] ?? ''),
             'nombre_proyecto' => $nuevoProyecto,
+            'ubicacion_proyecto' => array_key_exists('ubicacion_proyecto', $datos) ? trim((string)$datos['ubicacion_proyecto']) : ($os['ubicacion_proyecto'] ?? ''),
             'forma_pago' => $formaPago,
             'condicion_comercial' => $condicionComercial,
             'id_cliente_factura' => $nuevoCliFac,
             'id_cliente_informe' => $nuevoCliInf,
             'notas_condiciones' => $nuevasNotas,
-            'contactos_json' => $datos['contactos'] ?? ($datos['contactos_json'] ?? ($os['contactos_json'] ?? [])),
+            'contactos_json' => $contactosActualizados,
+            'documentos_vinculados_json' => $docsActualizados,
             'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : ($esMultimes ? 'Marco' : ($os['tipo_contrato'] ?? 'Puntual')),
             'es_multimes' => $esMultimes,
             'duracion_meses' => $duracionMeses,

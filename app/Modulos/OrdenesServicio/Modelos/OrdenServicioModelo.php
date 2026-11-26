@@ -232,9 +232,22 @@ class OrdenServicioModelo {
      * Obtiene una Orden de Servicio por su ID
      */
     public function obtenerPorId(int $id, int $idHoja = 0): ?array {
+        $colsOs = $this->columnasDe('ordenes_servicio');
+        $colsCot = $this->columnasDe('cotizaciones');
+        $selDirCli = in_array('direccion_cliente', $colsOs, true)
+            ? (in_array('direccion_cliente', $colsCot, true)
+                ? "COALESCE(NULLIF(os.direccion_cliente, ''), NULLIF(cot.direccion_cliente, ''), NULLIF(cli.direccion, ''), '') AS direccion_cliente,"
+                : "COALESCE(NULLIF(os.direccion_cliente, ''), NULLIF(cli.direccion, ''), '') AS direccion_cliente,")
+            : "COALESCE(NULLIF(cli.direccion, ''), '') AS direccion_cliente,";
+        $selUbicProy = in_array('ubicacion_proyecto', $colsOs, true)
+            ? "COALESCE(NULLIF(os.ubicacion_proyecto, ''), NULLIF(cot.direccion_proyecto, ''), '') AS ubicacion_proyecto,"
+            : "COALESCE(NULLIF(cot.direccion_proyecto, ''), '') AS ubicacion_proyecto,";
+
         $sql = "SELECT os.*, 
                        cot.codigo AS cotizacion_codigo, 
                        cot.version AS cotizacion_version,
+                       cot.contactos AS cotizacion_contactos,
+                       cot.configuracion_notas AS cotizacion_configuracion_notas,
                        u_cot.nombre AS cotizacion_creador_nombre,
                        COALESCE(NULLIF(os.elaborado_por, ''), u_cot.nombre, 'Personal Autorizado') AS elaborado_por,
                        cli.nombre_razon_social AS cliente_nombre,
@@ -243,6 +256,8 @@ class OrdenServicioModelo {
                        COALESCE(NULLIF(os.atencion_a, ''), NULLIF(cot.atencion_a, ''), NULLIF(cli.contacto_nombre, ''), NULLIF(cli.contacto, ''), '') AS atencion_a,
                        COALESCE(NULLIF(os.nombre_proyecto, ''), NULLIF(cot.nombre_proyecto, ''), '') AS nombre_proyecto,
                        COALESCE(NULLIF(cot.direccion_proyecto, ''), NULLIF(cli.direccion, ''), '') AS direccion_proyecto,
+                       {$selDirCli}
+                       {$selUbicProy}
                        COALESCE(NULLIF(os.forma_pago, ''), NULLIF(cot.condicion_pago, ''), 'Pago contra entrega') AS forma_pago,
                        COALESCE(cli.identificacion, cli.numero_ruc, cli.numero_cedula, '') AS cliente_rfc,
                        COALESCE(NULLIF(cli.direccion, ''), NULLIF(cot.direccion_proyecto, ''), '') AS cliente_direccion,
@@ -355,6 +370,23 @@ class OrdenServicioModelo {
             $os['hojas_servicio'] = $stmtHsDet->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Throwable $e) {
             $os['hojas_servicio'] = [];
+        }
+
+        // Remisiones de entrega vinculadas (CYCSA-RG-FM-41 / RLAB-...)
+        $os['remisiones_vinculadas'] = [];
+        if ($this->tablaExiste('remisiones_informes')) {
+            try {
+                $stmtRem = $this->db->prepare("
+                    SELECT id, codigo_remision, modalidad_entrega, fecha_entrega, estado, persona_recibe
+                    FROM remisiones_informes
+                    WHERE id_os = :id_os AND estado <> 'Anulada'
+                    ORDER BY id ASC
+                ");
+                $stmtRem->execute(['id_os' => (int)$os['id']]);
+                $os['remisiones_vinculadas'] = $stmtRem->fetchAll(PDO::FETCH_ASSOC);
+            } catch (\Throwable $e) {
+                $os['remisiones_vinculadas'] = [];
+            }
         }
 
         return $os;
@@ -691,9 +723,13 @@ class OrdenServicioModelo {
             return [];
         }
 
+        $colsIc = $this->columnasDe('informes_control');
+        $selFechaEm = in_array('fecha_generacion', $colsIc, true) ? ', ic.fecha_generacion' : (in_array('created_at', $colsIc, true) ? ', ic.created_at AS fecha_generacion' : ', NULL AS fecha_generacion');
+        $selFechaEnv = in_array('fecha_envio', $colsIc, true) ? ', ic.fecha_envio' : ', NULL AS fecha_envio';
+
         try {
             $stmt = $this->db->prepare(
-                "SELECT ic.id, ic.codigo_informe, ic.codigo_completo, ic.estado_aprobacion
+                "SELECT ic.id, ic.codigo_informe, ic.codigo_completo, ic.estado_aprobacion{$selFechaEm}{$selFechaEnv}
                  FROM informes_control ic
                  INNER JOIN lotes_muestras lm ON ic.id_lote = lm.id
                  INNER JOIN recepcion_muestras rm ON lm.id_recepcion = rm.id
@@ -725,6 +761,8 @@ class OrdenServicioModelo {
                 'id' => $id,
                 'codigo' => $codigo,
                 'estado' => $estado,
+                'fecha_emision' => !empty($fila['fecha_generacion']) ? date('Y-m-d', strtotime((string)$fila['fecha_generacion'])) : '',
+                'fecha_envio' => !empty($fila['fecha_envio']) ? date('Y-m-d', strtotime((string)$fila['fecha_envio'])) : '',
                 'aprobado' => $aprobado ? 1 : 0,
                 'url_pdf' => $aprobado ? '/Cycsa/publico/informes/descargar?id=' . $id : '',
             ];
@@ -969,12 +1007,17 @@ class OrdenServicioModelo {
         $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
 
         $tieneDuracion = $this->tieneColumnaDuracionMeses();
+        $colsOsIns = $this->columnasDe('ordenes_servicio');
+        $tieneDirCli = in_array('direccion_cliente', $colsOsIns, true);
+        $tieneUbicProy = in_array('ubicacion_proyecto', $colsOsIns, true);
+        $tieneDocsVinc = in_array('documentos_vinculados_json', $colsOsIns, true);
+
         $colsInsert = "codigo_os, id_cotizacion, cotizacion_version, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, elaborado_por, fecha_emision,
-                    atencion_a, nombre_proyecto, forma_pago, notas_condiciones,
-                    contactos_json, requiere_muestreo, tipo_contrato, es_multimes, " . ($tieneDuracion ? "duracion_meses, " : "") . "fecha_inicio, fecha_fin, periodicidad, estado";
+                    atencion_a, " . ($tieneDirCli ? "direccion_cliente, " : "") . "nombre_proyecto, " . ($tieneUbicProy ? "ubicacion_proyecto, " : "") . "forma_pago, notas_condiciones,
+                    contactos_json, " . ($tieneDocsVinc ? "documentos_vinculados_json, " : "") . "requiere_muestreo, tipo_contrato, es_multimes, " . ($tieneDuracion ? "duracion_meses, " : "") . "fecha_inicio, fecha_fin, periodicidad, estado";
         $valsInsert = ":codigo_os, :id_cotizacion, :cotizacion_version, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :elaborado_por, :fecha_emision,
-                    :atencion_a, :nombre_proyecto, :forma_pago, :notas_condiciones,
-                    :contactos_json, :requiere_muestreo, :tipo_contrato, :es_multimes, " . ($tieneDuracion ? ":duracion_meses, " : "") . ":fecha_inicio, :fecha_fin, :periodicidad, :estado";
+                    :atencion_a, " . ($tieneDirCli ? ":direccion_cliente, " : "") . ":nombre_proyecto, " . ($tieneUbicProy ? ":ubicacion_proyecto, " : "") . ":forma_pago, :notas_condiciones,
+                    :contactos_json, " . ($tieneDocsVinc ? ":documentos_vinculados_json, " : "") . ":requiere_muestreo, :tipo_contrato, :es_multimes, " . ($tieneDuracion ? ":duracion_meses, " : "") . ":fecha_inicio, :fecha_fin, :periodicidad, :estado";
 
         $sql = "INSERT INTO ordenes_servicio ({$colsInsert}) VALUES ({$valsInsert})";
 
@@ -992,7 +1035,7 @@ class OrdenServicioModelo {
             'nombre_proyecto' => $datos['nombre_proyecto'] ?? '',
             'forma_pago' => $formaPago,
             'notas_condiciones' => $datos['notas_condiciones'] ?? '',
-            'contactos_json' => is_array($datos['contactos_json'] ?? null) ? json_encode($datos['contactos_json']) : ($datos['contactos_json'] ?? '[]'),
+            'contactos_json' => is_array($datos['contactos_json'] ?? null) ? json_encode($datos['contactos_json'], JSON_UNESCAPED_UNICODE) : ($datos['contactos_json'] ?? '[]'),
             'requiere_muestreo' => !empty($datos['requiere_muestreo']) ? 1 : 0,
             'tipo_contrato' => $datos['tipo_contrato'] ?? 'Puntual',
             'es_multimes' => $esMultimes,
@@ -1001,6 +1044,16 @@ class OrdenServicioModelo {
             'periodicidad' => $periodicidad,
             'estado' => $datos['estado'] ?? 'Borrador'
         ];
+        if ($tieneDirCli) {
+            $paramsInsert['direccion_cliente'] = trim((string)($datos['direccion_cliente'] ?? ''));
+        }
+        if ($tieneUbicProy) {
+            $paramsInsert['ubicacion_proyecto'] = trim((string)($datos['ubicacion_proyecto'] ?? ''));
+        }
+        if ($tieneDocsVinc) {
+            $docsV = $datos['documentos_vinculados_json'] ?? [];
+            $paramsInsert['documentos_vinculados_json'] = is_array($docsV) ? json_encode($docsV, JSON_UNESCAPED_UNICODE) : (string)$docsV;
+        }
         if ($tieneDuracion) {
             $paramsInsert['duracion_meses'] = $esMultimes ? $duracionMeses : null;
         }
@@ -1101,6 +1154,12 @@ class OrdenServicioModelo {
 
         $tieneDuracion = $this->tieneColumnaDuracionMeses();
         $duracionSet = $tieneDuracion ? "duracion_meses = :duracion_meses," : "";
+        $tieneDirCliUpd = in_array('direccion_cliente', $colsOs, true);
+        $tieneUbicProyUpd = in_array('ubicacion_proyecto', $colsOs, true);
+        $tieneDocsVincUpd = in_array('documentos_vinculados_json', $colsOs, true);
+        $extraSet = ($tieneDirCliUpd ? "direccion_cliente = :direccion_cliente," : "")
+            . ($tieneUbicProyUpd ? "ubicacion_proyecto = :ubicacion_proyecto," : "")
+            . ($tieneDocsVincUpd ? "documentos_vinculados_json = :documentos_vinculados_json," : "");
 
         $sql = "UPDATE ordenes_servicio SET 
                     atencion_a = :atencion_a,
@@ -1111,6 +1170,7 @@ class OrdenServicioModelo {
                     id_cliente_informe = :id_cliente_informe,
                     notas_condiciones = :notas_condiciones,
                     contactos_json = :contactos_json,
+                    {$extraSet}
                     tipo_contrato = :tipo_contrato,
                     es_multimes = :es_multimes,
                     {$duracionSet}
@@ -1131,7 +1191,7 @@ class OrdenServicioModelo {
             'id_cliente_factura' => $idClienteFactura,
             'id_cliente_informe' => $idClienteInforme,
             'notas_condiciones' => $datos['notas_condiciones'] ?? '',
-            'contactos_json' => is_array($datos['contactos_json'] ?? null) ? json_encode($datos['contactos_json']) : ($datos['contactos_json'] ?? '[]'),
+            'contactos_json' => is_array($datos['contactos_json'] ?? null) ? json_encode($datos['contactos_json'], JSON_UNESCAPED_UNICODE) : ($datos['contactos_json'] ?? '[]'),
             'tipo_contrato' => !empty($datos['tipo_contrato']) ? trim($datos['tipo_contrato']) : 'Puntual',
             'es_multimes' => $esMultimes,
             'fecha_inicio' => $fechaInicio,
@@ -1139,6 +1199,20 @@ class OrdenServicioModelo {
             'periodicidad' => $periodicidad,
             'estado' => $nuevoEstado
         ];
+        if ($tieneDirCliUpd) {
+            $paramsUpd['direccion_cliente'] = array_key_exists('direccion_cliente', $datos) ? trim((string)$datos['direccion_cliente']) : ($actual['direccion_cliente'] ?? '');
+        }
+        if ($tieneUbicProyUpd) {
+            $paramsUpd['ubicacion_proyecto'] = array_key_exists('ubicacion_proyecto', $datos) ? trim((string)$datos['ubicacion_proyecto']) : ($actual['ubicacion_proyecto'] ?? '');
+        }
+        if ($tieneDocsVincUpd) {
+            if (array_key_exists('documentos_vinculados_json', $datos)) {
+                $dv = $datos['documentos_vinculados_json'];
+                $paramsUpd['documentos_vinculados_json'] = is_array($dv) ? json_encode($dv, JSON_UNESCAPED_UNICODE) : (string)$dv;
+            } else {
+                $paramsUpd['documentos_vinculados_json'] = $actual['documentos_vinculados_json'] ?? null;
+            }
+        }
         if ($tieneDuracion) {
             $paramsUpd['duracion_meses'] = $esMultimes ? $duracionMeses : null;
         }

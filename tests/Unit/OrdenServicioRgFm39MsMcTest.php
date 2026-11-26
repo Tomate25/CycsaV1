@@ -98,21 +98,28 @@ class OrdenServicioRgFm39MsMcTest extends TestCase {
         $textoPdf = $this->extraerTextoPdf($pdf);
 
         foreach ([$html, $textoPdf] as $salida) {
+            $this->assertStringContainsString($codigoMs, $salida);
+            $this->assertStringContainsString($codigoMc, $salida);
             $this->assertStringContainsString($ensayoOk, $salida);
             $this->assertStringNotContainsString($ensayoNo, $salida);
             $this->assertStringContainsString($cotCodigo, $salida);
             $this->assertStringContainsString('Versión 9', $salida);
             $this->assertStringContainsString('Cotización origen', $salida);
-            $this->assertStringNotContainsString('Código laboratorio', $salida);
-            $this->assertStringNotContainsString('Informe vinculado', $salida);
-            $this->assertStringNotContainsString('Sin informes vinculados.', $salida);
+            $this->assertStringContainsString('DETALLE DE SERVICIOS CONTRATADOS', $salida);
+            $this->assertStringContainsString('INFORMES DE ENSAYO VINCULADOS', $salida);
+            $this->assertStringContainsString('DOCUMENTOS VINCULADOS A LA ORDEN DE SERVICIO', $salida);
+            $this->assertStringContainsString('AUTORIZACIÓN Y RECEPCIÓN', $salida);
+            $this->assertStringContainsString($infOk, $salida);
+            $this->assertStringContainsString($infPend, $salida);
             $this->assertStringContainsString('(505) 2310-3988', $salida);
             $this->assertStringContainsString('gerencia@cycsanic.com', $salida);
             $this->assertStringContainsString('Lic. MTI No. 6693', $salida);
         }
 
         $this->assertCount(2, $os['informes_vinculados']);
-        $this->assertStringNotContainsString('Abrir PDF', $html);
+        $this->assertStringContainsString('/Cycsa/publico/informes/descargar?id=' . $idAprobado, $html);
+        $this->assertStringNotContainsString('/Cycsa/publico/informes/descargar?id=' . $idPendiente, $html);
+        $this->assertSame(1, substr_count($html, 'Abrir PDF'));
         $this->assertStringContainsString('data:image/', $html, 'El PDF RG-FM-39 debe incrustar el logo CYCSA en base64');
         $this->assertStringContainsString('os-header-table', $html);
         $this->assertStringContainsString('os-meta-table', $html);
@@ -136,8 +143,8 @@ class OrdenServicioRgFm39MsMcTest extends TestCase {
         $this->assertStringContainsString($ensayoB, $html);
         $this->assertStringNotContainsString('MS-', $html);
         $this->assertStringNotContainsString('MC-', $html);
-        $this->assertStringNotContainsString('Informe vinculado', $html);
-        $this->assertStringNotContainsString('Sin informes vinculados.', $html);
+        $this->assertStringContainsString('Pendiente de asignación', $html);
+        $this->assertStringContainsString('Pendiente de emisión de informes de ensayo.', $html);
         $this->assertStringNotContainsString('Abrir PDF', $html);
     }
 

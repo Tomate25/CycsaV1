@@ -178,6 +178,11 @@
             </div>
         </div>
 
+        <div class="form-group">
+            <label class="form-label">Dirección del Cliente</label>
+            <input type="text" name="direccion_cliente" id="input_direccion_cliente" class="form-control" placeholder="Dirección física o fiscal del cliente" autocomplete="off">
+        </div>
+
         <div class="grid-2">
             <div class="form-group">
                 <label class="form-label">Nombre del Proyecto *</label>
@@ -185,7 +190,7 @@
             </div>
             
             <div class="form-group">
-                <label class="form-label">Dirección Exacta del Proyecto *</label>
+                <label class="form-label">Ubicación del Proyecto *</label>
                 <input type="text" name="direccion_proyecto" class="form-control" required placeholder="Ubicación física del proyecto" autocomplete="off">
             </div>
         </div>
@@ -531,9 +536,35 @@
             </div>
         </div>
 
-        <div style="margin-top: 15px;">
-            <label class="form-label"><i class="fa-solid fa-address-book"></i> Contactos del Proyecto (Se mostrarán en el PDF)</label>
-            <textarea name="contactos" class="form-control" rows="4" style="resize: vertical;" placeholder="Nombre, Teléfono, Correo..."></textarea>
+        <div style="margin-top: 18px;">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <label class="form-label mb-0"><i class="fa-solid fa-address-book"></i> Contactos del Cliente para Seguimiento (Formato CYCSA-RG-FM-31)</label>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="agregarFilaContacto()">
+                    + Agregar contacto
+                </button>
+            </div>
+            <div style="overflow-x: auto; width: 100%;">
+                <table class="tabla-detalles" id="tabla-contactos-seguimiento" style="margin-bottom: 0; min-width: 600px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 38%;">Nombre</th>
+                            <th style="width: 24%;">Teléfono</th>
+                            <th style="width: 32%;">Correo electrónico</th>
+                            <th style="width: 6%; text-align: center;"><i class="fa-solid fa-trash"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="text" name="contacto_nombre[]" class="form-control" placeholder="Ej: Ing. Juan Pérez" autocomplete="off"></td>
+                            <td><input type="text" name="contacto_telefono[]" class="form-control" placeholder="Ej: +505 8888-9999" autocomplete="off"></td>
+                            <td><input type="email" name="contacto_correo[]" class="form-control" placeholder="Ej: contacto@empresa.com" autocomplete="off"></td>
+                            <td style="text-align: center; vertical-align: middle;">
+                                <button type="button" class="btn-remover" onclick="eliminarFilaContacto(this)" title="Eliminar contacto"><i class="fa-solid fa-xmark"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -637,6 +668,16 @@
         cardNombre.textContent = nombre;
         cardRuc.innerHTML = `<i class="fa-solid fa-id-card"></i> RUC/ID: ${ruc}`;
         cardAvatar.textContent = getInitials(nombre);
+
+        // Auto-completar dirección del cliente desde el catálogo de clientes
+        const filaCliente = document.querySelector(`#modal-tabla-clientes tr[data-cliente-id="${id}"]`);
+        const dirClienteInput = document.getElementById('input_direccion_cliente');
+        if (filaCliente && dirClienteInput) {
+            const dirVal = filaCliente.getAttribute('data-direccion') || '';
+            if (dirVal.trim() !== '') {
+                dirClienteInput.value = dirVal.trim();
+            }
+        }
         
         searchContainer.style.display = 'none';
         selectedCard.style.display = 'flex';
@@ -1737,7 +1778,7 @@
                             <?php 
                             $busqueda_val = strtolower($cli['nombre_razon_social'] . ' ' . ($cli['identificacion'] ?? '') . ' ' . ($cli['email'] ?? '') . ' ' . ($cli['telefono'] ?? ''));
                             ?>
-                            <tr style="cursor: pointer;" onclick="seleccionarClienteDesdeModal(<?= $cli['id'] ?>, '<?= htmlspecialchars($cli['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars($cli['identificacion'] ?? 'Sin RUC', ENT_QUOTES, 'UTF-8') ?>', <?= (int)($cli['exonerado_impuestos'] ?? 0) ?>, <?= (int)($cli['descuento_automatico'] ?? 0) ?>, <?= (float)($cli['porcentaje_descuento'] ?? 0.00) ?>)" data-text="<?= htmlspecialchars($busqueda_val, ENT_QUOTES, 'UTF-8') ?>">
+                            <tr style="cursor: pointer;" data-cliente-id="<?= (int)$cli['id'] ?>" data-direccion="<?= htmlspecialchars($cli['direccion'] ?? '', ENT_QUOTES, 'UTF-8') ?>" onclick="seleccionarClienteDesdeModal(<?= $cli['id'] ?>, '<?= htmlspecialchars($cli['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars($cli['identificacion'] ?? 'Sin RUC', ENT_QUOTES, 'UTF-8') ?>', <?= (int)($cli['exonerado_impuestos'] ?? 0) ?>, <?= (int)($cli['descuento_automatico'] ?? 0) ?>, <?= (float)($cli['porcentaje_descuento'] ?? 0.00) ?>)" data-text="<?= htmlspecialchars($busqueda_val, ENT_QUOTES, 'UTF-8') ?>">
                                 <td>
                                     <strong style="color: #2d3748;"><?= htmlspecialchars($cli['nombre_razon_social'], ENT_QUOTES, 'UTF-8') ?></strong>
                                 </td>
@@ -1898,5 +1939,32 @@
         if (val !== '') {
             seleccionarCondicion(val);
         }
+    }
+
+    function agregarFilaContacto() {
+        const tbody = document.querySelector('#tabla-contactos-seguimiento tbody');
+        if (!tbody) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" name="contacto_nombre[]" class="form-control" placeholder="Ej: Ing. Juan Pérez" autocomplete="off"></td>
+            <td><input type="text" name="contacto_telefono[]" class="form-control" placeholder="Ej: +505 8888-9999" autocomplete="off"></td>
+            <td><input type="email" name="contacto_correo[]" class="form-control" placeholder="Ej: contacto@empresa.com" autocomplete="off"></td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" class="btn-remover" onclick="eliminarFilaContacto(this)" title="Eliminar contacto"><i class="fa-solid fa-xmark"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function eliminarFilaContacto(btn) {
+        const tbody = document.querySelector('#tabla-contactos-seguimiento tbody');
+        if (!tbody) return;
+        const filas = tbody.querySelectorAll('tr');
+        if (filas.length <= 1) {
+            filas[0].querySelectorAll('input').forEach(inp => { inp.value = ''; });
+            return;
+        }
+        const fila = btn.closest('tr');
+        if (fila) fila.remove();
     }
 </script>

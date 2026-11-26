@@ -49,12 +49,14 @@ class OrdenesServicioDisenoSobrioTest extends TestCase
         $cssOsSrc = (string)file_get_contents($root . '/publico/css/ordenes-servicio-sobrio.css');
         $this->assertStringContainsString('min-height: 0 !important;', $cssOsSrc);
 
-        // Verificar que detalle.php conserva intacto el bloque @media print y oculta tablas extra
+        // Verificar que detalle.php conserva intacto el bloque @media print y el formato oficial RG-FM-39 V1 unificado
         $detSrc = (string)file_get_contents($vistas['detalle.php']);
         $this->assertStringContainsString('@media print', $detSrc);
-        $this->assertStringNotContainsString('Hojas de Servicio (RT-FM-13) y Solicitudes a Laboratorio (RT-FM-60)', $detSrc);
-        $this->assertStringNotContainsString('Informe vinculado', $detSrc);
-        $this->assertStringNotContainsString('Sin informes vinculados.', $detSrc);
-        $this->assertStringNotContainsString('Código laboratorio', $detSrc);
+        $this->assertStringContainsString('DATOS DEL CLIENTE Y DE LA ORDEN', $detSrc);
+        $this->assertStringContainsString('DETALLE DE SERVICIOS CONTRATADOS', $detSrc);
+        $this->assertStringContainsString('INFORMES DE ENSAYO VINCULADOS', $detSrc);
+        $this->assertStringContainsString('DOCUMENTOS VINCULADOS A LA ORDEN DE SERVICIO', $detSrc);
+        $this->assertStringContainsString('CONTACTOS DEL CLIENTE', $detSrc);
+        $this->assertStringContainsString('AUTORIZACIÓN Y RECEPCIÓN', $detSrc);
     }
 }

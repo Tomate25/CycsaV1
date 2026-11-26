@@ -23,6 +23,7 @@ use Cycsa\Modulos\Proyectos\Controladores\ProyectosControlador;
 use Cycsa\Modulos\ActivosFijos\Controladores\ActivosFijosControlador;
 use Cycsa\Modulos\EquiposBodegas\Controladores\EquiposBodegasControlador;
 use Cycsa\Modulos\Reportes\Controladores\ReportesControlador;
+use Cycsa\Modulos\Remisiones\Controladores\RemisionesControlador;
 
 // Importar Middlewares
 use Cycsa\App\Middleware\AuthMiddleware;
@@ -391,6 +392,19 @@ $app->enrutador->post('/activos-fijos/depreciacion/ejecutar', [ActivosFijosContr
 $app->enrutador->get('/reportes', [ReportesControlador::class, 'index'], [AuthMiddleware::class]);
 $app->enrutador->get('/reportes/ver', [ReportesControlador::class, 'ver'], [AuthMiddleware::class]);
 $app->enrutador->get('/reportes/exportar-excel', [ReportesControlador::class, 'exportarExcel'], [AuthMiddleware::class]);
+
+// 📋 MÓDULO DE REMISIONES DE ENTREGA DE INFORMES (CYCSA-RG-FM-41 / RLAB) Y CONTROL PT-13 Ver. 5 Rev. 2
+$app->enrutador->get('/remisiones', [RemisionesControlador::class, 'index'], [AuthMiddleware::class]);
+$app->enrutador->get('/remisiones/crear', [RemisionesControlador::class, 'crear'], [AuthMiddleware::class]);
+$app->enrutador->post('/remisiones/guardar', [RemisionesControlador::class, 'guardar'], [AuthMiddleware::class]);
+$app->enrutador->get('/remisiones/detalle', [RemisionesControlador::class, 'detalle'], [AuthMiddleware::class]);
+$app->enrutador->get('/remisiones/pdf', [RemisionesControlador::class, 'descargarPdf'], [AuthMiddleware::class]);
+$app->enrutador->post('/remisiones/marcar-entregada', [RemisionesControlador::class, 'marcarEntregada'], [AuthMiddleware::class]);
+$app->enrutador->post('/remisiones/anular', [RemisionesControlador::class, 'anular'], [AuthMiddleware::class]);
+$app->enrutador->get('/remisiones/api-informes-os', [RemisionesControlador::class, 'apiInformesPorOs'], [AuthMiddleware::class]);
+$app->enrutador->get('/remisiones/revision-pt13', [RemisionesControlador::class, 'revisionPt13'], [AuthMiddleware::class]);
+$app->enrutador->post('/remisiones/revision-pt13/guardar', [RemisionesControlador::class, 'guardarRevisionPt13'], [AuthMiddleware::class]);
+$app->enrutador->post('/remisiones/anular-informe', [RemisionesControlador::class, 'anularInforme'], [AuthMiddleware::class]);
 
 
 

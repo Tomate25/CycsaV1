@@ -194,6 +194,17 @@ class PanelControlador extends ControladorBase {
             ];
         }
 
+        // 6.1 Remisiones de Informes (RG-FM-41 / RLAB) y Control PT-13 ISO 17025
+        if (tienePermiso('ordenes_servicio', 'ver') || tienePermiso('operaciones', 'ver') || tienePermiso('recepcion', 'ver')) {
+            $cajon_aplicaciones[] = [
+                'nombre' => 'Remisiones y PT-13',
+                'link' => '/Cycsa/publico/remisiones',
+                'icon' => 'fa-solid fa-file-export',
+                'desc' => 'Remisiones de entrega RG-FM-41 (RLAB), checklist RT-FM-65 y control de informes PT-13.',
+                'color' => 'linear-gradient(135deg, #0f766e, #103487)',
+            ];
+        }
+
         // 6. Productos / Ensayos
         if (tienePermiso('productos', 'ver')) {
             $cajon_aplicaciones[] = [

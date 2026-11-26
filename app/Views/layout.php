@@ -540,6 +540,12 @@
                     <span class="menu-texto">Órdenes de Servicio</span>
                 </a>
             </li>
+            <li>
+                <a href="/Cycsa/publico/remisiones" class="<?= strpos($rutaActual, '/remisiones') !== false ? 'activo' : '' ?>">
+                    <i class="fa-solid fa-file-export"></i>
+                    <span class="menu-texto">Remisiones / PT-13</span>
+                </a>
+            </li>
             <?php endif; ?>
             <?php if (tienePermiso('operaciones', 'ver') || tienePermiso('operaciones', 'crear_editar') || tienePermiso('laboratorio', 'ver') || (function_exists('esTecnicoCiegoISO17025') && esTecnicoCiegoISO17025())): ?>
             <li>

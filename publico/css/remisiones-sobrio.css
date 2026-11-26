@@ -1,0 +1,336 @@
+/**
+ * CYCSA ERP + LIMS — Diseño Sobrio para el Módulo de Remisiones (RG-FM-41) y Control PT-13
+ * Archivo: publico/css/remisiones-sobrio.css
+ * Cargar SIEMPRE después de publico/css/cycsa-sobrio.css
+ */
+
+.cy-rem-wrap {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  color: var(--cy-text);
+  font-family: var(--bs-body-font-family);
+}
+
+/* Cabecera sobria */
+.cy-rem-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.cy-rem-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cy-rem-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cy-rem-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cy-muted);
+  text-decoration: none;
+  margin-bottom: 8px;
+}
+.cy-rem-back-link:hover {
+  color: var(--cy-brand);
+}
+
+/* Subbarra de búsqueda y acciones */
+.cy-rem-subbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cy-rem-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.cy-rem-search-input {
+  width: 280px;
+  max-width: 100%;
+  min-height: 36px;
+  font-size: 14px;
+  padding: 6px 12px;
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  background: var(--cy-surface);
+  color: var(--cy-text);
+}
+.cy-rem-search-input:focus {
+  outline: none;
+  border-color: var(--cy-brand);
+}
+
+.cy-rem-select {
+  min-height: 36px;
+  font-size: 14px;
+  padding: 6px 12px;
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  background: var(--cy-surface);
+  color: var(--cy-text);
+}
+.cy-rem-select:focus {
+  outline: none;
+  border-color: var(--cy-brand);
+}
+
+/* Barra compacta de métricas planas */
+.cy-rem-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.cy-rem-kpi-card {
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.cy-rem-kpi-label {
+  font-size: 13px;
+  color: var(--cy-muted);
+  margin-bottom: 4px;
+}
+.cy-rem-kpi-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--cy-text);
+  line-height: 1.2;
+}
+
+/* Tarjetas de formulario sobrias */
+.cy-rem-card {
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.cy-rem-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--cy-surface);
+  border-bottom: 1px solid var(--cy-border);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cy-text);
+}
+.cy-rem-card-body {
+  padding: 18px 20px;
+}
+
+.cy-rem-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.cy-rem-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .cy-rem-grid-2,
+  .cy-rem-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cy-rem-wrap .form-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.cy-rem-wrap .form-control,
+.cy-rem-wrap .form-select {
+  font-size: 14px;
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--cy-text);
+  background: var(--cy-surface);
+}
+.cy-rem-wrap .form-control:focus,
+.cy-rem-wrap .form-select:focus {
+  border-color: var(--cy-brand);
+  box-shadow: none;
+}
+
+/* Acciones en filas de tabla */
+.cy-rem-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* Botón destructivo sobrio (Anular) */
+.btn-cy-danger-outline {
+  background: #FFFFFF !important;
+  color: var(--cy-danger) !important;
+  border: 1px solid #FECACA !important;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-cy-danger-outline:hover {
+  background: var(--cy-danger-bg) !important;
+  border-color: #FCA5A5 !important;
+}
+
+/* Barra de acciones de detalle */
+.cy-rem-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+/* Control PT-13 — layout 2 columnas (bandeja izquierda + detalle derecha) */
+.cy-pt13-layout {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 1080px) {
+  .cy-pt13-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cy-pt13-list-item {
+  display: block;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--cy-border);
+  color: var(--cy-text);
+  text-decoration: none;
+  background: var(--cy-surface);
+}
+.cy-pt13-list-item:last-child {
+  border-bottom: 0;
+}
+.cy-pt13-list-item:hover {
+  background: #F9FAFB;
+  color: var(--cy-text);
+}
+.cy-pt13-list-item.is-selected {
+  background: var(--cy-brand-soft);
+  border-left: 3px solid var(--cy-brand);
+}
+
+/* Checklist CYCSA-RT-FM-65 */
+.cy-checklist-group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cy-brand);
+  background: #F9FAFB;
+  border-top: 1px solid var(--cy-border);
+  border-bottom: 1px solid var(--cy-border);
+  padding: 8px 14px;
+}
+.cy-checklist-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 150px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--cy-border);
+  font-size: 13.5px;
+}
+.cy-checklist-row:last-child {
+  border-bottom: 0;
+}
+@media (max-width: 720px) {
+  .cy-checklist-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.cy-pt13-stage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 820px) {
+  .cy-pt13-stage-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.cy-pt13-stage-box {
+  border: 1px solid var(--cy-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--cy-surface);
+}
+.cy-pt13-stage-box.is-done {
+  border-color: #BBF7D0;
+  background: #F8FFFA;
+}
+
+.cy-rem-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--cy-surface);
+  border: 1px solid var(--cy-border);
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

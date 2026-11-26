@@ -1040,6 +1040,9 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     $anexoAdjuntoSeccion = $infoAdjunto['html'];
     $rutaPdfAdjuntoFusionar = $infoAdjunto['ruta_pdf'];
 
+    $rgFm31Css = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::renderEstilos(true);
+    $rgFm31Cuerpo = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::renderCuerpo($cotizacion, $detalles, true, $qrBase64 ?: null);
+
     $html = "
     <!DOCTYPE html>
     <html lang=\"es\">
@@ -1047,57 +1050,19 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         <meta charset=\"UTF-8\">
         <style>
             @page {
-                size: A4 portrait;
-                margin-top: {$pageMarginTop};
-                margin-bottom: {$pageMarginBottom};
-                margin-left: {$pageMarginLeft};
-                margin-right: {$pageMarginRight};
-            }
-            .hoja-fondo {
-                position: fixed;
-                top: -{$pageMarginTop};
-                left: -{$pageMarginLeft};
-                width: 21.0cm;
-                height: 29.7cm;
-                z-index: -1000;
+                size: letter portrait;
+                margin: 9mm 11mm 14mm 11mm;
             }
             body {
-                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                color: #1e293b;
-                line-height: 1.35;
-                font-size: 9.5px;
+                font-family: 'DejaVu Sans', Helvetica, Arial, sans-serif;
+                color: #111827;
+                line-height: 1.32;
+                font-size: 9px;
                 margin: 0;
                 padding: 0;
+                background: #ffffff;
             }
-            .header-box {
-                border-bottom: 2px solid #103487;
-                padding-bottom: 4px;
-                margin-bottom: 10px;
-            }
-            table {
-                border-collapse: collapse;
-                width: 100%;
-                background: transparent !important;
-            }
-            table, thead, tbody, tr, th, td {
-                background: transparent !important;
-                background-color: transparent !important;
-            }
-            .tabla-items {
-                width: 100%;
-                margin-bottom: 10px;
-            }
-            .tabla-items thead {
-                display: table-header-group;
-            }
-            .tabla-items tr {
-                page-break-inside: auto;
-            }
-            .tabla-items td {
-                word-wrap: break-word;
-                overflow-wrap: break-word;
-                white-space: normal;
-            }
+            {$rgFm31Css}
             .no-split {
                 page-break-inside: avoid;
             }
@@ -1111,181 +1076,10 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
             li {
                 page-break-inside: avoid;
             }
-            .totals-table td {
-                padding: 3px 6px;
-                font-size: 9px;
-            }
         </style>
     </head>
     <body>
-        {$fondoHtml}
-
-        <!-- Header Box Page 1 -->
-        <div class=\"header-box\">
-            <table style=\"width: 100%;\">
-                <tr>
-                    <td style=\"width: 48%; vertical-align: bottom;\">
-                        {$logoHtml}
-                        <div style=\"font-size: 8.5px; font-weight: bold; color: #1e293b; margin-bottom: 2px;\">Cód. Doc CYCSA-RG-FM-31 V2R1</div>
-                        <span style=\"font-size: 7.5px; color: #64748b; font-weight: bold; text-transform: uppercase;\">Laboratorio de Ensayos y Control de Calidad</span>
-                    </td>
-                    <td style=\"width: 52%; text-align: right; vertical-align: bottom;\">
-                        <span style=\"font-size: 13px; font-weight: bold; color: #103487; text-transform: uppercase;\">Cotización de Servicio</span><br>
-                        <span style=\"font-size: 14px; font-weight: bold; color: #1e293b;\">{$codigo}</span>
-                        <span style=\"font-size: 8.5px; color: #64748b; margin-left: 8px;\">Versión: {$version}</span>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- Metadatos Oficiales CYCSA (CYCSA-RG-FM-31 V2R1) -->
-        <table style=\"width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 8px; border: 1px solid #cbd5e1;\">
-            <tr>
-                <td style=\"width: 15%; font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">ELABORADO POR:</td>
-                <td style=\"width: 35%; color: #103487; font-weight: bold; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #cbd5e1;\">{$creadorNombre}</td>
-                <td style=\"width: 15%; font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">DOC. NÚMERO:</td>
-                <td style=\"width: 35%; color: #1e293b; font-weight: bold; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0;\">{$codigo} <span style=\"font-size: 7.5px; color: #64748b; font-weight: normal;\">(v{$version})</span></td>
-            </tr>
-            <tr>
-                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">CLIENTE:</td>
-                <td style=\"color: #1e293b; font-weight: bold; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #cbd5e1;\">{$clienteNombre}</td>
-                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">FECHA:</td>
-                <td style=\"color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0;\">{$fecha}</td>
-            </tr>
-            <tr>
-                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">ATENCIÓN A:</td>
-                <td style=\"color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #cbd5e1;\">{$atencionA}</td>
-                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">CÉDULA/RUC:</td>
-                <td style=\"color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0;\">{$clienteRuc}</td>
-            </tr>
-            <tr>
-                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">PROYECTO:</td>
-                <td style=\"color: #1e293b; font-weight: bold; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #cbd5e1;\">{$proyectoNombre}</td>
-                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #f8fafc;\">FORMA DE PAGO:</td>
-                <td style=\"color: #1e293b; padding: 2.5px 5px; border-bottom: 1px solid #e2e8f0;\">{$condicionPago}</td>
-            </tr>
-            <tr>
-                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-right: 1px solid #e2e8f0; background: #f8fafc;\">CORREO ELECTRÓNICO:</td>
-                <td style=\"color: #1e293b; padding: 2.5px 5px; border-right: 1px solid #cbd5e1;\">{$clienteEmail}</td>
-                <td style=\"font-weight: bold; color: #1e293b; padding: 2.5px 5px; border-right: 1px solid #e2e8f0; background: #f8fafc;\">TELÉFONO:</td>
-                <td style=\"color: #1e293b; padding: 2.5px 5px;\">{$clienteTel}</td>
-            </tr>
-        </table>
-
-        <!-- Banner Detalle de Servicios Cotizados -->
-        <div style=\"background-color: #1F4E79; color: #ffffff; padding: 3px 6px; font-weight: bold; font-size: 8px; text-transform: uppercase; margin-bottom: 4px; border-radius: 2px; letter-spacing: 0.5px;\">
-            Detalle de servicios cotizados
-        </div>
-
-        <!-- Table of Items (8 Columns) -->
-        <table class=\"tabla-items\">
-            <thead>
-                <tr style=\"background-color: #f1f5f9;\">
-                    <th style=\"border: 1px solid #cbd5e1; padding: 5px 3px; text-align: center; font-size: 8px; color: #475569; width: 4%;\">Línea</th>
-                    <th style=\"border: 1px solid #cbd5e1; padding: 5px 5px; text-align: left; font-size: 8px; color: #475569; width: 26%;\">Descripción (Nombre comercial)</th>
-                    <th style=\"border: 1px solid #cbd5e1; padding: 5px 5px; text-align: left; font-size: 8px; color: #475569; width: 22%;\">Condiciones de muestra</th>
-                    <th style=\"border: 1px solid #cbd5e1; padding: 5px 5px; text-align: left; font-size: 8px; color: #475569; width: 14%;\">Procedimiento</th>
-                    <th style=\"border: 1px solid #cbd5e1; padding: 5px 3px; text-align: center; font-size: 8px; color: #475569; width: 8%;\">Unidad</th>
-                    <th style=\"border: 1px solid #cbd5e1; padding: 5px 3px; text-align: center; font-size: 8px; color: #475569; width: 6%;\">Cant.</th>
-                    <th style=\"border: 1px solid #cbd5e1; padding: 5px 5px; text-align: right; font-size: 8px; color: #475569; width: 10%;\">Costo</th>
-                    <th style=\"border: 1px solid #cbd5e1; padding: 5px 5px; text-align: right; font-size: 8px; color: #475569; width: 10%;\">Monto</th>
-                </tr>
-            </thead>
-            <tbody>
-                {$rowsHtml}
-            </tbody>
-        </table>
-
-        <!-- Totales y Pago -->
-        <div class=\"no-split\">
-            <table style=\"width: 100%; margin-bottom: 8px;\">
-                <tr>
-                    <td style=\"width: 58%; vertical-align: top; padding-right: 15px;\">
-                        <div style=\"background-color: #1F4E79; color: #ffffff; padding: 2.5px 6px; font-weight: bold; font-size: 8px; text-transform: uppercase; margin-bottom: 4px; border-radius: 2px; letter-spacing: 0.5px;\">
-                            Datos de pago
-                        </div>
-                        <div style=\"font-size: 8px; color: #475569; line-height: 1.35;\">
-                            <strong>Pago a nombre de CYC.S.A y/o depositar en las siguientes cuentas:</strong><br>
-                            BANPRO: C$ 10010207085164 / $ 10010210874512<br>
-                            BAC: C$ 357-02445-4 / $ 363259490<br>
-                            LAFISE: C$ 550-2000-11<br>
-                            RUC: J0310000073465. Cotización válida por 30 días.
-                        </div>
-                        <div style=\"margin-top: 6px;\">
-                            <table style=\"border-collapse: collapse;\">
-                                <tr>
-                                    <td style=\"vertical-align: middle; padding-right: 6px;\">
-                                        <span style=\"font-size: 7.5px; font-weight: bold; color: #475569; text-transform: uppercase; display: block; margin-bottom: 1px;\">Términos y Condiciones</span>
-                                        <span style=\"font-size: 7px; color: #64748b;\">Escanea el código QR para ver las políticas oficiales de CYCSA.</span>
-                                    </td>
-                                    <td style=\"vertical-align: middle;\">
-                                        <img src=\"{$qrBase64}\" style=\"height: 50px; width: 50px; border: 1px solid #cbd5e1; padding: 2px; background: white; border-radius: 4px;\">
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    </td>
-                    <td style=\"width: 42%; vertical-align: top;\">
-                        <table class=\"totals-table\" style=\"width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;\">
-                            <tr>
-                                <td style=\"text-align: right; color: #64748b; padding: 3px 6px;\">Total Bruto:</td>
-                                <td style=\"text-align: right; font-weight: bold; width: 90px; padding: 3px 6px;\">{$simboloMoneda} {$subtotal}</td>
-                            </tr>
-                            {$descuentoHtml}
-                            <tr>
-                                <td style=\"text-align: right; color: #64748b; padding: 3px 6px;\">{$ivaLabel}</td>
-                                <td style=\"text-align: right; font-weight: bold; padding: 3px 6px;\">{$simboloMoneda} {$impuesto}</td>
-                            </tr>
-                            <tr style=\"background: #e6eefc; border-top: 1px solid #cbd5e1;\">
-                                <td style=\"text-align: right; color: #103487; font-weight: bold; padding: 4px 6px;\">Total:</td>
-                                <td style=\"text-align: right; color: #103487; font-weight: bold; padding: 4px 6px;\">{$simboloMoneda} {$total}</td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- Commercial Conditions -->
-        <div class=\"no-split\" style=\"background-color: transparent; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; margin-bottom: 8px;\">
-            <strong style=\"margin: 0 0 4px 0; color: #103487; font-size: 8.5px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; display: block;\">Condiciones Comerciales</strong>
-            <table style=\"width: 100%; font-size: 8px; border-collapse: collapse;\">
-                <tr>
-                    <td style=\"width: 33.3%;\"><span style=\"color: #64748b;\">Condición de Pago:</span><br><strong>{$condicionPago}</strong></td>
-                    <td style=\"width: 33.3%;\"><span style=\"color: #64748b;\">Tiempo de Entrega:</span><br><strong>{$tiempoEntrega}</strong></td>
-                    <td style=\"width: 33.4%;\"><span style=\"color: #64748b;\">Vigencia de Oferta:</span><br><strong>{$vigenciaOferta}</strong></td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- Notes and Legends -->
-        {$notasSeccion}
-
-        <!-- Project Contacts -->
-        {$contactosHtml}
-
-        <!-- Signature Section -->
-        <div class=\"no-split\" style=\"margin-top: 15px;\">
-            <table style=\"width: 100%; border-collapse: collapse;\">
-                <tr>
-                    <td style=\"width: 45%; text-align: center; vertical-align: bottom;\">
-                        <div style=\"border-top: 1px solid #cbd5e1; width: 85%; margin: 0 auto; padding-top: 3px; font-size: 8px; color: #475569;\">
-                            <strong>Preparado por:</strong><br>
-                            {$creadorNombre}<br>
-                            CYCSA Laboratorio
-                        </div>
-                    </td>
-                    <td style=\"width: 10%;\"></td>
-                    <td style=\"width: 45%; text-align: center; vertical-align: bottom;\">
-                        <div style=\"border-top: 1px solid #cbd5e1; width: 85%; margin: 0 auto; padding-top: 3px; font-size: 8px; color: #475569;\">
-                            <strong>Aceptado por el Cliente:</strong><br>
-                            Firma / Sello Autorizado<br>
-                            Fecha: ____/____/______
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
+        {$rgFm31Cuerpo}
 
         <!-- Technical Annex (if included) -->
         {$anexoTecnicoSeccion}
@@ -1296,14 +1090,12 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     </html>";
 
     $dompdf->loadHtml($html);
-    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->setPaper('letter', 'portrait');
     $dompdf->render();
 
     $tienePdfAdjuntoParaFusionar = !empty($rutaPdfAdjuntoFusionar) && file_exists($rutaPdfAdjuntoFusionar);
     if (!$tienePdfAdjuntoParaFusionar) {
-        $bottomMargin = !empty($bgBase64) ? 104 : 26;
-        $rightMargin = !empty($bgBase64) ? 51 : 40;
-        agregarNumeracionPaginasDompdf($dompdf, 'Página {PAGE_NUM} de {PAGE_COUNT}', $bottomMargin, $rightMargin, 9.0, [0.06, 0.20, 0.53], true);
+        agregarNumeracionPaginasDompdf($dompdf, 'Página {PAGE_NUM} de {PAGE_COUNT}', 20, 34, 8.0, [0.12, 0.22, 0.39], true);
     }
 
     $pdfSalida = $dompdf->output();
@@ -3217,10 +3009,23 @@ function generarMatrizTecnicaPDF(array $detalle, array $muestrasSeteadas = [], a
         }
     }
 
-    // 2.18: Leyenda automática de asterisco (*)
+    // 2.18 / PT-13 Ver. 5 Rev. 2: Leyenda automática de asterisco (*)
     if ($tieneAsteriscoSimple) {
-        $notasOficiales[] = '* Parámetro o resultado marcado fuera del alcance de acreditación o con observación técnica.';
+        $notasOficiales[] = '* Los resultados de ensayos marcados con * se basan en actividades de ensayo fuera del alcance de acreditación.';
     }
+    // CYCSA-PT-13 Ver. 5 Rev. 2 Sec. 5.3 a: Nota obligatoria de No Declaración de Conformidad en Granulometría
+    if (stripos($archivoMd . ' ' . ($metaOficial['ensayo_realizado'] ?? ''), 'granulometr') !== false) {
+        $notasOficiales[] = 'Nota: La gráfica de comparación incluida no constituye una declaración de conformidad. El laboratorio no aplica regla de decisión ni emite declaraciones de conformidad en este informe.';
+    }
+    // CYCSA-PT-13 Ver. 5 Rev. 2 Sec. 5.2.1 c (Rev. 44): Identificación de laboratorio externo
+    if (!empty($metaOficial['es_laboratorio_externo'])) {
+        $nomLabExtPdf = trim((string)($metaOficial['laboratorio_externo_nombre'] ?? ''));
+        $notasOficiales[] = $nomLabExtPdf !== ''
+            ? "Resultado de ensayo realizado por laboratorio externo: {$nomLabExtPdf}."
+            : 'Resultado de ensayo realizado por laboratorio externo.';
+    }
+    // CYCSA-PT-13 Ver. 5 Rev. 2 Sec. 5.1 d: Leyenda informativa de emisión electrónica PDF
+    $notasOficiales[] = 'Este informe electrónico es emitido al cliente con carácter informativo, el informe oficial es impreso en hoja de papel tamaño carta, membretado, sellado y con firma manuscrita en caso de que el cliente así lo requiera. El cliente es responsable de garantizar la no alteración del mismo.';
 
     // 2.12: Nota de Aditivos configurable (pie | cabecera | ambos)
     $notaAditivos = trim((string)($metaOficial['nota_aditivos'] ?? ''));

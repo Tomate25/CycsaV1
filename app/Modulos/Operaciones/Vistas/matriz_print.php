@@ -812,7 +812,23 @@ if (!empty($codigoInformePersonalizado)) {
         }
     }
     if ($tieneAsteriscoSimplePrint) {
-        $notasOficiales[] = '* Parámetro o resultado marcado fuera del alcance de acreditación o con observación técnica.';
+        $notasOficiales[] = '* Los resultados de ensayos marcados con * se basan en actividades de ensayo fuera del alcance de acreditación.';
+    }
+    // CYCSA-PT-13 Ver. 5 Rev. 2 Sec. 5.3 a: Nota obligatoria de No Declaración de Conformidad en informes con gráfica comparativa (Granulometría)
+    $esGranulometriaPrint = (stripos($archivoMd . ' ' . $ensayoTituloOficial, 'granulometr') !== false);
+    if ($esGranulometriaPrint) {
+        $notasOficiales[] = 'Nota: La gráfica de comparación incluida no constituye una declaración de conformidad. El laboratorio no aplica regla de decisión ni emite declaraciones de conformidad en este informe.';
+    }
+    // CYCSA-PT-13 Ver. 5 Rev. 2 Sec. 5.2.1 c (Rev. 44): Identificación de laboratorio externo cuando aplique
+    if (!empty($metadatos['es_laboratorio_externo'])) {
+        $nomLabExt = trim((string)($metadatos['laboratorio_externo_nombre'] ?? ''));
+        $notasOficiales[] = $nomLabExt !== ''
+            ? "Resultado de ensayo realizado por laboratorio externo: {$nomLabExt}."
+            : 'Resultado de ensayo realizado por laboratorio externo.';
+    }
+    // CYCSA-PT-13 Ver. 5 Rev. 2 Sec. 5.1 d: Carácter informativo en emisión electrónica PDF
+    if (!empty($sinBarraPantalla) || isset($_GET['pdf']) || (isset($_GET['modo']) && $_GET['modo'] === 'pdf')) {
+        $notasOficiales[] = 'Este informe electrónico es emitido al cliente con carácter informativo, el informe oficial es impreso en hoja de papel tamaño carta, membretado, sellado y con firma manuscrita en caso de que el cliente así lo requiera. El cliente es responsable de garantizar la no alteración del mismo.';
     }
     if ($notaAditivos !== '' && ($ubicacionAditivos === 'pie' || $ubicacionAditivos === 'ambos')) {
         $notasOficiales[] = 'Nota de Aditivos: ' . $notaAditivos;

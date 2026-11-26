@@ -154,6 +154,17 @@ $listaClientes = $clientes ?? [];
 
             <div class="form-grid-2">
                 <div class="form-group-cycsa">
+                    <label>Dirección del Cliente:</label>
+                    <input type="text" name="direccion_cliente" class="form-control-cycsa" value="<?= htmlspecialchars((string)($os['direccion_cliente'] ?? ($os['cliente_direccion'] ?? '')), ENT_QUOTES, 'UTF-8') ?>" placeholder="Dirección del cliente">
+                </div>
+                <div class="form-group-cycsa">
+                    <label>Ubicación del Proyecto:</label>
+                    <input type="text" name="ubicacion_proyecto" class="form-control-cycsa" value="<?= htmlspecialchars((string)($os['ubicacion_proyecto'] ?? ($os['direccion_proyecto'] ?? '')), ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Corinto, Managua, León...">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group-cycsa">
                     <label>Modalidad de Contrato / Servicio:</label>
                     <select name="tipo_contrato" class="form-control-cycsa" style="font-weight: 600;">
                         <option value="Puntual" <?= (($os['tipo_contrato'] ?? '') === 'Puntual') ? 'selected' : '' ?>>Puntual (Un solo evento/entrega)</option>
@@ -203,6 +214,22 @@ $listaClientes = $clientes ?? [];
                 </div>
             </div>
 
+            <?php
+            $docsVincEdit = !empty($os['documentos_vinculados_json'])
+                ? (is_array($os['documentos_vinculados_json']) ? $os['documentos_vinculados_json'] : (json_decode((string)$os['documentos_vinculados_json'], true) ?: []))
+                : [];
+            ?>
+            <div class="form-grid-2">
+                <div class="form-group-cycsa">
+                    <label>Solicitud / Autorización del Cliente (Ref.):</label>
+                    <input type="text" name="doc_solicitud_cliente" class="form-control-cycsa" value="<?= htmlspecialchars((string)($docsVincEdit['solicitud_cliente'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Correo de autorización / OC del cliente">
+                </div>
+                <div class="form-group-cycsa">
+                    <label>Otros Anexos / Registros Técnicos:</label>
+                    <input type="text" name="doc_otros_anexos" class="form-control-cycsa" value="<?= htmlspecialchars((string)($docsVincEdit['otros_anexos'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. Planos, especificaciones, anexo técnico">
+                </div>
+            </div>
+
             <div class="form-group-cycsa" style="margin-bottom: <?= $esAprobada ? '16px' : '0' ?>;">
                 <label>Notas y Condiciones Especiales:</label>
                 <textarea name="notas_condiciones" class="form-control-cycsa" rows="2" placeholder="Observaciones o términos adicionales..."><?= htmlspecialchars($os['notas_condiciones'] ?? '') ?></textarea>
@@ -217,6 +244,63 @@ $listaClientes = $clientes ?? [];
                 <small style="display:block; margin-top:4px; color:#92400e; font-size:11.5px;">Se archivará un snapshot de la versión actual v<?= (int)($os['version'] ?? 1) ?> y la O/S pasará a Estado 2: Revisión para re-aprobación.</small>
             </div>
             <?php endif; ?>
+        </div>
+
+        <?php
+        $contactosEditOs = [];
+        $fuenteContactosEdit = !empty($os['contactos_json']) ? $os['contactos_json'] : ($os['cotizacion_contactos'] ?? '');
+        if (!empty($fuenteContactosEdit)) {
+            $decC = is_array($fuenteContactosEdit) ? $fuenteContactosEdit : json_decode((string)$fuenteContactosEdit, true);
+            if (is_array($decC)) {
+                foreach ($decC as $cc) {
+                    if (is_array($cc)) {
+                        $contactosEditOs[] = [
+                            'nombre' => (string)($cc['nombre'] ?? ''),
+                            'telefono' => (string)($cc['telefono'] ?? ''),
+                            'correo' => (string)($cc['correo'] ?? ($cc['email'] ?? '')),
+                        ];
+                    } elseif (is_string($cc) && trim($cc) !== '') {
+                        $contactosEditOs[] = ['nombre' => trim($cc), 'telefono' => '', 'correo' => ''];
+                    }
+                }
+            }
+        }
+        if (empty($contactosEditOs)) {
+            $contactosEditOs[] = [
+                'nombre' => (string)($os['atencion_a'] ?? ''),
+                'telefono' => (string)($os['cliente_telefono'] ?? ''),
+                'correo' => (string)($os['cliente_email'] ?? ''),
+            ];
+        }
+        ?>
+        <!-- CONTACTOS DEL CLIENTE -->
+        <div class="cycsa-card">
+            <div class="cycsa-card-title" style="justify-content: space-between;">
+                <span><i class="fa-solid fa-address-book"></i> Contactos del Cliente</span>
+                <button type="button" class="btn-cycsa btn-cycsa-secondary" style="min-height: 32px; padding: 4px 12px; font-size: 12.5px;" onclick="agregarContactoOsEdit()">
+                    + Agregar contacto
+                </button>
+            </div>
+            <table class="tabla-cycsa">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th style="width: 24%;">Teléfono</th>
+                        <th style="width: 34%;">Correo electrónico</th>
+                        <th style="width: 60px; text-align: center;"></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-contactos-os-edit">
+                    <?php foreach ($contactosEditOs as $cRow): ?>
+                    <tr>
+                        <td><input type="text" name="contacto_nombre[]" class="form-control-cycsa" value="<?= htmlspecialchars($cRow['nombre'], ENT_QUOTES, 'UTF-8') ?>" placeholder="Nombre completo"></td>
+                        <td><input type="text" name="contacto_telefono[]" class="form-control-cycsa" value="<?= htmlspecialchars($cRow['telefono'], ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej. 8888-8888"></td>
+                        <td><input type="email" name="contacto_correo[]" class="form-control-cycsa" value="<?= htmlspecialchars($cRow['correo'], ENT_QUOTES, 'UTF-8') ?>" placeholder="correo@empresa.com"></td>
+                        <td style="text-align: center;"><button type="button" class="btn-cycsa btn-cycsa-danger" style="min-height: 32px; padding: 4px 10px;" onclick="this.closest('tr').remove()" title="Quitar">&times;</button></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
 
         <!-- TABLA DE ENSAYOS INCLUIDOS (REFERENCIA Y HABILITACIÓN PARA APROBAR) -->
@@ -302,6 +386,17 @@ $listaClientes = $clientes ?? [];
                 ffEl.value = d.toISOString().slice(0, 10);
             }
         }
+    }
+
+    function agregarContactoOsEdit() {
+        const tbody = document.getElementById('tbody-contactos-os-edit');
+        if (!tbody) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><input type="text" name="contacto_nombre[]" class="form-control-cycsa" placeholder="Nombre completo"></td>'
+            + '<td><input type="text" name="contacto_telefono[]" class="form-control-cycsa" placeholder="Ej. 8888-8888"></td>'
+            + '<td><input type="email" name="contacto_correo[]" class="form-control-cycsa" placeholder="correo@empresa.com"></td>'
+            + '<td style="text-align:center;"><button type="button" class="btn-cycsa btn-cycsa-danger" style="min-height:32px; padding:4px 10px;" onclick="this.closest(\'tr\').remove()" title="Quitar">&times;</button></td>';
+        tbody.appendChild(tr);
     }
 
     function toggleMultiMes(activo) {

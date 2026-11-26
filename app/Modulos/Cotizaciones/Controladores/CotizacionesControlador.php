@@ -188,6 +188,38 @@ class CotizacionesControlador extends ControladorBase {
         ]);
     }
 
+    private function construirContactosDesdePost(array $datos): ?string {
+        $tieneArrays = isset($datos['contacto_nombre']) || isset($datos['contacto_telefono']) || isset($datos['contacto_correo']);
+        if ($tieneArrays) {
+            $nombres = is_array($datos['contacto_nombre'] ?? null) ? array_values($datos['contacto_nombre']) : [];
+            $telefonos = is_array($datos['contacto_telefono'] ?? null) ? array_values($datos['contacto_telefono']) : [];
+            $correos = is_array($datos['contacto_correo'] ?? null) ? array_values($datos['contacto_correo']) : [];
+            $totalFilas = max(count($nombres), count($telefonos), count($correos));
+            $contactos = [];
+            for ($i = 0; $i < $totalFilas; $i++) {
+                $n = trim((string)($nombres[$i] ?? ''));
+                $t = trim((string)($telefonos[$i] ?? ''));
+                $c = trim((string)($correos[$i] ?? ''));
+                if ($n !== '' || $t !== '' || $c !== '') {
+                    $contactos[] = [
+                        'nombre' => $n,
+                        'telefono' => $t,
+                        'correo' => $c,
+                    ];
+                }
+            }
+            if ($contactos !== []) {
+                return json_encode($contactos, JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        if (isset($datos['contactos']) && trim((string)$datos['contactos']) !== '') {
+            return trim((string)$datos['contactos']);
+        }
+
+        return null;
+    }
+
     public function guardar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('cotizaciones', 'crear_editar')) {
@@ -218,16 +250,17 @@ class CotizacionesControlador extends ControladorBase {
                 'tipo_moneda' => isset($datos['tipo_moneda']) ? (int)$datos['tipo_moneda'] : 1,
                 'id_usuario_creador' => $_SESSION['usuario_id'],
                 'id_responsable_interno' => !empty($datos['id_responsable_interno']) ? (int)$datos['id_responsable_interno'] : null,
-                'atencion_a' => trim($datos['atencion_a']),
-                'nombre_proyecto' => trim($datos['nombre_proyecto']),
-                'direccion_proyecto' => trim($datos['direccion_proyecto']),
+                'atencion_a' => trim((string)($datos['atencion_a'] ?? '')),
+                'direccion_cliente' => trim((string)($datos['direccion_cliente'] ?? '')) !== '' ? trim((string)$datos['direccion_cliente']) : null,
+                'nombre_proyecto' => trim((string)($datos['nombre_proyecto'] ?? '')),
+                'direccion_proyecto' => trim((string)($datos['direccion_proyecto'] ?? '')),
                 'prioridad' => $datos['prioridad'] ?? 'Normal',
                 'fecha_limite' => null,
-                'condicion_pago' => $datos['condicion_pago'],
-                'tiempo_entrega' => trim($datos['tiempo_entrega']),
-                'vigencia_oferta' => trim($datos['vigencia_oferta']),
+                'condicion_pago' => trim((string)($datos['condicion_pago'] ?? '')),
+                'tiempo_entrega' => trim((string)($datos['tiempo_entrega'] ?? '')),
+                'vigencia_oferta' => trim((string)($datos['vigencia_oferta'] ?? '')),
                 'configuracion_notas' => $notasJson,
-                'contactos' => isset($datos['contactos']) ? trim($datos['contactos']) : null,
+                'contactos' => $this->construirContactosDesdePost($datos),
                 'incluir_anexo_tecnico' => $incluirAnexo,
                 'anexo_tecnico' => $anexoTecnico,
                 'archivo_adjunto' => $archivoAdjunto,
@@ -454,14 +487,15 @@ class CotizacionesControlador extends ControladorBase {
             'id_responsable_interno' => array_key_exists('id_responsable_interno', $datos)
                 ? (!empty($datos['id_responsable_interno']) ? (int)$datos['id_responsable_interno'] : null)
                 : (!empty($cotizacionPrev['id_responsable_interno']) ? (int)$cotizacionPrev['id_responsable_interno'] : null),
-            'atencion_a' => trim($datos['atencion_a']),
-            'nombre_proyecto' => trim($datos['nombre_proyecto']),
-            'direccion_proyecto' => trim($datos['direccion_proyecto']),
-            'condicion_pago' => $datos['condicion_pago'],
-            'tiempo_entrega' => trim($datos['tiempo_entrega']),
-            'vigencia_oferta' => trim($datos['vigencia_oferta']),
+            'atencion_a' => trim((string)($datos['atencion_a'] ?? '')),
+            'direccion_cliente' => trim((string)($datos['direccion_cliente'] ?? '')) !== '' ? trim((string)$datos['direccion_cliente']) : null,
+            'nombre_proyecto' => trim((string)($datos['nombre_proyecto'] ?? '')),
+            'direccion_proyecto' => trim((string)($datos['direccion_proyecto'] ?? '')),
+            'condicion_pago' => trim((string)($datos['condicion_pago'] ?? '')),
+            'tiempo_entrega' => trim((string)($datos['tiempo_entrega'] ?? '')),
+            'vigencia_oferta' => trim((string)($datos['vigencia_oferta'] ?? '')),
             'configuracion_notas' => $notasJson,
-            'contactos' => isset($datos['contactos']) ? trim($datos['contactos']) : null,
+            'contactos' => $this->construirContactosDesdePost($datos),
             'incluir_anexo_tecnico' => $incluirAnexo,
             'anexo_tecnico' => $anexoTecnico,
             'archivo_adjunto' => $archivoAdjunto,

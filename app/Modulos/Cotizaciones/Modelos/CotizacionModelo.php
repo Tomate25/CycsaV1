@@ -88,6 +88,8 @@ class CotizacionModelo extends ModeloBase {
         $sql = "SELECT c.*, 
                        cl.nombre_razon_social AS cliente_nombre, 
                        cl.identificacion AS cliente_ruc, 
+                       COALESCE(NULLIF(c.direccion_cliente, ''), NULLIF(cl.direccion, ''), '') AS direccion_cliente,
+                       COALESCE(NULLIF(cl.direccion, ''), '') AS cliente_direccion,
                        COALESCE(NULLIF(cl.email, ''), NULLIF(cl.contacto_correo, ''), '') AS cliente_email, 
                        COALESCE(NULLIF(cl.telefono, ''), '') AS cliente_tel, 
                        COALESCE(NULLIF(u.nombre, ''), 'Personal Autorizado') AS creador_nombre, 
@@ -425,8 +427,11 @@ class CotizacionModelo extends ModeloBase {
             $cabecera['id_cliente_informe'] = !empty($cabecera['id_cliente_informe']) ? (int)$cabecera['id_cliente_informe'] : (int)$cabecera['id_cliente'];
             $cabecera['condicion_comercial'] = !empty($cabecera['condicion_comercial']) ? trim($cabecera['condicion_comercial']) : (str_contains(strtolower($cabecera['condicion_pago'] ?? ''), 'credito') ? 'credito' : 'contado');
             $cabecera['id_responsable_interno'] = !empty($cabecera['id_responsable_interno']) ? (int)$cabecera['id_responsable_interno'] : null;
+            $cabecera['direccion_cliente'] = array_key_exists('direccion_cliente', $cabecera)
+                ? (trim((string)$cabecera['direccion_cliente']) !== '' ? trim((string)$cabecera['direccion_cliente']) : null)
+                : null;
 
-            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, tipo_moneda, id_usuario_creador, id_responsable_interno, atencion_a, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :tipo_moneda, :id_usuario_creador, :id_responsable_interno, :atencion_a, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
+            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, tipo_moneda, id_usuario_creador, id_responsable_interno, atencion_a, direccion_cliente, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :tipo_moneda, :id_usuario_creador, :id_responsable_interno, :atencion_a, :direccion_cliente, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute($cabecera);
             $idCotizacion = $this->db->lastInsertId();
@@ -547,8 +552,11 @@ class CotizacionModelo extends ModeloBase {
                 ? (!empty($cabecera['id_responsable_interno']) ? (int)$cabecera['id_responsable_interno'] : null)
                 : (!empty($oldCot['id_responsable_interno']) ? (int)$oldCot['id_responsable_interno'] : null);
             $cabecera['id_responsable_interno'] = $idRespInterno;
+            $cabecera['direccion_cliente'] = array_key_exists('direccion_cliente', $cabecera)
+                ? (trim((string)$cabecera['direccion_cliente']) !== '' ? trim((string)$cabecera['direccion_cliente']) : null)
+                : (!empty($oldCot['direccion_cliente']) ? trim((string)$oldCot['direccion_cliente']) : null);
 
-            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, id_cliente_factura = :id_cliente_factura, id_cliente_informe = :id_cliente_informe, condicion_comercial = :condicion_comercial, tipo_moneda = :tipo_moneda, id_responsable_interno = :id_responsable_interno, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, motivo_observacion = :motivo_observacion, atencion_a = :atencion_a, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, incluir_anexo_tecnico = :incluir_anexo_tecnico, anexo_tecnico = :anexo_tecnico, archivo_adjunto = :archivo_adjunto, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
+            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, id_cliente_factura = :id_cliente_factura, id_cliente_informe = :id_cliente_informe, condicion_comercial = :condicion_comercial, tipo_moneda = :tipo_moneda, id_responsable_interno = :id_responsable_interno, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, motivo_observacion = :motivo_observacion, atencion_a = :atencion_a, direccion_cliente = :direccion_cliente, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, incluir_anexo_tecnico = :incluir_anexo_tecnico, anexo_tecnico = :anexo_tecnico, archivo_adjunto = :archivo_adjunto, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute(array_merge($cabecera, [
                 'id' => $id,
@@ -754,14 +762,14 @@ class CotizacionModelo extends ModeloBase {
 
             $sqlCabecera = "INSERT INTO cotizaciones (
                 codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial,
-                tipo_moneda, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto,
+                tipo_moneda, id_usuario_creador, atencion_a, direccion_cliente, nombre_proyecto, direccion_proyecto,
                 prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta,
                 configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto,
                 subtotal, descuento, exonerado, exoneracion_no, impuesto, total,
                 estado, version, fecha_entrega, fecha_seguimiento, dias_credito
             ) VALUES (
                 :codigo, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial,
-                :tipo_moneda, :id_usuario_creador, :atencion_a, :nombre_proyecto, :direccion_proyecto,
+                :tipo_moneda, :id_usuario_creador, :atencion_a, :direccion_cliente, :nombre_proyecto, :direccion_proyecto,
                 :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta,
                 :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto,
                 :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total,
@@ -778,6 +786,7 @@ class CotizacionModelo extends ModeloBase {
                 'tipo_moneda' => (int)($origen['tipo_moneda'] ?? 1),
                 'id_usuario_creador' => $creadorId,
                 'atencion_a' => $origen['atencion_a'] ?? '',
+                'direccion_cliente' => !empty($origen['direccion_cliente']) ? trim((string)$origen['direccion_cliente']) : null,
                 'nombre_proyecto' => $origen['nombre_proyecto'] ?? '',
                 'direccion_proyecto' => $origen['direccion_proyecto'] ?? '',
                 'prioridad' => !empty($origen['prioridad']) ? $origen['prioridad'] : 'Normal',
