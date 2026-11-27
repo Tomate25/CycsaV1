@@ -1554,15 +1554,20 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 
                     <input type="hidden" id="select_plantilla_global" name="plantilla_global_id" value="">
 
+                    <?php include dirname(__DIR__, 2) . '/HojasServicio/Vistas/partials/distribuidor_muestras_productos_rtfm13.php'; ?>
+
                     <div class="rtfm13-table-wrap">
                         <table class="rtfm13-table-muestras" id="hs-tabla-muestras">
                             <thead>
                                 <tr>
-                                    <th style="width:20%;"><i class="fa-solid fa-barcode me-1 text-primary"></i> # Muestra / Código</th>
-                                    <th style="width:27%;"><i class="fa-solid fa-location-dot me-1 text-primary"></i> Ubicación / Identificación</th>
-                                    <th style="width:18%;"><i class="fa-solid fa-calendar-days me-1 text-primary"></i> Observaciones / Edad</th>
+                                    <th style="width:36px; text-align:center;">
+                                        <input type="checkbox" id="chk_sel_todas_muestras_rtfm13" onchange="toggleSeleccionTodasMuestrasRTFM13(this)" title="Seleccionar todas las muestras para asignar en lote" style="cursor:pointer; width:15px; height:15px;">
+                                    </th>
+                                    <th style="width:19%;"><i class="fa-solid fa-barcode me-1 text-primary"></i> # Muestra / Código</th>
+                                    <th style="width:26%;"><i class="fa-solid fa-location-dot me-1 text-primary"></i> Ubicación / Identificación</th>
+                                    <th style="width:17%;"><i class="fa-solid fa-calendar-days me-1 text-primary"></i> Observaciones / Edad</th>
                                     <th style="width:28%;"><i class="fa-solid fa-flask-vial me-1 text-primary"></i> Producto / Ensayo Destino</th>
-                                    <th style="width:7%; text-align:center;"><i class="fa-solid fa-trash me-1"></i></th>
+                                    <th style="width:6%; text-align:center;"><i class="fa-solid fa-trash me-1"></i></th>
                                 </tr>
                             </thead>
                             <tbody id="hs-tbody-muestras">
@@ -3196,6 +3201,9 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             // Pre-poblar al menos 1 espécimen inicial con el correlativo correspondiente
             agregarFilaMuestraModal();
         }
+        if (typeof inicializarDistribuidorProductosRTFM13 === 'function') {
+            inicializarDistribuidorProductosRTFM13(true);
+        }
 
         // Checkboxes de Análisis con comprobación segura de nulidad
         const elConc = document.getElementById('hs_req_concreto') || document.getElementById('hs_req_resistencia_concreto');
@@ -3307,7 +3315,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         if (!tbody) return;
         tbody.innerHTML = `
             <tr id="fila-sin-muestras">
-                <td colspan="5" style="text-align:center; padding:36px 16px; color:#64748b; background:#f8fafc; border-radius:8px;">
+                <td colspan="6" style="text-align:center; padding:36px 16px; color:#64748b; background:#f8fafc; border-radius:8px;">
                     <div style="font-size:32px; color:#94a3b8; margin-bottom:8px;"><i class="fa-solid fa-vial-circle-check"></i></div>
                     <div style="font-size:14px; font-weight:700; color:#1e293b;">No hay especímenes registrados en esta hoja</div>
                     <div style="font-size:12px; color:#64748b; margin-top:4px;">Haga clic en el botón azul <strong>"+ Agregar Muestra"</strong> para ingresar los especímenes recibidos o recolectados en campo.</div>
@@ -3364,18 +3372,23 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         }
 
         const ensayoFinal = ensayoId || window.productoHojaIdActual || 1;
-        const productosOS = Array.isArray(window.productosPermitidosActuales) ? window.productosPermitidosActuales : [];
+        const productosOSRaw = Array.isArray(window.productosPermitidosActuales) ? window.productosPermitidosActuales : [];
+        const productosOSTec = productosOSRaw.filter(p => parseInt(p.id_producto || 0, 10) > 0);
+        const productosOS = productosOSTec.length > 0 ? productosOSTec : productosOSRaw;
         const idDetSel = parseInt(idDetalleCot || 0, 10) || 0;
         let optsProdHtml = '<option value="">-- Definir después --</option>';
         productosOS.forEach(p => {
             const pId = parseInt(p.id_detalle_cotizacion || 0, 10);
-            const pLbl = (p.codigo_servicio ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo');
+            const pLbl = (p.codigo_servicio && String(p.codigo_servicio).toUpperCase() !== 'N/A' ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo');
             const selAttr = (idDetSel > 0 && pId === idDetSel) ? ' selected' : '';
             optsProdHtml += `<option value="${pId}" data-prod-id="${parseInt(p.id_producto || 0, 10)}"${selAttr}>${escapeHtml(pLbl)}</option>`;
         });
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td style="text-align:center; vertical-align:middle;">
+                <input type="checkbox" class="chk-sel-muestra-rtfm13" ${bloqueado ? 'disabled' : ''} onchange="if(typeof actualizarBarraSeleccionLoteRTFM13==='function') actualizarBarraSeleccionLoteRTFM13();" style="cursor:pointer; width:15px; height:15px;">
+            </td>
             <td style="vertical-align:middle;">
                 <div style="display:flex; align-items:center; gap:6px;">
                     <span class="badge ${prefijo === 'MS' ? 'bg-secondary' : 'bg-primary'}" style="font-size:10.5px; font-weight:700; padding:4px 6px; border-radius:4px;">${escapeHtml(prefijo)}</span>
@@ -3395,7 +3408,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                 <input type="text" name="m_info[]" value="${escapeHtml(info)}" class="rtfm13-input" style="height:36px; font-size:12.5px;" placeholder="Edad / Estado (ej: 7 días, húmeda)">
             </td>
             <td style="vertical-align:middle;">
-                <select name="m_detalle_cotizacion[]" class="rtfm13-input select-destino-muestra" style="height:36px; font-size:12px; padding:4px 8px;" ${bloqueado ? 'disabled' : ''} onchange="(function(sel){ const opt = sel.options[sel.selectedIndex]; const prodId = opt ? parseInt(opt.getAttribute('data-prod-id') || '0', 10) : 0; const inpEns = sel.closest('tr')?.querySelector('.input-ensayo-muestra'); if (inpEns && prodId > 0) inpEns.value = String(prodId); })(this)">
+                <select name="m_detalle_cotizacion[]" class="rtfm13-input select-destino-muestra" style="height:36px; font-size:12px; padding:4px 8px;" ${bloqueado ? 'disabled' : ''} onchange="(function(sel){ const opt = sel.options[sel.selectedIndex]; const prodId = opt ? parseInt(opt.getAttribute('data-prod-id') || '0', 10) : 0; const inpEns = sel.closest('tr')?.querySelector('.input-ensayo-muestra'); if (inpEns && prodId > 0) inpEns.value = String(prodId); if (typeof sincronizarResumenDistribuidorRTFM13 === 'function') sincronizarResumenDistribuidorRTFM13(); })(this)">
                     ${optsProdHtml}
                 </select>
             </td>
@@ -3415,6 +3428,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
             });
         });
         actualizarContadorEspecimenes();
+        if (typeof sincronizarResumenDistribuidorRTFM13 === 'function') sincronizarResumenDistribuidorRTFM13();
     }
 
     function eliminarFilaMuestraModal(btn) {
@@ -3426,6 +3440,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         if (tbody && tbody.querySelectorAll('tr').length === 0) {
             mostrarEstadoVacioMuestras();
         }
+        if (typeof sincronizarResumenDistribuidorRTFM13 === 'function') sincronizarResumenDistribuidorRTFM13();
     }
 
     // Funciones del Desplegable Interactivo AJAX de Plantillas

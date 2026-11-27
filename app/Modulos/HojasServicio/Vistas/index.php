@@ -759,13 +759,19 @@
                 </div>
             </div>
 
+            <?php include __DIR__ . '/partials/distribuidor_muestras_productos_rtfm13.php'; ?>
+
             <table class="hs-table" style="width:100%; border-collapse:collapse; margin-bottom:20px; border:1px solid #e2e8f0;" id="hs-tabla-muestras">
                 <thead>
                     <tr style="background:#f8fafc; font-size:11.5px; color:#475569; text-transform:uppercase;">
-                        <th style="width:20%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Identificación Espécimen</th>
-                        <th style="width:45%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Descripción de la Muestra / Elemento</th>
-                        <th style="width:25%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Plantilla Asignada</th>
-                        <th style="width:10%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:center;">Acción</th>
+                        <th style="width:36px; padding:8px; border-bottom:1px solid #e2e8f0; text-align:center;">
+                            <input type="checkbox" id="chk_sel_todas_muestras_rtfm13" onchange="toggleSeleccionTodasMuestrasRTFM13(this)" title="Seleccionar todas para asignar en lote" style="cursor:pointer; width:15px; height:15px;">
+                        </th>
+                        <th style="width:18%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Identificación Espécimen</th>
+                        <th style="width:30%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Descripción de la Muestra / Elemento</th>
+                        <th style="width:28%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Producto / Ensayo Destino</th>
+                        <th style="width:14%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:left;">Plantilla</th>
+                        <th style="width:7%; padding:8px; border-bottom:1px solid #e2e8f0; text-align:center;">Acción</th>
                     </tr>
                 </thead>
                 <tbody id="hs-tbody-muestras">
@@ -1565,6 +1571,7 @@
                     return ens.permitido !== 0 && ens.permitido !== '0' && ens.permitido !== false;
                 });
                 window.detallesRelacionales = data.detalles_muestras_relacionales || [];
+                window.productosPermitidosActuales = data.productos_permitidos_os || data.productos_permitidos || [];
 
                 poblarSelectorPlantillaGlobal(window.ensayosDisponiblesOS, window.clienteIdActualHoja);
 
@@ -1602,17 +1609,20 @@
                     window.detallesRelacionales.forEach(det => {
                         const nom = det.codigo_muestra || '';
                         const tipo = nom.startsWith('MS-') ? 'MS' : (nom.startsWith('MC-') ? 'MC' : prefijoMuestraActual);
-                        agregarFilaMuestraModal(tipo, nom, det.descripcion_ubicacion || '', det.observacion_edad || '', det.ensayo_id, det.plantilla_id, det.seleccion_manual, det.motivo_cambio, det.bloqueado_recepcion);
+                        agregarFilaMuestraModal(tipo, nom, det.descripcion_ubicacion || '', det.observacion_edad || '', det.ensayo_id, det.plantilla_id, det.seleccion_manual, det.motivo_cambio, det.bloqueado_recepcion, parseInt(det.id_detalle_cotizacion || hoja.id_detalle_cotizacion || 0, 10) || 0);
                     });
                 } else if (Array.isArray(muestras) && muestras.length > 0) {
                     muestras.forEach(m => {
                         const nom = m.nombre_muestra || m.identificacion || '';
                         const tipo = nom.startsWith('MS-') ? 'MS' : (nom.startsWith('MC-') ? 'MC' : prefijoMuestraActual);
-                        agregarFilaMuestraModal(tipo, nom, m.descripcion || m.ubicacion || '', m.info_importante || m.observaciones || '', m.ensayo_id, m.plantilla_id);
+                        agregarFilaMuestraModal(tipo, nom, m.descripcion || m.ubicacion || '', m.info_importante || m.observaciones || '', m.ensayo_id, m.plantilla_id, 0, '', 0, parseInt(m.id_detalle_cotizacion || hoja.id_detalle_cotizacion || 0, 10) || 0);
                     });
                 } else {
                     // No pre-poblar automáticamente especímenes; el usuario los agregará manualmente
                     mostrarEstadoVacioMuestras();
+                }
+                if (typeof inicializarDistribuidorProductosRTFM13 === 'function') {
+                    inicializarDistribuidorProductosRTFM13(true);
                 }
 
                 hsLoading.style.display = 'none';
@@ -1640,16 +1650,16 @@
         if (!tbody) return;
         tbody.innerHTML = `
             <tr id="fila-sin-muestras">
-                <td colspan="4" style="text-align:center; padding:32px 16px; color:#64748b; background:#f8fafc; border-radius:6px;">
+                <td colspan="6" style="text-align:center; padding:32px 16px; color:#64748b; background:#f8fafc; border-radius:6px;">
                     <div style="font-size:26px; color:#94a3b8; margin-bottom:6px;"><i class="fa-solid fa-vial-circle-check"></i></div>
                     <div style="font-size:13px; font-weight:700; color:#334155;">No hay muestras registradas en esta hoja</div>
-                    <div style="font-size:11.5px; color:#64748b; margin-top:3px;">Haz clic en el botón verde <strong>"+ Agregar Muestra"</strong> para añadir los especímenes recibidos o muestreados.</div>
+                    <div style="font-size:11.5px; color:#64748b; margin-top:3px;">Use el panel superior <strong>"Distribución de Muestras por Producto"</strong> para generar y repartir en lote, o haga clic en <strong>"+ Agregar Muestra"</strong>.</div>
                 </td>
             </tr>
         `;
     }
 
-    function agregarFilaMuestraModal(tipo = null, nombre = '', desc = '', info = '', ensayoId = null, plantillaId = null, seleccionManual = 0, motivoCambio = '', bloqueado = 0) {
+    function agregarFilaMuestraModal(tipo = null, nombre = '', desc = '', info = '', ensayoId = null, plantillaId = null, seleccionManual = 0, motivoCambio = '', bloqueado = 0, idDetalleCot = 0) {
         const tbody = document.getElementById('hs-tbody-muestras');
         if (!tbody) return;
 
@@ -1691,12 +1701,27 @@
             }
         }
 
+        const productosOSRaw = Array.isArray(window.productosPermitidosActuales) ? window.productosPermitidosActuales : [];
+        const productosOSTec = productosOSRaw.filter(p => parseInt(p.id_producto || 0, 10) > 0);
+        const productosOS = productosOSTec.length > 0 ? productosOSTec : productosOSRaw;
+        const idDetSel = parseInt(idDetalleCot || 0, 10) || 0;
+        let optsProdHtml = '<option value="">-- Definir después --</option>';
+        productosOS.forEach(p => {
+            const pId = parseInt(p.id_detalle_cotizacion || 0, 10);
+            const pLbl = (p.codigo_servicio && String(p.codigo_servicio).toUpperCase() !== 'N/A' ? '[' + p.codigo_servicio + '] ' : '') + (p.descripcion_ensayo || 'Ensayo');
+            const selAttr = (idDetSel > 0 && pId === idDetSel) ? ' selected' : '';
+            optsProdHtml += `<option value="${pId}" data-prod-id="${parseInt(p.id_producto || 0, 10)}"${selAttr}>${escapeHtml(pLbl)}</option>`;
+        });
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td style="padding:6px; text-align:center; vertical-align:middle;">
+                <input type="checkbox" class="chk-sel-muestra-rtfm13" ${bloqueado ? 'disabled' : ''} onchange="if(typeof actualizarBarraSeleccionLoteRTFM13==='function') actualizarBarraSeleccionLoteRTFM13();" style="cursor:pointer; width:15px; height:15px;">
+            </td>
             <td style="padding:6px 8px; vertical-align:middle;">
                 <input type="text" name="m_nombre[]" value="${nombre}" readonly required class="form-control" style="font-size:12px; padding:5px 8px; font-weight:700; font-family:monospace; color:var(--cycsa-azul); background:#f8fafc; cursor:not-allowed; border-color:#cbd5e1;" title="Código consecutivo asignado por el sistema">
                 <input type="hidden" name="m_info[]" value="${escapeHtml(info)}">
-                <input type="hidden" name="m_ensayo_id[]" value="${ensayoId || 1}">
+                <input type="hidden" name="m_ensayo_id[]" value="${ensayoId || 1}" class="input-ensayo-muestra">
                 <input type="hidden" name="m_plantilla_id[]" value="${plantillaId || ''}" class="input-plantilla-muestra">
                 <input type="hidden" name="m_seleccion_manual[]" value="${seleccionManual}">
                 <input type="hidden" name="m_motivo_cambio[]" value="${escapeHtml(motivoCambio)}">
@@ -1707,8 +1732,13 @@
                 ${motivoCambio ? `<div class="text-warning small text-truncate mt-1" style="font-size:10px;" title="${escapeHtml(motivoCambio)}"><i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(motivoCambio)}</div>` : ''}
             </td>
             <td style="padding:6px 8px; vertical-align:middle;">
+                <select name="m_detalle_cotizacion[]" class="form-control select-destino-muestra" style="font-size:12px; padding:5px 8px;" ${bloqueado ? 'disabled' : ''} onchange="(function(sel){ const opt = sel.options[sel.selectedIndex]; const prodId = opt ? parseInt(opt.getAttribute('data-prod-id') || '0', 10) : 0; const inpEns = sel.closest('tr')?.querySelector('.input-ensayo-muestra'); if (inpEns && prodId > 0) inpEns.value = String(prodId); if (typeof sincronizarResumenDistribuidorRTFM13 === 'function') sincronizarResumenDistribuidorRTFM13(); })(this)">
+                    ${optsProdHtml}
+                </select>
+            </td>
+            <td style="padding:6px 8px; vertical-align:middle;">
                 <div class="col-plantilla-badge" style="display:flex; align-items:center; gap:6px;">
-                    <span class="badge badge-plt-display" style="background:${plantillaId ? '#e0f2fe' : '#f8fafc'}; color:${plantillaId ? '#0369a1' : '#64748b'}; border:1px solid ${plantillaId ? '#bae6fd' : '#cbd5e1'}; font-size:11px; padding:5px 8px; border-radius:6px; max-width:190px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block;" title="${escapeHtml(etiquetaPlantilla)}">
+                    <span class="badge badge-plt-display" style="background:${plantillaId ? '#e0f2fe' : '#f8fafc'}; color:${plantillaId ? '#0369a1' : '#64748b'}; border:1px solid ${plantillaId ? '#bae6fd' : '#cbd5e1'}; font-size:11px; padding:5px 8px; border-radius:6px; max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block;" title="${escapeHtml(etiquetaPlantilla)}">
                         <i class="fa-solid fa-file-waveform me-1"></i>${escapeHtml(codigoPlantilla ? codigoPlantilla : etiquetaPlantilla)}
                     </span>
                 </div>
@@ -1722,6 +1752,7 @@
             </td>
         `;
         tbody.appendChild(tr);
+        if (typeof sincronizarResumenDistribuidorRTFM13 === 'function') sincronizarResumenDistribuidorRTFM13();
     }
 
     function eliminarFilaMuestraModal(btn) {
@@ -1731,6 +1762,7 @@
         if (tbody && tbody.querySelectorAll('tr').length === 0) {
             mostrarEstadoVacioMuestras();
         }
+        if (typeof sincronizarResumenDistribuidorRTFM13 === 'function') sincronizarResumenDistribuidorRTFM13();
     }
 
     // Funciones del Desplegable Interactivo AJAX de Plantillas

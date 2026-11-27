@@ -404,6 +404,16 @@ class HojasServicioControlador extends ControladorBase {
             error_log('hojaSolicitudDatosAjax extras periodo/catalogo: ' . $e->getMessage());
         }
 
+        // Excluir línea comercial genérica de facturación mensual (sin producto técnico) cuando existen productos técnicos reales
+        if (!empty($productosPermitidos)) {
+            $productosTecnicosOS = array_values(array_filter($productosPermitidos, static function ($p) {
+                return (int)($p['id_producto'] ?? ($p['producto_id'] ?? 0)) > 0;
+            }));
+            if (!empty($productosTecnicosOS)) {
+                $productosPermitidos = $productosTecnicosOS;
+            }
+        }
+
         $respuesta->enviarJson([
             'status' => 'success',
             'producto_hoja_id' => $idProductoHoja,
