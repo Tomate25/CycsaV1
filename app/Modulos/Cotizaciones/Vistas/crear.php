@@ -2165,4 +2165,25 @@
             actualizarTextosServicioMensual(false);
         }
     }
+
+    (function initLimpiarCeroCosto() {
+        const tabla = document.getElementById('tabla-ensayos');
+        if (!tabla) return;
+        tabla.addEventListener('focusin', function (e) {
+            const inp = e.target;
+            if (!inp || !inp.classList || !inp.classList.contains('precio-input') || inp.readOnly) return;
+            const raw = (inp.value || '').trim().replace(',', '.');
+            if (raw === '' || parseFloat(raw) === 0) {
+                inp.value = '';
+            }
+        });
+        tabla.addEventListener('focusout', function (e) {
+            const inp = e.target;
+            if (!inp || !inp.classList || !inp.classList.contains('precio-input') || inp.readOnly) return;
+            if ((inp.value || '').trim() === '') {
+                inp.value = '0.00';
+                if (typeof calcularFila === 'function') calcularFila(inp);
+            }
+        });
+    })();
 </script>
