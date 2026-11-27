@@ -812,7 +812,7 @@ CSS;
             $rangoPer = ($fIniPer !== '' && $fFinPer !== '') ? " ({$fIniPer} — {$fFinPer})" : '';
             $modalidadPeriodo = implode(' · ', $partesPer) . $rangoPer;
         } else {
-            $modalidadPeriodo = 'Puntual (No mensual)';
+            $modalidadPeriodo = 'Puntual';
         }
 
         // 6. Notas y condiciones

@@ -298,7 +298,7 @@
                 <div style="display: inline-flex; gap: 10px; flex-wrap: wrap;">
                     <label style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; font-size: 12.5px; font-weight: 600; color: #334155; cursor: pointer;">
                         <input type="radio" name="es_mensual" value="0" <?= !$cotEsMensualEdit ? 'checked' : '' ?> onchange="togglePeriodoCotizacion(false)">
-                        Puntual (No mensual)
+                        Puntual
                     </label>
                     <label style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; font-size: 12.5px; font-weight: 600; color: #1F3864; cursor: pointer;">
                         <input type="radio" name="es_mensual" value="1" <?= $cotEsMensualEdit ? 'checked' : '' ?> onchange="togglePeriodoCotizacion(true)">
