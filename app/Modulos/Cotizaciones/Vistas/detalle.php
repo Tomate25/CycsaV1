@@ -157,8 +157,10 @@ $pillCotDetClase = match ($estCotDet) {
     </div>
 
     <?php
-    $incluirAnexo = !empty($cotizacion['incluir_anexo_tecnico']) && !empty(trim((string)($cotizacion['anexo_tecnico'] ?? '')));
-    $anexoContenido = trim((string)($cotizacion['anexo_tecnico'] ?? ''));
+    $anexoRenderizado = \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::renderDesdeCotizacion($cotizacion, false);
+    $incluirAnexo = ($anexoRenderizado !== '');
+    $esAnexoMensualDet = \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::esAnexoMensualJson($cotizacion['anexo_tecnico'] ?? null)
+        || (!empty($cotizacion['es_mensual']) && (int)$cotizacion['es_mensual'] === 1 && !empty($cotizacion['incluir_anexo_tecnico']));
     ?>
 
     <!-- DOCUMENTO DIGITAL ADJUNTO (SI EXISTE) -->
@@ -178,12 +180,12 @@ $pillCotDetClase = match ($estCotDet) {
     <?php if ($incluirAnexo): ?>
         <div class="cy-cot-card">
             <div class="cy-cot-card-head">
-                <span><i class="fa-solid fa-file-shield me-1"></i> Anexo Técnico Oficial Incluido</span>
-                <span class="cy-pill cy-pill-ok">Compilado en PDF</span>
+                <span><i class="fa-solid fa-file-shield me-1"></i> <?= $esAnexoMensualDet ? 'Anexo Técnico – Alcance del Servicio Mensual' : 'Anexo Técnico Oficial Incluido' ?></span>
+                <span class="cy-pill cy-pill-ok">Incluido en PDF</span>
             </div>
             <div class="cy-cot-card-body">
                 <div style="font-size: 13.5px; color: var(--cy-text); line-height: 1.55;">
-                    <?= $anexoContenido ?>
+                    <?= $anexoRenderizado ?>
                 </div>
             </div>
         </div>

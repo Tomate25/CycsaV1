@@ -290,6 +290,13 @@
                 </div>
             </div>
         </div>
+
+        <?php
+        $cotEsMensualForm = false;
+        $anexoMensualData = \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::plantillaPorDefecto();
+        $anexoMensualIncluido = false;
+        include __DIR__ . '/partials/anexo_servicio_mensual_form.php';
+        ?>
     </div>
 
     <div class="seccion-form">
@@ -2007,8 +2014,17 @@
 
     function togglePeriodoCotizacion(esMensual) {
         const box = document.getElementById('cot_periodo_campos');
-        if (!box) return;
-        box.style.display = esMensual ? 'grid' : 'none';
+        if (box) {
+            box.style.display = esMensual ? 'grid' : 'none';
+        }
+        const anxBox = document.getElementById('cot_anexo_mensual_bloque');
+        const anxChk = document.getElementById('chk_incluir_anexo_mensual');
+        if (anxBox) {
+            anxBox.style.display = esMensual ? 'block' : 'none';
+        }
+        if (anxChk) {
+            anxChk.checked = !!esMensual;
+        }
         if (esMensual) {
             recalcularFechaFinCotizacion();
         }

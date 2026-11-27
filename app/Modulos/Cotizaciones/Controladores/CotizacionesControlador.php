@@ -295,9 +295,24 @@ class CotizacionesControlador extends ControladorBase {
                 $archivoAdjunto = $this->procesarArchivoAdjuntoSeguro($_FILES['archivo_adjunto']);
             }
 
-            $incluirAnexo = !empty($datos['incluir_anexo_tecnico']) ? 1 : 0;
-            $anexoTecnico = !empty(trim($datos['anexo_tecnico'] ?? '')) ? trim($datos['anexo_tecnico']) : null;
             $periodoCot = $this->extraerPeriodoDesdePost($datos);
+            if ((int)$periodoCot['es_mensual'] === 1) {
+                $incluirAnexo = isset($datos['anexo_mensual'])
+                    ? (!empty($datos['incluir_anexo_tecnico']) ? 1 : 0)
+                    : 1;
+                $anexoTecnico = $incluirAnexo === 1
+                    ? \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::codificar(
+                        \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::construirDesdePost($datos)
+                    )
+                    : null;
+            } else {
+                $incluirAnexo = !empty($datos['incluir_anexo_tecnico']) ? 1 : 0;
+                $anexoTecnico = !empty(trim((string)($datos['anexo_tecnico'] ?? ''))) ? trim((string)$datos['anexo_tecnico']) : null;
+                if (\Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::esAnexoMensualJson($anexoTecnico)) {
+                    $incluirAnexo = 0;
+                    $anexoTecnico = null;
+                }
+            }
 
             $cabecera = array_merge([
                 'codigo' => $modelo->generarCodigoUnico(),
@@ -533,9 +548,24 @@ class CotizacionesControlador extends ControladorBase {
             }
         }
 
-        $incluirAnexo = !empty($datos['incluir_anexo_tecnico']) ? 1 : 0;
-        $anexoTecnico = !empty(trim($datos['anexo_tecnico'] ?? '')) ? trim($datos['anexo_tecnico']) : null;
         $periodoCot = $this->extraerPeriodoDesdePost($datos, $cotizacionPrev);
+        if ((int)$periodoCot['es_mensual'] === 1) {
+            $incluirAnexo = isset($datos['anexo_mensual'])
+                ? (!empty($datos['incluir_anexo_tecnico']) ? 1 : 0)
+                : (!isset($cotizacionPrev['incluir_anexo_tecnico']) ? 1 : ((int)$cotizacionPrev['incluir_anexo_tecnico'] === 1 ? 1 : 0));
+            $anexoTecnico = $incluirAnexo === 1
+                ? \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::codificar(
+                    \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::construirDesdePost($datos)
+                )
+                : null;
+        } else {
+            $incluirAnexo = !empty($datos['incluir_anexo_tecnico']) ? 1 : 0;
+            $anexoTecnico = !empty(trim((string)($datos['anexo_tecnico'] ?? ''))) ? trim((string)$datos['anexo_tecnico']) : null;
+            if (\Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::esAnexoMensualJson($anexoTecnico)) {
+                $incluirAnexo = 0;
+                $anexoTecnico = null;
+            }
+        }
 
         $cabecera = array_merge([
             'id_cliente' => $datos['id_cliente'],

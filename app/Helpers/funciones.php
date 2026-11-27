@@ -1003,36 +1003,39 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     $clienteEmail = htmlspecialchars($cotizacion['cliente_email'] ?? ($cotizacion['email'] ?? 'admon@cycsanic.com'), ENT_QUOTES, 'UTF-8');
     $clienteTel = htmlspecialchars($cotizacion['cliente_tel'] ?? ($cotizacion['telefono'] ?? '(505) 8209-6275'), ENT_QUOTES, 'UTF-8');
 
-    // Procesar Anexo Técnico (Garantiza formatos oficiales CYCSA-RG-FM-31)
+    // Procesar Anexo Técnico (Garantiza formatos oficiales CYCSA-RG-FM-31 y Anexo de Alcance del Servicio Mensual)
     $anexoTecnicoSeccion = '';
-    $incluirAnexo = !empty($cotizacion['incluir_anexo_tecnico']) && !empty(trim($cotizacion['anexo_tecnico'] ?? ''));
-    if ($incluirAnexo) {
-        $anexoContenido = trim($cotizacion['anexo_tecnico'] ?? '');
-        if (!empty($anexoContenido)) {
-            $anexoTecnicoSeccion = "
-            <div style=\"page-break-before: always;\">
-                <div class=\"header-box\">
-                    <table style=\"width: 100%;\">
-                        <tr>
-                            <td style=\"width: 48%; vertical-align: bottom;\">
-                                {$logoHtml}
-                                <div style=\"font-size: 8.5px; font-weight: bold; color: #1e293b; margin-bottom: 2px;\">Cód. Doc CYCSA-RG-FM-31 V2R1</div>
-                                <span style=\"font-size: 7.5px; color: #64748b; font-weight: bold; text-transform: uppercase;\">Laboratorio de Ensayos y Control de Calidad</span>
-                            </td>
-                            <td style=\"width: 52%; text-align: right; vertical-align: bottom;\">
-                                <span style=\"font-size: 13px; font-weight: bold; color: #103487; text-transform: uppercase;\">Anexo Técnico Oficial</span><br>
-                                <span style=\"font-size: 14px; font-weight: bold; color: #1e293b;\">{$codigo}</span>
-                                <span style=\"font-size: 8.5px; color: #64748b; margin-left: 8px;\">Proyecto: {$proyectoNombre} &bull; Versión: {$version}</span>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
+    $anexoContenidoPdf = class_exists(\Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::class)
+        ? \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::renderDesdeCotizacion($cotizacion, true)
+        : ((!empty($cotizacion['incluir_anexo_tecnico']) && !empty(trim((string)($cotizacion['anexo_tecnico'] ?? '')))) ? trim((string)$cotizacion['anexo_tecnico']) : '');
+    if ($anexoContenidoPdf !== '') {
+        $esAnxMensualPdf = class_exists(\Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::class)
+            && (\Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::esAnexoMensualJson($cotizacion['anexo_tecnico'] ?? null)
+                || (!empty($cotizacion['es_mensual']) && (int)$cotizacion['es_mensual'] === 1));
+        $tituloAnexoPdf = $esAnxMensualPdf ? 'Anexo Técnico – Alcance Mensual' : 'Anexo Técnico Oficial';
+        $anexoTecnicoSeccion = "
+        <div style=\"page-break-before: always;\">
+            <div class=\"header-box\" style=\"margin-bottom: 8px; border-bottom: 1.5px solid #1F3864; padding-bottom: 6px;\">
+                <table style=\"width: 100%; border-collapse: collapse;\">
+                    <tr>
+                        <td style=\"width: 48%; vertical-align: bottom; border: none;\">
+                            {$logoHtml}
+                            <div style=\"font-size: 8.5px; font-weight: bold; color: #1e293b; margin-bottom: 2px;\">Cód. Doc CYCSA-RG-FM-31 V2R1</div>
+                            <span style=\"font-size: 7.5px; color: #64748b; font-weight: bold; text-transform: uppercase;\">Laboratorio de Ensayos y Control de Calidad</span>
+                        </td>
+                        <td style=\"width: 52%; text-align: right; vertical-align: bottom; border: none;\">
+                            <span style=\"font-size: 12px; font-weight: bold; color: #1F3864; text-transform: uppercase;\">{$tituloAnexoPdf}</span><br>
+                            <span style=\"font-size: 13px; font-weight: bold; color: #1e293b;\">{$codigo}</span>
+                            <span style=\"font-size: 8.5px; color: #64748b; margin-left: 8px;\">Proyecto: {$proyectoNombre} &bull; Versión: {$version}</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
 
-                <div style=\"font-size: 8.5px; line-height: 1.4; color: #1e293b;\">
-                    {$anexoContenido}
-                </div>
-            </div>";
-        }
+            <div style=\"font-size: 8.4px; line-height: 1.4; color: #1e293b;\">
+                {$anexoContenidoPdf}
+            </div>
+        </div>";
     }
 
     // Procesar Documento Adjunto (DOCX, Imagen, PDF, TXT, etc.)
