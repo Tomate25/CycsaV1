@@ -126,11 +126,11 @@ class AnexoServicioMensualServicio
                VALUES (:id_cot, :id_prod, :desc, :cond, :proc, :um, :cod, :norma, :obs, 1, 0.00, 0.00)";
         $stmtIns = $db->prepare($sqlIns);
 
-        // Si existe whitelist fija activa en la O/S, también registrar los nuevos detalles
+        // Si existe whitelist fija activa en la O/S (tabla singular orden_servicio_ensayos_permitidos), también registrar los detalles incluidos
         $tieneWhitelistActiva = false;
         if ($idOs !== null && $idOs > 0) {
             try {
-                $stWl = $db->prepare("SELECT COUNT(*) FROM ordenes_servicio_ensayos_permitidos WHERE id_os = :id_os");
+                $stWl = $db->prepare("SELECT COUNT(*) FROM orden_servicio_ensayos_permitidos WHERE id_os = :id_os");
                 $stWl->execute(['id_os' => $idOs]);
                 $tieneWhitelistActiva = ((int)$stWl->fetchColumn() > 0);
             } catch (\Throwable $e) {
@@ -138,8 +138,9 @@ class AnexoServicioMensualServicio
             }
         }
         $stmtInsWl = $tieneWhitelistActiva
-            ? $db->prepare("INSERT IGNORE INTO ordenes_servicio_ensayos_permitidos (id_os, id_cotizacion_detalle) VALUES (:id_os, :id_det)")
+            ? $db->prepare("INSERT IGNORE INTO orden_servicio_ensayos_permitidos (id_os, id_cotizacion_detalle, creado_por) VALUES (:id_os, :id_det, :usr)")
             : null;
+        $uidWl = (int)($_SESSION['usuario_id'] ?? 1);
 
         $insertados = 0;
         foreach ($ensayosActivos as $ens) {
@@ -218,7 +219,22 @@ class AnexoServicioMensualServicio
             $insertados++;
 
             if ($stmtInsWl !== null && $nuevoDetId > 0) {
-                $stmtInsWl->execute(['id_os' => $idOs, 'id_det' => $nuevoDetId]);
+                $stmtInsWl->execute(['id_os' => $idOs, 'id_det' => $nuevoDetId, 'usr' => $uidWl]);
+            }
+        }
+
+        // Asegurar también que cualquier ensayo del Anexo ya existente en cotizacion_detalles esté habilitado en la whitelist de la O/S
+        if ($stmtInsWl !== null) {
+            try {
+                $sqlAnxExist = $tieneColFlag
+                    ? "SELECT id FROM cotizacion_detalles WHERE id_cotizacion = :id_cot AND (es_incluido_anexo_mensual = 1 OR observaciones = :obs)"
+                    : "SELECT id FROM cotizacion_detalles WHERE id_cotizacion = :id_cot AND observaciones = :obs";
+                $stEx = $db->prepare($sqlAnxExist);
+                $stEx->execute(['id_cot' => $idCotizacion, 'obs' => self::MARCADOR_OBSERVACION_INCLUIDO]);
+                foreach ($stEx->fetchAll(\PDO::FETCH_COLUMN) as $detIdAnx) {
+                    $stmtInsWl->execute(['id_os' => $idOs, 'id_det' => (int)$detIdAnx, 'usr' => $uidWl]);
+                }
+            } catch (\Throwable $e) {
             }
         }
 

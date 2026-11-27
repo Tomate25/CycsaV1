@@ -520,6 +520,28 @@ class OrdenesServicioControlador extends ControladorBase {
 
             $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
             $osModelo->asegurarTablaEnsayosPermitidos();
+
+            // Si la O/S corresponde a un servicio mensual con ensayos operativos incluidos desde el Anexo Mensual,
+            // incluirlos automáticamente en la whitelist al aprobar la O/S para que no marquen "fuera de alcance"
+            try {
+                $stAnxMens = $db->prepare("
+                    SELECT cd.id
+                    FROM cotizacion_detalles cd
+                    INNER JOIN cotizaciones c ON cd.id_cotizacion = c.id
+                    WHERE cd.id_cotizacion = :id_cot
+                      AND c.es_mensual = 1
+                      AND (COALESCE(cd.es_incluido_anexo_mensual, 0) = 1 OR COALESCE(cd.observaciones, '') = 'Incluido en Servicio Mensual')
+                ");
+                $stAnxMens->execute(['id_cot' => (int)$os['id_cotizacion']]);
+                foreach ($stAnxMens->fetchAll(\PDO::FETCH_COLUMN) as $idDetAnx) {
+                    $idDetAnxInt = (int)$idDetAnx;
+                    if ($idDetAnxInt > 0 && !in_array($idDetAnxInt, $idsPermitidos, true)) {
+                        $idsPermitidos[] = $idDetAnxInt;
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+
             try {
                 $db->beginTransaction();
                 $stmtApr = $db->prepare("UPDATE ordenes_servicio SET estado = 'Aprobada', motivo_observacion = NULL WHERE id = :id");
@@ -1405,6 +1427,28 @@ class OrdenesServicioControlador extends ControladorBase {
 
             $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
             $osModelo->asegurarTablaEnsayosPermitidos();
+
+            // Si la O/S corresponde a un servicio mensual con ensayos operativos incluidos desde el Anexo Mensual,
+            // incluirlos automáticamente en la whitelist al aprobar la O/S para que no marquen "fuera de alcance"
+            try {
+                $stAnxMens = $db->prepare("
+                    SELECT cd.id
+                    FROM cotizacion_detalles cd
+                    INNER JOIN cotizaciones c ON cd.id_cotizacion = c.id
+                    WHERE cd.id_cotizacion = :id_cot
+                      AND c.es_mensual = 1
+                      AND (COALESCE(cd.es_incluido_anexo_mensual, 0) = 1 OR COALESCE(cd.observaciones, '') = 'Incluido en Servicio Mensual')
+                ");
+                $stAnxMens->execute(['id_cot' => (int)$os['id_cotizacion']]);
+                foreach ($stAnxMens->fetchAll(\PDO::FETCH_COLUMN) as $idDetAnx) {
+                    $idDetAnxInt = (int)$idDetAnx;
+                    if ($idDetAnxInt > 0 && !in_array($idDetAnxInt, $idsPermitidos, true)) {
+                        $idsPermitidos[] = $idDetAnxInt;
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+
             try {
                 $db->beginTransaction();
                 $stmt = $db->prepare("UPDATE ordenes_servicio SET estado = 'Aprobada', motivo_observacion = NULL WHERE id = :id");
