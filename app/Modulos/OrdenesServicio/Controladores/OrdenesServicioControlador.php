@@ -7,6 +7,7 @@ use Cycsa\Nucleo\Peticion;
 use Cycsa\Nucleo\Respuesta;
 use Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo;
 use Cycsa\Modulos\OrdenesServicio\Servicios\DocumentoRgFm39Servicio;
+use Cycsa\Modulos\OrdenesServicio\Servicios\ValidacionOrdenServicioServicio;
 use Cycsa\Modulos\Cotizaciones\Modelos\CotizacionModelo;
 
 class OrdenesServicioControlador extends ControladorBase {
@@ -67,6 +68,42 @@ class OrdenesServicioControlador extends ControladorBase {
 
         require_once dirname(__DIR__, 3) . '/Helpers/funciones.php';
 
+        // Evaluar vencimiento automático de plazo en órdenes mensuales abiertas y cargar notificaciones pendientes (Puntos 9, 10, 13)
+        $notificacionesOs = [];
+        try {
+            $dbOs = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+            if (ValidacionOrdenServicioServicio::esquemaDisponible($dbOs)) {
+                $stmtVenc = $dbOs->query("
+                    SELECT id FROM ordenes_servicio
+                    WHERE (es_multimes = 1 OR tipo_contrato IN ('Marco', 'Contrato Activo', 'Contrato Largo', 'Abierto'))
+                      AND fecha_fin IS NOT NULL AND fecha_fin <= CURRENT_DATE
+                      AND devuelto_sistema_fecha IS NULL
+                      AND estado NOT IN ('Ejecutada', 'Finalizado', 'Cerrado', 'Archivado')
+                    LIMIT 25
+                ");
+                foreach ($stmtVenc->fetchAll(\PDO::FETCH_COLUMN) as $idVenc) {
+                    ValidacionOrdenServicioServicio::evaluarYActualizarEjecucionAutomatica($dbOs, (int)$idVenc);
+                }
+                $uIdSes = (int)($_SESSION['usuario_id'] ?? 0);
+                $rIdSes = (int)($_SESSION['usuario_rol'] ?? 0);
+                if (ValidacionOrdenServicioServicio::puedeRecibirAdminFinal($dbOs, $uIdSes, $rIdSes)) {
+                    $notificacionesOs = ValidacionOrdenServicioServicio::obtenerNotificacionesPendientes(
+                        $dbOs,
+                        ValidacionOrdenServicioServicio::AREA_ADMIN_CONTABILIDAD,
+                        15
+                    );
+                } elseif (ValidacionOrdenServicioServicio::puedeRecibirLaboratorioORecepcion($dbOs, $uIdSes, $rIdSes)) {
+                    $notificacionesOs = ValidacionOrdenServicioServicio::obtenerNotificacionesPendientes(
+                        $dbOs,
+                        ValidacionOrdenServicioServicio::AREA_LABORATORIO,
+                        15
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            $notificacionesOs = [];
+        }
+
         $this->renderizar('OrdenesServicio/Vistas/index', [
             'titulo' => 'Órdenes de Servicio & Hojas de Recepción - CYCSA',
             'ordenes' => $ordenes,
@@ -77,6 +114,7 @@ class OrdenesServicioControlador extends ControladorBase {
             'conteosTabs' => $conteosTabs,
             'filtros' => $filtros,
             'id_os_auto' => $idOSAuto,
+            'notificaciones_os' => $notificacionesOs,
             'csrfToken' => (string)($_SESSION['csrf_token'] ?? '')
         ]);
     }
@@ -1104,12 +1142,20 @@ class OrdenesServicioControlador extends ControladorBase {
     }
 
     /**
-     * Vista de detalle del documento CYCSA-RG-FM-39 V1
+     * Vista de detalle del documento CYCSA-RG-FM-39 V1R1
      */
     public function detalle(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         
         $idOS = (int)($_GET['id'] ?? 0);
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        if ($idOS > 0) {
+            try {
+                ValidacionOrdenServicioServicio::evaluarYActualizarEjecucionAutomatica($db, $idOS);
+            } catch (\Throwable $e) {
+            }
+        }
+
         $osModelo = new OrdenServicioModelo();
         $os = $osModelo->obtenerPorId($idOS);
 
@@ -1119,25 +1165,51 @@ class OrdenesServicioControlador extends ControladorBase {
             return;
         }
 
+        $uIdSes = (int)($_SESSION['usuario_id'] ?? 0);
+        $rIdSes = (int)($_SESSION['usuario_rol'] ?? 0);
+        $historialValidaciones = ValidacionOrdenServicioServicio::obtenerHistorial($db, $idOS);
+        $usuariosActivos = [];
+        if (ValidacionOrdenServicioServicio::puedeCorregirValidacion($db, $uIdSes, $rIdSes)) {
+            try {
+                $usuariosActivos = $db->query("SELECT id, nombre FROM usuarios WHERE activo = 1 ORDER BY nombre ASC")->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+            } catch (\Throwable $e) {
+                $usuariosActivos = [];
+            }
+        }
+
         $mostrarBitacora = puedeVerBitacoraOS();
         $this->renderizar('OrdenesServicio/Vistas/detalle', [
-            'titulo' => 'Orden de Servicio ' . $os['codigo_os'],
+            'titulo' => 'Orden de Servicio ' . $os['codigo_os'] . ' (CYCSA-RG-FM-39 V1R1)',
             'os' => $os,
             'mostrar_bitacora' => $mostrarBitacora,
             'bitacora_logs' => $mostrarBitacora ? obtenerBitacoraOS($idOS, 200) : [],
             'bitacora_modulo_nombre' => 'Orden de Servicio ' . ($os['codigo_os'] ?? ''),
             'bitacora_limite' => 200,
             'bitacora_abierta' => false,
+            'historial_validaciones' => $historialValidaciones,
+            'puede_autorizar_admin' => ValidacionOrdenServicioServicio::puedeAutorizarAdmin($db, $uIdSes, $rIdSes),
+            'puede_recibir_lab' => ValidacionOrdenServicioServicio::puedeRecibirLaboratorioORecepcion($db, $uIdSes, $rIdSes),
+            'puede_recibir_admin_final' => ValidacionOrdenServicioServicio::puedeRecibirAdminFinal($db, $uIdSes, $rIdSes),
+            'puede_corregir_validacion' => ValidacionOrdenServicioServicio::puedeCorregirValidacion($db, $uIdSes, $rIdSes),
+            'usuarios_activos_os' => $usuariosActivos,
+            'csrfToken' => (string)($_SESSION['csrf_token'] ?? ''),
         ]);
     }
 
     /**
-     * PDF oficial CYCSA-RG-FM-39. Mismo HTML que la vista de detalle / impresión.
+     * PDF oficial CYCSA-RG-FM-39 V1R1. Mismo HTML que la vista de detalle / impresión.
      */
     public function descargarPdf(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
 
         $idOS = (int)($_GET['id'] ?? 0);
+        if ($idOS > 0) {
+            try {
+                $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+                ValidacionOrdenServicioServicio::evaluarYActualizarEjecucionAutomatica($db, $idOS);
+            } catch (\Throwable $e) {
+            }
+        }
         $osModelo = new OrdenServicioModelo();
         $os = $osModelo->obtenerPorId($idOS);
 
@@ -1153,7 +1225,7 @@ class OrdenesServicioControlador extends ControladorBase {
         if ($nombre === '') {
             $nombre = 'orden-servicio';
         }
-        $nombre .= '-RG-FM-39.pdf';
+        $nombre .= '-RG-FM-39-V1R1.pdf';
 
         if (!headers_sent()) {
             header('Content-Type: application/pdf');
@@ -1163,6 +1235,112 @@ class OrdenesServicioControlador extends ControladorBase {
         if (!defined('PHPUNIT_RUNNING')) {
             exit;
         }
+    }
+
+    public function autorizarAdmin(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $datos = $peticion->obtenerDatos();
+        $idOS = (int)($datos['id_os'] ?? 0);
+        if (!isset($datos['csrf_token']) || !hash_equals((string)($_SESSION['csrf_token'] ?? ''), (string)$datos['csrf_token'])) {
+            $_SESSION['error'] = 'Token de seguridad inválido.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/detalle?id=' . $idOS);
+            return;
+        }
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $res = ValidacionOrdenServicioServicio::registrarAutorizacionAdmin(
+            $db,
+            $idOS,
+            (int)($_SESSION['usuario_id'] ?? 0),
+            (int)($_SESSION['usuario_rol'] ?? 0),
+            (string)($_SESSION['usuario_nombre'] ?? '')
+        );
+        if ($res['ok']) {
+            registrarEventoOS('ordenes_servicio', 'autorizar_admin', $res['mensaje'], $idOS);
+            $_SESSION['exito'] = $res['mensaje'];
+        } else {
+            $_SESSION['error'] = $res['mensaje'];
+        }
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/detalle?id=' . $idOS);
+    }
+
+    public function recibirLaboratorio(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $datos = $peticion->obtenerDatos();
+        $idOS = (int)($datos['id_os'] ?? 0);
+        if (!isset($datos['csrf_token']) || !hash_equals((string)($_SESSION['csrf_token'] ?? ''), (string)$datos['csrf_token'])) {
+            $_SESSION['error'] = 'Token de seguridad inválido.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/detalle?id=' . $idOS);
+            return;
+        }
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $res = ValidacionOrdenServicioServicio::registrarRecepcionLab(
+            $db,
+            $idOS,
+            (int)($_SESSION['usuario_id'] ?? 0),
+            (int)($_SESSION['usuario_rol'] ?? 0),
+            (string)($_SESSION['usuario_nombre'] ?? '')
+        );
+        if ($res['ok']) {
+            registrarEventoOS('ordenes_servicio', 'recibir_laboratorio', $res['mensaje'], $idOS);
+            $_SESSION['exito'] = $res['mensaje'];
+        } else {
+            $_SESSION['error'] = $res['mensaje'];
+        }
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/detalle?id=' . $idOS);
+    }
+
+    public function recibirAdminFinal(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $datos = $peticion->obtenerDatos();
+        $idOS = (int)($datos['id_os'] ?? 0);
+        if (!isset($datos['csrf_token']) || !hash_equals((string)($_SESSION['csrf_token'] ?? ''), (string)$datos['csrf_token'])) {
+            $_SESSION['error'] = 'Token de seguridad inválido.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/detalle?id=' . $idOS);
+            return;
+        }
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $res = ValidacionOrdenServicioServicio::registrarRecepcionAdminFinal(
+            $db,
+            $idOS,
+            (int)($_SESSION['usuario_id'] ?? 0),
+            (int)($_SESSION['usuario_rol'] ?? 0),
+            (string)($_SESSION['usuario_nombre'] ?? '')
+        );
+        if ($res['ok']) {
+            registrarEventoOS('ordenes_servicio', 'recibir_admin_final', $res['mensaje'], $idOS);
+            $_SESSION['exito'] = $res['mensaje'];
+        } else {
+            $_SESSION['error'] = $res['mensaje'];
+        }
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/detalle?id=' . $idOS);
+    }
+
+    public function corregirValidacionAutorizada(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        $datos = $peticion->obtenerDatos();
+        $idOS = (int)($datos['id_os'] ?? 0);
+        if (!isset($datos['csrf_token']) || !hash_equals((string)($_SESSION['csrf_token'] ?? ''), (string)$datos['csrf_token'])) {
+            $_SESSION['error'] = 'Token de seguridad inválido.';
+            $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/detalle?id=' . $idOS);
+            return;
+        }
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $res = ValidacionOrdenServicioServicio::corregirValidacionAutorizada(
+            $db,
+            $idOS,
+            trim((string)($datos['campo_validacion'] ?? '')),
+            trim((string)($datos['motivo'] ?? '')),
+            (int)($_SESSION['usuario_id'] ?? 0),
+            (int)($_SESSION['usuario_rol'] ?? 0),
+            !empty($datos['nuevo_usuario_id']) ? (int)$datos['nuevo_usuario_id'] : null
+        );
+        if ($res['ok']) {
+            registrarEventoOS('ordenes_servicio', 'correccion_validacion', $res['mensaje'], $idOS);
+            $_SESSION['exito'] = $res['mensaje'];
+        } else {
+            $_SESSION['error'] = $res['mensaje'];
+        }
+        $respuesta->redirigir('/Cycsa/publico/ordenes-servicio/detalle?id=' . $idOS);
     }
 
     /**

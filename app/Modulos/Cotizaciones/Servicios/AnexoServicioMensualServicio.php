@@ -432,9 +432,10 @@ class AnexoServicioMensualServicio
             color: #111827;
             line-height: 1.42;
             width: 100%;
+            background: transparent;
         }
         .anx-mensual-banner {
-            background: #1F3864;
+            background: rgba(31, 56, 100, 0.92);
             color: #ffffff;
             font-weight: 700;
             font-size: {$titleSize};
@@ -444,19 +445,19 @@ class AnexoServicioMensualServicio
             border: 1px solid #1F3864;
         }
         .anx-mensual-sec {
-            background: #e8eef7;
+            background: rgba(232, 238, 247, 0.55);
             color: #1F3864;
             font-weight: 700;
             font-size: {$secSize};
             padding: " . ($esPdf ? '4.5px 8px' : '7px 12px') . ";
-            border: 1px solid #cbd5e1;
+            border: 1px solid #94a3b8;
             border-top: none;
         }
         .anx-mensual-body {
-            border: 1px solid #cbd5e1;
+            border: 1px solid #94a3b8;
             border-top: none;
             padding: " . ($esPdf ? '5px 8px' : '9px 12px') . ";
-            background: #ffffff;
+            background: transparent;
         }
         .anx-mensual-body p {
             margin: 0 0 5px 0;
@@ -467,23 +468,25 @@ class AnexoServicioMensualServicio
         .anx-mensual-table {
             width: 100%;
             border-collapse: collapse;
+            background: transparent;
         }
         .anx-mensual-table th,
         .anx-mensual-table td {
-            border: 1px solid #cbd5e1;
+            border: 1px solid #94a3b8;
             padding: {$padCell};
             vertical-align: top;
             text-align: left;
+            background: transparent;
         }
         .anx-mensual-table thead th {
-            background: #f1f5f9;
+            background: rgba(241, 245, 249, 0.55);
             color: #1F3864;
             font-weight: 700;
         }
         .anx-mensual-k {
             width: 28%;
             font-weight: 700;
-            background: #f8fafc;
+            background: rgba(248, 250, 252, 0.45) !important;
             color: #1e293b;
         }
         .anx-mensual-num {

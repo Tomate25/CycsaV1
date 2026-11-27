@@ -350,20 +350,23 @@ class DocumentoCotizacionRgFm31Servicio
     font-size: {$fontBase};
     line-height: 1.38;
     width: 100%;
-    background: #ffffff;
+    background: transparent;
 }
 .rgfm31-doc table {
     width: 100%;
     border-collapse: collapse;
+    background: transparent;
 }
 .rgfm31-header-table {
     border: 1.5px solid #103487;
     margin-bottom: {$sectionGap};
+    background: transparent;
 }
 .rgfm31-header-table td {
     padding: {$padCell};
     vertical-align: middle;
     border: 1px solid #cbd5e1;
+    background: transparent;
 }
 .rgfm31-logo-cell {
     width: 22%;
@@ -405,7 +408,7 @@ class DocumentoCotizacionRgFm31Servicio
 .rgfm31-code-cell {
     width: 24%;
     text-align: center;
-    background-color: #f8fafc;
+    background-color: transparent;
 }
 .rgfm31-code-label {
     font-size: {$fontSmall};
@@ -421,7 +424,7 @@ class DocumentoCotizacionRgFm31Servicio
     display: block;
 }
 .rgfm31-banner {
-    background-color: #103487;
+    background-color: rgba(16, 52, 135, 0.92);
     color: #ffffff;
     font-size: {$fontBanner};
     font-weight: 700;
@@ -432,18 +435,20 @@ class DocumentoCotizacionRgFm31Servicio
 }
 .rgfm31-section {
     margin-bottom: {$sectionGap};
+    background: transparent;
 }
 .rgfm31-no-split {
     page-break-inside: avoid;
 }
 .rgfm31-meta-table td {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
     padding: {$padCell};
     vertical-align: top;
     font-size: {$fontBase};
+    background: transparent;
 }
 .rgfm31-meta-k {
-    background-color: #f1f5f9;
+    background-color: rgba(241, 245, 249, 0.55);
     color: #1e293b;
     font-weight: 700;
     width: 18%;
@@ -454,31 +459,34 @@ class DocumentoCotizacionRgFm31Servicio
     width: 32%;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    background: transparent;
 }
 .rgfm31-items-table {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
+    background: transparent;
 }
 .rgfm31-items-table thead {
     display: table-header-group;
 }
 .rgfm31-items-table th {
-    background-color: #e8eef9;
+    background-color: rgba(232, 238, 249, 0.65);
     color: #103487;
     font-weight: 700;
     font-size: {$fontSmall};
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
     padding: {$padItem};
     text-align: left;
     vertical-align: middle;
 }
 .rgfm31-items-table td {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
     padding: {$padItem};
     vertical-align: top;
     font-size: {$fontBase};
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: normal;
+    background: transparent;
 }
 .rgfm31-item-desc {
     font-weight: 700;
@@ -502,7 +510,7 @@ class DocumentoCotizacionRgFm31Servicio
     font-family: monospace;
     font-size: {$fontSmall};
     color: #475569;
-    background-color: #f1f5f9;
+    background-color: rgba(241, 245, 249, 0.6);
     padding: 1px 4px;
     border-radius: 2px;
 }
@@ -513,19 +521,22 @@ class DocumentoCotizacionRgFm31Servicio
     font-size: {$fontSmall};
 }
 .rgfm31-summary-table {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
     border-top: none;
+    background: transparent;
 }
 .rgfm31-summary-table td {
     vertical-align: top;
+    background: transparent;
 }
 .rgfm31-bank-cell {
     width: 60%;
     padding: {$padCell};
-    border-right: 1px solid #cbd5e1;
+    border-right: 1px solid #94a3b8;
     font-size: {$fontSmall};
     color: #334155;
     line-height: 1.4;
+    background: transparent;
 }
 .rgfm31-bank-title {
     font-weight: 700;
@@ -539,16 +550,18 @@ class DocumentoCotizacionRgFm31Servicio
     height: {$qrSize};
     border: 1px solid #cbd5e1;
     padding: 2px;
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.85);
 }
 .rgfm31-totals-cell {
     width: 40%;
     padding: 0;
+    background: transparent;
 }
 .rgfm31-totals-inner td {
     padding: {$padCell};
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #cbd5e1;
     font-size: {$fontBase};
+    background: transparent;
 }
 .rgfm31-totals-inner tr:last-child td {
     border-bottom: none;
@@ -569,33 +582,34 @@ class DocumentoCotizacionRgFm31Servicio
     color: #b91c1c;
 }
 .rgfm31-totals-grand td {
-    background-color: #e8eef9;
+    background-color: rgba(232, 238, 249, 0.65);
     color: #103487;
     font-weight: 700;
     border-top: 1.5px solid #103487;
 }
 .rgfm31-cond-table th {
-    background-color: #f1f5f9;
+    background-color: rgba(241, 245, 249, 0.6);
     color: #103487;
     font-weight: 700;
     font-size: {$fontSmall};
     text-align: left;
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
     padding: {$padCell};
 }
 .rgfm31-cond-table td {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
     padding: {$padCell};
     font-size: {$fontBase};
     color: #0f172a;
     font-weight: 600;
-    width: 33.33%;
+    width: 25%;
+    background: transparent;
 }
 .rgfm31-notes-box {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
     border-top: none;
     padding: {$padCell};
-    background-color: #ffffff;
+    background-color: transparent;
 }
 .rgfm31-notes-list {
     margin: 0;
@@ -608,23 +622,25 @@ class DocumentoCotizacionRgFm31Servicio
     margin-bottom: 3px;
 }
 .rgfm31-contacts-table th {
-    background-color: #f1f5f9;
+    background-color: rgba(241, 245, 249, 0.6);
     color: #103487;
     font-weight: 700;
     font-size: {$fontSmall};
     text-align: left;
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
     padding: {$padCell};
 }
 .rgfm31-contacts-table td {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #94a3b8;
     padding: {$padCell};
     font-size: {$fontBase};
     color: #0f172a;
+    background: transparent;
 }
 .rgfm31-sign-table {
     margin-top: {$sectionGap};
     margin-bottom: {$sectionGap};
+    background: transparent;
 }
 .rgfm31-sign-table td {
     width: 46%;
@@ -633,6 +649,7 @@ class DocumentoCotizacionRgFm31Servicio
     padding: {$padCell};
     font-size: {$fontSmall};
     color: #334155;
+    background: transparent;
 }
 .rgfm31-sign-line {
     border-top: 1px solid #94a3b8;
@@ -643,12 +660,14 @@ class DocumentoCotizacionRgFm31Servicio
 .rgfm31-footer-table {
     border-top: 2px solid #103487;
     margin-top: {$sectionGap};
+    background: transparent;
 }
 .rgfm31-footer-table td {
     padding: 5px 4px 2px 4px;
     font-size: {$fontSmall};
     color: #475569;
     vertical-align: top;
+    background: transparent;
 }
 .rgfm31-text-center { text-align: center !important; }
 .rgfm31-text-right { text-align: right !important; }
@@ -1081,6 +1100,23 @@ CSS;
             }
         }
         return '';
+    }
+
+    public static function resolverMembreteVerticalSrc(bool $esPdf): string
+    {
+        $root = dirname(__DIR__, 4);
+        $rutaMembrete = $root . '/publico/img/hoja_membretada_vertical.jpg';
+        if (!is_file($rutaMembrete)) {
+            $rutaMembrete = $root . '/publico/img/hoja_vertical.jpg';
+        }
+        if (!is_file($rutaMembrete)) {
+            return '';
+        }
+        if (!$esPdf) {
+            return '/Cycsa/publico/img/' . basename($rutaMembrete);
+        }
+        $bin = @file_get_contents($rutaMembrete);
+        return ($bin !== false && $bin !== '') ? ('data:image/jpeg;base64,' . base64_encode($bin)) : '';
     }
 
     private static function resolverQrSrc(bool $esPdf): string

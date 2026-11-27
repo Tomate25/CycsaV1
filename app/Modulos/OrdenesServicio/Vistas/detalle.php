@@ -1,6 +1,9 @@
 <?php
-// Vista oficial del documento ORDEN DE SERVICIO (CYCSA-RG-FM-39 V1) — Idéntica en Pantalla, Impresión y PDF Dompdf
+// Vista oficial del documento ORDEN DE SERVICIO (CYCSA-RG-FM-39 V1R1) — Idéntica en Pantalla, Impresión y PDF Dompdf
 $esModoPdfRgFm39 = !empty($esModoPdfRgFm39);
+$membreteSrcRgFm39 = class_exists(\Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::class)
+    ? \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::resolverMembreteVerticalSrc($esModoPdfRgFm39)
+    : '';
 
 // Normalizar contactos estructurados (Nombre | Teléfono | Correo electrónico)
 $contactosNormalizados = [];
@@ -117,7 +120,10 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
 <link rel="stylesheet" href="/Cycsa/publico/css/ordenes-servicio-sobrio.css">
 <?php endif; ?>
 <style>
-    @page { margin: 8mm 11mm; }
+    @page {
+        size: letter portrait;
+        margin: <?= ($esModoPdfRgFm39 && $membreteSrcRgFm39 !== '') ? '30mm 12mm 28mm 12mm' : '8mm 11mm' ?>;
+    }
     <?php if ($esModoPdfRgFm39): ?>
     body {
         margin: 0;
@@ -126,7 +132,15 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
         color: #111827;
         font-size: 9px;
         line-height: 1.3;
-        background: #ffffff;
+        background: transparent;
+    }
+    .os-membrete-fondo-pdf {
+        position: fixed;
+        top: -30mm;
+        left: -12mm;
+        width: 215.9mm;
+        height: 279.4mm;
+        z-index: -1000;
     }
     <?php endif; ?>
     .os-wrapper { background: #f8fafc; padding: 12px 0 32px 0; min-height: auto; }
@@ -134,8 +148,9 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
         width: 100%;
         max-width: 100%;
         margin: 0;
-        background: #ffffff;
-        padding: <?= $esModoPdfRgFm39 ? '0' : '26px 32px' ?>;
+        background-color: <?= $esModoPdfRgFm39 ? 'transparent' : '#ffffff' ?>;
+        <?= (!$esModoPdfRgFm39 && $membreteSrcRgFm39 !== '') ? "background-image: url('" . htmlspecialchars($membreteSrcRgFm39, ENT_QUOTES, 'UTF-8') . "'); background-size: 100% 100%; background-repeat: no-repeat; background-position: center top;" : '' ?>
+        padding: <?= $esModoPdfRgFm39 ? '0' : ($membreteSrcRgFm39 !== '' ? '122px 42px 110px 42px' : '26px 32px') ?>;
         border-radius: <?= $esModoPdfRgFm39 ? '0' : '10px' ?>;
         border: <?= $esModoPdfRgFm39 ? '0' : '1px solid #e5e7eb' ?>;
         font-family: 'DejaVu Sans', 'Inter', Helvetica, Arial, sans-serif;
@@ -145,17 +160,19 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
         box-sizing: border-box;
     }
 
-    /* Encabezado oficial CYCSA-RG-FM-39 V1 */
+    /* Encabezado oficial CYCSA-RG-FM-39 V1R1 (misma estructura que Cotización RG-FM-31 V2R1) */
     .os-header-table {
         width: 100%;
         border-collapse: collapse;
         margin-bottom: <?= $esModoPdfRgFm39 ? '6px' : '10px' ?>;
-        border-bottom: 2px solid #1F3864;
+        border: 1.5px solid #1F3864;
+        background: transparent;
     }
     .os-header-table td {
-        padding: <?= $esModoPdfRgFm39 ? '2px 4px 5px 4px' : '4px 6px 8px 6px' ?>;
+        padding: <?= $esModoPdfRgFm39 ? '3px 5px' : '6px 10px' ?>;
         vertical-align: middle;
-        border: 0;
+        border: 1px solid #94a3b8;
+        background: transparent;
     }
     .os-logo-img {
         height: <?= $esModoPdfRgFm39 ? '42px' : '54px' ?>;
@@ -163,7 +180,7 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
         display: block;
     }
     .os-company-name {
-        font-size: <?= $esModoPdfRgFm39 ? '11.5px' : '15px' ?>;
+        font-size: <?= $esModoPdfRgFm39 ? '11px' : '15px' ?>;
         font-weight: 800;
         color: #1F3864;
         letter-spacing: 0.3px;
@@ -171,35 +188,38 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
         text-align: center;
     }
     .os-company-ruc {
-        font-size: <?= $esModoPdfRgFm39 ? '8.5px' : '11.5px' ?>;
+        font-size: <?= $esModoPdfRgFm39 ? '8px' : '11.5px' ?>;
         font-weight: 600;
         color: #374151;
         text-align: center;
         margin-top: 1px;
     }
     .os-main-title {
-        font-size: <?= $esModoPdfRgFm39 ? '12.5px' : '17px' ?>;
+        font-size: <?= $esModoPdfRgFm39 ? '12px' : '17px' ?>;
         font-weight: 800;
         color: #1F3864;
         letter-spacing: 0.6px;
         margin: <?= $esModoPdfRgFm39 ? '3px 0 0 0' : '5px 0 0 0' ?>;
+        padding-top: 3px;
+        border-top: 1px solid #cbd5e1;
         text-align: center;
     }
     .os-doc-code-box {
-        text-align: right;
-        font-size: <?= $esModoPdfRgFm39 ? '8px' : '11px' ?>;
+        text-align: center;
+        font-size: <?= $esModoPdfRgFm39 ? '7.8px' : '11px' ?>;
         color: #374151;
         line-height: 1.3;
+        background: transparent;
     }
     .os-doc-code-box strong {
         color: #1F3864;
-        font-size: <?= $esModoPdfRgFm39 ? '9px' : '12px' ?>;
+        font-size: <?= $esModoPdfRgFm39 ? '8.8px' : '12px' ?>;
         display: block;
     }
 
-    /* Banners de sección uniformes con CYCSA-RG-FM-31 V2R1 y RG-FM-39 V1 */
+    /* Banners de sección uniformes con CYCSA-RG-FM-31 V2R1 y RG-FM-39 V1R1 */
     .os-sec-banner {
-        background-color: #1F3864;
+        background-color: rgba(31, 56, 100, 0.92);
         color: #ffffff;
         font-weight: 700;
         font-size: <?= $esModoPdfRgFm39 ? '8px' : '11px' ?>;
@@ -209,21 +229,23 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
         margin: <?= $esModoPdfRgFm39 ? '5px 0 0 0' : '14px 0 0 0' ?>;
     }
 
-    /* Tabla de metadatos 2 columnas (4 celdas) */
+    /* Tabla de metadatos 2 columnas (4 celdas) transparente */
     .os-meta-table {
         width: 100%;
         border-collapse: collapse;
         margin-bottom: <?= $esModoPdfRgFm39 ? '4px' : '10px' ?>;
         font-size: <?= $esModoPdfRgFm39 ? '8.3px' : '12px' ?>;
-        border: 1px solid #cbd5e1;
+        border: 1px solid #94a3b8;
+        background: transparent;
     }
     .os-meta-table td {
         padding: <?= $esModoPdfRgFm39 ? '2.5px 5px' : '6px 10px' ?>;
-        border: 1px solid #d1d5db;
+        border: 1px solid #94a3b8;
         vertical-align: top;
+        background: transparent;
     }
     .os-meta-k {
-        background-color: #f8fafc;
+        background-color: rgba(248, 250, 252, 0.55) !important;
         font-weight: 700;
         color: #1F3864;
         width: 18%;
@@ -232,18 +254,20 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
     .os-meta-v {
         color: #111827;
         width: 32%;
+        background: transparent;
     }
 
-    /* Tablas estructuradas de contenido */
+    /* Tablas estructuradas de contenido transparentes */
     .os-table-border {
         width: 100%;
         border-collapse: collapse;
         margin-bottom: <?= $esModoPdfRgFm39 ? '4px' : '10px' ?>;
         font-size: <?= $esModoPdfRgFm39 ? '8.2px' : '12px' ?>;
         border: 1px solid #94a3b8;
+        background: transparent;
     }
     .os-table-border th {
-        background-color: #f1f5f9;
+        background-color: rgba(241, 245, 249, 0.6);
         color: #1F3864;
         font-weight: 700;
         text-align: center;
@@ -253,63 +277,120 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
     }
     .os-table-border td {
         padding: <?= $esModoPdfRgFm39 ? '3px 5px' : '7px 9px' ?>;
-        border: 1px solid #cbd5e1;
+        border: 1px solid #94a3b8;
         vertical-align: top;
         color: #111827;
+        background: transparent;
     }
 
-    /* Notas y Condiciones */
+    /* Notas y Condiciones transparentes */
     .os-notes-box {
-        border: 1px solid #cbd5e1;
+        border: 1px solid #94a3b8;
         border-top: 0;
         padding: <?= $esModoPdfRgFm39 ? '4px 7px' : '10px 14px' ?>;
         font-size: <?= $esModoPdfRgFm39 ? '8px' : '12px' ?>;
         color: #1f2937;
         line-height: 1.35;
         margin-bottom: <?= $esModoPdfRgFm39 ? '4px' : '10px' ?>;
+        background: transparent;
     }
     .os-notes-box p { margin: 0 0 2px 0; }
 
-    /* Firmas Oficiales de Autorización y Recepción (4 columnas) */
+    /* Recuadro Automatizado de 4 Validaciones CYCSA-RG-FM-39 V1R1 */
     .os-signatures-table {
         width: 100%;
         border-collapse: collapse;
-        border: 1px solid #cbd5e1;
-        border-top: 0;
+        border: 1px solid #94a3b8;
         table-layout: fixed;
-        margin-bottom: <?= $esModoPdfRgFm39 ? '5px' : '14px' ?>;
+        margin-bottom: <?= $esModoPdfRgFm39 ? '4px' : '12px' ?>;
+        background: transparent;
+        page-break-inside: avoid;
+    }
+    .os-signatures-table th.os-sig-group {
+        background-color: rgba(31, 56, 100, 0.94);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: <?= $esModoPdfRgFm39 ? '7.8px' : '11px' ?>;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        text-align: center;
+        padding: <?= $esModoPdfRgFm39 ? '4px 5px' : '7px 8px' ?>;
+        border: 1px solid #1F3864;
     }
     .os-signatures-table td {
         width: 25%;
-        border: 1px solid #cbd5e1;
-        border-top: 0;
-        padding: <?= $esModoPdfRgFm39 ? '20px 5px 5px 5px' : '38px 10px 10px 10px' ?>;
+        border: 1px solid #94a3b8;
+        padding: <?= $esModoPdfRgFm39 ? '6px 5px 6px 5px' : '12px 10px 10px 10px' ?>;
         text-align: center;
-        vertical-align: bottom;
-        font-size: <?= $esModoPdfRgFm39 ? '7.8px' : '11px' ?>;
+        vertical-align: top;
+        font-size: <?= $esModoPdfRgFm39 ? '7.6px' : '11.5px' ?>;
         color: #111827;
-        line-height: 1.25;
+        line-height: 1.28;
+        background: transparent;
+    }
+    .os-sig-role {
+        font-weight: 600;
+        color: #1e293b;
+        min-height: <?= $esModoPdfRgFm39 ? '24px' : '38px' ?>;
+        margin-bottom: <?= $esModoPdfRgFm39 ? '6px' : '12px' ?>;
+    }
+    .os-sig-badge-ok {
+        color: #15803d;
+        font-weight: 700;
+        font-size: <?= $esModoPdfRgFm39 ? '7.4px' : '11px' ?>;
+        margin-bottom: <?= $esModoPdfRgFm39 ? '4px' : '8px' ?>;
+    }
+    .os-sig-badge-pend {
+        color: #64748b;
+        font-style: italic;
+        font-size: <?= $esModoPdfRgFm39 ? '7.2px' : '10.5px' ?>;
+        margin-bottom: <?= $esModoPdfRgFm39 ? '4px' : '8px' ?>;
+    }
+    .os-sig-badge-warn {
+        color: #b45309;
+        font-weight: 700;
+        font-size: <?= $esModoPdfRgFm39 ? '7.2px' : '10.5px' ?>;
+        margin-bottom: <?= $esModoPdfRgFm39 ? '4px' : '8px' ?>;
+    }
+    .os-sig-icon {
+        display: inline-block;
+        width: <?= $esModoPdfRgFm39 ? '13px' : '18px' ?>;
+        height: <?= $esModoPdfRgFm39 ? '13px' : '18px' ?>;
+        line-height: <?= $esModoPdfRgFm39 ? '13px' : '18px' ?>;
+        border-radius: 50%;
+        border: 1.4px solid #15803d;
+        color: #15803d;
+        font-weight: 700;
+        font-size: <?= $esModoPdfRgFm39 ? '8px' : '11px' ?>;
+        margin-bottom: 2px;
     }
     .os-sig-line {
-        border-top: 1px solid #374151;
-        padding-top: 3px;
+        border-top: 1px solid #475569;
+        padding-top: 4px;
         font-weight: 700;
-        color: #1F3864;
+        color: #0f172a;
     }
     .os-sig-sub {
-        font-weight: 400;
-        color: #6b7280;
-        font-size: <?= $esModoPdfRgFm39 ? '7.2px' : '10px' ?>;
-        margin-top: 1px;
+        font-weight: 500;
+        color: #475569;
+        font-size: <?= $esModoPdfRgFm39 ? '7px' : '10.5px' ?>;
+        margin-top: 2px;
+    }
+    .os-sig-footnote {
+        font-size: <?= $esModoPdfRgFm39 ? '6.8px' : '10.5px' ?>;
+        color: #64748b;
+        margin: -2px 0 <?= $esModoPdfRgFm39 ? '4px' : '10px' ?> 0;
+        font-style: italic;
     }
 
-    /* Pie de página institucional */
+    /* Pie de página institucional (misma estructura que Cotización RG-FM-31 V2R1) */
     .os-footer-table {
         width: 100%;
         border-collapse: collapse;
         border-top: 2px solid #1F3864;
-        margin-top: <?= $esModoPdfRgFm39 ? '5px' : '16px' ?>;
+        margin-top: <?= $esModoPdfRgFm39 ? '5px' : '14px' ?>;
         table-layout: fixed;
+        background: transparent;
     }
     .os-footer-table td {
         padding: 4px 4px 0 4px;
@@ -319,6 +400,7 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
         font-weight: 600;
         line-height: 1.3;
         border: 0;
+        background: transparent;
     }
 
     .btn-action-bar {
@@ -353,6 +435,9 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
 <?php if ($esModoPdfRgFm39): ?>
 </head>
 <body>
+<?php if ($membreteSrcRgFm39 !== ''): ?>
+<img src="<?= $membreteSrcRgFm39 ?>" class="os-membrete-fondo-pdf" alt="">
+<?php endif; ?>
 <?php endif; ?>
 
 <?php if (!$esModoPdfRgFm39): ?>
@@ -415,13 +500,89 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
     <?php endif; ?>
 <?php endif; ?>
 
-    <!-- CONTENEDOR DEL DOCUMENTO OFICIAL CYCSA-RG-FM-39 V1 -->
+    <?php if (!$esModoPdfRgFm39): ?>
+    <?php
+    $csrfValOs = htmlspecialchars((string)($csrfToken ?? ($_SESSION['csrf_token'] ?? '')), ENT_QUOTES, 'UTF-8');
+    $autAdminFec = !empty($os['autorizado_admin_fecha']) ? (string)$os['autorizado_admin_fecha'] : '';
+    $recLabFec = !empty($os['recibido_lab_fecha']) ? (string)$os['recibido_lab_fecha'] : '';
+    $devSisFec = !empty($os['devuelto_sistema_fecha']) ? (string)$os['devuelto_sistema_fecha'] : '';
+    $recAdminFinFec = !empty($os['recibido_admin_final_fecha']) ? (string)$os['recibido_admin_final_fecha'] : '';
+    $tieneAlertaPlazoOs = !empty($os['estado_ejecucion_alerta']) && !empty($os['alerta_vencimiento_detalle']);
+    $esEjecutadaOs = ($devSisFec !== '' || in_array((string)($os['estado'] ?? ''), ['Ejecutada', 'Finalizado', 'Cerrado', 'Archivado'], true));
+    ?>
+
+    <?php if (isset($_SESSION['exito'])): ?>
+        <div class="no-print mb-3" style="background: #f0fdf4; border: 1px solid #86efac; color: #166534; border-radius: 8px; padding: 10px 14px; font-size: 13px;">
+            <i class="fa-solid fa-circle-check me-1"></i> <?= htmlspecialchars((string)$_SESSION['exito'], ENT_QUOTES, 'UTF-8') ?>
+        </div>
+        <?php unset($_SESSION['exito']); ?>
+    <?php endif; ?>
+    <?php if (isset($_SESSION['error'])): ?>
+        <div class="no-print mb-3" style="background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; border-radius: 8px; padding: 10px 14px; font-size: 13px;">
+            <i class="fa-solid fa-circle-exclamation me-1"></i> <?= htmlspecialchars((string)$_SESSION['error'], ENT_QUOTES, 'UTF-8') ?>
+        </div>
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
+
+    <?php if ($tieneAlertaPlazoOs): ?>
+        <div class="no-print mb-3" style="background: #fef2f2; border: 1.5px solid #dc2626; color: #991b1b; border-radius: 8px; padding: 12px 16px; font-size: 13px;">
+            <div style="font-weight: 700; margin-bottom: 4px;">
+                <i class="fa-solid fa-bell"></i> Alerta de Plazo Mensual Finalizado con Actividades Pendientes
+            </div>
+            <div><?= htmlspecialchars((string)$os['alerta_vencimiento_detalle'], ENT_QUOTES, 'UTF-8') ?></div>
+        </div>
+    <?php endif; ?>
+
+    <!-- BARRA DE VALIDACIÓN DIGITAL CYCSA-RG-FM-39 V1R1 (CON PERMISOS POR CARGO) -->
+    <div class="no-print" style="width: 100%; margin: 0 0 14px 0; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="font-size: 12.5px; color: #334155;">
+            <strong style="color: #1F3864;"><i class="fa-solid fa-shield-halved me-1"></i> Validación Digital de la Orden (CYCSA-RG-FM-39 V1R1):</strong>
+            Estado actual: <span class="cy-pill <?= $esEjecutadaOs ? 'cy-pill-ok' : 'cy-pill-pend' ?>"><?= htmlspecialchars((string)($os['estado'] ?? 'Pendiente'), ENT_QUOTES, 'UTF-8') ?></span>
+        </div>
+        <div style="display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+            <?php if ($autAdminFec === '' && !empty($puede_autorizar_admin)): ?>
+                <form method="POST" action="/Cycsa/publico/ordenes-servicio/autorizar-admin" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="<?= $csrfValOs ?>">
+                    <input type="hidden" name="id_os" value="<?= (int)$os['id'] ?>">
+                    <button type="submit" class="btn-cycsa btn-cycsa-primary" style="font-size: 12px; padding: 6px 12px;">
+                        <i class="fa-solid fa-check-double"></i> 1. Autorizar (Administración)
+                    </button>
+                </form>
+            <?php endif; ?>
+            <?php if ($recLabFec === '' && !empty($puede_recibir_lab)): ?>
+                <form method="POST" action="/Cycsa/publico/ordenes-servicio/recibir-laboratorio" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="<?= $csrfValOs ?>">
+                    <input type="hidden" name="id_os" value="<?= (int)$os['id'] ?>">
+                    <button type="submit" class="btn-cycsa btn-cycsa-primary" style="font-size: 12px; padding: 6px 12px; background: #0f766e; border-color: #0f766e;">
+                        <i class="fa-solid fa-clipboard-check"></i> 2. Confirmar Recepción (Lab / Recepción)
+                    </button>
+                </form>
+            <?php endif; ?>
+            <?php if ($esEjecutadaOs && $recAdminFinFec === '' && !empty($puede_recibir_admin_final)): ?>
+                <form method="POST" action="/Cycsa/publico/ordenes-servicio/recibir-admin-final" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="<?= $csrfValOs ?>">
+                    <input type="hidden" name="id_os" value="<?= (int)$os['id'] ?>">
+                    <button type="submit" class="btn-cycsa btn-cycsa-primary" style="font-size: 12px; padding: 6px 12px; background: #15803d; border-color: #15803d;">
+                        <i class="fa-solid fa-stamp"></i> 4. Confirmar Recepción Definitiva (Administración)
+                    </button>
+                </form>
+            <?php endif; ?>
+            <?php if (!empty($puede_corregir_validacion) && ($autAdminFec !== '' || $recLabFec !== '' || $recAdminFinFec !== '')): ?>
+                <button type="button" onclick="document.getElementById('modalCorreccionValidacionOS').style.display='flex'" class="btn-cycsa btn-cycsa-secondary" style="font-size: 12px; padding: 6px 12px;">
+                    <i class="fa-solid fa-pen-ruler"></i> Corrección Autorizada
+                </button>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- CONTENEDOR DEL DOCUMENTO OFICIAL CYCSA-RG-FM-39 V1R1 -->
     <div class="os-container">
         <!-- ENCABEZADO OFICIAL -->
         <table class="os-header-table">
             <tr>
-                <td style="width: 24%; text-align: left;">
-                    <img src="<?= htmlspecialchars($logoSrcRgFm39, ENT_QUOTES, 'UTF-8') ?>" alt="CYCSA" class="os-logo-img"<?= !$esModoPdfRgFm39 ? ' onerror="this.src=\'/Cycsa/publico/img/logo_cycsa_rt_fm_13.png\'; this.onerror=null;"' : '' ?>>
+                <td style="width: 24%; text-align: center;">
+                    <img src="<?= htmlspecialchars($logoSrcRgFm39, ENT_QUOTES, 'UTF-8') ?>" alt="CYCSA" class="os-logo-img" style="margin: 0 auto;"<?= !$esModoPdfRgFm39 ? ' onerror="this.src=\'/Cycsa/publico/img/logo_cycsa_rt_fm_13.png\'; this.onerror=null;"' : '' ?>>
                 </td>
                 <td style="width: 50%; text-align: center;">
                     <div class="os-company-name">CONSULTORÍA Y CONSTRUCCIÓN S.A</div>
@@ -429,8 +590,8 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
                     <h1 class="os-main-title">ORDEN DE SERVICIO</h1>
                 </td>
                 <td style="width: 26%;" class="os-doc-code-box">
-                    Código de documento
-                    <strong>CYCSA-RG-FM-39 V1</strong>
+                    Código de documento:
+                    <strong>CYCSA-RG-FM-39 V1R1</strong>
                     <span>Versión O/S: v<?= (int)($os['version'] ?? 1) ?></span>
                 </td>
             </tr>
@@ -714,28 +875,94 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
             </tbody>
         </table>
 
-        <!-- SECCIÓN 7: AUTORIZACIÓN Y RECEPCIÓN (4 COLUMNAS) -->
-        <div class="os-sec-banner">AUTORIZACIÓN Y RECEPCIÓN (Agregar Nombre, firma y fecha)</div>
+        <!-- SECCIÓN 7: AUTORIZACIÓN Y RECEPCIÓN AUTOMATIZADA (CYCSA-RG-FM-39 V1R1 — 4 COLUMNAS) -->
+        <?php
+        $fmtValOs = static function (?string $f): string {
+            return \Cycsa\Modulos\OrdenesServicio\Servicios\ValidacionOrdenServicioServicio::formatearFechaHoraOficial($f);
+        };
+        $autAdmNom = trim((string)($os['autorizado_admin_nombre'] ?? ''));
+        $autAdmFecTxt = $fmtValOs($os['autorizado_admin_fecha'] ?? null);
+        $recLabNom = trim((string)($os['recibido_lab_nombre'] ?? ''));
+        $recLabFecTxt = $fmtValOs($os['recibido_lab_fecha'] ?? null);
+        $devSisFecTxt = $fmtValOs($os['devuelto_sistema_fecha'] ?? null);
+        $alertaPlazoVenc = !empty($os['estado_ejecucion_alerta']);
+        $recAdmFinNom = trim((string)($os['recibido_admin_final_nombre'] ?? ''));
+        $recAdmFinFecTxt = $fmtValOs($os['recibido_admin_final_fecha'] ?? null);
+        ?>
+        <div class="os-sec-banner">AUTORIZACIÓN Y RECEPCIÓN</div>
         <table class="os-signatures-table">
-            <tr>
-                <td>
-                    <div class="os-sig-line">Autorizado por Administración</div>
-                    <div class="os-sig-sub">Nombre, firma y fecha</div>
-                </td>
-                <td>
-                    <div class="os-sig-line">Recibido por Recepción</div>
-                    <div class="os-sig-sub">Nombre, firma y fecha</div>
-                </td>
-                <td>
-                    <div class="os-sig-line">Entregado por Recepción</div>
-                    <div class="os-sig-sub">Nombre, firma y fecha</div>
-                </td>
-                <td>
-                    <div class="os-sig-line">Recibido por Administración</div>
-                    <div class="os-sig-sub">Nombre, firma y fecha</div>
-                </td>
-            </tr>
+            <thead>
+                <tr>
+                    <th colspan="2" class="os-sig-group">ENTREGA DE LA ORDEN</th>
+                    <th colspan="2" class="os-sig-group">DEVOLUCIÓN DE LA ORDEN EJECUTADA</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <!-- 1. Autorizado por Administración -->
+                    <td>
+                        <div class="os-sig-role">Autorizado por Administración</div>
+                        <?php if ($autAdmFecTxt !== ''): ?>
+                            <div><span class="os-sig-icon">&#10003;</span></div>
+                            <div class="os-sig-badge-ok">Validado en sistema</div>
+                            <div class="os-sig-line"><?= htmlspecialchars($autAdmNom !== '' ? $autAdmNom : 'Usuario de Administración', ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="os-sig-sub"><?= htmlspecialchars($autAdmFecTxt, ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php else: ?>
+                            <div class="os-sig-badge-pend">Pendiente de autorización</div>
+                            <div class="os-sig-line">&mdash;</div>
+                            <div class="os-sig-sub">Sin fecha registrada</div>
+                        <?php endif; ?>
+                    </td>
+                    <!-- 2. Recibido por Coordinación de Laboratorio y/o Recepción -->
+                    <td>
+                        <div class="os-sig-role">Recibido por Coordinación de Laboratorio y/o Recepción de Muestras y Atención al Cliente</div>
+                        <?php if ($recLabFecTxt !== ''): ?>
+                            <div><span class="os-sig-icon">&#10003;</span></div>
+                            <div class="os-sig-badge-ok">Validado en sistema</div>
+                            <div class="os-sig-line"><?= htmlspecialchars($recLabNom !== '' ? $recLabNom : 'Usuario de Laboratorio', ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="os-sig-sub"><?= htmlspecialchars($recLabFecTxt, ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php else: ?>
+                            <div class="os-sig-badge-pend">Pendiente de recepción</div>
+                            <div class="os-sig-line">&mdash;</div>
+                            <div class="os-sig-sub">Sin fecha registrada</div>
+                        <?php endif; ?>
+                    </td>
+                    <!-- 3. Devuelto automáticamente por el sistema -->
+                    <td>
+                        <div class="os-sig-role">Devuelto automáticamente por el sistema</div>
+                        <?php if ($devSisFecTxt !== ''): ?>
+                            <div><span class="os-sig-icon">&#9881;</span></div>
+                            <div class="os-sig-badge-ok">Orden ejecutada</div>
+                            <div class="os-sig-line">Flujo completado</div>
+                            <div class="os-sig-sub"><?= htmlspecialchars($devSisFecTxt, ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php elseif ($alertaPlazoVenc): ?>
+                            <div class="os-sig-badge-warn">&#9888; Plazo vencido con pendientes</div>
+                            <div class="os-sig-line">En verificación</div>
+                            <div class="os-sig-sub">Requiere cierre de informes</div>
+                        <?php else: ?>
+                            <div class="os-sig-badge-pend">En ejecución</div>
+                            <div class="os-sig-line">&mdash;</div>
+                            <div class="os-sig-sub">Automático al completar criterio</div>
+                        <?php endif; ?>
+                    </td>
+                    <!-- 4. Recibido por Administración (Definitiva) -->
+                    <td>
+                        <div class="os-sig-role">Recibido por Administración</div>
+                        <?php if ($recAdmFinFecTxt !== ''): ?>
+                            <div><span class="os-sig-icon">&#10003;</span></div>
+                            <div class="os-sig-badge-ok">Validado en sistema</div>
+                            <div class="os-sig-line"><?= htmlspecialchars($recAdmFinNom !== '' ? $recAdmFinNom : 'Usuario de Administración', ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="os-sig-sub"><?= htmlspecialchars($recAdmFinFecTxt, ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php else: ?>
+                            <div class="os-sig-badge-pend"><?= $devSisFecTxt !== '' ? 'Pendiente de confirmación' : 'Pendiente de devolución' ?></div>
+                            <div class="os-sig-line">&mdash;</div>
+                            <div class="os-sig-sub">Sin fecha registrada</div>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            </tbody>
         </table>
+        <div class="os-sig-footnote">Los nombres, fechas y horas se obtienen automáticamente del sistema con trazabilidad inmutable (CYCSA-RG-FM-39 V1R1).</div>
 
         <!-- PIE DE PÁGINA INSTITUCIONAL -->
         <table class="os-footer-table">
@@ -760,6 +987,89 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
 </html>
 <?php else: ?>
 </div>
+
+<!-- HISTORIAL INMUTABLE DE VALIDACIONES Y TRAZABILIDAD (CYCSA-RG-FM-39 V1R1) -->
+<?php $historialValOs = $historial_validaciones ?? []; ?>
+<div class="no-print" style="width: 100%; max-width: 100%; margin: 16px 0 16px 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px 22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <h3 style="margin: 0; font-size: 15px; color: #1F3864; font-weight: 600;">
+            <i class="fa-solid fa-shield-halved"></i> Historial de Validaciones y Trazabilidad (CYCSA-RG-FM-39 V1R1)
+        </h3>
+        <span class="cy-pill cy-pill-pend"><?= count($historialValOs) ?> registro(s)</span>
+    </div>
+    <?php if (!empty($historialValOs)): ?>
+    <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+        <thead>
+            <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+                <th style="padding:8px 10px; text-align:left; width:155px;">Fecha y Hora</th>
+                <th style="padding:8px 10px; text-align:left; width:150px;">Campo / Acción</th>
+                <th style="padding:8px 10px; text-align:left; width:170px;">Usuario / Cargo</th>
+                <th style="padding:8px 10px; text-align:left; width:145px;">Cambio Estado</th>
+                <th style="padding:8px 10px; text-align:left;">Detalle / Motivo</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($historialValOs as $hVal): ?>
+            <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:8px 10px; color:#4b5563;"><?= htmlspecialchars(\Cycsa\Modulos\OrdenesServicio\Servicios\ValidacionOrdenServicioServicio::formatearFechaHoraOficial($hVal['fecha_registro'] ?? null), ENT_QUOTES, 'UTF-8') ?></td>
+                <td style="padding:8px 10px;"><strong><?= htmlspecialchars((string)($hVal['campo_validacion'] ?? ''), ENT_QUOTES, 'UTF-8') ?></strong><br><span style="font-size:11px; color:#64748b;"><?= htmlspecialchars((string)($hVal['accion'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span></td>
+                <td style="padding:8px 10px;"><strong><?= htmlspecialchars((string)($hVal['usuario_nombre'] ?? 'Sistema'), ENT_QUOTES, 'UTF-8') ?></strong><br><span style="font-size:11px; color:#64748b;"><?= htmlspecialchars((string)($hVal['cargo_rol'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span></td>
+                <td style="padding:8px 10px; font-size:11.5px; color:#334155;"><?= htmlspecialchars((string)($hVal['estado_anterior'] ?? '—'), ENT_QUOTES, 'UTF-8') ?> &rarr; <strong><?= htmlspecialchars((string)($hVal['estado_nuevo'] ?? '—'), ENT_QUOTES, 'UTF-8') ?></strong></td>
+                <td style="padding:8px 10px; color:#374151;">
+                    <?= htmlspecialchars((string)($hVal['motivo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                    <?php if (!empty($hVal['valor_anterior'])): ?>
+                        <div style="font-size:11px; color:#6b7280; margin-top:2px;">Anterior: <?= htmlspecialchars((string)$hVal['valor_anterior'], ENT_QUOTES, 'UTF-8') ?> &rarr; Nuevo: <?= htmlspecialchars((string)($hVal['valor_nuevo'] ?? ''), ENT_QUOTES, 'UTF-8') ?></div>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php else: ?>
+        <p style="margin:0; font-size:13px; color:#6b7280;">Aún no se han registrado validaciones digitales en esta Orden de Servicio.</p>
+    <?php endif; ?>
+</div>
+
+<?php if (!empty($puede_corregir_validacion)): ?>
+<div id="modalCorreccionValidacionOS" class="no-print" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#fff; border-radius:10px; width:100%; max-width:500px; padding:20px 24px; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:14px;">
+            <h4 style="margin:0; font-size:15px; font-weight:700; color:#1F3864;"><i class="fa-solid fa-pen-ruler me-1"></i> Corrección Autorizada de Validación</h4>
+            <button type="button" onclick="document.getElementById('modalCorreccionValidacionOS').style.display='none'" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">&times;</button>
+        </div>
+        <form method="POST" action="/Cycsa/publico/ordenes-servicio/corregir-validacion">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($csrfToken ?? ($_SESSION['csrf_token'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="id_os" value="<?= (int)$os['id'] ?>">
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12.5px; font-weight:600; margin-bottom:4px;">Campo de validación a corregir *</label>
+                <select name="campo_validacion" required style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                    <option value="autorizado_admin">1. Autorizado por Administración</option>
+                    <option value="recibido_lab">2. Recibido por Laboratorio / Recepción</option>
+                    <option value="recibido_admin_final">4. Recibido por Administración (Definitiva)</option>
+                </select>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12.5px; font-weight:600; margin-bottom:4px;">Usuario responsable corregido *</label>
+                <select name="nuevo_usuario_id" required style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                    <?php foreach (($usuarios_activos_os ?? []) as $uAct): ?>
+                        <option value="<?= (int)$uAct['id'] ?>" <?= ((int)$uAct['id'] === (int)($_SESSION['usuario_id'] ?? 0)) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars((string)$uAct['nombre'], ENT_QUOTES, 'UTF-8') ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block; font-size:12.5px; font-weight:600; margin-bottom:4px;">Motivo obligatorio de la corrección (queda en historial) *</label>
+                <textarea name="motivo" required rows="3" placeholder="Explique el motivo autorizado para la corrección..." style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;"></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" onclick="document.getElementById('modalCorreccionValidacionOS').style.display='none'" class="btn-cycsa btn-cycsa-secondary">Cancelar</button>
+                <button type="submit" class="btn-cycsa btn-cycsa-primary">Registrar Corrección con Trazabilidad</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- HISTORIAL DE VERSIONES DE LA O/S (2.5) -->
 <?php $historialVersionesOs = $os['historial_versiones'] ?? []; ?>

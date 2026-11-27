@@ -170,6 +170,10 @@ $app->enrutador->post('/ordenes-servicio/marcar-requiere-muestreo', [OrdenesServ
 $app->enrutador->post('/ordenes-servicio/aprobar', [OrdenesServicioControlador::class, 'aprobarOS'], [AuthMiddleware::class]);
 $app->enrutador->get('/ordenes-servicio/periodo-contrato-datos', [OrdenesServicioControlador::class, 'periodoContratoDatosAjax'], [AuthMiddleware::class]);
 $app->enrutador->post('/ordenes-servicio/guardar-periodo-contrato', [OrdenesServicioControlador::class, 'guardarPeriodoContratoAjax'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/autorizar-admin', [OrdenesServicioControlador::class, 'autorizarAdmin'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/recibir-laboratorio', [OrdenesServicioControlador::class, 'recibirLaboratorio'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/recibir-admin-final', [OrdenesServicioControlador::class, 'recibirAdminFinal'], [AuthMiddleware::class]);
+$app->enrutador->post('/ordenes-servicio/corregir-validacion', [OrdenesServicioControlador::class, 'corregirValidacionAutorizada'], [AuthMiddleware::class]);
 
 // 🔒 RUTAS DEL MÓDULO CONTABLE (REQUERIDO: SESIÓN Y PERMISO DE CONTABILIDAD)
 $app->enrutador->get('/contabilidad', function($peticion, $respuesta) {

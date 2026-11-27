@@ -305,7 +305,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         <div class="cy-os-header-left">
             <h1 class="cy-page-title">Órdenes de Servicio</h1>
             <div class="cy-meta">
-                Gestión integral CYCSA-RG-FM-39 V1, muestreo en campo y hojas de recepción CYCSA-RT-FM-13.
+                Gestión integral CYCSA-RG-FM-39 V1R1, muestreo en campo y hojas de recepción CYCSA-RT-FM-13.
             </div>
         </div>
         <div class="cy-os-header-actions">
@@ -333,6 +333,32 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         </div>
     </div>
 
+    <?php if (!empty($notificaciones_os)): ?>
+    <div class="mb-3" style="background: #f0f9ff; border: 1.5px solid #0284c7; border-radius: 10px; padding: 12px 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+            <strong style="color: #0c4a6e; font-size: 13.5px;">
+                <i class="fa-solid fa-bell me-1"></i> Notificaciones pendientes de Órdenes de Servicio (<?= count($notificaciones_os) ?>)
+            </strong>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+            <?php foreach ($notificaciones_os as $notifOs):
+                $esAlertaPlazo = (($notifOs['tipo'] ?? '') === 'alerta_vencimiento_mensual');
+            ?>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: <?= $esAlertaPlazo ? '#fef2f2' : '#ffffff' ?>; border: 1px solid <?= $esAlertaPlazo ? '#fca5a5' : '#bae6fd' ?>; border-radius: 7px; padding: 8px 12px; font-size: 12.5px;">
+                <div>
+                    <span class="cy-pill <?= $esAlertaPlazo ? 'cy-pill-danger' : 'cy-pill-ok' ?> me-1"><?= $esAlertaPlazo ? 'Alerta Plazo' : 'Orden Ejecutada' ?></span>
+                    <strong style="color: #0f172a;"><?= htmlspecialchars((string)($notifOs['titulo'] ?? ''), ENT_QUOTES, 'UTF-8') ?></strong>
+                    <div style="color: #475569; margin-top: 2px;"><?= htmlspecialchars((string)($notifOs['mensaje'] ?? ''), ENT_QUOTES, 'UTF-8') ?></div>
+                </div>
+                <a href="/Cycsa/publico/ordenes-servicio/detalle?id=<?= (int)($notifOs['id_os'] ?? 0) ?>" class="btn-cycsa btn-cycsa-primary" style="font-size: 12px; padding: 5px 12px; white-space: nowrap;">
+                    Abrir O/S y Confirmar
+                </a>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- BUSCADOR Y FILTROS -->
     <form method="GET" action="/Cycsa/publico/ordenes-servicio" class="search-bar-premium" style="display:flex; flex-direction:column; gap:12px;">
         <input type="hidden" name="tab" value="<?= htmlspecialchars($tabActiva ?? 'activas', ENT_QUOTES, 'UTF-8') ?>">
@@ -355,6 +381,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     <option value="">-- Todos los estados --</option>
                     <option value="Pendiente" <?= (($filtros['estado'] ?? '') === 'Pendiente') ? 'selected' : '' ?>>Pendiente / Por Aprobar</option>
                     <option value="En Proceso" <?= (($filtros['estado'] ?? '') === 'En Proceso') ? 'selected' : '' ?>>En Proceso</option>
+                    <option value="Ejecutada" <?= (($filtros['estado'] ?? '') === 'Ejecutada') ? 'selected' : '' ?>>Ejecutada</option>
                     <option value="Finalizado" <?= (($filtros['estado'] ?? '') === 'Finalizado') ? 'selected' : '' ?>>Finalizado</option>
                     <option value="Archivado" <?= (($filtros['estado'] ?? '') === 'Archivado') ? 'selected' : '' ?>>Archivado</option>
                 </select>

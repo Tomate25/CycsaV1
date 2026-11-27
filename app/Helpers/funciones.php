@@ -1003,7 +1003,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
     $clienteEmail = htmlspecialchars($cotizacion['cliente_email'] ?? ($cotizacion['email'] ?? 'admon@cycsanic.com'), ENT_QUOTES, 'UTF-8');
     $clienteTel = htmlspecialchars($cotizacion['cliente_tel'] ?? ($cotizacion['telefono'] ?? '(505) 8209-6275'), ENT_QUOTES, 'UTF-8');
 
-    // Procesar Anexo Técnico (Garantiza formatos oficiales CYCSA-RG-FM-31 y Anexo de Alcance del Servicio Mensual)
+    // Procesar Anexo Técnico (Garantiza formatos oficiales CYCSA-RG-FM-31 y Anexo de Alcance del Servicio Mensual sobre hoja membretada)
     $anexoTecnicoSeccion = '';
     $anexoContenidoPdf = class_exists(\Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::class)
         ? \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::renderDesdeCotizacion($cotizacion, true)
@@ -1014,25 +1014,17 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
                 || (!empty($cotizacion['es_mensual']) && (int)$cotizacion['es_mensual'] === 1));
         $tituloAnexoPdf = $esAnxMensualPdf ? 'Anexo Técnico – Alcance Mensual' : 'Anexo Técnico Oficial';
         $anexoTecnicoSeccion = "
-        <div style=\"page-break-before: always;\">
-            <div class=\"header-box\" style=\"margin-bottom: 8px; border-bottom: 1.5px solid #1F3864; padding-bottom: 6px;\">
-                <table style=\"width: 100%; border-collapse: collapse;\">
+        <div style=\"page-break-before: always; background: transparent;\">
+            <div style=\"margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1.5px solid #1F3864; font-size: 8.2px; color: #334155;\">
+                <table style=\"width: 100%; border-collapse: collapse; background: transparent;\">
                     <tr>
-                        <td style=\"width: 48%; vertical-align: bottom; border: none;\">
-                            {$logoHtml}
-                            <div style=\"font-size: 8.5px; font-weight: bold; color: #1e293b; margin-bottom: 2px;\">Cód. Doc CYCSA-RG-FM-31 V2R1</div>
-                            <span style=\"font-size: 7.5px; color: #64748b; font-weight: bold; text-transform: uppercase;\">Laboratorio de Ensayos y Control de Calidad</span>
-                        </td>
-                        <td style=\"width: 52%; text-align: right; vertical-align: bottom; border: none;\">
-                            <span style=\"font-size: 12px; font-weight: bold; color: #1F3864; text-transform: uppercase;\">{$tituloAnexoPdf}</span><br>
-                            <span style=\"font-size: 13px; font-weight: bold; color: #1e293b;\">{$codigo}</span>
-                            <span style=\"font-size: 8.5px; color: #64748b; margin-left: 8px;\">Proyecto: {$proyectoNombre} &bull; Versión: {$version}</span>
-                        </td>
+                        <td style=\"border: none; padding: 0; font-weight: bold; color: #1F3864;\">Cód. Doc CYCSA-RG-FM-31 V2R1 &bull; {$tituloAnexoPdf}</td>
+                        <td style=\"border: none; padding: 0; text-align: right;\"><strong>{$codigo}</strong> &bull; Proyecto: {$proyectoNombre} &bull; v{$version}</td>
                     </tr>
                 </table>
             </div>
 
-            <div style=\"font-size: 8.4px; line-height: 1.4; color: #1e293b;\">
+            <div style=\"font-size: 8.4px; line-height: 1.4; color: #1e293b; background: transparent;\">
                 {$anexoContenidoPdf}
             </div>
         </div>";
@@ -1045,6 +1037,10 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
 
     $rgFm31Css = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::renderEstilos(true);
     $rgFm31Cuerpo = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::renderCuerpo($cotizacion, $detalles, true, $qrBase64 ?: null);
+    $membreteVerticalPdfSrc = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::resolverMembreteVerticalSrc(true);
+    $membreteFondoImgHtml = $membreteVerticalPdfSrc !== ''
+        ? '<img src="' . $membreteVerticalPdfSrc . '" class="cycsa-membrete-fondo-pdf" alt="">'
+        : '';
 
     $html = "
     <!DOCTYPE html>
@@ -1054,7 +1050,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         <style>
             @page {
                 size: letter portrait;
-                margin: 9mm 11mm 14mm 11mm;
+                margin: " . ($membreteVerticalPdfSrc !== '' ? '30mm 12mm 28mm 12mm' : '9mm 11mm 14mm 11mm') . ";
             }
             body {
                 font-family: 'DejaVu Sans', Helvetica, Arial, sans-serif;
@@ -1063,7 +1059,15 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
                 font-size: 9px;
                 margin: 0;
                 padding: 0;
-                background: #ffffff;
+                background: transparent;
+            }
+            .cycsa-membrete-fondo-pdf {
+                position: fixed;
+                top: -30mm;
+                left: -12mm;
+                width: 215.9mm;
+                height: 279.4mm;
+                z-index: -1000;
             }
             {$rgFm31Css}
             .no-split {
@@ -1082,6 +1086,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         </style>
     </head>
     <body>
+        {$membreteFondoImgHtml}
         {$rgFm31Cuerpo}
 
         <!-- Technical Annex (if included) -->

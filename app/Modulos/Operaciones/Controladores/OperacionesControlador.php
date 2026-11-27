@@ -3681,6 +3681,14 @@ class OperacionesControlador extends ControladorBase {
             } catch (\Throwable $e) {
             }
 
+            // Evaluación automática CYCSA-RG-FM-39 V1R1: si 100% de informes de la O/S están aprobados -> Ejecutada + devolución automática + notificación
+            try {
+                if (class_exists(\Cycsa\Modulos\OrdenesServicio\Servicios\ValidacionOrdenServicioServicio::class)) {
+                    \Cycsa\Modulos\OrdenesServicio\Servicios\ValidacionOrdenServicioServicio::evaluarYActualizarEjecucionAutomatica($db, (int)$detalle['id_os']);
+                }
+            } catch (\Throwable $e) {
+            }
+
             registrarEventoOS(
                 'operaciones',
                 'aprobar_matriz',
