@@ -1037,10 +1037,6 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
 
     $rgFm31Css = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::renderEstilos(true);
     $rgFm31Cuerpo = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::renderCuerpo($cotizacion, $detalles, true, $qrBase64 ?: null);
-    $membreteVerticalPdfSrc = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::resolverMembreteVerticalSrc(true);
-    $membreteFondoImgHtml = $membreteVerticalPdfSrc !== ''
-        ? '<img src="' . $membreteVerticalPdfSrc . '" class="cycsa-membrete-fondo-pdf" alt="">'
-        : '';
 
     $html = "
     <!DOCTYPE html>
@@ -1050,7 +1046,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         <style>
             @page {
                 size: letter portrait;
-                margin: " . ($membreteVerticalPdfSrc !== '' ? '30mm 12mm 28mm 12mm' : '9mm 11mm 14mm 11mm') . ";
+                margin: 9mm 11mm 14mm 11mm;
             }
             body {
                 font-family: 'DejaVu Sans', Helvetica, Arial, sans-serif;
@@ -1059,15 +1055,7 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
                 font-size: 9px;
                 margin: 0;
                 padding: 0;
-                background: transparent;
-            }
-            .cycsa-membrete-fondo-pdf {
-                position: fixed;
-                top: -30mm;
-                left: -12mm;
-                width: 215.9mm;
-                height: 279.4mm;
-                z-index: -1000;
+                background: #ffffff;
             }
             {$rgFm31Css}
             .no-split {
@@ -1086,7 +1074,6 @@ function generarCotizacionPDF(array $cotizacion, array $detalles): string {
         </style>
     </head>
     <body>
-        {$membreteFondoImgHtml}
         {$rgFm31Cuerpo}
 
         <!-- Technical Annex (if included) -->

@@ -1,9 +1,6 @@
 <?php
 // Vista oficial del documento ORDEN DE SERVICIO (CYCSA-RG-FM-39 V1R1) — Idéntica en Pantalla, Impresión y PDF Dompdf
 $esModoPdfRgFm39 = !empty($esModoPdfRgFm39);
-$membreteSrcRgFm39 = class_exists(\Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::class)
-    ? \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::resolverMembreteVerticalSrc($esModoPdfRgFm39)
-    : '';
 
 // Normalizar contactos estructurados (Nombre | Teléfono | Correo electrónico)
 $contactosNormalizados = [];
@@ -122,7 +119,7 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
 <style>
     @page {
         size: letter portrait;
-        margin: <?= ($esModoPdfRgFm39 && $membreteSrcRgFm39 !== '') ? '30mm 12mm 28mm 12mm' : '8mm 11mm' ?>;
+        margin: 8mm 11mm;
     }
     <?php if ($esModoPdfRgFm39): ?>
     body {
@@ -132,15 +129,7 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
         color: #111827;
         font-size: 9px;
         line-height: 1.3;
-        background: transparent;
-    }
-    .os-membrete-fondo-pdf {
-        position: fixed;
-        top: -30mm;
-        left: -12mm;
-        width: 215.9mm;
-        height: 279.4mm;
-        z-index: -1000;
+        background: #ffffff;
     }
     <?php endif; ?>
     .os-wrapper { background: #f8fafc; padding: 12px 0 32px 0; min-height: auto; }
@@ -148,9 +137,8 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
         width: 100%;
         max-width: 100%;
         margin: 0;
-        background-color: <?= $esModoPdfRgFm39 ? 'transparent' : '#ffffff' ?>;
-        <?= (!$esModoPdfRgFm39 && $membreteSrcRgFm39 !== '') ? "background-image: url('" . htmlspecialchars($membreteSrcRgFm39, ENT_QUOTES, 'UTF-8') . "'); background-size: 100% 100%; background-repeat: no-repeat; background-position: center top;" : '' ?>
-        padding: <?= $esModoPdfRgFm39 ? '0' : ($membreteSrcRgFm39 !== '' ? '122px 42px 110px 42px' : '26px 32px') ?>;
+        background: #ffffff;
+        padding: <?= $esModoPdfRgFm39 ? '0' : '26px 32px' ?>;
         border-radius: <?= $esModoPdfRgFm39 ? '0' : '10px' ?>;
         border: <?= $esModoPdfRgFm39 ? '0' : '1px solid #e5e7eb' ?>;
         font-family: 'DejaVu Sans', 'Inter', Helvetica, Arial, sans-serif;
@@ -435,9 +423,6 @@ $hojasServicioOs = $os['hojas_servicio'] ?? [];
 <?php if ($esModoPdfRgFm39): ?>
 </head>
 <body>
-<?php if ($membreteSrcRgFm39 !== ''): ?>
-<img src="<?= $membreteSrcRgFm39 ?>" class="os-membrete-fondo-pdf" alt="">
-<?php endif; ?>
 <?php endif; ?>
 
 <?php if (!$esModoPdfRgFm39): ?>

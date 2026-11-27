@@ -174,7 +174,7 @@ class ValidacionRgFm39V1R1Test extends TestCase
         $this->assertStringContainsString('Orden ejecutada', $htmlPdf);
         $this->assertStringContainsString('Flujo completado', $htmlPdf);
         $this->assertStringContainsString('Validado en sistema', $htmlPdf);
-        $this->assertStringContainsString('os-membrete-fondo-pdf', $htmlPdf);
+        $this->assertStringNotContainsString('os-membrete-fondo-pdf', $htmlPdf);
 
         $pdfBytes = DocumentoRgFm39Servicio::pdf($osFinal);
         $this->assertStringStartsWith('%PDF-', $pdfBytes);

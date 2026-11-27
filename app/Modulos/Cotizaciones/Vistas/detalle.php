@@ -140,26 +140,16 @@ $pillCotDetClase = match ($estCotDet) {
         </div>
     <?php endif; ?>
 
-    <!-- DOCUMENTO OFICIAL UNIFICADO CYCSA-RG-FM-31 V2R1 (IDÉNTICO AL PDF CON HOJA MEMBRETADA Y TABLAS TRANSPARENTES) -->
-    <?php
-    $membreteVerticalUrl = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::resolverMembreteVerticalSrc(false);
-    ?>
+    <!-- DOCUMENTO OFICIAL UNIFICADO CYCSA-RG-FM-31 V2R1 (IDÉNTICO AL PDF) -->
     <style>
         <?= \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::renderEstilos(false) ?>
         .rgfm31-screen-card {
-            background-color: #ffffff;
-            <?= $membreteVerticalUrl !== '' ? "background-image: url('" . htmlspecialchars($membreteVerticalUrl, ENT_QUOTES, 'UTF-8') . "'); background-size: 100% 100%; background-repeat: no-repeat; background-position: center top;" : '' ?>
+            background: #ffffff;
             border: 1px solid var(--cy-border, #cbd5e1);
             border-radius: 8px;
-            padding: <?= $membreteVerticalUrl !== '' ? '128px 42px 115px 42px' : '24px' ?>;
+            padding: 24px;
             margin-bottom: 24px;
             overflow-x: auto;
-            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
-        }
-        .anx-membrete-card {
-            background-color: #ffffff;
-            <?= $membreteVerticalUrl !== '' ? "background-image: url('" . htmlspecialchars($membreteVerticalUrl, ENT_QUOTES, 'UTF-8') . "'); background-size: 100% 100%; background-repeat: no-repeat; background-position: center top;" : '' ?>
-            padding: <?= $membreteVerticalUrl !== '' ? '122px 42px 110px 42px' : '18px 20px' ?> !important;
         }
     </style>
     <div class="rgfm31-screen-card">
@@ -193,7 +183,7 @@ $pillCotDetClase = match ($estCotDet) {
                 <span><i class="fa-solid fa-file-shield me-1"></i> <?= $esAnexoMensualDet ? 'Anexo Técnico – Alcance del Servicio Mensual' : 'Anexo Técnico Oficial Incluido' ?></span>
                 <span class="cy-pill cy-pill-ok">Incluido en PDF</span>
             </div>
-            <div class="cy-cot-card-body <?= $esAnexoMensualDet ? 'anx-membrete-card' : '' ?>">
+            <div class="cy-cot-card-body">
                 <div style="font-size: 13.5px; color: var(--cy-text); line-height: 1.55;">
                     <?= $anexoRenderizado ?>
                 </div>
