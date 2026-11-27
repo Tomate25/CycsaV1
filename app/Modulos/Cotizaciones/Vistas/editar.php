@@ -1,5 +1,5 @@
 <link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
-<link rel="stylesheet" href="/Cycsa/publico/css/cotizaciones-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/cotizaciones-sobrio.css?v=20261127">
 <style>
     .seccion-form { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 20px; border-top: 4px solid var(--cycsa-azul); }
     .seccion-titulo { margin: 0 0 20px 0; color: #333; font-size: 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -259,21 +259,6 @@
                         <i class="fa-solid fa-calendar-check"></i>
                     </button>
                 </div>
-            </div>
-        </div>
-
-        <div class="grid-3" style="margin-top: 10px;">
-            <div class="form-group">
-                <label class="form-label">Responsable de Aprobación Interna (Opcional)</label>
-                <?php $respSelEdit = (int)($cotizacion['id_responsable_interno'] ?? ($responsable_interno_default ?? 0)); ?>
-                <select name="id_responsable_interno" class="form-control">
-                    <option value="">-- Predeterminado (Gerencia / Configurado) --</option>
-                    <?php foreach (($usuarios_internos ?? []) as $uInt): ?>
-                        <option value="<?= (int)$uInt['id'] ?>" <?= ((int)$uInt['id'] === $respSelEdit && $respSelEdit > 0) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars((string)$uInt['nombre'], ENT_QUOTES, 'UTF-8') ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
             </div>
         </div>
 

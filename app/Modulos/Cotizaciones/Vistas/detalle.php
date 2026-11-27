@@ -10,7 +10,7 @@ $pillCotDetClase = match ($estCotDet) {
 };
 ?>
 <link rel="stylesheet" href="/Cycsa/publico/css/cycsa-sobrio.css">
-<link rel="stylesheet" href="/Cycsa/publico/css/cotizaciones-sobrio.css">
+<link rel="stylesheet" href="/Cycsa/publico/css/cotizaciones-sobrio.css?v=20261127">
 <style>
     .doc-container { max-width: 1250px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
     .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--cycsa-azul); padding-bottom: 20px; margin-bottom: 20px; }
