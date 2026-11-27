@@ -295,7 +295,7 @@
             <div id="cot_periodo_campos" style="display: <?= $cotEsMensualEdit ? 'grid' : 'none' ?>; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label">Duración Habilitada (Meses)</label>
-                    <input type="number" name="duracion_meses" id="cot_duracion_meses" class="form-control" min="1" max="120" value="<?= $cotDuracionEdit ?>" oninput="recalcularFechaFinCotizacion()" onchange="recalcularFechaFinCotizacion()">
+                    <input type="number" name="duracion_meses" id="cot_duracion_meses" class="form-control" min="1" max="120" value="<?= $cotDuracionEdit ?>" oninput="recalcularFechaFinCotizacion(true)" onchange="recalcularFechaFinCotizacion(true)">
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label">Periodicidad</label>
@@ -307,11 +307,11 @@
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label">Fecha Inicio Período</label>
-                    <input type="date" name="fecha_inicio_periodo" id="cot_fecha_inicio_periodo" class="form-control" value="<?= htmlspecialchars($cotFechaIniEdit, ENT_QUOTES, 'UTF-8') ?>" onchange="recalcularFechaFinCotizacion()">
+                    <input type="date" name="fecha_inicio_periodo" id="cot_fecha_inicio_periodo" class="form-control" value="<?= htmlspecialchars($cotFechaIniEdit, ENT_QUOTES, 'UTF-8') ?>" onchange="recalcularFechaFinCotizacion(true)">
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label">Fecha Fin Período</label>
-                    <input type="date" name="fecha_fin_periodo" id="cot_fecha_fin_periodo" class="form-control" value="<?= htmlspecialchars($cotFechaFinEdit, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="date" name="fecha_fin_periodo" id="cot_fecha_fin_periodo" class="form-control" value="<?= htmlspecialchars($cotFechaFinEdit, ENT_QUOTES, 'UTF-8') ?>" onchange="actualizarTextosServicioMensual(true)">
                 </div>
             </div>
         </div>
@@ -420,6 +420,9 @@
             </button>
             <button type="button" onclick="agregarFilaPersonalizada()" class="btn btn-outline-secondary btn-sm">
                 + Ensayo Personalizado (Campo Libre)
+            </button>
+            <button type="button" id="btn-insertar-linea-mensual" onclick="aplicarLineaServicioMensual(true)" class="btn btn-outline-secondary btn-sm" style="display: <?= $cotEsMensualEdit ? 'inline-block' : 'none' ?>; border-color: #1F3864; color: #1F3864; font-weight: 600;">
+                + Insertar Línea Servicio Mensual (Precio Libre)
             </button>
         </div>
 
@@ -2099,6 +2102,109 @@
         if (fila) fila.remove();
     }
 
+    function calcularDiasPeriodoCotizacion(desdeFechasManual = false) {
+        const durEl = document.getElementById('cot_duracion_meses');
+        const fiEl = document.getElementById('cot_fecha_inicio_periodo');
+        const ffEl = document.getElementById('cot_fecha_fin_periodo');
+        const meses = Math.max(1, parseInt((durEl && durEl.value) ? durEl.value : '1', 10) || 1);
+        if (desdeFechasManual && fiEl && ffEl && fiEl.value && ffEl.value) {
+            const dtIni = new Date(fiEl.value + 'T00:00:00');
+            const dtFin = new Date(ffEl.value + 'T00:00:00');
+            if (!isNaN(dtIni.getTime()) && !isNaN(dtFin.getTime()) && dtFin > dtIni) {
+                return Math.max(1, Math.round((dtFin.getTime() - dtIni.getTime()) / 86400000));
+            }
+        }
+        return meses * 30;
+    }
+
+    function construirTextoLineaMensual(dias) {
+        return `Servicio mensual de laboratorio in situ (${dias} días) para muestreo, ejecución de ensayos de suelos, concreto y emisión de informes de ensayos para el control de calidad, conforme al alcance de servicio establecido en la oferta.`;
+    }
+
+    function actualizarTextosServicioMensual(desdeFechasManual = false) {
+        const dias = calcularDiasPeriodoCotizacion(desdeFechasManual);
+        const durEl = document.getElementById('cot_duracion_meses');
+        const meses = Math.max(1, parseInt((durEl && durEl.value) ? durEl.value : '1', 10) || 1);
+
+        const txtAnx = document.querySelector('textarea[name="anexo_mensual[descripcion_servicio]"]');
+        if (txtAnx && txtAnx.value) {
+            txtAnx.value = txtAnx.value.replace(/\(\s*\d+\s*d[ií]as?\s*\)/i, `(${dias} días)`);
+        }
+
+        document.querySelectorAll('#tabla-ensayos tbody tr').forEach(tr => {
+            const descInp = tr.querySelector('.spec-desc');
+            if (!descInp) return;
+            const esAutoMensual = tr.dataset.autoMensual === '1'
+                || /servicio mensual de laboratorio in situ\s*\(\s*\d+\s*d[ií]as?\s*\)/i.test(descInp.value || '');
+            if (esAutoMensual) {
+                tr.dataset.autoMensual = '1';
+                if (/\(\s*\d+\s*d[ií]as?\s*\)/i.test(descInp.value || '')) {
+                    descInp.value = descInp.value.replace(/\(\s*\d+\s*d[ií]as?\s*\)/i, `(${dias} días)`);
+                } else {
+                    descInp.value = construirTextoLineaMensual(dias);
+                }
+                const cantInp = tr.querySelector('.cant-input');
+                if (cantInp && !desdeFechasManual) {
+                    cantInp.value = String(meses);
+                    if (typeof calcularFila === 'function') calcularFila(cantInp);
+                }
+            }
+        });
+    }
+
+    function aplicarLineaServicioMensual(forzarNueva = false) {
+        const dias = calcularDiasPeriodoCotizacion(false);
+        const durEl = document.getElementById('cot_duracion_meses');
+        const meses = Math.max(1, parseInt((durEl && durEl.value) ? durEl.value : '1', 10) || 1);
+        const tbody = document.querySelector('#tabla-ensayos tbody');
+        if (!tbody) return;
+
+        let targetRow = tbody.querySelector('tr[data-auto-mensual="1"]');
+        if (!targetRow) {
+            const primera = tbody.querySelector('tr');
+            const primDesc = primera ? (primera.querySelector('.spec-desc')?.value || '').trim() : '';
+            if (primera && (primDesc === '' || /servicio mensual de laboratorio in situ/i.test(primDesc))) {
+                targetRow = primera;
+            } else if (forzarNueva && typeof agregarFilaPersonalizada === 'function') {
+                agregarFilaPersonalizada();
+                targetRow = tbody.querySelector('tr:last-child');
+            }
+        }
+        if (!targetRow) return;
+
+        targetRow.dataset.autoMensual = '1';
+        const prodIdInp = targetRow.querySelector('.prod-id-input');
+        const descInp = targetRow.querySelector('.spec-desc');
+        const condInp = targetRow.querySelector('.spec-condiciones');
+        const procInp = targetRow.querySelector('.spec-procedimiento');
+        const uniInp = targetRow.querySelector('.spec-unidad');
+        const cantInp = targetRow.querySelector('.cant-input');
+        const precioInp = targetRow.querySelector('.precio-input');
+        const badge = targetRow.querySelector('.badge-tipo-row');
+
+        if (prodIdInp) prodIdInp.value = '';
+        if (descInp) {
+            descInp.readOnly = false;
+            descInp.style.backgroundColor = '';
+            descInp.style.cursor = '';
+            descInp.value = construirTextoLineaMensual(dias);
+        }
+        if (condInp && !condInp.value.trim()) condInp.value = 'Ver Anexo Técnico – Alcance Mensual';
+        if (procInp && !procInp.value.trim()) procInp.value = 'ASTM / AASHTO';
+        if (uniInp) uniInp.value = 'Mes';
+        if (cantInp) cantInp.value = String(meses);
+        if (precioInp) {
+            precioInp.readOnly = false;
+            precioInp.placeholder = 'Precio mensual...';
+            if (typeof calcularFila === 'function') calcularFila(precioInp);
+        }
+        if (badge) {
+            badge.style.background = '#e0e7ff';
+            badge.style.color = '#1F3864';
+            badge.innerHTML = '<i class="fa-solid fa-calendar-days"></i> Servicio Mensual (Precio Libre)';
+        }
+    }
+
     function togglePeriodoCotizacion(esMensual) {
         const box = document.getElementById('cot_periodo_campos');
         if (box) {
@@ -2106,27 +2212,37 @@
         }
         const anxBox = document.getElementById('cot_anexo_mensual_bloque');
         const anxChk = document.getElementById('chk_incluir_anexo_mensual');
+        const btnMens = document.getElementById('btn-insertar-linea-mensual');
         if (anxBox) {
             anxBox.style.display = esMensual ? 'block' : 'none';
         }
         if (anxChk) {
             anxChk.checked = !!esMensual;
         }
+        if (btnMens) {
+            btnMens.style.display = esMensual ? 'inline-block' : 'none';
+        }
         if (esMensual) {
-            recalcularFechaFinCotizacion();
+            recalcularFechaFinCotizacion(false);
+            aplicarLineaServicioMensual(false);
+            actualizarTextosServicioMensual(false);
         }
     }
 
-    function recalcularFechaFinCotizacion() {
+    function recalcularFechaFinCotizacion(actualizarTextos = true) {
         const fiEl = document.getElementById('cot_fecha_inicio_periodo');
         const durEl = document.getElementById('cot_duracion_meses');
         const ffEl = document.getElementById('cot_fecha_fin_periodo');
-        if (!fiEl || !durEl || !ffEl || !fiEl.value) return;
-        const meses = Math.max(1, parseInt(durEl.value || '3', 10) || 3);
-        const dt = new Date(fiEl.value + 'T00:00:00');
-        if (!isNaN(dt.getTime())) {
-            dt.setMonth(dt.getMonth() + meses);
-            ffEl.value = dt.toISOString().slice(0, 10);
+        if (fiEl && durEl && ffEl && fiEl.value) {
+            const meses = Math.max(1, parseInt(durEl.value || '1', 10) || 1);
+            const dt = new Date(fiEl.value + 'T00:00:00');
+            if (!isNaN(dt.getTime())) {
+                dt.setMonth(dt.getMonth() + meses);
+                ffEl.value = dt.toISOString().slice(0, 10);
+            }
+        }
+        if (actualizarTextos) {
+            actualizarTextosServicioMensual(false);
         }
     }
 </script>

@@ -265,6 +265,22 @@ class DocumentoCotizacionRgFm31Servicio
             }
         }
 
+        // Si es servicio mensual con Anexo de Alcance incluido, mostrar referencia "-Ver el alcance" (formato oficial CYCSA)
+        $esMensualNota = !empty($cotizacion['es_mensual']) && (int)$cotizacion['es_mensual'] === 1;
+        $tieneAnexoNota = !empty($cotizacion['incluir_anexo_tecnico']) && (!empty(trim((string)($cotizacion['anexo_tecnico'] ?? ''))) || $esMensualNota);
+        if ($esMensualNota && $tieneAnexoNota) {
+            $yaVerAlcance = false;
+            foreach ($notasFinales as $nf) {
+                if (stripos($nf, 'ver el alcance') !== false) {
+                    $yaVerAlcance = true;
+                    break;
+                }
+            }
+            if (!$yaVerAlcance) {
+                $notasFinales[] = '-Ver el alcance';
+            }
+        }
+
         return $notasFinales;
     }
 
@@ -703,12 +719,24 @@ CSS;
 
         $simbolo = ((int)($cotizacion['tipo_moneda'] ?? 1) === 2) ? 'US$' : 'C$';
 
-        // 3. Filas del detalle de servicios
+        // 3. Filas del detalle de servicios (excluyendo filas operativas $0.00 incluidas desde el Anexo Mensual)
+        $detallesComerciales = array_values(array_filter($detalles, static function ($d): bool {
+            if (!is_array($d)) {
+                return false;
+            }
+            if (!empty($d['es_incluido_anexo_mensual']) && (int)$d['es_incluido_anexo_mensual'] === 1) {
+                return false;
+            }
+            if (trim((string)($d['observaciones'] ?? '')) === AnexoServicioMensualServicio::MARCADOR_OBSERVACION_INCLUIDO) {
+                return false;
+            }
+            return true;
+        }));
         $filasHtml = '';
-        if ($detalles === []) {
+        if ($detallesComerciales === []) {
             $filasHtml = '<tr><td colspan="8" class="rgfm31-text-center rgfm31-muted">Sin servicios registrados.</td></tr>';
         } else {
-            foreach (array_values($detalles) as $idx => $det) {
+            foreach ($detallesComerciales as $idx => $det) {
                 $numLinea = $idx + 1;
                 $descPlano = (string)($det['descripcion_ensayo'] ?? ($det['ensayo_nombre'] ?? 'Servicio de Ensayo'));
                 $descHtml = '<div class="rgfm31-item-desc">' . $escMultilinea($descPlano) . '</div>';

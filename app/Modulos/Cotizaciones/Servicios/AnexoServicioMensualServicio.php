@@ -13,6 +13,217 @@ namespace Cycsa\Modulos\Cotizaciones\Servicios;
 class AnexoServicioMensualServicio
 {
     public const TIPO_ANEXO = 'anexo_alcance_mensual';
+    public const MARCADOR_OBSERVACION_INCLUIDO = 'Incluido en Servicio Mensual';
+
+    public static function construirDescripcionComercialPorDias(int $dias): string
+    {
+        $d = max(1, $dias);
+        return "Servicio mensual de laboratorio in situ ({$d} días) para muestreo, ejecución de ensayos de suelos, concreto y emisión de informes de ensayos para el control de calidad, conforme al alcance de servicio establecido en la oferta.";
+    }
+
+    public static function construirDescripcionAnexoPorDias(int $dias): string
+    {
+        $d = max(1, $dias);
+        return "Servicio mensual de laboratorio in situ ({$d} días) para muestreo, ejecución de ensayos de suelos, concreto y emisión de informes de ensayos para el control de calidad del proyecto.";
+    }
+
+    private static function normalizarClaveBusqueda(string $texto): string
+    {
+        $t = mb_strtolower(trim($texto), 'UTF-8');
+        $t = strtr($t, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
+            '–' => ' ', '—' => ' ', '−' => ' ', '-' => ' ', '/' => ' ', ',' => ' ', '.' => ' ', '(' => ' ', ')' => ' ',
+        ]);
+        $t = (string)preg_replace('/\s+/', ' ', $t);
+        return trim($t);
+    }
+
+    /**
+     * Habilita operativamente en `cotizacion_detalles` (con precio_unitario = 0.00 y es_incluido_anexo_mensual = 1)
+     * todos los ensayos marcados en la Sección 3 del Anexo Mensual, vinculándolos con su producto real del catálogo.
+     * De este modo la cotización comercial y la facturación conservan solo la línea mensual con precio libre,
+     * mientras que la Orden de Servicio, Hojas RT-FM-13, Operaciones y Laboratorio disponen de los ensayos y matrices.
+     */
+    public static function sincronizarEnsayosOperativosEnCotizacion(\PDO $db, int $idCotizacion, ?int $idOs = null): int
+    {
+        if ($idCotizacion <= 0) {
+            return 0;
+        }
+        $stmtCot = $db->prepare("SELECT id, es_mensual, incluir_anexo_tecnico, anexo_tecnico FROM cotizaciones WHERE id = :id LIMIT 1");
+        $stmtCot->execute(['id' => $idCotizacion]);
+        $cot = $stmtCot->fetch(\PDO::FETCH_ASSOC);
+        if (!$cot || empty($cot['es_mensual']) || (int)$cot['es_mensual'] !== 1) {
+            return 0;
+        }
+
+        $rawAnexo = (string)($cot['anexo_tecnico'] ?? '');
+        $anexo = self::esAnexoMensualJson($rawAnexo) ? self::decodificar($rawAnexo) : self::plantillaPorDefecto();
+        $ensayosAll = is_array($anexo['ensayos'] ?? null) ? $anexo['ensayos'] : [];
+        $ensayosActivos = array_values(array_filter(
+            $ensayosAll,
+            static fn($e): bool => is_array($e) && (!array_key_exists('incluido', $e) || !empty($e['incluido'])) && trim((string)($e['ensayo'] ?? '')) !== ''
+        ));
+        if (empty($ensayosActivos)) {
+            return 0;
+        }
+
+        // Verificar si existe columna es_incluido_anexo_mensual
+        $tieneColFlag = false;
+        try {
+            $chk = $db->query("SHOW COLUMNS FROM cotizacion_detalles LIKE 'es_incluido_anexo_mensual'");
+            $tieneColFlag = (bool)($chk && $chk->fetch(\PDO::FETCH_ASSOC));
+        } catch (\Throwable $e) {
+            $tieneColFlag = false;
+        }
+
+        // Productos ya presentes en cotizacion_detalles (para idempotencia)
+        $stmtExist = $db->prepare("SELECT id_producto, descripcion_ensayo FROM cotizacion_detalles WHERE id_cotizacion = :id_cot");
+        $stmtExist->execute(['id_cot' => $idCotizacion]);
+        $existProdIds = [];
+        $existDescNorm = [];
+        foreach ($stmtExist->fetchAll(\PDO::FETCH_ASSOC) as $exRow) {
+            if (!empty($exRow['id_producto'])) {
+                $existProdIds[(int)$exRow['id_producto']] = true;
+            }
+            $dn = self::normalizarClaveBusqueda((string)($exRow['descripcion_ensayo'] ?? ''));
+            if ($dn !== '') {
+                $existDescNorm[$dn] = true;
+            }
+        }
+
+        // Cargar catálogo activo de productos para emparejar cada ensayo con su producto real (y formato_id)
+        $productos = $db->query("
+            SELECT id, nombre_comercial, ensayo_servicio, condiciones_muestra, procedimiento_muestreo,
+                   unidad_medida, codigo_servicio, norma_astm
+            FROM productos
+            WHERE activo = 1
+            ORDER BY id ASC
+        ")->fetchAll(\PDO::FETCH_ASSOC);
+
+        $indexNombre = [];
+        $prodsNorm = [];
+        foreach ($productos as $p) {
+            $nc = self::normalizarClaveBusqueda((string)($p['nombre_comercial'] ?? ''));
+            $es = self::normalizarClaveBusqueda((string)($p['ensayo_servicio'] ?? ''));
+            if ($nc !== '' && !isset($indexNombre[$nc])) {
+                $indexNombre[$nc] = $p;
+            }
+            if ($es !== '' && !isset($indexNombre[$es])) {
+                $indexNombre[$es] = $p;
+            }
+            $prodsNorm[] = [
+                'prod' => $p,
+                'nc' => $nc,
+                'es' => $es,
+                'norma' => self::normalizarClaveBusqueda((string)($p['norma_astm'] ?? '')),
+            ];
+        }
+
+        $sqlIns = $tieneColFlag
+            ? "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, condiciones_muestra, procedimiento, unidad_medida, codigo_servicio, norma_astm, observaciones, es_incluido_anexo_mensual, cantidad, precio_unitario, subtotal)
+               VALUES (:id_cot, :id_prod, :desc, :cond, :proc, :um, :cod, :norma, :obs, 1, 1, 0.00, 0.00)"
+            : "INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, condiciones_muestra, procedimiento, unidad_medida, codigo_servicio, norma_astm, observaciones, cantidad, precio_unitario, subtotal)
+               VALUES (:id_cot, :id_prod, :desc, :cond, :proc, :um, :cod, :norma, :obs, 1, 0.00, 0.00)";
+        $stmtIns = $db->prepare($sqlIns);
+
+        // Si existe whitelist fija activa en la O/S, también registrar los nuevos detalles
+        $tieneWhitelistActiva = false;
+        if ($idOs !== null && $idOs > 0) {
+            try {
+                $stWl = $db->prepare("SELECT COUNT(*) FROM ordenes_servicio_ensayos_permitidos WHERE id_os = :id_os");
+                $stWl->execute(['id_os' => $idOs]);
+                $tieneWhitelistActiva = ((int)$stWl->fetchColumn() > 0);
+            } catch (\Throwable $e) {
+                $tieneWhitelistActiva = false;
+            }
+        }
+        $stmtInsWl = $tieneWhitelistActiva
+            ? $db->prepare("INSERT IGNORE INTO ordenes_servicio_ensayos_permitidos (id_os, id_cotizacion_detalle) VALUES (:id_os, :id_det)")
+            : null;
+
+        $insertados = 0;
+        foreach ($ensayosActivos as $ens) {
+            $ensNombre = trim((string)($ens['ensayo'] ?? ''));
+            $ensNorm = self::normalizarClaveBusqueda($ensNombre);
+            if ($ensNorm === '' || isset($existDescNorm[$ensNorm])) {
+                continue;
+            }
+
+            // 1. Coincidencia exacta normalizada
+            $prodMatch = $indexNombre[$ensNorm] ?? null;
+
+            // 2. Coincidencia parcial / por prefijo o norma ASTM (ej. "ASTM C39", "ASTM D6938")
+            if ($prodMatch === null) {
+                $astmTokens = [];
+                if (preg_match_all('/astm\s+[a-z]\s*\d+/i', $ensNorm, $mAstm)) {
+                    foreach ($mAstm[0] as $tok) {
+                        $astmTokens[] = (string)preg_replace('/\s+/', ' ', strtolower(trim($tok)));
+                    }
+                }
+                $mejorScore = 0;
+                foreach ($prodsNorm as $pn) {
+                    $score = 0;
+                    if ($pn['nc'] !== '' && (str_contains($pn['nc'], $ensNorm) || str_contains($ensNorm, $pn['nc']))) {
+                        $score += 100;
+                    }
+                    foreach ($astmTokens as $tk) {
+                        $tkCompact = str_replace(' ', '', $tk);
+                        $hay = str_replace(' ', '', $pn['nc'] . ' ' . $pn['norma']);
+                        if ($tkCompact !== '' && str_contains($hay, $tkCompact)) {
+                            $score += 40;
+                        }
+                    }
+                    // Penalizar paquetes compuestos ("considerando X cilindros", "por día", "puntual") cuando buscamos ensayo unitario
+                    if (str_contains($pn['nc'], 'considerando') || str_contains($pn['nc'], 'laboratorio por dia') || str_contains($pn['nc'], 'laboratorio puntual')) {
+                        $score -= 50;
+                    }
+                    if ($score > $mejorScore) {
+                        $mejorScore = $score;
+                        $prodMatch = $pn['prod'];
+                    }
+                }
+                if ($mejorScore < 40) {
+                    $prodMatch = null;
+                }
+            }
+
+            $idProdMatch = $prodMatch ? (int)$prodMatch['id'] : null;
+            if ($idProdMatch !== null && isset($existProdIds[$idProdMatch])) {
+                continue;
+            }
+
+            $descFinal = $prodMatch && !empty($prodMatch['nombre_comercial'])
+                ? trim((string)$prodMatch['nombre_comercial'])
+                : $ensNombre;
+            $normaFinal = $prodMatch && !empty($prodMatch['norma_astm'])
+                ? trim((string)$prodMatch['norma_astm'])
+                : (preg_match('/(ASTM\s+[A-Z0-9\/\-\s\(\)]+)/i', $ensNombre, $mN) ? trim($mN[1]) : 'N/A');
+
+            $stmtIns->execute([
+                'id_cot' => $idCotizacion,
+                'id_prod' => $idProdMatch,
+                'desc' => $descFinal,
+                'cond' => $prodMatch['condiciones_muestra'] ?? null,
+                'proc' => $prodMatch['procedimiento_muestreo'] ?? $normaFinal,
+                'um' => !empty($prodMatch['unidad_medida']) ? $prodMatch['unidad_medida'] : 'Unidad',
+                'cod' => $prodMatch['codigo_servicio'] ?? null,
+                'norma' => $normaFinal,
+                'obs' => self::MARCADOR_OBSERVACION_INCLUIDO,
+            ]);
+            $nuevoDetId = (int)$db->lastInsertId();
+            if ($idProdMatch !== null) {
+                $existProdIds[$idProdMatch] = true;
+            }
+            $existDescNorm[$ensNorm] = true;
+            $insertados++;
+
+            if ($stmtInsWl !== null && $nuevoDetId > 0) {
+                $stmtInsWl->execute(['id_os' => $idOs, 'id_det' => $nuevoDetId]);
+            }
+        }
+
+        return $insertados;
+    }
 
     /**
      * Retorna la estructura oficial por defecto del Anexo de Servicio Mensual.

@@ -107,7 +107,20 @@ class CotizacionModelo extends ModeloBase {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function obtenerDetalles(int $id_cotizacion): array {
+    public function obtenerDetalles(int $id_cotizacion, bool $incluirAnexoOperativo = false): array {
+        $filtroAnexo = '';
+        if (!$incluirAnexoOperativo) {
+            $tieneColAnexoFlag = false;
+            try {
+                $chkColA = $this->db->query("SHOW COLUMNS FROM cotizacion_detalles LIKE 'es_incluido_anexo_mensual'");
+                $tieneColAnexoFlag = (bool)($chkColA && $chkColA->fetch(PDO::FETCH_ASSOC));
+            } catch (\Throwable $e) {
+                $tieneColAnexoFlag = false;
+            }
+            $filtroAnexo = $tieneColAnexoFlag
+                ? " AND COALESCE(cd.es_incluido_anexo_mensual, 0) = 0 AND COALESCE(cd.observaciones, '') <> 'Incluido en Servicio Mensual'"
+                : " AND COALESCE(cd.observaciones, '') <> 'Incluido en Servicio Mensual'";
+        }
         $sql = "SELECT cd.id, cd.id_cotizacion, cd.id_producto, cd.descripcion_ensayo, cd.cantidad, cd.precio_unitario, cd.subtotal, cd.resultados_json, cd.descripcion_adicional,
                        COALESCE(cd.condiciones_muestra, p.condiciones_muestra) AS condiciones_muestra,
                        COALESCE(cd.procedimiento, p.procedimiento_muestreo, p.norma_astm) AS procedimiento,
@@ -120,7 +133,7 @@ class CotizacionModelo extends ModeloBase {
                 FROM cotizacion_detalles cd
                 LEFT JOIN productos p ON cd.id_producto = p.id
                 LEFT JOIN formatos_ensayos f ON p.formato_id = f.id
-                WHERE cd.id_cotizacion = :id 
+                WHERE cd.id_cotizacion = :id{$filtroAnexo}
                 ORDER BY cd.id ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $id_cotizacion]);
@@ -387,6 +400,10 @@ class CotizacionModelo extends ModeloBase {
                             'fecha_fin' => $fechaFinOS,
                             'periodicidad' => $periodicidadOS,
                         ]);
+                        $idOsNueva = (int)$this->db->lastInsertId();
+                        if ($esMensualCot === 1 && class_exists(\Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::class)) {
+                            \Cycsa\Modulos\Cotizaciones\Servicios\AnexoServicioMensualServicio::sincronizarEnsayosOperativosEnCotizacion($this->db, $id, $idOsNueva > 0 ? $idOsNueva : null);
+                        }
                     }
 
                     // B. Gestionar Factura en Cuentas por Cobrar (cuentas_por_cobrar)

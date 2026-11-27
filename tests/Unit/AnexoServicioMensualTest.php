@@ -135,4 +135,78 @@ class AnexoServicioMensualTest extends TestCase
         $this->assertStringStartsWith('%PDF-', $pdfConAnexo);
         $this->assertGreaterThan(strlen($pdfSinAnexo), strlen($pdfConAnexo), 'El PDF con Anexo Técnico Mensual debe incluir la página adicional del anexo.');
     }
+
+    public function testDescripcionDinamicaPorDiasNotaVerElAlcanceYSincronizacionOperativaEnOS(): void
+    {
+        require_once dirname(__DIR__, 2) . '/app/Helpers/funciones.php';
+
+        $this->assertStringContainsString('(90 días)', AnexoServicioMensualServicio::construirDescripcionComercialPorDias(90));
+        $this->assertStringContainsString('(60 días)', AnexoServicioMensualServicio::construirDescripcionAnexoPorDias(60));
+
+        $notas = \Cycsa\Modulos\Cotizaciones\Servicios\DocumentoCotizacionRgFm31Servicio::resolverNotas([
+            'es_mensual' => 1,
+            'incluir_anexo_tecnico' => 1,
+            'anexo_tecnico' => AnexoServicioMensualServicio::codificar(AnexoServicioMensualServicio::plantillaPorDefecto()),
+            'configuracion_notas' => json_encode(['digital_pdf' => 1]),
+        ]);
+        $this->assertContains('-Ver el alcance', $notas);
+
+        // Probar sincronización operativa de los ensayos del Anexo en cotizacion_detalles sin alterar totales ni vista comercial
+        $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
+        $idCliente = (int)$db->query("SELECT id FROM clientes ORDER BY id ASC LIMIT 1")->fetchColumn();
+        $idUsuario = (int)$db->query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1")->fetchColumn();
+        if ($idCliente <= 0 || $idUsuario <= 0) {
+            $this->markTestSkipped('Se requiere cliente y usuario en cycsa_test.');
+        }
+
+        $suf = substr(uniqid('', true), -6);
+        $idCot = 0;
+        try {
+            $jsonAnx = AnexoServicioMensualServicio::codificar(AnexoServicioMensualServicio::plantillaPorDefecto());
+            $db->prepare("
+                INSERT INTO cotizaciones (codigo, id_cliente, id_cliente_factura, id_cliente_informe, id_usuario_creador, atencion_a, nombre_proyecto, direccion_proyecto, condicion_pago, estado, es_mensual, duracion_meses, periodicidad, incluir_anexo_tecnico, anexo_tecnico, subtotal, impuesto, total)
+                VALUES (:cod, :cli, :cli2, :cli3, :usr, 'Ing. Mensual', 'Proyecto Mensual 90d', 'Managua', 'Contado', 'Aprobada por Cliente', 1, 3, 'Mensual', 1, :anx, 351000, 52650, 403650)
+            ")->execute([
+                'cod' => 'COT-ANX-' . $suf,
+                'cli' => $idCliente,
+                'cli2' => $idCliente,
+                'cli3' => $idCliente,
+                'usr' => $idUsuario,
+                'anx' => $jsonAnx,
+            ]);
+            $idCot = (int)$db->lastInsertId();
+
+            $db->prepare("
+                INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, unidad_medida, cantidad, precio_unitario, subtotal)
+                VALUES (:id_cot, NULL, :desc, 'Mes', 3, 117000, 351000)
+            ")->execute([
+                'id_cot' => $idCot,
+                'desc' => AnexoServicioMensualServicio::construirDescripcionComercialPorDias(90),
+            ]);
+
+            $insertados = AnexoServicioMensualServicio::sincronizarEnsayosOperativosEnCotizacion($db, $idCot, null);
+            $this->assertGreaterThanOrEqual(15, $insertados, 'Debe habilitar operativamente los ensayos incluidos del Anexo Mensual.');
+
+            // Idempotencia: segunda llamada no debe duplicar
+            $insertados2 = AnexoServicioMensualServicio::sincronizarEnsayosOperativosEnCotizacion($db, $idCot, null);
+            $this->assertSame(0, $insertados2);
+
+            // Comercialmente (CotizacionModelo::obtenerDetalles y RG-FM-31) solo debe verse la 1 línea de cobro mensual
+            $cotMod = new \Cycsa\Modulos\Cotizaciones\Modelos\CotizacionModelo();
+            $detComerciales = $cotMod->obtenerDetalles($idCot);
+            $this->assertCount(1, $detComerciales);
+            $this->assertStringContainsString('(90 días)', (string)$detComerciales[0]['descripcion_ensayo']);
+
+            // Operativamente (con incluirAnexoOperativo = true) están los ensayos incluidos + totales intactos
+            $detTodos = $cotMod->obtenerDetalles($idCot, true);
+            $this->assertGreaterThanOrEqual(16, count($detTodos));
+            $sumaSub = (float)$db->query("SELECT COALESCE(SUM(subtotal), 0) FROM cotizacion_detalles WHERE id_cotizacion = {$idCot}")->fetchColumn();
+            $this->assertEqualsWithDelta(351000.0, $sumaSub, 0.01, 'Los ensayos incluidos del anexo mensual deben sumar 0.00 para no alterar el total comercial.');
+        } finally {
+            if ($idCot > 0) {
+                $db->prepare("DELETE FROM cotizacion_detalles WHERE id_cotizacion = ?")->execute([$idCot]);
+                $db->prepare("DELETE FROM cotizaciones WHERE id = ?")->execute([$idCot]);
+            }
+        }
+    }
 }
