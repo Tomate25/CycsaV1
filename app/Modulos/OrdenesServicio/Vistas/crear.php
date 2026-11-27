@@ -111,6 +111,15 @@
                 </div>
             </div>
 
+            <?php
+            $cotEsMensualOs = !empty($cotizacion['es_mensual']) && (int)$cotizacion['es_mensual'] === 1;
+            $cotDuracionOs = !empty($cotizacion['duracion_meses']) ? max(1, (int)$cotizacion['duracion_meses']) : 3;
+            $cotFechaIniOs = !empty($cotizacion['fecha_inicio_periodo']) ? (string)$cotizacion['fecha_inicio_periodo'] : date('Y-m-d');
+            $cotFechaFinOs = !empty($cotizacion['fecha_fin_periodo'])
+                ? (string)$cotizacion['fecha_fin_periodo']
+                : date('Y-m-d', strtotime("+{$cotDuracionOs} months", strtotime($cotFechaIniOs)));
+            $cotPeriodicidadOs = !empty($cotizacion['periodicidad']) ? (string)$cotizacion['periodicidad'] : 'Mensual';
+            ?>
             <div class="form-grid-3">
                 <div class="form-group-cycsa">
                     <label>Atención a (Contacto Principal):</label>
@@ -122,45 +131,43 @@
                 </div>
                 <div class="form-group-cycsa">
                     <label>Modalidad de Contrato / Servicio:</label>
-                    <select name="tipo_contrato" class="form-control-cycsa" style="font-weight: 600;">
-                        <option value="Puntual">Puntual (Un solo evento/entrega)</option>
-                        <option value="Marco" selected>Marco / Contrato Activo (Meses, entregas continuas)</option>
+                    <select name="tipo_contrato" id="select_tipo_contrato_os" class="form-control-cycsa" style="font-weight: 600;">
+                        <option value="Puntual" <?= !$cotEsMensualOs ? 'selected' : '' ?>>Puntual (Un solo evento/entrega)</option>
+                        <option value="Marco" <?= $cotEsMensualOs ? 'selected' : '' ?>>Marco / Contrato Activo (Meses, entregas continuas)</option>
                     </select>
                 </div>
             </div>
 
-                        <!-- SECCIÓN MULTI-MES -->
+                        <!-- SECCIÓN MULTI-MES (Heredada desde Cotización) -->
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px 18px; margin-bottom: 18px;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                     <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: #1e293b; font-size: 14px; margin: 0;">
-                        <input type="checkbox" name="es_multimes" id="chk_es_multimes" value="1" onchange="toggleMultiMes(this.checked)" style="width: 18px; height: 18px; accent-color: var(--cycsa-azul); cursor: pointer;">
-                        <span><i class="fa-solid fa-repeat" style="color: var(--cycsa-azul);"></i> Contrato Multi-mes (Proyectos continuos con entregas periódicas)</span>
+                        <input type="checkbox" name="es_multimes" id="chk_es_multimes" value="1" <?= $cotEsMensualOs ? 'checked' : '' ?> onchange="toggleMultiMes(this.checked)" style="width: 18px; height: 18px; accent-color: var(--cycsa-azul); cursor: pointer;">
+                        <span><i class="fa-solid fa-repeat" style="color: var(--cycsa-azul);"></i> Contrato Multi-mes / Período Habilitado<?= $cotEsMensualOs ? ' (Definido en Cotización)' : '' ?></span>
                     </label>
-                    <span id="multimes_badge" style="display: none; background: #e0e7ff; color: #3730a3; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 6px; border: 1px solid #c7d2fe;">
+                    <span id="multimes_badge" style="display: <?= $cotEsMensualOs ? 'inline-block' : 'none' ?>; background: #e0e7ff; color: #3730a3; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 6px; border: 1px solid #c7d2fe;">
                         <i class="fa-solid fa-check"></i> Activo
                     </span>
                 </div>
-                <div id="seccion_multimes_campos" style="display: none; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                <div id="seccion_multimes_campos" style="display: <?= $cotEsMensualOs ? 'grid' : 'none' ?>; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
                     <div class="form-group-cycsa" style="margin-bottom: 0;">
                         <label>Duración (Meses):</label>
-                        <input type="number" name="duracion_meses" id="duracion_meses" min="1" max="120" value="3" onchange="recalcularFechaFinDesdeMeses()" class="form-control-cycsa">
+                        <input type="number" name="duracion_meses" id="duracion_meses" min="1" max="120" value="<?= $cotDuracionOs ?>" onchange="recalcularFechaFinDesdeMeses()" class="form-control-cycsa">
                     </div>
                     <div class="form-group-cycsa" style="margin-bottom: 0;">
                         <label>Fecha de Inicio del Contrato:</label>
-                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control-cycsa" onchange="recalcularFechaFinDesdeMeses()" value="<?= date('Y-m-d') ?>">
+                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control-cycsa" onchange="recalcularFechaFinDesdeMeses()" value="<?= htmlspecialchars($cotFechaIniOs, ENT_QUOTES, 'UTF-8') ?>">
                     </div>
                     <div class="form-group-cycsa" style="margin-bottom: 0;">
                         <label>Fecha de Finalización:</label>
-                        <input type="date" name="fecha_fin" id="fecha_fin" class="form-control-cycsa" value="<?= date('Y-m-d', strtotime('+3 months')) ?>">
+                        <input type="date" name="fecha_fin" id="fecha_fin" class="form-control-cycsa" value="<?= htmlspecialchars($cotFechaFinOs, ENT_QUOTES, 'UTF-8') ?>">
                     </div>
                     <div class="form-group-cycsa" style="margin-bottom: 0;">
                         <label>Periodicidad de Entregas:</label>
                         <select name="periodicidad" id="periodicidad" class="form-control-cycsa" style="font-weight: 600;">
-                            <option value="Mensual" selected>Mensual</option>
-                            <option value="Quincenal">Quincenal</option>
-                            <option value="Bimestral">Bimestral</option>
-                            <option value="Trimestral">Trimestral</option>
-                            <option value="Semestral">Semestral</option>
+                            <?php foreach (['Mensual', 'Quincenal', 'Bimestral', 'Trimestral', 'Semestral'] as $optPerOs): ?>
+                                <option value="<?= $optPerOs ?>" <?= $cotPeriodicidadOs === $optPerOs ? 'selected' : '' ?>><?= $optPerOs ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>

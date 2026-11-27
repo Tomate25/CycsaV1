@@ -1343,6 +1343,18 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
                     <div class="rtfm13-sidebar-data-item"><span class="label">Forma de Pago:</span> <span class="val" id="ref_os_pago">--</span></div>
                 </div>
 
+                <!-- Período / Vigencia de la O/S y Ampliación desde Hoja de Servicio -->
+                <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-top:12px;">
+                    <div style="font-size:11px; font-weight:700; color:#1F3864; text-transform:uppercase; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                        <i class="fa-solid fa-calendar-check"></i> Período / Vigencia O/S
+                    </div>
+                    <div id="ref_os_periodo_resumen" style="font-size:12px; font-weight:700; color:#1F3864;">--</div>
+                    <div id="ref_os_periodo_fechas" style="font-size:11px; color:#64748b; margin-top:2px; display:none;"></div>
+                    <button type="button" onclick="abrirModalAmpliarPeriodoProductosHS()" style="margin-top:8px; width:100%; padding:6px 10px; background:#eff6ff; border:1px solid #93c5fd; color:#1F3864; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <i class="fa-solid fa-calendar-plus"></i> Ampliar Período / Productos
+                    </button>
+                </div>
+
                 <!-- Logística de Campo si aplica -->
                 <div id="ref_os_logistica_box" class="rtfm13-sidebar-logistica" style="display:none;">
                     <div class="rtfm13-sidebar-logistica-title">
@@ -1804,6 +1816,7 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
 
 
 <!-- MODAL CYCSA-RT-FM-40 B EN LÍNEA ASOCIADO A RT-FM-13 -->
+<?php require dirname(__DIR__, 2) . '/HojasServicio/Vistas/partials/modal_ampliar_periodo_productos.php'; ?>
 <div id="modalFm40B" class="modal-overlay" style="display:none; z-index:1060; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.72); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#fff; width:100%; max-width:1100px; max-height:92vh; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
         <div style="background:#ffffff; color:#111827; border-bottom:1px solid #E5E7EB; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;">
@@ -2926,6 +2939,9 @@ $csrfToken = (string)($csrfToken ?? ($_SESSION['csrf_token'] ?? ''));
         window.productosPermitidosActuales = data.productos_permitidos_os || data.productos_permitidos || [];
 
         const alertaAlcEl = document.getElementById('hs_alerta_alcance_mensual');
+        if (typeof actualizarPanelPeriodoSidebarHS === 'function') {
+            actualizarPanelPeriodoSidebarHS(data);
+        }
         if (alertaAlcEl) {
             const alc = data.alerta_alcance_mensual || {};
             if (alc.tiene_alerta && Array.isArray(alc.mensajes) && alc.mensajes.length > 0) {

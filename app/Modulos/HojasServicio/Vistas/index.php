@@ -550,6 +550,18 @@
                     <div><strong style="color:#0f172a;">Forma de Pago:</strong> <span id="ref_os_pago">--</span></div>
                 </div>
 
+                <!-- Período / Vigencia de la O/S y Ampliación desde Hoja de Servicio -->
+                <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-top:12px;">
+                    <div style="font-size:11px; font-weight:700; color:#1F3864; text-transform:uppercase; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                        <i class="fa-solid fa-calendar-check"></i> Período / Vigencia O/S
+                    </div>
+                    <div id="ref_os_periodo_resumen" style="font-size:12px; font-weight:700; color:#1F3864;">--</div>
+                    <div id="ref_os_periodo_fechas" style="font-size:11px; color:#64748b; margin-top:2px; display:none;"></div>
+                    <button type="button" onclick="abrirModalAmpliarPeriodoProductosHS()" style="margin-top:8px; width:100%; padding:6px 10px; background:#eff6ff; border:1px solid #93c5fd; color:#1F3864; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <i class="fa-solid fa-calendar-plus"></i> Ampliar Período / Productos
+                    </button>
+                </div>
+
                 <!-- Logística de Campo si aplica -->
                 <div id="ref_os_logistica_box" style="display:none; background:white; border:1px solid #93c5fd; border-radius:8px; padding:10px; margin-top:12px;">
                     <strong style="font-size:11px; color:#0369a1; text-transform:uppercase; display:block; margin-bottom:4px;">
@@ -1382,6 +1394,9 @@
                 }
 
                 // 1. POBLAR PANEL LATERAL DE REFERENCIA VISUAL O/S (CYCSA-RG-FM-39)
+                if (typeof actualizarPanelPeriodoSidebarHS === 'function') {
+                    actualizarPanelPeriodoSidebarHS(data);
+                }
                 if (data.os_referencia) {
                     const osRef = data.os_referencia;
                     document.getElementById('ref_os_cliente').innerText = osRef.cliente_nombre || '--';
@@ -2291,3 +2306,5 @@
     });
     <?php endif; ?>
 </script>
+
+<?php require __DIR__ . '/partials/modal_ampliar_periodo_productos.php'; ?>

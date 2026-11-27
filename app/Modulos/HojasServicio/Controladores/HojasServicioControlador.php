@@ -370,12 +370,51 @@ class HojasServicioControlador extends ControladorBase {
         $esCompactacionHoja = $detalleSeleccionado ? $this->esProductoCompactacion($detalleSeleccionado) : false;
         $alertaAlcanceMensual = $osModelo->verificarAlcanceMensual($idOS, $idProductoHoja);
 
+        // Información de período/vigencia actual, ampliaciones históricas, productos actuales y catálogo para extensión desde Hoja de Servicio
+        $vigenciaContrato = $osCompleta['vigencia_contrato'] ?? (function_exists('calcularVigenciaContratoOS') ? calcularVigenciaContratoOS($osCompleta ?: $os) : []);
+        $periodoActual = [
+            'es_multimes' => !empty($osCompleta['es_multimes']) ? 1 : 0,
+            'tipo_contrato' => (string)($osCompleta['tipo_contrato'] ?? ($os['tipo_contrato'] ?? 'Puntual')),
+            'duracion_meses' => !empty($osCompleta['duracion_meses']) ? (int)$osCompleta['duracion_meses'] : ($vigenciaContrato['duracion_meses'] ?? null),
+            'fecha_inicio' => $osCompleta['fecha_inicio'] ?? ($os['fecha_inicio'] ?? null),
+            'fecha_fin' => $osCompleta['fecha_fin'] ?? ($os['fecha_fin'] ?? null),
+            'periodicidad' => (string)($osCompleta['periodicidad'] ?? ($os['periodicidad'] ?? 'Mensual')),
+            'vigencia' => $vigenciaContrato,
+        ];
+
+        $detallesCotizacionOS = [];
+        $catalogoProductos = [];
+        $ampliacionesHistorial = [];
+        try {
+            $db = Conexion::obtenerInstancia();
+            $idCotOS = (int)($osCompleta['id_cotizacion'] ?? ($os['id_cotizacion'] ?? 0));
+            if ($idCotOS > 0) {
+                $stmtDetCot = $db->prepare("SELECT cd.id, cd.id_producto, cd.descripcion_ensayo, cd.cantidad, cd.precio_unitario, cd.subtotal, COALESCE(cd.unidad_medida, p.unidad_medida, 'Unidad') AS unidad_medida, COALESCE(cd.procedimiento, p.procedimiento_muestreo, p.norma_astm) AS procedimiento, COALESCE(cd.codigo_servicio, p.codigo_servicio) AS codigo_servicio FROM cotizacion_detalles cd LEFT JOIN productos p ON cd.id_producto = p.id WHERE cd.id_cotizacion = :id_cot ORDER BY cd.id ASC");
+                $stmtDetCot->execute(['id_cot' => $idCotOS]);
+                $detallesCotizacionOS = $stmtDetCot->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            }
+
+            $stmtCat = $db->query("SELECT id, nombre_comercial, ensayo_servicio, codigo_servicio, norma_astm, procedimiento_muestreo, COALESCE(unidad_medida, 'Unidad') AS unidad_medida, COALESCE(precio, 0) AS precio FROM productos WHERE activo = 1 ORDER BY COALESCE(NULLIF(nombre_comercial, ''), ensayo_servicio) ASC");
+            $catalogoProductos = $stmtCat ? ($stmtCat->fetchAll(PDO::FETCH_ASSOC) ?: []) : [];
+
+            $stmtAmp = $db->prepare("SELECT id, duracion_meses_anterior, duracion_meses_nueva, fecha_fin_anterior, fecha_fin_nueva, periodicidad, productos_cambio_json, motivo, usuario_nombre, created_at FROM ordenes_servicio_ampliaciones WHERE id_os = :id_os ORDER BY id DESC LIMIT 15");
+            $stmtAmp->execute(['id_os' => $idOS]);
+            $ampliacionesHistorial = $stmtAmp->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable $e) {
+            error_log('hojaSolicitudDatosAjax extras periodo/catalogo: ' . $e->getMessage());
+        }
+
         $respuesta->enviarJson([
             'status' => 'success',
             'producto_hoja_id' => $idProductoHoja,
             'plantilla_sugerida_hoja' => $pltSugeridaHoja,
             'es_compactacion_hoja' => $esCompactacionHoja,
             'alerta_alcance_mensual' => $alertaAlcanceMensual,
+            'periodo_actual' => $periodoActual,
+            'vigencia_contrato' => $vigenciaContrato,
+            'ampliaciones_historial' => $ampliacionesHistorial,
+            'detalles_cotizacion_os' => $detallesCotizacionOS,
+            'catalogo_productos' => $catalogoProductos,
             'detalle_seleccionado' => $detalleSeleccionado,
             'hoja' => $hoja,
             'todas_las_hojas' => $listaHojasFrontend,
@@ -386,7 +425,12 @@ class HojasServicioControlador extends ControladorBase {
                 'id' => $os['id'],
                 'codigo_os' => $os['codigo_os'],
                 'requiere_muestreo' => $os['requiere_muestreo'],
-                'tipo_contrato' => $os['tipo_contrato'] ?? 'Puntual'
+                'tipo_contrato' => $os['tipo_contrato'] ?? 'Puntual',
+                'es_multimes' => (int)($os['es_multimes'] ?? 0),
+                'duracion_meses' => $os['duracion_meses'] ?? null,
+                'fecha_inicio' => $os['fecha_inicio'] ?? null,
+                'fecha_fin' => $os['fecha_fin'] ?? null,
+                'periodicidad' => $os['periodicidad'] ?? 'Mensual'
             ],
             'prefijo_muestra' => $prefijoMuestra,
             'siguiente_consecutivo_muestra' => $siguienteConsecutivoMuestra,
@@ -405,6 +449,399 @@ class HojasServicioControlador extends ControladorBase {
             'productos_permitidos_os' => $productosPermitidos,
             'productos_permitidos' => $productosPermitidos
         ]);
+    }
+
+    /**
+     * Endpoint AJAX POST /hojas-servicio/ampliar-periodo-productos
+     * Permite desde la Hoja de Servicio (RT-FM-13) ampliar el período de vigencia de la O/S
+     * y simultáneamente modificar cantidades/descripciones de productos existentes o agregar nuevos productos.
+     */
+    public function ampliarPeriodoYProductos(Peticion $peticion, Respuesta $respuesta): void {
+        $this->verificarSesion($respuesta);
+        if (!tienePermiso('recepcion', 'crear_editar') && !tienePermiso('ordenes_servicio', 'crear_editar') && !tienePermiso('operaciones', 'crear_editar')) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'No tiene permisos para ampliar el período o modificar productos.'], 403);
+            return;
+        }
+        if (!$peticion->esPost()) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Método no permitido.'], 405);
+            return;
+        }
+
+        $rawBody = file_get_contents('php://input');
+        $jsonBody = ($rawBody !== false && trim($rawBody) !== '') ? json_decode($rawBody, true) : null;
+        $datos = is_array($jsonBody) ? $jsonBody : $peticion->obtenerDatos();
+
+        $csrf = (string)($datos['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
+        if ($csrf === '' || empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], $csrf)) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Token de seguridad inválido o sesión expirada.'], 403);
+            return;
+        }
+
+        $idOS = (int)($datos['id_os'] ?? 0);
+        if ($idOS <= 0) {
+            $respuesta->enviarJson(['status' => 'error', 'message' => 'Orden de Servicio inválida.'], 422);
+            return;
+        }
+
+        $res = $this->ejecutarAmpliacionPeriodoYProductos(
+            $idOS,
+            $datos,
+            (int)($_SESSION['usuario_id'] ?? 0),
+            (string)($_SESSION['usuario_nombre'] ?? 'Usuario')
+        );
+
+        if (empty($res['ok'])) {
+            $respuesta->enviarJson([
+                'status' => 'error',
+                'message' => $res['message'] ?? 'No se pudo completar la ampliación.'
+            ], (int)($res['http_code'] ?? 400));
+            return;
+        }
+
+        $respuesta->enviarJson([
+            'status' => 'success',
+            'message' => $res['message'] ?? 'Período y productos actualizados correctamente.',
+            'periodo_actual' => $res['periodo_actual'] ?? [],
+            'vigencia_contrato' => $res['vigencia_contrato'] ?? [],
+            'resumen_cambios' => $res['resumen_cambios'] ?? [],
+        ]);
+    }
+
+    /**
+     * Lógica transaccional reutilizable (y testeable) para ampliar el período de una O/S
+     * y modificar/agregar productos en su cotización vinculada desde Hoja de Servicio.
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function ejecutarAmpliacionPeriodoYProductos(
+        int $idOS,
+        array $payload,
+        int $usuarioId = 0,
+        string $usuarioNombre = 'Sistema'
+    ): array {
+        $db = Conexion::obtenerInstancia();
+        $osModelo = new \Cycsa\Modulos\OrdenesServicio\Modelos\OrdenServicioModelo();
+        $os = $osModelo->obtenerPorId($idOS);
+        if (!$os) {
+            return ['ok' => false, 'http_code' => 404, 'message' => 'Orden de Servicio no encontrada.'];
+        }
+        if (in_array((string)($os['estado'] ?? ''), ['Finalizado', 'Archivado', 'Cerrado'], true)) {
+            return ['ok' => false, 'http_code' => 422, 'message' => 'La Orden de Servicio está cerrada o archivada y no admite ampliaciones.'];
+        }
+
+        $idCotizacion = (int)($os['id_cotizacion'] ?? 0);
+        $idHoja = !empty($payload['id_hoja']) ? (int)$payload['id_hoja'] : null;
+        $mesesAdicionales = isset($payload['meses_adicionales']) ? max(0, (int)$payload['meses_adicionales']) : 0;
+        $fechaFinSolicitada = trim((string)($payload['fecha_fin'] ?? ''));
+        $fechaInicioActual = !empty($os['fecha_inicio']) ? (string)$os['fecha_inicio'] : date('Y-m-d');
+        $fechaFinAnterior = !empty($os['fecha_fin']) ? (string)$os['fecha_fin'] : null;
+        $duracionAnterior = !empty($os['duracion_meses']) ? (int)$os['duracion_meses'] : null;
+        $periodicidad = trim((string)($payload['periodicidad'] ?? ($os['periodicidad'] ?? 'Mensual')));
+        if (!in_array($periodicidad, ['Mensual', 'Quincenal', 'Bimestral', 'Trimestral', 'Semestral'], true)) {
+            $periodicidad = 'Mensual';
+        }
+        $motivo = trim((string)($payload['motivo'] ?? ''));
+
+        // Calcular nueva fecha_fin y nueva duración
+        $fechaFinNueva = $fechaFinAnterior;
+        $duracionNueva = $duracionAnterior;
+        $esMultimesNuevo = !empty($os['es_multimes']) ? 1 : 0;
+
+        if ($fechaFinSolicitada !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaFinSolicitada) === 1) {
+            $fechaFinNueva = $fechaFinSolicitada;
+            $esMultimesNuevo = 1;
+            if ($mesesAdicionales > 0) {
+                $duracionNueva = max(1, (int)($duracionAnterior ?? 0) + $mesesAdicionales);
+            } elseif (function_exists('calcularVigenciaContratoOS')) {
+                $vigCalc = calcularVigenciaContratoOS([
+                    'es_multimes' => 1,
+                    'tipo_contrato' => 'Marco',
+                    'fecha_inicio' => $fechaInicioActual,
+                    'fecha_fin' => $fechaFinNueva,
+                ]);
+                $duracionNueva = !empty($vigCalc['duracion_meses']) ? (int)$vigCalc['duracion_meses'] : max(1, (int)($duracionAnterior ?? 1));
+            }
+        } elseif ($mesesAdicionales > 0) {
+            $esMultimesNuevo = 1;
+            $baseFecha = ($fechaFinAnterior !== null && $fechaFinAnterior !== '') ? $fechaFinAnterior : $fechaInicioActual;
+            $fechaFinNueva = function_exists('calcularFechaFinPorMesesOS')
+                ? calcularFechaFinPorMesesOS($baseFecha, $mesesAdicionales)
+                : date('Y-m-d', strtotime("+{$mesesAdicionales} months", strtotime($baseFecha)));
+            $duracionNueva = max(1, (int)($duracionAnterior ?? 0) + $mesesAdicionales);
+        }
+
+        // Decodificar listas de productos a modificar y agregar
+        $productosModificar = $payload['productos_modificar'] ?? [];
+        if (is_string($productosModificar)) {
+            $productosModificar = json_decode($productosModificar, true) ?: [];
+        }
+        $productosAgregar = $payload['productos_agregar'] ?? [];
+        if (is_string($productosAgregar)) {
+            $productosAgregar = json_decode($productosAgregar, true) ?: [];
+        }
+
+        $hayCambioPeriodo = ($esMultimesNuevo === 1 && ($fechaFinNueva !== $fechaFinAnterior || $duracionNueva !== $duracionAnterior || $mesesAdicionales > 0));
+        $hayCambiosProductos = (!empty($productosModificar) || !empty($productosAgregar));
+
+        if (!$hayCambioPeriodo && !$hayCambiosProductos) {
+            return ['ok' => false, 'http_code' => 422, 'message' => 'Debe indicar una ampliación de período o al menos un cambio en productos.'];
+        }
+
+        $yaEnTransaccion = $db->inTransaction();
+        $resumenCambios = [
+            'modificados' => [],
+            'agregados' => [],
+        ];
+
+        try {
+            if (!$yaEnTransaccion) {
+                $db->beginTransaction();
+            }
+
+            // 1. Actualizar período de la O/S (y reflejarlo en la cotización si aplica)
+            if ($hayCambioPeriodo) {
+                $okPeriodo = $osModelo->actualizarPeriodoContrato($idOS, [
+                    'es_multimes' => 1,
+                    'tipo_contrato' => 'Marco',
+                    'duracion_meses' => $duracionNueva,
+                    'fecha_inicio' => $fechaInicioActual,
+                    'fecha_fin' => $fechaFinNueva,
+                    'periodicidad' => $periodicidad,
+                ]);
+                if (!$okPeriodo) {
+                    throw new \RuntimeException($osModelo->obtenerUltimoError() ?: 'No se pudo actualizar el período de la O/S.');
+                }
+
+                if ($idCotizacion > 0) {
+                    try {
+                        $stmtUpdCotPer = $db->prepare("UPDATE cotizaciones SET es_mensual = 1, duracion_meses = :dur, fecha_inicio_periodo = COALESCE(fecha_inicio_periodo, :fini), fecha_fin_periodo = :ffin, periodicidad = :per WHERE id = :id_cot");
+                        $stmtUpdCotPer->execute([
+                            'dur' => $duracionNueva,
+                            'fini' => $fechaInicioActual,
+                            'ffin' => $fechaFinNueva,
+                            'per' => $periodicidad,
+                            'id_cot' => $idCotizacion,
+                        ]);
+                    } catch (\Throwable $eCotPer) {
+                        error_log('Sync periodo cotizaciones: ' . $eCotPer->getMessage());
+                    }
+                }
+            }
+
+            // 2. Modificar productos existentes en cotizacion_detalles
+            $seModificoCotizacion = false;
+            if ($idCotizacion > 0 && is_array($productosModificar) && $productosModificar !== []) {
+                $stmtGetDet = $db->prepare("SELECT id, descripcion_ensayo, cantidad, precio_unitario FROM cotizacion_detalles WHERE id = :id AND id_cotizacion = :id_cot LIMIT 1");
+                $stmtUpdDet = $db->prepare("UPDATE cotizacion_detalles SET descripcion_ensayo = :desc, cantidad = :cant, subtotal = :sub WHERE id = :id AND id_cotizacion = :id_cot");
+
+                foreach ($productosModificar as $pm) {
+                    if (!is_array($pm)) {
+                        continue;
+                    }
+                    $idDet = (int)($pm['id_detalle'] ?? ($pm['id'] ?? 0));
+                    if ($idDet <= 0) {
+                        continue;
+                    }
+                    $stmtGetDet->execute(['id' => $idDet, 'id_cot' => $idCotizacion]);
+                    $detActual = $stmtGetDet->fetch(PDO::FETCH_ASSOC);
+                    if (!$detActual) {
+                        continue;
+                    }
+
+                    $nuevaCant = isset($pm['cantidad']) ? max(0.01, (float)$pm['cantidad']) : (float)$detActual['cantidad'];
+                    $nuevaDesc = (isset($pm['descripcion_ensayo']) && trim((string)$pm['descripcion_ensayo']) !== '')
+                        ? trim((string)$pm['descripcion_ensayo'])
+                        : (string)$detActual['descripcion_ensayo'];
+
+                    $cantAnterior = (float)$detActual['cantidad'];
+                    $descAnterior = (string)$detActual['descripcion_ensayo'];
+                    if (abs($nuevaCant - $cantAnterior) < 0.0001 && $nuevaDesc === $descAnterior) {
+                        continue;
+                    }
+
+                    $precioUnit = (float)$detActual['precio_unitario'];
+                    $nuevoSub = round($nuevaCant * $precioUnit, 2);
+
+                    $stmtUpdDet->execute([
+                        'desc' => $nuevaDesc,
+                        'cant' => $nuevaCant,
+                        'sub' => $nuevoSub,
+                        'id' => $idDet,
+                        'id_cot' => $idCotizacion,
+                    ]);
+                    $seModificoCotizacion = true;
+                    $resumenCambios['modificados'][] = [
+                        'id_detalle' => $idDet,
+                        'descripcion' => $nuevaDesc,
+                        'cantidad_anterior' => $cantAnterior,
+                        'cantidad_nueva' => $nuevaCant,
+                    ];
+                }
+            }
+
+            // 3. Agregar nuevos productos a cotizacion_detalles (y habilitarlos en whitelist si está activa)
+            $nuevosIdsDetalle = [];
+            if ($idCotizacion > 0 && is_array($productosAgregar) && $productosAgregar !== []) {
+                $stmtProd = $db->prepare("SELECT id, nombre_comercial, ensayo_servicio, condiciones_muestra, procedimiento_muestreo, unidad_medida, codigo_servicio, norma_astm, observaciones, precio FROM productos WHERE id = :id LIMIT 1");
+                $stmtInsDet = $db->prepare("INSERT INTO cotizacion_detalles (id_cotizacion, id_producto, descripcion_ensayo, condiciones_muestra, procedimiento, unidad_medida, codigo_servicio, norma_astm, observaciones, cantidad, precio_unitario, subtotal) VALUES (:id_cot, :id_prod, :desc, :cond, :proc, :um, :cod, :norma, :obs, :cant, :precio, :sub)");
+
+                foreach ($productosAgregar as $pa) {
+                    if (!is_array($pa)) {
+                        continue;
+                    }
+                    $idProd = !empty($pa['id_producto']) ? (int)$pa['id_producto'] : null;
+                    $prodRow = null;
+                    if ($idProd !== null && $idProd > 0) {
+                        $stmtProd->execute(['id' => $idProd]);
+                        $prodRow = $stmtProd->fetch(PDO::FETCH_ASSOC) ?: null;
+                    }
+
+                    $desc = trim((string)($pa['descripcion_ensayo'] ?? ''));
+                    if ($desc === '' && $prodRow) {
+                        $desc = trim((string)($prodRow['nombre_comercial'] ?: ($prodRow['ensayo_servicio'] ?? '')));
+                    }
+                    if ($desc === '') {
+                        continue;
+                    }
+
+                    $cant = max(0.01, (float)($pa['cantidad'] ?? 1));
+                    $precio = isset($pa['precio_unitario']) && $pa['precio_unitario'] !== ''
+                        ? max(0.0, (float)$pa['precio_unitario'])
+                        : (float)($prodRow['precio'] ?? 0);
+                    $sub = round($cant * $precio, 2);
+
+                    $stmtInsDet->execute([
+                        'id_cot' => $idCotizacion,
+                        'id_prod' => $prodRow ? (int)$prodRow['id'] : null,
+                        'desc' => $desc,
+                        'cond' => $pa['condiciones_muestra'] ?? ($prodRow['condiciones_muestra'] ?? null),
+                        'proc' => $pa['procedimiento'] ?? ($prodRow['procedimiento_muestreo'] ?? ($prodRow['norma_astm'] ?? null)),
+                        'um' => !empty($pa['unidad_medida']) ? trim((string)$pa['unidad_medida']) : (!empty($prodRow['unidad_medida']) ? (string)$prodRow['unidad_medida'] : 'Unidad'),
+                        'cod' => $pa['codigo_servicio'] ?? ($prodRow['codigo_servicio'] ?? null),
+                        'norma' => $pa['norma_astm'] ?? ($prodRow['norma_astm'] ?? null),
+                        'obs' => $prodRow['observaciones'] ?? null,
+                        'cant' => $cant,
+                        'precio' => $precio,
+                        'sub' => $sub,
+                    ]);
+                    $nuevoIdDet = (int)$db->lastInsertId();
+                    if ($nuevoIdDet > 0) {
+                        $nuevosIdsDetalle[] = $nuevoIdDet;
+                    }
+                    $seModificoCotizacion = true;
+                    $resumenCambios['agregados'][] = [
+                        'id_detalle' => $nuevoIdDet,
+                        'id_producto' => $prodRow ? (int)$prodRow['id'] : null,
+                        'descripcion' => $desc,
+                        'cantidad' => $cant,
+                        'precio_unitario' => $precio,
+                    ];
+                }
+            }
+
+            // 4. Si hay whitelist de ensayos permitidos activa en esta O/S, habilitar automáticamente los productos recién agregados
+            if ($nuevosIdsDetalle !== []) {
+                try {
+                    $idsPermitidosActuales = $osModelo->obtenerIdsPermitidos($idOS);
+                    if (is_array($idsPermitidosActuales) && $idsPermitidosActuales !== []) {
+                        $stmtInsPerm = $db->prepare("INSERT IGNORE INTO orden_servicio_ensayos_permitidos (id_os, id_cotizacion_detalle, creado_por, creado_en) VALUES (:id_os, :id_det, :uid, NOW())");
+                        foreach ($nuevosIdsDetalle as $nid) {
+                            $stmtInsPerm->execute(['id_os' => $idOS, 'id_det' => $nid, 'uid' => $usuarioId > 0 ? $usuarioId : null]);
+                        }
+                    }
+                } catch (\Throwable $ePerm) {
+                    error_log('Auto-habilitar nuevos productos en whitelist O/S: ' . $ePerm->getMessage());
+                }
+            }
+
+            // 5. Recalcular totales de la cotización si hubo cambios en productos
+            if ($seModificoCotizacion && $idCotizacion > 0) {
+                $stmtSum = $db->prepare("SELECT COALESCE(SUM(subtotal), 0) FROM cotizacion_detalles WHERE id_cotizacion = :id_cot");
+                $stmtSum->execute(['id_cot' => $idCotizacion]);
+                $nuevoSubtotal = round((float)$stmtSum->fetchColumn(), 2);
+
+                $stmtCotMeta = $db->prepare("SELECT descuento, exonerado FROM cotizaciones WHERE id = :id_cot LIMIT 1");
+                $stmtCotMeta->execute(['id_cot' => $idCotizacion]);
+                $cotMeta = $stmtCotMeta->fetch(PDO::FETCH_ASSOC) ?: ['descuento' => 0, 'exonerado' => 0];
+                $descVal = (float)($cotMeta['descuento'] ?? 0);
+                $exonerado = !empty($cotMeta['exonerado']) ? 1 : 0;
+                $baseImp = max(0.0, $nuevoSubtotal - $descVal);
+                $nuevoImpuesto = $exonerado ? 0.00 : round($baseImp * 0.15, 2);
+                $nuevoTotal = round($baseImp + $nuevoImpuesto, 2);
+
+                $stmtUpdTot = $db->prepare("UPDATE cotizaciones SET subtotal = :sub, impuesto = :imp, total = :tot WHERE id = :id_cot");
+                $stmtUpdTot->execute([
+                    'sub' => $nuevoSubtotal,
+                    'imp' => $nuevoImpuesto,
+                    'tot' => $nuevoTotal,
+                    'id_cot' => $idCotizacion,
+                ]);
+            }
+
+            // 6. Registrar auditoría en ordenes_servicio_ampliaciones
+            try {
+                $stmtAmp = $db->prepare("INSERT INTO ordenes_servicio_ampliaciones (id_os, id_hoja, duracion_meses_anterior, duracion_meses_nueva, fecha_fin_anterior, fecha_fin_nueva, periodicidad, productos_cambio_json, motivo, usuario_id, usuario_nombre) VALUES (:id_os, :id_hoja, :dur_ant, :dur_nva, :ffin_ant, :ffin_nva, :per, :prods_json, :motivo, :uid, :unom)");
+                $stmtAmp->execute([
+                    'id_os' => $idOS,
+                    'id_hoja' => $idHoja,
+                    'dur_ant' => $duracionAnterior,
+                    'dur_nva' => $duracionNueva,
+                    'ffin_ant' => $fechaFinAnterior,
+                    'ffin_nva' => $fechaFinNueva,
+                    'per' => $periodicidad,
+                    'prods_json' => json_encode($resumenCambios, JSON_UNESCAPED_UNICODE),
+                    'motivo' => $motivo !== '' ? $motivo : null,
+                    'uid' => $usuarioId > 0 ? $usuarioId : null,
+                    'unom' => $usuarioNombre,
+                ]);
+            } catch (\Throwable $eAmp) {
+                error_log('Registro ordenes_servicio_ampliaciones: ' . $eAmp->getMessage());
+            }
+
+            if (!$yaEnTransaccion && $db->inTransaction()) {
+                $db->commit();
+            }
+
+            $osActualizada = $osModelo->obtenerPorId($idOS);
+            $vigActualizada = $osActualizada['vigencia_contrato'] ?? (function_exists('calcularVigenciaContratoOS') ? calcularVigenciaContratoOS($osActualizada ?: []) : []);
+
+            if (function_exists('registrarBitacora')) {
+                $descBit = "Ampliación desde Hoja de Servicio en O/S " . ($os['codigo_os'] ?? "#{$idOS}");
+                if ($hayCambioPeriodo) {
+                    $descBit .= " · Período fin: " . ($fechaFinNueva ?? 'N/A') . " ({$duracionNueva} meses)";
+                }
+                if ($resumenCambios['modificados'] !== []) {
+                    $descBit .= " · " . count($resumenCambios['modificados']) . " producto(s) modificado(s)";
+                }
+                if ($resumenCambios['agregados'] !== []) {
+                    $descBit .= " · " . count($resumenCambios['agregados']) . " producto(s) agregado(s)";
+                }
+                registrarBitacora('hojas_servicio', 'ampliar_periodo_productos', $descBit, $idOS);
+            }
+
+            return [
+                'ok' => true,
+                'message' => 'Período y productos de la Orden de Servicio actualizados correctamente.',
+                'periodo_actual' => [
+                    'es_multimes' => !empty($osActualizada['es_multimes']) ? 1 : 0,
+                    'tipo_contrato' => (string)($osActualizada['tipo_contrato'] ?? 'Marco'),
+                    'duracion_meses' => !empty($osActualizada['duracion_meses']) ? (int)$osActualizada['duracion_meses'] : null,
+                    'fecha_inicio' => $osActualizada['fecha_inicio'] ?? null,
+                    'fecha_fin' => $osActualizada['fecha_fin'] ?? null,
+                    'periodicidad' => (string)($osActualizada['periodicidad'] ?? 'Mensual'),
+                    'vigencia' => $vigActualizada,
+                ],
+                'vigencia_contrato' => $vigActualizada,
+                'resumen_cambios' => $resumenCambios,
+            ];
+        } catch (\Throwable $e) {
+            if (!$yaEnTransaccion && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log('Error en ejecutarAmpliacionPeriodoYProductos: ' . $e->getMessage());
+            return ['ok' => false, 'http_code' => 500, 'message' => 'Error al aplicar la ampliación: ' . $e->getMessage()];
+        }
     }
 
     public function guardarHojaSolicitud(Peticion $peticion, Respuesta $respuesta): void {

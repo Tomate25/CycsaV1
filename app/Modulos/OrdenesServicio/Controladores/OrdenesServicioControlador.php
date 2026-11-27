@@ -225,11 +225,21 @@ class OrdenesServicioControlador extends ControladorBase {
         // Determinar estado inicial según la decisión de muestreo en campo
         $estadoInicial = $requiereMuestreo ? 'Pendiente de Muestreo' : 'Estado 1: Recepcion';
 
-        $esMultimes = isset($datos['es_multimes']) && ($datos['es_multimes'] === '1' || $datos['es_multimes'] === 1 || $datos['es_multimes'] === 'on') ? 1 : 0;
-        $duracionMeses = !empty($datos['duracion_meses']) ? max(1, (int)$datos['duracion_meses']) : null;
-        $fechaInicio = !empty($datos['fecha_inicio']) ? trim($datos['fecha_inicio']) : null;
-        $fechaFin = !empty($datos['fecha_fin']) ? trim($datos['fecha_fin']) : null;
-        $periodicidad = !empty($datos['periodicidad']) ? trim($datos['periodicidad']) : 'Mensual';
+        $esMultimes = isset($datos['es_multimes'])
+            ? (($datos['es_multimes'] === '1' || $datos['es_multimes'] === 1 || $datos['es_multimes'] === 'on') ? 1 : 0)
+            : ((!isset($datos['tipo_contrato']) && !empty($cotizacion['es_mensual'])) ? 1 : 0);
+        $duracionMeses = !empty($datos['duracion_meses'])
+            ? max(1, (int)$datos['duracion_meses'])
+            : ($esMultimes && !empty($cotizacion['duracion_meses']) ? max(1, (int)$cotizacion['duracion_meses']) : null);
+        $fechaInicio = !empty($datos['fecha_inicio'])
+            ? trim($datos['fecha_inicio'])
+            : ($esMultimes && !empty($cotizacion['fecha_inicio_periodo']) ? trim((string)$cotizacion['fecha_inicio_periodo']) : null);
+        $fechaFin = !empty($datos['fecha_fin'])
+            ? trim($datos['fecha_fin'])
+            : ($esMultimes && !empty($cotizacion['fecha_fin_periodo']) ? trim((string)$cotizacion['fecha_fin_periodo']) : null);
+        $periodicidad = !empty($datos['periodicidad'])
+            ? trim($datos['periodicidad'])
+            : (!empty($cotizacion['periodicidad']) ? trim((string)$cotizacion['periodicidad']) : 'Mensual');
 
         $contactosOS = $this->extraerContactosDesdePost($datos, $cotizacion['contactos'] ?? []);
         $docsVinculadosOS = $this->extraerDocumentosVinculadosDesdePost($datos, []);

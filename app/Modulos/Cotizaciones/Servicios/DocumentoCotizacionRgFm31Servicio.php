@@ -794,10 +794,26 @@ CSS;
                 . '</tr></table>';
         }
 
-        // 5. Condiciones comerciales
+        // 5. Condiciones comerciales y modalidad / período de habilitación
         $condicionPago = trim((string)($cotizacion['condicion_pago'] ?? '')) ?: 'A convenir';
         $tiempoEntrega = trim((string)($cotizacion['tiempo_entrega'] ?? '')) ?: 'A convenir';
         $vigenciaOferta = trim((string)($cotizacion['vigencia_oferta'] ?? '')) ?: '30 días calendario';
+
+        $esMensualCot = !empty($cotizacion['es_mensual']) && (int)$cotizacion['es_mensual'] === 1;
+        if ($esMensualCot) {
+            $durMeses = !empty($cotizacion['duracion_meses']) ? (int)$cotizacion['duracion_meses'] : null;
+            $perCot = trim((string)($cotizacion['periodicidad'] ?? 'Mensual')) ?: 'Mensual';
+            $partesPer = [$perCot];
+            if ($durMeses !== null && $durMeses > 0) {
+                $partesPer[] = $durMeses . ($durMeses === 1 ? ' mes' : ' meses');
+            }
+            $fIniPer = !empty($cotizacion['fecha_inicio_periodo']) ? date('d/m/Y', strtotime((string)$cotizacion['fecha_inicio_periodo'])) : '';
+            $fFinPer = !empty($cotizacion['fecha_fin_periodo']) ? date('d/m/Y', strtotime((string)$cotizacion['fecha_fin_periodo'])) : '';
+            $rangoPer = ($fIniPer !== '' && $fFinPer !== '') ? " ({$fIniPer} — {$fFinPer})" : '';
+            $modalidadPeriodo = implode(' · ', $partesPer) . $rangoPer;
+        } else {
+            $modalidadPeriodo = 'Puntual (No mensual)';
+        }
 
         // 6. Notas y condiciones
         $notas = self::resolverNotas($cotizacion);
@@ -941,6 +957,7 @@ CSS;
             . '<th>Condición de Pago</th>'
             . '<th>Tiempo de entrega</th>'
             . '<th>Vigencia de la oferta</th>'
+            . '<th>Modalidad / Período habilitado</th>'
             . '</tr>'
             . '</thead>'
             . '<tbody>'
@@ -948,6 +965,7 @@ CSS;
             . '<td>' . $esc($condicionPago) . '</td>'
             . '<td>' . $esc($tiempoEntrega) . '</td>'
             . '<td>' . $esc($vigenciaOferta) . '</td>'
+            . '<td><strong>' . $esc($modalidadPeriodo) . '</strong></td>'
             . '</tr>'
             . '</tbody>'
             . '</table>'

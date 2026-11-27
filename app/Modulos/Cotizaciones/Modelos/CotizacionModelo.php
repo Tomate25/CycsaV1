@@ -338,17 +338,54 @@ class CotizacionModelo extends ModeloBase {
                         $consecutivo = (int)$stmtCount->fetchColumn() + 1;
                         $codigoOS = sprintf("OS-%d-%04d", $anio, $consecutivo);
 
-                        $sqlOS = "INSERT INTO ordenes_servicio (codigo_os, id_cotizacion, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, forma_pago, tipo_contrato, fecha_emision, estado, requiere_muestreo) 
-                                  VALUES (:codigo_os, :id_cotizacion, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :forma_pago, 'Puntual', CURRENT_DATE, 'Estado 1: Recepcion', NULL)";
+                        $esMensualCot = !empty($cotInfo['es_mensual']) ? 1 : 0;
+                        $tipoContratoOS = $esMensualCot ? 'Marco' : 'Puntual';
+                        $duracionMesesOS = $esMensualCot && !empty($cotInfo['duracion_meses']) ? max(1, (int)$cotInfo['duracion_meses']) : null;
+                        $fechaInicioOS = $esMensualCot
+                            ? (!empty($cotInfo['fecha_inicio_periodo']) ? trim((string)$cotInfo['fecha_inicio_periodo']) : date('Y-m-d'))
+                            : null;
+                        $fechaFinOS = $esMensualCot
+                            ? (!empty($cotInfo['fecha_fin_periodo']) ? trim((string)$cotInfo['fecha_fin_periodo']) : null)
+                            : null;
+                        if ($esMensualCot && $fechaFinOS === null && $fechaInicioOS !== null && $duracionMesesOS !== null) {
+                            $fechaFinOS = function_exists('calcularFechaFinPorMesesOS')
+                                ? calcularFechaFinPorMesesOS($fechaInicioOS, $duracionMesesOS)
+                                : date('Y-m-d', strtotime("+{$duracionMesesOS} months", strtotime($fechaInicioOS)));
+                        }
+                        $periodicidadOS = !empty($cotInfo['periodicidad']) ? trim((string)$cotInfo['periodicidad']) : 'Mensual';
+
+                        $sqlOS = "INSERT INTO ordenes_servicio (
+                                    codigo_os, id_cotizacion, cotizacion_version, id_cliente, id_cliente_factura, id_cliente_informe,
+                                    condicion_comercial, forma_pago, atencion_a, direccion_cliente, nombre_proyecto, ubicacion_proyecto,
+                                    contactos_json, tipo_contrato, es_multimes, duracion_meses, fecha_inicio, fecha_fin, periodicidad,
+                                    fecha_emision, estado, requiere_muestreo
+                                  ) VALUES (
+                                    :codigo_os, :id_cotizacion, :cotizacion_version, :id_cliente, :id_cliente_factura, :id_cliente_informe,
+                                    :condicion_comercial, :forma_pago, :atencion_a, :direccion_cliente, :nombre_proyecto, :ubicacion_proyecto,
+                                    :contactos_json, :tipo_contrato, :es_multimes, :duracion_meses, :fecha_inicio, :fecha_fin, :periodicidad,
+                                    CURRENT_DATE, 'Estado 1: Recepcion', NULL
+                                  )";
                         $stmtOS = $this->db->prepare($sqlOS);
                         $stmtOS->execute([
                             'codigo_os' => $codigoOS,
                             'id_cotizacion' => $id,
+                            'cotizacion_version' => !empty($cotInfo['version']) ? (int)$cotInfo['version'] : 1,
                             'id_cliente' => $idClienteFactura,
                             'id_cliente_factura' => $idClienteFactura,
                             'id_cliente_informe' => $idClienteInforme,
                             'condicion_comercial' => $condComercial,
-                            'forma_pago' => $formaPagoOS
+                            'forma_pago' => $formaPagoOS,
+                            'atencion_a' => (string)($cotInfo['atencion_a'] ?? ''),
+                            'direccion_cliente' => (string)($cotInfo['direccion_cliente'] ?? ''),
+                            'nombre_proyecto' => (string)($cotInfo['nombre_proyecto'] ?? ''),
+                            'ubicacion_proyecto' => (string)($cotInfo['direccion_proyecto'] ?? ''),
+                            'contactos_json' => !empty($cotInfo['contactos']) ? (string)$cotInfo['contactos'] : '[]',
+                            'tipo_contrato' => $tipoContratoOS,
+                            'es_multimes' => $esMensualCot,
+                            'duracion_meses' => $duracionMesesOS,
+                            'fecha_inicio' => $fechaInicioOS,
+                            'fecha_fin' => $fechaFinOS,
+                            'periodicidad' => $periodicidadOS,
                         ]);
                     }
 
@@ -430,8 +467,13 @@ class CotizacionModelo extends ModeloBase {
             $cabecera['direccion_cliente'] = array_key_exists('direccion_cliente', $cabecera)
                 ? (trim((string)$cabecera['direccion_cliente']) !== '' ? trim((string)$cabecera['direccion_cliente']) : null)
                 : null;
+            $cabecera['es_mensual'] = !empty($cabecera['es_mensual']) ? 1 : 0;
+            $cabecera['duracion_meses'] = ($cabecera['es_mensual'] === 1 && !empty($cabecera['duracion_meses'])) ? max(1, (int)$cabecera['duracion_meses']) : null;
+            $cabecera['fecha_inicio_periodo'] = ($cabecera['es_mensual'] === 1 && !empty($cabecera['fecha_inicio_periodo'])) ? trim((string)$cabecera['fecha_inicio_periodo']) : null;
+            $cabecera['fecha_fin_periodo'] = ($cabecera['es_mensual'] === 1 && !empty($cabecera['fecha_fin_periodo'])) ? trim((string)$cabecera['fecha_fin_periodo']) : null;
+            $cabecera['periodicidad'] = !empty($cabecera['periodicidad']) ? trim((string)$cabecera['periodicidad']) : 'Mensual';
 
-            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, tipo_moneda, id_usuario_creador, id_responsable_interno, atencion_a, direccion_cliente, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :tipo_moneda, :id_usuario_creador, :id_responsable_interno, :atencion_a, :direccion_cliente, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
+            $sqlCabecera = "INSERT INTO cotizaciones (codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial, tipo_moneda, id_usuario_creador, id_responsable_interno, atencion_a, direccion_cliente, nombre_proyecto, direccion_proyecto, prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta, es_mensual, duracion_meses, fecha_inicio_periodo, fecha_fin_periodo, periodicidad, configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto, subtotal, descuento, exonerado, exoneracion_no, impuesto, total, estado, version, fecha_entrega, fecha_seguimiento) VALUES (:codigo, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial, :tipo_moneda, :id_usuario_creador, :id_responsable_interno, :atencion_a, :direccion_cliente, :nombre_proyecto, :direccion_proyecto, :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta, :es_mensual, :duracion_meses, :fecha_inicio_periodo, :fecha_fin_periodo, :periodicidad, :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto, :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total, 'Borrador', 0, :fecha_entrega, :fecha_seguimiento)";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute($cabecera);
             $idCotizacion = $this->db->lastInsertId();
@@ -555,8 +597,24 @@ class CotizacionModelo extends ModeloBase {
             $cabecera['direccion_cliente'] = array_key_exists('direccion_cliente', $cabecera)
                 ? (trim((string)$cabecera['direccion_cliente']) !== '' ? trim((string)$cabecera['direccion_cliente']) : null)
                 : (!empty($oldCot['direccion_cliente']) ? trim((string)$oldCot['direccion_cliente']) : null);
+            $esMensualUpd = array_key_exists('es_mensual', $cabecera)
+                ? (!empty($cabecera['es_mensual']) ? 1 : 0)
+                : (!empty($oldCot['es_mensual']) ? 1 : 0);
+            $cabecera['es_mensual'] = $esMensualUpd;
+            $cabecera['duracion_meses'] = ($esMensualUpd === 1)
+                ? (!empty($cabecera['duracion_meses']) ? max(1, (int)$cabecera['duracion_meses']) : (!empty($oldCot['duracion_meses']) ? max(1, (int)$oldCot['duracion_meses']) : null))
+                : null;
+            $cabecera['fecha_inicio_periodo'] = ($esMensualUpd === 1)
+                ? (array_key_exists('fecha_inicio_periodo', $cabecera) ? (!empty($cabecera['fecha_inicio_periodo']) ? trim((string)$cabecera['fecha_inicio_periodo']) : null) : ($oldCot['fecha_inicio_periodo'] ?? null))
+                : null;
+            $cabecera['fecha_fin_periodo'] = ($esMensualUpd === 1)
+                ? (array_key_exists('fecha_fin_periodo', $cabecera) ? (!empty($cabecera['fecha_fin_periodo']) ? trim((string)$cabecera['fecha_fin_periodo']) : null) : ($oldCot['fecha_fin_periodo'] ?? null))
+                : null;
+            $cabecera['periodicidad'] = !empty($cabecera['periodicidad'])
+                ? trim((string)$cabecera['periodicidad'])
+                : (!empty($oldCot['periodicidad']) ? trim((string)$oldCot['periodicidad']) : 'Mensual');
 
-            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, id_cliente_factura = :id_cliente_factura, id_cliente_informe = :id_cliente_informe, condicion_comercial = :condicion_comercial, tipo_moneda = :tipo_moneda, id_responsable_interno = :id_responsable_interno, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, motivo_observacion = :motivo_observacion, atencion_a = :atencion_a, direccion_cliente = :direccion_cliente, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, configuracion_notas = :configuracion_notas, contactos = :contactos, incluir_anexo_tecnico = :incluir_anexo_tecnico, anexo_tecnico = :anexo_tecnico, archivo_adjunto = :archivo_adjunto, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
+            $sqlCabecera = "UPDATE cotizaciones SET id_cliente = :id_cliente, id_cliente_factura = :id_cliente_factura, id_cliente_informe = :id_cliente_informe, condicion_comercial = :condicion_comercial, tipo_moneda = :tipo_moneda, id_responsable_interno = :id_responsable_interno, estado = :estado, version = :version, token_seguridad = :token, motivo_rechazo_cliente = :motivo_rechazo, motivo_observacion = :motivo_observacion, atencion_a = :atencion_a, direccion_cliente = :direccion_cliente, nombre_proyecto = :nombre_proyecto, direccion_proyecto = :direccion_proyecto, condicion_pago = :condicion_pago, tiempo_entrega = :tiempo_entrega, vigencia_oferta = :vigencia_oferta, es_mensual = :es_mensual, duracion_meses = :duracion_meses, fecha_inicio_periodo = :fecha_inicio_periodo, fecha_fin_periodo = :fecha_fin_periodo, periodicidad = :periodicidad, configuracion_notas = :configuracion_notas, contactos = :contactos, incluir_anexo_tecnico = :incluir_anexo_tecnico, anexo_tecnico = :anexo_tecnico, archivo_adjunto = :archivo_adjunto, subtotal = :subtotal, descuento = :descuento, exonerado = :exonerado, exoneracion_no = :exoneracion_no, impuesto = :impuesto, total = :total, fecha_entrega = :fecha_entrega, fecha_seguimiento = :fecha_seguimiento WHERE id = :id";
             $stmtCabecera = $this->db->prepare($sqlCabecera);
             $stmtCabecera->execute(array_merge($cabecera, [
                 'id' => $id,
@@ -764,6 +822,7 @@ class CotizacionModelo extends ModeloBase {
                 codigo, id_cliente, id_cliente_factura, id_cliente_informe, condicion_comercial,
                 tipo_moneda, id_usuario_creador, atencion_a, direccion_cliente, nombre_proyecto, direccion_proyecto,
                 prioridad, fecha_limite, condicion_pago, tiempo_entrega, vigencia_oferta,
+                es_mensual, duracion_meses, fecha_inicio_periodo, fecha_fin_periodo, periodicidad,
                 configuracion_notas, contactos, incluir_anexo_tecnico, anexo_tecnico, archivo_adjunto,
                 subtotal, descuento, exonerado, exoneracion_no, impuesto, total,
                 estado, version, fecha_entrega, fecha_seguimiento, dias_credito
@@ -771,6 +830,7 @@ class CotizacionModelo extends ModeloBase {
                 :codigo, :id_cliente, :id_cliente_factura, :id_cliente_informe, :condicion_comercial,
                 :tipo_moneda, :id_usuario_creador, :atencion_a, :direccion_cliente, :nombre_proyecto, :direccion_proyecto,
                 :prioridad, :fecha_limite, :condicion_pago, :tiempo_entrega, :vigencia_oferta,
+                :es_mensual, :duracion_meses, :fecha_inicio_periodo, :fecha_fin_periodo, :periodicidad,
                 :configuracion_notas, :contactos, :incluir_anexo_tecnico, :anexo_tecnico, :archivo_adjunto,
                 :subtotal, :descuento, :exonerado, :exoneracion_no, :impuesto, :total,
                 'Borrador', 0, NULL, NULL, :dias_credito
@@ -794,6 +854,11 @@ class CotizacionModelo extends ModeloBase {
                 'condicion_pago' => $origen['condicion_pago'] ?? '',
                 'tiempo_entrega' => $origen['tiempo_entrega'] ?? '',
                 'vigencia_oferta' => $origen['vigencia_oferta'] ?? '',
+                'es_mensual' => !empty($origen['es_mensual']) ? 1 : 0,
+                'duracion_meses' => !empty($origen['es_mensual']) && !empty($origen['duracion_meses']) ? (int)$origen['duracion_meses'] : null,
+                'fecha_inicio_periodo' => !empty($origen['es_mensual']) && !empty($origen['fecha_inicio_periodo']) ? $origen['fecha_inicio_periodo'] : null,
+                'fecha_fin_periodo' => !empty($origen['es_mensual']) && !empty($origen['fecha_fin_periodo']) ? $origen['fecha_fin_periodo'] : null,
+                'periodicidad' => !empty($origen['periodicidad']) ? $origen['periodicidad'] : 'Mensual',
                 'configuracion_notas' => $origen['configuracion_notas'] ?? null,
                 'contactos' => $origen['contactos'] ?? null,
                 'incluir_anexo_tecnico' => (int)($origen['incluir_anexo_tecnico'] ?? 0),

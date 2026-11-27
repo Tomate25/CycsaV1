@@ -251,6 +251,7 @@ $app->enrutador->get('/ventas/imprimir-factura', [VentasControlador::class, 'imp
     $app->enrutador->get('/hojas-servicio/datos', [HojasServicioControlador::class, 'hojaSolicitudDatosAjax'], [AuthMiddleware::class]);
     $app->enrutador->get('/hojas-servicio/datos-ajax', [HojasServicioControlador::class, 'hojaSolicitudDatosAjax'], [AuthMiddleware::class]);
     $app->enrutador->post('/hojas-servicio/guardar', [HojasServicioControlador::class, 'guardarHojaSolicitud'], [AuthMiddleware::class]);
+    $app->enrutador->post('/hojas-servicio/ampliar-periodo-productos', [HojasServicioControlador::class, 'ampliarPeriodoYProductos'], [AuthMiddleware::class]);
     $app->enrutador->get('/hojas-servicio/datos-recepcion', [HojasServicioControlador::class, 'datosRecepcionAjax'], [AuthMiddleware::class]);
     $app->enrutador->post('/hojas-servicio/guardar-datos-recepcion', [HojasServicioControlador::class, 'guardarDatosRecepcion'], [AuthMiddleware::class]);
     $app->enrutador->post('/hojas-servicio/marcar-recepcion-completa', [HojasServicioControlador::class, 'marcarRecepcionCompleta'], [AuthMiddleware::class]);

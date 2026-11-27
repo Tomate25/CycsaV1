@@ -220,6 +220,63 @@ class CotizacionesControlador extends ControladorBase {
         return null;
     }
 
+    /**
+     * Extrae y normaliza la modalidad (Puntual vs Mensual/Período) enviada desde el formulario de Cotización.
+     *
+     * @param array<string, mixed> $datos
+     * @param array<string, mixed> $fallback
+     * @return array{es_mensual: int, duracion_meses: ?int, fecha_inicio_periodo: ?string, fecha_fin_periodo: ?string, periodicidad: string}
+     */
+    private function extraerPeriodoDesdePost(array $datos, array $fallback = []): array {
+        $esMensualRaw = array_key_exists('es_mensual', $datos)
+            ? $datos['es_mensual']
+            : ($fallback['es_mensual'] ?? 0);
+        $esMensual = ($esMensualRaw === 1 || $esMensualRaw === '1' || $esMensualRaw === 'on' || $esMensualRaw === true) ? 1 : 0;
+
+        if ($esMensual !== 1) {
+            return [
+                'es_mensual' => 0,
+                'duracion_meses' => null,
+                'fecha_inicio_periodo' => null,
+                'fecha_fin_periodo' => null,
+                'periodicidad' => 'Mensual',
+            ];
+        }
+
+        $duracionMeses = !empty($datos['duracion_meses'])
+            ? max(1, min(120, (int)$datos['duracion_meses']))
+            : (!empty($fallback['duracion_meses']) ? max(1, min(120, (int)$fallback['duracion_meses'])) : 3);
+
+        $fechaInicio = $this->normalizarFechaFiltro($datos['fecha_inicio_periodo'] ?? '');
+        if ($fechaInicio === '') {
+            $fechaInicio = $this->normalizarFechaFiltro($fallback['fecha_inicio_periodo'] ?? '');
+        }
+        if ($fechaInicio === '') {
+            $fechaInicio = date('Y-m-d');
+        }
+
+        $fechaFin = $this->normalizarFechaFiltro($datos['fecha_fin_periodo'] ?? '');
+        if ($fechaFin === '') {
+            $fechaFin = function_exists('calcularFechaFinPorMesesOS')
+                ? calcularFechaFinPorMesesOS($fechaInicio, $duracionMeses)
+                : date('Y-m-d', strtotime("+{$duracionMeses} months", strtotime($fechaInicio)));
+        }
+
+        $periodicidad = trim((string)($datos['periodicidad'] ?? ($fallback['periodicidad'] ?? 'Mensual')));
+        $periodicidadesValidas = ['Mensual', 'Quincenal', 'Bimestral', 'Trimestral', 'Semestral'];
+        if (!in_array($periodicidad, $periodicidadesValidas, true)) {
+            $periodicidad = 'Mensual';
+        }
+
+        return [
+            'es_mensual' => 1,
+            'duracion_meses' => $duracionMeses,
+            'fecha_inicio_periodo' => $fechaInicio,
+            'fecha_fin_periodo' => $fechaFin,
+            'periodicidad' => $periodicidad,
+        ];
+    }
+
     public function guardar(Peticion $peticion, Respuesta $respuesta): void {
         $this->verificarSesion($respuesta);
         if (!tienePermiso('cotizaciones', 'crear_editar')) {
@@ -240,8 +297,9 @@ class CotizacionesControlador extends ControladorBase {
 
             $incluirAnexo = !empty($datos['incluir_anexo_tecnico']) ? 1 : 0;
             $anexoTecnico = !empty(trim($datos['anexo_tecnico'] ?? '')) ? trim($datos['anexo_tecnico']) : null;
+            $periodoCot = $this->extraerPeriodoDesdePost($datos);
 
-            $cabecera = [
+            $cabecera = array_merge([
                 'codigo' => $modelo->generarCodigoUnico(),
                 'id_cliente' => $datos['id_cliente'],
                 'id_cliente_factura' => !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)$datos['id_cliente'],
@@ -272,7 +330,7 @@ class CotizacionesControlador extends ControladorBase {
                 'total' => (float)$datos['total_general'],
                 'fecha_entrega' => null,
                 'fecha_seguimiento' => null
-            ];
+            ], $periodoCot);
             $detalles = $this->procesarDetalles($datos);
             if ($modelo->guardarCotizacionCompleta($cabecera, $detalles)) {
                 registrarBitacora('cotizaciones', 'crear', 'Creada cotización borrador: ' . $cabecera['codigo']);
@@ -477,8 +535,9 @@ class CotizacionesControlador extends ControladorBase {
 
         $incluirAnexo = !empty($datos['incluir_anexo_tecnico']) ? 1 : 0;
         $anexoTecnico = !empty(trim($datos['anexo_tecnico'] ?? '')) ? trim($datos['anexo_tecnico']) : null;
+        $periodoCot = $this->extraerPeriodoDesdePost($datos, $cotizacionPrev);
 
-        $cabecera = [
+        $cabecera = array_merge([
             'id_cliente' => $datos['id_cliente'],
             'id_cliente_factura' => !empty($datos['id_cliente_factura']) ? (int)$datos['id_cliente_factura'] : (int)$datos['id_cliente'],
             'id_cliente_informe' => !empty($datos['id_cliente_informe']) ? (int)$datos['id_cliente_informe'] : (int)$datos['id_cliente'],
@@ -507,7 +566,7 @@ class CotizacionesControlador extends ControladorBase {
             'total' => (float)$datos['total_general'],
             'fecha_entrega' => null,
             'fecha_seguimiento' => null
-        ];
+        ], $periodoCot);
         if ($modelo->actualizarCotizacionCompleta($id, $cabecera, $this->procesarDetalles($datos))) {
             $cot = $modelo->obtenerPorId($id);
 

@@ -276,6 +276,60 @@
                 </select>
             </div>
         </div>
+
+        <?php
+        $cotEsMensualEdit = !empty($cotizacion['es_mensual']) && (int)$cotizacion['es_mensual'] === 1;
+        $cotDuracionEdit = !empty($cotizacion['duracion_meses']) ? (int)$cotizacion['duracion_meses'] : 3;
+        $cotFechaIniEdit = !empty($cotizacion['fecha_inicio_periodo']) ? (string)$cotizacion['fecha_inicio_periodo'] : date('Y-m-d');
+        $cotFechaFinEdit = !empty($cotizacion['fecha_fin_periodo']) ? (string)$cotizacion['fecha_fin_periodo'] : date('Y-m-d', strtotime("+{$cotDuracionEdit} months", strtotime($cotFechaIniEdit)));
+        $cotPeriodicidadEdit = !empty($cotizacion['periodicidad']) ? (string)$cotizacion['periodicidad'] : 'Mensual';
+        ?>
+        <!-- MODALIDAD Y PERÍODO DE HABILITACIÓN (Puntual vs Mensual) -->
+        <div style="margin-top: 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <div style="font-size: 13px; font-weight: 700; color: #1F3864;">
+                        <i class="fa-solid fa-calendar-days"></i> Modalidad del Servicio y Período de Habilitación
+                    </div>
+                    <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">
+                        Define si la cotización será puntual o mensual/por período. Esta configuración se heredará automáticamente a la Orden de Servicio.
+                    </div>
+                </div>
+                <div style="display: inline-flex; gap: 10px; flex-wrap: wrap;">
+                    <label style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; font-size: 12.5px; font-weight: 600; color: #334155; cursor: pointer;">
+                        <input type="radio" name="es_mensual" value="0" <?= !$cotEsMensualEdit ? 'checked' : '' ?> onchange="togglePeriodoCotizacion(false)">
+                        Puntual (No mensual)
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; font-size: 12.5px; font-weight: 600; color: #1F3864; cursor: pointer;">
+                        <input type="radio" name="es_mensual" value="1" <?= $cotEsMensualEdit ? 'checked' : '' ?> onchange="togglePeriodoCotizacion(true)">
+                        Mensual / Por Período
+                    </label>
+                </div>
+            </div>
+
+            <div id="cot_periodo_campos" style="display: <?= $cotEsMensualEdit ? 'grid' : 'none' ?>; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Duración Habilitada (Meses)</label>
+                    <input type="number" name="duracion_meses" id="cot_duracion_meses" class="form-control" min="1" max="120" value="<?= $cotDuracionEdit ?>" oninput="recalcularFechaFinCotizacion()" onchange="recalcularFechaFinCotizacion()">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Periodicidad</label>
+                    <select name="periodicidad" id="cot_periodicidad" class="form-control">
+                        <?php foreach (['Mensual', 'Quincenal', 'Bimestral', 'Trimestral', 'Semestral'] as $optPer): ?>
+                            <option value="<?= $optPer ?>" <?= $cotPeriodicidadEdit === $optPer ? 'selected' : '' ?>><?= $optPer ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Fecha Inicio Período</label>
+                    <input type="date" name="fecha_inicio_periodo" id="cot_fecha_inicio_periodo" class="form-control" value="<?= htmlspecialchars($cotFechaIniEdit, ENT_QUOTES, 'UTF-8') ?>" onchange="recalcularFechaFinCotizacion()">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Fecha Fin Período</label>
+                    <input type="date" name="fecha_fin_periodo" id="cot_fecha_fin_periodo" class="form-control" value="<?= htmlspecialchars($cotFechaFinEdit, ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="seccion-form">
@@ -2051,5 +2105,27 @@
         }
         const fila = btn.closest('tr');
         if (fila) fila.remove();
+    }
+
+    function togglePeriodoCotizacion(esMensual) {
+        const box = document.getElementById('cot_periodo_campos');
+        if (!box) return;
+        box.style.display = esMensual ? 'grid' : 'none';
+        if (esMensual) {
+            recalcularFechaFinCotizacion();
+        }
+    }
+
+    function recalcularFechaFinCotizacion() {
+        const fiEl = document.getElementById('cot_fecha_inicio_periodo');
+        const durEl = document.getElementById('cot_duracion_meses');
+        const ffEl = document.getElementById('cot_fecha_fin_periodo');
+        if (!fiEl || !durEl || !ffEl || !fiEl.value) return;
+        const meses = Math.max(1, parseInt(durEl.value || '3', 10) || 3);
+        const dt = new Date(fiEl.value + 'T00:00:00');
+        if (!isNaN(dt.getTime())) {
+            dt.setMonth(dt.getMonth() + meses);
+            ffEl.value = dt.toISOString().slice(0, 10);
+        }
     }
 </script>
