@@ -4496,18 +4496,246 @@ function esOrdenSoloCompactacion(array $items): bool {
  * Prioriza la hoja vinculada formalmente a id_detalle_cotizacion (Migración 029+).
  * Si es una O/S con hojas legadas donde id_detalle_cotizacion es NULL, realiza fallback a MIN(id) de esa O/S.
  */
-function resolverHojaPorDetalle(PDO $db, int $idOs, int $idDetalle): ?array {
+/**
+ * Verifica si la tabla hojas_matrices_resultados (Migración 043) existe en la BD activa.
+ */
+if (!function_exists('tablaHojasMatricesDisponible')) {
+    function tablaHojasMatricesDisponible(PDO $db): bool {
+        try {
+            $stmt = $db->query("SHOW TABLES LIKE 'hojas_matrices_resultados'");
+            return (bool)($stmt && $stmt->fetchColumn());
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+}
+
+/**
+ * Crea de forma idempotente un registro independiente en hojas_matrices_resultados por cada
+ * producto (id_detalle_cotizacion) al que se le hayan asignado muestras en una Hoja RT-FM-13.
+ * Antes de crear una nueva hoja para un producto que ya tenía resultados legados en cotizacion_detalles,
+ * respalda los resultados legados en la hoja anterior para preservar su aislamiento.
+ *
+ * @return array<int> Lista de id_detalle_cotizacion aprovisionados para esta hoja.
+ */
+if (!function_exists('asegurarMatricesPorHojaYProductos')) {
+    function asegurarMatricesPorHojaYProductos(PDO $db, int $idOs, int $idHoja): array {
+        if ($idOs <= 0 || $idHoja <= 0 || !tablaHojasMatricesDisponible($db)) {
+            return [];
+        }
+
+        $detallesIds = [];
+        try {
+            $stmtHsd = $db->prepare("
+                SELECT DISTINCT id_detalle_cotizacion
+                FROM hojas_solicitud_detalles
+                WHERE id_hoja_solicitud = :hid
+                  AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0
+                ORDER BY id_detalle_cotizacion ASC
+            ");
+            $stmtHsd->execute(['hid' => $idHoja]);
+            foreach ($stmtHsd->fetchAll(PDO::FETCH_COLUMN) as $did) {
+                if ((int)$did > 0) {
+                    $detallesIds[(int)$did] = true;
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
+        if (empty($detallesIds)) {
+            try {
+                $stmtHs = $db->prepare("SELECT id_detalle_cotizacion, muestras_json FROM hojas_solicitud WHERE id = :hid LIMIT 1");
+                $stmtHs->execute(['hid' => $idHoja]);
+                $hsRow = $stmtHs->fetch(PDO::FETCH_ASSOC);
+                if ($hsRow) {
+                    if (!empty($hsRow['id_detalle_cotizacion'])) {
+                        $detallesIds[(int)$hsRow['id_detalle_cotizacion']] = true;
+                    }
+                    $mJson = json_decode((string)($hsRow['muestras_json'] ?? '[]'), true) ?: [];
+                    foreach ($mJson as $mItem) {
+                        if (is_array($mItem) && !empty($mItem['id_detalle_cotizacion'])) {
+                            $detallesIds[(int)$mItem['id_detalle_cotizacion']] = true;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if (empty($detallesIds)) {
+            return [];
+        }
+
+        $listaIds = array_keys($detallesIds);
+        $stmtChkHmr = $db->prepare("SELECT COUNT(*) FROM hojas_matrices_resultados WHERE id_detalle_cotizacion = :id_det");
+        $stmtLegacyJson = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id_det LIMIT 1");
+        $stmtPrevHoja = $db->prepare("
+            SELECT hs.id
+            FROM hojas_solicitud hs
+            LEFT JOIN hojas_solicitud_detalles hsd ON hsd.id_hoja_solicitud = hs.id
+            WHERE hs.id_os = :id_os
+              AND hs.id != :id_hoja
+              AND (hs.id_detalle_cotizacion = :d1 OR hsd.id_detalle_cotizacion = :d2)
+            ORDER BY hs.id ASC
+            LIMIT 1
+        ");
+        $stmtIns = $db->prepare("
+            INSERT IGNORE INTO hojas_matrices_resultados (id_os, id_hoja, id_detalle_cotizacion, resultados_json)
+            VALUES (:id_os, :id_hoja, :id_det, :rjson)
+        ");
+
+        foreach ($listaIds as $idDet) {
+            // Backfill seguro: si una hoja anterior ya tenía resultados en cotizacion_detalles y aún no estaba en hojas_matrices_resultados
+            $stmtChkHmr->execute(['id_det' => $idDet]);
+            if ((int)$stmtChkHmr->fetchColumn() === 0) {
+                $stmtLegacyJson->execute(['id_det' => $idDet]);
+                $legacyJson = $stmtLegacyJson->fetchColumn();
+                if (is_string($legacyJson) && trim($legacyJson) !== '' && trim($legacyJson) !== '[]') {
+                    $stmtPrevHoja->execute([
+                        'id_os' => $idOs,
+                        'id_hoja' => $idHoja,
+                        'd1' => $idDet,
+                        'd2' => $idDet,
+                    ]);
+                    $prevHojaId = (int)$stmtPrevHoja->fetchColumn();
+                    if ($prevHojaId > 0) {
+                        $stmtIns->execute([
+                            'id_os' => $idOs,
+                            'id_hoja' => $prevHojaId,
+                            'id_det' => $idDet,
+                            'rjson' => $legacyJson,
+                        ]);
+                    }
+                }
+            }
+
+            // Crear la nueva entrada limpia para (id_hoja, id_detalle_cotizacion)
+            $stmtIns->execute([
+                'id_os' => $idOs,
+                'id_hoja' => $idHoja,
+                'id_det' => $idDet,
+                'rjson' => null,
+            ]);
+        }
+
+        return $listaIds;
+    }
+}
+
+/**
+ * Obtiene el JSON de resultados de una matriz específica por (id_detalle_cotizacion, id_hoja).
+ * Si id_hoja > 0 y existe fila en hojas_matrices_resultados, esa es la única fuente de verdad (aislada por RT-FM-13).
+ */
+if (!function_exists('obtenerResultadosJsonMatriz')) {
+    function obtenerResultadosJsonMatriz(PDO $db, int $idDetalle, int $idHoja = 0, ?string $fallbackJson = null): ?string {
+        if ($idHoja > 0 && $idDetalle > 0 && tablaHojasMatricesDisponible($db)) {
+            try {
+                $stmt = $db->prepare("SELECT resultados_json FROM hojas_matrices_resultados WHERE id_hoja = :hid AND id_detalle_cotizacion = :did LIMIT 1");
+                $stmt->execute(['hid' => $idHoja, 'did' => $idDetalle]);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($row !== false) {
+                    return $row['resultados_json'] !== null ? (string)$row['resultados_json'] : null;
+                }
+                // Si ya existen filas de OTRAS hojas para este detalle, esta hoja nueva NO debe heredar el JSON legado
+                $stmtOtras = $db->prepare("SELECT COUNT(*) FROM hojas_matrices_resultados WHERE id_detalle_cotizacion = :did AND id_hoja != :hid");
+                $stmtOtras->execute(['did' => $idDetalle, 'hid' => $idHoja]);
+                if ((int)$stmtOtras->fetchColumn() > 0) {
+                    return null;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if ($fallbackJson !== null) {
+            return $fallbackJson;
+        }
+        if ($idDetalle > 0) {
+            try {
+                $stmtCd = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :did LIMIT 1");
+                $stmtCd->execute(['did' => $idDetalle]);
+                $val = $stmtCd->fetchColumn();
+                return $val !== false && $val !== null ? (string)$val : null;
+            } catch (\Throwable $e) {
+            }
+        }
+        return null;
+    }
+}
+
+/**
+ * Guarda el JSON de resultados de una matriz en hojas_matrices_resultados para (id_hoja, id_detalle_cotizacion),
+ * manteniendo retrocompatibilidad con cotizacion_detalles.resultados_json cuando es la única hoja o no hay id_hoja.
+ */
+if (!function_exists('guardarResultadosJsonMatriz')) {
+    function guardarResultadosJsonMatriz(PDO $db, int $idOs, int $idDetalle, int $idHoja, string $jsonFinal): void {
+        if ($idDetalle <= 0) {
+            return;
+        }
+        $escribirEnCd = true;
+        if ($idHoja > 0 && tablaHojasMatricesDisponible($db)) {
+            if ($idOs <= 0) {
+                try {
+                    $stOs = $db->prepare("SELECT id_os FROM hojas_solicitud WHERE id = :hid LIMIT 1");
+                    $stOs->execute(['hid' => $idHoja]);
+                    $idOs = (int)$stOs->fetchColumn();
+                } catch (\Throwable $e) {
+                }
+            }
+            try {
+                $stmtUp = $db->prepare("
+                    INSERT INTO hojas_matrices_resultados (id_os, id_hoja, id_detalle_cotizacion, resultados_json)
+                    VALUES (:id_os, :id_hoja, :id_det, :rjson)
+                    ON DUPLICATE KEY UPDATE resultados_json = VALUES(resultados_json), updated_at = CURRENT_TIMESTAMP
+                ");
+                $stmtUp->execute([
+                    'id_os' => $idOs,
+                    'id_hoja' => $idHoja,
+                    'id_det' => $idDetalle,
+                    'rjson' => $jsonFinal,
+                ]);
+
+                // Solo sincronizar cotizacion_detalles si esta es la única hoja asociada a este detalle (evita pisar hojas anteriores)
+                $stmtCnt = $db->prepare("SELECT COUNT(*) FROM hojas_matrices_resultados WHERE id_detalle_cotizacion = :did");
+                $stmtCnt->execute(['did' => $idDetalle]);
+                $escribirEnCd = ((int)$stmtCnt->fetchColumn() <= 1);
+            } catch (\Throwable $e) {
+                $escribirEnCd = true;
+            }
+        }
+
+        if ($escribirEnCd) {
+            $stmtCd = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+            $stmtCd->execute(['json' => $jsonFinal, 'id' => $idDetalle]);
+        }
+    }
+}
+
+/**
+ * Resuelve la Hoja de Solicitud (CYCSA-RT-FM-13) correspondiente a un ítem/detalle de cotización en una O/S.
+ * Si se pasa $idHojaExplicito > 0, retorna exactamente esa hoja RT-FM-13 de la O/S.
+ * Prioriza la hoja vinculada formalmente a id_detalle_cotizacion (Migración 029+) o a muestras en hojas_solicitud_detalles.
+ */
+function resolverHojaPorDetalle(PDO $db, int $idOs, int $idDetalle, int $idHojaExplicito = 0): ?array {
     if ($idOs <= 0) return null;
 
+    if ($idHojaExplicito > 0) {
+        $stmtExp = $db->prepare("SELECT * FROM hojas_solicitud WHERE id = :hid AND id_os = :id_os LIMIT 1");
+        $stmtExp->execute(['hid' => $idHojaExplicito, 'id_os' => $idOs]);
+        $hojaExp = $stmtExp->fetch(PDO::FETCH_ASSOC);
+        if ($hojaExp) {
+            return $hojaExp;
+        }
+    }
+
     if ($idDetalle > 0) {
-        $stmt = $db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os AND id_detalle_cotizacion = :id_det LIMIT 1");
+        $stmt = $db->prepare("SELECT * FROM hojas_solicitud WHERE id_os = :id_os AND id_detalle_cotizacion = :id_det ORDER BY id ASC LIMIT 1");
         $stmt->execute(['id_os' => $idOs, 'id_det' => $idDetalle]);
         $hoja = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($hoja) {
             return $hoja;
         }
 
-        // Migración 042: Hoja multi-producto donde las muestras se asignan por fila en hojas_solicitud_detalles
+        // Migración 042+: Hoja multi-producto donde las muestras se asignan por fila en hojas_solicitud_detalles
         try {
             $stmtMulti = $db->prepare("
                 SELECT hs.*
@@ -4543,17 +4771,38 @@ function resolverHojaPorDetalle(PDO $db, int $idOs, int $idDetalle): ?array {
 
 if (!function_exists('obtenerMuestrasHojaParaDetalle')) {
     /**
-     * Obtiene las muestras asignadas a un ítem específico (cotizacion_detalles.id) dentro de una O/S,
-     * soportando hojas RT-FM-13 multi-producto (ej. 8 muestras repartidas entre 3 productos) y hojas
-     * legadas 1-a-1.
+     * Obtiene las muestras asignadas a un ítem específico (cotizacion_detalles.id) dentro de una O/S.
+     * Cuando se indica $hoja (con id > 0), aísla estrictamente las muestras de esa RT-FM-13 para que
+     * cada nueva RT-FM-13 genere su propia recepción y matriz sin mezclar muestras de entregas anteriores.
      */
     function obtenerMuestrasHojaParaDetalle(PDO $db, int $idOs, int $idDetalle, ?array $hoja = null): array {
         if ($idOs <= 0) {
             return [];
         }
 
-        // 1. Prioridad: muestras explícitamente asignadas a este id_detalle_cotizacion (en cualquier hoja RT-FM-13 de la O/S)
-        if ($idDetalle > 0) {
+        $idHojaEspecifica = ($hoja && !empty($hoja['id'])) ? (int)$hoja['id'] : 0;
+
+        // 1. Si se especificó una hoja RT-FM-13 concreta, filtrar estrictamente esa hoja + producto
+        if ($idHojaEspecifica > 0 && $idDetalle > 0) {
+            try {
+                $stmtAsigHoja = $db->prepare("
+                    SELECT hsd.codigo_muestra, hsd.descripcion_ubicacion, hsd.observacion_edad, hsd.datos_recepcion_json,
+                           hsd.id_hoja_solicitud, hsd.id_detalle_cotizacion
+                    FROM hojas_solicitud_detalles hsd
+                    WHERE hsd.id_hoja_solicitud = :hid AND hsd.id_detalle_cotizacion = :id_det
+                    ORDER BY hsd.orden ASC, hsd.id ASC
+                ");
+                $stmtAsigHoja->execute(['hid' => $idHojaEspecifica, 'id_det' => $idDetalle]);
+                $filasAsigHoja = $stmtAsigHoja->fetchAll(PDO::FETCH_ASSOC);
+                if (!empty($filasAsigHoja)) {
+                    return $filasAsigHoja;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        // 2. Si no se especificó hoja, buscar muestras explícitamente asignadas a este id_detalle_cotizacion en la O/S
+        if ($idHojaEspecifica <= 0 && $idDetalle > 0) {
             try {
                 $stmtAsig = $db->prepare("
                     SELECT hsd.codigo_muestra, hsd.descripcion_ubicacion, hsd.observacion_edad, hsd.datos_recepcion_json,
@@ -6897,7 +7146,7 @@ if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
             $columnasFormato = $infoCampos['columnas'] ?? [];
             $archivoMdDet = (string)($infoCampos['archivo_markdown'] ?? ($detRow['archivo_markdown'] ?? ''));
 
-            $resJson = $detRow['resultados_json'] ?? null;
+            $resJson = obtenerResultadosJsonMatriz($db, (int)$idDetalle, $idHoja, isset($detRow['resultados_json']) ? (string)$detRow['resultados_json'] : null);
             $dec = is_string($resJson) ? (json_decode($resJson, true) ?: []) : [];
             $filas = isset($dec['filas']) && is_array($dec['filas']) ? $dec['filas'] : (isset($dec[0]) && is_array($dec[0]) ? $dec : []);
 
@@ -6986,8 +7235,7 @@ if (!function_exists('sincronizarDatosRecepcionEnMatriz')) {
                         'historial' => [],
                     ];
                 }
-                $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
-                   ->execute(['json' => json_encode($dec, JSON_UNESCAPED_UNICODE), 'id' => (int)$idDetalle]);
+                guardarResultadosJsonMatriz($db, $idOsHoja, (int)$idDetalle, $idHoja, json_encode($dec, JSON_UNESCAPED_UNICODE));
             }
         }
 

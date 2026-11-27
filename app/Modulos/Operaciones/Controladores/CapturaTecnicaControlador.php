@@ -91,12 +91,16 @@ class CapturaTecnicaControlador extends ControladorBase {
             $devueltas = 0;
             $enRevision = 0;
             $primerPendienteId = null;
+            $primerPendienteHoja = 0;
             $primerDevueltoId = null;
+            $primerDevueltoHoja = 0;
             $primerItemId = null;
+            $primerItemHoja = 0;
 
             $itemsLimpios = [];
             foreach ($items as $it) {
                 $idDet = (int)($it['id'] ?? 0);
+                $idHojaIt = (int)($it['id_hoja'] ?? 0);
                 $rev = obtenerEstadoRevisionMatriz($it['resultados_json'] ?? null);
                 $est = (string)($rev['estado'] ?? 'pendiente');
                 // Solo se considera capturada por el técnico cuando ya fue enviada a revisión o aprobada.
@@ -112,6 +116,7 @@ class CapturaTecnicaControlador extends ControladorBase {
                     $devueltas++;
                     if ($primerDevueltoId === null && $idDet > 0) {
                         $primerDevueltoId = $idDet;
+                        $primerDevueltoHoja = $idHojaIt;
                     }
                 } elseif ($est === 'en_revision') {
                     $enRevision++;
@@ -119,9 +124,11 @@ class CapturaTecnicaControlador extends ControladorBase {
                 if ($idDet > 0) {
                     if ($primerItemId === null) {
                         $primerItemId = $idDet;
+                        $primerItemHoja = $idHojaIt;
                     }
                     if (!$estaCapturadaTec && $primerPendienteId === null) {
                         $primerPendienteId = $idDet;
+                        $primerPendienteHoja = $idHojaIt;
                     }
                 }
 
@@ -137,6 +144,8 @@ class CapturaTecnicaControlador extends ControladorBase {
 
                 $itemsLimpios[] = [
                     'id' => $idDet,
+                    'id_hoja' => $idHojaIt,
+                    'hoja_numero_registro' => (string)($it['hoja_numero_registro'] ?? ''),
                     'descripcion_ensayo' => (string)($it['descripcion_ensayo'] ?? 'Ensayo técnico'),
                     'norma_astm' => (string)($it['norma_astm'] ?? ''),
                     'cantidad' => $cantMuestras,
@@ -173,6 +182,7 @@ class CapturaTecnicaControlador extends ControladorBase {
             }
 
             $idAccion = $primerDevueltoId ?? $primerPendienteId ?? $primerItemId;
+            $idHojaAccion = $primerDevueltoId !== null ? $primerDevueltoHoja : ($primerPendienteId !== null ? $primerPendienteHoja : $primerItemHoja);
             $ordenesCiegas[] = [
                 'id' => $idOS,
                 'codigo_os' => (string)($o['codigo_os'] ?? ('OS-' . $idOS)),
@@ -184,6 +194,7 @@ class CapturaTecnicaControlador extends ControladorBase {
                 'en_revision' => $enRevision,
                 'solo_en_revision' => $soloEnRevision,
                 'id_accion_principal' => $idAccion,
+                'id_hoja_accion_principal' => $idHojaAccion,
             ];
         }
 

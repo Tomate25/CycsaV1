@@ -824,10 +824,19 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                 $ubicEsc = htmlspecialchars(addslashes((string)($o['ubicacion'] ?? '')), ENT_QUOTES, 'UTF-8');
                                                 $normaTxt = trim((string)($it['norma_astm'] ?? ''));
                                                 $idDet = (int)($it['id'] ?? 0);
+                                                $idHojaIt = (int)($it['id_hoja'] ?? 0);
+                                                $qsHojaIt = $idHojaIt > 0 ? ('&id_hoja=' . $idHojaIt) : '';
+                                                $regHojaIt = trim((string)($it['hoja_numero_registro'] ?? ''));
+                                                $idHojaLinksIt = $idHojaIt > 0 ? $idHojaIt : $idHojaPrincipal;
                                             ?>
                                             <div class="cy-row">
                                                 <div class="flex-grow-1 min-w-0">
-                                                    <div class="cy-assay-name"><?= htmlspecialchars((string)($it['descripcion_ensayo'] ?? 'Ensayo'), ENT_QUOTES, 'UTF-8') ?></div>
+                                                    <div class="cy-assay-name">
+                                                        <?= htmlspecialchars((string)($it['descripcion_ensayo'] ?? 'Ensayo'), ENT_QUOTES, 'UTF-8') ?>
+                                                        <?php if ($regHojaIt !== ''): ?>
+                                                            <span class="cy-meta"> · RT-FM-13 <?= htmlspecialchars($regHojaIt, ENT_QUOTES, 'UTF-8') ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
                                                     <div class="cy-assay-norm">
                                                         <?= htmlspecialchars($normaTxt !== '' ? $normaTxt : 'Sin norma asignada', ENT_QUOTES, 'UTF-8') ?> · <?= $avanceY ?> <?= $avanceY === 1 ? 'muestra' : 'muestras' ?><?= !empty($it['codigo_muestra']) ? ' · ' . htmlspecialchars((string)$it['codigo_muestra'], ENT_QUOTES, 'UTF-8') : '' ?>
                                                     </div>
@@ -836,13 +845,13 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                 <span class="cy-meta"><?= $avanceX ?>/<?= $avanceY ?></span>
 
                                                 <?php if ($esTecnicoCiego): ?>
-                                                    <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm"><?= $estadoRevIt === 'aprobada' ? 'Ver captura' : 'Llenar datos' ?></a>
+                                                    <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idDet ?><?= $qsHojaIt ?>" class="btn btn-outline-secondary btn-sm"><?= $estadoRevIt === 'aprobada' ? 'Ver captura' : 'Llenar datos' ?></a>
                                                 <?php elseif ($estadoRevIt === 'aprobada'): ?>
-                                                    <a href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm">Ver documento</a>
+                                                    <a href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?><?= $qsHojaIt ?>" class="btn btn-outline-secondary btn-sm">Ver documento</a>
                                                 <?php elseif (!$tieneHojaServicio && !$tieneResIt && !$esSoloCompactacion): ?>
                                                     <a href="/Cycsa/publico/ordenes-servicio?id_os=<?= (int)$o['id'] ?>" class="btn btn-outline-secondary btn-sm">Registrar RT-FM-13</a>
                                                 <?php else: ?>
-                                                    <a href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm">Ver documento</a>
+                                                    <a href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?><?= $qsHojaIt ?>" class="btn btn-outline-secondary btn-sm">Ver documento</a>
                                                 <?php endif; ?>
 
                                                 <div class="dropdown">
@@ -853,31 +862,31 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                                                             aria-label="Más acciones">⋯</button>
                                                     <ul class="dropdown-menu dropdown-menu-end">
                                                         <?php if (!$esTecnicoCiego): ?>
-                                                            <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?>">Ver documento completo</a></li>
+                                                            <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDet ?><?= $qsHojaIt ?>">Ver documento completo</a></li>
                                                         <?php endif; ?>
-                                                        <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?>"><?= $esTecnicoCiego ? 'Llenar datos técnicos' : 'Editar encabezado / matriz' ?></a></li>
+                                                        <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDet ?><?= $qsHojaIt ?>"><?= $esTecnicoCiego ? 'Llenar datos técnicos' : 'Editar encabezado / matriz' ?></a></li>
                                                         <?php if (!$esTecnicoCiego && $estadoRevIt === 'aprobada'): ?>
-                                                            <li><button type="button" class="dropdown-item" onclick="abrirModalEnviarMatriz(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $cliMailEsc ?>', '<?= $codOsEsc ?>')">Enviar al cliente</button></li>
+                                                            <li><button type="button" class="dropdown-item" onclick="abrirModalEnviarMatriz(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $cliMailEsc ?>', '<?= $codOsEsc ?>', <?= $idHojaIt ?>)">Enviar al cliente</button></li>
                                                         <?php endif; ?>
                                                         <?php if (!$esTecnicoCiego && $tieneResIt): ?>
-                                                            <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDet ?>" target="_blank">Imprimir RT-FM-22</a></li>
+                                                            <li><a class="dropdown-item" href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDet ?><?= $qsHojaIt ?>" target="_blank">Imprimir RT-FM-22</a></li>
                                                         <?php endif; ?>
-                                                        <?php if (!$esTecnicoCiego && $idHojaPrincipal > 0): ?>
-                                                            <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= $idHojaPrincipal ?>" target="_blank">Imprimir Hoja RT-FM-60</a></li>
-                                                            <li><a class="dropdown-item" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$o['id'] ?>&id_hoja=<?= $idHojaPrincipal ?>" target="_blank">Imprimir RT-FM-13</a></li>
+                                                        <?php if (!$esTecnicoCiego && $idHojaLinksIt > 0): ?>
+                                                            <li><a class="dropdown-item" href="/Cycsa/publico/laboratorio/imprimir-solicitud?id_hoja=<?= $idHojaLinksIt ?>" target="_blank">Imprimir Hoja RT-FM-60</a></li>
+                                                            <li><a class="dropdown-item" href="/Cycsa/publico/hojas-servicio/descargar?id_os=<?= (int)$o['id'] ?>&id_hoja=<?= $idHojaLinksIt ?>" target="_blank">Imprimir RT-FM-13</a></li>
                                                         <?php endif; ?>
                                                         <?php if ($esSupervisor && $tieneResIt && $estadoRevIt !== 'aprobada'): ?>
-                                                            <li><button type="button" class="dropdown-item" onclick="abrirModalAprobarEnIndex(<?= $idDet ?>, '<?= $descEnsEsc ?>')">Aprobar matriz</button></li>
+                                                            <li><button type="button" class="dropdown-item" onclick="abrirModalAprobarEnIndex(<?= $idDet ?>, '<?= $descEnsEsc ?>', <?= $idHojaIt ?>)">Aprobar matriz</button></li>
                                                         <?php endif; ?>
                                                         <?php if ($esSupervisor && $estadoRevIt === 'aprobada'): ?>
-                                                            <li><button type="button" class="dropdown-item" onclick="abrirModalCorreccionAdminIndex(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $proyEsc ?>', '<?= $ubicEsc ?>')">Reemitir</button></li>
+                                                            <li><button type="button" class="dropdown-item" onclick="abrirModalCorreccionAdminIndex(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= $cliNomEsc ?>', '<?= $proyEsc ?>', '<?= $ubicEsc ?>', <?= $idHojaIt ?>)">Reemitir</button></li>
                                                         <?php endif; ?>
                                                         <?php if ($estadoRevIt === 'devuelta'): ?>
-                                                            <li><button type="button" class="dropdown-item" onclick="verObservacionDevolucion(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= htmlspecialchars(addslashes((string)($revIt['motivo_devolucion'] ?? '')), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes((string)($revIt['usuario_revisor'] ?? 'Supervisor')), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes((string)($revIt['fecha_revision'] ?? '')), ENT_QUOTES, 'UTF-8') ?>')">Ver observación</button></li>
+                                                            <li><button type="button" class="dropdown-item" onclick="verObservacionDevolucion(<?= $idDet ?>, '<?= $descEnsEsc ?>', '<?= htmlspecialchars(addslashes((string)($revIt['motivo_devolucion'] ?? '')), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes((string)($revIt['usuario_revisor'] ?? 'Supervisor')), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes((string)($revIt['fecha_revision'] ?? '')), ENT_QUOTES, 'UTF-8') ?>', <?= $idHojaIt ?>)">Ver observación</button></li>
                                                         <?php endif; ?>
                                                         <?php if ($esSupervisor && $tieneResIt && $estadoRevIt !== 'devuelta'): ?>
                                                             <li><hr class="dropdown-divider"></li>
-                                                            <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="abrirModalDevolverEnIndex(<?= $idDet ?>, '<?= $descEnsEsc ?>')">Devolver</a></li>
+                                                            <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="abrirModalDevolverEnIndex(<?= $idDet ?>, '<?= $descEnsEsc ?>', <?= $idHojaIt ?>)">Devolver</a></li>
                                                         <?php endif; ?>
                                                     </ul>
                                                 </div>
@@ -1252,6 +1261,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
         <form method="POST" action="/Cycsa/publico/operaciones/enviar-matriz-cliente" id="form-enviar-matriz-cliente" onsubmit="prepararEnvioMatriz(this)">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="id_detalle" id="envio_id_detalle" value="">
+            <input type="hidden" name="id_hoja" id="envio_id_hoja" value="">
             <div class="cy-note mt-0 mb-3">
                 <div class="fw-semibold text-dark" id="envio_txt_ensayo"></div>
                 <div class="cy-meta">Orden: <span id="envio_txt_os"></span> · Cliente: <span id="envio_txt_cliente"></span></div>
@@ -1311,6 +1321,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
         <form method="POST" action="/Cycsa/publico/operaciones/aprobar-matriz-producto">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="id_detalle" id="aprob_index_id_detalle" value="">
+            <input type="hidden" name="id_hoja" id="aprob_index_id_hoja" value="">
             <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones">
             <div class="mb-3">
                 <label class="form-label" style="font-size: 13px; font-weight: 500;">Nota de aprobación (opcional)</label>
@@ -1335,6 +1346,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
         <form method="POST" action="/Cycsa/publico/operaciones/devolver-matriz-producto">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="id_detalle" id="dev_index_id_detalle" value="">
+            <input type="hidden" name="id_hoja" id="dev_index_id_hoja" value="">
             <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones">
             <div class="mb-3">
                 <label class="form-label" style="font-size: 13px; font-weight: 500;">Motivo u observaciones técnicas *</label>
@@ -1359,6 +1371,7 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
         <form method="POST" action="/Cycsa/publico/operaciones/solicitar-correccion-admin">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="id_detalle" id="corr_index_id_detalle" value="">
+            <input type="hidden" name="id_hoja" id="corr_index_id_hoja" value="">
             <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones">
             <div class="cy-note mt-0 mb-3">
                 Se emitirá una nueva versión correlativa y la matriz pasará a revisión para su re-aprobación.
@@ -1741,9 +1754,11 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
                     data.items.forEach(it => {
                         const tr = document.createElement('tr');
                         const tieneResultados = !!(it.resultados_json && it.resultados_json !== '[]');
-                        const btnHtml = `<a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=${it.id}" class="btn btn-outline-secondary btn-sm">${tieneResultados ? 'Editar matriz' : 'Capturar'}</a>`;
+                        const qsH = (it.id_hoja && parseInt(it.id_hoja) > 0) ? ('&id_hoja=' + parseInt(it.id_hoja)) : '';
+                        const regH = it.hoja_numero_registro ? (' · RT-FM-13 ' + it.hoja_numero_registro) : '';
+                        const btnHtml = `<a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=${it.id}${qsH}" class="btn btn-outline-secondary btn-sm">${tieneResultados ? 'Editar matriz' : 'Capturar'}</a>`;
                         tr.innerHTML = `
-                            <td class="fw-medium">${it.descripcion_ensayo || ''}</td>
+                            <td class="fw-medium">${(it.descripcion_ensayo || '') + regH}</td>
                             <td class="cy-meta">${it.norma_astm || 'N/A'}</td>
                             <td>${it.formato_nombre || 'Matriz técnica'}</td>
                             <td class="text-center">${parseInt(it.cantidad || 1)}</td>
@@ -1820,14 +1835,16 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
         return false;
     }
 
-    function abrirModalEnviarMatriz(idDetalle, nombreEnsayo, clienteNombre, clienteEmail, codigoOS) {
+    function abrirModalEnviarMatriz(idDetalle, nombreEnsayo, clienteNombre, clienteEmail, codigoOS, idHoja = 0) {
         document.getElementById('envio_id_detalle').value = idDetalle;
+        const hEl = document.getElementById('envio_id_hoja');
+        if (hEl) hEl.value = idHoja > 0 ? idHoja : '';
         document.getElementById('envio_txt_ensayo').innerText = nombreEnsayo;
         document.getElementById('envio_txt_os').innerText = codigoOS;
         document.getElementById('envio_txt_cliente').innerText = clienteNombre;
         document.getElementById('envio_destinatario').value = clienteEmail || '';
         document.getElementById('envio_asunto').value = 'Informe Oficial de Ensayo - ' + codigoOS + ' - ' + nombreEnsayo + ' - CYCSA';
-        document.getElementById('btn-previsualizar-pdf').href = '/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=' + idDetalle;
+        document.getElementById('btn-previsualizar-pdf').href = '/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=' + idDetalle + (idHoja > 0 ? ('&id_hoja=' + idHoja) : '');
         const modal = document.getElementById('modalEnviarInformeCliente');
         if (modal) modal.style.display = 'block';
     }
@@ -1846,12 +1863,12 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
 </script>
 
 <script>
-    function verObservacionDevolucion(idDetalle, nombreEnsayo, motivo, supervisor, fecha) {
+    function verObservacionDevolucion(idDetalle, nombreEnsayo, motivo, supervisor, fecha, idHoja = 0) {
         document.getElementById('ver_obs_ensayo').innerText = nombreEnsayo;
         document.getElementById('ver_obs_motivo').innerText = motivo || 'Sin observaciones detalladas.';
         document.getElementById('ver_obs_supervisor').innerText = supervisor || 'Supervisor';
         document.getElementById('ver_obs_fecha').innerText = fecha || 'N/A';
-        document.getElementById('ver_obs_btn_editar').href = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' + idDetalle;
+        document.getElementById('ver_obs_btn_editar').href = '/Cycsa/publico/operaciones/captura-matriz?id_detalle=' + idDetalle + (idHoja > 0 ? ('&id_hoja=' + idHoja) : '');
         document.getElementById('modalVerObservacionDevolucion').style.display = 'block';
     }
 
@@ -1859,8 +1876,10 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
         document.getElementById('modalVerObservacionDevolucion').style.display = 'none';
     }
 
-    function abrirModalAprobarEnIndex(idDetalle, nombreEnsayo) {
+    function abrirModalAprobarEnIndex(idDetalle, nombreEnsayo, idHoja = 0) {
         document.getElementById('aprob_index_id_detalle').value = idDetalle;
+        const hEl = document.getElementById('aprob_index_id_hoja');
+        if (hEl) hEl.value = idHoja > 0 ? idHoja : '';
         document.getElementById('aprob_index_ensayo').innerText = nombreEnsayo;
         document.getElementById('modalAprobarMatrizIndex').style.display = 'block';
     }
@@ -1869,8 +1888,10 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
         document.getElementById('modalAprobarMatrizIndex').style.display = 'none';
     }
 
-    function abrirModalDevolverEnIndex(idDetalle, nombreEnsayo) {
+    function abrirModalDevolverEnIndex(idDetalle, nombreEnsayo, idHoja = 0) {
         document.getElementById('dev_index_id_detalle').value = idDetalle;
+        const hEl = document.getElementById('dev_index_id_hoja');
+        if (hEl) hEl.value = idHoja > 0 ? idHoja : '';
         document.getElementById('dev_index_ensayo').innerText = nombreEnsayo;
         document.getElementById('modalDevolverMatrizIndex').style.display = 'block';
     }
@@ -1879,8 +1900,10 @@ if (!function_exists('cycsaResolverPillEnsayo')) {
         document.getElementById('modalDevolverMatrizIndex').style.display = 'none';
     }
 
-    function abrirModalCorreccionAdminIndex(idDetalle, nombreEnsayo, cliente, proyecto, ubicacion) {
+    function abrirModalCorreccionAdminIndex(idDetalle, nombreEnsayo, cliente, proyecto, ubicacion, idHoja = 0) {
         document.getElementById('corr_index_id_detalle').value = idDetalle;
+        const hEl = document.getElementById('corr_index_id_hoja');
+        if (hEl) hEl.value = idHoja > 0 ? idHoja : '';
         document.getElementById('corr_index_ensayo_nombre').innerText = nombreEnsayo || '';
         document.getElementById('corr_index_motivo').value = '';
         document.getElementById('corr_index_cliente').value = cliente || '';

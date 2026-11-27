@@ -506,7 +506,7 @@ $resolverTolAstmDash = static function (int $edadDias, $tolRaw) use ($edadesAstm
                         </td>
                         <td style="text-align: right; white-space: nowrap;" onclick="event.stopPropagation();">
                             <?php if (!empty($m['id_hoja'])): ?>
-                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?>" class="btn-accion" style="background: #103487; color: #ffffff; border: 1px solid #103487; font-size: 13px; padding: 7px 14px;" title="Capturar y Ensayar Lote completo (<?= (int)($m['total_muestras_lote'] ?? count($m['muestras_items'] ?? [1])) ?> probetas)">
+                                <a href="/Cycsa/publico/laboratorio/detalle-lote?id_hoja=<?= (int)$m['id_hoja'] ?><?= !empty($m['id_detalle_cotizacion']) ? '&id_detalle=' . (int)$m['id_detalle_cotizacion'] : '' ?>" class="btn-accion" style="background: #103487; color: #ffffff; border: 1px solid #103487; font-size: 13px; padding: 7px 14px;" title="Capturar y Ensayar Lote completo (<?= (int)($m['total_muestras_lote'] ?? count($m['muestras_items'] ?? [1])) ?> probetas)">
                                     <i class="fa-solid fa-hammer"></i> Capturar Lote (Ensayar Lote)
                                 </a>
                             <?php else: ?>

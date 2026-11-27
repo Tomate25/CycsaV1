@@ -76,6 +76,104 @@ class RoturasModelo {
         $stmt->execute($params);
         $muestras = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Enriquecer con id_detalle_cotizacion y descripción técnica del producto específico por muestra (aislado de clientes/precios)
+        $muestraIds = array_filter(array_unique(array_map('intval', array_column($muestras, 'muestra_id'))));
+        $detPorMuestra = [];
+        if (!empty($muestraIds)) {
+            $inM = implode(',', $muestraIds);
+            $sinDetPorHoja = [];
+            try {
+                $tieneColDetRm = false;
+                try {
+                    $chkCol = $this->db->query("SHOW COLUMNS FROM recepcion_muestras LIKE 'id_detalle_cotizacion'");
+                    $tieneColDetRm = (bool)($chkCol && $chkCol->fetch(PDO::FETCH_ASSOC));
+                } catch (\Throwable $e) {
+                    $tieneColDetRm = false;
+                }
+                $sqlRmBase = $tieneColDetRm
+                    ? "SELECT id AS muestra_id, id_hoja, COALESCE(id_detalle_cotizacion, 0) AS id_detalle_cotizacion, codigo_campo, codigo_muestra FROM recepcion_muestras WHERE id IN ({$inM})"
+                    : "SELECT id AS muestra_id, id_hoja, 0 AS id_detalle_cotizacion, codigo_campo, codigo_muestra FROM recepcion_muestras WHERE id IN ({$inM})";
+                foreach ($this->db->query($sqlRmBase)->fetchAll(PDO::FETCH_ASSOC) as $rMd) {
+                    $midR = (int)$rMd['muestra_id'];
+                    $didR = (int)($rMd['id_detalle_cotizacion'] ?? 0);
+                    if ($didR > 0) {
+                        $detPorMuestra[$midR] = $didR;
+                    } else {
+                        $hidR = (int)($rMd['id_hoja'] ?? 0);
+                        if ($hidR > 0) {
+                            $sinDetPorHoja[$hidR][] = [
+                                'muestra_id' => $midR,
+                                'codigo_campo' => strtoupper(trim((string)($rMd['codigo_campo'] ?? ''))),
+                                'codigo_muestra' => strtoupper(trim((string)($rMd['codigo_muestra'] ?? ''))),
+                            ];
+                        }
+                    }
+                }
+                // Fallback en PHP (sin riesgo de mezcla de collations SQL) para muestras legadas sin rm.id_detalle_cotizacion
+                if (!empty($sinDetPorHoja)) {
+                    $inHfb = implode(',', array_map('intval', array_keys($sinDetPorHoja)));
+                    $hsdMap = [];
+                    try {
+                        $stHsd = $this->db->query("
+                            SELECT id_hoja_solicitud, codigo_muestra, id_detalle_cotizacion
+                            FROM hojas_solicitud_detalles
+                            WHERE id_hoja_solicitud IN ({$inHfb})
+                              AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0
+                        ");
+                        foreach ($stHsd->fetchAll(PDO::FETCH_ASSOC) as $hRowD) {
+                            $kCod = strtoupper(trim((string)($hRowD['codigo_muestra'] ?? '')));
+                            if ($kCod !== '') {
+                                $hsdMap[(int)$hRowD['id_hoja_solicitud']][$kCod] = (int)$hRowD['id_detalle_cotizacion'];
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                    }
+                    $hsDefMap = [];
+                    try {
+                        $stHs = $this->db->query("SELECT id, id_detalle_cotizacion FROM hojas_solicitud WHERE id IN ({$inHfb})");
+                        foreach ($stHs->fetchAll(PDO::FETCH_ASSOC) as $hsR) {
+                            $hsDefMap[(int)$hsR['id']] = (int)($hsR['id_detalle_cotizacion'] ?? 0);
+                        }
+                    } catch (\Throwable $e) {
+                    }
+                    foreach ($sinDetPorHoja as $hidFb => $itemsFb) {
+                        foreach ($itemsFb as $itFb) {
+                            $foundDet = 0;
+                            if ($itFb['codigo_campo'] !== '' && isset($hsdMap[$hidFb][$itFb['codigo_campo']])) {
+                                $foundDet = $hsdMap[$hidFb][$itFb['codigo_campo']];
+                            } elseif ($itFb['codigo_muestra'] !== '' && isset($hsdMap[$hidFb][$itFb['codigo_muestra']])) {
+                                $foundDet = $hsdMap[$hidFb][$itFb['codigo_muestra']];
+                            } elseif (!empty($hsDefMap[$hidFb])) {
+                                $foundDet = $hsDefMap[$hidFb];
+                            }
+                            $detPorMuestra[$itFb['muestra_id']] = $foundDet;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        $detIdsUnicos = array_filter(array_unique(array_values($detPorMuestra)));
+        $infoDetallesProd = [];
+        if (!empty($detIdsUnicos)) {
+            $inD = implode(',', $detIdsUnicos);
+            try {
+                $resD = $this->db->query("
+                    SELECT cd.id AS id_detalle_cotizacion,
+                           COALESCE(NULLIF(p.ensayo_servicio, ''), NULLIF(p.nombre_comercial, ''), cd.descripcion_ensayo) AS producto_nombre,
+                           COALESCE(NULLIF(p.norma_astm, ''), cd.norma_astm) AS producto_norma
+                    FROM cotizacion_detalles cd
+                    LEFT JOIN productos p ON cd.id_producto = p.id
+                    WHERE cd.id IN ({$inD})
+                ")->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($resD as $dRow) {
+                    $infoDetallesProd[(int)$dRow['id_detalle_cotizacion']] = $dRow;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
         // Enriquecer con descripción técnica de producto de la hoja RT-FM-13 (aislado de clientes/precios)
         $hojaIds = array_filter(array_unique(array_map('intval', array_column($muestras, 'id_hoja'))));
         $infoHojas = [];
@@ -106,16 +204,20 @@ class RoturasModelo {
         foreach ($muestras as &$m) {
             $m['es_vencida'] = (!empty($m['proxima_rotura']) && $m['proxima_rotura'] < $hoy && $m['estado_plan'] !== 'cerrado');
             $m['es_hoy'] = (!empty($m['proxima_rotura']) && $m['proxima_rotura'] === $hoy);
+            $mid = (int)($m['muestra_id'] ?? 0);
             $hid = (int)($m['id_hoja'] ?? 0);
+            $didM = (int)($detPorMuestra[$mid] ?? 0);
+            $m['id_detalle_cotizacion'] = $didM;
+            $prodM = ($didM > 0 && isset($infoDetallesProd[$didM])) ? $infoDetallesProd[$didM] : null;
             if ($hid > 0 && isset($infoHojas[$hid])) {
-                $m['producto_nombre'] = $infoHojas[$hid]['producto_nombre'] ?? null;
-                $m['producto_norma'] = $infoHojas[$hid]['producto_norma'] ?? null;
+                $m['producto_nombre'] = ($prodM['producto_nombre'] ?? null) ?: ($infoHojas[$hid]['producto_nombre'] ?? null);
+                $m['producto_norma'] = ($prodM['producto_norma'] ?? null) ?: ($infoHojas[$hid]['producto_norma'] ?? null);
                 $m['hoja_numero_registro'] = $infoHojas[$hid]['hoja_numero_registro'] ?? null;
                 $m['hoja_codigo_documento'] = $infoHojas[$hid]['hoja_codigo_documento'] ?? 'CYCSA-RT-FM-13';
                 $m['hoja_fecha_creacion'] = $infoHojas[$hid]['hoja_fecha_creacion'] ?? null;
             } else {
-                $m['producto_nombre'] = null;
-                $m['producto_norma'] = null;
+                $m['producto_nombre'] = $prodM['producto_nombre'] ?? null;
+                $m['producto_norma'] = $prodM['producto_norma'] ?? null;
                 $m['hoja_numero_registro'] = null;
                 $m['hoja_codigo_documento'] = null;
                 $m['hoja_fecha_creacion'] = null;

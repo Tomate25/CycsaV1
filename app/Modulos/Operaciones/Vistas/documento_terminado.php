@@ -5,6 +5,8 @@ $esSupervisor = function_exists('esSupervisorOperacionesCYCSA')
     : in_array((int)($_SESSION['usuario_rol'] ?? 0), [1, 2, 3], true);
 
 $idDetalleActivo = (int)($detalle['id'] ?? ($idDetalle ?? 0));
+$idHojaActivo = (int)($idHoja ?? ($detalle['id_hoja'] ?? ($_GET['id_hoja'] ?? 0)));
+$qsHojaDoc = $idHojaActivo > 0 ? ('&id_hoja=' . $idHojaActivo) : '';
 $idOsActivo = (int)($detalle['id_os'] ?? 0);
 $archivoMd = (string)($detalle['archivo_markdown'] ?? '');
 $revisionInfo = obtenerEstadoRevisionMatriz($detalle['resultados_json'] ?? '');
@@ -129,10 +131,10 @@ $notasTextoEditable = implode("\n", array_map(static fn($n) => trim((string)$n),
                 <?php endif; ?>
             <?php endif; ?>
 
-            <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDetalleActivo ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
+            <a href="/Cycsa/publico/operaciones/imprimir-matriz?id_detalle=<?= $idDetalleActivo ?><?= $qsHojaDoc ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
                 <i class="fa-solid fa-print me-1"></i> Imprimir RT-FM-22
             </a>
-            <a href="/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=<?= $idDetalleActivo ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
+            <a href="/Cycsa/publico/operaciones/descargar-matriz-pdf?id_detalle=<?= $idDetalleActivo ?><?= $qsHojaDoc ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
                 <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
             </a>
 
@@ -149,7 +151,7 @@ $notasTextoEditable = implode("\n", array_map(static fn($n) => trim((string)$n),
             <?php endif; ?>
 
             <?php if ($esSupervisor): ?>
-                <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDetalleActivo ?>" class="btn btn-outline-secondary btn-sm" title="Editar encabezado o ajustes administrativos">
+                <a href="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $idDetalleActivo ?><?= $qsHojaDoc ?>" class="btn btn-outline-secondary btn-sm" title="Editar encabezado o ajustes administrativos">
                     <i class="fa-solid fa-sliders me-1"></i> Editar encabezado
                 </a>
             <?php endif; ?>
@@ -212,7 +214,8 @@ $notasTextoEditable = implode("\n", array_map(static fn($n) => trim((string)$n),
             <form method="POST" action="/Cycsa/publico/operaciones/guardar-notas-documento">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
-                <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDetalleActivo ?>">
+                <input type="hidden" name="id_hoja" value="<?= $idHojaActivo ?>">
+                <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDetalleActivo ?><?= $qsHojaDoc ?>">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                     <div style="font-size: 13.5px; font-weight: 700; color: #1F3864;">
                         <i class="fa-solid fa-pen-to-square me-1"></i> Notas y Cláusula del Informe (Editable)
@@ -332,7 +335,8 @@ $notasTextoEditable = implode("\n", array_map(static fn($n) => trim((string)$n),
         <form method="POST" action="/Cycsa/publico/operaciones/aprobar-matriz-producto">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
-            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDetalleActivo ?>">
+            <input type="hidden" name="id_hoja" value="<?= $idHojaActivo ?>">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDetalleActivo ?><?= $qsHojaDoc ?>">
             <p class="mb-3" style="font-size: 14px;">¿Confirma la aprobación técnica de los resultados y cálculos para <strong><?= htmlspecialchars($descEns, ENT_QUOTES, 'UTF-8') ?></strong>?</p>
             <div class="mb-3">
                 <label class="form-label" style="font-size: 13px; font-weight: 500;">Nota de aprobación (opcional)</label>
@@ -355,7 +359,8 @@ $notasTextoEditable = implode("\n", array_map(static fn($n) => trim((string)$n),
         <form method="POST" action="/Cycsa/publico/operaciones/devolver-matriz-producto">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
-            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDetalleActivo ?>">
+            <input type="hidden" name="id_hoja" value="<?= $idHojaActivo ?>">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDetalleActivo ?><?= $qsHojaDoc ?>">
             <div class="mb-3">
                 <label class="form-label" style="font-size: 13px; font-weight: 500;">Observaciones para el técnico *</label>
                 <textarea name="motivo_devolucion" rows="4" required class="form-control" placeholder="Detalle las correcciones necesarias para Captura Técnica..."></textarea>
@@ -378,7 +383,8 @@ $notasTextoEditable = implode("\n", array_map(static fn($n) => trim((string)$n),
         <form method="POST" action="/Cycsa/publico/operaciones/enviar-matriz-cliente">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
-            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDetalleActivo ?>">
+            <input type="hidden" name="id_hoja" value="<?= $idHojaActivo ?>">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/documento?id_detalle=<?= $idDetalleActivo ?><?= $qsHojaDoc ?>">
             <div class="cy-note mt-0 mb-3">
                 <div class="fw-semibold text-dark"><?= htmlspecialchars($descEns, ENT_QUOTES, 'UTF-8') ?></div>
                 <div class="cy-meta">Orden: <?= htmlspecialchars($codOS, ENT_QUOTES, 'UTF-8') ?> · Cliente: <?= htmlspecialchars($cliInfNom, ENT_QUOTES, 'UTF-8') ?></div>

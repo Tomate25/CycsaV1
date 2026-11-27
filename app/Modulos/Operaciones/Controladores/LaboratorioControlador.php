@@ -103,15 +103,18 @@ class LaboratorioControlador extends ControladorBase {
             }));
         }
 
-        // Agrupar muestras por Lote (id_hoja) para visualización consolidada ISO 17025 (las probetas van juntas)
+        // Agrupar muestras por Lote (id_hoja × id_detalle_cotizacion) para visualización consolidada ISO 17025
+        // Así cada RT-FM-13 y cada producto asignado en ella genera su propia entrada independiente en Laboratorio.
         $muestras = [];
         $mapaLotes = [];
         foreach ($muestrasRaw as $m) {
             $idHojaM = (int)($m['id_hoja'] ?? 0);
+            $idDetM = (int)($m['id_detalle_cotizacion'] ?? 0);
             if ($idHojaM > 0) {
-                if (!isset($mapaLotes[$idHojaM])) {
+                $claveLote = $idHojaM . ':' . $idDetM;
+                if (!isset($mapaLotes[$claveLote])) {
                     $idxLote = count($muestras);
-                    $mapaLotes[$idHojaM] = $idxLote;
+                    $mapaLotes[$claveLote] = $idxLote;
                     $mConsolidada = $m;
                     $mConsolidada['es_lote'] = true;
                     $mConsolidada['muestras_items'] = [$m];
@@ -121,7 +124,7 @@ class LaboratorioControlador extends ControladorBase {
                     $mConsolidada['proxima_rotura_lote'] = $m['proxima_rotura'];
                     $muestras[$idxLote] = $mConsolidada;
                 } else {
-                    $idxLote = $mapaLotes[$idHojaM];
+                    $idxLote = $mapaLotes[$claveLote];
                     $muestras[$idxLote]['muestras_items'][] = $m;
                     $muestras[$idxLote]['codigos_lote'][] = $m['codigo_lab'];
                     $muestras[$idxLote]['total_especimenes_lote'] += (int)$m['total_especimenes'];
@@ -1784,6 +1787,7 @@ class LaboratorioControlador extends ControladorBase {
         $this->verificarPermiso($respuesta, 'ver');
 
         $idHoja = (int)($_GET['id_hoja'] ?? 0);
+        $idDetalleFiltro = (int)($_GET['id_detalle'] ?? 0);
         $muestraIdParam = (int)($_GET['muestra_id'] ?? 0);
 
         $db = Conexion::obtenerInstancia();
@@ -1865,8 +1869,11 @@ class LaboratorioControlador extends ControladorBase {
                     $idDetalle = (int)$didLote;
                 }
             }
-            if (!empty($detRow['resultados_json'])) {
-                $resDecoded = json_decode((string)$detRow['resultados_json'], true);
+            $jsonMatLote = function_exists('obtenerResultadosJsonMatriz')
+                ? obtenerResultadosJsonMatriz($db, (int)$didLote, $idHoja, isset($detRow['resultados_json']) ? (string)$detRow['resultados_json'] : null)
+                : ($detRow['resultados_json'] ?? null);
+            if (!empty($jsonMatLote)) {
+                $resDecoded = json_decode((string)$jsonMatLote, true);
                 if (is_array($resDecoded)) {
                     if (!empty($resDecoded['filas']) && is_array($resDecoded['filas'])) {
                         $filasMatriz = array_merge($filasMatriz, $resDecoded['filas']);
@@ -1878,14 +1885,32 @@ class LaboratorioControlador extends ControladorBase {
             }
         }
 
-        // 3. En GET: lectura limpia sin escrituras a BD
-        $stmtLote = $db->prepare("
-            SELECT * FROM v_lab_muestras
-            WHERE id_hoja = :id_hoja
-            ORDER BY orden_en_lote ASC, muestra_id ASC
-        ");
-        $stmtLote->execute(['id_hoja' => $idHoja]);
-        $muestrasBase = $stmtLote->fetchAll(PDO::FETCH_ASSOC);
+        // 3. En GET: lectura limpia sin escrituras a BD (filtra por producto si viene id_detalle > 0)
+        if ($idDetalleFiltro > 0) {
+            $stmtLote = $db->prepare("
+                SELECT vm.* FROM v_lab_muestras vm
+                JOIN recepcion_muestras rm ON rm.id = vm.muestra_id
+                WHERE vm.id_hoja = :id_hoja
+                  AND (rm.id_detalle_cotizacion = :id_det
+                       OR (rm.id_detalle_cotizacion IS NULL AND EXISTS (
+                           SELECT 1 FROM hojas_solicitud_detalles hsd
+                           WHERE hsd.id_hoja_solicitud = vm.id_hoja
+                             AND UPPER(TRIM(hsd.codigo_muestra)) = UPPER(TRIM(rm.codigo_campo))
+                             AND hsd.id_detalle_cotizacion = :id_det2
+                       )))
+                ORDER BY vm.orden_en_lote ASC, vm.muestra_id ASC
+            ");
+            $stmtLote->execute(['id_hoja' => $idHoja, 'id_det' => $idDetalleFiltro, 'id_det2' => $idDetalleFiltro]);
+            $muestrasBase = $stmtLote->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $stmtLote = $db->prepare("
+                SELECT * FROM v_lab_muestras
+                WHERE id_hoja = :id_hoja
+                ORDER BY orden_en_lote ASC, muestra_id ASC
+            ");
+            $stmtLote->execute(['id_hoja' => $idHoja]);
+            $muestrasBase = $stmtLote->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         if (empty($muestrasBase) && !empty($hoja)) {
             $etapaHojaActual = (string)($hoja['etapa_flujo'] ?? 'recepcion_borrador');

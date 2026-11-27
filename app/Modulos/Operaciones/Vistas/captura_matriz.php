@@ -664,6 +664,7 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
 <form id="form-matriz-completa" method="POST" action="/Cycsa/publico/operaciones/guardar-matriz-producto" enctype="multipart/form-data" onsubmit="prepararEnvioMatriz(event)">
     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
     <input type="hidden" name="id_detalle" value="<?= $idDetalleActivo ?>">
+    <input type="hidden" name="id_hoja" value="<?= (int)($detalle['id_hoja'] ?? ($_GET['id_hoja'] ?? 0)) ?>">
     <input type="hidden" name="resultados_json" id="input_resultados_json" value="">
     <?php if ($modoSoloCapturaTecnica): ?>
     <input type="hidden" name="modo_solo_captura" value="1">
@@ -3738,10 +3739,12 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
         <p style="font-size:13.5px; color:#475569; margin:0 0 15px 0; line-height:1.5;">
             ¿Está seguro de que desea aprobar formalmente los resultados y cálculos de este ensayo? Al aprobar, se autorizará la emisión oficial y envío al cliente.
         </p>
+        <?php $idHojaMatAct = (int)($detalle['id_hoja'] ?? ($_GET['id_hoja'] ?? 0)); $qsHojaMatAct = $idHojaMatAct > 0 ? ('&id_hoja=' . $idHojaMatAct) : ''; ?>
         <form method="POST" action="/Cycsa/publico/operaciones/aprobar-matriz-producto">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <input type="hidden" name="id_detalle" value="<?= $detalle['id'] ?>">
-            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $detalle['id'] ?>">
+            <input type="hidden" name="id_hoja" value="<?= $idHojaMatAct ?>">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $detalle['id'] ?><?= $qsHojaMatAct ?>">
             
             <div style="margin-bottom:16px;">
                 <label style="font-size:12.5px; font-weight:600; color:#334155; display:block; margin-bottom:6px;">Nota de Aprobación (Opcional):</label>
@@ -3778,7 +3781,8 @@ $capturaTecnicaInicial = $capturaTecnicaInicial ?? [];
         <form method="POST" action="/Cycsa/publico/operaciones/devolver-matriz-producto">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <input type="hidden" name="id_detalle" value="<?= $detalle['id'] ?>">
-            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $detalle['id'] ?>">
+            <input type="hidden" name="id_hoja" value="<?= $idHojaMatAct ?>">
+            <input type="hidden" name="redirect_to" value="/Cycsa/publico/operaciones/captura-matriz?id_detalle=<?= $detalle['id'] ?><?= $qsHojaMatAct ?>">
             
             <div style="margin-bottom:16px;">
                 <label style="font-size:12.5px; font-weight:700; color:#1e293b; display:block; margin-bottom:6px;">Motivo u Observaciones Técnicas * :</label>

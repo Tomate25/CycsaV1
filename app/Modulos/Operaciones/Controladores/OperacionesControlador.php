@@ -2347,13 +2347,24 @@ class OperacionesControlador extends ControladorBase {
         }
 
         // Desbloqueo de captura técnica: Técnicos y laboratoristas capturan resultados libremente sin bloqueo de pago.
-        // 1. Resolver la Hoja de Servicio (CYCSA-RT-FM-13) específica para este producto/ensayo
-        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        // 1. Resolver la Hoja de Servicio (CYCSA-RT-FM-13) específica para este producto/ensayo (soporta ?id_hoja=X)
+        $idHojaParam = (int)($_GET['id_hoja'] ?? 0);
+        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle, $idHojaParam);
 
         if (!$hoja) {
             $_SESSION['error'] = 'Debe registrar primero la Hoja de Solicitud de Servicio (CYCSA-RT-FM-13) para este producto de la Orden de Servicio ' . ($detalle['codigo_os'] ?? 'O/S') . ' antes de acceder a la matriz técnica.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
             return;
+        }
+
+        // Cargar resultados_json específico de (id_hoja, id_detalle) si existe (Migración 043)
+        if (function_exists('obtenerResultadosJsonMatriz')) {
+            $detalle['resultados_json'] = obtenerResultadosJsonMatriz(
+                $db,
+                $idDetalle,
+                (int)$hoja['id'],
+                isset($detalle['resultados_json']) ? (string)$detalle['resultados_json'] : null
+            );
         }
 
         // Hidratar metadatos específicos de la hoja en el detalle
@@ -2721,11 +2732,21 @@ class OperacionesControlador extends ControladorBase {
             }
 
             // Desempaquetar filas, captura técnica del laboratorio y metadatos existentes
+            $idHojaPost = (int)($datos['id_hoja'] ?? 0);
+            $hojaAssoc = null;
+            if ($osActual) {
+                $hojaAssoc = resolverHojaPorDetalle($db, (int)$osActual['id'], $idDetalle, $idHojaPost);
+            }
+            $idHojaActivaGuardar = $idHojaPost > 0 ? $idHojaPost : (int)($hojaAssoc['id'] ?? 0);
+            $jsonExistenteRaw = function_exists('obtenerResultadosJsonMatriz')
+                ? obtenerResultadosJsonMatriz($db, $idDetalle, $idHojaActivaGuardar, isset($detalleActual['resultados_json']) ? (string)$detalleActual['resultados_json'] : null)
+                : ($detalleActual['resultados_json'] ?? '');
+
             $rawJsonParsed = json_decode($resultadosJson, true) ?: [];
             $filasDecodificadas = isset($rawJsonParsed['filas']) ? $rawJsonParsed['filas'] : $rawJsonParsed;
             $filasDecodificadas = normalizarReplicasMatriz(is_array($filasDecodificadas) ? $filasDecodificadas : []);
 
-            $decExistente = json_decode($detalleActual['resultados_json'] ?? '', true) ?: [];
+            $decExistente = json_decode($jsonExistenteRaw ?? '', true) ?: [];
             $capturaTecnicaFinal = (isset($decExistente['captura_tecnica']) && is_array($decExistente['captura_tecnica']))
                 ? $decExistente['captura_tecnica']
                 : [];
@@ -2747,9 +2768,10 @@ class OperacionesControlador extends ControladorBase {
 
             $mapaRec = [];
             $mapaNombresOficiales = [];
-            $hojaAssoc = null;
             if ($osActual) {
-                $hojaAssoc = resolverHojaPorDetalle($db, (int)$osActual['id'], $idDetalle);
+                if (!$hojaAssoc) {
+                    $hojaAssoc = resolverHojaPorDetalle($db, (int)$osActual['id'], $idDetalle, $idHojaPost);
+                }
                 if ($hojaAssoc && !empty($hojaAssoc['id'])) {
                     $mapaRec = construirMapaDatosRecepcionPorHoja($db, (int)$hojaAssoc['id']);
                     try {
@@ -3089,17 +3111,24 @@ class OperacionesControlador extends ControladorBase {
             ];
             $resultadosJsonFinal = json_encode($payloadCompleto, JSON_UNESCAPED_UNICODE);
 
-            $stmt = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
-            $stmt->execute([
-                'json' => $resultadosJsonFinal,
-                'id' => $idDetalle
-            ]);
-
             $idOsSync = is_array($osActual) ? (int)($osActual['id'] ?? 0) : 0;
-            $idHojaSync = 0;
-            if ($idOsSync > 0) {
+            $idHojaSync = $idHojaPost > 0 ? $idHojaPost : 0;
+            if ($idHojaSync <= 0 && $idOsSync > 0) {
                 $hojaSync = $hojaAssoc ?: resolverHojaPorDetalle($db, $idOsSync, $idDetalle);
                 $idHojaSync = $hojaSync ? (int)$hojaSync['id'] : 0;
+            }
+
+            if (function_exists('guardarResultadosJsonMatriz')) {
+                guardarResultadosJsonMatriz($db, $idOsSync, $idDetalle, $idHojaSync, $resultadosJsonFinal);
+            } else {
+                $stmt = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+                $stmt->execute([
+                    'json' => $resultadosJsonFinal,
+                    'id' => $idDetalle
+                ]);
+            }
+
+            if ($idOsSync > 0) {
                 if (!empty($filasDecodificadas)) {
                     sincronizarReplicasMatrizConLab($db, $idOsSync, $idHojaSync, $idDetalle, $filasDecodificadas, $capturaTecnicaFinal);
                 }
@@ -3511,6 +3540,7 @@ class OperacionesControlador extends ControladorBase {
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
             $idDetalle = (int)($datos['id_detalle'] ?? 0);
+            $idHojaPost = (int)($datos['id_hoja'] ?? 0);
             $nota = trim($datos['nota_aprobacion'] ?? '');
 
             // CSRF
@@ -3542,6 +3572,12 @@ class OperacionesControlador extends ControladorBase {
                 $_SESSION['error'] = 'Ensayo no encontrado.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
+            }
+
+            $hojaAprRes = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle, $idHojaPost);
+            $idHojaApr = $idHojaPost > 0 ? $idHojaPost : (int)($hojaAprRes['id'] ?? 0);
+            if (function_exists('obtenerResultadosJsonMatriz')) {
+                $detalle['resultados_json'] = obtenerResultadosJsonMatriz($db, $idDetalle, $idHojaApr, isset($detalle['resultados_json']) ? (string)$detalle['resultados_json'] : null);
             }
 
             $revInfo = obtenerEstadoRevisionMatriz($detalle['resultados_json'] ?? '');
@@ -3624,17 +3660,20 @@ class OperacionesControlador extends ControladorBase {
                 'usuario_captura_nombre' => $decoded['usuario_captura_nombre'] ?? null
             ];
 
-            $stmtUpdate = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
-            $stmtUpdate->execute([
-                'json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
-                'id' => $idDetalle
-            ]);
+            if (function_exists('guardarResultadosJsonMatriz')) {
+                guardarResultadosJsonMatriz($db, (int)$detalle['id_os'], $idDetalle, $idHojaApr, json_encode($payload, JSON_UNESCAPED_UNICODE));
+            } else {
+                $stmtUpdate = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+                $stmtUpdate->execute([
+                    'json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                    'id' => $idDetalle
+                ]);
+            }
 
             try {
-                $hojaApr = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
-                if ($hojaApr && !empty($hojaApr['id'])) {
+                if ($idHojaApr > 0) {
                     $db->prepare("UPDATE hojas_solicitud SET etapa_flujo = 'informe' WHERE id = :hid")
-                        ->execute(['hid' => (int)$hojaApr['id']]);
+                        ->execute(['hid' => $idHojaApr]);
                 } else {
                     $db->prepare("UPDATE hojas_solicitud SET etapa_flujo = 'informe' WHERE id_detalle_cotizacion = :id_det OR (id_detalle_cotizacion IS NULL AND id_os = :id_os)")
                         ->execute(['id_det' => $idDetalle, 'id_os' => (int)$detalle['id_os']]);
@@ -3686,6 +3725,7 @@ class OperacionesControlador extends ControladorBase {
         if ($peticion->esPost()) {
             $datos = $peticion->obtenerDatos();
             $idDetalle = (int)($datos['id_detalle'] ?? 0);
+            $idHojaPost = (int)($datos['id_hoja'] ?? 0);
             $motivo = trim($datos['motivo_devolucion'] ?? '');
 
             // CSRF
@@ -3724,6 +3764,12 @@ class OperacionesControlador extends ControladorBase {
                 $_SESSION['error'] = 'Ensayo no encontrado.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
+            }
+
+            $hojaDevRes = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle, $idHojaPost);
+            $idHojaDev = $idHojaPost > 0 ? $idHojaPost : (int)($hojaDevRes['id'] ?? 0);
+            if (function_exists('obtenerResultadosJsonMatriz')) {
+                $detalle['resultados_json'] = obtenerResultadosJsonMatriz($db, $idDetalle, $idHojaDev, isset($detalle['resultados_json']) ? (string)$detalle['resultados_json'] : null);
             }
 
             $decoded = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
@@ -3782,17 +3828,20 @@ class OperacionesControlador extends ControladorBase {
                 'usuario_captura_nombre' => $decoded['usuario_captura_nombre'] ?? null
             ];
 
-            $stmtUpdate = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
-            $stmtUpdate->execute([
-                'json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
-                'id' => $idDetalle
-            ]);
+            if (function_exists('guardarResultadosJsonMatriz')) {
+                guardarResultadosJsonMatriz($db, (int)$detalle['id_os'], $idDetalle, $idHojaDev, json_encode($payload, JSON_UNESCAPED_UNICODE));
+            } else {
+                $stmtUpdate = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+                $stmtUpdate->execute([
+                    'json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                    'id' => $idDetalle
+                ]);
+            }
 
             try {
-                $hojaDev = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
-                if ($hojaDev && !empty($hojaDev['id'])) {
+                if ($idHojaDev > 0) {
                     $db->prepare("UPDATE hojas_solicitud SET etapa_flujo = 'en_ejecucion' WHERE id = :hid")
-                        ->execute(['hid' => (int)$hojaDev['id']]);
+                        ->execute(['hid' => $idHojaDev]);
                 } else {
                     $db->prepare("UPDATE hojas_solicitud SET etapa_flujo = 'en_ejecucion' WHERE id_detalle_cotizacion = :id_det OR (id_detalle_cotizacion IS NULL AND id_os = :id_os)")
                         ->execute(['id_det' => $idDetalle, 'id_os' => (int)$detalle['id_os']]);
@@ -3871,6 +3920,13 @@ class OperacionesControlador extends ControladorBase {
                 $_SESSION['error'] = 'Ensayo no encontrado.';
                 $respuesta->redirigir('/Cycsa/publico/operaciones');
                 return;
+            }
+
+            $idHojaCorrPost = (int)($datos['id_hoja'] ?? 0);
+            $hojaCorrRes = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle, $idHojaCorrPost);
+            $idHojaCorr = $idHojaCorrPost > 0 ? $idHojaCorrPost : (int)($hojaCorrRes['id'] ?? 0);
+            if (function_exists('obtenerResultadosJsonMatriz')) {
+                $detalle['resultados_json'] = obtenerResultadosJsonMatriz($db, $idDetalle, $idHojaCorr, isset($detalle['resultados_json']) ? (string)$detalle['resultados_json'] : null);
             }
 
             $decoded = json_decode($detalle['resultados_json'] ?? '', true) ?: [];
@@ -4137,6 +4193,7 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $idDetalle = (int)($_GET['id_detalle'] ?? ($_GET['id'] ?? 0));
+        $idHojaParam = (int)($_GET['id_hoja'] ?? 0);
         if ($idDetalle <= 0) {
             $_SESSION['error'] = 'ID de ensayo no especificado.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
@@ -4190,6 +4247,23 @@ class OperacionesControlador extends ControladorBase {
             ? $schemaInfo['columns']
             : ($this->obtenerColumnasFormato($archivoMd) ?: ['Código laboratorio', 'Nombre muestra', 'Área (in²)', 'Carga (lb)', 'R. Compresión (lb/in²)', 'R. Compresión (kg/cm²)']);
 
+        // Resolver la hoja RT-FM-13 concreta y cargar su resultados_json aislado por (id_hoja, id_detalle)
+        $hojaRes = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle, $idHojaParam);
+        $idHojaRes = (int)($hojaRes['id'] ?? ($idHojaParam > 0 ? $idHojaParam : ($detalle['id_hoja_asociada'] ?? 0)));
+        if ($hojaRes) {
+            $detalle['id_hoja'] = $idHojaRes;
+            $detalle['numero_registro'] = $hojaRes['numero_registro'] ?? '';
+            $detalle['procedencia_punto_muestreo'] = $hojaRes['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
+            $detalle['nombre_persona_entrega_muestra'] = $hojaRes['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
+            $detalle['fecha_hora_toma_muestra'] = $hojaRes['fecha_hora_toma_muestra'] ?? ($detalle['fecha_hora_toma_muestra'] ?? null);
+            $detalle['fecha_hora_llegada_laboratorio'] = $hojaRes['fecha_hora_llegada_laboratorio'] ?? ($detalle['fecha_hora_llegada_laboratorio'] ?? null);
+            $detalle['naturaleza_muestra'] = $hojaRes['naturaleza_muestra'] ?? ($detalle['naturaleza_muestra'] ?? '');
+            $detalle['observaciones'] = $hojaRes['observaciones'] ?? ($detalle['observaciones'] ?? '');
+        }
+        if (function_exists('obtenerResultadosJsonMatriz')) {
+            $detalle['resultados_json'] = obtenerResultadosJsonMatriz($db, $idDetalle, $idHojaRes, isset($detalle['resultados_json']) ? (string)$detalle['resultados_json'] : null);
+        }
+
         $dec = json_decode((string)($detalle['resultados_json'] ?? ''), true) ?: [];
         $filasDoc = isset($dec['filas']) && is_array($dec['filas'])
             ? $dec['filas']
@@ -4199,8 +4273,6 @@ class OperacionesControlador extends ControladorBase {
         $versionActual = (int)($dec['version_actual'] ?? 1);
 
         // Fusionar respaldo de datos de Recepción desde RT-FM-13 para garantizar el documento 100% completo
-        $hojaRes = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
-        $idHojaRes = (int)($hojaRes['id'] ?? ($detalle['id_hoja_asociada'] ?? 0));
         $muestrasAsigDoc = obtenerMuestrasHojaParaDetalle($db, (int)$detalle['id_os'], $idDetalle, $hojaRes);
         $mapaRecDoc = $idHojaRes > 0 ? construirMapaDatosRecepcionPorHoja($db, $idHojaRes) : [];
         foreach ($muestrasAsigDoc as $mAd) {
@@ -4262,6 +4334,7 @@ class OperacionesControlador extends ControladorBase {
             'titulo' => 'Documento Oficial - ' . $detalle['codigo_os'] . ' · ' . $detalle['descripcion_ensayo'],
             'detalle' => $detalle,
             'idDetalle' => $idDetalle,
+            'idHoja' => $idHojaRes,
             'schemaInfo' => $schemaInfo,
             'metadatos' => $metadatos,
             'columnasDocumento' => $columnas,
@@ -4299,10 +4372,11 @@ class OperacionesControlador extends ControladorBase {
 
         $datos = $peticion->obtenerDatos();
         $idDetalle = (int)($datos['id_detalle'] ?? 0);
+        $idHojaNotas = (int)($datos['id_hoja'] ?? 0);
         $redirectTo = trim((string)($datos['redirect_to'] ?? ''));
         $destinoSeguro = ($redirectTo !== '' && strpos($redirectTo, '/Cycsa/publico/') === 0)
             ? $redirectTo
-            : ($idDetalle > 0 ? '/Cycsa/publico/operaciones/documento?id_detalle=' . $idDetalle : '/Cycsa/publico/operaciones');
+            : ($idDetalle > 0 ? '/Cycsa/publico/operaciones/documento?id_detalle=' . $idDetalle . ($idHojaNotas > 0 ? '&id_hoja=' . $idHojaNotas : '') : '/Cycsa/publico/operaciones');
 
         $csrfRecibido = (string)($datos['csrf_token'] ?? '');
         $csrfSesion = (string)($_SESSION['csrf_token'] ?? '');
@@ -4319,7 +4393,7 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $db = \Cycsa\Nucleo\Conexion::obtenerInstancia();
-        $stmt = $db->prepare("SELECT id, resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
+        $stmt = $db->prepare("SELECT cd.id, cd.resultados_json, os.id AS id_os FROM cotizacion_detalles cd LEFT JOIN ordenes_servicio os ON os.id_cotizacion = cd.id_cotizacion WHERE cd.id = :id LIMIT 1");
         $stmt->execute(['id' => $idDetalle]);
         $filaDetalle = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$filaDetalle) {
@@ -4328,7 +4402,10 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        $dec = json_decode((string)($filaDetalle['resultados_json'] ?? ''), true);
+        $jsonActualNotas = function_exists('obtenerResultadosJsonMatriz')
+            ? obtenerResultadosJsonMatriz($db, $idDetalle, $idHojaNotas, isset($filaDetalle['resultados_json']) ? (string)$filaDetalle['resultados_json'] : null)
+            : (string)($filaDetalle['resultados_json'] ?? '');
+        $dec = json_decode((string)$jsonActualNotas, true);
         if (!is_array($dec)) {
             $dec = ['filas' => [], 'metadatos' => []];
         } elseif (!isset($dec['filas']) && !isset($dec['metadatos'])) {
@@ -4354,11 +4431,15 @@ class OperacionesControlador extends ControladorBase {
         $dec['metadatos']['notas_informe_personalizadas'] = true;
 
         $jsonFinal = json_encode($dec, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $stmtUpd = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
-        $stmtUpd->execute([
-            'json' => $jsonFinal,
-            'id' => $idDetalle,
-        ]);
+        if (function_exists('guardarResultadosJsonMatriz')) {
+            guardarResultadosJsonMatriz($db, (int)($filaDetalle['id_os'] ?? 0), $idDetalle, $idHojaNotas, (string)$jsonFinal);
+        } else {
+            $stmtUpd = $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id");
+            $stmtUpd->execute([
+                'json' => $jsonFinal,
+                'id' => $idDetalle,
+            ]);
+        }
 
         $_SESSION['exito'] = 'Notas y cláusula del informe guardadas correctamente.';
         $respuesta->redirigir($destinoSeguro);
@@ -4376,6 +4457,7 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $idDetalle = (int)($_GET['id_detalle'] ?? ($_GET['id'] ?? 0));
+        $idHojaParam = (int)($_GET['id_hoja'] ?? 0);
         if ($idDetalle <= 0) {
             $_SESSION['error'] = 'ID de ensayo no especificado.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
@@ -4427,7 +4509,7 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle, $idHojaParam);
         if ($hoja) {
             $detalle['procedencia_punto_muestreo'] = $hoja['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
             $detalle['nombre_persona_entrega_muestra'] = $hoja['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
@@ -4440,6 +4522,9 @@ class OperacionesControlador extends ControladorBase {
             $detalle['incluir_firma_adicional'] = (int)($hoja['incluir_firma_adicional'] ?? 0);
             $detalle['firma_adicional_nombre'] = trim((string)($hoja['firma_adicional_nombre'] ?? ''));
             $detalle['firma_adicional_cargo'] = trim((string)($hoja['firma_adicional_cargo'] ?? ''));
+            if (function_exists('obtenerResultadosJsonMatriz')) {
+                $detalle['resultados_json'] = obtenerResultadosJsonMatriz($db, $idDetalle, (int)$hoja['id'], isset($detalle['resultados_json']) ? (string)$detalle['resultados_json'] : null);
+            }
         }
 
         // La impresión interna siempre se permite; el gate de pago bloquea únicamente el envío al cliente
@@ -4453,7 +4538,7 @@ class OperacionesControlador extends ControladorBase {
             $columnas = ["Código laboratorio", "Nombre muestra", "Área (in²)", "Carga (lb)", "R. Compresión (lb/in²)", "R. Compresión (kg/cm²)"];
         }
 
-        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle, $idHojaParam);
         if ($hoja) {
             $detalle['procedencia_punto_muestreo'] = $hoja['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
             $detalle['nombre_persona_entrega_muestra'] = $hoja['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
@@ -4622,6 +4707,7 @@ class OperacionesControlador extends ControladorBase {
         }
 
         $idDetalle = (int)($_GET['id_detalle'] ?? ($_GET['id'] ?? 0));
+        $idHojaParam = (int)($_GET['id_hoja'] ?? 0);
         if ($idDetalle <= 0) {
             $_SESSION['error'] = 'ID de ensayo no especificado.';
             $respuesta->redirigir('/Cycsa/publico/operaciones');
@@ -4673,7 +4759,7 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        $hojaPdf = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        $hojaPdf = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle, $idHojaParam);
         if ($hojaPdf) {
             $detalle['procedencia_punto_muestreo'] = $hojaPdf['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
             $detalle['nombre_persona_entrega_muestra'] = $hojaPdf['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
@@ -4686,6 +4772,9 @@ class OperacionesControlador extends ControladorBase {
             $detalle['incluir_firma_adicional'] = (int)($hojaPdf['incluir_firma_adicional'] ?? 0);
             $detalle['firma_adicional_nombre'] = trim((string)($hojaPdf['firma_adicional_nombre'] ?? ''));
             $detalle['firma_adicional_cargo'] = trim((string)($hojaPdf['firma_adicional_cargo'] ?? ''));
+            if (function_exists('obtenerResultadosJsonMatriz')) {
+                $detalle['resultados_json'] = obtenerResultadosJsonMatriz($db, $idDetalle, (int)$hojaPdf['id'], isset($detalle['resultados_json']) ? (string)$detalle['resultados_json'] : null);
+            }
         }
 
         // La impresión interna siempre se permite; el gate de pago bloquea únicamente el envío al cliente
@@ -4756,6 +4845,7 @@ class OperacionesControlador extends ControladorBase {
 
         $datos = $peticion->esPost() ? $peticion->obtenerDatos() : $_GET;
         $idDetalle = (int)($datos['id_detalle'] ?? ($datos['id'] ?? 0));
+        $idHojaParam = (int)($datos['id_hoja'] ?? ($_GET['id_hoja'] ?? 0));
 
         if ($idDetalle <= 0) {
             $_SESSION['error'] = 'ID de ensayo no especificado.';
@@ -4808,7 +4898,7 @@ class OperacionesControlador extends ControladorBase {
             return;
         }
 
-        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle);
+        $hoja = resolverHojaPorDetalle($db, (int)$detalle['id_os'], $idDetalle, $idHojaParam);
         if ($hoja) {
             $detalle['procedencia_punto_muestreo'] = $hoja['procedencia_punto_muestreo'] ?? ($detalle['procedencia_punto_muestreo'] ?? '');
             $detalle['nombre_persona_entrega_muestra'] = $hoja['nombre_persona_entrega_muestra'] ?? ($detalle['nombre_persona_entrega_muestra'] ?? '');
@@ -4821,6 +4911,9 @@ class OperacionesControlador extends ControladorBase {
             $detalle['incluir_firma_adicional'] = (int)($hoja['incluir_firma_adicional'] ?? 0);
             $detalle['firma_adicional_nombre'] = trim((string)($hoja['firma_adicional_nombre'] ?? ''));
             $detalle['firma_adicional_cargo'] = trim((string)($hoja['firma_adicional_cargo'] ?? ''));
+            if (function_exists('obtenerResultadosJsonMatriz')) {
+                $detalle['resultados_json'] = obtenerResultadosJsonMatriz($db, $idDetalle, (int)$hoja['id'], isset($detalle['resultados_json']) ? (string)$detalle['resultados_json'] : null);
+            }
         }
 
         // Gate Único de Envío Oficial al Cliente / Autorización de Pago

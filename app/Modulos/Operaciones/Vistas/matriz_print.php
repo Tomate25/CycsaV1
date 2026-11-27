@@ -1050,6 +1050,9 @@ if (!empty($codigoInformePersonalizado)) {
             <form method="POST" action="/Cycsa/publico/operaciones/enviar-matriz-cliente?retorno=print" onsubmit="prepararEnvioPrint(this)">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                 <input type="hidden" name="id_detalle" value="<?= $detalle['id'] ?>">
+                <?php if (!empty($idHojaContexto) || !empty($detalle['id_hoja'])): ?>
+                <input type="hidden" name="id_hoja" value="<?= (int)($idHojaContexto ?? ($detalle['id_hoja'] ?? 0)) ?>">
+                <?php endif; ?>
 
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 15px; font-size: 12.5px;">
                     <div style="font-weight: bold; color: #0f172a;"><?= htmlspecialchars($ensayoTituloOficial) ?></div>

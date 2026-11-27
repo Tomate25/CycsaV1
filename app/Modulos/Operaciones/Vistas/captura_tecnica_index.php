@@ -115,6 +115,8 @@ $resolverPillEnsayoCT = static function (string $estado): array {
                             $resumenEns .= ' (+' . ($total - 2) . ')';
                         }
                         $idAcc = (int)($o['id_accion_principal'] ?? 0);
+                        $idHojaAcc = (int)($o['id_hoja_accion_principal'] ?? 0);
+                        $qsHojaAcc = $idHojaAcc > 0 ? ('&id_hoja=' . $idHojaAcc) : '';
                     ?>
                     <tr id="ct-row-<?= $idOS ?>" class="fila-ct-os" data-detail-id="ct-detail-<?= $idOS ?>">
                         <td>
@@ -138,7 +140,7 @@ $resolverPillEnsayoCT = static function (string $estado): array {
                         <td class="text-end" style="white-space: nowrap;">
                             <div class="d-inline-flex align-items-center justify-content-end gap-2">
                                 <?php if ($total === 1 && $idAcc > 0): ?>
-                                    <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idAcc ?>"
+                                    <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idAcc ?><?= $qsHojaAcc ?>"
                                        class="btn btn-primary btn-sm"
                                        onclick="event.stopPropagation();">
                                         <?= (int)$o['devueltas'] > 0 ? 'Corregir datos' : 'Llenar datos' ?>
@@ -164,7 +166,7 @@ $resolverPillEnsayoCT = static function (string $estado): array {
                                         <div class="cy-meta"><?= $llenadas ?> de <?= $total ?> ensayos capturados · <?= (int)$o['aprobadas'] ?> aprobados.</div>
                                     </div>
                                     <?php if ($idAcc > 0): ?>
-                                        <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idAcc ?>" class="btn btn-primary">
+                                        <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idAcc ?><?= $qsHojaAcc ?>" class="btn btn-primary">
                                             <?= (int)$o['devueltas'] > 0 ? 'Corregir datos' : 'Llenar datos' ?>
                                         </a>
                                     <?php endif; ?>
@@ -173,10 +175,18 @@ $resolverPillEnsayoCT = static function (string $estado): array {
                                 <?php foreach ($o['items'] as $it):
                                     $pillIt = $resolverPillEnsayoCT((string)$it['estado']);
                                     $idDet = (int)$it['id'];
+                                    $idHojaIt = (int)($it['id_hoja'] ?? 0);
+                                    $qsHojaIt = $idHojaIt > 0 ? ('&id_hoja=' . $idHojaIt) : '';
+                                    $regHojaIt = trim((string)($it['hoja_numero_registro'] ?? ''));
                                 ?>
                                 <div class="cy-row">
                                     <div class="flex-grow-1 min-w-0">
-                                        <div class="cy-assay-name"><?= htmlspecialchars((string)$it['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?></div>
+                                        <div class="cy-assay-name">
+                                            <?= htmlspecialchars((string)$it['descripcion_ensayo'], ENT_QUOTES, 'UTF-8') ?>
+                                            <?php if ($regHojaIt !== ''): ?>
+                                                <span class="cy-meta"> · RT-FM-13 <?= htmlspecialchars($regHojaIt, ENT_QUOTES, 'UTF-8') ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                         <div class="cy-assay-norm">
                                             <?= htmlspecialchars((string)($it['norma_astm'] !== '' ? $it['norma_astm'] : 'Ensayo de laboratorio'), ENT_QUOTES, 'UTF-8') ?> · <?= (int)$it['cantidad'] ?> <?= (int)$it['cantidad'] === 1 ? 'muestra' : 'muestras' ?>
                                         </div>
@@ -189,7 +199,7 @@ $resolverPillEnsayoCT = static function (string $estado): array {
                                             Observación
                                         </button>
                                     <?php endif; ?>
-                                    <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idDet ?>" class="btn btn-outline-secondary btn-sm">
+                                    <a href="/Cycsa/publico/captura-tecnica/llenar?id_detalle=<?= $idDet ?><?= $qsHojaIt ?>" class="btn btn-outline-secondary btn-sm">
                                         <?= $it['estado'] === 'aprobada' ? 'Ver captura' : ($it['tiene_resultados'] ? 'Editar datos' : 'Llenar datos') ?>
                                     </a>
                                 </div>

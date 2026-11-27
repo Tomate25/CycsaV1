@@ -214,11 +214,170 @@ class OperacionModelo extends ModeloBase {
                 WHERE os.id = :id_os{$filtroPermitido}";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id_os' => $idOS]);
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return array_values(array_filter(
-            $items,
+        $itemsBase = array_values(array_filter(
+            $stmt->fetchAll(PDO::FETCH_ASSOC),
             static fn(array $item): bool => (int)($item['permitido'] ?? 1) === 1
         ));
+
+        if (empty($itemsBase)) {
+            return [];
+        }
+
+        // Expandir automáticamente a una unidad de trabajo independiente por cada (Hoja RT-FM-13 × Producto asignado)
+        // para que cada nueva RT-FM-13 genere su propia entrada en Captura Técnica, Matriz y Ver en Operaciones.
+        $mapaBase = [];
+        foreach ($itemsBase as $ib) {
+            $mapaBase[(int)$ib['id']] = $ib;
+        }
+
+        $paresHojaDetalle = [];
+        $infoHojas = [];
+        try {
+            $stmtH = $this->db->prepare("SELECT id, numero_registro, id_detalle_cotizacion, etapa_flujo, recepcion_completa, fecha_creacion FROM hojas_solicitud WHERE id_os = :id_os ORDER BY id ASC");
+            $stmtH->execute(['id_os' => $idOS]);
+            foreach ($stmtH->fetchAll(PDO::FETCH_ASSOC) as $hRow) {
+                $hid = (int)$hRow['id'];
+                $infoHojas[$hid] = $hRow;
+            }
+        } catch (\Throwable $e) {
+            $infoHojas = [];
+        }
+
+        if (!empty($infoHojas)) {
+            $hojaIds = array_keys($infoHojas);
+            $inH = implode(',', array_map('intval', $hojaIds));
+
+            // 1. Pares desde hojas_solicitud_detalles (asignación explícita muestra -> producto)
+            $conteosMuestrasPar = [];
+            try {
+                $stmtHsd = $this->db->query("
+                    SELECT id_hoja_solicitud AS id_hoja, id_detalle_cotizacion AS id_det, COUNT(*) AS cnt
+                    FROM hojas_solicitud_detalles
+                    WHERE id_hoja_solicitud IN ({$inH})
+                      AND id_detalle_cotizacion IS NOT NULL AND id_detalle_cotizacion > 0
+                    GROUP BY id_hoja_solicitud, id_detalle_cotizacion
+                    ORDER BY id_hoja_solicitud ASC, id_detalle_cotizacion ASC
+                ");
+                foreach ($stmtHsd->fetchAll(PDO::FETCH_ASSOC) as $rP) {
+                    $hid = (int)$rP['id_hoja'];
+                    $did = (int)$rP['id_det'];
+                    if (isset($mapaBase[$did])) {
+                        $clave = $hid . ':' . $did;
+                        $paresHojaDetalle[$clave] = ['id_hoja' => $hid, 'id_detalle' => $did];
+                        $conteosMuestrasPar[$clave] = (int)$rP['cnt'];
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+
+            // 2. Pares desde hojas_solicitud.id_detalle_cotizacion (hojas 1-a-1)
+            foreach ($infoHojas as $hid => $hRow) {
+                $didH = (int)($hRow['id_detalle_cotizacion'] ?? 0);
+                if ($didH > 0 && isset($mapaBase[$didH])) {
+                    $clave = $hid . ':' . $didH;
+                    if (!isset($paresHojaDetalle[$clave])) {
+                        $paresHojaDetalle[$clave] = ['id_hoja' => $hid, 'id_detalle' => $didH];
+                    }
+                }
+            }
+
+            // 3. Pares ya aprovisionados en hojas_matrices_resultados
+            $resultadosPorPar = [];
+            if (function_exists('tablaHojasMatricesDisponible') && tablaHojasMatricesDisponible($this->db)) {
+                try {
+                    $stmtHmr = $this->db->prepare("SELECT id_hoja, id_detalle_cotizacion, resultados_json FROM hojas_matrices_resultados WHERE id_os = :id_os ORDER BY id_hoja ASC, id_detalle_cotizacion ASC");
+                    $stmtHmr->execute(['id_os' => $idOS]);
+                    foreach ($stmtHmr->fetchAll(PDO::FETCH_ASSOC) as $rM) {
+                        $hid = (int)$rM['id_hoja'];
+                        $did = (int)$rM['id_detalle_cotizacion'];
+                        if (isset($mapaBase[$did]) && isset($infoHojas[$hid])) {
+                            $clave = $hid . ':' . $did;
+                            $paresHojaDetalle[$clave] = ['id_hoja' => $hid, 'id_detalle' => $did];
+                            $resultadosPorPar[$clave] = $rM['resultados_json'];
+                        }
+                    }
+                } catch (\Throwable $e) {
+                }
+            }
+
+            if (!empty($paresHojaDetalle)) {
+                // Ordenar por id_hoja ASC, id_detalle ASC
+                uasort($paresHojaDetalle, static function (array $a, array $b): int {
+                    return ($a['id_hoja'] <=> $b['id_hoja']) ?: ($a['id_detalle'] <=> $b['id_detalle']);
+                });
+
+                // Contar cuántas hojas distintas tiene cada producto para decidir fallback legado de resultados_json
+                $hojasPorDetalle = [];
+                foreach ($paresHojaDetalle as $pItem) {
+                    $hojasPorDetalle[$pItem['id_detalle']][] = $pItem['id_hoja'];
+                }
+
+                // Códigos de muestra por (id_hoja, id_detalle) si ya ingresaron a recepcion_muestras
+                $codMuestraPorPar = [];
+                try {
+                    $stmtRm = $this->db->prepare("
+                        SELECT id_hoja, id_detalle_cotizacion, codigo_muestra
+                        FROM recepcion_muestras
+                        WHERE id_os = :id_os AND id_hoja IS NOT NULL
+                        ORDER BY id DESC
+                    ");
+                    $stmtRm->execute(['id_os' => $idOS]);
+                    foreach ($stmtRm->fetchAll(PDO::FETCH_ASSOC) as $rmR) {
+                        $cPar = (int)$rmR['id_hoja'] . ':' . (int)($rmR['id_detalle_cotizacion'] ?? 0);
+                        if (!isset($codMuestraPorPar[$cPar])) {
+                            $codMuestraPorPar[$cPar] = (string)$rmR['codigo_muestra'];
+                        }
+                    }
+                } catch (\Throwable $e) {
+                }
+
+                $itemsExpandidos = [];
+                $detallesCubiertos = [];
+                foreach ($paresHojaDetalle as $clave => $pItem) {
+                    $hid = $pItem['id_hoja'];
+                    $did = $pItem['id_detalle'];
+                    $detallesCubiertos[$did] = true;
+                    $item = $mapaBase[$did];
+                    $hMeta = $infoHojas[$hid];
+
+                    $item['id_hoja'] = $hid;
+                    $item['hoja_numero_registro'] = (string)($hMeta['numero_registro'] ?? ('#' . $hid));
+                    $item['hoja_etapa_flujo'] = (string)($hMeta['etapa_flujo'] ?? 'recepcion_borrador');
+                    $item['hoja_recepcion_completa'] = (int)($hMeta['recepcion_completa'] ?? 0);
+
+                    if (!empty($conteosMuestrasPar[$clave])) {
+                        $item['cantidad'] = $conteosMuestrasPar[$clave];
+                        $item['muestras_hoja_count'] = $conteosMuestrasPar[$clave];
+                    }
+
+                    if (array_key_exists($clave, $resultadosPorPar)) {
+                        // Si existe fila explícita en hojas_matrices_resultados, respetar su contenido exacto (incluso NULL para una hoja nueva)
+                        if ($resultadosPorPar[$clave] !== null) {
+                            $item['resultados_json'] = $resultadosPorPar[$clave];
+                        } else {
+                            // Solo heredar resultados_json legado de cotizacion_detalles si esta es la ÚNICA hoja de este producto y aún no había nada en hojas_matrices_resultados
+                            $esUnicaHojaDet = (count($hojasPorDetalle[$did] ?? []) === 1);
+                            $item['resultados_json'] = $esUnicaHojaDet ? ($mapaBase[$did]['resultados_json'] ?? null) : null;
+                        }
+                    } else {
+                        $primeraHojaDet = (int)($hojasPorDetalle[$did][0] ?? 0);
+                        $item['resultados_json'] = ($primeraHojaDet === $hid) ? ($mapaBase[$did]['resultados_json'] ?? null) : null;
+                    }
+
+                    if (isset($codMuestraPorPar[$clave])) {
+                        $item['codigo_muestra'] = $codMuestraPorPar[$clave];
+                    }
+
+                    $itemsExpandidos[] = $item;
+                }
+
+                // Si la O/S solo tiene 1 hoja y existen otros productos permitidos sin asignar aún, mantener comportamiento esperado solo si no hay múltiples hojas;
+                // si ya hay productos asignados por muestra en RT-FM-13, cada RT-FM-13 muestra únicamente los productos que se le asignaron.
+                return $itemsExpandidos;
+            }
+        }
+
+        return $itemsBase;
     }
 
     /**
@@ -466,11 +625,22 @@ class OperacionModelo extends ModeloBase {
                 $plantillaIdMuestra = !empty($m['plantilla_id']) ? (int)$m['plantilla_id'] : (!empty($datos['plantilla_id']) ? (int)$datos['plantilla_id'] : null);
                 $ordenEnLote = isset($m['orden_en_lote']) ? (int)$m['orden_en_lote'] : ($ordenLoteSeq++);
 
-                // 1. Insertar Recepción con inmutabilidad y sellado
-                $sqlRec = "INSERT INTO recepcion_muestras (id_os, id_hoja, correlativo_anual, anio, tipo_muestra, codigo_muestra, id_cilindro, codigo_campo, is_qa_qc, replica_codigo, is_sealed, orden_en_lote, plantilla_id, fecha_recepcion, recibido_por, entregado_por, observaciones, estado)
-                           VALUES (:id_os, :id_hoja, :correlativo_anual, :anio, :tipo_muestra, :codigo_muestra, :id_cilindro, :codigo_campo, :is_qa_qc, :replica_codigo, 1, :orden_en_lote, :plantilla_id, :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, 'Registrado')";
-                $stmtRec = $this->db->prepare($sqlRec);
-                $stmtRec->execute([
+                // 1. Insertar Recepción con inmutabilidad y sellado (incluyendo id_detalle_cotizacion cuando existe la columna)
+                $tieneColDetRm = false;
+                try {
+                    $chkRmCol = $this->db->query("SHOW COLUMNS FROM recepcion_muestras LIKE 'id_detalle_cotizacion'");
+                    $tieneColDetRm = (bool)($chkRmCol && $chkRmCol->fetch(PDO::FETCH_ASSOC));
+                } catch (\Throwable $e) {
+                    $tieneColDetRm = false;
+                }
+                if ($tieneColDetRm) {
+                    $sqlRec = "INSERT INTO recepcion_muestras (id_os, id_hoja, id_detalle_cotizacion, correlativo_anual, anio, tipo_muestra, codigo_muestra, id_cilindro, codigo_campo, is_qa_qc, replica_codigo, is_sealed, orden_en_lote, plantilla_id, fecha_recepcion, recibido_por, entregado_por, observaciones, estado)
+                               VALUES (:id_os, :id_hoja, :id_detalle_cotizacion, :correlativo_anual, :anio, :tipo_muestra, :codigo_muestra, :id_cilindro, :codigo_campo, :is_qa_qc, :replica_codigo, 1, :orden_en_lote, :plantilla_id, :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, 'Registrado')";
+                } else {
+                    $sqlRec = "INSERT INTO recepcion_muestras (id_os, id_hoja, correlativo_anual, anio, tipo_muestra, codigo_muestra, id_cilindro, codigo_campo, is_qa_qc, replica_codigo, is_sealed, orden_en_lote, plantilla_id, fecha_recepcion, recibido_por, entregado_por, observaciones, estado)
+                               VALUES (:id_os, :id_hoja, :correlativo_anual, :anio, :tipo_muestra, :codigo_muestra, :id_cilindro, :codigo_campo, :is_qa_qc, :replica_codigo, 1, :orden_en_lote, :plantilla_id, :fecha_recepcion, :recibido_por, :entregado_por, :observaciones, 'Registrado')";
+                }
+                $paramsRec = [
                     'id_os' => $idOS,
                     'id_hoja' => ($idHoja > 0 ? $idHoja : null),
                     'correlativo_anual' => $correlativo,
@@ -487,7 +657,12 @@ class OperacionModelo extends ModeloBase {
                     'recibido_por' => $recibidoPorId,
                     'entregado_por' => $entregadoPor,
                     'observaciones' => $observaciones
-                ]);
+                ];
+                if ($tieneColDetRm) {
+                    $paramsRec['id_detalle_cotizacion'] = $idDetalleCotizacion > 0 ? $idDetalleCotizacion : null;
+                }
+                $stmtRec = $this->db->prepare($sqlRec);
+                $stmtRec->execute($paramsRec);
 
                 $idRecepcion = $this->db->lastInsertId();
 
@@ -2082,24 +2257,16 @@ class OperacionModelo extends ModeloBase {
             ];
         }
 
-        $filasMatriz = [];
-        if ($actualHojaId > 0 && $idDetalleCotizacion > 0) {
-            $stmtMatSync = $this->db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
-            $stmtMatSync->execute(['id' => $idDetalleCotizacion]);
-            $resJsonRaw = $stmtMatSync->fetchColumn();
-            if (!empty($resJsonRaw)) {
-                $resMatArr = json_decode((string)$resJsonRaw, true);
-                if (is_array($resMatArr) && !empty($resMatArr['filas'])) {
-                    $filasMatriz = $resMatArr['filas'];
-                    if (function_exists('sincronizarReplicasMatrizConLab')) {
-                        sincronizarReplicasMatrizConLab($this->db, $idOS, $actualHojaId, $idDetalleCotizacion, $resMatArr['filas']);
-                    }
-                }
-            }
+        $tieneColDetRmLab = false;
+        try {
+            $chkRmColLab = $this->db->query("SHOW COLUMNS FROM recepcion_muestras LIKE 'id_detalle_cotizacion'");
+            $tieneColDetRmLab = (bool)($chkRmColLab && $chkRmColLab->fetch(PDO::FETCH_ASSOC));
+        } catch (\Throwable $e) {
+            $tieneColDetRmLab = false;
         }
-
+        $selDetColLab = $tieneColDetRmLab ? "COALESCE(rm.id_detalle_cotizacion, 0) AS id_detalle_cotizacion," : "0 AS id_detalle_cotizacion,";
         $stmtMuestrasLote = $this->db->prepare("
-            SELECT rm.id AS muestra_id, rm.codigo_muestra, lm.fecha_moldeo, rm.orden_en_lote
+            SELECT rm.id AS muestra_id, rm.codigo_muestra, {$selDetColLab} lm.fecha_moldeo, rm.orden_en_lote
             FROM recepcion_muestras rm
             LEFT JOIN lotes_muestras lm ON lm.id_recepcion = rm.id
             WHERE rm.id_os = :id_os " . ($actualHojaId > 0 ? "AND rm.id_hoja = :id_hoja" : "") . "
@@ -2112,130 +2279,171 @@ class OperacionModelo extends ModeloBase {
         $stmtMuestrasLote->execute($paramsML);
         $muestrasObtenidas = $stmtMuestrasLote->fetchAll(PDO::FETCH_ASSOC);
 
-        if (empty($filasMatriz)) {
-            $cantMuestras = count($muestrasObtenidas);
-            $edadesEstandar = match ($cantMuestras) {
-                1 => [28],
-                2 => [7, 28],
-                3 => [7, 14, 28],
-                4 => [7, 14, 28, 28],
-                5 => [7, 7, 14, 28, 28],
-                default => (function ($c) {
-                    $base = [3, 7, 7, 14, 28, 28];
-                    while (count($base) < $c) {
-                        $base[] = 28;
+        // Agrupar muestras ingresadas por id_detalle_cotizacion para aislar la matriz por (Hoja RT-FM-13 × Producto)
+        $muestrasPorDetLab = [];
+        foreach ($muestrasObtenidas as $mItem) {
+            $detM = (int)($mItem['id_detalle_cotizacion'] ?? 0);
+            if ($detM <= 0) {
+                $codKeyM = strtoupper(trim((string)($mItem['codigo_muestra'] ?? '')));
+                $detM = (int)($mapaHsdPorCodigo[$codKeyM]['id_detalle_cotizacion'] ?? $idDetalleCotizacion);
+            }
+            $muestrasPorDetLab[$detM][] = $mItem;
+        }
+
+        $mapaDatosRecHoja = ($actualHojaId > 0 && function_exists('construirMapaDatosRecepcionPorHoja'))
+            ? construirMapaDatosRecepcionPorHoja($this->db, $actualHojaId)
+            : [];
+
+        $descPorCodRT = [];
+        foreach ($muestrasDeclaradasRT as $mDeclItem) {
+            $kDesc = strtoupper(trim((string)($mDeclItem['nombre_muestra'] ?? '')));
+            if ($kDesc !== '') {
+                $descPorCodRT[$kDesc] = trim((string)($mDeclItem['descripcion'] ?? ''));
+            }
+        }
+
+        foreach ($muestrasPorDetLab as $detIdGrupo => $muestrasGrupo) {
+            $filasMatriz = [];
+            if ($actualHojaId > 0 && $detIdGrupo > 0) {
+                $resJsonRaw = function_exists('obtenerResultadosJsonMatriz')
+                    ? obtenerResultadosJsonMatriz($this->db, (int)$detIdGrupo, $actualHojaId)
+                    : null;
+                if (!empty($resJsonRaw)) {
+                    $resMatArr = json_decode((string)$resJsonRaw, true);
+                    if (is_array($resMatArr) && !empty($resMatArr['filas'])) {
+                        $filasMatriz = $resMatArr['filas'];
+                        if (function_exists('sincronizarReplicasMatrizConLab')) {
+                            sincronizarReplicasMatrizConLab($this->db, $idOS, $actualHojaId, (int)$detIdGrupo, $resMatArr['filas']);
+                        }
                     }
-                    return array_slice($base, 0, $c);
-                })($cantMuestras),
-            };
-
-            $mapaDatosRecHoja = ($actualHojaId > 0 && function_exists('construirMapaDatosRecepcionPorHoja'))
-                ? construirMapaDatosRecepcionPorHoja($this->db, $actualHojaId)
-                : [];
-
-            $filasInicialesMatriz = [];
-            foreach ($muestrasObtenidas as $idx => $mItem) {
-                $codMKey = strtoupper(trim((string)($mItem['codigo_muestra'] ?? '')));
-                $recM = ($codMKey !== '' && isset($mapaDatosRecHoja[$codMKey])) ? $mapaDatosRecHoja[$codMKey] : [];
-
-                $edadDef = (!empty($recM) && function_exists('buscarValorEnFilaPHP') && buscarValorEnFilaPHP($recM, 'Edad (Días)') !== '')
-                    ? (int)buscarValorEnFilaPHP($recM, 'Edad (Días)')
-                    : (int)($edadesEstandar[$idx] ?? 28);
-                $fMolRec = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Fecha de Fabricación') : '';
-                $fMoldeo = ($fMolRec !== '' && strtotime($fMolRec) !== false)
-                    ? date('Y-m-d', strtotime($fMolRec))
-                    : (!empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d'));
-                $fProgRec = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Fecha de Ensayo') : '';
-                $fProg = ($fProgRec !== '' && strtotime($fProgRec) !== false)
-                    ? date('Y-m-d', strtotime($fProgRec))
-                    : date('Y-m-d', strtotime($fMoldeo . " + {$edadDef} days"));
-
-                $datosMat = [
-                    'edad_dias' => $edadDef,
-                    'fecha_rotura_programada' => $fProg,
-                    'fecha_fabricacion' => $fMoldeo,
-                    'tamano_cilindro' => '15 x 30 cm',
-                    'area' => null,
-                ];
-                if (function_exists('sincronizarEspecimenYPlanFila')) {
-                    sincronizarEspecimenYPlanFila($this->db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
                 }
-
-                $nomMuestraRec = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Nombre muestra') : '';
-                if ($nomMuestraRec === '' && !empty($muestrasDeclaradasRT[$idx]['descripcion'])) {
-                    $nomMuestraRec = trim((string)$muestrasDeclaradasRT[$idx]['descripcion']);
-                }
-                if ($nomMuestraRec === '') {
-                    $nomMuestraRec = 'Probeta ' . ($idx + 1);
-                }
-
-                $revInInit = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (in)') : '';
-                $revCmInit = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (cm)') : '';
-                if ($revCmInit === '' && $revInInit !== '' && is_numeric($revInInit)) {
-                    $revCmInit = (string)(class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
-                        ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularRevenimientoCm((float)$revInInit)
-                        : (round((float)$revInInit * 2.54 * 2.0) / 2.0));
-                }
-
-                $filaInit = [
-                    'Código laboratorio' => (string)$mItem['codigo_muestra'],
-                    'Nombre muestra' => $nomMuestraRec,
-                    'Área (in²)' => '',
-                    'Reven. (in)' => $revInInit,
-                    'Reven. (cm)' => $revCmInit,
-                    'Temp. (°C)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Temp. (°C)') : '',
-                    'Carga (lb)' => '',
-                    'Peso Volumétrico (kg/m³)' => '',
-                    'Diseño de concreto (lb/in²)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Diseño de concreto (lb/in²)') : '',
-                    'R. Compresión (lb/in²)' => '',
-                    'R. Compresión (kg/cm²)' => '',
-                    'Fecha de Fabricación' => $fMolRec !== '' ? $fMoldeo : '',
-                    'Fecha de Ensayo' => '',
-                    'Edad (Días)' => '',
-                ];
-                if (!empty($recM) && function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
-                    $filaInit = fusionarDatosRecepcionEnFilaMatriz($filaInit, $recM, [], true);
-                }
-                $filaInit['Área (in²)'] = '';
-                $filaInit['Carga (lb)'] = '';
-                $filaInit['Peso Volumétrico (kg/m³)'] = '';
-                $filaInit['R. Compresión (lb/in²)'] = '';
-                $filaInit['R. Compresión (kg/cm²)'] = '';
-                $filasInicialesMatriz[] = $filaInit;
             }
 
-            if ($idDetalleCotizacion > 0 && !empty($filasInicialesMatriz)) {
-                $stmtCheckDet = $this->db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id");
-                $stmtCheckDet->execute(['id' => $idDetalleCotizacion]);
-                $detCurrJson = $stmtCheckDet->fetchColumn();
-                if (empty($detCurrJson) || $detCurrJson === '[]') {
-                    $payloadMat = [
-                        'version_actual' => 1,
-                        'filas' => $filasInicialesMatriz,
-                        'metadatos' => [],
-                        'revision' => [
-                            'estado' => $sincronizarMatrizEnRevision ? 'en_revision' : 'borrador',
-                            'fecha_envio' => $sincronizarMatrizEnRevision ? date('Y-m-d H:i:s') : null,
-                            'usuario_envio' => $sincronizarMatrizEnRevision ? ($_SESSION['usuario_nombre'] ?? 'Laboratorio') : null,
-                            'historial' => [],
-                        ],
+            if (empty($filasMatriz)) {
+                $cantMuestras = count($muestrasGrupo);
+                $edadesEstandar = match ($cantMuestras) {
+                    1 => [28],
+                    2 => [7, 28],
+                    3 => [7, 14, 28],
+                    4 => [7, 14, 28, 28],
+                    5 => [7, 7, 14, 28, 28],
+                    default => (function ($c) {
+                        $base = [3, 7, 7, 14, 28, 28];
+                        while (count($base) < $c) {
+                            $base[] = 28;
+                        }
+                        return array_slice($base, 0, $c);
+                    })($cantMuestras),
+                };
+
+                $filasInicialesMatriz = [];
+                foreach ($muestrasGrupo as $idx => $mItem) {
+                    $codMKey = strtoupper(trim((string)($mItem['codigo_muestra'] ?? '')));
+                    $recM = ($codMKey !== '' && isset($mapaDatosRecHoja[$codMKey])) ? $mapaDatosRecHoja[$codMKey] : [];
+
+                    $edadDef = (!empty($recM) && function_exists('buscarValorEnFilaPHP') && buscarValorEnFilaPHP($recM, 'Edad (Días)') !== '')
+                        ? (int)buscarValorEnFilaPHP($recM, 'Edad (Días)')
+                        : (int)($edadesEstandar[$idx] ?? 28);
+                    $fMolRec = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Fecha de Fabricación') : '';
+                    $fMoldeo = ($fMolRec !== '' && strtotime($fMolRec) !== false)
+                        ? date('Y-m-d', strtotime($fMolRec))
+                        : (!empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d'));
+                    $fProgRec = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Fecha de Ensayo') : '';
+                    $fProg = ($fProgRec !== '' && strtotime($fProgRec) !== false)
+                        ? date('Y-m-d', strtotime($fProgRec))
+                        : date('Y-m-d', strtotime($fMoldeo . " + {$edadDef} days"));
+
+                    $datosMat = [
+                        'edad_dias' => $edadDef,
+                        'fecha_rotura_programada' => $fProg,
+                        'fecha_fabricacion' => $fMoldeo,
+                        'tamano_cilindro' => '15 x 30 cm',
+                        'area' => null,
                     ];
-                    $this->db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
-                        ->execute(['json' => json_encode($payloadMat, JSON_UNESCAPED_UNICODE), 'id' => $idDetalleCotizacion]);
-                }
-            }
-        } else {
-            foreach ($muestrasObtenidas as $mItem) {
-                $stmtChkPlan = $this->db->prepare("SELECT id FROM planes_rotura WHERE muestra_id = :mid LIMIT 1");
-                $stmtChkPlan->execute(['mid' => (int)$mItem['muestra_id']]);
-                if (!$stmtChkPlan->fetchColumn() && function_exists('obtenerDatosMuestraDesdeMatriz') && function_exists('sincronizarEspecimenYPlanFila')) {
-                    $datosMat = obtenerDatosMuestraDesdeMatriz($filasMatriz, (string)$mItem['codigo_muestra']);
-                    if (empty($datosMat['edad_dias'])) {
-                        $datosMat['edad_dias'] = 28;
-                        $fMoldeo = !empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d');
-                        $datosMat['fecha_rotura_programada'] = date('Y-m-d', strtotime($fMoldeo . ' + 28 days'));
+                    if (function_exists('sincronizarEspecimenYPlanFila')) {
+                        sincronizarEspecimenYPlanFila($this->db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
                     }
-                    sincronizarEspecimenYPlanFila($this->db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
+
+                    $nomMuestraRec = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Nombre muestra') : '';
+                    if ($nomMuestraRec === '' && !empty($descPorCodRT[$codMKey])) {
+                        $nomMuestraRec = $descPorCodRT[$codMKey];
+                    }
+                    if ($nomMuestraRec === '') {
+                        $nomMuestraRec = 'Probeta ' . ($idx + 1);
+                    }
+
+                    $revInInit = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (in)') : '';
+                    $revCmInit = (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Reven. (cm)') : '';
+                    if ($revCmInit === '' && $revInInit !== '' && is_numeric($revInInit)) {
+                        $revCmInit = (string)(class_exists(\Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::class)
+                            ? \Cycsa\Modulos\Operaciones\Servicios\ConfigCalculoLabServicio::calcularRevenimientoCm((float)$revInInit)
+                            : (round((float)$revInInit * 2.54 * 2.0) / 2.0));
+                    }
+
+                    $filaInit = [
+                        'Código laboratorio' => (string)$mItem['codigo_muestra'],
+                        'Nombre muestra' => $nomMuestraRec,
+                        'Área (in²)' => '',
+                        'Reven. (in)' => $revInInit,
+                        'Reven. (cm)' => $revCmInit,
+                        'Temp. (°C)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Temp. (°C)') : '',
+                        'Carga (lb)' => '',
+                        'Peso Volumétrico (kg/m³)' => '',
+                        'Diseño de concreto (lb/in²)' => (!empty($recM) && function_exists('buscarValorEnFilaPHP')) ? buscarValorEnFilaPHP($recM, 'Diseño de concreto (lb/in²)') : '',
+                        'R. Compresión (lb/in²)' => '',
+                        'R. Compresión (kg/cm²)' => '',
+                        'Fecha de Fabricación' => $fMolRec !== '' ? $fMoldeo : '',
+                        'Fecha de Ensayo' => '',
+                        'Edad (Días)' => '',
+                    ];
+                    if (!empty($recM) && function_exists('fusionarDatosRecepcionEnFilaMatriz')) {
+                        $filaInit = fusionarDatosRecepcionEnFilaMatriz($filaInit, $recM, [], true);
+                    }
+                    $filaInit['Área (in²)'] = '';
+                    $filaInit['Carga (lb)'] = '';
+                    $filaInit['Peso Volumétrico (kg/m³)'] = '';
+                    $filaInit['R. Compresión (lb/in²)'] = '';
+                    $filaInit['R. Compresión (kg/cm²)'] = '';
+                    $filasInicialesMatriz[] = $filaInit;
+                }
+
+                if ($detIdGrupo > 0 && !empty($filasInicialesMatriz)) {
+                    $detCurrJson = function_exists('obtenerResultadosJsonMatriz')
+                        ? obtenerResultadosJsonMatriz($this->db, (int)$detIdGrupo, $actualHojaId)
+                        : null;
+                    if (empty($detCurrJson) || $detCurrJson === '[]') {
+                        $payloadMat = [
+                            'version_actual' => 1,
+                            'filas' => $filasInicialesMatriz,
+                            'metadatos' => [],
+                            'revision' => [
+                                'estado' => $sincronizarMatrizEnRevision ? 'en_revision' : 'borrador',
+                                'fecha_envio' => $sincronizarMatrizEnRevision ? date('Y-m-d H:i:s') : null,
+                                'usuario_envio' => $sincronizarMatrizEnRevision ? ($_SESSION['usuario_nombre'] ?? 'Laboratorio') : null,
+                                'historial' => [],
+                            ],
+                        ];
+                        if (function_exists('guardarResultadosJsonMatriz')) {
+                            guardarResultadosJsonMatriz($this->db, $idOS, (int)$detIdGrupo, $actualHojaId, (string)json_encode($payloadMat, JSON_UNESCAPED_UNICODE));
+                        } else {
+                            $this->db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
+                                ->execute(['json' => json_encode($payloadMat, JSON_UNESCAPED_UNICODE), 'id' => (int)$detIdGrupo]);
+                        }
+                    }
+                }
+            } else {
+                foreach ($muestrasGrupo as $mItem) {
+                    $stmtChkPlan = $this->db->prepare("SELECT id FROM planes_rotura WHERE muestra_id = :mid LIMIT 1");
+                    $stmtChkPlan->execute(['mid' => (int)$mItem['muestra_id']]);
+                    if (!$stmtChkPlan->fetchColumn() && function_exists('obtenerDatosMuestraDesdeMatriz') && function_exists('sincronizarEspecimenYPlanFila')) {
+                        $datosMat = obtenerDatosMuestraDesdeMatriz($filasMatriz, (string)$mItem['codigo_muestra']);
+                        if (empty($datosMat['edad_dias'])) {
+                            $datosMat['edad_dias'] = 28;
+                            $fMoldeo = !empty($mItem['fecha_moldeo']) ? $mItem['fecha_moldeo'] : date('Y-m-d');
+                            $datosMat['fecha_rotura_programada'] = date('Y-m-d', strtotime($fMoldeo . ' + 28 days'));
+                        }
+                        sincronizarEspecimenYPlanFila($this->db, (int)$mItem['muestra_id'], (string)$mItem['codigo_muestra'], $datosMat);
+                    }
                 }
             }
         }

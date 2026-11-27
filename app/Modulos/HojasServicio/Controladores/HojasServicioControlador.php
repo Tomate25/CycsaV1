@@ -1113,6 +1113,11 @@ class HojasServicioControlador extends ControladorBase {
                 }
                 $pltModelo->guardarDetallesMuestrasHoja($idHojaGuardada, $filasDetalles, $usuarioId);
 
+                // Aprovisionar una recepción de matriz independiente por cada (Hoja RT-FM-13 × Producto asignado)
+                if (function_exists('asegurarMatricesPorHojaYProductos')) {
+                    asegurarMatricesPorHojaYProductos($db, $idOS, (int)$idHojaGuardada);
+                }
+
                 if ($esRecepcionFisica) {
                     $pltModelo->bloquearYCongelarDetallesRecepcion($idHojaGuardada, $usuarioId);
                     registrarEventoOS('hojas_servicio', 'congelar_plantillas', "Plantillas congeladas y bloqueadas por recepción física en Hoja RT-FM-13 #{$idHojaGuardada}", $idOS, [
@@ -2154,10 +2159,15 @@ class HojasServicioControlador extends ControladorBase {
             $db->prepare("UPDATE hojas_solicitud SET muestras_json = :mjson WHERE id = :hid")
                ->execute(['mjson' => json_encode($muestrasArr, JSON_UNESCAPED_UNICODE), 'hid' => $idHoja]);
 
-            // 3. Sincronizar con matrices técnicas en Operaciones / Laboratorio (soporta multi-producto)
+            // 2b. Aprovisionar matriz independiente por cada producto asignado en esta RT-FM-13
+            if (function_exists('asegurarMatricesPorHojaYProductos')) {
+                asegurarMatricesPorHojaYProductos($db, $idOS, $idHoja);
+            }
+
+            // 3. Sincronizar con matrices técnicas en Operaciones / Laboratorio (soporta multi-producto y por hoja)
             sincronizarDatosRecepcionEnMatriz($db, $idHoja, $datosPorCodigo);
 
-            // 3b. Sincronizar 'Nombre muestra' (y campos adicionales) hacia todos los cotizacion_detalles destino
+            // 3b. Sincronizar 'Nombre muestra' (y campos adicionales) hacia cada matriz (hoja × producto) destino
             $detallesParaSync = [];
             if (!empty($hoja['id_detalle_cotizacion'])) {
                 $detallesParaSync[(int)$hoja['id_detalle_cotizacion']] = true;
@@ -2167,10 +2177,13 @@ class HojasServicioControlador extends ControladorBase {
                     $detallesParaSync[(int)$idDetDestSync] = true;
                 }
             }
+            foreach ($muestrasArr as $mArrSync) {
+                if (!empty($mArrSync['id_detalle_cotizacion'])) {
+                    $detallesParaSync[(int)$mArrSync['id_detalle_cotizacion']] = true;
+                }
+            }
             foreach (array_keys($detallesParaSync) as $idDetalleSync) {
-                $stmtMatSync = $db->prepare("SELECT resultados_json FROM cotizacion_detalles WHERE id = :id LIMIT 1");
-                $stmtMatSync->execute(['id' => (int)$idDetalleSync]);
-                $resJsonSync = $stmtMatSync->fetchColumn();
+                $resJsonSync = obtenerResultadosJsonMatriz($db, (int)$idDetalleSync, $idHoja);
                 $decSync = is_string($resJsonSync) ? (json_decode($resJsonSync, true) ?: []) : [];
                 $filasSync = isset($decSync['filas']) && is_array($decSync['filas']) ? $decSync['filas'] : [];
                 if (!empty($filasSync)) {
@@ -2193,8 +2206,7 @@ class HojasServicioControlador extends ControladorBase {
                     }
                     if ($cambiosMat) {
                         $decSync['filas'] = $filasSync;
-                        $db->prepare("UPDATE cotizacion_detalles SET resultados_json = :json WHERE id = :id")
-                           ->execute(['json' => json_encode($decSync, JSON_UNESCAPED_UNICODE), 'id' => (int)$idDetalleSync]);
+                        guardarResultadosJsonMatriz($db, $idOS, (int)$idDetalleSync, $idHoja, json_encode($decSync, JSON_UNESCAPED_UNICODE));
                     }
                 }
             }

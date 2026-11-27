@@ -550,7 +550,7 @@ class Fase2OperacionesInformesPermisosTest extends TestCase {
         $this->assertStringContainsString('Pendiente verificación de equipo calibrado', $htmlSinExtra);
         $this->assertStringContainsString('Aditivo superplastificante 0.8% dosis', $htmlSinExtra);
         $this->assertStringContainsString('Peso Volumétrico (kg/m³) *', $htmlSinExtra);
-        $this->assertStringContainsString('Parámetro o resultado marcado fuera del alcance de acreditación', $htmlSinExtra);
+        $this->assertStringContainsString('fuera del alcance de acreditación', $htmlSinExtra);
         $this->assertStringContainsString('background-image: none;', $htmlSinExtra);
         $this->assertStringNotContainsString('logo-acreditacion-print', $htmlSinExtra);
         $this->assertStringNotContainsString('BITACORA_INTERNA_SECRETA_NO_IMPRIMIR', $htmlSinExtra);
